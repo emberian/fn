@@ -112,10 +112,13 @@ int08h capture.
 sbcl --noinform --disable-debugger --script tests/native_crypto_primitives.lisp
 ```
 
-It passed on the laptop with libsodium 1.0.22 and on `hbox` and `persvati` with
-libsodium 1.0.18.  This is component evidence for the primitive seam.  Native
-anchor acquisition, FNAN persistence/recovery, owner STARTTLS and the no-Python
-deployment gate remain separate integration evidence.
+It passed at implementation revision `88b0cd3` on the laptop with libsodium
+1.0.22 and on `hbox` and `persvati` with libsodium 1.0.18.  Exact source
+digests, tool versions, invocations, outputs and limitations are archived in
+[`tests/evidence/2026-09-21-native-crypto-primitives.md`](../../tests/evidence/2026-09-21-native-crypto-primitives.md).
+This is component evidence for the primitive seam.  Native anchor acquisition,
+FNAN persistence/recovery, owner STARTTLS and the no-Python deployment gate
+remain separate integration evidence.
 
 `tests/test_native_crypto_saved_image.sh` writes a temporary SBCL core whose
 serialized state falsely says the facility is ready, restarts it, requires the
