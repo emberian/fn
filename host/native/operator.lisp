@@ -63,13 +63,13 @@
   (handler-case
       (let ((code
               (fnn-owner-run-normalized
-               (fnn-octets (fnn-core-state
+               (fnn-octets (fnn-core
                             'fn-native-operator-host-result-run-store-octets result))
-               (fnn-octets (fnn-core-state
+               (fnn-octets (fnn-core
                             'fn-native-operator-host-result-run-listener-host-octets result))
                (fnn-core 'fn-native-operator-host-result-run-listener-port result)
                (fnn-core 'fn-native-operator-host-result-run-oncep result)
-               (fnn-core-state
+               (fnn-core
                 'fn-native-operator-host-result-run-max-connections result))))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run")
         code)
