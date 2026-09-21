@@ -49,8 +49,7 @@
   *fn-sn-max-staging-observation*)
 
 (defthm fn-sn-staging-observation-limit-is-positive
-  (< 0 (fn-sn-staging-observation-limit))
-  :rule-classes :linear)
+  (< 0 (fn-sn-staging-observation-limit)))
 
 (defun fn-sn-octet-prefixp (prefix name)
   (declare (xargs :guard t))
