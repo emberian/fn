@@ -8,6 +8,8 @@ import sys
 import tempfile
 import unittest
 
+from tests.native_process import stop_and_diagnostics
+
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 
@@ -67,10 +69,7 @@ class NativeAuthTests(unittest.TestCase):
         self.assertTrue(ready, "native authenticated owner did not announce its port")
         line = process.stdout.readline()
         if not line.startswith(b"LISTENING "):
-            diagnostic = process.stderr.read().decode("utf-8", "replace")
-            if process.poll() is None:
-                process.terminate()
-            process.wait(timeout=10)
+            diagnostic = stop_and_diagnostics(process)
             process.stdout.close()
             process.stderr.close()
             self.fail("native authenticated owner failed: {} {}".format(

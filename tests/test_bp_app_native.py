@@ -12,6 +12,8 @@ import unittest
 from tools import run_bp_ingress, run_store
 
 
+from tests.native_process import stop_and_diagnostics
+
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 
@@ -102,7 +104,7 @@ class NativeBpApplicationTests(unittest.TestCase):
         if not line.startswith(b"BP APP LISTENING "):
             self.fail(
                 f"receiver failed: {line!r} "
-                f"{process.stderr.read().decode('utf-8', 'replace')}"
+                f"{stop_and_diagnostics(process)}"
             )
         return process, int(line.rsplit(b" ", 1)[1])
 
