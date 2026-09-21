@@ -317,12 +317,16 @@ whole-path deadline; send and receive readiness each get the selected timeout.
 Exit 0 follows only durable FNAN replacement, refusal is 1, uncertainty is 3,
 and host/core fault is 4.
 
-Remaining Python-only: the BP hosts (`run_bp_ingress.py`, `run_bp_receive.py`,
-`workflow_journal.py`, `receipt_journal.py`), the in-process `Acl2Store`,
-`Store` and `Acl2Reader` classes that the fault-matrix, process-crash and
-partition tests drive through `mock.patch`, and the reader's
-`ReaderBridgeFault` path, which has no in-process analogue: a Lisp condition
-that escapes a core call while serving is reported and exits 4.
+Development Python adapters remain in `run_bp_ingress.py`, `run_bp_receive.py`,
+`workflow_journal.py` and `receipt_journal.py`; their presence is not a native
+runtime dependency or evidence of native feature parity. The native BP carrier,
+application, service and workflow paths live in `host/native/bp.lisp`,
+`bp-app.lisp`, `bp-service.lisp` and `workflow.lisp`; the canonical obligation
+writer is `bp-obligation.lisp`. Their composition and evidence are tracked in
+[the current work record](../planning/now.md). Python `Acl2Store`, `Store` and
+`Acl2Reader` remain development harnesses used by the fault/partition tests.
+A Python `ReaderBridgeFault` test alone does not establish the corresponding
+native Lisp condition behavior.
 
 The native I/O repair at `3312778` shares EINTR/progress handling across file
 and socket calls, preserves partial offsets and EOF, and rejects zero write
