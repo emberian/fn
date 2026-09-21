@@ -114,7 +114,7 @@ def open_writable(root, first):
     times recovery, and no second implementation of it exists here.
     """
     if first:
-        store = Store(root, writable=True, profile=SCALE_CONFIG)
+        store = Store(root, writable=True, profile="scale")
         store.initialize()
         store.acquire()
         bridge = Acl2Store()
