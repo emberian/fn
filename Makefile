@@ -282,7 +282,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
 
-.PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test
+.PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test labs labs-quick
 check:
 	$(PYTHON) tools/check_scaffold.py
 # Every host file loaded alone in its own ACL2: the dynamic half of the
@@ -314,6 +314,27 @@ check:
 # `python3 tools/teeth_check.py --evaluate` produces in about twenty minutes
 # of one ACL2.
 	$(PYTHON) tools/teeth_check.py --summary
+# Two static lints over the harness, both from the 2026-09-19 incident: a
+# host entry point gained a required keyword-only argument, two callers in
+# tests/ were never updated, and both integration labs were dead for a day
+# while every `make check` was green -- because nothing ran a lab and the one
+# test that would have failed had a skip keyed on a failure message.
+# `signatures` binds every resolvable Python call against the definition it
+# names and fails on a disagreement; `acl2-arity` does the same for the `ld`ed
+# host files, which no certification reads, and reports; `waivers` fails on a
+# skip keyed on a failure that carries no `waiver-ok:` declaration.  All three
+# are static, need no ACL2 and take about a second.
+	$(PYTHON) tools/harness_check.py
+
+# The integration labs.  Deliberately NOT part of `check`: the quick tier is
+# about two and a half minutes and the box tier is hours, while `check` is
+# seconds and runs before every commit.  `tests/README.md` has the table of
+# tiers and costs.  Each lab reports passed, failed, or not-runnable with the
+# exact reason; the exit code is 1 only when one actually failed.
+labs:
+	$(PYTHON) tools/labs.py --tier local
+labs-quick:
+	$(PYTHON) tools/labs.py --tier quick
 
 certify:
 	$(PYTHON) tools/certify_books.py --jobs $(FN_CERTIFY_JOBS) $(ACL2_BOOKS)
