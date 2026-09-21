@@ -19,8 +19,11 @@ the production-profile refusal before installing. It copied the generated
 launcher's `/home/ember/fn-tools/sbcl/bin/sbcl` and `SBCL_HOME` tree into the
 task prefix. The source and copied SBCL executables both hashed to
 `b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5`.
-The manifest found x86-64 `libsodium.so.23`, `libcrypto.so.3`, and `libssl.so.3`
-through `ldconfig`; the SBCL `ldd` output itself listed only libc and libm.
+The manifest recorded x86-64 `libsodium.so.23`, `libcrypto.so.3`, and
+`libssl.so.3` paths from the system `ldconfig` inventory; it did not hash those
+Linux libraries or observe loader events. The production-profile probe started
+the image successfully, which exercised its startup-time crypto loading. The
+SBCL `ldd` output itself listed only libc and libm.
 
 ## Invocation and result
 
