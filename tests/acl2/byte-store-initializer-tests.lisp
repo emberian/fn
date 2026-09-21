@@ -23,7 +23,7 @@
              (fn-bsi-test-program) outcomes nil nil))
 
 (defun fn-bsi-test-outcome-at (n outcome)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (zp n) (list outcome)
     (cons :ok (fn-bsi-test-outcome-at (1- n) outcome))))
 

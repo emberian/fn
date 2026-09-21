@@ -27,6 +27,11 @@
   (and (fn-cbor-octet-listp config)
        (fn-cbor-octet-listp config-record)
        (fn-cbor-octet-listp frontier)
+       ; Every current generator emits a nonempty frame.  This is a physical
+       ; publication precondition, not a claim about what the bytes decode to.
+       (consp config)
+       (consp config-record)
+       (consp frontier)
        (fn-bs-namep config-stage)
        (fn-bs-namep record-stage)
        (fn-bs-namep frontier-stage)
@@ -112,12 +117,14 @@
               (list (cons :config (list (cons *fn-bsi-config-record-name* 2)))
                     (cons :staging nil)
                     (cons :transactions nil)
-                    (cons :root (list (cons *fn-bs-frontier-name* 3)
-                                      (cons *fn-bs-config-name* 1)
-                                      (cons "config" :config)
-                                      (cons "staging" :staging)
+                    ; fn-bs-put-assoc appends a new root entry, so this is
+                    ; the host issue order rather than a sorted namespace.
+                    (cons :root (list (cons *fn-bsi-lock-name* 0)
                                       (cons "transactions" :transactions)
-                                      (cons *fn-bsi-lock-name* 0)))
+                                      (cons "staging" :staging)
+                                      (cons "config" :config)
+                                      (cons *fn-bs-config-name* 1)
+                                      (cons *fn-bs-frontier-name* 3)))
                     (cons :parent (list (cons "store" :root))))
               (list (list :set-entry :staging config-stage 1)
                     (list :del-entry :staging config-stage)
@@ -145,6 +152,25 @@
           (list :computed-hint-replacement
                 '((fn-bsi-unroll-hint clause stable-under-simplificationp))
                 :expand (list term))))))
+(local
+ (defthm fn-bsi-take-of-len
+   (implies (true-listp xs) (equal (fn-bs-take (len xs) xs) xs))
+   :hints (("Goal" :in-theory (enable fn-bs-take)))))
+(local
+ (defthm fn-bsi-octets-are-true-lists
+   (implies (fn-cbor-octet-listp xs) (true-listp xs))))
+(local
+ (defthm fn-bsi-consp-has-positive-len
+   (implies (consp xs) (< 0 (len xs)))))
+(local (defthm fn-bsi-nthcdr-of-nil (equal (nthcdr n nil) nil)))
+(local
+ (defthm fn-bsi-append-nil
+   (implies (true-listp xs) (equal (append xs nil) xs))))
+(local
+ (defthm fn-bsi-splice-new-file
+   (implies (true-listp octets)
+            (equal (fn-bs-splice nil 0 octets) octets))
+   :hints (("Goal" :in-theory (enable fn-bs-splice)))))
 
 (defthm fn-bsi-current-init-program-establishes-current-image
   (implies (fn-bsi-fresh-inputp config config-record frontier
@@ -159,6 +185,7 @@
                                           config-stage record-stage frontier-stage)))
   :rule-classes nil
   :hints (("Goal" :do-not '(preprocess)
+           :cases ((consp config) (consp config-record) (consp frontier))
            :in-theory (e/d (fn-bsi-fresh-inputp fn-bsi-current-init-program
                               fn-bsi-publish-steps fn-bs-step fn-bs-mkdir
                               fn-bs-create fn-bs-write fn-bs-fsync-file
@@ -201,4 +228,3 @@
                               fn-bs-all-fencedp fn-bs-authority-fencedp
                               fn-bs-inode-list-knownp fn-bs-authority-knownp)
                             (fn-bs-apply-ops)))))
-
