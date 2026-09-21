@@ -54,6 +54,7 @@
     line))
 
 (defun fn-wire-unstuff-line (line)
+  (declare (xargs :guard t))
   (if (and (consp line) (equal (car line) 46))
       (cdr line)
     line))
@@ -293,6 +294,7 @@
 ; will accept only LF next.
 
 (defun fn-wire-modep (x)
+  (declare (xargs :guard t))
   (or (equal x :command)
       (equal x :article)
       (equal x :closed)))
@@ -379,10 +381,15 @@
 
 (in-theory (disable (:d fn-wire-state-shapep) (:d fn-wire-make-state) (:d fn-wire-state-mode) (:d fn-wire-state-line-rev) (:d fn-wire-state-line-len) (:d fn-wire-state-body-rev) (:d fn-wire-state-pending-crp) (:d fn-wire-state-body-size) (:d fn-wire-state-line-limit) (:d fn-wire-state-body-limit)))
 
+(defun fn-wire-list-length (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (+ 1 (fn-wire-list-length (cdr xs)))
+    0))
+
 (defun fn-wire-line-cost (line)
-  (declare (xargs :guard (fn-wire-octet-listp line)
-                  :verify-guards nil))
-  (+ 2 (len line)))
+  (declare (xargs :guard t))
+  (+ 2 (fn-wire-list-length line)))
 
 (defun fn-wire-lines-size (lines)
   (declare (xargs :guard (fn-wire-octet-linesp lines)
@@ -397,7 +404,7 @@
          (+ (fn-wire-line-cost line) (fn-wire-lines-size lines))))
 
 (defun fn-wire-statep (x)
-  (and (fn-wire-state-shapep x)
+(and (fn-wire-state-shapep x)
        (fn-wire-modep (fn-wire-state-mode x))
        (fn-wire-octet-listp (fn-wire-state-line-rev x))
        (fn-wire-octet-linesp (fn-wire-state-body-rev x))
@@ -421,6 +428,30 @@
        (or (not (equal (fn-wire-state-mode x) :closed))
            (and (null (fn-wire-state-line-rev x))
                 (null (fn-wire-state-pending-crp x))))))
+
+; The executable served loop must not re-walk retained input at every socket
+; observation.  This predicate checks only the fixed eight-cell record spine
+; and the scalar facts needed to execute one byte transition safely.  The full
+; invariant above additionally relates the counters to the retained lists.
+(defun fn-wire-fast-statep (x)
+  (declare (xargs :guard t))
+  (and (fn-wire-state-shapep x)
+       (fn-wire-modep (fn-wire-state-mode x))
+       (or (equal (fn-wire-state-pending-crp x) t)
+           (null (fn-wire-state-pending-crp x)))
+       (natp (fn-wire-state-line-len x))
+       (natp (fn-wire-state-body-size x))
+       (posp (fn-wire-state-line-limit x))
+       (posp (fn-wire-state-body-limit x))
+       (<= (fn-wire-state-line-len x)
+           (fn-wire-state-line-limit x))
+       (<= (fn-wire-state-body-size x)
+           (fn-wire-state-body-limit x))))
+
+(defthm fn-wire-statep-implies-fast-statep
+  (implies (fn-wire-statep x)
+           (fn-wire-fast-statep x))
+  :hints (("Goal" :in-theory (enable fn-wire-statep fn-wire-fast-statep))))
 
 (defun fn-wire-initial-state (line-limit body-limit)
   (if (and (posp line-limit) (posp body-limit))
@@ -474,7 +505,7 @@
   (list :reject reason))
 
 (defun fn-wire-close (wire-state reason)
-  (declare (xargs :guard (fn-wire-statep wire-state)
+  (declare (xargs :guard (fn-wire-fast-statep wire-state)
                   :verify-guards nil))
   (fn-wire-make-result
    (fn-wire-make-state :closed nil 0 nil nil 0
@@ -647,8 +678,7 @@
 ; One-byte input and incremental feeding
 
 (defun fn-wire-after-line (wire-state line)
-  (declare (xargs :guard (and (fn-wire-statep wire-state)
-                              (fn-wire-octet-listp line))
+  (declare (xargs :guard (fn-wire-fast-statep wire-state)
                   :verify-guards nil))
   (if (equal (fn-wire-state-mode wire-state) :command)
       (fn-wire-make-result
@@ -662,7 +692,8 @@
                              (fn-wire-state-line-limit wire-state)
                              (fn-wire-state-body-limit wire-state))
          (list (fn-wire-article-event
-                (reverse (fn-wire-state-body-rev wire-state)))))
+                (fn-wire-reverse-lines
+                 (fn-wire-state-body-rev wire-state)))))
       (let ((decoded (fn-wire-unstuff-line line)))
         (if (<= (+ (fn-wire-state-body-size wire-state)
                    (fn-wire-line-cost decoded))
@@ -683,7 +714,7 @@
 ; retained body, or the body size.  Its guard is fn-wire-statep, established
 ; once per chunk by fn-wire-next.
 (defun fn-wire-feed-byte (wire-state byte)
-  (declare (xargs :guard (fn-wire-statep wire-state)
+  (declare (xargs :guard (fn-wire-fast-statep wire-state)
                   :verify-guards nil))
   (if (equal (fn-wire-state-mode wire-state) :closed)
       (fn-wire-make-result wire-state nil)
