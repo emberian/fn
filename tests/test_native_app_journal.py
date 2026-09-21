@@ -94,6 +94,23 @@ class NativeApplicationJournalTests(unittest.TestCase):
         self.assertEqual(reopened.returncode, 0, reopened.stderr)
         self.assertIn("status=outstanding", reopened.stdout)
 
+    def test_reinitialization_preserves_existing_work_and_bytes(self):
+        journal = self.tmp / "already-initialized"
+        self.initialize_workflow(journal)
+        accepted = self.enqueue(journal)
+        self.assertEqual(accepted.returncode, 0, accepted.stderr)
+        before = {p.name: p.read_bytes() for p in self.records(journal)}
+        repeated = self.invoke(
+            "app-journal", "workflow-init", self.store, journal,
+            "dtn://fn-a/", "dtn://fn-b/", "policy-a", "authority-a",
+            "3600000", "incarnation-a", "authorization-a",
+        )
+        self.assertEqual(repeated.returncode, 1, repeated.stderr)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.records(journal)})
+        reopened = self.status(journal)
+        self.assertEqual(reopened.returncode, 0, reopened.stderr)
+        self.assertIn("status=outstanding", reopened.stdout)
+
     def test_stage_eio_is_refused_before_namespace_attempt(self):
         journal = self.tmp / "stage-eio"
         self.initialize_workflow(journal)

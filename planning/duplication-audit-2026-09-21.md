@@ -259,3 +259,21 @@ mutation authority. Read-only status/replay remain separate from mutation.
 The component packet includes actual held-read-lock refusal, held-but-fenced
 uncertainty, and observer-phase tests; combined native owner adoption remains
 separate.
+
+
+### U10: retained journal history copied only to test initialization
+
+The [independent shared-state review](evidence/claude-native-state-composition-review.md)
+found that `fnn-app-apply` appended every record to a raw retained list whose
+only consumers checked whether it was empty. This created avoidable quadratic
+list allocation. The repair removes that duplicate state and reads the existing
+ACL2 frontier's initialization predicate; no second host counter is introduced.
+The [disposition](evidence/claude-native-state-composition-response.md) also
+records the owner/standalone global binding required by the pending callback.
+
+Separately, the [actual saved-image store profile](evidence/native-store-cost-w16-2026-09-21.md)
+attributes the dominant sampled commit cost to `fn-sf-history-recoverablep`.
+Its timings are totals for sequential commits in a test-only scale image,
+not single-post latency or a proved asymptotic bound. The active correspondence
+lane must derive an incremental prepare entry from the maintained storage
+relation and prove equality to the specification before actual host adoption.

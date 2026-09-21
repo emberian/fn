@@ -9,7 +9,7 @@
 
 (defstruct fnn-app-journal
   root records staging lock-fd store domain frontier
-  (records-image nil) (fenced t))
+  (fenced t))
 
 (defun fnn-app-journal-close (journal)
   (setf (fnn-app-journal-fenced journal) t)
@@ -109,7 +109,6 @@
               (fnn-core-state 'fn-bprj-reset)))))
     (unless (eq answer :ready)
       (fnn-fault "ACL2 rejected application journal replay"))
-    (setf (fnn-app-journal-records-image journal) records)
     :ready))
 
 (defun fnn-app-open (store root domain)
@@ -140,8 +139,7 @@
           (let* ((names (fnn-app-record-names journal))
                  (records-image (fnn-app-read-records journal names)))
             (fnn-app-install journal records-image)
-            (setf (fnn-app-journal-records-image journal) records-image
-                  (fnn-app-journal-fenced journal) nil)
+            (setf (fnn-app-journal-fenced journal) nil)
             journal))
       (error (e)
         (when journal (fnn-app-journal-close journal))
@@ -171,8 +169,6 @@
              record)))
       (unless (eq answer :ready)
         (fnn-fault "ACL2 rejected durable application journal record"))
-      (setf (fnn-app-journal-records-image journal)
-            (append (fnn-app-journal-records-image journal) (list record)))
       :ready)))
 
 (defun fnn-app-authorized-publish (journal kind frame reserve-resolution)
@@ -254,7 +250,7 @@
 ;;; binding.  The durable outcome record is a separate immutable transaction.
 
 (defun fnn-workflow-initialize (journal values)
-  (unless (null (fnn-app-journal-records-image journal))
+  (when (fnn-core 'fn-aj-initializedp (fnn-app-journal-frontier journal))
     (fnn-refuse "workflow journal is already initialized"))
   (fnn-app-publish journal (cons :config values)))
 
@@ -284,7 +280,7 @@
 ;;; after restart.
 
 (defun fnn-receipt-initialize (journal values)
-  (unless (null (fnn-app-journal-records-image journal))
+  (when (fnn-core 'fn-aj-initializedp (fnn-app-journal-frontier journal))
     (fnn-refuse "receiver journal is already initialized"))
   (fnn-app-publish journal (cons :config values)))
 
