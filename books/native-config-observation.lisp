@@ -51,7 +51,10 @@
     (if (null entries) nil :bad)))
 
 (defun fn-nco-entry-generation (entry)
-  (declare (xargs :guard t)) (fn-ag-car entry))
+  "A total natural projection.  Decoded records already supply a natural
+generation; NFIX keeps sorting and validation inside arithmetic guards when a
+program-mode caller supplies a malformed logical entry."
+  (declare (xargs :guard t)) (nfix (fn-ag-car entry)))
 (defun fn-nco-entry-name (entry)
   (declare (xargs :guard t)) (fn-ag-car (fn-ag-cdr entry)))
 (defun fn-nco-entry-octets (entry)
@@ -73,6 +76,13 @@
       (fn-nco-insert-by-generation (car entries)
                                    (fn-nco-sort-by-generation (cdr entries)))
     nil))
+
+(defthm fn-nco-entry-generation-is-a-natural
+  (natp (fn-nco-entry-generation entry))
+  :rule-classes :type-prescription)
+
+(verify-guards fn-nco-entry-generation)
+(verify-guards fn-nco-insert-by-generation)
 
 ; These are the preservation keystones for the recovery sorter.  A directory
 ; can contain conflicting decoded generations, so preserving only a set of
@@ -110,12 +120,15 @@
   (declare (xargs :guard t))
   (if (consp entries)
       (let* ((entry (car entries))
+             (expected (nfix expected-generation))
              (generation (fn-nco-entry-generation entry)))
-        (and (equal generation expected-generation)
+        (and (equal generation expected)
              (equal (fn-nco-entry-name entry)
                     (fn-native-admin-config-name generation))
-             (fn-nco-canonical-contiguousp (cdr entries) (+ 1 expected-generation))))
+             (fn-nco-canonical-contiguousp (cdr entries) (+ 1 expected))))
     (null entries)))
+
+(verify-guards fn-nco-canonical-contiguousp)
 
 (defun fn-nco-output-entries (entries)
   (declare (xargs :guard t))

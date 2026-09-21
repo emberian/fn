@@ -34,6 +34,15 @@
               (fn-nco-decode-entry (list "00000002.cfg" *fn-nco-test-record-2*))
               (fn-nco-decode-entry (list "00000003.cfg" *fn-nco-test-record-3*)))))
 
+; The public helpers declare guard T.  These malformed logical calls exercise
+; their total arithmetic projections rather than relying on the decoder as a
+; hidden guard precondition.
+(assert-event
+ (equal (fn-nco-insert-by-generation 'bad (list 'worse))
+        (list 'bad 'worse)))
+(assert-event
+ (not (fn-nco-canonical-contiguousp (list 'bad) 'not-a-generation)))
+
 ; Each tooth retains the observed input as a fault rather than silently taking
 ; a shorter prefix: name/record mismatch, an absent generation, duplicate
 ; generation, malformed entry, and resource exhaustion are distinct failures.
