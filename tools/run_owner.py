@@ -163,6 +163,36 @@ class Acl2Owner(Acl2Store):
         # bridge's entry reads fn-store-sn, which this image never sets.
         return self._names("(fn-owner-domain state)")
 
+    def reconfigure_group(self, cid, action, name):
+        """Stage one ACL2-owned group configuration record for a live client.
+
+        The caller carries a connection id, action and UTF-8 name.  The host
+        builds the delta, checks its generation pin and exposes only the
+        admitted record octets; it does not mutate the configuration yet.
+        """
+        kind = {"create": ":create-group", "retire": ":remove-group"}.get(action)
+        if kind is None:
+            raise StoreError("unknown group reconfiguration action")
+        literal = self.literal(name.encode("utf-8", "strict"))
+        status = self._symbol("(fn-owner-reconfigure {} {} '{} state)".format(
+            int(cid), kind, literal))
+        if status == "staged":
+            record = bytes(acl2_octet_list(self.call(
+                "(fn-owner-reconfigure-octets state)")))
+            generation = self._nat("(fn-owner-config-generation state)") + 1
+            return "staged", generation, record
+        if status == "refused":
+            return "refused", acl2_keyword(self.call(
+                "(fn-owner-reconfigure-reason state)")), None
+        raise StoreFault("unexpected owner reconfiguration outcome: {}".format(status))
+
+    def complete_reconfigure(self, generation):
+        outcome = self._symbol("(fn-owner-reconfigure-complete {} state)".format(
+            int(generation)))
+        if outcome != "durable":
+            raise StoreFault("owner refused durable configuration completion")
+        return outcome
+
     def next_txid(self):
         return self._nat("(fn-owner-next-txid state)")
 
@@ -662,6 +692,11 @@ class Owner:
         self.feeds = {}
         self.feed_next_conn = 1
         self.feed_uncertain = False
+        # A configuration record may have reached stable storage before its
+        # write reports an error.  Its staged ACL2 transaction must never be
+        # published speculatively; this process stops and recovers the actual
+        # durable prefix instead.
+        self.config_uncertain = False
         self.stopping = False
 
     # -- NNTP connections -------------------------------------------------
@@ -1230,6 +1265,8 @@ class Owner:
         """Durable before the effect; failure forbids every later mutation."""
         if self.feed_uncertain:
             raise StoreIndeterminate("FNFD journal requires owner restart")
+        if self.config_uncertain:
+            raise StoreIndeterminate("configuration journal requires owner restart")
         try:
             frames = self.bridge.feed_frames()
             if not frames:
@@ -1429,6 +1466,8 @@ class Owner:
     def control(self, sock):
         if self.feed_uncertain:
             raise StoreIndeterminate("FNFD journal requires owner restart")
+        if self.config_uncertain:
+            raise StoreIndeterminate("configuration journal requires owner restart")
         words = self.read_line(sock).split()
         if not words:
             raise StoreError("empty control line")
@@ -1467,6 +1506,29 @@ class Owner:
             return ("advanced " + " ".join(results)).encode()
         if command == b"OBSERVE":
             return self.clock.observe(self.bridge).encode()
+        if command == b"RECONFIGURE":
+            if len(words) != 4 or words[2].lower() not in (b"create", b"retire"):
+                raise StoreError("RECONFIGURE <connection-id> <create|retire> <group>")
+            try:
+                cid = int(words[1])
+                action = words[2].decode("ascii")
+                name = words[3].decode("utf-8", "strict")
+            except (ValueError, UnicodeDecodeError) as error:
+                raise StoreError("malformed reconfiguration request") from error
+            self.clock.observe(self.bridge)
+            status, detail, record = self.bridge.reconfigure_group(cid, action, name)
+            if status == "refused":
+                return "refused {}".format(detail).encode()
+            try:
+                self.store.write_config_record(detail, record)
+            except StoreIndeterminate:
+                self.config_uncertain = True
+                self.stopping = True
+                raise
+            if self.bridge.complete_reconfigure(detail) != "durable":
+                self.stopping = True
+                raise StoreFault("owner did not publish durable configuration")
+            return "configured generation={}".format(detail).encode()
         if command == b"DECLARE-GROUP":
             if len(words) != 2:
                 raise StoreError("DECLARE-GROUP <name>")
