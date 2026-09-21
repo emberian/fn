@@ -921,7 +921,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                   (fnn-owner-connection-call
                                    service :graceful-close
                                    (lambda () (fnn-graceful-close fd))))
-                                (return)))))))))
+                                (return))))))))
            (fnn-store-indeterminate (e)
              ;; The shared boundary has already stopped mutation; prevent the
              ;; unwind cleanup from attempting a later close transition.
@@ -968,7 +968,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
           (fnn-owner-serialized
            service cid (lambda () (fnn-owner-action 'fn-owner-close cid)))))
       (when channel (fnn-tls-close-channel channel))
-      (fnn-socket-shut socket)))
+      (fnn-socket-shut socket))))
 
 (defun fnn-owner-client-done (service socket)
   (fnn-with-owner (service)

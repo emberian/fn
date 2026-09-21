@@ -23,6 +23,37 @@ def environment():
     return env
 
 
+class NativeOwnerHandlerStructureTests(unittest.TestCase):
+    def test_condition_handlers_and_cleanup_enclose_the_served_body(self):
+        # Balanced source alone missed a live failure: handler clauses became
+        # cleanup calls, and (e) invoked an undefined function on every EOF.
+        # This checks macro structure; the saved-image tests below establish
+        # actual connection/fault behavior rather than treating this as proof.
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head, read_forms
+        forms = read_forms((ROOT / "host/native/owner.lisp").read_text())
+        function = next(form for form in forms if head(form) == "defun"
+                        and str(form[1]) == "fnn-owner-serve-client")
+        body = function[3]
+        self.assertEqual(head(body), "let")
+        self.assertEqual(len(body[2:]), 1)
+        protected = body[2]
+        self.assertEqual(head(protected), "unwind-protect")
+        self.assertEqual([head(form) for form in protected[1:]],
+                         ["handler-case", "when", "when", "fnn-socket-shut"])
+        handler = protected[1]
+        self.assertEqual(head(handler[1]), "progn")
+        clauses = handler[2:]
+        self.assertEqual(len(clauses), 6)
+        self.assertEqual([head(clause) for clause in clauses],
+                         ["fnn-store-indeterminate", "fnn-store-fault",
+                          "fnn-owner-connection-fault", None,
+                          "fnn-tls-error", "serious-condition"])
+        self.assertEqual(head(clauses[3][0]), "or")
+        for clause in clauses:
+            self.assertEqual([str(symbol) for symbol in clause[1]], ["e"])
+
+
 class NativeOwnerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
