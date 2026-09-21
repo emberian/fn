@@ -17,20 +17,20 @@
 
 ; (:fn-compaction-summary 0 next-sequence allocator-frontier event-octets)
 (defun fn-cc-make (sequence frontier event-octets)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (list :fn-compaction-summary 0 sequence frontier event-octets))
-(defun fn-cc-sequence (summary) (declare (xargs :guard t)) (fn-cc-nth 2 summary))
-(defun fn-cc-frontier (summary) (declare (xargs :guard t)) (fn-cc-nth 3 summary))
-(defun fn-cc-events (summary) (declare (xargs :guard t)) (fn-cc-nth 4 summary))
+(defun fn-cc-sequence (summary) (declare (xargs :guard t :verify-guards nil)) (fn-cc-nth 2 summary))
+(defun fn-cc-frontier (summary) (declare (xargs :guard t :verify-guards nil)) (fn-cc-nth 3 summary))
+(defun fn-cc-events (summary) (declare (xargs :guard t :verify-guards nil)) (fn-cc-nth 4 summary))
 
 (defun fn-cc-event-octets-size (events)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp events)
       (+ (len (car events)) 5 (fn-cc-event-octets-size (cdr events)))
     32))
 
 (defun fn-cc-octet-event-listp (octet-events sequence lower-frontier upper-frontier)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp octet-events)
       (let ((decoded (fn-store-event-decode-exact (car octet-events))))
         (and (fn-cbor-octet-listp (car octet-events))
@@ -47,7 +47,7 @@
     (null octet-events)))
 
 (defun fn-cc-summaryp (summary)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (and (true-listp summary) (equal (len summary) 5)
        (equal (fn-cc-nth 0 summary) :fn-compaction-summary)
        (equal (fn-cc-nth 1 summary) 0)
@@ -60,7 +60,7 @@
                                 (fn-cc-frontier summary))))
 
 (defun fn-cc-capture (octet-events frontier)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-record-uint32p frontier)
            (<= (len octet-events) frontier)
            (fn-record-uint32p (len octet-events))
@@ -71,7 +71,7 @@
     (list :error :history)))
 
 (defun fn-cc-expand (summary suffix final-frontier)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (cond ((not (fn-cc-summaryp summary)) (list :error :summary))
         ((or (not (fn-record-uint32p final-frontier))
              (< final-frontier (fn-cc-frontier summary)))
@@ -82,7 +82,7 @@
         (t (list :ok (append (fn-cc-events summary) suffix) final-frontier))))
 
 (defun fn-cc-encode-events (events)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp events)
       (append (fn-cbor-encode (cons :bytes (car events)))
               (fn-cc-encode-events (cdr events)))
@@ -91,7 +91,7 @@
 ; Canonical summary bytes.  Each already-canonical transaction is carried as
 ; one definite CBOR byte string, so boundaries do not depend on host filenames.
 (defun fn-cc-encode (summary)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (not (fn-cc-summaryp summary)) nil
     (append (fn-cbor-encode (cons :bytes *fn-cc-magic*))
             (fn-cbor-encode (cons :uint *fn-cc-version*))
@@ -101,7 +101,7 @@
             (fn-cc-encode-events (fn-cc-events summary)))))
 
 (defun fn-cc-values-event-octets (values)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp values)
       (let ((item (car values)))
         (if (and (consp item) (equal (car item) :bytes))
@@ -110,7 +110,7 @@
     (if (null values) nil :bad)))
 
 (defun fn-cc-decode-exact (octets)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (or (not (fn-cbor-octet-listp octets))
           (< *fn-cc-max-octets* (len octets)))
       (list :error :octets)

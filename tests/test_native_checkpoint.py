@@ -257,6 +257,22 @@ class NativeCheckpointTests(unittest.TestCase):
         recovered = self.native("store", store, "recover")
         self.assertIn("transactions=1 articles=1", recovered.stdout)
 
+    def test_selected_pack_missing_or_corrupt_fails_closed(self):
+        for mode in ("missing", "corrupt"):
+            with self.subTest(mode=mode):
+                store = self.initialized("pack-" + mode)
+                self.native("checkpoint", "pack", store, "select")
+                generation = store / "packs" / "generation-0.fncp"
+                if mode == "missing":
+                    generation.unlink()
+                else:
+                    raw = bytearray(generation.read_bytes())
+                    raw[len(raw) // 2] ^= 1
+                    generation.write_bytes(raw)
+                refused = self.native("store", store, "recover",
+                                      expected=run_store.EXIT_FAULT)
+                self.assertNotIn("articles=", refused.stdout)
+
     def test_selected_pack_reclaims_physical_prefix_and_replays_suffix(self):
         store = self.initialized("pack-reclaim")
         self.native("checkpoint", "pack", store, "select")
@@ -277,6 +293,19 @@ class NativeCheckpointTests(unittest.TestCase):
                 self.stopped_then_killed(("checkpoint", "pack-reclaim", store), point)
                 recovered = self.native("store", store, "recover")
                 self.assertIn("transactions=1 articles=1", recovered.stdout)
+
+    def test_partial_multi_file_prefix_reclaim_fails_closed(self):
+        store = self.initialized("pack-partial")
+        self.native("store", store, "post", "<prefix-two@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
+        self.native("checkpoint", "pack", store, "select")
+        self.native("store", store, "post", "<suffix-three@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
+        self.stopped_then_killed(("checkpoint", "pack-reclaim", store),
+                                 "pack-reclaim-unlink")
+        refused = self.native("store", store, "recover",
+                              expected=run_store.EXIT_FAULT)
+        self.assertNotIn("articles=", refused.stdout)
 
         selection_expectations = {
             "selection-file": "checkpoint=none",
