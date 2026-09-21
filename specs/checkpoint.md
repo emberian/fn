@@ -1,20 +1,16 @@
 # Checkpoints: logical value, canonical bytes, generation publication
 
-Status: PRF-008 logical core (`books/checkpoint.lisp`) is a certified book.
-The canonical byte encoding (`books/checkpoint-codec.lisp`, C1-10) and the
-generation publication/selection machine (`books/checkpoint-publish.lisp`,
-C2-09) are **not certified** as of 2026-09-20. The codecs realignment
-withdrew the vocabulary these proofs were written against; eight defects
-follow from it, seven now closed and one open at
-`fn-cpc-decode-tree-of-encoding` (evidence
-`build/acl2/certify-20260920T044112Z-2618104`, log line 4535).
-`checkpoint-publish` and both test books have only ever failed on the
-cascade from the failed include; no theorem of theirs has been refuted, and
-no keystone has been weakened. Nothing below is a proof claim until the
-book certifies; `tools/checkpoint.py` and the `recover` hook in
-`tools/run_store.py` are the host adoption. Counts live in the generated
-ledger; this page carries each keystone's property, hypotheses and covered
-scope, and what the host still asserts.
+Status: the logical core (`books/checkpoint.lisp`), canonical byte encoding
+(`books/checkpoint-codec.lisp`, C1-10), generation publication/selection
+machine (`books/checkpoint-publish.lisp`, C2-09), and their three test books
+are certified.  The post-merge hbox run
+`build/acl2/certify-20260921T020148Z-1425543` at source `186ed0b` plus
+`6ad5a80` passed all six checkpoint roots; the two failures among its 276
+roots were the separately-owned BP-node roots.  The exact manifest and the
+earlier defect/fix history are recorded in
+`planning/evidence/checkpoint-validator-2026-09-21.md`.  Counts live in the
+generated ledger; this page carries each keystone's property, hypotheses and
+covered scope, and what the hosts still assert.
 
 ## 1. The logical checkpoint (`books/checkpoint.lisp`)
 
@@ -145,7 +141,9 @@ open there until its P8 programs are re-transcribed from the committed
 Outcomes stay distinct: `(:none)`, `(:ok name checkpoint)`, `(:corrupt name
 reason)`, `(:missing name)`.
 
-## 4. Host adoption (`tools/checkpoint.py`, `tools/run_store.py`)
+## 4. Host adoption
+
+### Python experiment (`tools/checkpoint.py`, `tools/run_store.py`)
 
 `publish` asks ACL2 for the protected prefix of the capture of the durable
 records at the durable frontier (`fn-store-checkpoint-protected`), seals it
@@ -175,3 +173,29 @@ What the host still asserts, outside the proofs:
 - Rollback of a valid older generation together with a truncated journal
   still needs an external freshness anchor (C2-12); a detected invalid
   checkpoint is a diagnostic failure, never permission to discard history.
+
+### Native saved image
+
+`host/native/checkpoint.lisp` exposes `checkpoint publish`, `select`, and
+`status` in the saved image.  Capture, framing, selection-marker framing,
+generation allocation, marker phase/action/outcome, decode, suffix restore,
+and the differential verdict are ACL2 calls through
+`host/checkpoint-host.lisp`.  Immutable generation publication uses the
+shared U04 no-replace effect; marker replacement is a distinct driver whose
+called phase step is related to the full `fn-cpp` transition by
+`fn-cpp-marker-driver-step-corresponds`.
+
+The native recovery hook runs only after the ordinary journal replay and all
+of its recovery barriers.  Checkpoint restore writes checkpoint-private ACL2
+globals and compares their node with the already-live `fn-store-sn`; it never
+resets or replaces that state.  `none`, `ok`, and `corrupt` remain distinct,
+and a corrupt selected generation exits 4 without trying an older generation.
+This is diagnostic adoption only: suffix-only startup is not claimed because
+the physical assumptions needed to replace full replay have not been
+discharged.
+
+The decimal grammar mapping `generation-N.fncp` to `N` remains a bounded raw
+host boundary in both hosts.  ACL2 decides whether the parsed ascending list
+is gap-free and returns its next uint32 generation or `:bad`/`:exhausted`.
+An authoritative filename decoder is future boundary work; this adoption does
+not widen into the transaction-name namespace refactor.

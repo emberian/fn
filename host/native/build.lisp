@@ -18,6 +18,7 @@
 (include-book "books/store-node-resolution")
 (include-book "books/store-observed-traces")
 (include-book "books/store-node")
+(include-book "books/checkpoint-publish")
 (include-book "books/node-config")
 (include-book "books/nntp")
 (include-book "books/served")
@@ -43,6 +44,7 @@
 
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
+(ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
 (ld "host/config-host.lisp" :ld-error-action :error)
@@ -91,6 +93,7 @@
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner.lisp")
         (load "host/native/immutable-publish.lisp")
+        (load "host/native/checkpoint.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")

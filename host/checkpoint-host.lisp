@@ -46,6 +46,12 @@
   (declare (xargs :mode :program))
   (fn-cpp-next-generation generations))
 
+(defun fn-store-checkpoint-publication-initial
+  (generations proposed-generation exclusivep final-absentp)
+  (declare (xargs :mode :program))
+  (fn-cpp-publication-initial generations proposed-generation exclusivep
+                              final-absentp))
+
 ; Selection replacement is a separate contract from immutable generation
 ; publication.  The native adapter retains this returned phase and asks ACL2
 ; for every next action, observation transition, and terminal outcome.
