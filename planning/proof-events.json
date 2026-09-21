@@ -801,6 +801,10 @@
           "kind": "theorem"
         },
         {
+          "name": "fn-wildmat-successful-parse-text-parsedp",
+          "kind": "theorem"
+        },
+        {
           "name": "fn-transfer-entry-candidate-work-value",
           "kind": "theorem"
         },

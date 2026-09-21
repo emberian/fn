@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 276 |
 | Certification roots in the Makefile | 275 |
 | Books inside the root closure | 275 |
-| `defthm` and `defthmd` events | 5583 |
+| `defthm` and `defthmd` events | 5584 |
 | `defun` events | 3938 |
 | Functions with verified guards | 1469 |
 | Functions declared `:verify-guards nil` and never verified | 190 |
@@ -254,7 +254,7 @@ that `make certify` requests.
 | `books/transfer-work.lisp` | root | 35 | 13 | 0/0/0/13 | 0 | 0 | 0 |
 | `books/transfer.lisp` | root | 14 | 67 | 58/0/9/0 | 0 | 0 | 0 |
 | `books/wildmat-matcher-invariants.lisp` | root | 19 | 5 | 0/0/0/5 | 0 | 0 | 0 |
-| `books/wildmat-parser-invariants.lisp` | root | 17 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/wildmat-parser-invariants.lisp` | root | 18 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/wildmat-utf8-invariants.lisp` | root | 31 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/wildmat-work.lisp` | root | 52 | 17 | 0/0/0/17 | 0 | 0 | 0 |
 | `books/wildmat.lisp` | root | 22 | 62 | 62/0/0/0 | 0 | 0 | 0 |
