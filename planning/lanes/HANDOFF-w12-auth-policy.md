@@ -44,10 +44,13 @@ Farm run `run-20260921T061225Z-f885`, persvati,
 `--affected-by books/nntp-auth.lisp --closure --jobs 4`, certified the first
 version of `books/nntp-auth` and `tests/acl2/nntp-auth-tests`, but correctly
 failed the dependent `books/served` local reader-capability proof after the
-new composition added `fn-peer-capability-lines`. This lane fixes that proof
-by unfolding the nil-peer compatibility branch. Replacement narrow run
-`run-20260921T062013Z-3aea` is pending at this handoff; do not claim it as a
-certification result until it returns.
+new composition added `fn-peer-capability-lines`. This lane fixed that proof
+by unfolding the nil-peer compatibility branch. Its replacement,
+`run-20260921T062013Z-3aea`, then reached the new keystone and failed because
+the hint did not open the three transit-keyword cases enough to exclude the
+AUTHINFO and POST arms. Commit `6058411` makes that discrimination explicit.
+Narrow replacement `run-20260921T062431Z-359d` is pending; do not claim
+certification until it returns.
 
 ## Registry delta for root
 
