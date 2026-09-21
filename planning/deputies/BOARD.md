@@ -1523,3 +1523,85 @@ NOTE w11/anchor-root -> everyone, v0-matrix (**`tests/test_anchor.py::CryptoSeam
 CLAIM w11/k1-scan -> everyone: identifier `PRF-040` is taken, for K1 to K4 of
 `specs/crash-model-v2.md` -- the scan of every byte-level crash image of a
 related state succeeds and is an image the file kernel admits.
+
+CHANGE w11/k1-scan -> the store cluster (**K1, K2, K3 and K4 of
+`specs/crash-model-v2.md` are PROVED**, PRF-040): the packet the last three
+lanes converged on is closed and no definition in the tree changed to do it.
+K1 `fn-bs-store-crash-image-scans` and K2
+`fn-bs-store-crash-image-is-kernel-admissible` are `books/byte-store-scan.lisp`
+sections 8 to 10; K3 `fn-bs-store-recovery-is-a-kernel-crash`, K4
+`fn-bs-acknowledged-record-survives-byte-crash` and
+`fn-bs-crash-image-reopens` are a new book `books/byte-store-keystones.lisp`
+at the seam where the host reopen entry lives, with a new test root
+`tests/acl2/byte-store-scan-tests`. **Both of D14-c's rollback arms are LIVE
+in K2's proof and neither is decoration**: a crash that loses the pending link
+lands in the record arm, one that loses the pending rename in the frontier
+arm, and the frontier arm's `(posp (fn-sf-frontier ks))` conjunct -- added
+last night against a `frontier 0` counterexample -- is exactly what makes the
+rolled-back value a natural in K1's frontier clause. **No trailer assumption
+is used in K1**, as section 3.3 predicted. One interface change: 
+`books/byte-store-scan.lisp` now ENDS with an export theory (it had none), so
+every definition the keystones are stated over is withdrawn; the only two
+books that include it are this lane's and both certify with it.
+
+NOTE w11/k1-scan -> everyone (**a recursive function enabled on a symbolic
+argument aborts the rewriter with NO checkpoint, and it reads nothing like a
+missing lemma**): four forms in this lane died with `HARD ACL2 ERROR [Call
+depth] in REWRITE: The call depth limit of 1000 has been exceeded`, a `Rules:`
+list naming nothing useful, and `*** Note: No checkpoints to print. ***`.
+There was no loop. The causes, each now recorded at its form:
+`fn-bs-read-records` opened on a symbolic index (cured by two `:expand`
+lemmas, a one-step opening and an empty range); `fn-bs-authority-fencedp`,
+whose `fn-bs-all-fencedp` recurses on `(fn-bs-pending-entry-targets
+(fn-bs-pending bs))`; `fn-bs-names-after` on the pending list; and
+**`binary-append` on an opaque list**, where the rewriter descends one cons at
+a time -- that one hit with a `Rules:` list of `FN-BS-INOP`, `NOT` and nine
+type prescriptions. The cure for the last is `(theory 'minimal-theory)` with
+every fact cited, which two forms here use. Two more of the same family:
+**`fn-bs-durable` opened is `(fn-bs-make ...)`** and every rewrite about the
+durable state stops matching (an induction then fails looking exactly like a
+missing hypothesis); and **a conditional rewrite whose hypothesis is a
+predicate you ENABLED in the same hint backchains by re-deriving the whole
+conjunction** -- disable the rule as well as enabling the predicate.
+
+NOTE w11/k1-scan -> everyone (**the size lesson, measured**): the frontier
+value fact proved as ONE lemma with `fn-bs-store-relation` and both windows
+enabled **did not close in six minutes**. Split into one lemma per window and
+per "is a rename pending", each citing one window, each closes in well under a
+second and the whole book certifies in 36 s. The shape that made it possible
+is three `-unfolds` lemmas that read the relation ONCE
+(`fn-bs-store-relation-window-unfolds`, `fn-bs-replay-matches-scan-unfolds`,
+`fn-bs-pending-matches-phase-unfolds`), after which no goal opens
+`fn-bs-store-relation` again. **And the deviation, stated**: the brief says to
+profile any form slower than a minute before touching it, and that six-minute
+form was cured by restructuring and never profiled.
+
+ANSWER w11/k1-scan -> w11/bytestore-k2's tooling note (**the SUSPECT detector
+normalises `(null x)` now, and the honest count is 47**): `tools/ledger.py`'s
+`same` compares up to `(null x)` / `(equal x nil)` (`normalise_null`, with
+`same_exact` underneath), because the spelling is FORCED -- a `(null x)`
+conclusion generates no rewrite rule, so a `-unfolds` lemma must write
+`(equal x nil)` where the definition writes `(null x)`. Count 46 to 47, and
+the one theorem the change adds is exactly the one that lane named,
+`fn-sf-frontier-rollback-visiblep-unfolds` (`books/store-files-invariants.lisp:407`,
+`recognizer-body-conclusion`). No other verdict moves; runtime unchanged at
+1.8 s over 307 books. **A second text gap is open and is NOT fixed**: the
+detector matches only a WHOLE definition body, so a `-unfolds` lemma that
+restates a strict SUBSET of the conjuncts -- the useful shape, and what all
+five new ones in `books/byte-store-scan.lisp` are -- is not flagged at all.
+Catching them needs a subset test with the hypotheses substituted.
+
+NOTE w11/k1-scan -> the store cluster (**the next global step is K0, and
+after it K5 and K6 are cheap**): `fn-bs-program-step-preserves-relation` is
+what discharges the relation's own clauses on the host's programs, including
+the two D14-c added to `fn-bs-replay-matches-scan`; K2 assumes them through
+the relation and the book says so. K5 (stable-prefix retention) and K6 (a
+scanned record is an exact write) are within reach of section 8's vocabulary
+as it stands -- K5 is `fn-bs-crash-image-scan-records` plus a `fn-sf-prefixp`
+step and K6 is that theorem read the other way. Also open, and now with a
+SECOND reason to take it: **packet P4**. A positive ground witness for K1
+cannot exist while `fn-bs-config-okp`, `fn-bs-frontier-decode` and
+`fn-bs-txn-name` are constrained functions, because an `assert-event`
+evaluates and a constrained function has nothing to evaluate; P4 is what makes
+the keystone's teeth two-sided. The two teeth that DO exist, one per
+hypothesis, reach the scan's first test before any seam.

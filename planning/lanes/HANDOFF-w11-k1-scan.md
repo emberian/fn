@@ -266,12 +266,17 @@ against `Slab` 94.8 G of which `SUnreclaim` 89.3 G is ARC, 24 CPUs.
   `build/acl2/certify-20260921T033738Z-1486192`. It includes
   `books/byte-store{,-invariants,-programs,-scan,-keystones}` and
   `tests/acl2/byte-store-scan-tests`.
-* One change lands after that run and is a COMMENT only: the host line
-  number in `books/byte-store-keystones.lisp`'s header, which said
-  `host/store-node-host.lisp:27` and is `:70` on the merged tree.
-  Re-certified locally with the test book,
-  `build/acl2/certify-20260921T034109Z-21408`, and re-run on the farm as
-  `run-20260921T034209Z` (board VERDICT line).
+* `run-20260921T034327Z-fb0f`, `--affected-by books/byte-store-keystones.lisp
+  --closure`: **43 roots attempted, 43 certified**, 258.7 s, cache
+  `installed 20, kept 249, uncached 13`. Evidence on hbox
+  `build/acl2/certify-20260921T034332Z-1489329`.
+* Two changes land after those runs and both are COMMENTS in
+  `books/byte-store-keystones.lisp`: the host line number, which said
+  `host/store-node-host.lisp:27` and is `:70` on the merged tree; and its
+  minimal-theory paragraph, which claimed a measurement this book never
+  made -- the call-depth measurement is `books/byte-store-scan.lisp`'s and
+  the theory choice here is a precaution taken from it. The final farm run
+  is the board's VERDICT line.
 
 `make check`: **0 errors** (238 pre-existing WARN lines). Ledger, `dev`
 before this lane and after: books read 280 to 282, `defthm` 5692 to 5784,

@@ -9,12 +9,13 @@
 ; theorem here reasons about bytes, each is one kernel theorem applied to
 ; K2's conclusion.
 ;
-; Every proof below runs in (theory 'minimal-theory) with each fact cited.
-; That is not a shortcut around a fan: the terms here are the scan of an
-; image, and in the ambient theory the rewriter descends them one cons at a
-; time to its call-depth limit of 1000 -- no loop, no useful rule, no
-; checkpoint.  books/byte-store-scan.lisp records the same measurement at
-; three of its own forms.
+; Every proof below runs in (theory 'minimal-theory) with each fact cited,
+; and it is chosen rather than measured: the terms here are the same scan of
+; the same image that books/byte-store-scan.lisp's last two forms are over,
+; and in the ambient theory those reached the rewriter's call-depth limit of
+; 1000 with no loop, no useful rule in the Rules list and no checkpoint.
+; Nothing here was ever run in the ambient theory, so this is a precaution
+; taken from that measurement and not one of its own.
 
 (in-package "ACL2")
 (include-book "byte-store-scan")
