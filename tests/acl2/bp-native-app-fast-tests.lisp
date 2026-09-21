@@ -106,3 +106,12 @@
               *bpaj-fast-hypothesis-counterexample*
               "dtn://b.lab/fn" "policy-v1" "node-b")
              :absent)))
+
+; Fresh native FNRJ open calls fn-bprj-reset, which installs exactly NIL.
+; It must permit configuration publication before the joined invariant exists.
+(assert-event
+ (equal (fn-bpaj-config-status-fast nil "dtn://b.lab/fn" "policy-v1" "node-b")
+        :absent))
+(assert-event
+ (equal (fn-bpaj-config-status-fast nil "dtn://b.lab/fn" "policy-v1" "node-b")
+        (fn-bpaj-config-status nil "dtn://b.lab/fn" "policy-v1" "node-b")))

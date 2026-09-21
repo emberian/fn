@@ -274,10 +274,14 @@
 
 (defun fn-bpaj-config-status-fast (joined destination policy issuer)
   (declare (xargs :guard t))
-  (if (equal (fn-bpr-state-config (fn-bpaj-receiver joined))
-             (fn-bpr-make-config destination policy issuer))
-      :match
-    :conflict))
+  ;; fn-bprj-reset installs NIL when no FNRJ configuration exists yet.
+  ;; This is a reachable startup state, before the replay invariant holds.
+  (if (null joined)
+      :absent
+    (if (equal (fn-bpr-state-config (fn-bpaj-receiver joined))
+               (fn-bpr-make-config destination policy issuer))
+        :match
+      :conflict)))
 
 (defun fn-bpaj-record-matches-request-fast (store record request)
   (declare (xargs :guard t))
@@ -487,7 +491,7 @@
               fn-bpaj-pending-receipt-resolution)))))
 
 (defthm fn-bpaj-config-status-fast-is-checked
-  (implies (fn-bpaj-statep joined)
+  (implies (or (null joined) (fn-bpaj-statep joined))
            (equal (fn-bpaj-config-status-fast
                    joined destination policy issuer)
                   (fn-bpaj-config-status
