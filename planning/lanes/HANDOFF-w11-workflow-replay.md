@@ -156,12 +156,17 @@ tests the thing it means to. That is written into the lab's limitations.
   in `books/bp-workflow-replay-status.lisp` (host line numbers that moved when
   `fn-workflow-work-origin` was added) plus `docs/prefixes.md` and registry
   prose. Content hashing means a comment invalidates a certificate, so the
-  pairs are regenerated; nothing in it is a proof change. See the board.
+  pairs are regenerated; nothing in it is a proof change. That run is
+  `run-20260921T011535Z-526c`,
+  `build/acl2/certify-20260921T011540Z-1384211`: 17 books attempted, 17
+  passed, 0 failed, 57.1 s, `books/bp-workflow-replay-status` 0.32 s,
+  `tests/acl2/bp-workflow-records-tests` 0.58 s.
 
 ## Open, and named
 
-1. **Re-certify on the merged tree.** The certification above is for the
-   pre-merge revision. Same command, same box.
+1. **The commit that removes the lab test's skip gate is uncertified**, in
+   the sense that it changes only `tests/test_four_node_lab.py`, which is
+   Python and no book's closure touches it. `make check` is green on it.
 2. **`tests/ltp/run_fn_ltp_lab.py` does not run** — the same missing `bundle`.
    Whoever owns the LTP lab: `bundle_bridge.encode_primary` is there now, and
    `IonStagingInbox` needs a `bundle` alongside its `download`.
