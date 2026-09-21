@@ -34,7 +34,7 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        durable_post, exit_code_for, group_codes, metadata,
                        validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
-from feed_wire import Journal, Session  # the FNFD layout and the client half
+from feed_wire import Journal, Session, discover_journal_peers  # FNFD layout/client
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_READ = 512
@@ -497,12 +497,22 @@ class Acl2Owner(Acl2Store):
         if not acl2_boolean(self.call("(fn-feed-filename-host-okp '{})".format(literal))):
             raise StoreFault("ACL2 refused FNFD peer filename")
         count = self._nat("(fn-feed-filename-host-count '{})".format(literal))
-        if count < 1:
+        if count < 1 or count > self._nat("(fn-feed-filename-host-max-components)"):
             raise StoreFault("ACL2 returned no FNFD filename components")
         return tuple(
             bytes(acl2_octet_list(self.call(
                 "(fn-feed-filename-host-component '{} {} )".format(literal, index))))
             for index in range(count))
+
+    def feed_filename_max_v1_chunks(self):
+        return self._nat("(fn-feed-filename-host-max-v1-chunks)")
+
+    def feed_filename_decode(self, components):
+        literal = "(" + " ".join(self.literal(component) for component in components) + ")"
+        result = self.call("(fn-feed-filename-host-decode '{})".format(literal))
+        if acl2_owner_symbol(result) == "bad":
+            raise StoreFault("ACL2 refused FNFD filename components")
+        return bytes(acl2_octet_list(result))
 
     def feed_journal_prefix(self, prefix):
         result = self._symbol_any("(fn-feed-journal-prefix '{} )".format(
@@ -1372,20 +1382,9 @@ class Owner:
             # remains journal-only until configuration supplies an endpoint
             # again, at which point the same file replays into its feed.
             journal_peers = list(peers)
-            feed_dir = os.path.join(self.store.root, "feed")
-            if os.path.isdir(feed_dir):
-                for filename in sorted(os.listdir(feed_dir)):
-                    if not filename.endswith(".fnfd"):
-                        continue
-                    peer = filename[:-len(".fnfd")]
-                    try:
-                        valid = self.bridge.feed_journal_peer_valid(peer)
-                    except UnicodeEncodeError as error:
-                        raise StoreFault("invalid FNFD peer filename: " + filename) from error
-                    if not valid:
-                        raise StoreFault("invalid FNFD peer filename: " + filename)
-                    if peer not in journal_peers:
-                        journal_peers.append(peer)
+            for peer in discover_journal_peers(self.store.root, self.bridge):
+                if peer not in journal_peers:
+                    journal_peers.append(peer)
             for peer in journal_peers:
                 journal = Journal(self.store.root, peer.encode("utf-8"),
                                   self.bridge, faults=self.faults)

@@ -131,6 +131,27 @@ class JournalTests(unittest.TestCase):
         with self.assertRaises(feed_wire.StoreFault):
             self.open()
 
+    def test_discovery_uses_acl2_decoder_for_legacy_and_v1(self):
+        legacy = Path(self.root) / "feed" / "inn.fnfd"
+        encoded = Path(self.root) / "feed" / "v1" / "2e2e2f657363617065" / "journal.fnfd"
+        legacy.parent.mkdir()
+        encoded.parent.mkdir(parents=True)
+        legacy.write_bytes(b"")
+        encoded.write_bytes(b"")
+        self.bridge.feed_filename_max_v1_chunks.return_value = 5
+        self.bridge.feed_filename_decode.side_effect = [b"inn", b"../escape"]
+        self.assertEqual(feed_wire.discover_journal_peers(self.root, self.bridge),
+                         ("inn", "../escape"))
+        self.assertEqual(self.bridge.feed_filename_decode.call_args_list,
+                         [mock.call((b"inn.fnfd",)),
+                          mock.call((b"v1", b"2e2e2f657363617065", b"journal.fnfd"))])
+
+    def test_discovery_preserves_empty_v1_namespace_as_fault(self):
+        (Path(self.root) / "feed" / "v1").mkdir(parents=True)
+        self.bridge.feed_filename_max_v1_chunks.return_value = 5
+        with self.assertRaisesRegex(feed_wire.StoreFault, "empty FNFD v1 namespace"):
+            feed_wire.discover_journal_peers(self.root, self.bridge)
+
     def test_failed_append_carries_uncertain_phase(self):
         journal = self.open()
         self.bridge.feed_journal_step.side_effect = ["write", "sync", "uncertain"]
