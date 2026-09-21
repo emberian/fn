@@ -9,11 +9,11 @@ small book or adapter followed by another handoff.
 
 | Lane | Current capability and next work |
 | --- | --- |
-| `bp_recovery_join` / Sol | Shared Store identity writer/replay, exact enrolled snapshot binding, profile admission before reservation/publication, and refusal/recovery composition. |
+| `bp_recovery_join` / Sol | Shared writer/replay and raw refusal/fault witness integrated; next prove the maintained journal-sequence relation for actual Store transitions under PRF-050. |
 | `hybrid_signatures` / Sol | Mandatory Ed25519 plus ML-DSA-65 primitives and signing CLI are integrated; complete native live-owner authored submission and durable acceptance/restart. |
 | `bounded_event_profiles` / Sol | Large canonical events and linear bounded streaming codecs are integrated; finish real closure certification and persisted profile/publication composition. |
 | `peer_tls_vertical` / Sol | Actual identity/recovery trace integrated; next prove general durable peer-row round trips for legacy and TLS/AUTHINFO records. Real two-peer runtime remains with the gate lane. |
-| `compaction_vertical` / Sol | Partial-deletion compaction packet is integrated; next independent assignment is full hybrid subject/preimage injectivity in a separate proof book. |
+| `compaction_vertical` / Sol | Partial-deletion compaction packet integrated; hybrid subject/preimage injectivity and concrete hypothesis counterexamples now certified on hbox. |
 | `crash_correspondence` / Sol | Reclaim cut/model packet is integrated; source-matched process-death execution and broader physical relation remain. |
 | `served_fast_path` / Sol | Fixed-shape framing execution and called-path correspondence; resolve fresh node-config preservation prerequisites without changing semantics to fit proofs. |
 | `service_join` / Sol | Native distribution and principal operator route integrated; freeze `df21773d` for the next combined production/developer/DTN certification and image gate on persvati. |
