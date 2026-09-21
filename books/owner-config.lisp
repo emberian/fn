@@ -625,7 +625,7 @@
                    (if (fn-ocfg-pin-find id pins)
                        (fn-ocfg-pin-find id pins)
                      (cons id cfg))))
-   :hints (("Goal" :induct conns
+   :hints (("Goal" :induct (fn-ocfg-sync-pins pins conns cfg)
             :in-theory (enable (:d fn-ocfg-sync-pins)
                                (:d fn-ocfg-pin-find))))))
 
