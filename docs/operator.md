@@ -77,11 +77,18 @@ FN_NATIVE_HOST=/path/to/fn-host FN_NATIVE_CORE=/path/to/fn-host.core \
   DESTDIR=/tmp/fn-package PREFIX=/usr/local packaging/install-native.sh
 ```
 
-The layout is `bin/fn`, `libexec/fn/fn-host`, and
-`libexec/fn/fn-host.core`. The command only clears ACL2 customization variables
+The layout is `bin/fn`, `libexec/fn/fn-host`,
+`libexec/fn/fn-host.core`, and `libexec/fn/runtime/`. The installer copies the
+SBCL executable and its `SBCL_HOME` support tree out of the generated launcher,
+then rewrites the launcher to use those installed paths. A system service can
+therefore use a prefix outside protected home directories. The command only clears ACL2 customization variables
 and execs `fn-host --fn operator CONFIG ...`; it has no Python fallback.
-`share/fn/native-artifacts.txt` records launcher/core hashes and runtime
-libraries. Rendered service files live under `share/fn/systemd` and
+Before copying, the installer executes the image's disabled reader entrypoint
+and accepts only its production-profile refusal. This checks the selected image
+profile; it does not establish feature parity. `share/fn/native-artifacts.txt`
+records launcher, core, and runtime hashes, the copied SBCL home, linked runtime
+libraries, and the `libsodium` plus OpenSSL 3 libraries loaded by native crypto
+code. Those crypto libraries remain system package dependencies. Rendered service files live under `share/fn/systemd` and
 `share/fn/launchd`. Installation does not enable, start, or restart them.
 The package does not widen the selected image's command set. In particular,
 the frozen `8c` qualification image refuses public `peer add` with usage 5
