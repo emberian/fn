@@ -1141,17 +1141,17 @@
       "id": "PRF-037"
     },
     {
-      "id": "PRF-038",
       "events": [
         {
-          "name": "fn-served-peer-and-reader-open-under-the-same-policy",
-          "kind": "theorem"
+          "kind": "theorem",
+          "name": "fn-served-peer-and-reader-open-under-the-same-policy"
         },
         {
-          "name": "fn-served-open-peer-pins-the-configuration",
-          "kind": "theorem"
+          "kind": "theorem",
+          "name": "fn-served-open-peer-pins-the-configuration"
         }
-      ]
+      ],
+      "id": "PRF-038"
     }
   ]
 }
