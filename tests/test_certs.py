@@ -70,6 +70,9 @@ def manifest_for(root: Path, certified: list[str], status: str = "passed",
         "certificate_digests_sha256": {
             name: certs.content_hash(root / f"{name}.cert") for name in certified},
         "acl2_exit_codes": {name: 0 for name in certified},
+        "acl2_version": "ACL2 Version 8.7 test",
+        "acl2_executable_sha256": "a" * 64,
+        "environment": {"ACL2_BOOK_HASH_ALISTP": "NIL"},
     }
     if write:
         run = root / "build" / "acl2" / "certify-20260919T000000Z-1"
@@ -438,6 +441,60 @@ class SnapshotOriginTests(unittest.TestCase):
             # An unknown value is not a licence to relocate certificates.
             with mock.patch.dict(os.environ, {"FN_CERT_ORIGIN_KIND": "wishful"}):
                 self.assertEqual(certs.default_origin_kind(), "worktree")
+
+
+class ArtifactSetTests(unittest.TestCase):
+    """A closure is installed from one origin/toolchain, or not at all."""
+
+    TOOLCHAIN = "a" * 64
+
+    def publish(self, source: Path, cache: Path, books: list[str], origin: str):
+        manifest = manifest_for(source, books, write=False)
+        certs.publish(source, cache, [manifest], books, origin=origin,
+                      origin_kind="run")
+
+    def test_two_individually_current_origins_do_not_make_one_set(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            first = worktree(one, certified=["books/base"])
+            second = worktree(two, certified=["books/mid"])
+            self.publish(first, cache, ["books/base"], "/farm/run-a")
+            self.publish(second, cache, ["books/mid"], "/farm/run-b")
+            target = worktree(destination + "/target")
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertIsNone(report.artifact_set)
+            self.assertCountEqual(report.uncached, ["books/base"])
+            self.assertFalse((target / "books/base.cert").exists())
+            self.assertFalse((target / "books/mid.cert").exists())
+
+    def test_one_complete_origin_is_installed_as_a_unit(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            source = worktree(one, certified=["books/base", "books/mid"])
+            cache = Path(one) / "cache"
+            self.publish(source, cache, ["books/base", "books/mid"],
+                         "/farm/coherent")
+            target = worktree(two)
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertIsNotNone(report.artifact_set)
+            self.assertEqual(report.artifact_origin, "/farm/coherent")
+            self.assertEqual(report.installed, 2)
+            self.assertTrue((target / "books/base.cert").is_file())
+            self.assertTrue((target / "books/mid.cert").is_file())
+
+    def test_toolchain_is_part_of_the_set_identity(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            source = worktree(one, certified=["books/base", "books/mid"])
+            cache = Path(one) / "cache"
+            self.publish(source, cache, ["books/base", "books/mid"],
+                         "/farm/coherent")
+            target = worktree(two)
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], "b" * 64)
+            self.assertIsNone(report.artifact_set)
+            self.assertCountEqual(report.uncached, ["books/base", "books/mid"])
 
 
 class StatusAndRemoteTests(unittest.TestCase):
