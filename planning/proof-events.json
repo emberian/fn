@@ -1370,6 +1370,21 @@
           "name": "fn-bpn-step-queue-acceptance-is-durable-or-exact-duplicate"
         }
       ]
+    },
+    {
+      "id": "PRF-048",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-subject-body-injective",
+          "note": "Fixed-width byte projections recover principal, ordered key tuple and source under both fn-hsig-subject-p hypotheses. The body is called by fn-hsig-signed-preimage, reached through host/hybrid-signature-host.lisp fn-hsig-host-preimage and host/native/signatures.lisp. Certified with concrete hypothesis counterexamples in run certify-20260921T181329Z-2345431; all source digests match the integration tree. No primitive-security claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-signed-preimage-injective",
+          "note": "Combines subject-body projection injectivity with crypto-seam tagged-preimage injectivity for the actual fn-hsig-host-preimage signing subject, under two well-formed-subject hypotheses. Certified in run certify-20260921T181329Z-2345431; no claim about signature security."
+        }
+      ]
     }
   ]
 }

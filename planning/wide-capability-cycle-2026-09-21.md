@@ -12,11 +12,11 @@ small book or adapter followed by another handoff.
 | `bp_recovery_join` / Sol | Shared Store identity writer/replay, exact enrolled snapshot binding, profile admission before reservation/publication, and refusal/recovery composition. |
 | `hybrid_signatures` / Sol | Mandatory Ed25519 plus ML-DSA-65 primitives and signing CLI are integrated; complete native live-owner authored submission and durable acceptance/restart. |
 | `bounded_event_profiles` / Sol | Large canonical events and linear bounded streaming codecs are integrated; finish real closure certification and persisted profile/publication composition. |
-| `peer_tls_vertical` / Sol | Outbound AUTHINFO, private profile descriptor handling and command framing are integrated; composed phase proofs and real two-peer runtime remain. |
+| `peer_tls_vertical` / Sol | Actual identity/recovery trace integrated; next prove general durable peer-row round trips for legacy and TLS/AUTHINFO records. Real two-peer runtime remains with the gate lane. |
 | `compaction_vertical` / Sol | Partial-deletion compaction packet is integrated; next independent assignment is full hybrid subject/preimage injectivity in a separate proof book. |
 | `crash_correspondence` / Sol | Reclaim cut/model packet is integrated; source-matched process-death execution and broader physical relation remain. |
 | `served_fast_path` / Sol | Fixed-shape framing execution and called-path correspondence; resolve fresh node-config preservation prerequisites without changing semantics to fit proofs. |
-| `service_join` / Sol | Native distribution: relocate actual saved image, runtime and support dependencies; qualify task-local installation and service lifecycle. |
+| `service_join` / Sol | Native distribution and principal operator route integrated; freeze `df21773d` for the next combined production/developer/DTN certification and image gate on persvati. |
 | `toolchain_recovery` / Sol | Scoped frozen repair evidence archived; repair old snapshot's missing public peer dispatch and exercise real two-node native exchange/requeue/restart. |
 | Root / Astra | Shared contracts, concrete batch review/merges, assurance scopes, next coherent image and qualification matrix. |
 
