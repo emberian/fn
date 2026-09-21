@@ -1,125 +1,71 @@
 # Current work: native service composition and consolidation
 
-Integration update (2026-09-21, `ed2571d`): native owner/operator, safe feed
-filenames and a total FNFD observation budget, cross-session BP evidence,
-checkpoint/anchor persistence, and selected initializer retry paths are on main.
-The live standalone store wrapper now calls the proved prepare refinement,
-removing per-prepare history replay; shared-owner adoption is in progress.
-BP lifecycle namespace recovery uses ACL2 names and a carried frontier, with no
-per-append directory rescan. Its shared publication interpreter adoption is
-under focused convergence. These are component results, not a combined-service
-qualification. The consolidation audit records remaining transaction/config
-namespace duplication and bounds, initializer effect classification, orderly
-shutdown, and caller/invariant obligations. Native BP application acceptance
-and durable receipts remain active implementation work.
+Updated 2026-09-21. The goal remains the full selected two-peer v0 and v1/M6
+scope in [milestones](milestones.md#release-shape-v0-and-v1). Component tests
+and certificates do not establish that release. D07 requires a Python-free
+node, operator CLI and runtime helpers; Python remains development tooling.
 
-W22 frozen batch: `03eb3ba3` adds the actual listener wakeup repair, logical
-feed restart/caller projection, and native operator join to the previous
-consolidation batch. Persvati is running the combined certification, both image builds
-and native runtime suites (run `run-20260921T095031Z-5cf4`); no result from an older image is relabeled for it.
-Native outbound feed I/O, local control submission and authentication adoption
-now have concrete parallel lanes, while BP application receipts and performance
-correspondence continue. These are remaining selected v0 behaviors, not a
-redefinition of v0 around currently implemented commands.
+## Integrated and under validation
 
+Main contains native owner/operator help/status/recover/run, feed intent and
+resolution persistence, safe FNFD names and a total observation budget,
+cross-session BP receive evidence, application journals, checkpoint/anchor
+persistence, and selected initializer retry paths. The standalone store wrapper
+calls a proved prepare refinement that omits per-prepare history replay;
+shared-owner adoption is still being implemented. BP lifecycle append uses an
+ACL2-owned namespace and carried frontier instead of rescanning retained files.
+The listener's admitted loopback addresses now come from an ACL2 projection.
 
-Priority correction (2026-09-21): the user reaffirmed D07, **no Python in a
-running/deployed fn node or its operator CLI**. Sol's owner-convergence checkpoint is integrated in the native Lisp service;
-the frozen combined build and actual service evidence remain pending. Sol's native-storage lane supplies shared I/O and
-concrete codecs; Terra inventories and implements independent native CLI/config
-and packaging work. BP remains native. Python service measurements are diagnostic
-baselines; production claims require native two-node evidence. Preserve the full
-selected feature set and its assurance obligations during this migration.
+The frozen combined source is `03eb3ba3`, with retained persvati job
+`run-20260921T095031Z-5cf4`. Certification passed; its owner lane is validating the same-origin artifacts,
+constructing default/DTN images and running the actual native suites. Later main changes
+are not part of that frozen source and must receive their own integration gate.
+The earlier `76901c1` closure/build passed; its live listener wakeup defect was
+repaired in the current frozen batch. Historical Python matrix disagreements
+remain recorded and are not reclassified by component certificates.
 
-The user also requested a high-assurance, pleasant implementation with duplicated
-decisions and awkward interfaces consolidated. The [consolidation audit](duplication-audit-2026-09-21.md)
-tracks concrete findings and owners. A BP candidate's visible-file fallback after
-failed publication barriers was repaired in the integrated `2dab68d` packet,
-with actual-error and restart evidence. Outcome aggregation and repeated journal scans are
-separate assigned work. This extends the one-owner rule to raw Lisp as well as
-Python; the native migration is not permission to reproduce the same twins.
+## Parallel paths to the next service batch
 
-Development has resumed from `8b474e2`. Both outbound feed and transit repair
-branches are merged. Their [combined book certification](evidence/manifests/certify-20260921T051833Z-3941584.json)
-does not establish the behavior of the merged packaged service; the selected
-matrix predates that combination.
+[Active lane assignments](swarm-cycles.md#current-staffing-and-integration-checkpoint)
+own these complete paths and their source-pinned evidence:
 
-The [active cycles](swarm-cycles.md) assign isolated implementation lanes for
-reader/transit authorization, coherent proof artifacts, feed journal durability,
-physical storage correspondence, concrete storage codecs, durable native BP
-sequence allocation, shared CLI/NNTP submission, and ACL2 outbound framing.
-Both hbox and persvati are used for owned certification and integration work.
-Root integrates coherent batches and updates the registries from their evidence.
-The first auth/feed/framing/artifact batch is integrated at `cdbd6b2`; Terra
-completed the frozen two-node runtime exercise on hbox. The TAKETHIS probe
-stall was a harness ordering defect, corrected in a scoped supplemental run.
-The original run still has authentication-gate disagreements on both nodes and
-a BP crash disagreement; Sol owns diagnosis with the producing lanes. It is
-not a passing service result. Luna
-finished the frozen-source ledger synchronization. Storage codecs and the
-scoped physical relation packet are integrated at `1501492`; metadata
-initialization and first-frontier results do not establish full current-host
-initialization or general recovery. Terra now owns the feed correspondence
-continuation and a fresh initializer transcription; both Astra proof lanes have
-handed off their checkpoints. Luna registered the scoped storage evidence
-as PRF-044; the conditional scope and missing host correspondence remain explicit.
-The overnight goal remains active. Luna handles bounded mechanical work, Terra
-implementation, and Sol substantial implementation/proof debugging and combined
-owner-service integration. Astra handles periodic cross-project review and
-difficult residual problems. Native metadata, frontier, transaction naming and
-posting provenance now use ACL2 definitions in the integrated native adapter;
-the [codec packet](evidence/native-storage-codec-w13-2026-09-21.md) records
-byte-identical committed frames and the remaining staging recovery differences.
+- Native local control/posting, authentication, outbound NNTP feed I/O and
+  group/capacity administration, through the existing ACL2 policy and shared
+  serialized owner. Control and BP submission share completion machinery;
+  lifecycle hooks and orderly SIGTERM must compose without deadlocks.
+- Native BP request intent through article acceptance, durable receipt decision
+  and restart/lost-reply idempotence; carrier ACKs are not application acceptance.
+- Actual BP lifecycle invariant/effects, shared immutable publication, checkpoint
+  namespace/mismatch/fencing and initializer syscall/model correspondence.
+- Shared-owner adoption of the prepare correspondence, followed by measured
+  native service cost. Standalone measurements do not qualify concurrent service.
 
-The principal composition obligations are explicit: durable article acceptance
-must preserve feed intent; uncertain persistence must fence all mutations;
-storage proofs need the actual host-generated program inputs and concrete
-codec realization; native BP needs persistent allocation before its larger
-lifecycle can claim non-reuse. A proof of an uncalled sibling does not close a
-running path.
+Root integrates coherent packets and uses both hbox and persvati with owned
+closures and a frozen combined batch. Terra handles bounded implementation,
+Sol substantial implementation/proof debugging, and Astra cross-project
+convergence and difficult residual questions. Cross-model review runs in the
+existing Claude tmux session on bounded source-pinned subjects; it is not a
+serial approval gate.
 
-v0 retains the [full two-peer release scope](milestones.md#release-shape-v0-and-v1).
-v1 reaches M6 and beyond. Next cycles compose native BP, live configuration,
-checkpoints, statement authority and provenance, then broaden recovery,
-long-lived retention and the integrated feature matrix. These are planned
-outcomes, not declarations that the current implementation already provides them.
+## Assurance and consolidation
 
-The [evidence index](evidence-index.md), [assurance matrix](assurance-closure.md)
-and [implementation status](../docs/implementation.md) retain scoped historical
-evidence. A passing scaffold check is not certification; certification is not a
-running-system, RFC-conformance or mission-qualification claim.
+The [consolidation audit](duplication-audit-2026-09-21.md) records demonstrated
+competing decisions, repeated scans and misleading contracts. Active repairs
+include transaction/configuration namespace parsers and pre-allocation bounds,
+initializer effect classification/error origins, and native lifecycle shutdown.
+Moving a semantic twin from Python to raw Lisp does not close it. A separate
+logical specification and a proved efficient representation remain intentional.
 
-The next integration order is the combined live-config/submission/feed path,
-native BP receive integrity and allocation/lifecycle crash joins, then persisted identity
-and admission context, checkpoints/index adoption, and bounded long-lived
-operation. Prerequisite-ready work continues in parallel. Fresh initializer
-transcription and native metadata adoption close existing assurance gaps;
-they are not new release scope.
+Every new reachable behavior carries its caller, invariant, byte, crash and
+resource obligations in the [registries](requirements.json), [proof targets](proofs.json)
+and scenarios. Physical adapter correspondence, protected native transport,
+complete operator/identity workflows, long-lived retention/release/restore,
+full two-peer feature coverage and broader v1 work remain open. Preserve native
+author signatures, exact source bytes with separate projections, indefinite
+retention until authorized release, NNTP/CLI before web, and deferred private
+group cryptography. D09/D11 proposals are not silently selected requirements.
 
-Design discussion should now settle deployment resource targets, human/agent
-principal and delegation semantics, and offline policy/restore/release behavior.
-Existing D09/D11 proposals are inputs, not selected requirements. The performance
-baseline now includes a [source-pinned direct native sample](evidence/performance/native-image-direct-20260921T0414-final.md):
-one 1 KiB store post, initialization, reopen and reader startup. It does not
-measure the concurrent native owner, scaling or the two-peer release workload.
-The historical scale measurements and placeholder native comparison do not
-qualify this head; the converged owner still needs its own measurement.
-
-Native BP carrier convergence through `2dab68d` is integrated with a certified
-persvati image and source-pinned allocation/spool/queue/crash tests. The
-[evidence record](evidence/bp-convergence-native-2026-09-21.md) retains the open
-receive fencing, fault classification and session evidence overwrite findings.
-PRF-045/046 now name the universal allocation/lifecycle obligations without
-promoting helper lemmas to whole-path proofs. Native FNWF/FNRJ packet `0e26c3d` is integrated: ACL2 owns journal naming,
-admission and the carried accounting frontier. Its actual owner/TCPCL callback
-joins, fenced-store guard and observer cut fidelity remain open.
-
-
-The current integrated native batch includes owner/feed intent composition
-(`e9e1da6`), guarded anchor parser/acquisition (`86e6a7a`), application journals
-(`624f16b`) and operator grammar/status/recover (`1b571be`). Required repairs
-before native configured-peer readiness are the owner's connected-writer fence
-and worker cleanup, plus safe FNFD path encoding/recovery. The operator is still
-a component awaiting common-image/public callback integration; anchor acquisition
-is an observation, not durable acceptance. These are implemented-surface gaps,
-not reasons to shrink v0. The next frozen farm build measures their composition.
+Historical progress is retained in source-pinned evidence and
+[milestone landing notes](milestones.md#earlier-landing-notes), not repeated here
+as competing statements of current status. A scaffold pass is structural
+validation; no component result is a mission-readiness claim.

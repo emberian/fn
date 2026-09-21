@@ -342,15 +342,15 @@
     "books": 336,
     "books_in_root_closure": 335,
     "roots": 335,
-    "theorems": 6170,
-    "functions": 4599,
-    "assert_events": 6408,
+    "theorems": 6171,
+    "functions": 4601,
+    "assert_events": 6415,
     "must_fails": 129,
     "encapsulates": 19,
     "guards": {
       "verified": 1566,
       "declared-off": 233,
-      "default-guarded": 2211,
+      "default-guarded": 2213,
       "default-unguarded": 589
     },
     "suspect_theorems": 56,
@@ -3357,18 +3357,18 @@
       "book": "books/native-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
-      "functions": 57,
+      "theorems": 2,
+      "functions": 59,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 57,
+        "default-guarded": 59,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 10,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7769,13 +7769,14 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 27,
+      "assert_events": 34,
       "must_fails": 0,
-      "defconsts": 10,
+      "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/native-config"
+        "../../books/native-config",
+        "../../host/native-config-host"
       ],
       "system_includes": [],
       "suspects": [],
@@ -13190,7 +13191,7 @@
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 714,
+        "line": 716,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
