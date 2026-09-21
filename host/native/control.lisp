@@ -13,7 +13,7 @@
   path listener accept-thread service
   (lock (sb-thread:make-mutex :name "fn local control"))
   (workers nil) (clients nil) (stopping nil)
-  device inode)
+  device inode lease-path lease-fd)
 
 (defmacro fnn-with-control ((control) &body body)
   `(sb-thread:with-mutex ((fnn-control-state-lock ,control)) ,@body))
@@ -22,12 +22,47 @@
   (and info (sb-posix:s-issock (sb-posix:stat-mode info))))
 
 (defun fnn-control-remove-stale (path)
-  "Remove only an old socket node after the Store writer lock is held."
+  "Remove only an old socket node after the control-path lease is held."
   (let ((info (fnn-lstat path)))
     (when info
       (unless (fnn-control-socket-path-p info)
         (fnn-refuse "control path exists and is not a socket: ~a" path))
       (fnn-unlink path))))
+
+(defun fnn-control-acquire-lease (control)
+  "Hold the ACL2-derived adjacent lease before inspecting the socket name."
+  (let* ((path-octets
+           (fnn-core 'fn-native-control-host-lease-path
+                     (fnn-ascii-octet-list (fnn-control-state-path control))))
+         (lease-path
+           (and (fnn-octet-list-p path-octets)
+                (fnn-octets-string (fnn-octets path-octets))))
+         (fd nil))
+    (unless lease-path
+      (fnn-fault "ACL2 refused the control lease path"))
+    (handler-case
+        (progn
+          (setq fd (fnn-open lease-path
+                             (logior sb-posix:o-rdwr sb-posix:o-creat
+                                     +fnn-o-nofollow+)
+                             #o600))
+          (unless (fnn-regular-p (fnn-fstat fd))
+            (fnn-refuse "control lease is not regular: ~a" lease-path))
+          (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
+          (setf (fnn-control-state-lease-path control) lease-path
+                (fnn-control-state-lease-fd control) fd)
+          fd)
+      (error (condition)
+        (when fd (ignore-errors (fnn-close fd)))
+        (fnn-refuse "control path is already owned: ~a (~a)"
+                    (fnn-control-state-path control) condition)))))
+
+(defun fnn-control-release-lease (control)
+  (let ((fd (fnn-control-state-lease-fd control)))
+    (when fd
+      (setf (fnn-control-state-lease-fd control) nil)
+      (ignore-errors (fnn-flock fd +fnn-lock-un+))
+      (ignore-errors (fnn-close fd)))))
 
 (defun fnn-control-listen (path)
   (fnn-control-remove-stale path)
@@ -173,6 +208,7 @@
              (fnn-owner-action 'fn-owner-posting-configure posting-enabledp)))))
     (unless (eq configured :configured)
       (fnn-fault "owner refused ACL2 posting policy")))
+  (fnn-control-acquire-lease control)
   (let* ((path (fnn-control-state-path control))
          (listener (fnn-control-listen path))
          (info (fnn-lstat path)))
@@ -201,29 +237,40 @@
     (when first
       (when listener
         (ignore-errors
-          (sb-bsd-sockets:socket-shutdown listener :direction :io))
-        (fnn-socket-shut listener))
+          (sb-bsd-sockets:socket-shutdown listener :direction :io)))
       (dolist (socket clients)
-        (fnn-socket-shut socket)))))
+        ;; close(2) from another thread does not reliably interrupt its
+        ;; blocked read on Linux.  Shutdown first while this socket object
+        ;; still owns the descriptor, then close; the first-call guard above
+        ;; prevents any later stop from touching a reused descriptor.
+        (ignore-errors
+          (sb-bsd-sockets:socket-shutdown socket :direction :io))))))
 
 (defun fnn-control-close (control service)
   (declare (ignore service))
-  (let ((accept-thread (fnn-control-state-accept-thread control)))
-    (when accept-thread (sb-thread:join-thread accept-thread)))
-  (loop
-    (let ((workers
-            (fnn-with-control (control)
-              (copy-list (fnn-control-state-workers control)))))
-      (when (null workers) (return))
-      (dolist (worker workers) (sb-thread:join-thread worker))))
-  (let* ((path (fnn-control-state-path control))
-         (info (fnn-lstat path)))
-    (when (and (fnn-control-socket-path-p info)
-               (= (sb-posix:stat-dev info)
-                  (fnn-control-state-device control))
-               (= (sb-posix:stat-ino info)
-                  (fnn-control-state-inode control)))
-      (fnn-unlink path))))
+  (unwind-protect
+       (progn
+         (let ((accept-thread (fnn-control-state-accept-thread control)))
+           (when accept-thread (sb-thread:join-thread accept-thread)))
+         (loop
+           (let ((workers
+                   (fnn-with-control (control)
+                     (copy-list (fnn-control-state-workers control)))))
+             (when (null workers) (return))
+             (dolist (worker workers) (sb-thread:join-thread worker))))
+         (let ((listener (fnn-control-state-listener control)))
+           (when listener
+             (setf (fnn-control-state-listener control) nil)
+             (fnn-socket-shut listener)))
+         (let* ((path (fnn-control-state-path control))
+                (info (fnn-lstat path)))
+           (when (and (fnn-control-socket-path-p info)
+                      (= (sb-posix:stat-dev info)
+                         (fnn-control-state-device control))
+                      (= (sb-posix:stat-ino info)
+                         (fnn-control-state-inode control)))
+             (fnn-unlink path))))
+    (fnn-control-release-lease control)))
 
 (defun fnn-control-owner-run-normalized
     (store-octets listener-host-octets listener-port oncep max-connections

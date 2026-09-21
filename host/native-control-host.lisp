@@ -10,6 +10,10 @@
   (declare (xargs :mode :program))
   *fn-article-max-octets*)
 
+(defun fn-native-control-host-lease-path (control-path)
+  (declare (xargs :mode :program))
+  (fn-native-control-lease-path control-path))
+
 (defun fn-native-control-host-request-encode (msgid groups article)
   (declare (xargs :mode :program))
   (fn-native-control-request-encode msgid groups article))

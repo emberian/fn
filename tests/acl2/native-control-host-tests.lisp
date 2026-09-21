@@ -23,5 +23,9 @@
 (assert-event
  (equal (fn-native-control-host-transport-outcome :after-submission)
         :uncertain))
+(assert-event
+ (equal (fn-native-control-host-lease-path
+         (fn-record-string-octets "/tmp/fn.sock"))
+        (fn-record-string-octets "/tmp/fn.sock.lock")))
 (assert-event (< (fn-native-control-host-max-article)
                  (fn-native-control-host-max-frame)))

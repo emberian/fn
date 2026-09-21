@@ -9,6 +9,7 @@
 (include-book "frame-invariants")
 (include-book "records-invariants")
 (include-book "injection")
+(include-book "native-config")
 
 (defconst *fn-nctrl-magic* '(70 78 67 84)) ; FNCT
 (defconst *fn-nctrl-version* 1)
@@ -30,6 +31,17 @@
      4 *fn-nctrl-max-groups-octets*))
 (defconst *fn-nctrl-max-frame*
   (+ *fn-frame-overhead-octets* *fn-nctrl-max-payload*))
+(defconst *fn-nctrl-lease-suffix* '(46 108 111 99 107)) ; .lock
+(defconst *fn-nctrl-max-lease-path* (+ *fn-ncfg-max-path* 5))
+
+(defun fn-native-control-lease-path (control-path)
+  "Derive the one adjacent lease name before raw code opens any path."
+  (declare (xargs :guard t))
+  (if (and (fn-cbor-octet-listp control-path)
+           (consp control-path)
+           (<= (len control-path) *fn-ncfg-max-path*))
+      (append control-path *fn-nctrl-lease-suffix*)
+    :bad))
 
 (defun fn-nctrl-group-strings (groups)
   (declare (xargs :guard t))
@@ -242,6 +254,20 @@ distinguish an unobserved refusal from a durable acceptance."
   :hints (("Goal" :in-theory (disable fn-nctrl-seal)))
   :rule-classes :linear)
 
+(defthm fn-native-control-lease-path-is-bounded
+  (implies (not (equal (fn-native-control-lease-path control-path) :bad))
+           (and (fn-cbor-octet-listp
+                 (fn-native-control-lease-path control-path))
+                (<= (len (fn-native-control-lease-path control-path))
+                    *fn-nctrl-max-lease-path*)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-native-control-lease-path
+                            fn-frame-len-of-append)
+                           (binary-append len fn-cbor-octet-listp))
+           :use ((:instance fn-frame-octet-listp-of-append
+                            (a control-path)
+                            (b *fn-nctrl-lease-suffix*))))))
+
 (in-theory (disable (:d fn-nctrl-group-strings)
                     (:d fn-nctrl-group-octets)
                     (:d fn-nctrl-requestp)
@@ -249,6 +275,7 @@ distinguish an unobserved refusal from a durable acceptance."
                     (:d fn-nctrl-groups-decode)
                     (:d fn-nctrl-seal)
                     (:d fn-nctrl-open)
+                    (:d fn-native-control-lease-path)
                     (:d fn-native-control-request-encode)
                     (:d fn-native-control-request-decode)
                     (:d fn-native-control-reply-encode)

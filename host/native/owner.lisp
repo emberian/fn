@@ -423,8 +423,11 @@ directories because one encoded label can be a prefix of a longer label.
         (sb-bsd-sockets:socket-shutdown listener :direction :io))))
   ;; Wake every client before command cleanup waits for its worker.  Shared
   ;; journals and Store state remain open until all workers have returned.
+  ;; Only the worker that cached the socket fd may close it; shutdown wakes its
+  ;; raw read without making that integer available for reuse underneath it.
   (dolist (socket (fnn-owner-service-clients service))
-    (ignore-errors (fnn-socket-shut socket)))
+    (ignore-errors
+      (sb-bsd-sockets:socket-shutdown socket :direction :io)))
   ;; Hooks only signal external listeners/clients.  They run inside the same
   ;; first-terminal boundary and must be idempotent and nonblocking.
   (dolist (hook (fnn-owner-service-stop-hooks service))
