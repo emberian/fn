@@ -58,7 +58,11 @@ class ServedDifferentialTests(unittest.TestCase):
         # spelled out: the same archive, the same limits, the same
         # `(fn-auth-open-config)' the served side opens with.  A trailing
         # argument added to `fn-served-open' has to be added here too, or the
-        # differential errors instead of comparing.
+        # differential errors instead of comparing -- which is what happened
+        # for a day after `d484e9a' gave it a seventh formal, since a call
+        # spelled as TEXT is invisible to both sides.  `tools/harness_check.py
+        # --lint acl2-arity' reads ACL2 forms out of Python string literals
+        # and checks their arity against the books, for exactly this shape.
         open_form = ("(fn-served-open *fn-reader-archive* 510 8192"
                      " (fn-reader-post-config *fn-reader-archive* nil)"
                      " nil nil (fn-auth-open-config))")

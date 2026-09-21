@@ -98,7 +98,16 @@ zero of RFC 9171 section 4.2.6 rather than a monotonic counter."
         (fnn-indeterminate "bp: journal record ~a did not complete: ~a" name e)))))
 
 (defun fnn-bp-deliver (tally conn xfer-id octets)
-  "Decode one completed inbound transfer as a bundle and journal the outcome."
+  "Decode one completed inbound transfer as a bundle and journal the outcome.
+
+The transfer's octets are journalled AS THEY ARRIVED, under `.wire', before
+the node is asked what it makes of them.  That ordering is deliberate: a
+refusal is as much a thing to keep the evidence of as an acceptance, and an
+interoperability vector is only a vector if the bytes another implementation
+actually put on the wire are what was kept.  Nothing here interprets them --
+the octets are copied, not parsed -- and a write that does not complete is
+an indeterminate outcome, which is the truth about a transfer whose evidence
+may or may not be durable."
   (let* ((obs (fnn-bp-observation (fnn-bp-tally-wall tally)
                                   (fnn-bp-tally-wall-error tally)))
          (result (fnn-core 'fn-bpn-host-receive (fnn-bp-tally-config tally)
@@ -107,6 +116,7 @@ zero of RFC 9171 section 4.2.6 rather than a monotonic counter."
          (reason (fnn-core 'fn-bpn-host-receive-reason result))
          (adu (fnn-core 'fn-bpn-host-receive-adu result))
          (tag (fnn-tclc-tag conn)))
+    (fnn-bp-record tally (format nil "~a-~d.wire" tag xfer-id) octets)
     (setf (fnn-bp-tally-last-reason tally) reason)
     (ecase outcome
       (:accepted
@@ -167,6 +177,12 @@ dominates an acceptance: a run that saw one of each did not succeed."
     (fnn-out "BP authored creation=~d sequence=~d lifetime=~d payload=~d octets=~d"
              (first summary) (second summary) (third summary) (fourth summary)
              (length bundle))
+    ;; The bundle this node authored, kept before it is put on a socket, for
+    ;; the same reason the receive path keeps what arrives: an octet string
+    ;; another implementation accepted is only a vector if it was recorded.
+    (fnn-out "BP wire authored path=~a"
+             (fnn-bp-record tally (format nil "authored-~d.wire" sequence)
+                            bundle))
     (unwind-protect
          (let ((*fnn-tcl-deliver*
                  (lambda (conn xfer-id octets)
