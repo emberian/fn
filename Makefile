@@ -246,6 +246,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/scheduler-tests \
 	books/peer-feed \
 	books/peer-feed-invariants \
+	books/feed-journal \
+	tests/acl2/feed-journal-tests \
 	tests/acl2/peer-feed-tests \
 	books/owner-feed \
 	tests/acl2/owner-feed-tests \
