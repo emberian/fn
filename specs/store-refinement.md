@@ -359,6 +359,21 @@ namespace.  These tests establish the named adapter/model boundary and selected
 restart behavior, not a claim about arbitrary filesystem races, power loss, or
 every existing/retry opening path.
 
+### Native immutable-initializer retry (W18)
+
+Native `store init` distinguishes an immutable `link(2)` result of `EEXIST`
+from another link error. The former retains and decodes the existing final
+metadata file, then removes the newly staged candidate; the latter is
+uncertain because the host cannot know whether the namespace operation was
+issued. `fn-bsi-existing-init-program` models the valid existing-file branch
+with an executable `:link-eexist` transition that continues only when
+`fn-bs-link` actually returns `:eexist`. `fn-bsi-history-retry-program` models
+the selected restart where configuration history was fenced and the frontier
+is still absent. An external history entry appearing after an empty enumeration
+remains uncertain. The runtime tests cover those branches and a held
+writer-lock refusal; they do not qualify arbitrary existing layouts or
+link-error platform behavior.
+
 The [fault matrix](store-fault-matrix.md) covers before/after-effect
 filesystem/completion rows, including partial/zero writes and all recovery
 barriers, and tabulates the six process-death cuts against their model crash
