@@ -1261,6 +1261,26 @@ else echo NONE; fi
                 "owner feed: node A wrote no <store>/feed/*.fnfd file while an offer "
                 "was outstanding, so nothing on disk records the decision to offer "
                 "and the restart below resolves from memory that did not survive.")
+        # The decision to feed THIS article, on disk, before the kill. An
+        # FNFD record carries the Message-ID as text, so the file itself
+        # answers it. Without this the scenario cannot tell "the restart
+        # replayed the entry and re-offered it" from "the entry was never
+        # durable and there was nothing to replay" -- which is exactly what
+        # gate 15ac399 could not tell: node A replayed eight records, none
+        # of them an enqueue, and never offered the article again.
+        named = self.sh(
+            "owner feed: A's journal names {} before the kill".format(msgid),
+            "grep -a -c -- '{}' {}/feed/*.fnfd 2>/dev/null || echo 0".format(
+                msgid, self.a.store), expect=None)
+        hits = named.output.strip().splitlines()[-1] if named.output.strip() else "0"
+        self.facts["feed journal names the queued article"] = hits
+        if hits.strip() in ("", "0"):
+            self.gaps.append(
+                "owner feed: node A's FNFD journal does not name {} while it is "
+                "queued and undeliverable, so the decision to feed it is in memory "
+                "and nowhere else. specs/peering.md 3.3 writes (:feed-enqueue peer "
+                "msgid tick) BEFORE the entry is :queued, and the `kill -9` below "
+                "will lose it.".format(msgid))
         self.sh("owner feed: kill -9 node A", "kill -9 {} || true".format(self.a.pid),
                 expect=None)
         self.start_node(self.b, tag="restart")

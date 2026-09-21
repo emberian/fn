@@ -284,14 +284,14 @@
     "books_in_root_closure": 276,
     "roots": 276,
     "theorems": 5624,
-    "functions": 3950,
+    "functions": 3952,
     "assert_events": 5622,
     "must_fails": 63,
     "encapsulates": 19,
     "guards": {
       "verified": 1475,
       "declared-off": 191,
-      "default-guarded": 1795,
+      "default-guarded": 1797,
       "default-unguarded": 489
     },
     "suspect_theorems": 46,
@@ -3228,11 +3228,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 46,
-      "functions": 98,
+      "functions": 100,
       "guards": {
         "verified": 0,
         "declared-off": 3,
-        "default-guarded": 95,
+        "default-guarded": 97,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
