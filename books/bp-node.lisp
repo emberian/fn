@@ -28,38 +28,32 @@
 
 (include-book "bp-bundle-invariants")
 
-; OPEN at one guard conjecture (w10/dtn-3, 2026-09-20).  This book has never
-; certified; the lane that wrote it could not attempt it because
-; `books/bp-bundle-invariants` was open below it.  With that book certified,
-; every event here is attempted for the first time and all of them close
-; EXCEPT `fn-bpn-receive`'s guard, which stops at
+; CERTIFIED 2026-09-21 (w11/bp-node), the first time this book ever has been.
+; Three things had to change and each is recorded where it is, because each
+; was invisible until the event before it closed -- `certify-book` stops at
+; the first failure, so "everything else closes" had never been a statement
+; about anything after `fn-bpn-receive`.
 ;
-;   (implies (and <fn-bpn-configp config, opened>
-;                 (fn-cbor-result-okp (fn-bpb-decode octets limit))
-;                 (fn-bpp-flags-conformantp
-;                  (fn-bpb-bundle-primary
-;                   (fn-cbor-result-value (fn-bpb-decode octets limit)))))
-;            (integerp
-;             (nth 1 (fn-bpb-bundle-primary
-;                     (fn-cbor-result-value (fn-bpb-decode octets limit))))))
+;   1. `books/bp-primary` now WITHDRAWS its six projections
+;      (`fn-bpp-projection-vocabulary`).  `fn-bpn-receive`'s guard is
+;      `fn-bpp-fragmentp`'s `(natp flags)` on the primary of a decoded
+;      bundle; with the projection enabled the goal read
+;      `(integerp (nth 1 primary))` and every fact available was about
+;      `fn-bpp-blockp` or `(fn-bpp-flags primary)`.
+;   2. The bridge that carries that fact is forward-chaining ONLY.  As a
+;      rewrite AND a forward-chaining rule concluding
+;      `(fn-bpp-flag-setp (fn-bpp-flags p))` it collapsed its own
+;      forward-chained literal to T on the way into the context and added
+;      nothing; the guard goal was pushed for induction with the fact
+;      "available" throughout.
+;   3. K5 is stated BEFORE K1, because K1's only route from `fn-bpb-decode`
+;      to `fn-bpb-encode` is `fn-bpb-decode-of-encode`, whose first
+;      hypothesis is exactly K5.
 ;
-; -- `fn-bpp-fragmentp`'s guard on the primary's flags field.  What is in
-; place, and what the next lane should not redo: `fn-bpn-expiry`'s guard
-; (which wanted `fn-bpb-bundlep` and `fn-bpp-blockp` opened and the fragment
-; BIT TEST closed, because opened it puts `numerator`/`denominator` parity
-; goals in front of a guard about times); `fn-bpn-send`'s guard, deferred to
-; keystone K5 where its obligation actually is; and three local bridges
-; taking `fn-bpb-decode-yields-bundle` to the primary's fields.  The
-; remaining gap is one fact in FIELD vocabulary: the goal is about
-; `(nth 1 primary)` and every fact available is about `fn-bpp-blockp` or
-; `fn-bpp-flags`, and `books/bp-primary` ships its accessors with their
-; definitions ENABLED (the `enabled_projection` lint counts six in that
-; book), so the accessor is gone from the goal before any rule can match it.
-; Repairing that lint in `books/bp-primary` is probably the whole fix, and it
-; belongs to that book's owner.
-;
-; Nothing here is claimed: the book has no certificate, so none of its five
-; keystones is proved.
+; Still true of this book, and not a defect: it is the two ends of
+; `specs/bp-design.md` section 1.5 and not the machine.  T1 to T6 of section
+; 1.6 are stated against an `fn-bpn-step` that does not exist and are NOT
+; proved here or anywhere.
 
 (include-book "clock")
 (include-book "defrecord")
@@ -322,22 +316,50 @@
             :in-theory (disable fn-bpb-decode-yields-bundle fn-bpb-decode
                                 fn-bpp-blockp fn-bpb-bundlep)))))
 
-; The flags of a decoded primary block are a flag set: the one field fact
-; `fn-bpn-receive`'s guard needs in FIELD vocabulary rather than through the
-; recognizer, because `fn-bpp-fragmentp` is guarded by the flags alone.
+; Everything `(fn-bpp-fragmentp (fn-bpp-flags primary))` needs of a decoded
+; primary block, in ACCESSOR vocabulary rather than through the recognizer:
+; `fn-bpp-flags` is guarded by `(true-listp b)` and `fn-bpp-fragmentp` by
+; `(natp flags)`, and those two are the whole of what `fn-bpn-receive`'s
+; guard is missing.
+;
+; Two measured constraints fix the shape of this lemma, and both were paid
+; for on 2026-09-21.
+;
+;   * The conclusion is arithmetic, not `(fn-bpp-flag-setp ...)`.  A lemma
+;     that both FORWARD-CHAINS `(fn-bpp-flag-setp (fn-bpp-flags p))` and is
+;     an enabled REWRITE with that same left-hand side adds a literal its own
+;     rewrite immediately collapses to T, so the context gains nothing; the
+;     guard goal was pushed for induction as `*18` with the fact "available"
+;     the whole time.  This is the BRIEF's rule about a local `defthm`
+;     concluding a recognizer call, one layer further in: the collapse
+;     happens to a FORWARD-CHAINED literal, not to a `:use` hypothesis.
+;   * It has NO rewrite class at all, for the same reason.  Forward chaining
+;     is the only class that can put a fact about a term the conclusion does
+;     not contain into the context.
+;
+; And it is stated over `(fn-bpp-flags p)` rather than `(nth 1 p)` because
+; `books/bp-primary` now withdraws its projections
+; (`fn-bpp-projection-vocabulary`); before that withdrawal the accessor was
+; unfolded out of the goal before any rule could match it.
 (local
- (defthm fn-bpn-decoded-primary-flags-are-a-flag-set
+ (defthm fn-bpn-decoded-primary-flag-test-is-guarded
    (implies (fn-cbor-result-okp (fn-bpb-decode octets limit))
-            (fn-bpp-flag-setp
-             (fn-bpp-flags
-              (fn-bpb-bundle-primary
-               (fn-cbor-result-value (fn-bpb-decode octets limit))))))
-   ;; Forward-chaining as well as rewriting: the guard goal is
-   ;; `(integerp (nth 1 ...))`, so the fact has to be IN THE CONTEXT where
-   ;; the enabled `fn-bpp-flag-setp` can open it, not a rewrite waiting for
-   ;; a term the goal does not contain.
-   :rule-classes (:rewrite
-                  (:forward-chaining
+            (and (true-listp
+                  (fn-bpb-bundle-primary
+                   (fn-cbor-result-value (fn-bpb-decode octets limit))))
+                 (integerp
+                  (fn-bpp-flags
+                   (fn-bpb-bundle-primary
+                    (fn-cbor-result-value (fn-bpb-decode octets limit)))))
+                 (<= 0
+                     (fn-bpp-flags
+                      (fn-bpb-bundle-primary
+                       (fn-cbor-result-value (fn-bpb-decode octets limit)))))
+                 (<= (fn-bpp-flags
+                      (fn-bpb-bundle-primary
+                       (fn-cbor-result-value (fn-bpb-decode octets limit))))
+                     *fn-bpc-max-uint*)))
+   :rule-classes ((:forward-chaining
                    :trigger-terms
                    ((fn-bpb-bundle-primary
                      (fn-cbor-result-value (fn-bpb-decode octets limit))))))
@@ -350,12 +372,15 @@
             ;; hypothesis: left on, they collapse it to T and the citation
             ;; is gone (the same hazard the generated `-of-accessors`
             ;; family has -- see BOARD 2026-09-20, w10/dtn-3).
+            ;; `fn-bpp-flag-setp` is left ENABLED here, unlike in the block
+            ;; bridge above: it is the step from the recognizer's conjunct
+            ;; to the arithmetic this lemma concludes.
             :in-theory (e/d (fn-bpp-blockp)
                             (fn-bpn-decoded-primary-is-a-block
                              fn-bpn-bundle-primary-is-a-block
                              fn-bpb-decode-yields-bundle
                              fn-bpb-decode fn-bpp-eidp fn-bpp-vchar-listp
-                             fn-bpp-vcharp fn-bpp-flag-setp
+                             fn-bpp-vcharp
                              fn-bpp-fragmentp fn-bpp-flag-onp))))))
 
 ; Same guard shape as `fn-bpn-expiry`, and for the same reason: the callees
@@ -444,11 +469,69 @@
 
 ; -----------------------------------------------------------------------------
 ; Keystones.
+;
+; K5 IS STATED FIRST, and the order is load-bearing rather than cosmetic.  K1
+; is the round trip, and the only rule that relates `fn-bpb-decode` to
+; `fn-bpb-encode` is `fn-bpb-decode-of-encode`, whose first hypothesis is
+; `(fn-bpb-bundlep bundle)` -- which for the bundle `fn-bpn-send` authors IS
+; K5.  Measured 2026-09-21: with K1 first, as this book was written before it
+; had ever certified, the form does not fail, it RUNS -- twenty minutes on
+; hbox with no checkpoint, because the rewriter cannot relieve that
+; hypothesis and falls back on induction over an encoder.
+
+; K5.  What `fn-bpn-send` puts on the wire is a bundle: it decodes, and it
+; decodes to the bundle that was built.
+(defthm fn-bpn-send-bundle-is-a-bundle
+  (implies (and (fn-bpn-configp config) (fn-bpp-eidp peer)
+                (fn-bpb-datap adu) (fn-bpp-timep sequence)
+                (fn-clock-observationp obs))
+           (fn-bpb-bundlep (fn-bpn-send-bundle config peer adu sequence obs)))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-bpn-send-bundle fn-bpn-send-blocks
+                            fn-bpb-bundlep fn-bpb-splitp
+                            fn-bpb-block-listp fn-bpb-numbers-distinctp
+                            fn-bpb-block-numbers fn-bpb-payload-blockp
+                            fn-bpb-blockp fn-bpb-datap
+                            fn-bpb-hop-count-block fn-bpb-bundle-age-block
+                            fn-bpb-payload-block fn-bpn-configp)
+                           (fn-bpp-eidp fn-bpp-vchar-listp fn-bpp-vcharp
+                            fn-cbor-octet-listp fn-cbor-octetp)))))
+
+; K5 is `fn-bpn-send`'s guard obligation, so the verification deferred at the
+; definition happens here.
+(verify-guards fn-bpn-send
+  :hints (("Goal" :in-theory (disable fn-bpb-encode fn-bpn-send-bundle))))
+
+; The ADU of the bundle `fn-bpn-send` authors is the ADU it was given.  This
+; is the conclusion's half of K1 and it is pure record algebra --
+; `fn-bpb-payload` is `fn-bpb-block-data` of `fn-bpb-bundle-payload`, and
+; `fn-bpn-send-bundle` builds that field with `fn-bpb-payload-block` -- so it
+; is proved here, once, with the three definitions open.  K1 keeps them
+; CLOSED, because opening `fn-bpn-send-bundle` there would unfold the term
+; that `fn-bpb-decode-of-encode` and K5 are both stated about.
+(local
+ (defthm fn-bpn-payload-of-send-bundle
+   (equal (fn-bpb-payload (fn-bpn-send-bundle config peer adu sequence obs))
+          adu)
+   :hints (("Goal"
+            :in-theory (enable fn-bpn-send-bundle fn-bpb-payload
+                               fn-bpb-payload-block)))))
 
 ; K1.  What a peer receives from `fn-bpn-send` carries exactly the ADU that
 ; was sent.  The subject is the pair of functions the host calls: `bp send`
 ; calls `fn-bpn-send` (host/native/bp.lisp) and `bp receive` calls
 ; `fn-bpn-receive`.
+;
+; The `:cases` is the receiver's TRANSFER LIMIT, and it is the second
+; hypothesis of `fn-bpb-decode-of-encode`.  Nothing in the statement bounds
+; the authored bundle against the receiver's limit -- a node configured for a
+; 16-octet transfer refuses this very bundle, and
+; `tests/acl2/bp-node-tests.lisp` has that witness -- so the theorem is true
+; only because the acceptance hypothesis rules that branch out, and the split
+; is how the prover gets to use it: above the limit
+; `fn-bpb-decode-refuses-overlong-input` makes the decode `:limit`, the
+; outcome a refusal, and the hypothesis false.
 (defthm fn-bpn-receive-of-send-carries-the-adu
   (implies (and (fn-bpn-configp config) (fn-bpn-configp peer-config)
                 (fn-bpp-eidp peer) (fn-bpb-datap adu) (fn-bpp-timep sequence)
@@ -464,9 +547,15 @@
                   adu))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-bpn-receive fn-bpn-send fn-bpn-received-adu)
+           :cases ((fn-cbor-at-mostp
+                    (fn-bpb-encode
+                     (fn-bpn-send-bundle config peer adu sequence obs))
+                    (fn-bpn-config-transfer-limit peer-config)))
+           :in-theory (e/d (fn-bpn-receive fn-bpn-send fn-bpn-received-adu
+                            fn-bpn-configp)
                            (fn-bpb-decode fn-bpb-encode fn-bpb-payload
-                            fn-bpn-send-bundle fn-bpb-bundlep)))))
+                            fn-bpn-send-bundle fn-bpb-bundlep
+                            fn-bpp-eidp fn-bpp-vchar-listp fn-bpp-vcharp)))))
 
 ; K2.  A bundle the clock calls expired is never forwarded, and neither is one
 ; whose hop count has passed its limit.
@@ -501,30 +590,6 @@
       (fn-bpn-refusedp (fn-bpn-receive config octets obs))
       (fn-bpn-uncertainp (fn-bpn-receive config octets obs)))
   :rule-classes nil)
-
-; K5.  What `fn-bpn-send` puts on the wire is a bundle: it decodes, and it
-; decodes to the bundle that was built.
-(defthm fn-bpn-send-bundle-is-a-bundle
-  (implies (and (fn-bpn-configp config) (fn-bpp-eidp peer)
-                (fn-bpb-datap adu) (fn-bpp-timep sequence)
-                (fn-clock-observationp obs))
-           (fn-bpb-bundlep (fn-bpn-send-bundle config peer adu sequence obs)))
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-bpn-send-bundle fn-bpn-send-blocks
-                            fn-bpb-bundlep fn-bpb-splitp
-                            fn-bpb-block-listp fn-bpb-numbers-distinctp
-                            fn-bpb-block-numbers fn-bpb-payload-blockp
-                            fn-bpb-blockp fn-bpb-datap
-                            fn-bpb-hop-count-block fn-bpb-bundle-age-block
-                            fn-bpb-payload-block fn-bpn-configp)
-                           (fn-bpp-eidp fn-bpp-vchar-listp fn-bpp-vcharp
-                            fn-cbor-octet-listp fn-cbor-octetp)))))
-
-; K5 is `fn-bpn-send`'s guard obligation, so the verification deferred at the
-; definition happens here.
-(verify-guards fn-bpn-send
-  :hints (("Goal" :in-theory (disable fn-bpb-encode fn-bpn-send-bundle))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory.

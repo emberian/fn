@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 276 |
 | Certification roots in the Makefile | 275 |
 | Books inside the root closure | 275 |
-| `defthm` and `defthmd` events | 5564 |
+| `defthm` and `defthmd` events | 5571 |
 | `defun` events | 3930 |
 | Functions with verified guards | 1461 |
 | Functions declared `:verify-guards nil` and never verified | 190 |
@@ -24,7 +24,7 @@ stale. Counts describe artifacts, not coverage; see
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 46 |
 | Export-hygiene warnings | 72 |
-| Enabled-projection warnings | 26 |
+| Enabled-projection warnings | 20 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 87 |
 | Host-names warnings | 33 |
@@ -105,11 +105,11 @@ that `make certify` requests.
 | `books/bp-fragment-invariants.lisp` | root | 40 | 3 | 0/0/0/3 | 0 | 0 | 2 |
 | `books/bp-fragment.lisp` | root | 6 | 30 | 30/0/0/0 | 0 | 0 | 0 |
 | `books/bp-ingress.lisp` | root | 22 | 44 | 41/0/3/0 | 0 | 0 | 0 |
-| `books/bp-node.lisp` | root | 21 | 30 | 23/0/7/0 | 0 | 0 | 0 |
+| `books/bp-node.lisp` | root | 22 | 30 | 23/0/7/0 | 0 | 0 | 0 |
 | `books/bp-outbound.lisp` | root | 10 | 11 | 2/0/9/0 | 0 | 0 | 0 |
 | `books/bp-primary-cbor.lisp` | root | 86 | 16 | 12/0/3/1 | 0 | 0 | 1 |
 | `books/bp-primary-invariants.lisp` | root | 44 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-primary.lisp` | root | 9 | 75 | 75/0/0/0 | 0 | 0 | 0 |
+| `books/bp-primary.lisp` | root | 15 | 75 | 75/0/0/0 | 0 | 0 | 0 |
 | `books/bp-receipt-records.lisp` | root | 0 | 10 | 0/9/1/0 | 0 | 0 | 0 |
 | `books/bp-receipt.lisp` | root | 35 | 45 | 0/0/4/41 | 0 | 0 | 0 |
 | `books/bp-receiver-context-invariants.lisp` | root | 20 | 4 | 0/0/0/4 | 0 | 0 | 0 |

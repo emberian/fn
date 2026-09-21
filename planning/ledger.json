@@ -282,7 +282,7 @@
     "books": 276,
     "books_in_root_closure": 275,
     "roots": 275,
-    "theorems": 5564,
+    "theorems": 5571,
     "functions": 3930,
     "assert_events": 5459,
     "must_fails": 59,
@@ -295,7 +295,7 @@
     },
     "suspect_theorems": 46,
     "export_hygiene_warnings": 72,
-    "enabled_projection_warnings": 26,
+    "enabled_projection_warnings": 20,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 87,
     "host_names_warnings": 33,
@@ -950,7 +950,7 @@
       "book": "books/bp-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 22,
       "functions": 30,
       "guards": {
         "verified": 23,
@@ -1059,7 +1059,7 @@
       "book": "books/bp-primary.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
+      "theorems": 15,
       "functions": 75,
       "guards": {
         "verified": 75,
@@ -8051,13 +8051,13 @@
       {
         "theorem": "fn-bpp-decode-of-encode",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 225,
+        "line": 240,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bpp-accepted-block-has-valid-crc",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 278,
+        "line": 293,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -8492,62 +8492,6 @@
         "line": 302,
         "stated_in": [
           "books/bp-fragment-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-flags",
-        "book": "books/bp-primary.lisp",
-        "line": 394,
-        "stated_in": [
-          "books/bp-fragment-invariants.lisp",
-          "books/bp-node.lisp",
-          "books/bp-primary-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-crc-type",
-        "book": "books/bp-primary.lisp",
-        "line": 395,
-        "stated_in": [
-          "books/bp-primary-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-source",
-        "book": "books/bp-primary.lisp",
-        "line": 397,
-        "stated_in": [
-          "books/bp-primary-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-creation-time",
-        "book": "books/bp-primary.lisp",
-        "line": 399,
-        "stated_in": [
-          "books/bp-primary-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-sequence",
-        "book": "books/bp-primary.lisp",
-        "line": 400,
-        "stated_in": [
-          "books/bp-primary-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-result-block",
-        "book": "books/bp-primary.lisp",
-        "line": 599,
-        "stated_in": [
-          "books/bp-primary-invariants.lisp"
         ],
         "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
       },
