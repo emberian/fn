@@ -1259,9 +1259,10 @@
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "tests/evidence/2026-09-18-bp-guards.md",
-        "tests/evidence/2026-09-21-native-crypto-primitives.md"
+        "tests/evidence/2026-09-21-native-crypto-primitives.md",
+        "tests/evidence/2026-09-21-native-anchor-wire.md"
       ],
-      "implementation_note": "Logical certification excludes program-mode host helpers and retains ACL2/runtime/adapter assumptions. BP composition evidence records 11 scoped roots, unchanged source digests and 133 Python tests without an all-roots or power-loss claim. A separate seven-book inventory records the complete 41-function ADU guard graph and 97 remaining unverified BP functions. W14 adds a native libsodium primitive seam for the existing anchor Ed25519/SHA-512 profile with vector/negative and saved-image restart tests on the recorded hosts. Raw Lisp/FFI/library behavior remains trusted; the component is not yet an integrated native anchor or STARTTLS path and does not select D09 article-signature policy.",
+      "implementation_note": "Logical certification excludes program-mode host helpers and retains ACL2/runtime/adapter assumptions. BP composition evidence records 11 scoped roots, unchanged source digests and 133 Python tests without an all-roots or power-loss claim. A separate seven-book inventory records the complete 41-function ADU guard graph and 97 remaining unverified BP functions. W14 adds a native libsodium primitive seam for the existing anchor Ed25519/SHA-512 profile with vector/negative and saved-image restart tests on the recorded hosts. Raw Lisp/FFI/library behavior remains trusted; the component is not yet an integrated native anchor or STARTTLS path and does not select D09 article-signature policy. The bounded ACL2 response parser and exact signed-subject projection have component certification/captured-packet evidence; execution guard verification and the native request/acquisition/persistence path remain open.",
       "note": "The trust boundary and the certification procedure are documented and the tooling now enforces part of it (tools/certs.py will not cache a pair except against a passed manifest, keyed on the whole include closure). What is missing for a status change is a theorem-level statement of the boundary, not a document."
     },
     {
