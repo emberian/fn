@@ -33,6 +33,9 @@ Post-reboot recovery replaced the launcher regex with a finite recognizer for
 the small generated-launcher subset.  It reads at most 64 KiB, follows at most
 one outer wrapper, streams the launcher/core/runtime hashes, and never executes
 an unknown launcher to infer its identity.  This recognizer is deliberately not
-a shell parser: unfamiliar commands, shell control operators and dynamic paths
-remain unqualified.  Runner and reader hashes are retained as certification
-provenance but do not fragment a compatible artifact set.
+a shell parser: unfamiliar commands, shell control operators, expansions,
+dynamic paths, extra cores and opaque load/eval arguments remain unqualified.
+Literal launcher assignments are bound into the identity and override the
+recorded proof environment where applicable.  Runner and reader hashes are
+retained as certification provenance but do not fragment a compatible artifact
+set.

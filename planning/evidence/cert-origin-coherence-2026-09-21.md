@@ -72,6 +72,15 @@ unknown shapes are unqualified.  The content hashes themselves are streamed.
 This is a narrow recognizer for the two observed generated-launcher layers, not
 a general shell parser and not a proof-trust improvement.
 
+A subsequent review tightened that boundary again: literal assignments are
+included in the compatibility identity and their `ACL2_CUSTOMIZATION`,
+`ACL2_BOOK_HASH_ALISTP` or `ACL2_SYSTEM_BOOKS` values replace the runner's base
+value in the recorded effective proof environment.  Dollar/backtick expansion
+is refused everywhere except final quoted `"$@"` forwarding.  The saved-image
+command admits exactly one literal core, a finite list of inert SBCL sizing and
+startup flags, and at most the literal `(acl2::sbcl-restart)` evaluation.  Extra
+cores, `--load`, other `--eval` forms and opaque arguments are unqualified.
+
 ## Regression evidence
 
 Command, from source commit `16176d65` atop baseline
@@ -125,8 +134,17 @@ while the older assertion says it must not.  The narrowed acquisition suite
 above excludes that stale profile-policy assertion without hiding a changed
 toolchain test.
 
-A read-only, non-executing probe of the installed Homebrew ACL2 launcher also
-qualified its two literal launcher layers, 235,047,944-byte saved core and SBCL
-runtime under the new identity in 0.072 seconds.  No ACL2 process, certification,
-farm run or build was started.  Remote-origin qualification remains the next
-integration check after this packet lands.
+At recovery commit `6fc4af66`, a read-only, non-executing probe of the installed
+Homebrew ACL2 launcher qualified its two launcher layers, 235,047,944-byte saved
+core and SBCL runtime in 0.072 seconds.  The tighter follow-up correctly makes
+that local launcher unqualified because it injects `${SBCL_USER_ARGS}` ahead of
+the core startup options; the tool cannot bind arbitrary content supplied there.
+Qualification therefore requires a pinned generated launcher without that
+dynamic argument seam.  No ACL2 process, certification, farm run or build was
+started.  Remote launchers must be inspected and, if necessary, replaced by a
+pinned literal launcher before origin-compatible reuse is enabled.
+
+After that tightening, the same contained focused command ran 98 tests in
+14.371 seconds: all 98 passed.  A contained `describe` probe of the Homebrew
+launcher exited 2 and identified the exact `${SBCL_USER_ARGS}` line as the
+unqualified expansion, without executing it.
