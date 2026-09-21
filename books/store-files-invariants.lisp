@@ -396,18 +396,71 @@
   (equal (fn-sf-successes (fn-sf-crash-rollback s)) (fn-sf-successes s))
   :hints (("Goal" :in-theory (enable fn-sf-crash-rollback))))
 
-; The constructor for an admissible image, over all three arms: the two
-; namespace choices, and the recovery rollback D14-b opened.  It is a
-; function of the image rather than of a choice keyword because the third arm
-; has no choice to make -- the window admits exactly one shorter list.
+; -----------------------------------------------------------------------------
+; K2f: the frontier arm (specs/crash-model-v2.md s3.3).
+
+; The gate unfolded once, as forward chaining.  It stays withdrawn in
+; books/store-files.lisp because it carries a fn-sf-record-listp recursion
+; over the whole record list; this is the only place its conjuncts enter a
+; goal, and the two that do the work below are the positivity and the list
+; bound.  A -unfolds lemma is a definition restated and is not a proof event.
+(defthm fn-sf-frontier-rollback-visiblep-unfolds
+  (implies (fn-sf-frontier-rollback-visiblep s)
+           (and (fn-sf-recovery-visiblep s)
+                (posp (fn-sf-frontier s))
+                (fn-sf-record-listp (fn-sf-records s) 0 0
+                                    (1- (fn-sf-frontier s)))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-sf-frontier-rollback-visiblep))))
+
+; The frontier arm is inhabited by its constructor.
+(defthm fn-sf-crash-frontier-rollback-image-is-recovery-admissible
+  (implies (and (fn-sf-statep s) (fn-sf-frontier-rollback-visiblep s))
+           (fn-sf-recovery-crash-imagep
+            s (fn-sf-frontier (fn-sf-crash-frontier-rollback s))
+            (fn-sf-records (fn-sf-crash-frontier-rollback s))))
+  :hints (("Goal" :in-theory (enable fn-sf-crash-frontier-rollback
+                                     fn-sf-recovery-crash-imagep))))
+
+; The frontier-rollback constructor preserves the recognizer.  The record-list
+; gate is what carries the proof: fn-sf-statep demands every record's txid
+; below the frontier, and the gate is that demand at the rolled-back value.
+; The success history needs no emptiness here -- the record list does not
+; change, so every acknowledged pair still names one of its records.
+(defthm fn-sf-crash-frontier-rollback-preserves-state
+  (implies (fn-sf-statep s)
+           (fn-sf-statep (fn-sf-crash-frontier-rollback s)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sf-crash-frontier-rollback fn-sf-statep
+                            fn-sf-phase-shapep fn-record-uint32p)
+                           (fn-sf-record-listp fn-sf-success-listp
+                            fn-sf-frontier-rollback-visiblep)))))
+
+(defthm fn-sf-successes-unchanged-by-crash-frontier-rollback
+  (equal (fn-sf-successes (fn-sf-crash-frontier-rollback s))
+         (fn-sf-successes s))
+  :hints (("Goal" :in-theory (enable fn-sf-crash-frontier-rollback))))
+
+; The constructor for an admissible image, over all four arms: the two
+; namespace choices, the record rollback D14-b opened and the frontier
+; rollback K2f opens.  It is a function of the image rather than of a choice
+; keyword because neither rollback arm has a choice to make -- the window
+; admits exactly one shorter list and exactly one lower frontier.  The
+; frontier branch is tested first; its (not (equal frontier (fn-sf-frontier
+; s))) conjunct is what keeps it off the unchanged-frontier images, where the
+; gate may hold and the rollback is not what happened.
 (defun fn-sf-image-crash (s frontier records)
   (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-record-rollback-visiblep s)
-           (equal records (fn-sf-but-last (fn-sf-records s)))
-           (not (equal records (fn-sf-records s))))
-      (fn-sf-crash-rollback s)
-    (fn-sf-crash s (fn-sf-image-frontier-choice s frontier)
-                 (fn-sf-image-record-choice s records))))
+  (cond ((and (fn-sf-frontier-rollback-visiblep s)
+              (equal frontier (1- (fn-sf-frontier s)))
+              (not (equal frontier (fn-sf-frontier s))))
+         (fn-sf-crash-frontier-rollback s))
+        ((and (fn-sf-record-rollback-visiblep s)
+              (equal records (fn-sf-but-last (fn-sf-records s)))
+              (not (equal records (fn-sf-records s))))
+         (fn-sf-crash-rollback s))
+        (t (fn-sf-crash s (fn-sf-image-frontier-choice s frontier)
+                        (fn-sf-image-record-choice s records)))))
 
 ; K3's engine, over the platform predicate: every image the platform may leave
 ; is the image of one of the two constructors, with the same four facts about
@@ -424,6 +477,7 @@
                   (equal (fn-sf-successes crashed) (fn-sf-successes s)))))
   :hints (("Goal" :in-theory (enable fn-sf-crash fn-sf-recovery-crash-imagep
                                      fn-sf-crash-rollback fn-sf-image-crash
+                                     fn-sf-crash-frontier-rollback
                                      fn-sf-record-rollback-visiblep
                                      fn-sf-recovery-visiblep
                                      fn-sf-frontier-new-visiblep
@@ -457,12 +511,15 @@
            (fn-sf-statep (fn-sf-image-crash s frontier records)))
   :hints (("Goal"
            :use (fn-sf-crash-rollback-preserves-state
+                 fn-sf-crash-frontier-rollback-preserves-state
                  (:instance fn-sf-crash-preserves-state
                             (frontier-choice (fn-sf-image-frontier-choice s frontier))
                             (record-choice (fn-sf-image-record-choice s records))))
            :in-theory (e/d (fn-sf-image-crash)
                            (fn-sf-statep fn-sf-crash fn-sf-crash-rollback
+                            fn-sf-crash-frontier-rollback
                             fn-sf-crash-rollback-preserves-state
+                            fn-sf-crash-frontier-rollback-preserves-state
                             fn-sf-crash-preserves-state
                             fn-sf-image-frontier-choice fn-sf-image-record-choice)))))
 
@@ -558,6 +615,7 @@
                                fn-sf-recovery-crash-imagep
                                fn-sf-crash-choicep fn-sf-image-crash
                                fn-sf-crash-rollback
+                               fn-sf-crash-frontier-rollback
                                fn-sf-image-frontier-choice
                                fn-sf-image-record-choice
                                fn-sf-record-listp fn-sf-success-listp

@@ -614,6 +614,40 @@
        (null (fn-sf-successes s))
        (consp (fn-sf-records s))))
 
+; The frontier half of the recovery freedom (K2f, specs/crash-model-v2.md
+; s3.3).  The window is entered with a pending :root rename as well as with a
+; pending :transactions link: Store.advance_frontier issues os.replace
+; (run_store.py:1305) and the next process's _load_frontier reads the VIEW, so
+; the kernel it builds holds old+1 while the durable name still holds old.
+; Recovery drains :root at its FOURTH barrier, fsync_dir(self.root)
+; (run_store.py:1216), so at recover-replayed and the first three
+; recover-barrier cuts a crash rolls the frontier back to old -- a value the
+; kernel does not hold anywhere, fn-sf-frontier-candidate being nil in this
+; window.
+;
+; The record-list gate is what makes the rolled-back value a kernel STATE and
+; not merely a smaller number, and it is also exactly the reachable window.
+; fn-sf-statep requires every record's txid to be below the frontier, and
+; advance_frontier reserves txid = old for the record published AFTER the
+; rename is durable (fn-sf-candidatep: the candidate's txid is frontier-1).
+; So while the rename is pending no record holds txid old, which is
+; (fn-sf-record-listp (fn-sf-records s) 0 0 (1- (fn-sf-frontier s))); once
+; that record is published the same predicate is FALSE and the frontier can no
+; longer roll back.  The gate carries its weight three times: it is what keeps
+; fn-sf-recovery-admissible-image-facts true of the rolled-back image, what
+; makes fn-sf-crash-frontier-rollback preserve fn-sf-statep, and what makes
+; the image replayable at its own frontier
+; (fn-snt-recovery-admissible-crash-image-is-recoverable).
+;
+; No (null (fn-sf-successes s)) conjunct: rolling the frontier back drops no
+; record, so every acknowledged pair still names one.  A hypothesis that is
+; not needed is not added (docs/proof-style.md s9.2).
+(defun fn-sf-frontier-rollback-visiblep (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-sf-recovery-visiblep s)
+       (posp (fn-sf-frontier s))
+       (fn-sf-record-listp (fn-sf-records s) 0 0 (1- (fn-sf-frontier s)))))
+
 ; The record list with its last element dropped.  Written as its own
 ; recursion rather than as butlast/take so that the inductions below stay in
 ; the vocabulary the record-list predicate is written in.
@@ -688,7 +722,18 @@
   (and (fn-sf-statep s)
        (or (equal frontier (fn-sf-frontier s))
            (and (fn-sf-frontier-new-visiblep s)
-                (equal frontier (fn-sf-frontier-candidate s))))
+                (equal frontier (fn-sf-frontier-candidate s)))
+           ; K2f.  The (equal records (fn-sf-records s)) conjunct is the
+           ; EXCLUSIVITY of the two rollbacks, not decoration: a recovery
+           ; window holds at most one pending authority entry operation, so
+           ; the image that loses both the rename and the link is one no
+           ; platform can produce.  Outside the window the two phase
+           ; predicates fn-sf-frontier-new-visiblep and
+           ; fn-sf-record-present-visiblep are disjoint and say the same
+           ; thing; inside it the phase no longer does, so the arm says it.
+           (and (fn-sf-frontier-rollback-visiblep s)
+                (equal frontier (1- (fn-sf-frontier s)))
+                (equal records (fn-sf-records s))))
        (or (equal records (fn-sf-records s))
            (and (fn-sf-record-present-visiblep s)
                 (equal records (append (fn-sf-records s)
@@ -732,6 +777,22 @@
   (if (fn-sf-record-rollback-visiblep s)
       (fn-sf-make :replaying (fn-sf-frontier s) nil
                   (fn-sf-but-last (fn-sf-records s)) nil nil
+                  (fn-sf-successes s) 0)
+    s))
+
+; The third constructor, the one that inhabits the frontier arm.  Like
+; fn-sf-crash-rollback it is a separate function and fn-sf-crash-choicep gains
+; no choice: fn-sn-crash is the trace language's crash EVENT, and a trace that
+; could roll the frontier back would let a later trace re-issue a txid an
+; earlier process had already reserved and published under.  Physically the
+; two cannot overlap -- the record that consumes the reservation is published
+; only after the rename is durable -- but the record-list gate is what SAYS
+; so, and a trace event carries no gate.
+(defun fn-sf-crash-frontier-rollback (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (fn-sf-frontier-rollback-visiblep s)
+      (fn-sf-make :replaying (1- (fn-sf-frontier s)) nil
+                  (fn-sf-records s) nil nil
                   (fn-sf-successes s) 0)
     s))
 
@@ -871,6 +932,7 @@
 (verify-guards fn-sf-record-present-visiblep)
 (verify-guards fn-sf-recovery-visiblep)
 (verify-guards fn-sf-record-rollback-visiblep)
+(verify-guards fn-sf-frontier-rollback-visiblep)
 (verify-guards fn-sf-stable-records)
 (verify-guards fn-sf-crash-imagep
  :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
@@ -879,6 +941,8 @@
 (verify-guards fn-sf-crash
  :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
 (verify-guards fn-sf-crash-rollback
+ :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
+(verify-guards fn-sf-crash-frontier-rollback
  :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
 (verify-guards fn-sf-recover)
 (verify-guards fn-sf-recovery-barrier)
@@ -951,6 +1015,14 @@
                     fn-sf-record-dir-result fn-sf-core-completion
                     fn-sf-emit-success fn-sf-lose-success
                     fn-sf-crash-imagep fn-sf-recovery-crash-imagep
+                    ; fn-sf-frontier-rollback-visiblep is withdrawn although
+                    ; its two siblings (fn-sf-recovery-visiblep,
+                    ; fn-sf-record-rollback-visiblep) are not: it carries a
+                    ; fn-sf-record-listp recursion over the whole record
+                    ; list, and an enabled whole-list recognizer in a
+                    ; wholesale vocabulary is the fan this cluster pays for.
+                    fn-sf-frontier-rollback-visiblep
                     fn-sf-crash fn-sf-crash-rollback
+                    fn-sf-crash-frontier-rollback
                     fn-sf-stable-records fn-sf-recover
                     fn-sf-recovery-barrier))

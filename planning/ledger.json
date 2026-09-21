@@ -282,18 +282,18 @@
     "books": 276,
     "books_in_root_closure": 275,
     "roots": 275,
-    "theorems": 5559,
-    "functions": 3929,
+    "theorems": 5573,
+    "functions": 3931,
     "assert_events": 5400,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1461,
+      "verified": 1463,
       "declared-off": 190,
       "default-guarded": 1789,
       "default-unguarded": 489
     },
-    "suspect_theorems": 46,
+    "suspect_theorems": 47,
     "export_hygiene_warnings": 72,
     "enabled_projection_warnings": 26,
     "teeth_form_warnings": 0,
@@ -4028,7 +4028,7 @@
       "book": "books/store-files-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 58,
+      "theorems": 62,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -4049,6 +4049,7 @@
         "arithmetic/top"
       ],
       "suspects": [
+        "fn-sf-frontier-rollback-visiblep-unfolds",
         "fn-sf-stable-records-outside-the-window"
       ],
       "read_error": null
@@ -4083,14 +4084,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 30,
-      "functions": 55,
+      "functions": 57,
       "guards": {
-        "verified": 52,
+        "verified": 54,
         "declared-off": 0,
         "default-guarded": 3,
         "default-unguarded": 0
       },
-      "verify_guards_events": 52,
+      "verify_guards_events": 54,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -4107,7 +4108,7 @@
       "book": "books/store-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 44,
+      "theorems": 54,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -7830,6 +7831,14 @@
       "line": 327,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-sf-frontier-rollback-visiblep-unfolds",
+      "book": "books/store-files-invariants.lisp",
+      "line": 407,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep"
       ]
     },
     {

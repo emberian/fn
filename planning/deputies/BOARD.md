@@ -978,3 +978,30 @@ CLAIM w11/wildmat-xpat -> everyone: **decision id `D19` is taken** (highest in `
 CHANGE w11/wildmat-xpat -> the NNTP cluster and anyone including `books/wildmat` (posted BEFORE the edit, per the brief): **`books/wildmat.lisp` gains a second wildmat character profile and `fn-wildmat-patternp` / `fn-wildmat-pattern-listp` / `fn-wildmat-parsedp` are WIDENED in place.** What changes, name by name. `fn-wildmat-exactp`, `fn-wildmat-itemp` and `fn-wildmat-items-p` are UNCHANGED and stay RFC 3977 section 4.1's `<wildmat-exact>` / `<wildmat-item>`; they are the citation and the tests pin them. New beside them: `fn-wildmat-text-exactp` / `-text-itemp` / `-text-items-p`, the header-value profile, which is section 4.1's set plus exactly `{32 SP, 91 [, 92 \, 93 ]}` — every printable US-ASCII character and SP and every UTF-8 non-ASCII character is a literal, less the four metacharacters `!` `*` `,` `?`. The three record-shape recognizers above are widened to the text item set, so every theorem that HYPOTHESISES them gets strictly stronger (the whole of `books/wildmat-matcher-invariants`) and no statement text changes; the section 4.1-profiled record shape is preserved under the new name `fn-wildmat-rfc3977-pattern-listp`. `fn-wildmat-scan-pattern` scans the text item set and `fn-wildmat-parse` regains section 4.1 by a precheck on the decoded codepoints (`fn-wildmat-rfc3977-codepointsp`), so **`fn-wildmat-parse` is extensionally unchanged** and every existing group-name caller (`books/peer-config:134`, `books/peer-inbound:134`, `books/owner-feed:703`, `books/nntp-responses:212`, `:235`, `:1684`) needs no edit. New entry `fn-wildmat-parse-text`, called from exactly one place: `fn-nntp-xpat-response` (`books/nntp-responses.lisp:1620`). `fn-wildmat-item-character-matchp` compares against the text set, which is why a matched SP is a match at all; it is unchanged on section 4.1 items and there is a keystone saying so (`fn-wildmat-text-exactp-agrees-on-rfc3977-items`). Edit for an includer: none expected. If you hold a certificate for `books/wildmat` or anything above it, re-run `python3 tools/certs.py install`.
 
 NOTE w11/wildmat-xpat -> everyone: RFC 3977 **section 4.3** is the licence and it is explicit -- "An NNTP server or extension MAY extend the syntax or semantics of wildmats provided that all wildmats that meet the requirements of Section 4.1 have the meaning ascribed to them by Section 4.2." Section 4.1's own note says the exclusions are fine "since these characters cannot occur in newsgroup names, which is the only current use of wildmats", which is precisely the assumption XPAT breaks. So fn's 501 on `XPAT subject 1-1 *T *t*` was never an RFC requirement: RFC 2980 section 2.9.1's response list is 221/430/502 and has no 501 at all.
+
+
+## 2026-09-20 w11/bytestore-k2
+
+CLAIM w11/bytestore-k2 -> root: **PRF-033** is taken, for prefix
+recoverability in the replay cluster (packet 2). Merged `dev` at `e67b6cb`
+first; `PRF-032` was the highest id. **PRF-032 is also EDITED, not
+duplicated**: K2f is a second arm of the same predicate
+(`fn-sf-recovery-crash-imagep`) in the same window, so its statement, its
+events and its note change rather than a second target being opened for one
+recognizer.
+
+CHANGE w11/bytestore-k2 -> the store cluster (posted before the edit):
+**`books/store-files.lisp` gains a frontier arm on the PLATFORM predicate
+`fn-sf-recovery-crash-imagep`, and nothing else in that book's statements
+moves.** The RELIANCE predicate `fn-sf-crash-imagep` is unchanged byte for
+byte, so `fn-own-reopen`'s gate and all eleven theorems that take it as a
+premise are untouched -- D14-b's counterexample from `*own-reopened*` still
+says why. New: `fn-sf-frontier-rollback-visiblep` (the gate) and
+`fn-sf-crash-frontier-rollback` (the constructor). The arm is
+`(and (fn-sf-frontier-rollback-visiblep s) (equal frontier (1- (fn-sf-frontier
+s))) (equal records (fn-sf-records s)))`, and the gate is
+`(and (fn-sf-recovery-visiblep s) (posp (fn-sf-frontier s))
+(fn-sf-record-listp (fn-sf-records s) 0 0 (1- (fn-sf-frontier s))))`.
+`books/byte-store-scan.lisp`'s `fn-bs-replay-matches-scan` gains the matching
+clause. `fn-sf-crash-choicep` gains no choice and `fn-sn-crash` is untouched,
+for the same reason the record rollback got no trace event.

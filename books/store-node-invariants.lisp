@@ -522,6 +522,229 @@
     ))))
 
 ; -----------------------------------------------------------------------------
+; Prefix recoverability (lane w11/bytestore-k2, packet 2).
+;
+; fn-sn-replay-loop-append already gives ok(whole) implies ok(prefix).  What
+; it does not give -- and what blocked the first attempt to widen
+; fn-snt-admissible-crash-image-is-recoverable (handoff w10/kernel-freedom
+; s6) -- is that the PREFIX node is IDLE and its next txid is no higher than
+; the frontier.  Those two are exactly fn-replay-advance-okp, which is the
+; one thing fn-sf-history-recoverablep needs beyond a successful replay.
+;
+; The same three lemmas answer the frontier arm of the recovery freedom
+; (K2f): a history whose txids are all below a bound replays to a node whose
+; next txid is at most that bound, so it is recoverable at the bound.
+
+; The record vocabulary is OPEN in this book, so fn-record-txid has already
+; become (cadr record) by the time the defrecord's field types could fire.
+; This is the one field type the step lemma needs, forward chained.
+(local
+ (defthm fn-snt-record-txid-is-a-natural
+   (implies (fn-record-p record) (natp (fn-record-txid record)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-record-p fn-record-txid
+                                      fn-record-uint32p)))))
+
+(local
+ (defthm fn-snt-advance-off-gate-is-identity
+   (implies (not (fn-replay-advance-okp node recorded-txid))
+            (equal (fn-replay-advance-txid node recorded-txid) node))
+   :hints (("Goal" :in-theory (enable fn-replay-advance-txid
+                                      fn-replay-advance-okp)))))
+
+; One replayed record, from an idle node.  The refusal cases are excluded by
+; the hypothesis that the result IS a node: fn-replay-apply-record returns
+; NIL for both of them.  The <= conclusion is the part that is not already in
+; fn-snt-prepared-durable-is-idle-at-successor: the loop could only have
+; taken this record if the node's next txid had already reached it.
+(defthm fn-snt-apply-record-from-idle-is-idle-at-successor
+  (implies (and (fn-node-statep node)
+                (null (fn-node-stage node))
+                (null (fn-state-pending (fn-node-acceptance node)))
+                (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                (fn-record-p record)
+                (fn-node-statep (fn-replay-apply-record node record)))
+           (let ((next (fn-replay-apply-record node record)))
+             (and (null (fn-node-stage next))
+                  (null (fn-state-pending (fn-node-acceptance next)))
+                  (equal (fn-state-fenced (fn-node-acceptance next)) nil)
+                  (equal (fn-state-next-txid (fn-node-acceptance next))
+                         (1+ (fn-record-txid record)))
+                  (<= (fn-state-next-txid (fn-node-acceptance node))
+                      (fn-record-txid record)))))
+  :hints (("Goal"
+           :use ((:instance fn-snt-prepared-durable-is-idle-at-successor)
+                 (:instance fn-snt-record-txid-is-a-natural)
+                 (:instance fn-replay-advance-reconstructs-recorded-txid
+                            (recorded-txid (fn-record-txid record))))
+           :in-theory (e/d (fn-replay-apply-record fn-replay-advance-okp
+                            fn-sn-prepare-node)
+                           (fn-replay-advance-txid fn-node-prepare
+                            fn-node-complete fn-node-statep
+                            fn-node-pending-matchesp
+                            fn-snt-prepared-durable-is-idle-at-successor
+                            fn-replay-advance-reconstructs-recorded-txid)))))
+
+; The loop carries idleness and only moves the next txid forward.
+(defthm fn-snt-replay-loop-from-idle-is-idle-and-monotone
+  (implies (and (fn-node-statep node)
+                (null (fn-node-stage node))
+                (null (fn-state-pending (fn-node-acceptance node)))
+                (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                (equal (fn-replay-result-kind
+                        (fn-replay-loop node records sequence)) :ok))
+           (let ((final (fn-replay-result-node
+                         (fn-replay-loop node records sequence))))
+             (and (fn-node-statep final)
+                  (null (fn-node-stage final))
+                  (null (fn-state-pending (fn-node-acceptance final)))
+                  (equal (fn-state-fenced (fn-node-acceptance final)) nil)
+                  (<= (fn-state-next-txid (fn-node-acceptance node))
+                      (fn-state-next-txid (fn-node-acceptance final))))))
+  :hints (("Goal" :induct (fn-replay-loop node records sequence)
+           :in-theory (e/d (fn-replay-loop)
+                           (fn-replay-apply-record fn-node-statep)))))
+
+; The same induction with the record list's own frontier bound: every txid in
+; an ordered record list is below the bound, so the replayed node's next txid
+; is at most the bound.  This is what makes the K2f image replayable at the
+; rolled-back frontier.
+(defthm fn-snt-replay-loop-from-idle-is-under-record-bound
+  (implies (and (fn-node-statep node)
+                (null (fn-node-stage node))
+                (null (fn-state-pending (fn-node-acceptance node)))
+                (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                (<= (fn-state-next-txid (fn-node-acceptance node)) bound)
+                (fn-sf-record-listp records sequence lower bound)
+                (equal (fn-replay-result-kind
+                        (fn-replay-loop node records sequence)) :ok))
+           (<= (fn-state-next-txid
+                (fn-node-acceptance
+                 (fn-replay-result-node (fn-replay-loop node records sequence))))
+               bound))
+  :hints (("Goal" :induct (fn-replay-loop node records sequence)
+           :in-theory (e/d (fn-replay-loop)
+                           (fn-replay-apply-record fn-node-statep)))))
+
+(local
+ (defthm fn-snt-initial-node-is-idle
+   (and (null (fn-node-stage (fn-node-initial-state groups capacity)))
+        (null (fn-state-pending
+               (fn-node-acceptance (fn-node-initial-state groups capacity))))
+        (equal (fn-state-fenced
+                (fn-node-acceptance (fn-node-initial-state groups capacity)))
+               nil)
+        (equal (fn-state-next-txid
+                (fn-node-acceptance (fn-node-initial-state groups capacity)))
+               0))
+   :hints (("Goal" :in-theory (enable fn-node-initial-state fn-state-next-txid
+                                      fn-snx-core-definitions)))))
+
+; A successfully replayed history leaves an idle node.  The three conjuncts
+; are the three fn-replay-advance-okp needs that a bare fn-replay-okp does
+; not supply.
+(defthm fn-snt-replayed-history-node-is-idle
+  (implies (fn-replay-okp (fn-replay groups capacity records))
+           (let ((final (fn-replay-result-node (fn-replay groups capacity records))))
+             (and (null (fn-node-stage final))
+                  (null (fn-state-pending (fn-node-acceptance final)))
+                  (equal (fn-state-fenced (fn-node-acceptance final)) nil))))
+  :hints (("Goal"
+           :use ((:instance fn-snt-replay-loop-from-idle-is-idle-and-monotone
+                            (node (fn-node-initial-state groups capacity))
+                            (sequence 0)))
+           :in-theory (e/d (fn-replay fn-replay-okp)
+                           (fn-replay-loop fn-node-statep
+                            fn-snt-replay-loop-from-idle-is-idle-and-monotone)))))
+
+; A history whose txids are all below a bound is recoverable AT that bound.
+; With fn-sf-record-listp taken from fn-sf-statep at the rolled-back frontier
+; this is the frontier arm of fn-sf-recovery-crash-imagep, discharged.
+(defthm fn-snt-history-recoverable-under-record-bound
+  (implies (and (fn-replay-okp (fn-replay groups capacity records))
+                (natp bound)
+                (fn-sf-record-listp records 0 0 bound))
+           (fn-sf-history-recoverablep groups capacity records bound))
+  :hints (("Goal"
+           :use ((:instance fn-snt-replay-loop-from-idle-is-under-record-bound
+                            (node (fn-node-initial-state groups capacity))
+                            (sequence 0) (lower 0))
+                 (:instance fn-snt-replay-loop-from-idle-is-idle-and-monotone
+                            (node (fn-node-initial-state groups capacity))
+                            (sequence 0))
+                 (:instance fn-replay-advance-reconstructs-recorded-txid
+                            (node (fn-replay-result-node
+                                   (fn-replay groups capacity records)))
+                            (recorded-txid bound))
+                 (:instance fn-replay-advance-preserves-node-statep
+                            (node (fn-replay-result-node
+                                   (fn-replay groups capacity records)))
+                            (recorded-txid bound)))
+           :in-theory (e/d (fn-replay fn-replay-okp fn-sf-history-recoverablep
+                            fn-sf-replay-node fn-replay-advance-okp)
+                           (fn-replay-loop fn-node-statep fn-sf-record-listp
+                            fn-replay-advance-txid
+                            fn-snt-replay-loop-from-idle-is-under-record-bound
+                            fn-snt-replay-loop-from-idle-is-idle-and-monotone
+                            fn-replay-advance-reconstructs-recorded-txid
+                            fn-replay-advance-preserves-node-statep)))))
+
+; PREFIX RECOVERABILITY.  :rule-classes nil because the suffix is free in the
+; hypothesis; the two corollaries below are the rewrite rules.
+(defthm fn-snt-history-recoverable-prefix
+  (implies (and (true-listp prefix)
+                (fn-sf-history-recoverablep groups capacity
+                                            (append prefix suffix) frontier))
+           (fn-sf-history-recoverablep groups capacity prefix frontier))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-snt-replay-loop-from-idle-is-idle-and-monotone
+                            (node (fn-node-initial-state groups capacity))
+                            (records prefix) (sequence 0))
+                 (:instance fn-snt-replay-loop-from-idle-is-idle-and-monotone
+                            (node (fn-replay-result-node
+                                   (fn-replay groups capacity prefix)))
+                            (records suffix)
+                            (sequence (fn-replay-result-sequence
+                                       (fn-replay groups capacity prefix))))
+                 (:instance fn-snt-successful-replay-sequence
+                            (node (fn-node-initial-state groups capacity))
+                            (records prefix) (sequence 0))
+                 (:instance fn-replay-advance-reconstructs-recorded-txid
+                            (node (fn-replay-result-node
+                                   (fn-replay groups capacity prefix)))
+                            (recorded-txid frontier))
+                 (:instance fn-replay-advance-preserves-node-statep
+                            (node (fn-replay-result-node
+                                   (fn-replay groups capacity prefix)))
+                            (recorded-txid frontier)))
+           :in-theory (e/d (fn-replay fn-replay-okp fn-sf-history-recoverablep
+                            fn-sf-replay-node fn-replay-advance-okp)
+                           (fn-replay-loop fn-node-statep
+                            fn-replay-advance-txid
+                            fn-snt-replay-loop-from-idle-is-idle-and-monotone
+                            fn-snt-successful-replay-sequence
+                            fn-replay-advance-reconstructs-recorded-txid
+                            fn-replay-advance-preserves-node-statep)))))
+
+; The corollary the recovery freedom uses: dropping the last record of a
+; recoverable history leaves a recoverable history at the same frontier.
+(defthm fn-snt-history-recoverable-of-but-last
+  (implies (and (true-listp records)
+                (fn-sf-history-recoverablep groups capacity records frontier))
+           (fn-sf-history-recoverablep groups capacity
+                                       (fn-sf-but-last records) frontier))
+  :hints (("Goal"
+           :use ((:instance fn-snt-history-recoverable-prefix
+                            (prefix (fn-sf-but-last records))
+                            (suffix (last records)))
+                 (:instance fn-sf-but-last-append-last (xs records))
+                 (:instance fn-sf-but-last-is-a-true-list (xs records)))
+           :in-theory (disable fn-sf-history-recoverablep fn-sf-but-last
+                               fn-sf-but-last-append-last
+                               fn-sf-but-last-is-a-true-list))))
+
+; -----------------------------------------------------------------------------
 ; Export theory.  Withdrawn under a name: the replay-composition and
 ; frontier-advance lemmas (proof vocabulary for the trace books) and the
 ; committed-record recognizer.  Enabled on include: the preservation
@@ -538,5 +761,10 @@
     fn-snt-replayed-node-idle-and-frontier fn-snt-advance-replayed-node
     fn-snt-successful-replay-sequence fn-snt-successful-replay-history-length
     fn-snt-prepared-abort-is-frontier-advance
-    fn-snt-prepared-durable-is-idle-at-successor))
+    fn-snt-prepared-durable-is-idle-at-successor
+    ; packet 2's loop lemmas are proof vocabulary; the three history-level
+    ; facts below them stay enabled, since the trace books use them.
+    fn-snt-apply-record-from-idle-is-idle-at-successor
+    fn-snt-replay-loop-from-idle-is-idle-and-monotone
+    fn-snt-replay-loop-from-idle-is-under-record-bound))
 (in-theory (disable fn-store-node-invariants-vocabulary fn-sn-committed-recordp))
