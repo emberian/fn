@@ -1,0 +1,154 @@
+{
+  "acl2_compatibility": null,
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/hybrid-signature": 0,
+    "tests/acl2/hybrid-signature-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_toolchain": {
+    "launcher": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+    "launcher_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+    "launcher_size": 142,
+    "reason": "shell expansion is outside the recognized launcher subset at /opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2:6",
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "unqualified"
+  },
+  "acl2_toolchain_identity": null,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w25-hybrid-signatures/build/acl2/certify-20260921T170749Z-64490",
+  "book_failures": {},
+  "book_results": {
+    "books/hybrid-signature": "passed",
+    "tests/acl2/hybrid-signature-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/hybrid-signature": 0.695,
+    "tests/acl2/hybrid-signature-tests": 0.68
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [
+      "books/hybrid-signature: no qualified ACL2 launcher/core/runtime fingerprint",
+      "tests/acl2/hybrid-signature-tests: no qualified ACL2 launcher/core/runtime fingerprint"
+    ],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/hybrid-signature",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/hybrid-signature: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/hybrid-signature-tests",
+        "published": false,
+        "verdict": "passed",
+        "why": "tests/acl2/hybrid-signature-tests: no qualified ACL2 launcher/core/runtime fingerprint"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/hybrid-signature": "6056aafee2992eda34259ce47d08a3f4abebaea0884fe76cc1912c891ea8be1e",
+    "tests/acl2/hybrid-signature-tests": "9d2112dbebde6555ce3ac523209392e9e69a9aa21dfa5919bfb68f16eb6a67ca"
+  },
+  "certify_wall_seconds": 1.382,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/hybrid-signature": "2b2646a24cf88f4aa990b221b847cbba3a26db611c794ff5b6cf0b1c27860554",
+    "tests/acl2/hybrid-signature-tests": "2af93dbfa025ba7d90bcc59fb156d8607242700bddba11dc41c12e3807760407"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS eb91ca07fc1c2dd4a363316ff900d3e1 da7bff86d266",
+    "FN_CERTIFY_SUCCESS eb91ca07fc1c2dd4a363316ff900d3e1 1b178225e373"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T17:07:50+00:00",
+  "git_branch": "w25/hybrid-signatures",
+  "git_dirty": true,
+  "git_revision": "e61bc2c47cb2cf63498588057eb01932e9b13be0",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS eb91ca07fc1c2dd4a363316ff900d3e1 da7bff86d266",
+    "FN_CERTIFY_SUCCESS eb91ca07fc1c2dd4a363316ff900d3e1 1b178225e373"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "662e8ef911ffe2cef222a48b8a279a01f86a4557dcf1fc00bc8002c8d8dfacb4",
+  "requested_before_filter": [
+    "books/hybrid-signature",
+    "tests/acl2/hybrid-signature-tests"
+  ],
+  "requested_books": [
+    "books/hybrid-signature",
+    "tests/acl2/hybrid-signature-tests"
+  ],
+  "run_id": "certify-20260921T170749Z-64490",
+  "runner_sha256": "cb79d3bea9e5a531e33e44c882f8f615d4c0258db2c4f7361746ff1e2416c7d6",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/hybrid-signature": 0.0,
+    "tests/acl2/hybrid-signature-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/hybrid-signature.lisp": "ce5f2d3ee8fdc23e5f4c7be8f465abbd4f84c817c9081e2e7263d206b509ec99",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "tests/acl2/hybrid-signature-tests.lisp": "20ec1de300ff7a7284f2485c69e5745d036ecb02f1727c4948f995e7850d45ea"
+  },
+  "source_digests_sha256_after": {
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/hybrid-signature.lisp": "ce5f2d3ee8fdc23e5f4c7be8f465abbd4f84c817c9081e2e7263d206b509ec99",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "tests/acl2/hybrid-signature-tests.lisp": "20ec1de300ff7a7284f2485c69e5745d036ecb02f1727c4948f995e7850d45ea"
+  },
+  "start_order": [
+    "books/hybrid-signature",
+    "tests/acl2/hybrid-signature-tests"
+  ],
+  "started_utc": "2026-09-21T17:07:49+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/w25-hybrid-signatures"
+}
