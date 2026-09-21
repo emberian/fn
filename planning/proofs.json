@@ -1114,6 +1114,37 @@
       "assumptions": [],
       "status": "in-progress",
       "note": "Decision D10-a, lane w11/clock-seam. Keystones fn-own-observe-refusal-names-a-contradiction (books/owner-invariants.lisp) and fn-post-without-a-clock-refuses-with-the-clock-line (books/nntp-post.lisp), with fn-own-observe-outcome-is-one-of-three and fn-own-observe-outcome-decides-the-clock-by-definition named for what they are and cited by :use. Teeth are evaluated in tests/acl2/owner-tests.lisp (the served-path second post on one connection, the same-reading collision, the clock 441 with an empty queue, DATE 503, and one-event recovery) and tests/acl2/nntp-post-tests.lisp (one must-fail per hypothesis). OPEN under this target: two submissions inside one millisecond still share a generated Message-ID, because fn-clock-later-observationp is non-strict; separating them needs the owner to remember the reading it last minted under and is not done here."
+    },
+    {
+      "id": "PRF-034",
+      "title": "A reopened journal answers for a work what the pre-crash machine would have, and says which works it recovered",
+      "statement": "fn-bp-work-status-of-restart: under fn-bp-statep, the :restart transition a reopen runs changes the boundary answer for one work id by fn-bp-work-status-after-restart and by nothing else -- an attempt that was in flight is marked :restart-observed, while :absent, :outstanding, :receipted, a retryable status and :delivered are fixed points. fn-bp-replay-work-status-is-the-pre-crash-status-restarted lifts that to fn-bp-replay-journal, the function host/workflow-host.lisp:9 calls on open: when the replay succeeds, fn-bp-work-status of the installed image is fn-bp-work-status-after-restart of fn-bp-work-status of the trace of the initial state over fn-bp-durable-events, the journal's denotation without that trailing restart. Provenance is separate and also ACL2's: fn-bp-work-origin-at-open-is-recovered-or-absent says that against the id list fn-bp-work-ids records at open, every work the image holds reads :recovered and every other id reads :absent; fn-bp-durable-enqueue-after-open-reads-enqueued says this session's durable enqueue of an id that list does not name reads :enqueued. So a work recovered from a cut and a work enqueued after the reopen, which share the status :outstanding, are distinct at the boundary.",
+      "milestone": "M3",
+      "requirements": [
+        "STO-005",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "note": "Lane w11/workflow-replay, book books/bp-workflow-replay-status.lisp, teeth in tests/acl2/bp-workflow-records-tests.lisp. The subject of the first two keystones is what host/workflow-host.lisp:65 (fn-workflow-work-status) calls; of the last two, what host/workflow-host.lisp:71 (fn-workflow-work-origin) calls on the list host/workflow-host.lisp:9 records. Certified on hbox, run-20260921T005523Z-05dc, build/acl2/certify-20260921T005528Z-1361353. The :enqueue kind hypothesis of fn-bp-durable-enqueue-after-open-reads-enqueued has a constructed rather than a reached tooth, and the test book says so: fn-bp-prepare-attempt only prepares an attempt for a work the image holds, so the composed machine reaches no :attempt pending over an image that holds none.",
+      "evidence": [
+        "books/bp-workflow-replay-status.lisp",
+        "books/bp-workflow-records.lisp",
+        "tests/acl2/bp-workflow-records-tests.lisp",
+        "tests/evidence/2026-09-21-four-node-lab.md",
+        "tests/evidence/2026-09-21-four-node-lab.json",
+        "planning/lanes/HANDOFF-w11-workflow-replay.md"
+      ],
+      "events": [
+        "fn-bp-work-status-of-restart",
+        "fn-bp-replay-work-status-is-the-pre-crash-status-restarted",
+        "fn-bp-work-origin-at-open-is-recovered-or-absent",
+        "fn-bp-durable-enqueue-after-open-reads-enqueued",
+        "fn-bp-journal-events-is-durable-events-then-restart",
+        "fn-bp-work-status",
+        "fn-bp-work-origin"
+      ]
     }
   ]
 }

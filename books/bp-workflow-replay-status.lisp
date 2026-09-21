@@ -66,7 +66,7 @@
  fn-bp-replay-journal fn-bp-record-live-event fn-bp-record-fence-events
  fn-bp-record-events fn-bp-journal-events fn-bp-journal-denotation
  fn-bp-work-status fn-bp-work-status-after-restart fn-bp-work-ids
- fn-bp-work-origin)))
+ fn-bp-work-id-memberp fn-bp-work-origin)))
 (set-prover-step-limit 3000000)
 
 ; -----------------------------------------------------------------------------
@@ -336,9 +336,10 @@
 (local
 (defthm fn-bp-rs-member-of-work-ids
   (implies (consp (fn-bp-find-work id works))
-           (member-equal id (fn-bp-work-ids works)))
+           (fn-bp-work-id-memberp id (fn-bp-work-ids works)))
   :hints (("Goal" :induct (fn-bp-find-work id works)
-           :in-theory (enable fn-bp-find-work fn-bp-work-ids)))))
+           :in-theory (enable fn-bp-find-work fn-bp-work-ids
+                              fn-bp-work-id-memberp)))))
 
 ; KEYSTONE.  At open, the list the install records is exactly the image's
 ; works, so every work the reopen recovered reads :recovered and every other
@@ -358,7 +359,7 @@
   (implies (and (fn-bp-pending-matchesp s txid generation)
                 (not (fn-bp-state-fenced s))
                 (equal (fn-bp-pending-kind (fn-bp-state-pending s)) :enqueue)
-                (not (member-equal
+                (not (fn-bp-work-id-memberp
                       (fn-bp-work-id (fn-bp-pending-work (fn-bp-state-pending s)))
                       recovered)))
            (equal (fn-bp-work-origin
@@ -377,4 +378,5 @@
 ; read-model definitions and fn-bp-durable-events stay closed, and the four
 ; keystones are the book's whole export.
 (in-theory (disable fn-bp-work-status-after-restart fn-bp-work-ids
-                    fn-bp-work-origin fn-bp-durable-events))
+                    fn-bp-work-id-memberp fn-bp-work-origin
+                    fn-bp-durable-events))

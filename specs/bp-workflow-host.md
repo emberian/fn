@@ -65,6 +65,37 @@ committed. Reading the attempt status alone answered `:absent` for a work that
 was enqueued and not yet attempted, which is what made a reopened journal look
 empty to `tests/bp-dtn7/run_four_node_lab.py`.
 
+What a reopen does to that answer is `fn-bp-work-status-after-restart` and
+nothing else. `books/bp-workflow-replay-status.lisp` proves it twice:
+`fn-bp-work-status-of-restart` says the `:restart` transition marks an attempt
+that was in flight as `:restart-observed` and leaves `:absent`, `:outstanding`,
+`:receipted`, a retryable status and `:delivered` alone, under the single
+hypothesis `fn-bp-statep`; and
+`fn-bp-replay-work-status-is-the-pre-crash-status-restarted` lifts that to the
+function the host calls on open, so a work id in a replayed history reads what
+the machine that never died would have answered for it, marked by the restart.
+`fn-bp-durable-events` names that machine: the journal's denotation without the
+trailing restart. So `:absent` after a successful replay means the pre-crash
+machine held no such work, and nothing weaker.
+
+Provenance is a second question with a second answer, because the status word
+cannot carry it: a work recovered from a cut and a work enqueued after the
+reopen both read `:outstanding`, and they are materially different situations.
+`fn-workflow-install-replay` records `fn-bp-work-ids` of the image it installed
+-- ACL2 computes the list, the host carries it back unread -- and
+`fn-workflow-work-origin` calls `fn-bp-work-origin` on it: `:recovered` for a
+work the reopen found in the journal, `:enqueued` for one this session put
+there, `:absent` for an id the image does not hold.
+`fn-bp-work-origin-at-open-is-recovered-or-absent` says that at open the two
+answers are exactly "the image holds it" and "it does not", so `:recovered` is
+never said of a work that is not there; and
+`fn-bp-durable-enqueue-after-open-reads-enqueued` says this session's durable
+enqueue of an id the image did not hold reads `:enqueued`. The lab's
+`relay_a_onward_obligation_recoverable_after_kill` reads both: in the session
+that resolved the mid-forward cut the obligation is that session's
+(`enqueued`), and in the next process it comes back out of the journal
+(`recovered`), which is the difference the assertion was removed for lacking.
+
 An attempt record's `bp-lifetime` must equal the configuration's:
 `fn-bp-record-contextp` refuses the record otherwise, in the live preflight and
 in the history preflight alike, so a submission cannot shorten its own expiry

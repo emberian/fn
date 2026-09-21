@@ -15,9 +15,9 @@ stale. Counts describe artifacts, not coverage; see
 | Books inside the root closure | 276 |
 | `defthm` and `defthmd` events | 5594 |
 | `defun` events | 3936 |
-| Functions with verified guards | 1461 |
+| Functions with verified guards | 1466 |
 | Functions declared `:verify-guards nil` and never verified | 191 |
-| Functions left at the default with an explicit guard | 1795 |
+| Functions left at the default with an explicit guard | 1790 |
 | Functions left at the default with no guard | 489 |
 | `assert-event` checks | 5486 |
 | `must-fail` checks | 59 |
@@ -128,7 +128,7 @@ that `make certify` requests.
 | `books/bp-workflow-binding-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-workflow-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/bp-workflow-records-invariants.lisp` | root | 72 | 8 | 0/8/0/0 | 0 | 0 | 0 |
-| `books/bp-workflow-records.lisp` | root | 0 | 16 | 10/0/6/0 | 0 | 0 | 0 |
+| `books/bp-workflow-records.lisp` | root | 0 | 16 | 15/0/1/0 | 0 | 0 | 0 |
 | `books/bp-workflow-replay-status.lisp` | root | 30 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/bp-workflow-transport-invariants.lisp` | root | 32 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bp-workflow.lisp` | root | 0 | 111 | 0/0/111/0 | 0 | 0 | 0 |
