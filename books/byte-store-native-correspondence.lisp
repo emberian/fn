@@ -30,6 +30,17 @@
                   :frontier-directory :record-file :record-link
                   :record-directory :recovery-barrier)))
 
+(defun fn-bs-native-io-resultp (operation result)
+  (declare (xargs :guard t))
+  (case operation
+    (:start-frontier t)
+    (:frontier-file (member-equal result '(:ok :known-fail)))
+    ((:frontier-replace :frontier-directory :record-link :record-directory)
+     (member-equal result '(:ok :error)))
+    (:record-file (member-equal result '(:ok :known-fail)))
+    (:recovery-barrier (member-equal result '(:ok :uncertain)))
+    (otherwise nil)))
+
 ; Exact host-called subject bridge.  The node is unchanged because fn-sn-io
 ; is the composed file-observation entry; its file projection is precisely the
 ; byte program's kernel observation.
@@ -53,7 +64,9 @@
 ; for the publication/recovery path.  This is executable and used by the test
 ; book for a reachable, non-degenerate directory-commit witness.
 (defthm fn-bs-native-io-event-is-an-event
-  (implies (fn-bs-native-io-operationp operation)
+  (implies (and (fn-bs-native-io-operationp operation)
+                (fn-bs-native-io-resultp operation result))
            (fn-sf-eventp (fn-bs-native-io-event operation result)))
   :hints (("Goal" :in-theory (enable fn-bs-native-io-operationp
+                                     fn-bs-native-io-resultp
                                      fn-bs-native-io-event fn-sf-eventp))))

@@ -19,3 +19,9 @@
  (assert-event
   (fn-sf-eventp
    (fn-bs-native-io-event :not-a-native-operation :ok))))
+
+; The result hypothesis has teeth too: a successful operation tag with an
+; outcome that host/native/io.lisp never reports is not a typed event.
+(must-fail
+ (assert-event
+  (fn-sf-eventp (fn-bs-native-io-event :record-link :known-fail))))
