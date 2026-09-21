@@ -1,9 +1,20 @@
 # Identity: the crypto seam, principals and key succession
 
-Status: local engineering profile from the substrate lane (C1-11). The books
-certify; the digest and signature suites are NOT selected (D09) and no public
-ABI is frozen (D08). Every cryptographic fact below is an assumption named
-A-CRYPTO in [failures](failures.md), never a theorem.
+Status: local engineering substrate with a selected native signature suite.
+D09 now requires Ed25519 **and** ML-DSA-65 from the first release (user decision,
+2026-09-21). The native profile, binding, key custody and runtime integration
+still need implementation/qualification; no public ABI is frozen (D08).
+Cryptographic unforgeability remains an A-CRYPTO assumption in
+[failures](failures.md), not an ACL2 theorem.
+
+The selected profile must bind its version, required algorithms, enrolled key
+set and exact authored-source subject in a domain-separated signed preimage.
+Both signatures must verify; unsupported, absent or invalid components cannot
+authorize via a classical-only fallback. Legacy unsigned NNTP submissions
+retain their explicit gateway provenance. The standard primitive is
+[ML-DSA in FIPS 204](https://csrc.nist.gov/pubs/fips/204/final);
+[OpenSSL 3.5's ML-DSA interface](https://docs.openssl.org/3.5/man7/EVP_SIGNATURE-ML-DSA/)
+is a candidate native implementation boundary, not a proved primitive.
 
 Books: `books/crypto-seam.lisp`, `books/principal.lisp`,
 `books/principal-invariants.lisp`; tests `tests/acl2/crypto-seam-tests.lisp`,
