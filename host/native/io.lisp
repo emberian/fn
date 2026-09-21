@@ -606,7 +606,7 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
   (or *fnn-constants*
       (let ((values (fnn-core 'fn-store-frame-constants))
             (names '(:header :trailer :overhead :max-store :max-workflow :max-receipt
-                     :max-inbound :max-text :max-blob)))
+                     :max-inbound :max-text :max-blob :max-identity)))
         (unless (and (listp values) (= (length values) (length names))
                      (every #'integerp values))
           (fnn-refuse "ACL2 returned an unexpected constant vector"))
