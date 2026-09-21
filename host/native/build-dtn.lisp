@@ -42,6 +42,7 @@
 ; The BPv7 bundle codec and the node: what `bp send' authors and what
 ; `bp receive' decodes.
 (include-book "books/bp-node")
+(include-book "books/bp-node-records")
 
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
