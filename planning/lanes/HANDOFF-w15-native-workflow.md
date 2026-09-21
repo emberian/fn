@@ -90,12 +90,12 @@ python3 tools/farm.py submit persvati --jobs 2 \
   books/app-journal tests/acl2/journal-publish-tests
 ```
 
-Farm runs `run-20260921T084920Z-5fa0` and
-`run-20260921T084920Z-abea` finished with exit code 0.  Their archived manifests
-are `planning/evidence/manifests/certify-20260921T084924Z-1881095.json` (hbox)
-and `planning/evidence/manifests/certify-20260921T084923Z-1749638.json`
+Farm runs `run-20260921T085650Z-4cb1` and
+`run-20260921T085650Z-053d` finished with exit code 0.  Their archived manifests
+are `planning/evidence/manifests/certify-20260921T085653Z-1894310.json` (hbox)
+and `planning/evidence/manifests/certify-20260921T085654Z-1818350.json`
 (persvati).  Both pin `books/app-journal.lisp` digest
-`08459e316b8fd548f6317d99ecd9b8166e9ecdf4f6bd233a397be4b0e8f921f0`
+`fe29679d0884a266d106110a59fef21f8259daf831dca0344ef99a11f0fe39e5`
 and test digest
 `64d14dfebca71b129fa7a942205c539c7bdb43ce114264b2a0bf7e5794bcad9f`.
 
