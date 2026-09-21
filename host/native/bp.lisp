@@ -119,9 +119,14 @@ zero of RFC 9171 section 4.2.6 rather than a monotonic counter."
       (fnn-close fd)
       (fnn-fault "bp: refusing non-regular sequence lock"))
     (handler-case (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
-      (fnn-os-error ()
-        (fnn-close fd)
-        (fnn-refuse "bp: sequence frontier is already locked")))
+      (fnn-os-error (e)
+        (ignore-errors (fnn-close fd))
+        ;; Only nonblocking contention is an ordinary refusal.  A broken
+        ;; descriptor, I/O failure, or another flock errno must remain a
+        ;; fault; this host cannot say the reservation was merely busy.
+        (if (eql (fnn-os-errno e) sb-posix:eagain)
+            (fnn-refuse "bp: sequence frontier is already locked")
+          (fnn-fault "bp: sequence frontier lock failed: ~a" e))))
     fd))
 
 (defun fnn-bp-reserve-sequence (tally)

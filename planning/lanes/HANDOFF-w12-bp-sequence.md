@@ -1,6 +1,7 @@
 # Handoff: w12/bp-sequence — durable BP creation-sequence frontier
 
-Commits `f3807ae` and `84e857e`, based on `8b474e2`.
+Commits `f3807ae`, `84e857e`, `d2daed1`, `b11d24c`, and `5241c22`, based on
+`8b474e2`.
 
 `bp send` and reply authoring no longer accept an operator sequence.  The
 native host takes the exclusive `sequence/frontier.lock`, asks ACL2 to recover
@@ -72,6 +73,49 @@ The source-pinned native transcript is
 [`bp-sequence-native-2026-09-21.md`](../evidence/bp-sequence-native-2026-09-21.md).
 It records the root-parent failure injection, retry, sequence progression and
 corrupt-frontier recovery.  Its scope is native ordering under the stated
-filesystem barrier assumption, not a whole-trace nonreuse theorem.  The next
-packet needs ACL2 persistence phases and crash cuts, an explicit trace
-nonreuse/fencing theorem with teeth, and injected cuts mapped to that model.
+filesystem barrier assumption.
+
+## Persistence-cut trace packet
+
+`books/bp-sequence-persistence.lisp` is a separate executable ACL2 model of
+the host cuts between an ACL2 successor decision and authoring: journal-root
+parent barrier, sequence-parent barrier, staged record, final-name publication,
+sequence-directory barrier, and authoring.  `:process-restart` and
+`:power-loss` are distinct observations.  Both discard unbarriered state; a
+stage/name cut fences, while a directory-barriered successor retains its
+advanced frontier and abandons the pending author.  The latter power-loss
+projection assumes the filesystem honours the file and directory fsync
+barriers.
+
+The keystone `fn-bpn-sp-trace-authored-sequences-unique` proves that every
+finite event trace from the initial state has distinct authored sequence
+values.  Its test book has reachable author-before-barrier failures, a failed
+root-parent barrier/retry witness, and process/power restart witnesses.  The
+native map is deliberately narrow: `fnn-bp-journal-dir` supplies the root
+parent barrier; `fnn-bp-sequence-dir` supplies the sequence parent barrier;
+`fnn-write-staged`, `fnn-replace`, and `fnn-fsync-dir` supply stage, name, and
+directory cuts; reservation return is the only point that may author.  The
+fault environment `FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER=1` is the failed root
+barrier witness.  W13 lifecycle persistence has its own kinds and still needs
+the explicit composition correspondence; this theorem does not establish
+nonreuse for queue/lifecycle records, destructive deletion, or storage
+hardware outside the stated fsync assumption.
+
+Local ACL2 8.7 passed:
+
+```sh
+FN_ACL2=/opt/homebrew/bin/acl2 python3 tools/certify_books.py --jobs 1 \
+  books/bp-sequence-persistence tests/acl2/bp-sequence-persistence-tests
+```
+
+with source-pinned manifest `certify-20260921T073850Z-38156.json`.  Persvati
+then passed the declared closure at `/home/ember/fn-lanes/w12-bp-sequence`:
+
+```sh
+python3 tools/farm.py submit persvati --jobs 4 --closure \
+  --remote-root /home/ember/fn-lanes/w12-bp-sequence \
+  books/bp-sequence-persistence tests/acl2/bp-sequence-persistence-tests
+```
+
+Farm run `run-20260921T073923Z-0cb4` exited 0; its source-pinned closure
+manifest is `certify-20260921T073927Z-1075245.json`.

@@ -4,10 +4,11 @@
 This is deliberately a failed-connect test: reservation and durable FNBS
 publication happen before TCPCL socket I/O, so it exposes the allocation cuts
 without requiring a peer.  It injects a root-parent publication failure on an
-existing journal, retries without the injection, restarts once, then corrupts
-the durable frontier.  The report pins the image and source revision.
+existing journal, verifies real lock-contention refusal, restarts once, then
+corrupts the durable frontier.  The report pins the image and source revision.
 """
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -62,13 +63,19 @@ def main(argv=None) -> int:
     injected_env["FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER"] = "1"
     injected_rc, injected = invoke(image, root, injected_env)
     first_rc, first = invoke(image, root, base_env)
+    lock_path = root / "journal" / "sequence" / "frontier.lock"
+    with lock_path.open("rb+") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        locked_rc, locked = invoke(image, root, base_env)
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
     second_rc, second = invoke(image, root, base_env)
     frontier = root / "journal" / "sequence" / "frontier.fnb"
     frontier.write_bytes(b"\0")
     corrupt_rc, corrupt = invoke(image, root, base_env)
 
     for name, output in (("injected", injected), ("first", first),
-                         ("second", second), ("corrupt", corrupt)):
+                         ("locked", locked), ("second", second),
+                         ("corrupt", corrupt)):
         (root / (name + ".log")).write_text(output)
     first_match = AUTHORED.search(first)
     second_match = AUTHORED.search(second)
@@ -78,17 +85,21 @@ def main(argv=None) -> int:
         "source_revision": args.source_revision,
         "artifact_set": args.artifact_set,
         "exit_codes": {"injected": injected_rc, "first": first_rc,
-                       "second": second_rc, "corrupt": corrupt_rc},
+                       "locked": locked_rc, "second": second_rc,
+                       "corrupt": corrupt_rc},
         "authored": {
             "first": first_match.groups() if first_match else None,
             "second": second_match.groups() if second_match else None,
         },
         "injected_output": injected.splitlines(),
+        "locked_output": locked.splitlines(),
         "corrupt_output": corrupt.splitlines(),
     }
     report["ok"] = (
         injected_rc == 3 and "root parent barrier failure" in injected and
-        "BP authored" not in injected and first_rc == 4 and second_rc == 4 and
+        "BP authored" not in injected and first_rc == 4 and locked_rc == 1 and
+        "sequence frontier is already locked" in locked and "BP authored" not in locked and
+        second_rc == 4 and
         first_match is not None and second_match is not None and
         first_match.group(1) == second_match.group(1) == "100" and
         first_match.group(2) == "0" and second_match.group(2) == "1" and

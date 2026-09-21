@@ -50,3 +50,22 @@ cannot be recovered`, and author no bundle.
 This is evidence for the native ordering and its injected parent-publication
 cut.  It relies on filesystem staged-write and fsync semantics; it is neither
 a hardware power-loss proof nor a proof of nonreuse over all crash traces.
+
+## ACL2 persistence-cut correspondence
+
+Commit `5241c22` adds the sequence-only cut model and its trace theorem.  The
+correspondence is intentionally limited to this host path: the explicit parent
+fsync in `fnn-bp-journal-dir` is `:root-parent-barrier`; the one in
+`fnn-bp-sequence-dir` is `:sequence-parent-barrier`; `fnn-write-staged` is
+`:stage-durable`; `fnn-replace` is `:frontier-name-published`; and the
+sequence-directory `fnn-fsync-dir` is `:sequence-directory-barrier`.
+`fn-bpn-host-send` is permitted only after the model's `:author` cut.  The
+injected environment failure maps to a failed root-parent barrier and has no
+author effect before the retry supplies both parent barriers.
+
+The model has separate process-restart and power-loss events.  It conservatively
+fences a restart after an unbarriered staged/name state, and preserves only a
+directory-barriered successor under the documented filesystem fsync assumption.
+It does not model individual kernel/device subcuts inside an fsync, arbitrary
+external deletion, or W13 lifecycle-record persistence; those remain outside
+this native sequence-only correspondence.

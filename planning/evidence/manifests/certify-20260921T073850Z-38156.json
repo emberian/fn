@@ -1,0 +1,161 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/bp-sequence-persistence": 0,
+    "tests/acl2/bp-sequence-persistence-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w12-bp-sequence/build/acl2/certify-20260921T073850Z-38156",
+  "book_failures": {},
+  "book_results": {
+    "books/bp-sequence-persistence": "passed",
+    "tests/acl2/bp-sequence-persistence-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/bp-sequence-persistence": 1.585,
+    "tests/acl2/bp-sequence-persistence-tests": 1.404
+  },
+  "cert_cache": {
+    "already_cached": 2,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/bp-sequence-persistence",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/bp-sequence-persistence-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 2,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/bp-sequence-persistence": "70dccec026d497365e77eff01f8630ec13e82a8009d7556c3d9275bef44f8b5e",
+    "tests/acl2/bp-sequence-persistence-tests": "c89b3cabadbbc6757cb3610262bbb8bdbf2eeb9674851bccbb6513bc7a0aeddf"
+  },
+  "certify_wall_seconds": 3.083,
+  "closure": false,
+  "command": [
+    "/opt/homebrew/bin/acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/bp-sequence-persistence": "0bf0da03fe4799e2decffc600220a5a929f20b0dac135f9b884788b215bdc0b5",
+    "tests/acl2/bp-sequence-persistence-tests": "d28f7a3190f0d7251dc438a6ef6774f86e9cf8676409af449fe5c842a473ed26"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS dbc77ea9cc43cb90ea0ecee1603fe368 7d7109645ea1",
+    "FN_CERTIFY_SUCCESS dbc77ea9cc43cb90ea0ecee1603fe368 d8668d0ee99f"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T07:38:53+00:00",
+  "git_branch": "w12/bp-sequence",
+  "git_dirty": true,
+  "git_revision": "b11d24c1b553fc8a05d3e9b32a5d9fd0aceeb6cf",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS dbc77ea9cc43cb90ea0ecee1603fe368 7d7109645ea1",
+    "FN_CERTIFY_SUCCESS dbc77ea9cc43cb90ea0ecee1603fe368 d8668d0ee99f"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "books/bp-sequence-persistence",
+    "tests/acl2/bp-sequence-persistence-tests"
+  ],
+  "requested_books": [
+    "books/bp-sequence-persistence",
+    "tests/acl2/bp-sequence-persistence-tests"
+  ],
+  "run_id": "certify-20260921T073850Z-38156",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/bp-sequence-persistence": 0.0,
+    "tests/acl2/bp-sequence-persistence-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/bp-node-records.lisp": "f4f5f5f0f3493d304c926d6528317fd233a8ed1c5e94c0d6f4390afe7eab1a6e",
+    "books/bp-primary-cbor.lisp": "7b14fd94ddcc80919a128ab7f43f27aed9a47bf14d380a8e8b2f95bef0174a67",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/bp-sequence-persistence.lisp": "b1c67b8bdd0d44547dba379ae21437bf39b082c2ed1ab51fe18577999b0755f8",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-attach.lisp": "54a655456b13ce20957d519608c284d3f1ec81c3a364d274373dd632547e945e",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "a67624c2c8390faec404253353765075e7a66f707c6ef3341ea8ab4a99a3c1b8",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame-trailer.lisp": "0886078615817c8fb29aa57fae6aa53fb2c8ac5977cfd01ccf87fc587057223f",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-sequence-persistence-tests.lisp": "321a4722615a9ad16ea582d16e401e039b2f679a10760ed6229bcb4ff44bf2aa"
+  },
+  "source_digests_sha256_after": {
+    "books/bp-node-records.lisp": "f4f5f5f0f3493d304c926d6528317fd233a8ed1c5e94c0d6f4390afe7eab1a6e",
+    "books/bp-primary-cbor.lisp": "7b14fd94ddcc80919a128ab7f43f27aed9a47bf14d380a8e8b2f95bef0174a67",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/bp-sequence-persistence.lisp": "b1c67b8bdd0d44547dba379ae21437bf39b082c2ed1ab51fe18577999b0755f8",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-attach.lisp": "54a655456b13ce20957d519608c284d3f1ec81c3a364d274373dd632547e945e",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "a67624c2c8390faec404253353765075e7a66f707c6ef3341ea8ab4a99a3c1b8",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame-trailer.lisp": "0886078615817c8fb29aa57fae6aa53fb2c8ac5977cfd01ccf87fc587057223f",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-sequence-persistence-tests.lisp": "321a4722615a9ad16ea582d16e401e039b2f679a10760ed6229bcb4ff44bf2aa"
+  },
+  "start_order": [
+    "books/bp-sequence-persistence",
+    "tests/acl2/bp-sequence-persistence-tests"
+  ],
+  "started_utc": "2026-09-21T07:38:50+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/w12-bp-sequence"
+}
