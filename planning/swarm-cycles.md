@@ -14,6 +14,26 @@ Native signatures, exact authored bytes with separate projections, retention
 until authorized release, and NNTP/CLI before web remain the selected directions.
 Private group cryptography remains deferred, with privacy boundaries preserved.
 
+## Current staffing and integration checkpoint
+
+The user activated an overnight autonomous goal and then requested lower usage:
+use Luna/Terra for appropriate work and reserve Astra for larger review and
+convergence steps. Routine implementation, test repair and farm execution now
+default to Terra; bounded mechanical evidence work goes to Luna. Existing Astra
+proof lanes finish their current coherent checkpoints and hand off continuation.
+Sol remains on the already active submission and native BP lifecycle joins.
+Root reviews coherent batches rather than each small intermediate change.
+
+At `cdbd6b2`, the integrated tree includes W12 auth, physical feed recovery,
+ACL2 outbound framing and coherent proof-artifact acquisition. Terra's
+`integrated-runtime` lane owns the actual combined two-node matrix on hbox;
+Luna's `evidence-sync` lane owns generated ledger/manifest synchronization on
+that frozen source. Neither lane may replace the selected current matrix or
+change a proof/requirement status to make a check pass. Live configuration,
+submission intents, native BP and stronger correspondence proofs continue
+independently. All release and whole-system assurance claims remain gated by
+their actual covered contracts.
+
 ## W12: repair complete operational paths
 
 Each lane owns implementation, its executable contract, meaningful proof/tests,
