@@ -5,9 +5,16 @@
 ; dispatcher.
 ;
 ;   offer      fn-peer-decide-offer: what the Message-ID and the connection
-;              decide (RFC 5537 sections 3.3, 3.6 step 3); answered at once
-;              from the pinned node snapshot (RFC 4644 section 2.4.2: CHECK
-;              answers are advisory)
+;              decide (RFC 5537 sections 3.3, 3.6 step 3), over the node the
+;              session carries.  books/owner.lisp fn-own-conn-live-session
+;              re-pins that node from the owner's own store before every
+;              fn-own-read, so the answer is about the node as it is now.
+;              RFC 4644 section 2.4.2 makes a CHECK answer advisory, which
+;              permits a later refusal; it does not ask a server to forget
+;              what it holds, and until w11/transit-correct this one did --
+;              the node was the value fn-peer-open-session pinned at :open
+;              and nothing replaced it, so a peer was told 335/238 for an
+;              article it had delivered on that same connection
 ;   transfer   fn-peer-decide-transfer: every check of RFC 5537 section 3.6
 ;              steps 1 to 4 and section 3.7 steps 1 to 3, one cond arm each,
 ;              in the RFC's order, each arm naming its reason

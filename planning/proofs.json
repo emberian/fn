@@ -935,7 +935,21 @@
       "status": "planned",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
-      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, and the S4-1 witnesses were VACUOUS until it did: the hostile batch's delta was empty because the policy statement's carrier article had a prose body where `fn-stx-payload-for` projects base64. Both carriers are repaired and the deltas are now pinned by their own assertions."
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, and the S4-1 witnesses were VACUOUS until it did: the hostile batch's delta was empty because the policy statement's carrier article had a prose body where `fn-stx-payload-for` projects base64. Both carriers are repaired and the deltas are now pinned by their own assertions.",
+      "events": [
+        "fn-peer-loop-is-refused",
+        "fn-peer-history-is-refused-at-offer",
+        "fn-peer-history-is-have-at-offer",
+        "fn-peer-history-is-refused-at-transfer",
+        "fn-peer-history-grows-under-transfer",
+        "fn-peer-transfer-stages-only-scope-groups",
+        "fn-peer-scope-groups-are-live",
+        "fn-peer-refused-transfer-leaves-the-node",
+        "fn-peer-not-now-is-a-retry-code",
+        "fn-peer-ihave-of-a-held-message-id-is-435-and-no-article",
+        "fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding",
+        "fn-own-read-offers-against-the-live-node"
+      ]
     },
     {
       "id": "PRF-025",

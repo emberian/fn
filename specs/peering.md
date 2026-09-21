@@ -1080,11 +1080,35 @@ What differs from the design above, and why:
   so ACL2 cannot evaluate `fn-id-obligation-of`; the host computes them as it
   does for POST. `fn-peer-injection-arguments` bundles them; the `cfg-gen`
   leading argument waits for the owner's `fn-cnode-prepare` port.
-- **Offer decisions read a pinned snapshot.** The served path has no node;
-  `fn-served-open-peer` pins the node and configuration once under their
-  recognizers, `fn-peer-decide-offer` answers from that snapshot (RFC 4644
-  §2.4.2 makes CHECK advisory), and `fn-peer-transfer` decides again over the
-  live node in the owner. The owner's port is on the board.
+- **Offer decisions read the live node; the peer record stays pinned.**
+  `fn-served-open-peer` pins both under their recognizers at `:open`, and
+  `books/owner.lisp fn-own-conn-live-session` re-pins the NODE from the
+  owner's own store before every `fn-own-read`, so `fn-peer-decide-offer`
+  answers from the node as it is now and `fn-peer-decide-transfer` decides
+  again over the same. This corrects the sentence that stood here until
+  `w11/transit-correct`, which said the offer answers from the snapshot
+  taken at `:open`. RFC 4644 §2.4.2 makes a `CHECK` answer advisory --- a
+  server MAY answer `238` and refuse after the bytes --- but it does not ask
+  a server to forget what it holds, and a streaming peer that is told `335`
+  for an article this connection delivered a moment ago sends the whole
+  article for nothing. Measured on the wire at `6fb30ca`:
+  `V0-TRANSIT-DUPLICATE-AB/BA` `335` and `V0-TRANSIT-CHECK-DUP-AB/BA` `238`,
+  both with the certified refusal (K3) sitting behind them unreachable. The
+  peer record is still the one the connection opened with, because the owner
+  holds no store configuration to re-read: a `(:set-peer ...)` delta reaches
+  an open peer connection's transfer decision (the host passes the live
+  configuration, `host/owner-host.lisp fn-owner-transit-decide`) and not its
+  offer decision. That asymmetry is open and is on the board.
+- **A node with no `path-identity` suppresses no loop.**
+  `fn-peer-local-identity` reads the `path-identity` policy slot;
+  an unset slot is the empty string and `fn-path-names-p` never matches it,
+  so `fn-peer-decide-transfer`'s loop arm cannot fire. This is configuration,
+  not a model defect, and it is measurable: at `6fb30ca` `tools/v0_matrix.py`
+  --- which wrote both peer records and never set either node's own slot ---
+  read `V0-TRANSIT-LOOP` `235` and `V0-TRANSIT-LOOP-ABSENT` `220`, while
+  `tools/twonode_gate.py`, which sets the slot, read `437 transfer rejected;
+  path loop` and `430` on the same commit. The matrix sets it now and
+  `V0-TRANSIT-IDENTITY` is the row the loop rows rest on.
 - **Reader connections answer `502`, not `501`.** RFC 3977 §3.2.1 assigns
   `502` to a recognized command the client may not use; `501` is a syntax
   error. Table in §1.1 corrected.

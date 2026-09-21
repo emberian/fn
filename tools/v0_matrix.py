@@ -374,8 +374,14 @@ PLAN = (
       ("NNT-001",), ("SCN-014",), ACCEPTED, "node"),
 
     # -- F-TRANSIT -------------------------------------------------------
+    S("V0-TRANSIT-IDENTITY", "F-TRANSIT",
+      "the node has an RFC 5537 <path-identity> of its own",
+      ("REP-002",), ("SCN-023",), ACCEPTED, "node",
+      "`fn-peer-local-identity` reads the `path-identity` policy slot and an "
+      "unset slot is the empty string, which `fn-path-names-p` never matches: "
+      "a node without this answers no loop, so V0-TRANSIT-LOOP rests on it"),
     S("V0-TRANSIT-INDEPENDENT", "F-TRANSIT",
-      "before any feed, each node serves its own article and 43x for the other's",
+      "each node serves its own seeded articles and 43x for the other's seeds",
       ("OBJ-005",), ("SCN-023",), ACCEPTED, "node"),
     S("V0-TRANSIT-MODE-STREAM", "F-TRANSIT", "MODE STREAM is accepted on the peer connection",
       ("REP-001",), ("SCN-023",), ACCEPTED, "direction"),
@@ -1760,9 +1766,38 @@ else echo NONE; fi
         if kind == "NONE":
             blocker = ("no CLI on this commit writes an `fn-cfg-peerp` record "
                        "(specs/peering.md 1.2)")
-            self.blocked(("V0-PEER-ADD", "V0-PEER-LIST"), blocker, verdict=NOT_BUILT,
+            self.blocked(("V0-PEER-ADD", "V0-PEER-LIST", "V0-TRANSIT-IDENTITY"),
+                         blocker, verdict=NOT_BUILT,
                          owner="w6/peering-inbound", invocation=probe.command)
             return
+        # The node's OWN RFC 5537 section 3.2 <path-identity>, and it is not the
+        # peer record's.  `fn-peer-local-identity` (books/peer-inbound.lisp)
+        # reads the `path-identity` POLICY slot; an unset slot reads as the
+        # empty string and `fn-path-names-p` never matches it, so
+        # `fn-peer-decide-transfer`'s loop arm cannot fire and an article whose
+        # Path already names this node is accepted and then served.  That is
+        # exactly what this matrix measured at 6fb30ca -- V0-TRANSIT-LOOP 235
+        # and V0-TRANSIT-LOOP-ABSENT 220 -- while tools/twonode_gate.py, which
+        # sets the slot, measured `437 transfer rejected; path loop` and `430`
+        # on the same commit.  The matrix wrote every peer record and never
+        # gave either node a name of its own.
+        for node in self.nodes:
+            ident = self.sh(
+                "node {} path-identity".format(node.upper),
+                self.cd(self.fn("--store {} policy set path-identity {}".format(
+                    node.store, node.path_identity))), timeout=1800, expect=None)
+            self.from_step("V0-TRANSIT-IDENTITY", ident, node=node.name,
+                           limit="the loop rows below are unfounded without it")
+            if ident.rc != EXIT_OK:
+                self.gaps.append(
+                    "node {} has no <path-identity> of its own (rc={}, {}); RFC 5537 "
+                    "3.5 loop suppression cannot fire on it and V0-TRANSIT-LOOP is "
+                    "measuring an unconfigured node.".format(
+                        node.upper, ident.rc, ident.first_line))
+            else:
+                self.facts["node {} path-identity".format(node.upper)] = \
+                    node.path_identity
+
         for node, other in ((self.a, self.b), (self.b, self.a)):
             add = self.sh("node {} peer record for {}".format(node.upper, other.upper),
                           self.cd(self.fn(
@@ -2223,12 +2258,26 @@ else echo NONE; fi
                     "V0-TRANSIT-TAKETHIS-DUP")
 
     def independence(self):
+        # The absent set is the other node's SEEDED articles: what it held
+        # before either listener started.  It is NOT everything the other node
+        # has accepted, because both nodes carry an outbound feed record from
+        # `peer_records` and the feed is running by the time this control does
+        # -- and it feeds what became durable THROUGH the running owner, which
+        # is every article a later phase posts.  At 6fb30ca this row read
+        # `refused` on both nodes, and the only two Message-IDs in the absent
+        # map that were present were `<auth-*>` and `<socket-*>`: the two the
+        # AUTHINFO and POST phases had just posted through the server.  The
+        # feed delivering them is the feature working.  What the control is
+        # for -- that nothing the harness has not driven has moved the SEEDED
+        # articles, so a later "it reached the far node" means something -- is
+        # still exactly true of the seeds, and the transit rows offer seeds.
         for node, other in ((self.a, self.b), (self.b, self.a)):
+            absent = getattr(other, "seeded", other.accepted) + node.rejected
             step = self.feed("presence", "--port {} --groups {} --present '{}' --absent '{}'"
                              .format(node.port, ",".join(GROUPS),
                                      ",".join(node.accepted),
-                                     ",".join(other.accepted + node.rejected)),
-                             name="independence: node {} holds its own and not {}'s"
+                                     ",".join(absent)),
+                             name="independence: node {} holds its own and not {}'s seeds"
                              .format(node.upper, other.upper), expect=None)
             result = self.payload(step)
             if not result or result.get("error"):
@@ -2245,7 +2294,10 @@ else echo NONE; fi
                           result.get("absent")),
                       node=node.name, exit_code=step.rc,
                       limit="this is the control: every later claim that an article "
-                            "reached a node rests on it")
+                            "reached a node rests on it. The absent set is the other "
+                            "node's articles as of before either listener started; "
+                            "the outbound feed carries what a running server accepts "
+                            "and its crossings are measured by F-FEED, not here")
             if step.rc != 0:
                 self.gaps.append(
                     "node {} failed the independence control, so the transit rows below "
@@ -3129,6 +3181,14 @@ else echo NONE; fi
             self.phase("second init {}".format(node.name), self.reinit, node)
             self.phase("groups {}".format(node.name), self.groups_and_capacity, node)
         self.phase("peer records", self.peer_records)
+
+        # What each node held before any listener existed.  `independence`
+        # measures against this, not against `accepted`, which grows every
+        # time a later phase posts through the running server -- and an
+        # article posted through the server is exactly what the outbound feed
+        # carries to the peer.
+        for node in self.nodes:
+            node.seeded = list(node.accepted)
 
         for node in self.nodes:
             self.start_node(node)
