@@ -1519,10 +1519,11 @@
         "host/native/bp-service.lisp",
         "tests/test_bp_service_native.py",
         "planning/evidence/bp-convergence-native-2026-09-21.md",
-        "planning/evidence/manifests/certify-20260921T081657Z-1438651.json"
+        "planning/evidence/manifests/certify-20260921T081657Z-1438651.json",
+        "planning/lanes/HANDOFF-w17-bp-namespace.md"
       ],
       "pending_subject": "The adapter directly calls fn-bpn-step, but current no-release theorem assumes its output already satisfies the effect recognizer; the resume helper theorem only preserves fields of a setter. Neither is registered as a keystone. Universal valid-state/effect preservation, actual restart context preservation, physical observation correspondence and bounded served execution remain open.",
-      "progress_note": "Reachable evaluated queue/contact/restart/expiry cases and source-pinned EIO/process tests exercise the implementation. U01 removes visible-file-as-durable classification and U02 gives ACL2 mixed-outcome policy. Core-fault collapse, receive-loop persistence fencing, cross-session evidence naming, host-owned naming/admission and repeated history validation remain implemented-surface debt."
+      "progress_note": "Reachable evaluated queue/contact/restart/expiry cases and source-pinned EIO/process tests exercise the implementation. U01 removes visible-file-as-durable classification and U02 gives ACL2 mixed-outcome policy. Core-fault collapse, receive-loop persistence fencing, cross-session evidence naming, host-owned naming/admission and repeated history validation remain implemented-surface debt. W17 integrates ACL2-owned bounded lifecycle namespace recovery, exact filename/token binding, frontier agreement, and append admission without a host rescan. The final component DTN image exercises corrupt/gapped namespaces, token mismatch, hidden-stage retention and physical enumeration bounds. The actual lifecycle state invariant and raw publication phase refinement remain separate open obligations; no helper admission or test count closes them."
     }
   ]
 }

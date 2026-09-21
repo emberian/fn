@@ -345,3 +345,19 @@ A native successor must route a shutdown request safely, without acquiring a
 possibly interrupted mutex in the asynchronous handler, and test SIGTERM
 with active clients followed by independent reopen. Owner convergence tracks
 this after the current guarded feed/build batch.
+
+
+The total FNFD observation budget is integrated in `399d4730`. It threads one
+ACL2-selected remaining allowance across root, children and siblings rather
+than resetting a per-directory bound. The raw sibling-exhaustion regression
+passed again on integrated source, with both journals retained. The handoff
+records separate ACL2 certification; this is not a saved-image service result.
+
+BP lifecycle namespace consolidation is integrated through `773db914`: ACL2
+owns the canonical names, token binding, recovery frontier and admission;
+append no longer rescans retained files. Physical enumeration is bounded before
+allocation, and recovery list reversal is linear. The
+[handoff](lanes/HANDOFF-w17-bp-namespace.md) pins the final component DTN build
+and actual-handler tests. The remaining raw lifecycle publication algorithm
+is now a separate shared-publisher adoption task; namespace consolidation does
+not establish that phase correspondence.
