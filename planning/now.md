@@ -58,9 +58,13 @@ administration omitted its peer-config dependency. Repair `55e6d00a` then
 exposed an insufficient proper-list guard. Focused repair `8071a825` passed the
 five affected roots under persvati job `run-20260921T165123Z-ea6a`, reusing
 qualified unchanged dependencies. Production image construction exposed an
-ACL2-reader/raw-Lisp boundary error in profile selection; `09612ff7` repairs
-that boundary. Image builds and runtime qualification are continuing, with no
-new combined image success yet claimed. See the [gate record](evidence/wide-native-gate-2026-09-21.md).
+ACL2-reader/raw-Lisp boundary error in profile selection; `09612ff7` repaired
+that boundary and built production, developer and DTN images. Its runtime batch
+then exposed fresh initialization being sent through the nonempty recovery
+observation. Repair `e96e8a39` separates those ACL2 entries. Its focused and
+profile certification, production rebuild, and initialization followed by
+new-process recovery smoke passed; the full runtime batch is running. These
+steps do not establish a complete service qualification. See the [gate record](evidence/wide-native-gate-2026-09-21.md).
 The remote origin is `/home/ember/fn-gates/freeze-f7190d69`; exact source
 revisions and manifest digests, rather than that directory name, identify each
 input. Later main integrations are outside this frozen gate.

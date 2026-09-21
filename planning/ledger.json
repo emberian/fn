@@ -392,17 +392,17 @@
     "books_in_root_closure": 382,
     "roots": 384,
     "theorems": 6479,
-    "functions": 5036,
-    "assert_events": 6856,
+    "functions": 5037,
+    "assert_events": 6860,
     "must_fails": 166,
     "encapsulates": 19,
     "guards": {
       "verified": 1669,
-      "declared-off": 254,
+      "declared-off": 255,
       "default-guarded": 2514,
       "default-unguarded": 599
     },
-    "suspect_theorems": 61,
+    "suspect_theorems": 60,
     "export_hygiene_warnings": 83,
     "enabled_projection_warnings": 25,
     "teeth_form_warnings": 4,
@@ -2348,10 +2348,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 29,
+      "functions": 30,
       "guards": {
         "verified": 0,
-        "declared-off": 29,
+        "declared-off": 30,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -5415,12 +5415,11 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "records"
+        "records",
+        "stx-accept-records"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-store-event-article-encoding-is-legacy-record-encoding"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -7874,9 +7873,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 16,
+      "assert_events": 20,
       "must_fails": 0,
-      "defconsts": 3,
+      "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -10929,14 +10928,6 @@
       ]
     },
     {
-      "theorem": "fn-store-event-article-encoding-is-legacy-record-encoding",
-      "book": "books/store-events.lisp",
-      "line": 102,
-      "reasons": [
-        "branch-of-definition: the hypothesis is a branch test of fn-store-event-encode and the conclusion is that branch's value"
-      ]
-    },
-    {
       "theorem": "fn-stx-admission-is-peer-independent-by-definition",
       "book": "books/stx-policy.lisp",
       "line": 57,
@@ -11289,7 +11280,7 @@
       {
         "theorem": "fn-store-event-article-encoding-is-legacy-record-encoding",
         "book": "books/store-events.lisp",
-        "line": 102,
+        "line": 129,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

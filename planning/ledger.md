@@ -14,15 +14,15 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 384 |
 | Books inside the root closure | 382 |
 | `defthm` and `defthmd` events | 6479 |
-| `defun` events | 5036 |
+| `defun` events | 5037 |
 | Functions with verified guards | 1669 |
-| Functions declared `:verify-guards nil` and never verified | 254 |
+| Functions declared `:verify-guards nil` and never verified | 255 |
 | Functions left at the default with an explicit guard | 2514 |
 | Functions left at the default with no guard | 599 |
-| `assert-event` checks | 6856 |
+| `assert-event` checks | 6860 |
 | `must-fail` checks | 166 |
 | `encapsulate` events | 19 |
-| Theorems flagged SUSPECT by shape | 61 |
+| Theorems flagged SUSPECT by shape | 60 |
 | Export-hygiene warnings | 83 |
 | Enabled-projection warnings | 25 |
 | Teeth-form warnings | 4 |
@@ -158,7 +158,7 @@ that `make certify` requests.
 | `books/byte-store-keystones.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-native-correspondence.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/byte-store-program-invariants.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
-| `books/byte-store-programs.lisp` | root | 1 | 29 | 0/29/0/0 | 33 | 0 | 0 |
+| `books/byte-store-programs.lisp` | root | 1 | 30 | 0/30/0/0 | 33 | 0 | 0 |
 | `books/byte-store-relation.lisp` | root | 12 | 7 | 0/5/0/2 | 0 | 0 | 0 |
 | `books/byte-store-scan.lisp` | root | 134 | 35 | 0/30/0/5 | 0 | 0 | 1 |
 | `books/byte-store-txn-name.lisp` | root | 29 | 11 | 1/0/10/0 | 0 | 0 | 0 |
@@ -272,7 +272,7 @@ that `make certify` requests.
 | `books/statement-invariants.lisp` | root | 59 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 30 | 65 | 0/0/65/0 | 0 | 0 | 0 |
 | `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/store-events.lisp` | root | 1 | 21 | 10/10/1/0 | 0 | 0 | 1 |
+| `books/store-events.lisp` | root | 1 | 21 | 10/10/1/0 | 0 | 0 | 0 |
 | `books/store-files-invariants.lisp` | root | 62 | 4 | 0/1/0/3 | 0 | 0 | 2 |
 | `books/store-files-traces.lisp` | root | 51 | 12 | 0/0/0/12 | 0 | 0 | 0 |
 | `books/store-files.lisp` | root | 30 | 57 | 54/0/3/0 | 0 | 0 | 0 |
@@ -366,7 +366,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-native-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 2 | 0 |
 | `tests/acl2/byte-store-program-invariants-tests.lisp` | root | 0 | 3 | 0/1/0/2 | 9 | 8 | 0 |
 | `tests/acl2/byte-store-relation-tests.lisp` | root | 1 | 5 | 0/0/0/5 | 12 | 12 | 0 |
-| `tests/acl2/byte-store-scan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 0 | 0 |
+| `tests/acl2/byte-store-scan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/byte-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
 | `tests/acl2/byte-store-txn-name-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 3 | 0 |
 | `tests/acl2/cbor-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
@@ -533,7 +533,6 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 136 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
 | `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 454 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
 | `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 130 | branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
-| `fn-store-event-article-encoding-is-legacy-record-encoding` | `books/store-events.lisp` | 102 | branch-of-definition: the hypothesis is a branch test of fn-store-event-encode and the conclusion is that branch's value |
 | `fn-stx-admission-is-peer-independent-by-definition` | `books/stx-policy.lisp` | 57 | definition-restated: the conclusion is the body of fn-stx-transit-authority-ok |
 | `fn-stx-index-lookup-cost-is-index-bounded` | `books/stx-index.lisp` | 784 | instance-corollary: the statement is fn-stx-alist-steps-is-len-bounded instantiated, discharging nothing |
 | `fn-stx-index-query-is-store-free-by-definition` | `books/stx-index.lisp` | 801 | definition-restated: the conclusion is the body of fn-stx-index-lookup; reflexive-conclusion: a conjunct is (equal X X) |
