@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>net.fn</string>
+<key>ProgramArguments</key><array>
+<string>@PREFIX@/bin/fn</string><string>operator</string>
+<string>@PREFIX@/etc/fn/fn.toml</string><string>run</string>
+</array>
+<key>RunAtLoad</key><true/>
+<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+<key>ThrottleInterval</key><integer>5</integer>
+<key>ExitTimeOut</key><integer>120</integer>
+<key>UserName</key><string>_fn</string><key>GroupName</key><string>_fn</string>
+<key>StandardOutPath</key><string>@PREFIX@/var/log/fn/stdout.log</string>
+<key>StandardErrorPath</key><string>@PREFIX@/var/log/fn/stderr.log</string>
+</dict></plist>

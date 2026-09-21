@@ -15,6 +15,7 @@ for word in "$@"; do printf ' <%s>' "$word"; done
 printf '\n'
 EOF
 chmod 700 "$tmp/fn-host"
+printf core > "$tmp/fn-host.core"
 
 actual=$(FN_NATIVE_HOST="$tmp/fn-host" "$root/packaging/fn-native" store /var/lib/fn/store status)
 test "$actual" = 'native argv: <store> </var/lib/fn/store> <status>'

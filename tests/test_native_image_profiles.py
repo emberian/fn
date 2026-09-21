@@ -70,7 +70,9 @@ class NativeImageProfileSourceTests(unittest.TestCase):
 
     def test_packaged_launcher_defaults_to_the_production_image(self):
         launcher = (ROOT / "packaging/fn-native").read_text()
-        self.assertIn('image=${FN_NATIVE_HOST:-"$root/build/fn-host"}', launcher)
+        self.assertIn('../libexec/fn/fn-host', launcher)
+        self.assertIn('image=$root/build/fn-host', launcher)
+        self.assertIn('native host core missing', launcher)
         self.assertIn("production saved native host image", launcher)
 
 

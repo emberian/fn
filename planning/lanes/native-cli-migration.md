@@ -1,11 +1,11 @@
 # Native CLI, configuration, and packaging migration
 
-**Status: design and direct-image entry scaffold only (2026-09-21).**  The
-installed operator command remains the Python development CLI, `bin/fn`.
-`packaging/fn-native` is a direct saved-image entry for the verbs that an
-image already implements.  It does not provide a production replacement for
-`bin/fn`, and neither the existing service unit nor the launchd plist changes
-in this packet.
+**Status: native distribution layout implemented (2026-09-21).** `bin/fn`
+remains the explicitly separate Python development CLI. The production staged
+layout installs `packaging/fn-native` as `bin/fn`, pairs the selected saved
+image with its `.core` under `libexec/fn`, records hashes and runtime libraries,
+and renders native systemd/launchd definitions. It never falls back to Python,
+and installation itself creates no service side effect.
 
 ## Boundary and completed scaffold
 
