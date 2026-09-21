@@ -61,7 +61,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import deploy_gate                                            # noqa: E402
 import farm                                                   # noqa: E402
 from deploy_gate import (EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN,  # noqa: E402
-                         evidence_path, repo_root,
+                         evidence_path, repo_root, report,
                          GROUPS, GateError, Host, LocalHost, SshHost, Step,
                          resolve)
 
@@ -418,6 +418,34 @@ class InnLab(deploy_gate.DeployGate):
                  "inn prefix", "ports",
                  "inn server", "fn node", "read", "ihave", "innfeed", "offer",
                  "fn cut", "innd cut")
+    # What this lab can decide.  An INN reply is INN's own behaviour and a
+    # standing control; what the lab asserts is that the two programs
+    # interoperated on these exchanges, and each such assertion is here.
+    ASSERTIONS = dict(deploy_gate.DeployGate.ASSERTIONS)
+    ASSERTIONS.update({
+        "peer-record-accepted": (
+            "the fn node holds a peer record naming INN, so INN's address "
+            "resolves to a peer at accept (specs/peering.md 1.1)", ("",)),
+        "fn-port-as-configured": (
+            "the fn node came up on the port innfeed.conf names", ("",)),
+        "innd-up": ("innd came up", ("",)),
+        "nnrpd-up": ("nnrpd came up on its port", ("",)),
+        "ports-free": ("the ports the lab needs were free before it started",
+                       ("",)),
+        "inn-duplicate-435": (
+            "a second IHAVE of an article INN holds draws 435", ("",)),
+        "inn-loop-437": (
+            "an article whose Path names INN draws 437 from INN", ("",)),
+        "innfeed-logged": (
+            "INN's own innfeed recorded what it offered the fn node", ("",)),
+        "fn-transit-surface": (
+            "the fn node serves the transit commands INN's innfeed speaks",
+            ("",)),
+        "innd-survived-fn-kill": (
+            "innd was still running after the fn node was SIGKILLed", ("",)),
+        "innd-died": ("innd died on SIGKILL, so the control really cut", ("",)),
+        "innd-restarted": ("innd came back after the SIGKILL", ("",)),
+    })
     STANDING_GAPS = (
         "INN and fn are on ONE host, over loopback. Nothing here exercises a real\n"
         "  network, a partition, latency, or two machines' clocks disagreeing.",
@@ -526,17 +554,19 @@ fi
                                       "were copied"))
             self.facts["certificates"] = "{} {} -> {}".format(
                 kind.lower(), gate, step.first_line)
-            self.gaps.append(
+            self.limitation(
+                "certificates-copied",
                 "certificates were copied from {}, a live origin root on the same host. "
                 "tools/certs.py calls that foreign-local and refuses it for a worktree "
                 "that will itself certify; this deploy tree never certifies, so ACL2 "
                 "only reads them. Nothing in this lab re-establishes any certificate, "
                 "and a book whose pair did not come across is included uncertified."
                 .format(gate))
-            if "mismatched=0" not in step.output:
-                self.gaps.append(
-                    "some books in the gate did not hash to this revision's sources, so "
-                    "their pairs were not copied: {}".format(step.first_line))
+            self.check(
+                "certificates-match", "mismatched=0" in step.output,
+                "some books in the gate did not hash to this revision's sources, so "
+                "their pairs were not copied and ACL2 read them uncertified: {}"
+                .format(step.first_line), observed=step.first_line)
             return step
         return self.farm_closure()
 
@@ -611,13 +641,14 @@ fi
         self.facts["three outcomes"] = (
             "accepted={} refused={} uncertain={} (expected {})".format(
                 *observed, expected))
-        if observed != expected:
-            self.gaps.append(
-                "the three outcomes did not stay distinct in the fn exit codes: "
-                "observed {}, expected {} (D13)".format(observed, expected))
+        self.check("outcomes-distinct", observed == expected,
+                   "the three outcomes did not stay distinct in the fn exit codes: "
+                   "observed {}, expected {} (D13)".format(observed, expected),
+                   observed="accepted={} refused={} uncertain={}".format(*observed))
         self.sh("fn recover after the uncertain publication", self.cd(self.fn(
             "--store {} recover".format(self.store))), timeout=900)
-        self.gaps.append(
+        self.limitation(
+            "uncertain-indeterminate",
             "the injected uncertain publication {} is asserted in neither direction: a "
             "postpublish fault is indeterminate by construction (D13), and a lab that "
             "asserted it either way would be asserting a coin toss.".format(uncertain))
@@ -637,11 +668,15 @@ fi
             ">/dev/null 2>&1 && echo STORE-PEER || echo NONE"), expect=None)
         if "STORE-PEER" not in probe.output:
             self.facts["peer record"] = "no CLI on this commit"
+            blocker = ("peer record: not available on this tree, so the fn node "
+                       "resolves no connection to a peer and every transit command "
+                       "below is answered as it would be for a reader.")
             self.skip("fn peer record for INN",
                       "run_store.py peer add (specs/peering.md 1.2, (:set-peer record))",
-                      "peer record: not available on this tree, so the fn node resolves "
-                      "no connection to a peer and every transit command below is "
-                      "answered as it would be for a reader.")
+                      blocker)
+            self.not_built("peer-record-accepted",
+                           "the fn node has no peer record for INN: " + blocker,
+                           "no `peer add` on this commit")
             return
         added = self.sh("fn peer record for INN", self.cd(self.fn(
             "--store {} peer add innA --path-identity {} --nntp 127.0.0.1:{} "
@@ -653,13 +688,13 @@ fi
         listing = self.sh("fn peer list", self.cd(self.fn(
             "--store {} peer list".format(self.store))), timeout=900, expect=None)
         self.facts["peer record"] = (listing.first_line or "(no peer line)")
-        if added.rc != 0 or "innA" not in listing.output:
-            self.gaps.append(
-                "the fn node has no peer record for INN (`peer add` exit {}), so its "
-                "listener resolves INN's address to no peer and answers the transit "
-                "commands as a reader: every transit result below is about an "
-                "unconfigured connection, not about peering."
-                .format(added.rc))
+        self.check(
+            "peer-record-accepted", added.rc == 0 and "innA" in listing.output,
+            "the fn node has no peer record for INN (`peer add` exit {}), so its "
+            "listener resolves INN's address to no peer and answers the transit "
+            "commands as a reader: every transit result below is about an "
+            "unconfigured connection, not about peering.".format(added.rc),
+            observed=listing.first_line or "no peer line")
 
     def start_fn(self, tag="main") -> bool:
         if self.server_template:
@@ -673,10 +708,12 @@ fi
         if not started and kind != "reader" and not self.server_template:
             fallback = ("python3 tools/run_reader.py --store {} --port {} --post"
                         .format(self.store, self.fn_port))
-            self.gaps.append(
+            self.check(
+                "entry-point-listening", False,
                 "the {} entry point did not reach LISTENING on this commit, so the lab "
                 "fell back to tools/run_reader.py --post. Every fn-side reply below is "
-                "the reader's, not the {}'s.".format(kind, kind))
+                "the reader's, not the {}'s.".format(kind, kind),
+                observed="selected={}".format(kind))
             kind, command = "reader", fallback
             started = self.start_server("fn node (reader)", command, tag,
                                         run=self.node_dir)
@@ -688,11 +725,12 @@ fi
         self.started_pids["fn"] = self.fn_pid
         self.facts["fn node"] = "{} on port {} ({}), store {}".format(
             kind, self.port, tag, self.store)
-        if self.port != self.fn_port:
-            self.gaps.append(
-                "the fn node came up on port {}, not the {} innfeed.conf names: INN's "
-                "outbound half cannot reach it, so the innfeed scenario below is about "
-                "a connection that was never made.".format(self.port, self.fn_port))
+        self.check(
+            "fn-port-as-configured", self.port == self.fn_port,
+            "the fn node came up on port {}, not the {} innfeed.conf names: INN's "
+            "outbound half cannot reach it, so the innfeed scenario below is about "
+            "a connection that was never made.".format(self.port, self.fn_port),
+            observed="listening={} configured={}".format(self.port, self.fn_port))
         return True
 
     # -- INN --------------------------------------------------------------
@@ -721,10 +759,14 @@ done
             if line.startswith("tarball="):
                 self.facts["inn tarball sha256"] = line[len("tarball="):].strip()
             if " BUSY" in line:
-                self.gaps.append(
+                self.inconclusive(
+                    "ports-free",
                     "{}: something was already listening there before the lab started. "
                     "The lab did not touch it and did not start its own server on that "
-                    "port; every scenario that needed it is unfounded.".format(line))
+                    "port; every scenario that needed it is unfounded.".format(line),
+                    "a port the lab needs was already in use", observed=line)
+        if "ports-free" not in {one.key for one in self.found}:
+            self.check("ports-free", True, "", observed="all three ports free")
         self.facts["inn prefix"] = self.inn_prefix
         self.facts["ports"] = ("innd {} (transit), nnrpd {} (reader), fn {} "
                                "(innfeed.conf names this)".format(
@@ -791,8 +833,11 @@ for i in $(seq 1 60); do
 done
 echo INND-TIMEOUT; tail -20 $P/log/innd-stdout.log; exit 1
 """.format(p=self.inn_prefix), timeout=180, expect=None)
-        if step.rc != 0 or "INND-UP" not in step.output:
-            self.gaps.append("innd did not come up: {}".format(step.first_line))
+        up = step.rc == 0 and "INND-UP" in step.output
+        self.check("innd-up", up,
+                   "innd did not come up: {}".format(step.first_line),
+                   observed=step.first_line or "no output")
+        if not up:
             self.facts["inn server"] = "innd did not start"
             return False
         pid = step.output.split("pid=")[-1].strip().splitlines()[0]
@@ -825,9 +870,12 @@ echo NNRPD-TIMEOUT; tail -10 $P/log/nnrpd-stdout.log; exit 1
         if nnrpd.rc == 0 and "NNRPD-UP" in nnrpd.output:
             self.started_pids["nnrpd"] = nnrpd.output.split("pid=")[-1].strip(
             ).splitlines()[0]
+            self.check("nnrpd-up", True, "", observed=nnrpd.first_line)
         else:
-            self.gaps.append("nnrpd did not come up on port {}: {}".format(
-                self.nnrpd_port, nnrpd.first_line))
+            self.check("nnrpd-up", False,
+                       "nnrpd did not come up on port {}: {}".format(
+                           self.nnrpd_port, nnrpd.first_line),
+                       observed=nnrpd.first_line or "no output")
         self.facts["inn server"] = "innd pid {} on port {}, nnrpd on port {}".format(
             pid, self.inn_port, self.nnrpd_port)
         return True
@@ -871,16 +919,18 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
                     "IHAVE {}, 335, the article, 235: INN's inbound transit path, "
                     "the one fn's feed lane will drive".format(self.ids["FED_ID"]),
                     ok=str(result.get("transfer", "")).startswith("235"))
-        if not str(result.get("duplicate", "")).startswith("435"):
-            self.gaps.append(
-                "the second IHAVE of {} drew '{}', not 435: INN's history did not "
-                "refuse an article it already holds.".format(
-                    self.ids["FED_ID"], result.get("duplicate")))
-        if not str(result.get("loop_result", "")).startswith("437"):
-            self.gaps.append(
-                "an article whose Path names {} drew '{}', not 437: INN's ME exclusion "
-                "list is not refusing the loop, so the loop scenario is unfounded."
-                .format(INN_PATH_IDENTITY, result.get("loop_result")))
+        self.check("inn-duplicate-435",
+                   str(result.get("duplicate", "")).startswith("435"),
+                   "the second IHAVE of {} drew '{}', not 435: INN's history did not "
+                   "refuse an article it already holds.".format(
+                       self.ids["FED_ID"], result.get("duplicate")),
+                   observed=str(result.get("duplicate")))
+        self.check("inn-loop-437",
+                   str(result.get("loop_result", "")).startswith("437"),
+                   "an article whose Path names {} drew '{}', not 437: INN's ME "
+                   "exclusion list is not refusing the loop, so the loop scenario is "
+                   "unfounded.".format(INN_PATH_IDENTITY, result.get("loop_result")),
+                   observed=str(result.get("loop_result")))
         self.sh("INN history for {}".format(self.ids["FED_ID"]),
                 "{} '{}' 2>&1 | head -3".format(self.bin("grephistory"), self.ids["FED_ID"]),
                 expect=None)
@@ -906,7 +956,8 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
                     "the Message-ID INN serves is the one that was offered, and an "
                     "unknown Message-ID draws 43x from the same daemon",
                     ok=bool(result.get("ok")))
-        self.gaps.append(
+        self.limitation(
+            "reader-is-the-labs-client",
             "the reader here is the lab's raw-socket client, not fn: nothing on this "
             "tree is an NNTP *client*, so this shows INN serving, and shows nothing "
             "about fn's ability to read a peer.")
@@ -936,13 +987,26 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
                             self.bin("ctlinnd"), self.inn_prefix, self.inn_prefix),
                         timeout=180, expect=None)
         self.facts["innfeed"] = flush.first_line or "(no innfeed log line)"
-        if "innfeed:" not in flush.output:
-            self.gaps.append(
+        if "innfeed:" in flush.output:
+            self.check("innfeed-logged", True, "", observed=flush.first_line)
+        else:
+            self.inconclusive(
+                "innfeed-logged",
                 "INN's innfeed wrote nothing to its log during this run, so what "
                 "crossed INN's outbound half is not recorded here: the hand-driven "
                 "offer below is the only fn-side evidence, and it is the lab's "
-                "client wearing innfeed's clothes, not innfeed.")
+                "client wearing innfeed's clothes, not innfeed.",
+                "innfeed.log carried no line for this run",
+                observed=flush.first_line or "no innfeed line")
         if not result.get("transit"):
+            self.not_built(
+                "fn-transit-surface",
+                "the fn node answered `IHAVE` with '{}' and `CHECK` with '{}' and "
+                "lists no IHAVE in CAPABILITIES, so INN's innfeed has no transit "
+                "surface to offer to on this commit.".format(
+                    result.get("ihave"), result.get("check")),
+                "the fn node serves no IHAVE/CHECK/TAKETHIS on this commit",
+                owner="the peering lane")
             self.skip("INN's innfeed transfers an article to fn",
                       "inn.py offer (IHAVE/CHECK/TAKETHIS on the fn listener)",
                       "peering: not available on this tree. The fn node answered "
@@ -959,6 +1023,8 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
                       "peering: not available on this tree; there was no transfer to "
                       "read back")
             return
+        self.check("fn-transit-surface", True, "",
+                   observed="IHAVE -> {}".format(result.get("ihave")))
         self.derive("the fn node took INN's offer", probe,
                     "IHAVE {}, 335, the article, 235 on the fn listener".format(self.ids["OFFER_ID"]),
                     ok=str(result.get("transfer", "")).startswith("235"))
@@ -968,7 +1034,8 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
         mode = ("ihave" if self.fn_transit.startswith("335")
                 else "post" if self.post_enabled else "read")
         if mode == "read":
-            self.gaps.append(
+            self.limitation(
+                "fn-kill-not-in-transfer",
                 "the fn node offers neither a transit surface nor POST on this commit, "
                 "so the kill landed on an open reader connection rather than inside a "
                 "transfer.")
@@ -984,9 +1051,10 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
         survivor = self.sh("innd survived the fn node's death",
                            "{} -t 5 mode 2>&1 | head -2".format(self.bin("ctlinnd")),
                            expect=None)
-        if "Server running" not in survivor.output:
-            self.gaps.append("innd was not running after the fn node was killed: {}"
-                             .format(survivor.first_line))
+        self.check("innd-survived-fn-kill", "Server running" in survivor.output,
+                   "innd was not running after the fn node was killed: {}"
+                   .format(survivor.first_line),
+                   observed=survivor.first_line or "no output")
         self.sh("fn recover after the kill", self.cd(self.fn(
             "--store {} recover".format(self.store))), timeout=1800)
         self.sh("fn status after recovery", self.cd(self.fn(
@@ -1016,8 +1084,9 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
 """.format(pid=pid, p=self.inn_prefix), expect=None)
         self.inn_running = False
         self.started_pids.pop("innd", None)
-        if "INND-GONE" not in step.output:
-            self.gaps.append("innd did not die on SIGKILL: {}".format(step.first_line))
+        self.check("innd-died", "INND-GONE" in step.output,
+                   "innd did not die on SIGKILL: {}".format(step.first_line),
+                   observed=step.first_line or "no output")
         again = self.sh("restart innd after the kill", """
 P={p}
 nohup $P/bin/innd -d >> $P/log/innd-stdout.log 2>&1 < /dev/null &
@@ -1032,9 +1101,12 @@ echo INND-TIMEOUT; tail -20 $P/log/innd-stdout.log; exit 1
             self.started_pids["innd"] = again.output.split(
                 "pid=")[-1].strip().splitlines()[0]
             self.inn_running = True
+            self.check("innd-restarted", True, "", observed=again.first_line)
         else:
-            self.gaps.append("innd did not come back after the SIGKILL: {}".format(
-                again.first_line))
+            self.check("innd-restarted", False,
+                       "innd did not come back after the SIGKILL: {}".format(
+                           again.first_line),
+                       observed=again.first_line or "no output")
             self.facts["innd cut"] = "innd did not restart"
             return
         survives = self.drive_inn(
@@ -1056,11 +1128,13 @@ echo INND-TIMEOUT; tail -20 $P/log/innd-stdout.log; exit 1
     # -- evidence ---------------------------------------------------------
     def evidence(self, path, started, elapsed):
         seen, unique = set(), []
-        for gap in self.gaps:
-            if gap not in seen:
-                seen.add(gap)
-                unique.append(gap)
-        self.gaps = unique
+        for one in self.found:
+            mark = (one.id, one.verdict, one.detail)
+            if mark in seen:
+                continue
+            seen.add(mark)
+            unique.append(one)
+        self.found = unique
         return super().evidence(path, started, elapsed)
 
     # -- the whole lab ----------------------------------------------------
@@ -1163,28 +1237,26 @@ def main(argv=None) -> int:
         lab.execute()
     except GateError as error:
         failure = str(error)
-        lab.gaps.append("the lab stopped early: {}".format(error))
+        lab.limitation("lab-stopped-early",
+                       "the lab stopped early: {}".format(error))
     finally:
         try:
             lab.cleanup()
         except Exception as error:      # cleanup must never hide the result
-            lab.gaps.append("cleanup did not finish: {}: {}".format(
-                type(error).__name__, error))
+            lab.limitation("cleanup-unfinished",
+                           "cleanup did not finish: {}: {}".format(
+                               type(error).__name__, error))
     elapsed = time.monotonic() - clock
+    lab.finalize_findings()
     date = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
     target = evidence_path(args.evidence, repo,
                            "inn-lab-{}-{}.md".format(rev, date))
     lab.evidence(target, started, elapsed)
     print("evidence: {}".format(target))
-    bad = [s for s in lab.steps if s.failed]
-    print("steps={} failed={} not-exercised={}".format(
-        len(lab.steps), len(bad), sum(1 for s in lab.steps if s.rc is None)))
-    for step in bad:
-        print("  FAILED rc={} {}: {}".format(step.rc, step.name, step.first_line))
+    report(lab)
     if failure:
         print("lab error: {}".format(failure))
-        return 2
-    return 1 if bad else 0
+    return lab.exit_code(failure)
 
 
 if __name__ == "__main__":

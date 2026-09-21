@@ -1218,6 +1218,10 @@ class V0Matrix(twonode_gate.TwoNodeGate):
 
     TITLE = "v0 matrix"
     TOOL = "tools/v0_matrix.py"
+    # The rows below ARE this gate's machine-readable result, with their own
+    # digest in planning/v0-matrix.json; the gate-family findings sidecar
+    # would be a second, thinner file saying less.
+    FINDINGS_SIDECAR = False
     PREAMBLE = (
         "v0 is every feature of fn usable between two peered fn nodes. This is that",
         "question asked feature by feature against one commit on one box, with five",
@@ -1350,7 +1354,7 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         except GateError:
             raise
         except Exception as error:                       # noqa: BLE001
-            self.gaps.append("the {} phase raised {}: {}; every row it owns is "
+            self.limitation(None, "the {} phase raised {}: {}; every row it owns is "
                              "recorded not-exercised below".format(
                                  label, type(error).__name__, error))
 
@@ -1383,7 +1387,8 @@ class V0Matrix(twonode_gate.TwoNodeGate):
             "{}: {}".format(len(names), " ".join(names)) if names
             else "none: every book in the deploy tree has a certificate")
         if names:
-            self.gaps.append(
+            self.limitation(
+                None,
                 "{} book(s) in the deploy tree have no certificate and are included "
                 "from source if anything asks for them: {}. Every `not-exercised` row "
                 "below whose blocker names a book is naming one of these."
@@ -1487,7 +1492,8 @@ command -v swarm-build >/dev/null && echo swarm-build=yes || echo swarm-build=no
         self.facts["assigned ports"] = "a={} b={}".format(
             self.a.assigned_port, self.b.assigned_port)
         if not (self.a.assigned_port and self.b.assigned_port):
-            self.gaps.append(
+            self.limitation(
+                None,
                 "the host did not give two free ports ({}), so the nodes fall back to "
                 "`--port 0` and their peer records name port 0, which the record "
                 "builder reads as a BP endpoint.".format(step.first_line))
@@ -1509,7 +1515,8 @@ command -v swarm-build >/dev/null && echo swarm-build=yes || echo swarm-build=no
                        limit="one store on one box; the configuration is this gate's, "
                              "not an operator's")
         if step.rc != 0:
-            self.gaps.append(
+            self.limitation(
+                None,
                 "node {}: `fn init` exited {} ({}), so the operator path did not create "
                 "this node's store; the gate fell back to tools/run_store.py init and "
                 "every configuration row below is about that store, not about a store "
@@ -1626,7 +1633,8 @@ command -v swarm-build >/dev/null && echo swarm-build=yes || echo swarm-build=no
         self.facts["three outcomes {}".format(node.name)] = (
             "accepted={} refused={} uncertain={} (expected {})".format(*observed, expected))
         if observed != expected:
-            self.gaps.append(
+            self.limitation(
+                None,
                 "node {}: the three outcomes did not stay distinct in the exit codes: "
                 "observed {}, expected {} (D13)".format(node.upper, observed, expected))
         recover = self.sh("node {} recover after the uncertain publication".format(
@@ -1639,7 +1647,8 @@ command -v swarm-build >/dev/null && echo swarm-build=yes || echo swarm-build=no
             node.upper, uncertain), self.cd(self.fn(
                 "--store {} inspect --message-id '{}'".format(node.store, uncertain))),
             timeout=900, expect=None)
-        self.gaps.append(
+        self.limitation(
+                None,
             "node {}: the injected uncertain publication {} is asserted in neither "
             "direction; `inspect` exited {} for it after recovery. An indeterminate "
             "outcome is evidence about the report, not about the article."
@@ -1665,7 +1674,8 @@ command -v swarm-build >/dev/null && echo swarm-build=yes || echo swarm-build=no
             if step.rc == EXIT_OK:
                 node.accepted.append(msgid)
             else:
-                self.gaps.append(
+                self.limitation(
+                None,
                     "node {}: seeding {} exited {} ({}); the rows that offer it are "
                     "recorded against that.".format(node.upper, msgid, step.rc,
                                                     step.first_line))
@@ -1767,7 +1777,8 @@ else echo NONE; fi
                                  "the CLI default of 1048576 is refused"
                                  .format(self.PEER_INBOUND_MAX_OCTETS))
             if add.rc != EXIT_OK:
-                self.gaps.append(
+                self.limitation(
+                None,
                     "node {} could not write a peer record for {} (rc={}, {}); the "
                     "transit rows below are running without the peer table they name, "
                     "and an fn node answers every transit command 502 to a connection "
@@ -1785,7 +1796,8 @@ else echo NONE; fi
                       node=node.name, exit_code=listing.rc,
                       limit="the name is read out of the listing's text")
             if listing.rc == EXIT_OK and not shows and add.rc == EXIT_OK:
-                self.gaps.append(
+                self.limitation(
+                None,
                     "node {} accepted `peer add {}` but `peer list` does not show it: "
                     "the record did not survive the replay.".format(
                         node.upper, other.name))
@@ -1987,7 +1999,8 @@ else echo NONE; fi
                              "about whether the write happened"),
                          nodes=(node.name,), invocation=step.command)
             if committed:
-                self.gaps.append(
+                self.limitation(
+                None,
                     "node {}: a POST through the served path COMMITTED the article -- "
                     "the node serves {} on a later connection -- and never answered the "
                     "poster. Measured by hand on persvati 2026-09-20 as well: 340, the "
@@ -2186,7 +2199,8 @@ else echo NONE; fi
                   limit=limit + "; RFC 3977 section 5.2.2 requires the capability "
                                 "exactly when the command is available")
         if extra:
-            self.gaps.append(
+            self.limitation(
+                None,
                 "node {} dispatches {} without advertising them (RFC 3977 5.2.2, "
                 "NNT-001)".format(node.upper, ", ".join(extra)))
 
@@ -2223,7 +2237,8 @@ else echo NONE; fi
                       limit="this is the control: every later claim that an article "
                             "reached a node rests on it")
             if step.rc != 0:
-                self.gaps.append(
+                self.limitation(
+                None,
                     "node {} failed the independence control, so the transit rows below "
                     "are unfounded: {}".format(node.upper, step.first_line))
 
@@ -2755,7 +2770,8 @@ else echo NONE; fi
                   limit="one tampered octet range; the row asserts that the verdict is "
                         "a decision (unverified or absent) and not silence")
         if verify.rc == 3 or bad.rc == 3:
-            self.gaps.append(
+            self.limitation(
+                None,
                 "`fn statement verify` uses exit 3 for `unverified`, which is D13's "
                 "uncertain code everywhere else on the operator surface "
                 "(docs/operator.md). The matrix reads it with the statement "
@@ -3022,7 +3038,8 @@ else echo NONE; fi
                            .format(node.dir, node.name, tag), expect=None)
             lines = [x for x in tail.output.strip().splitlines() if x.strip()]
             self.dead[node.name] = " | ".join(lines[-6:]) or "(no log)"
-            self.gaps.append(
+            self.limitation(
+                None,
                 "node {}'s server process DIED during this run, after it had reached "
                 "LISTENING. Every row below that needed a socket on it is "
                 "not-exercised against that death, not against the feature. Its last "
@@ -3325,11 +3342,13 @@ else echo NONE; fi
 
     def evidence(self, path, started, elapsed):
         seen, unique = set(), []
-        for gap in self.gaps:
-            if gap not in seen:
-                seen.add(gap)
-                unique.append(gap)
-        self.gaps = unique
+        for one in self.found:
+            mark = (one.id, one.verdict, one.detail)
+            if mark in seen:
+                continue
+            seen.add(mark)
+            unique.append(one)
+        self.found = unique
         doc = self.document(started, elapsed)
         self.facts["rows"] = ("{total} rows: {a} accepted, {r} refused, {u} uncertain, "
                               "{n} not exercised, {b} not built, {d} disagreed".format(
@@ -3566,16 +3585,16 @@ def main(argv=None) -> int:
         gate.execute()
     except GateError as error:
         failure = str(error)
-        gate.gaps.append("the gate stopped early: {}".format(error))
+        gate.limitation(None, "the gate stopped early: {}".format(error))
         try:
             gate.backfill()
         except Exception as inner:                        # noqa: BLE001
-            gate.gaps.append("the backfill did not finish: {}".format(inner))
+            gate.limitation(None, "the backfill did not finish: {}".format(inner))
     finally:
         try:
             gate.cleanup()
         except Exception as error:                        # noqa: BLE001
-            gate.gaps.append("cleanup did not finish: {}: {}".format(
+            gate.limitation(None, "cleanup did not finish: {}: {}".format(
                 type(error).__name__, error))
     elapsed = time.monotonic() - clock
     gate.evidence(target, started, elapsed)
