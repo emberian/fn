@@ -44,7 +44,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from mock_bpa import MockNetwork  # noqa: E402
+from mock_bpa import MockNetwork, lab_bundle_octets  # noqa: E402
 from tools import media, run_bp_ingress, run_bp_receive, run_store, workflow_journal  # noqa: E402
 from tools.workflow_bridge import Acl2WorkflowReplay  # noqa: E402
 
@@ -61,6 +61,10 @@ LIFETIME = 300
 # The lowest transaction identity a lab node allocates; every later one
 # comes from the durable journal (`Outbound.next_txid`), not a counter.
 TXID_BASE = 100
+# Bundle sequence numbers for the carried-media hop, kept clear of the mock
+# BPA's own per-node submission counter so a carried bundle and a forwarded
+# one are never the same bundle.
+MEDIA_SEQUENCE_BASE = 1000
 
 ARTICLES = {
     "a1": (b"<four-node-1@fn.example>",
@@ -126,10 +130,15 @@ def post(node: Node, key: str) -> None:
 
 
 def receive(node: Node, bid: str, **kwargs) -> run_bp_receive.ReceiveResult:
+    # `bundle` is the raw octets ACL2 derives the staging identity and the
+    # expiry decision from; the BID is only the agent's handle for download
+    # and delete.  A receiver that was handed the BID alone would be staging
+    # under the agent's naming rather than under the bundle's own identity.
     return run_bp_receive.receive_bpa_request(
         store_root=node.store, inbox_root=node.inbox, receipt_root=node.receipts,
         bid=bid, source_eid=f"dtn://{node.name}/upstream",
         inventory=node.bpa.inventory, download=node.bpa.download,
+        bundle=node.bpa.bundle,
         delete=node.bpa.delete, local_policy_authorized=True, **kwargs)
 
 
@@ -274,6 +283,14 @@ class Outbound:
 
     def status(self, key: str) -> str:
         return self.bridge.work_status(self.node.work_id(key))
+
+    def origin(self, key: str) -> str:
+        """Where this work came from, which the status word cannot say.
+
+        `recovered` is a work the reopen found in the journal; `enqueued` is
+        one this session put there.  Both read `outstanding`.
+        """
+        return self.bridge.work_origin(self.node.work_id(key))
 
 
 # --------------------------------------------------------------------------
@@ -466,24 +483,40 @@ def run_lab(run: Path, *, dtn7_repo=None) -> dict:
             lab.check("relay_a_journal_is_usable_after_recovery",
                       not outbound.bridge.fenced())
             outbound.enqueue("a2")
-            # The onward obligation is readable again: whichever resolution
-            # the cut took, `work:a1:relay-a` is a work the reopened image
-            # holds, not an absent one.  It reads `outstanding` because no
-            # attempt has been made for it yet -- fn-bp-work-status answers
-            # :absent only for a work id the image does not hold at all.
             cut["work_status_a1"] = outbound.status("a1")
             cut["work_status_a2"] = outbound.status("a2")
-            lab.check("relay_a_onward_obligation_recoverable_after_kill",
-                      cut["work_status_a1"] not in ("", "absent", "unknown"))
+            # In the session that RESOLVED the cut the obligation is this
+            # session's, whichever branch resolved it: a recovery outcome and
+            # a fresh enqueue both put the work into the live image after the
+            # open, so ACL2 answers `enqueued` and not `recovered`.
+            cut["work_origin_a1_at_recovery"] = outbound.origin("a1")
             cut["records_after_recovery"] = journal_records(relay_a.workflow)
+        # The resolving session ends here.  A NEW process is the question the
+        # assertion actually asks: does the onward obligation come back out of
+        # the journal, or did it only ever exist in the session that repaired
+        # the cut?  `recovered` is an answer only replay can produce, and
+        # `outstanding` beside it says the work carries no attempt yet.
+        with Outbound(relay_a) as outbound:
+            outbound.initialize()
+            cut["work_origin_a1_after_reopen"] = outbound.origin("a1")
+            cut["work_status_a1_after_reopen"] = outbound.status("a1")
+            cut["work_origin_a2_after_reopen"] = outbound.origin("a2")
+            lab.check("relay_a_onward_obligation_recoverable_after_kill",
+                      cut["work_origin_a1_at_recovery"] == "enqueued"
+                      and cut["work_origin_a1_after_reopen"] == "recovered"
+                      and cut["work_status_a1_after_reopen"] == "outstanding")
             # The carried hop is a submission like any other: the attempt is
-            # durable before a byte is written to the volume.
-            for key in ("a1", "a2"):
+            # durable before a byte is written to the volume.  The carried
+            # item takes the bundle octets too, so the importing node derives
+            # the identity from the same evidence a network receiver would.
+            for index, key in enumerate(("a1", "a2"), start=1):
                 identity, adu = outbound.submit(
                     key, generation=0, label=f"media-{key}",
                     carrier=lambda _adu, _label, key=key:
                         f"media:volume-1:{relay_a.work_id(key)}")
-                media_items.append((identity, adu))
+                media_items.append((identity, adu,
+                                    lab_bundle_octets(f"{relay_a.name}/media",
+                                                      MEDIA_SEQUENCE_BASE + index)))
         lab.event("relay-a-killed-mid-forward", **cut)
         lab.check("relay_a_archival_receipts_unchanged_by_recovery",
                   receipt_digests(relay_a) == relay_a_receipts)
@@ -627,9 +660,13 @@ def run_lab(run: Path, *, dtn7_repo=None) -> dict:
         if not report["sources_unchanged"]:
             report.update(status="failed", error="sources changed during the lab run")
         report["limitations"] = [
-            "The mock BPA is a laboratory contact scheduler, not BPv7: no CBOR, "
-            "convergence layer, routing or status reports. Nothing here is an "
-            "interoperability result; the pinned-dtn7-rs run is separate.",
+            "The mock BPA is a laboratory contact scheduler, not BPv7: no "
+            "convergence layer, routing or status reports, and every bundle "
+            "carries a primary block and nothing else. The primary block is "
+            "real -- ACL2 encodes it and ACL2 derives the staging identity "
+            "from it -- so the duplicate and redelivery behaviour here is "
+            "fn's; the scheduling around it is not an interoperability "
+            "result, and the pinned-dtn7-rs run is separate.",
             "A relay is receiver-then-sender through two host paths. No relay "
             "receipt kind is emitted, so no accepted forwarding responsibility "
             "(SCN-001) is demonstrated; the forwarding undertaking is a proposal.",

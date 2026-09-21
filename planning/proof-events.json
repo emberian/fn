@@ -1033,6 +1033,39 @@
           "kind": "theorem"
         }
       ]
+    },
+    {
+      "id": "PRF-034",
+      "events": [
+        {
+          "name": "fn-bp-work-status-of-restart",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bp-replay-work-status-is-the-pre-crash-status-restarted",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bp-work-origin-at-open-is-recovered-or-absent",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bp-durable-enqueue-after-open-reads-enqueued",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bp-journal-events-is-durable-events-then-restart",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bp-work-status",
+          "kind": "guarded-function"
+        },
+        {
+          "name": "fn-bp-work-origin",
+          "kind": "guarded-function"
+        }
+      ]
     }
   ]
 }
