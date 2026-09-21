@@ -287,15 +287,15 @@
     "books": 280,
     "books_in_root_closure": 280,
     "roots": 280,
-    "theorems": 5680,
-    "functions": 3963,
-    "assert_events": 5761,
+    "theorems": 5687,
+    "functions": 3967,
+    "assert_events": 5805,
     "must_fails": 63,
     "encapsulates": 19,
     "guards": {
-      "verified": 1484,
+      "verified": 1489,
       "declared-off": 192,
-      "default-guarded": 1796,
+      "default-guarded": 1795,
       "default-unguarded": 491
     },
     "suspect_theorems": 46,
@@ -387,7 +387,7 @@
       "book": "books/anchor-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 25,
+      "theorems": 30,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -443,15 +443,15 @@
       "book": "books/anchor.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 58,
-      "functions": 59,
+      "theorems": 60,
+      "functions": 63,
       "guards": {
-        "verified": 40,
+        "verified": 45,
         "declared-off": 1,
-        "default-guarded": 17,
+        "default-guarded": 16,
         "default-unguarded": 1
       },
-      "verify_guards_events": 40,
+      "verify_guards_events": 45,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 13,
@@ -5151,9 +5151,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 26,
+      "assert_events": 57,
       "must_fails": 0,
-      "defconsts": 0,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5176,9 +5176,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 40,
+      "assert_events": 53,
       "must_fails": 0,
-      "defconsts": 25,
+      "defconsts": 31,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7670,7 +7670,7 @@
     {
       "theorem": "fn-anchor-octets-of-lengthp-forward",
       "book": "books/anchor.lisp",
-      "line": 107,
+      "line": 130,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp"
       ]

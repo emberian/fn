@@ -1,0 +1,206 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/anchor": 0,
+    "books/anchor-invariants": 0,
+    "books/anchor-record": 0,
+    "tests/acl2/anchor-teeth-tests": 0,
+    "tests/acl2/anchor-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w11-anchor-root/build/acl2/certify-20260921T023518Z-48220",
+  "book_failures": {},
+  "book_results": {
+    "books/anchor": "passed",
+    "books/anchor-invariants": "passed",
+    "books/anchor-record": "passed",
+    "tests/acl2/anchor-teeth-tests": "passed",
+    "tests/acl2/anchor-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/anchor": 4.234,
+    "books/anchor-invariants": 301.139,
+    "books/anchor-record": 2.422,
+    "tests/acl2/anchor-teeth-tests": 2.892,
+    "tests/acl2/anchor-tests": 4.137
+  },
+  "cert_cache": {
+    "already_cached": 4,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [
+      "tests/acl2/anchor-teeth-tests"
+    ],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/anchor",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/anchor-record",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/anchor-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/anchor-tests",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/anchor-teeth-tests",
+        "published": false,
+        "verdict": "passed",
+        "why": "tests/acl2/anchor-teeth-tests"
+      }
+    ],
+    "per_book_published": 4,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/anchor": "08a9dec83f3ccfb9dab09f99b111080342d39293495c2ff64545489d320268d0",
+    "books/anchor-invariants": "473b745ea3b46f649f54a03ba854b6de69f51a29c35a10248229f8e4ad0d19a7",
+    "books/anchor-record": "e6cc4a389176277b5ec20e3cf08269a0ef7984a0761f495396c815b8eea1c06a",
+    "tests/acl2/anchor-teeth-tests": "25f2d9b3e60b7950b088bbc1ca22e1dee02a7bb63d16f3615d9df77cf0da82ed",
+    "tests/acl2/anchor-tests": "001ee34b57ff61023f5a96ce3e81ec542fb88b27a8171e9a93c840417ea3918b"
+  },
+  "certify_wall_seconds": 315.026,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/anchor": "d3432b737880e81f6e3ff18beabed77cb0e23578ea66dfee0cf1744356aa1889",
+    "books/anchor-invariants": "6f600835bb1a3bc8f9b707e9479e5c380d45bc7c746116faaed5a7f52bc6931d",
+    "books/anchor-record": "99aa23a68df1cccca76f5cc91f7546c52109407c3e9f90110ab8afdf85502500",
+    "tests/acl2/anchor-teeth-tests": "9a6cd7525804d7f027d9686b85715978249213dfe4b8c45d37dd362ab85bddf3",
+    "tests/acl2/anchor-tests": "4f42983279255b939e4b7ed8d2aadc300cecd2eb84202fd1f8b6127ac2f1c5ed"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 076a82e507744dfb48516c0a537fb58e 1a230313f949",
+    "FN_CERTIFY_SUCCESS 076a82e507744dfb48516c0a537fb58e 41c6ea3e3a62",
+    "FN_CERTIFY_SUCCESS 076a82e507744dfb48516c0a537fb58e eac8d7441306",
+    "FN_CERTIFY_SUCCESS 076a82e507744dfb48516c0a537fb58e f22fb33d534e",
+    "FN_CERTIFY_SUCCESS 076a82e507744dfb48516c0a537fb58e ae55fd1dcfb8"
+  ],
+  "failure": "ACL2 did not produce complete clean certification evidence. See certify.log.",
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T02:40:34+00:00",
+  "git_branch": "w11/anchor-root",
+  "git_dirty": true,
+  "git_revision": "d763e1c44c6344dbfb6874c91ef191ffe8145873",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 076a82e507744dfb48516c0a537fb58e 1a230313f949",
+    "FN_CERTIFY_SUCCESS 076a82e507744dfb48516c0a537fb58e 41c6ea3e3a62",
+    "FN_CERTIFY_SUCCESS 076a82e507744dfb48516c0a537fb58e eac8d7441306",
+    "FN_CERTIFY_SUCCESS 076a82e507744dfb48516c0a537fb58e f22fb33d534e",
+    "FN_CERTIFY_SUCCESS 076a82e507744dfb48516c0a537fb58e ae55fd1dcfb8"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "de84702b19bfe30f132291dcb8ac7b3d3ad10b16a4134dcb0c1d6239187a839d",
+  "requested_before_filter": [
+    "books/anchor",
+    "books/anchor-record",
+    "books/anchor-invariants",
+    "tests/acl2/anchor-tests",
+    "tests/acl2/anchor-teeth-tests"
+  ],
+  "requested_books": [
+    "books/anchor",
+    "books/anchor-record",
+    "books/anchor-invariants",
+    "tests/acl2/anchor-tests",
+    "tests/acl2/anchor-teeth-tests"
+  ],
+  "run_id": "certify-20260921T023518Z-48220",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/anchor": 0.0,
+    "books/anchor-invariants": 0.0,
+    "books/anchor-record": 0.0,
+    "tests/acl2/anchor-teeth-tests": 0.001,
+    "tests/acl2/anchor-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/anchor-invariants.lisp": "b0c029ae8d43ca15ad39c98c897a87db3705651de95a83e8ebcb41baaf8f8261",
+    "books/anchor-record.lisp": "01742fd23b83d8d09518cb4c3e20df28d21783dce060f2511c38535ef6a6aed6",
+    "books/anchor.lisp": "8d94feb9cbe8dae9061c311714f8a67b487692161f6789b93d078506696e42a3",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/anchor-teeth-tests.lisp": "db26a42dea74a79fbacae89a4539efe5eb13adad19d4d7527ed748a4303ed63f",
+    "tests/acl2/anchor-tests.lisp": "fac2d8ff62882ab23a2753f61eb522942810e88db7100e39258481a4fbeba1df"
+  },
+  "source_digests_sha256_after": {
+    "books/anchor-invariants.lisp": "b0c029ae8d43ca15ad39c98c897a87db3705651de95a83e8ebcb41baaf8f8261",
+    "books/anchor-record.lisp": "01742fd23b83d8d09518cb4c3e20df28d21783dce060f2511c38535ef6a6aed6",
+    "books/anchor.lisp": "8d94feb9cbe8dae9061c311714f8a67b487692161f6789b93d078506696e42a3",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/anchor-teeth-tests.lisp": "d919a9e05a142d2a0c56cc85a467b93f20a71e65b912f7042a0c3047e11fc569",
+    "tests/acl2/anchor-tests.lisp": "fac2d8ff62882ab23a2753f61eb522942810e88db7100e39258481a4fbeba1df"
+  },
+  "start_order": [
+    "books/anchor",
+    "books/anchor-record",
+    "books/anchor-invariants",
+    "tests/acl2/anchor-tests",
+    "tests/acl2/anchor-teeth-tests"
+  ],
+  "started_utc": "2026-09-21T02:35:18+00:00",
+  "status": "failed",
+  "timeout_seconds": 1800,
+  "tree": "/Users/ember/dev/fn/build/lanes/w11-anchor-root"
+}

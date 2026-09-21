@@ -550,11 +550,11 @@ class Acl2Store:
         if fields is None:
             return "nil"
         (key, delegate, mint, maxt, delegation_signature,
-         midpoint, radius, nonce, signature) = fields
-        return "(list '{} '{} {} {} '{} {} {} '{} '{})".format(
+         midpoint, radius, nonce, signature, root) = fields
+        return "(list '{} '{} {} {} '{} {} {} '{} '{} '{})".format(
             cls.literal(key), cls.literal(delegate), mint, maxt,
             cls.literal(delegation_signature), midpoint, radius,
-            cls.literal(nonce), cls.literal(signature))
+            cls.literal(nonce), cls.literal(signature), cls.literal(root))
 
     @classmethod
     def anchor_pinned_form(cls, pinned):
@@ -588,25 +588,32 @@ class Acl2Store:
     def anchor_decode(self, octets, digest):
         value = self._form("(fn-anchor-host-decode '{} '{})".format(
             self.literal(octets), self.literal(digest)))
-        if not isinstance(value, list) or len(value) != 10:
+        if not isinstance(value, list) or len(value) != 11:
             raise StoreFault("durable anchor record does not decode")
         return value
 
-    def anchor_accept(self, pinned, latest, incarnation, fields, verdict):
+    # `verdict` and `one_nonce` are the two A-CRYPTO seam values ACL2 cannot
+    # compute: `fn-anchor-signatures-okp` and `fn-anchor-one-nonce-p`.  They
+    # are separate arguments because they have different answers -- a failed
+    # signature is `:refused :unverified`, an unfoldable Merkle tree is
+    # `:uncertain :unmodelled-tree`.
+    def anchor_accept(self, pinned, latest, incarnation, fields, verdict,
+                      one_nonce):
         status, reason = self._form(
-            "(fn-anchor-host-accept {} {} {} {} {})".format(
+            "(fn-anchor-host-accept {} {} {} {} {} {})".format(
                 self.anchor_pinned_form(pinned), self.anchor_fields_form(latest),
                 incarnation, self.anchor_fields_form(fields),
-                "t" if verdict else "nil"))
+                "t" if verdict else "nil", "t" if one_nonce else "nil"))
         return str(status), (str(reason) if reason else None)
 
-    def anchor_restore(self, pinned, incarnation, referenced, presented, verdict):
+    def anchor_restore(self, pinned, incarnation, referenced, presented, verdict,
+                       one_nonce):
         status, reason, next_incarnation = self._form(
-            "(fn-anchor-host-restore {} {} {} {} {})".format(
+            "(fn-anchor-host-restore {} {} {} {} {} {})".format(
                 self.anchor_pinned_form(pinned), incarnation,
                 self.anchor_fields_form(referenced),
                 self.anchor_fields_form(presented),
-                "t" if verdict else "nil"))
+                "t" if verdict else "nil", "t" if one_nonce else "nil"))
         return str(status), (str(reason) if reason else None), next_incarnation
 
     def io(self, operation, result="ok"):
@@ -870,7 +877,9 @@ class Store:
         raw = read_regular_bounded(self.anchor_path, ANCHOR_RECORD_BYTES)
         digest = hashlib.sha256(raw[:-TRAILER_BYTES]).digest() if len(raw) > TRAILER_BYTES else b""
         values = acl2.anchor_decode(raw, digest)
-        octets = (1, 2, 5, 8, 9)
+        # The blob fields of the :incarnation spec, by position: key,
+        # delegate, delegation-signature, nonce, signature and ROOT.
+        octets = (1, 2, 5, 8, 9, 10)
         fields = tuple(bytes(value) if index in octets else value
                        for index, value in enumerate(values[1:], start=1))
         return (values[0], fields)
@@ -1976,12 +1985,23 @@ def obtain_anchor(args):
 
 
 def anchor_verdict(bridge, anchor):
-    """Ed25519 over exactly the octets ACL2 says were signed.
+    """`fn-anchor-signatures-okp` of this anchor: the Ed25519 seam, only.
 
-    ACL2 rebuilds both signed messages; if its reconstruction and the octets
-    on the wire disagree, that is a fault, not a verdict.  Two checks make the
-    chain: the pinned long-term key over the delegation, and the delegated key
-    over the response.
+    This is one of the two values the host owes the model, and
+    `fn-anchor-node-accept-observed-is-node-accept`,
+    `fn-anchor-node-advance-observed-is-node-advance` and
+    `fn-anchor-restore-observed-is-restore` (books/anchor-invariants.lisp)
+    hold exactly when it is what that seam names.  Two checks make the chain:
+    the pinned long-term key over the delegation, and the delegated key over
+    the response.
+
+    The other seam value is `anchor.one_nonce`, passed alongside it; the
+    delegation validity window is neither, because
+    `fn-anchor-verifiedp-observed` applies it inside the entry.
+
+    ACL2 rebuilds both signed messages from the record -- including the root,
+    which is now a field -- and if its reconstruction and the octets on the
+    wire disagree, that is a fault, not a verdict.
     """
     from tools import crypto_host, roughtime
     signed = bridge.anchor_signed_octets(anchor.radius, anchor.midpoint, anchor.root)
@@ -2009,7 +2029,7 @@ def command_anchor(args):
         fields = anchor.fields()
         status, why = bridge.anchor_accept(
             pinned_keys(), held, incarnation, fields,
-            anchor_verdict(bridge, anchor))
+            anchor_verdict(bridge, anchor), anchor.one_nonce)
         if status == "accepted":
             store.write_anchor(bridge, incarnation, fields)
             print("anchor accepted server={} midpoint_us={} radius_us={} "
@@ -2042,7 +2062,7 @@ def anchor_restore_check(store, bridge, args):
         return "anchor=uncertain [{}]".format(reason), EXIT_UNCERTAIN
     status, why, next_incarnation = bridge.anchor_restore(
         pinned_keys(), incarnation, referenced, anchor.fields(),
-        anchor_verdict(bridge, anchor))
+        anchor_verdict(bridge, anchor), anchor.one_nonce)
     if status == "accepted":
         store.write_anchor(bridge, next_incarnation, anchor.fields())
         return "anchor=accepted incarnation={}".format(next_incarnation), EXIT_OK

@@ -9,22 +9,45 @@
 ;
 ; The anchor is a Roughtime response (draft-ietf-ntp-roughtime; this tree
 ; speaks the deployed "RoughTime v1" profile that roughtime.int08h.com:2002
-; serves).  Five fields reach the logic:
+; serves).  Ten fields reach the logic:
 ;
 ;   key-id     the server's pinned long-term Ed25519 public key, 32 octets
+;   delegate   the short-lived key that key-id authorized, 32 octets
+;   mint,maxt  the window the delegation is valid for, uint64 microseconds
+;   delegation-signature   key-id over the DELE message, 64 octets
 ;   midpoint   MIDP, microseconds since the Unix epoch
 ;   radius     RADI, microseconds of half-width around the midpoint
 ;   nonce      the 32 octets this node chose, which the server could not have
 ;              predicted, so the response cannot be a replay of an older one
 ;   signature  SIG, 64 octets, over the server's signed response
+;   root       ROOT, 64 octets, the Merkle root the SREP carries
 ;
 ; ACL2 owns what the signature covers.  `fn-anchor-srep-octets' rebuilds the
 ; server's SREP message from midpoint, radius and the Merkle root, and
 ; `fn-anchor-signed-octets' prefixes the profile's response context; the host
 ; never tells the logic what was signed, it only supplies the verdict of the
-; Ed25519 check over octets ACL2 produced.  A different nonce is a different
-; root is a different signed message, so the nonce is load-bearing rather than
-; decorative.
+; Ed25519 check over octets ACL2 produced.
+;
+; ROOT IS A FIELD, NOT A DERIVATION, and that is the whole of w11/anchor-root.
+; Until 2026-09-20 `fn-anchor-root' was DEFINED as
+; `(fn-anchor-leaf-digest (fn-anchor-nonce a))', so every theorem about the
+; signed octets described a one-nonce tree -- empty PATH, INDX 0 -- while
+; `tools/roughtime.py' admitted a PATH up to 32 nodes deep and
+; `anchor_verdict' ran Ed25519 over the root ON THE WIRE.  For a batched
+; response the host's verdict was about one message and the theorems were
+; about another, and nothing noticed -- and one of the three captured vectors
+; in tests/vectors/ IS batched (later2: PATH one node, INDX 1), so this was
+; live in fn's own test suite and not a hypothetical.
+;
+; The root now travels on the record, so `fn-anchor-signed-octets' is the
+; octets that were actually verified, whatever the batch; and
+; `fn-anchor-one-nonce-p' is a branch of every transition, answering
+; `:uncertain :unmodelled-tree' for a tree this model cannot fold.  UNCERTAIN
+; and not REFUSED: the response may be perfectly good, fn cannot say, and a
+; refusal would claim knowledge it does not have (D13).  A different nonce is
+; a different leaf digest is, for a one-nonce response, a different signed
+; message; so the nonce stays load-bearing, and now says so with its
+; hypothesis attached.
 ;
 ; Nothing here claims Ed25519 is unforgeable, that SHA-512 is collision
 ; resistant, or that a Roughtime server is honest.  `fn-anchor-sig-verify' and
@@ -224,7 +247,7 @@
 (fn-defrecord fn-anchor
   :tag :fn-anchor
   :constructor (fn-anchor key-id delegate mint maxt delegation-signature
-                          midpoint radius nonce signature)
+                          midpoint radius nonce signature root)
   :fields ((fn-anchor-key
             (fn-anchor-octets-of-lengthp (fn-anchor-key x)
                                          *fn-anchor-key-octets*))
@@ -243,7 +266,13 @@
                                          *fn-anchor-nonce-octets*))
            (fn-anchor-signature
             (fn-anchor-octets-of-lengthp (fn-anchor-signature x)
-                                         *fn-anchor-sig-octets*)))
+                                         *fn-anchor-sig-octets*))
+           ; The tenth field.  ROOT as the SREP carried it: the octets the
+           ; delegated key actually signed over, not a value this book
+           ; recomputes from the nonce.
+           (fn-anchor-root
+            (fn-anchor-octets-of-lengthp (fn-anchor-root x)
+                                         *fn-anchor-root-octets*)))
   :recognizer fn-anchor-p
   :car-fn fn-anchor-ag-car
   :cdr-fn fn-anchor-ag-cdr)
@@ -254,12 +283,26 @@
 ; SREP is a Roughtime message with three tags in ascending little-endian tag
 ; order: RADI (uint32), MIDP (uint64), ROOT.  Its header is the tag count, the
 ; two value offsets and the three tag words; the values follow in the same
-; order.  For the one-nonce tree this node sends, ROOT is the leaf digest of
-; its own nonce, PATH is empty and INDX is zero.
+; order.  ROOT is read off the record (`fn-anchor-root'), so these octets are
+; the octets of the response in hand for any batch size.
 
-(defun fn-anchor-root (a)
+; The response covers one nonce and only this node's: its Merkle tree has a
+; single leaf, so the signed root IS the leaf digest of the nonce this node
+; chose, and PATH is empty with INDX 0.  `fn-anchor-leaf-digest' is
+; constrained (A-CRYPTO, 64 octets, nothing else), so this predicate is not
+; executable in the logic; the host discharges it from the shape of the
+; response it parsed, and specs/anchor.md's trust section names the three
+; sites that do.  What it buys is honesty about what fn knows: a batched
+; response makes this false, and every transition below answers
+; `:uncertain :unmodelled-tree' -- rather than admitting a record whose
+; nonce binding nothing in the logic can state.
+(defun fn-anchor-one-nonce-p (a)
   (declare (xargs :guard t))
-  (fn-anchor-leaf-digest (fn-anchor-nonce a)))
+  (and (fn-anchor-p a)
+       (equal (fn-anchor-root a) (fn-anchor-leaf-digest (fn-anchor-nonce a)))
+       t))
+
+(verify-guards fn-anchor-one-nonce-p)
 
 (defun fn-anchor-srep-from-root (radius midpoint root)
   ; The exact SREP octets, given the root as a value rather than through the
@@ -356,16 +399,26 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-anchor-len-of-append))))
 
+; These three now carry `(fn-anchor-p a)', exactly as the two delegation
+; facts above them always have, and for the same reason: the octets are built
+; from record fields rather than from a total constrained function.  While
+; ROOT was `(fn-anchor-leaf-digest (fn-anchor-nonce a))' the digest's own
+; width constraint made them unconditional; a field's width is the record's
+; to state.  No consumer loses anything: every caller of the reconstruction
+; is already under `fn-anchor-p' (it is the guard of both functions).
 (defthm fn-anchor-srep-octets-are-octets
-  (fn-cbor-octet-listp (fn-anchor-srep-octets a)))
+  (implies (fn-anchor-p a)
+           (fn-cbor-octet-listp (fn-anchor-srep-octets a))))
 
 (defthm fn-anchor-srep-octets-length
-  (equal (len (fn-anchor-srep-octets a)) 100)
+  (implies (fn-anchor-p a)
+           (equal (len (fn-anchor-srep-octets a)) 100))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-anchor-len-of-append))))
 
 (defthm fn-anchor-signed-octets-are-octets
-  (fn-cbor-octet-listp (fn-anchor-signed-octets a)))
+  (implies (fn-anchor-p a)
+           (fn-cbor-octet-listp (fn-anchor-signed-octets a))))
 
 ; Equal-length prefixes cancel.  This is the only fact the keystone below
 ; needs about `append', and it is proof vocabulary, so it is local and
@@ -385,9 +438,12 @@
    :rule-classes nil
    :hints (("Goal" :induct (fn-anchor-append-induction a b)))))
 
-; KEYSTONE.  The signed message determines the nonce's digest: two anchors that
-; were signed over the same octets have the same Merkle root.  This is what
-; makes the nonce load-bearing without assuming anything about SHA-512.
+; KEYSTONE.  The signed message determines the root: two anchors that were
+; signed over the same octets carry the same Merkle root.  Before the root
+; became a field this said "the same leaf digest of the nonce", which is the
+; same sentence only for a one-nonce response; stated over the field it holds
+; for a response of any batch size, so its covered scope grew with the fix.
+; It assumes nothing about SHA-512.
 (defthm fn-anchor-signed-octets-determine-the-root
   (implies (and (fn-anchor-p a)
                 (fn-anchor-p b)
@@ -402,28 +458,59 @@
                             (b (fn-anchor-le-bytes (fn-anchor-radius b) 4))
                             (x (append (fn-anchor-le-bytes
                                         (fn-anchor-midpoint a) 8)
-                                       (fn-anchor-leaf-digest
-                                        (fn-anchor-nonce a))))
+                                       (fn-anchor-root a)))
                             (y (append (fn-anchor-le-bytes
                                         (fn-anchor-midpoint b) 8)
-                                       (fn-anchor-leaf-digest
-                                        (fn-anchor-nonce b)))))
+                                       (fn-anchor-root b))))
                  (:instance fn-anchor-append-cancels-equal-length-prefixes
                             (a (fn-anchor-le-bytes (fn-anchor-midpoint a) 8))
                             (b (fn-anchor-le-bytes (fn-anchor-midpoint b) 8))
-                            (x (fn-anchor-leaf-digest (fn-anchor-nonce a)))
-                            (y (fn-anchor-leaf-digest
-                                (fn-anchor-nonce b))))))))
+                            (x (fn-anchor-root a))
+                            (y (fn-anchor-root b)))))))
+
+; COROLLARY, not a registry event: the keystone above plus the definition of
+; `fn-anchor-one-nonce-p'.  It is the sentence the book used to state
+; unconditionally, now carrying the hypothesis that was always doing the work
+; -- the response covers one nonce.  Cite the keystone; this exists so that
+; "a different nonce is a different signed message" has a name with its
+; hypothesis attached.
+(defthm fn-anchor-one-nonce-signed-octets-determine-the-leaf-digest
+  (implies (and (fn-anchor-one-nonce-p a)
+                (fn-anchor-one-nonce-p b)
+                (equal (fn-anchor-signed-octets a) (fn-anchor-signed-octets b)))
+           (equal (fn-anchor-leaf-digest (fn-anchor-nonce a))
+                  (fn-anchor-leaf-digest (fn-anchor-nonce b))))
+  :hints (("Goal" :in-theory (enable fn-anchor-one-nonce-p)
+           :use (fn-anchor-signed-octets-determine-the-root))))
 
 ; -----------------------------------------------------------------------------
 ; Validity and pinning
 
 ; The whole Roughtime trust chain, in the logic:
 ;   the pinned long-term key signed a delegation naming a short-lived key and
-;   a validity window; that short-lived key signed this response; and the
-;   midpoint lies inside the window it was delegated for.  Each signature is
-;   checked over octets this book built, never over octets the host described.
-(defun fn-anchor-verifiedp (a)
+;   a validity window; that short-lived key signed this response; the response
+;   covers one nonce and it is this node's; and the midpoint lies inside the
+;   window it was delegated for.  Each signature is checked over octets this
+;   book built, never over octets the host described.
+;
+; It is split by WHO CAN COMPUTE IT, and there is one predicate per A-CRYPTO
+; seam, so a host entry has one hypothesis per seam and no lumping.
+;
+; `fn-anchor-signatures-okp' is the Ed25519 seam: two `fn-anchor-sig-verify'
+; calls over octets this book built.  The host supplies its value.
+;
+; `fn-anchor-one-nonce-p' (above) is the SHA-512 seam.  The host supplies its
+; value too, and it is a SEPARATE argument, because failing it is a different
+; answer -- see `fn-anchor-node-accept'.
+;
+; `fn-anchor-window-okp' is arithmetic on fields the record already carries.
+; ACL2 owns it outright: `fn-anchor-verifiedp-observed' below applies it
+; INSIDE the entry the host calls, so no host has to. Until 2026-09-20 it was
+; part of what the host's verdict had to mean, and `tools/roughtime.py:258'
+; was half the discharge of a hypothesis whose other half came from
+; `tools/run_store.py'; that split is closed, and roughtime.py's copy is now
+; a preflight whose value nothing in the logic depends on.
+(defun fn-anchor-signatures-okp (a)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-anchor-p a)
        (fn-anchor-sig-verify (fn-anchor-key a)
@@ -432,8 +519,29 @@
        (fn-anchor-sig-verify (fn-anchor-delegate a)
                              (fn-anchor-signed-octets a)
                              (fn-anchor-signature a))
+       t))
+
+(verify-guards fn-anchor-signatures-okp)
+
+(defun fn-anchor-window-okp (a)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-anchor-p a)
        (<= (fn-anchor-mint a) (fn-anchor-midpoint a))
        (<= (fn-anchor-midpoint a) (fn-anchor-maxt a))
+       t))
+
+(verify-guards fn-anchor-window-okp)
+
+; Verified means the Roughtime chain holds: both signatures over octets this
+; book built, and the midpoint inside the window it was delegated for.  This
+; is what it meant before the root became a field, and it is deliberately
+; NOT where `fn-anchor-one-nonce-p' went: a batched response is not an
+; unverified one, and calling it unverified would report a signature failure
+; that did not happen.
+(defun fn-anchor-verifiedp (a)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-anchor-signatures-okp a)
+       (fn-anchor-window-okp a)
        t))
 
 (verify-guards fn-anchor-verifiedp)
@@ -447,9 +555,13 @@
 
 (verify-guards fn-anchor-pinnedp)
 
+; What a durable decision needs: the chain holds, the tree is one this model
+; can describe, and the server is pinned.
 (defun fn-anchor-acceptablep (a pinned)
   (declare (xargs :guard t))
-  (and (fn-anchor-verifiedp a) (fn-anchor-pinnedp a pinned)))
+  (and (fn-anchor-verifiedp a)
+       (fn-anchor-one-nonce-p a)
+       (fn-anchor-pinnedp a pinned)))
 
 (verify-guards fn-anchor-acceptablep)
 
@@ -524,15 +636,22 @@
       (fn-anchor-outcome :uncertain :no-anchor node)
     (if (not (fn-anchor-verifiedp a))
         (fn-anchor-outcome :refused :unverified node)
-      (if (not (fn-anchor-pinnedp a (fn-anchor-node-pinned node)))
-          (fn-anchor-outcome :refused :unpinned node)
-        (if (and (fn-anchor-node-latest node)
-                 (not (fn-anchor-newerp a (fn-anchor-node-latest node))))
-            (fn-anchor-outcome :refused :stale node)
-          (fn-anchor-outcome :accepted nil
-                             (fn-anchor-node (fn-anchor-node-pinned node)
-                                             a
-                                             (fn-anchor-node-incarnation node))))))))
+      ; The chain holds and the tree is one this model cannot fold, so this
+      ; node does not know whether the response covers its nonce.  That is an
+      ; UNCERTAINTY, not a refusal (D13, and specs/anchor.md's rule that a
+      ; refusal must not claim knowledge the node does not have): the answer
+      ; may be perfectly good and fn cannot say.  Nothing durable moves.
+      (if (not (fn-anchor-one-nonce-p a))
+          (fn-anchor-outcome :uncertain :unmodelled-tree node)
+        (if (not (fn-anchor-pinnedp a (fn-anchor-node-pinned node)))
+            (fn-anchor-outcome :refused :unpinned node)
+          (if (and (fn-anchor-node-latest node)
+                   (not (fn-anchor-newerp a (fn-anchor-node-latest node))))
+              (fn-anchor-outcome :refused :stale node)
+            (fn-anchor-outcome :accepted nil
+                               (fn-anchor-node (fn-anchor-node-pinned node)
+                                               a
+                                               (fn-anchor-node-incarnation node)))))))))
 
 (verify-guards fn-anchor-node-accept)
 
@@ -597,19 +716,25 @@
       (fn-anchor-outcome :uncertain :no-anchor image)
     (if (not (fn-anchor-verifiedp presented))
         (fn-anchor-outcome :refused :unverified image)
-      (if (not (fn-anchor-pinnedp presented (fn-anchor-node-pinned node)))
-          (fn-anchor-outcome :refused :unpinned image)
-        (if (and (fn-anchor-image-referenced image)
-                 (not (fn-anchor-newerp presented
-                                        (fn-anchor-image-referenced image))))
-            ; Possibly stale: the image refers to an anchor this restore cannot
-            ; show it is later than.  The distinct reason is the whole point.
-            (fn-anchor-outcome :refused :possibly-stale image)
-          (fn-anchor-outcome
-           :accepted nil
-           (fn-anchor-node (fn-anchor-node-pinned node)
-                           presented
-                           (+ 1 (fn-anchor-image-incarnation image)))))))))
+      ; As in `fn-anchor-node-accept': a tree this model cannot fold leaves
+      ; the freshness question unanswered, and an unanswered question is
+      ; never reported as a refusal.
+      (if (not (fn-anchor-one-nonce-p presented))
+          (fn-anchor-outcome :uncertain :unmodelled-tree image)
+        (if (not (fn-anchor-pinnedp presented (fn-anchor-node-pinned node)))
+            (fn-anchor-outcome :refused :unpinned image)
+          (if (and (fn-anchor-image-referenced image)
+                   (not (fn-anchor-newerp presented
+                                          (fn-anchor-image-referenced image))))
+              ; Possibly stale: the image refers to an anchor this restore
+              ; cannot show it is later than.  The distinct reason is the
+              ; whole point.
+              (fn-anchor-outcome :refused :possibly-stale image)
+            (fn-anchor-outcome
+             :accepted nil
+             (fn-anchor-node (fn-anchor-node-pinned node)
+                             presented
+                             (+ 1 (fn-anchor-image-incarnation image))))))))))
 
 (verify-guards fn-anchor-restore)
 
@@ -652,28 +777,47 @@
 ; `books/anchor-invariants.lisp' proves these entries EQUAL to the functions
 ; the theorems are about whenever the verdict is the one the seam names, so
 ; there is one subject, not two.
+;
+; The host supplies one value per A-CRYPTO seam and nothing else:
+;
+;   verdict     `fn-anchor-signatures-okp' -- the two Ed25519 checks;
+;   one-nonce   `fn-anchor-one-nonce-p'    -- the response covers one nonce
+;               and it is this node's, which the host reads off the shape of
+;               the Merkle proof it checked.
+;
+; They are separate arguments because they have different answers: a failed
+; signature is a refusal, an unfoldable tree is an uncertainty.  The
+; delegation window is ACL2's and is applied here.
 
-(defun fn-anchor-node-accept-observed (node a verdict)
+(defun fn-anchor-verifiedp-observed (a verdict)
+  (declare (xargs :guard t))
+  (and verdict (fn-anchor-window-okp a) t))
+
+(verify-guards fn-anchor-verifiedp-observed)
+
+(defun fn-anchor-node-accept-observed (node a verdict one-nonce)
   (declare (xargs :guard (fn-anchor-nodep node) :verify-guards nil))
   (if (not (fn-anchor-p a))
       (fn-anchor-outcome :uncertain :no-anchor node)
-    (if (not (and verdict t))
+    (if (not (fn-anchor-verifiedp-observed a verdict))
         (fn-anchor-outcome :refused :unverified node)
-      (if (not (fn-anchor-pinnedp a (fn-anchor-node-pinned node)))
-          (fn-anchor-outcome :refused :unpinned node)
-        (if (and (fn-anchor-node-latest node)
-                 (not (fn-anchor-newerp a (fn-anchor-node-latest node))))
-            (fn-anchor-outcome :refused :stale node)
-          (fn-anchor-outcome :accepted nil
-                             (fn-anchor-node (fn-anchor-node-pinned node)
-                                             a
-                                             (fn-anchor-node-incarnation node))))))))
+      (if (not (and one-nonce t))
+          (fn-anchor-outcome :uncertain :unmodelled-tree node)
+        (if (not (fn-anchor-pinnedp a (fn-anchor-node-pinned node)))
+            (fn-anchor-outcome :refused :unpinned node)
+          (if (and (fn-anchor-node-latest node)
+                   (not (fn-anchor-newerp a (fn-anchor-node-latest node))))
+              (fn-anchor-outcome :refused :stale node)
+            (fn-anchor-outcome :accepted nil
+                               (fn-anchor-node (fn-anchor-node-pinned node)
+                                               a
+                                               (fn-anchor-node-incarnation node)))))))))
 
 (verify-guards fn-anchor-node-accept-observed)
 
-(defun fn-anchor-node-advance-observed (node a verdict)
+(defun fn-anchor-node-advance-observed (node a verdict one-nonce)
   (declare (xargs :guard (fn-anchor-nodep node) :verify-guards nil))
-  (let ((outcome (fn-anchor-node-accept-observed node a verdict)))
+  (let ((outcome (fn-anchor-node-accept-observed node a verdict one-nonce)))
     (if (not (equal (fn-anchor-status outcome) :accepted))
         outcome
       (fn-anchor-outcome
@@ -684,24 +828,26 @@
 
 (verify-guards fn-anchor-node-advance-observed)
 
-(defun fn-anchor-restore-observed (node image presented verdict)
+(defun fn-anchor-restore-observed (node image presented verdict one-nonce)
   (declare (xargs :guard (and (fn-anchor-nodep node) (fn-anchor-imagep image))
                   :verify-guards nil))
   (if (not (fn-anchor-p presented))
       (fn-anchor-outcome :uncertain :no-anchor image)
-    (if (not (and verdict t))
+    (if (not (fn-anchor-verifiedp-observed presented verdict))
         (fn-anchor-outcome :refused :unverified image)
-      (if (not (fn-anchor-pinnedp presented (fn-anchor-node-pinned node)))
-          (fn-anchor-outcome :refused :unpinned image)
-        (if (and (fn-anchor-image-referenced image)
-                 (not (fn-anchor-newerp presented
-                                        (fn-anchor-image-referenced image))))
-            (fn-anchor-outcome :refused :possibly-stale image)
-          (fn-anchor-outcome
-           :accepted nil
-           (fn-anchor-node (fn-anchor-node-pinned node)
-                           presented
-                           (+ 1 (fn-anchor-image-incarnation image)))))))))
+      (if (not (and one-nonce t))
+          (fn-anchor-outcome :uncertain :unmodelled-tree image)
+        (if (not (fn-anchor-pinnedp presented (fn-anchor-node-pinned node)))
+            (fn-anchor-outcome :refused :unpinned image)
+          (if (and (fn-anchor-image-referenced image)
+                   (not (fn-anchor-newerp presented
+                                          (fn-anchor-image-referenced image))))
+              (fn-anchor-outcome :refused :possibly-stale image)
+            (fn-anchor-outcome
+             :accepted nil
+             (fn-anchor-node (fn-anchor-node-pinned node)
+                             presented
+                             (+ 1 (fn-anchor-image-incarnation image))))))))))
 
 (verify-guards fn-anchor-restore-observed)
 
@@ -740,6 +886,8 @@
     (:d fn-anchor-srep-octets) (:d fn-anchor-signed-from-root)
     (:d fn-anchor-signed-octets) (:d fn-anchor-dele-octets)
     (:d fn-anchor-delegation-signed-octets)
+    (:d fn-anchor-one-nonce-p) (:d fn-anchor-signatures-okp)
+    (:d fn-anchor-window-okp) (:d fn-anchor-verifiedp-observed)
     (:d fn-anchor-verifiedp) (:d fn-anchor-pinnedp)
     (:d fn-anchor-acceptablep) (:d fn-anchor-earliest)
     (:d fn-anchor-latest) (:d fn-anchor-newerp)
@@ -777,6 +925,8 @@
              (:d fn-anchor-srep-octets) (:d fn-anchor-signed-from-root)
              (:d fn-anchor-signed-octets) (:d fn-anchor-dele-octets)
              (:d fn-anchor-delegation-signed-octets)
+             (:d fn-anchor-one-nonce-p) (:d fn-anchor-signatures-okp)
+             (:d fn-anchor-window-okp) (:d fn-anchor-verifiedp-observed)
              (:d fn-anchor-verifiedp) (:d fn-anchor-pinnedp)
              (:d fn-anchor-acceptablep) (:d fn-anchor-earliest)
              (:d fn-anchor-latest) (:d fn-anchor-newerp)
