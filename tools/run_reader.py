@@ -83,9 +83,21 @@ def acl2_natural(output):
 
 
 def acl2_boolean(output):
-    if re.fullmatch(rb"T\s*ACL2 !>", output):
+    # Anchored on the trimmed body, exactly as `acl2_natural` and
+    # `acl2_octet_list` above are. A `:mode :program` bridge function
+    # answers with an ERROR TRIPLE, which ACL2 prints with a leading space,
+    # so a pattern anchored at the first octet rejects a perfectly good T:
+    # `fn-owner-feed-streamingp` answers ` T` and this raised
+    # `unexpected ACL2 boolean result` out of `feed_dial`, which nothing
+    # catches, ending the owner process the first time any feed dialled a
+    # STREAMING peer.
+    trimmed = output.strip()
+    if not trimmed.endswith(PROMPT):
+        raise RuntimeError("unexpected ACL2 boolean result")
+    body = trimmed[:-len(PROMPT)].strip().upper()
+    if body == b"T":
         return True
-    if re.fullmatch(rb"NIL\s*ACL2 !>", output):
+    if body == b"NIL":
         return False
     raise RuntimeError("unexpected ACL2 boolean result")
 
