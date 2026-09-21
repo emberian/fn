@@ -19,14 +19,13 @@
 ; The durable store's configuration format.  A store records this string and
 ; a host refuses to open one whose format it does not recognise, so a store
 ; written under an earlier set of decisions is rejected by its configuration
-; rather than read with today's meaning.  Format 5 is the first written under
-; the v1 content identity profile (`books/identity.lisp`); a store written
-; under the pre-v1 `"sha256:"`/`"archive:"` derivation is format 4 and is
-; refused at open.
-; "fn-store-experiment-5"
+; rather than read with today's meaning.  Format 6 writes ACL2-owned FNSM
+; metadata frames.  Older JSON metadata remains in place and needs explicit
+; offline migration; merely opening a new-format store never rewrites it.
+; "fn-store-experiment-6"
 (defconst *fn-store-format-id*
   '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
-    101 110 116 45 53))
+    101 110 116 45 54))
 
 (defun fn-store-group-name (code groups)
   ; The group at a zero-based code, or nil.
