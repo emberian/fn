@@ -42,6 +42,24 @@ def summary(values):
 
 
 
+
+def host_facts():
+    facts = {"hostname": socket.gethostname(), "platform": platform.platform(),
+             "machine": platform.machine(), "cpu_count": os.cpu_count(),
+             "kernel": platform.release()}
+    try:
+        for line in Path("/proc/cpuinfo").read_text(errors="replace").splitlines():
+            if line.startswith("model name"):
+                facts["cpu_model"] = line.split(":", 1)[1].strip()
+                break
+        for line in Path("/proc/meminfo").read_text(errors="replace").splitlines():
+            if line.startswith("MemTotal:"):
+                facts["memory_kib"] = int(line.split()[1])
+                break
+    except OSError:
+        pass
+    return facts
+
 def file_sha256(path):
     digest = hashlib.sha256()
     with Path(path).open("rb") as source:
@@ -353,9 +371,7 @@ def main(argv=None):
               "harness_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               "owner_source_revision": args.owner_source_revision or revision(),
               "counts_requested": counts, "python": sys.version,
-              "host": {"hostname": socket.gethostname(), "platform": platform.platform(),
-                       "machine": platform.machine(), "cpu_count": os.cpu_count(),
-                       "kernel": platform.release()},
+              "host": host_facts(),
               "tool_versions": {"python": sys.version, "acl2_path": args.acl2 or "default"},
               "loadavg_at_start": os.getloadavg(),
               "owner_control": current_owner(work, counts, args.payload,
