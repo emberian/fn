@@ -18,7 +18,8 @@ Both certified `books/wire-invariants` and
 | `certify-20260921T110653Z-3068248` | `/home/ember/fn-lanes/w13-owner-integrated-gate` | `5e8164c644d9c8cba36b5ff2976d43df1a47c4256d618278568431368ed6b15f` | `9291ed5a2beb6c74936bb10344546abc5ba20a9e1bd4429f2e8d7951a2b89e21` |
 
 The exact manifests are in `planning/evidence/manifests/`.  The exact failing
-per-book logs are beside this record.  The first log shows one `peer-inbound`
+per-book logs are beside this record as deterministic `gzip -n` archives; the
+table gives each decompressed log's SHA-256.  The first log shows one `peer-inbound`
 certificate requiring dependencies under
 `/Users/ember/dev/fn/build/lanes/w18-native-bp-app`, while familiar-name
 dependencies had already been included from `/home/ember/fn-lanes/w12-bp-sequence`,
