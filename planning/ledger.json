@@ -243,6 +243,7 @@
     "books/owner",
     "books/owner-invariants",
     "tests/acl2/owner-tests",
+    "tests/acl2/owner-config-tests",
     "books/relay",
     "books/relay-invariants",
     "books/relay-crash-invariants",
@@ -278,12 +279,12 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 275,
-    "books_in_root_closure": 274,
-    "roots": 274,
+    "books": 276,
+    "books_in_root_closure": 275,
+    "roots": 275,
     "theorems": 5516,
     "functions": 3927,
-    "assert_events": 5310,
+    "assert_events": 5385,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
@@ -6524,6 +6525,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-config-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 75,
+      "must_fails": 0,
+      "defconsts": 19,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-feed-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -7753,7 +7779,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 641,
+      "line": 646,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]

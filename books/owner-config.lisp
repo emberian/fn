@@ -498,13 +498,18 @@
             :in-theory (enable (:d fn-ocfg-pin-find)
                                (:d fn-ocfg-pins-pin-conns-only))))))
 
+; The `let' this used to carry was beta-equivalent and hid the hypothesis
+; stack from every reader of the source, `tools/teeth_check.py' among them
+; (`hypotheses_of' sees `let' and reports none), so the two hypotheses are
+; spelled out.
 (defthm fn-ocfg-open-pins-the-live-configuration
-  (let ((oc2 (cdr (fn-ocfg-open oc acfg))))
-    (implies (and (fn-ocfg-statep oc)
-                  (fn-own-find-conn (fn-own-next-id (fn-ocfg-owner oc))
-                                    (fn-own-conns (fn-ocfg-owner oc2))))
-             (equal (fn-ocfg-conn-config oc2 (fn-own-next-id (fn-ocfg-owner oc)))
-                    (fn-ocfg-config oc))))
+  (implies (and (fn-ocfg-statep oc)
+                (fn-own-find-conn
+                 (fn-own-next-id (fn-ocfg-owner oc))
+                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))
+           (equal (fn-ocfg-conn-config (cdr (fn-ocfg-open oc acfg))
+                                       (fn-own-next-id (fn-ocfg-owner oc)))
+                  (fn-ocfg-config oc)))
   :hints (("Goal" :in-theory (enable (:d fn-ocfg-open) (:d fn-ocfg-conn-config)
                                      (:d fn-ocfg-pin-add) (:d fn-ocfg-statep))
            :use ((:instance fn-ocfg-a-pinned-identifier-is-an-open-connection
