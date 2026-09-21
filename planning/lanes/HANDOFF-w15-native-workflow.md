@@ -50,11 +50,11 @@ reader image:
 ```sh
 FN_NATIVE_BUILD=host/native/build-dtn.lisp \
 FN_NATIVE_IMAGE=build/fn-host-dtn \
-FN_NATIVE_LOG=build/native-workflow-build-v3.log \
+FN_NATIVE_LOG=build/native-workflow-build-v6.log \
 sh tools/build_native_host.sh
 ```
 
-It built a 283 MiB core.  Against that image:
+It built a 284 MiB core.  Against that image:
 
 ```sh
 python3 -m unittest -v tests.test_native_app_journal
