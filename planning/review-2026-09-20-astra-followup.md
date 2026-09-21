@@ -85,7 +85,10 @@ retention obligation must survive a crash during that retry transition.
 
 ### F3 — Medium: the peer path discards the listener's authentication policy
 
-[Owner.accept_nntp_step](../tools/run_owner.py), line 635, selects `open_peer`
+[Owner.accept_nntp](../tools/run_owner.py) selects `open_peer`
+(the review read it as `accept_nntp_step`, line 635; `w11/owner-survival`
+folded that wrapper back into `accept_nntp` when the host-fault boundary
+became one function, and the finding is unchanged)
 when the remote address matches a configured peer. Ordinary `fn-own-open`
 passes the authentication configuration through. In contrast,
 [`fn-own-open-peer`](../books/owner.lisp), line 667, has no authentication-config

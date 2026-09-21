@@ -31,6 +31,20 @@ completion distinctly. Recovery owns reconciliation after uncertainty; socket
 disconnect does not establish storage rollback. Adapter/platform validation is
 required in addition to ACL2 proofs.
 
+HST-005: a fault in the host costs the connection that caused it and nothing
+else. An unexpected exception while serving one connection must not end the
+process, because a news server faces untrusted peers and one peer's input
+would then be a denial of service against every other. The host decides only
+whether it still trusts that socket; the reply, the scope and everything the
+state owner forgets are the core's one fault transition, which closes the
+connection, clears the submission it had in flight and the transaction it
+held, and leaves every other connection equal to what it was. The reply is a
+FOURTH outcome, distinct on the wire from accepted, refused and uncertain, so
+a fault is never read as a verdict on an article. A fault the host cannot
+attribute to a connection or a peer abandons nothing, so it is counted and
+bounded; and a lost core image is not a fault the host survives, because the
+core is where every decision is made.
+
 HST-004: I/O, clocks, cryptographic primitives, and authentication are explicit
 trust-boundary entries. The production integration must not contaminate book
 certification with arbitrary raw-mode changes or hide trusted code inside a

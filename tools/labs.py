@@ -55,6 +55,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 PASSED = "passed"
 FAILED = "failed"
 NOT_RUNNABLE = "not-runnable"
+# A harness that exits 3 violated nothing it stated and decided nothing it
+# meant to decide (tools/deploy_gate.py's `Finding`, D13's uncertain).  It is
+# not a pass, because it establishes no claim, and it is not a failure,
+# because nothing came out false; folding it into either loses the
+# distinction the gates keep.
+INCONCLUSIVE = "inconclusive"
+GATE_INCONCLUSIVE_EXIT = 3
 
 
 def repo_root(start: Path | None = None) -> Path:
@@ -478,6 +485,12 @@ def run_one(lab: Lab, root: Path, run: Path, args) -> dict:
             row["evidence"] = record["evidence"]
     tail = [line for line in output.splitlines() if line.strip()][-1:]
     row["last_line"] = tail[0][:300] if tail else ""
+    if rc == GATE_INCONCLUSIVE_EXIT and lab.kind in ("lab", "dry"):
+        row.update(outcome=INCONCLUSIVE,
+                   reason="exit 3: the run violated nothing and decided "
+                          "nothing it meant to decide: {}".format(
+                              row["last_line"] or "no output"))
+        return row
     if rc != 0:
         row.update(outcome=FAILED,
                    reason="exit {}: {}{}".format(
@@ -521,10 +534,12 @@ def render(rows: list[dict], tier: str) -> str:
                 detail=row.get("reason") or row.get("evidence")
                 or row.get("last_line", "")))
     counts = {name: sum(1 for row in rows if row["outcome"] == name)
-              for name in (PASSED, FAILED, NOT_RUNNABLE)}
+              for name in (PASSED, FAILED, INCONCLUSIVE, NOT_RUNNABLE)}
     lines.append("")
-    lines.append("labs[{}]: {} passed, {} failed, {} not-runnable".format(
-        tier, counts[PASSED], counts[FAILED], counts[NOT_RUNNABLE]))
+    lines.append(
+        "labs[{}]: {} passed, {} failed, {} inconclusive, {} not-runnable".format(
+            tier, counts[PASSED], counts[FAILED], counts[INCONCLUSIVE],
+            counts[NOT_RUNNABLE]))
     return "\n".join(lines)
 
 
@@ -596,7 +611,9 @@ def main(argv=None) -> int:
         Path(args.json).write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(render(rows, args.tier))
     print("run directories: {}".format(base))
-    return 1 if any(row["outcome"] == FAILED for row in rows) else 0
+    if any(row["outcome"] == FAILED for row in rows):
+        return 1
+    return 3 if any(row["outcome"] == INCONCLUSIVE for row in rows) else 0
 
 
 if __name__ == "__main__":

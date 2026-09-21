@@ -753,6 +753,33 @@
       ],
       "evidence": [],
       "execution_scope": "Specified. The layer transfers opaque octets today: it does not parse what it carries, and no BP node is wired behind it, so the last step has no implementation to exercise."
+    },
+    {
+      "id": "SCN-026",
+      "title": "A host fault on one connection, with another connection open across it",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "HST-005",
+        "NNT-002",
+        "STO-003"
+      ],
+      "steps": [
+        "Start the owner over a store holding one article, with the documented test-only injector armed at one point in the serve loop.",
+        "Open two connections and let the injected point fire on the first one's read, so the host raises an exception it does not expect.",
+        "Repeat with the injection inside the writer step, after the first connection's article has reached the submission queue.",
+        "Serve the second connection, and a third opened after the fault, and post from one of them."
+      ],
+      "expected": [
+        "The faulted connection receives the model's 403 internal-fault line and nothing else, and the server closes it.",
+        "The other connection is served at the pin it already held, and a connection opened after the fault is served too.",
+        "A post from another connection reaches 240, so the faulted submission did not wedge the writer.",
+        "The faulted article is not in the store, and the fault is recorded as FAULT, distinct from a refusal and from an uncertain outcome."
+      ],
+      "evidence": [
+        "planning/evidence/owner-survival-2026-09-21.md"
+      ],
+      "execution_scope": "Implemented as tests/test_owner.py OwnerSurvivesAFaultTests, two cases, one owner process each. The fault is injected, not provoked by a peer: the two real crashes it stands for are fixed, and a regression that provokes one from the wire needs two nodes (tools/v0_matrix.py's transit rows)."
     }
   ]
 }

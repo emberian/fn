@@ -101,12 +101,28 @@ class DryRun:
     def failures(self):
         return [line for line in self.text.splitlines() if " FAIL " in line]
 
+    def findings(self, evidence=None):
+        """The machine-readable half the harness writes beside its evidence."""
+        path = (evidence or self.evidence).with_suffix(".findings.json")
+        return json.loads(path.read_text())
+
+    def keys_with(self, verdict, evidence=None):
+        return {row["key"] for row in self.findings(evidence)["rows"]
+                if row["verdict"] == verdict}
+
 
 class CeilingTests(DryRun, unittest.TestCase):
     """The series stops at a ceiling, and every table is rendered from it."""
 
-    def test_the_gate_is_green_and_no_step_failed(self):
-        self.assertEqual(self.code, 0, "\n".join(self.failures()))
+    def test_the_only_violation_is_the_fake_acl2_the_owner_needs(self):
+        """Honest rather than green: the owner cannot start in this fixture.
+
+        Every measurement below still holds; what is violated is that the
+        entry point the gate selected did not reach LISTENING, so the reader
+        figures are the read-only reader's. Exit 1 says so."""
+        self.assertEqual(self.keys_with("violated"), {"entry-point-listening"},
+                         "\n".join(self.failures()))
+        self.assertEqual(self.code, 1)
         self.assertEqual(self.failures(), [])
 
     def test_the_series_table_holds_every_measured_point(self):
@@ -188,7 +204,9 @@ class PartialCurveTests(DryRun, unittest.TestCase):
     environment = {"FN_FAKE_SERIES_DIE": "32"}
 
     def test_the_gate_still_renders_and_names_the_death(self):
-        self.assertEqual(self.code, 0, "\n".join(self.failures()))
+        self.assertEqual(self.keys_with("violated"), {"entry-point-listening"},
+                         "\n".join(self.failures()))
+        self.assertEqual(self.code, 1)
         self.assertIn("StoreError: ACL2 prompt timeout", self.text)
 
     def test_the_partial_point_survives_with_the_posts_it_did_make(self):
@@ -239,11 +257,14 @@ class ReuseAndAdoptTests(DryRun, unittest.TestCase):
                 "--adopt-series", "1024={}".format(series),
                 "--payload", "1024", "--start", "8", "--max-articles", "8",
                 "--connections", "3"]
+        cls.second = second
         cls.second_code = scale_gate.main(argv)
         cls.text = second.read_text()
 
-    def test_the_second_run_is_green_and_kept_the_stores(self):
-        self.assertEqual(self.second_code, 0, "\n".join(self.failures()))
+    def test_the_second_run_keeps_the_stores_and_names_its_one_violation(self):
+        self.assertEqual(self.keys_with("violated", self.second),
+                         {"entry-point-listening"}, "\n".join(self.failures()))
+        self.assertEqual(self.second_code, 1)
         self.assertIn("REUSING", self.text)
 
     def test_the_adopted_series_is_what_the_tables_report(self):
