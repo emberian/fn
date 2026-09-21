@@ -52,27 +52,25 @@
                          (cons :ml-dsa-65 ml-signature))))
   (fnn-hsig-check (fnn-crypto-ed25519-verify ed-public message ed-signature)
                   "libsodium Ed25519 sign/verify")
-  (fnn-hsig-check (fnn-hsig-ml-dsa-65-verify
-                   ml-public public message ml-signature)
+  (fnn-hsig-check (fnn-hsig-ml-dsa-65-verify public message ml-signature)
                   "OpenSSL ML-DSA-65 sign/verify")
-  (fnn-hsig-check (equal (fnn-hsig-observe ed-public ml-public public
-                                           message signatures)
-                         '(:verified :verified))
+  (fnn-hsig-check
+   (let ((observations (fnn-hsig-observe ed-public public message signatures)))
+     (and (eq (first observations) :verified)
+          (eq (first (second observations)) :verified)
+          (equalp (second (second observations)) ml-public)))
                   "both observations remain distinct")
   (let ((bad (copy-seq ml-signature)))
     (setf (aref bad 0) (logxor 1 (aref bad 0)))
-    (fnn-hsig-check (not (fnn-hsig-ml-dsa-65-verify
-                          ml-public public message bad))
+    (fnn-hsig-check (not (fnn-hsig-ml-dsa-65-verify public message bad))
                     "one bad ML-DSA component is refused"))
-  (let ((wrong-key (copy-seq ml-public)))
-    (setf (aref wrong-key 0) (logxor 1 (aref wrong-key 0)))
-    (fnn-hsig-check (not (fnn-hsig-ml-dsa-65-verify
-                          wrong-key public message ml-signature))
-                    "PEM key must equal the enrolled key bytes"))
   (fnn-hsig-check
-   (not (equal (fnn-hsig-observe ed-public ml-public public message
-                                 (list (cons :ed25519 ed-signature)))
-               '(:verified :verified)))
+   (let ((observations (fnn-hsig-observe
+                        ed-public public message
+                        (list (cons :ed25519 ed-signature)))))
+     (not (and (eq (first observations) :verified)
+               (consp (second observations))
+               (eq (first (second observations)) :verified))))
    "stripping ML-DSA never yields two verified observations")
 
   ;; Exercise the production entry, including its scalar FNN-CORE convention,
