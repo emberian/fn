@@ -101,11 +101,29 @@ class FrameSession:
 
         self.owned = store is None
         self.store = Acl2Store() if self.owned else store
+        self._require_live()
         self.constants = self._constants()
         self._check_host_constants()
         self._schemas: dict[tuple[str, str], tuple] = {}
 
+    @property
+    def closed(self) -> bool:
+        """Whether the ACL2 context this session wraps was explicitly closed."""
+        return bool(getattr(self.store, "closed", False))
+
+    @property
+    def poisoned(self) -> bool:
+        """Whether correlation with the wrapped ACL2 context was lost."""
+        return bool(getattr(self.store, "poisoned", False))
+
+    def _require_live(self) -> None:
+        if self.closed:
+            raise BridgeError("ACL2 framing session is closed")
+        if self.poisoned:
+            raise BridgeError("ACL2 framing session is poisoned")
+
     def call(self, form: str):
+        self._require_live()
         return read_form(self.store.call(form))
 
     def close(self):
@@ -460,8 +478,15 @@ def adopt(store) -> FrameSession:
     """Use an already-open Acl2Store for framing instead of a second process."""
     global _SESSION
     with _LOCK:
-        if _SESSION is not None and _SESSION.owned:
-            _SESSION.close()
+        if _SESSION is not None:
+            if _SESSION.closed:
+                _SESSION = None
+            elif _SESSION.poisoned:
+                raise BridgeError("ACL2 framing session is poisoned")
+            elif _SESSION.store is store:
+                return _SESSION
+            elif _SESSION.owned:
+                _SESSION.close()
         _SESSION = FrameSession(store)
         return _SESSION
 
@@ -474,6 +499,10 @@ def session(bridge=None) -> FrameSession:
     if bridge is not None:
         return adopt(bridge)
     with _LOCK:
+        if _SESSION is not None and _SESSION.closed:
+            _SESSION = None
+        if _SESSION is not None and _SESSION.poisoned:
+            raise BridgeError("ACL2 framing session is poisoned")
         if _SESSION is None:
             _SESSION = FrameSession()
         return _SESSION
