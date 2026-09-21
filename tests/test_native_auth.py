@@ -67,8 +67,14 @@ class NativeAuthTests(unittest.TestCase):
         self.assertTrue(ready, "native authenticated owner did not announce its port")
         line = process.stdout.readline()
         if not line.startswith(b"LISTENING "):
+            diagnostic = process.stderr.read().decode("utf-8", "replace")
+            if process.poll() is None:
+                process.terminate()
+            process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
             self.fail("native authenticated owner failed: {} {}".format(
-                line, process.stderr.read().decode("utf-8", "replace")))
+                line, diagnostic))
         return process
 
     def test_generated_credential_gates_reader_and_does_not_grant_transit(self):
