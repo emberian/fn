@@ -18,23 +18,22 @@ Private group cryptography remains deferred, with privacy boundaries preserved.
 
 D07 selects a Python-free production runtime. Frozen integration source
 `03eb3ba3` combines native owner/operator, safe feed filenames, application
-journals, BP receive evidence, checkpoint and anchor persistence. Sol owns its
-combined farm gate. The earlier `76901c1` closure/build succeeded; runtime testing
-required a listener-shutdown repair now integrated. Source-pinned runtime
-archives remain separate from the later combined image's pending results.
+journals, BP receive evidence, checkpoint and anchor persistence. Its combined farm gate, both image builds and scoped runtime suites passed;
+see [the frozen evidence](evidence/native-owner-integrated-2026-09-21.md). The earlier `76901c1` closure/build succeeded; runtime testing
+required a listener-shutdown repair now integrated. Later source changes remain separate from that frozen result.
 The packaged Python entry remains development infrastructure until native
 operator coverage and the selected two-peer release gate are complete.
 
 | Active lane / worker | Next complete result |
 | --- | --- |
-| `owner-convergence` / Sol | Frozen `03eb3ba3` default/DTN build and actual combined native suites; retained persvati feed-port closure; shared-owner runtime composition defects. |
+| `owner-convergence` / Sol | Native connection-local fault isolation without weakening shared uncertainty fencing (HST-005). Frozen `03eb3ba3` certification/build/runtime gate is archived; control lane owns orderly SIGTERM. |
 | `submission-path` / Sol | Native BP inbound request intent, actual owner acceptance, durable receipt decision and lost-receipt/restart idempotence. |
 | `bp-fidelity-convergence` / Sol | Native local control/submission through the serialized owner, bounded framing and ambiguous-reply outcomes; shared lifecycle hooks and orderly SIGTERM. Coordinate the same completion helper with BP application submission. |
 | `artifact-set` / Sol | Consolidate actual BP lifecycle immutable publication onto the shared ACL2 phase interpreter. Namespace recovery and no-rescan admission are integrated. |
-| `native-storage-codec` / Sol | Checkpoint namespace codec/bounds, mutation fencing and unconditional reporting of differential mismatch. Initial native checkpoint adoption is integrated. |
+| `native-storage-codec` / Sol | Native STARTTLS using a mature OpenSSL backend and ACL2-owned consumed-prefix handling; coordinate authentication and owner lifecycle. Checkpoint namespace/mismatch/fencing packet is integrated. |
 | `native-config-impl` / Terra | Native group/capacity administration through ACL2 plans and the shared durable configuration path. Safe FNFD codec and total traversal budget are integrated. |
 | `storage-codecs` / Terra | Native outbound NNTP feed socket/timer interpreter over ACL2 effects, with durable FNFD records before transmission and actual two-node tests. |
-| `storage-initializer` / Terra | Finish initializer error-origin/effect-classifier corrections; consolidate transaction namespace recovery and bound collection before allocation. Selected EEXIST/retry runtime packet is integrated. |
+| `storage-initializer` / Terra | Consolidate transaction namespace recovery and bound collection before allocation. Initializer EEXIST/retry and error-origin/effect-classifier corrections are integrated. |
 | `store-prepare-correspondence-sol` / Sol | Adopt fast prepare through the actual configured owner with an outer equality and maintained relation. Standalone wrapper, component certification/runtime and cost probe are integrated. |
 | `wire-composition-sol` / Sol | Actual BP lifecycle step invariant, fenced-state behavior and application obligation confinement. Wire composition proof is integrated. |
 | `recover-user-direction` / Sol | Native authentication/configuration vertical slice over existing ACL2 policy; protected transport stays a real prerequisite, not a forged host observation. |
