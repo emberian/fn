@@ -1557,6 +1557,19 @@ before reusing the peer label.
 The host receives only the component vector through
 `fn-feed-filename-host-{okp,count,component}`. It rejects a malformed returned
 component at its filesystem boundary and does no label parsing or normalization.
+Recovery sends every retained component vector back through the ACL2 inverse;
+it does not derive a peer by stripping a filename suffix or decoding hex.
+
+Recovery may retain at most 8192 non-dot directory names across the complete
+`feed/` walk. `fn-feed-filename-observation-limit` chooses that one budget and
+`fn-feed-filename-observation-remaining` consumes each root entry, v1 chunk,
+and journal leaf before another directory is read. The bound deliberately does
+not come from the configured peer count: `*fn-cfg-max-rows*` bounds one
+configuration delta, while journals for removed peers remain durable recovery
+obligations. The budget admits 1024 maximum-depth v1 journals (6145 names
+including the v1 root) and up to 8192 safe legacy leaves. Excess, malformed,
+duplicate, symlink, or unknown names fault while preserving the namespace; the
+host never reaps retired-peer evidence to fit the bound.
 Nested v1 creation currently has extra directory barriers that are compressed
 into the existing journal phase events; the physical crash correspondence for
 those intermediate barriers remains open and is not claimed by the phase book.

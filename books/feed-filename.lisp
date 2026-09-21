@@ -9,6 +9,12 @@
 (defconst *fn-ff-chunk* 120)
 (defconst *fn-ff-max-v1-chunks* 5)
 (defconst *fn-ff-max-components* 7)
+; This is a restart-observation budget, not a configured-peer count.  A
+; configuration delta's 1024 row cap does not bound all live peer records, and
+; a removed peer's durable FNFD journal must still be recovered.  8192 admits
+; 1024 maximum-depth v1 journals (one v1 root plus six observed names each)
+; while retaining an independent ceiling for old flat journals.
+(defconst *fn-ff-max-observations* 8192)
 (defconst *fn-ff-v1* '(118 49))                 ; v1
 (defconst *fn-ff-journal* '(106 111 117 114 110 97 108 46 102 110 102 100))
 (defconst *fn-ff-suffix* '(46 102 110 102 100)) ; .fnfd
@@ -73,8 +79,25 @@
   (declare (xargs :guard t))
   (if (not (fn-ff-namep name)) '(:refused :peer-name)
     (if (fn-feed-filename-legacy-safep name)
-        (list :legacy (fn-feed-filename-components name))
+      (list :legacy (fn-feed-filename-components name))
       (list :v1 (fn-feed-filename-components name)))))
+
+(defun fn-feed-filename-observation-limit ()
+  "Total non-dot directory names the host may retain while recovering FNFD."
+  (declare (xargs :guard t))
+  *fn-ff-max-observations*)
+
+(defun fn-feed-filename-observation-remaining (remaining observed)
+  "Consume OBSERVED names from the one ACL2-selected FNFD recovery budget.
+
+`:bad' means the raw host observed an impossible count.  The host must fault
+and preserve the namespace rather than drop entries or restart with a fresh
+per-directory allowance.
+"
+  (declare (xargs :guard t))
+  (if (and (natp remaining) (natp observed) (<= observed remaining))
+      (- remaining observed)
+    :bad))
 
 ; Recovery accepts a filesystem component vector only by re-encoding its
 ; decoded peer and demanding byte-for-byte equality.  This keeps legacy leaf
