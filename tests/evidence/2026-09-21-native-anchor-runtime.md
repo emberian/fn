@@ -3,6 +3,15 @@
 Input revision: `12e78af8cdbe3a9f8d825b5edb5c69f31cbf7df0` on
 `w14/native-primitives`.
 
+> Historical, superseded persistence evidence.  Review found that this exact
+> revision appended a raw native SHA-256 trailer and classified persistence
+> with a raw-Lisp `attempted` Boolean, and recovery decoded a visible final
+> name without first establishing file and directory barriers.  The live run
+> below remains an interoperability observation for its pinned source; it is
+> not safe durable-acceptance evidence.  The later anchor-replace packet
+> replaces those twins with ACL2 `fn-frame-trailer` and a host-called ACL2
+> phase machine and adds an EIO/restart recovery witness.
+
 ## Certified ACL2 profile
 
 Invocation:

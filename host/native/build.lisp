@@ -41,6 +41,7 @@
 (include-book "books/bp-receive-evidence")
 (include-book "books/anchor-wire")
 (include-book "books/anchor-servers")
+(include-book "books/anchor-replace")
 
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)

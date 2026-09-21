@@ -239,7 +239,7 @@ The native anchor follow-on is loaded by the common saved-image build:
 | --- | --- | --- |
 | Roughtime primitives | `fnn-crypto-startup`, `fnn-crypto-ed25519-observe`, `fnn-crypto-anchor-leaf` in `host/native/crypto.lisp` | Reinitializes libsodium after every saved-image restart; returns primitive observations only over ACL2-produced subjects |
 | Roughtime acquisition | `fnn-anchor-csprng-nonce`, `fnn-anchor-udp-exchange`, `fnn-anchor-acquire` in `host/native/anchor.lisp` | Consumes ACL2's selected server/key/wire-bound profile, reads the nonce from `/dev/urandom`, sends ACL2's request in one connected IPv4 UDP datagram, probes one byte beyond ACL2's response bound, calls the ACL2 parser and crypto seam, and preserves observed/refused/uncertain/fault |
-| Anchor decision and FNAN | `fnn-command-anchor`, `fnn-anchor-decision`, `fnn-anchor-publish` | Holds the store writer lock, calls the actual ACL2 acceptance entry, and reports accepted only after staged write, replacement and store-directory barrier |
+| Anchor decision and FNAN | `fnn-command-anchor`, `fnn-anchor-decision`, `fnn-anchor-publish`, `fnn-anchor-recovery-barriers` | Holds the store writer lock, calls the actual ACL2 acceptance entry, drives ACL2 `fn-anchor-rp-step` through pre-syscall issue and every result, reports accepted only after the directory barrier, and barriers a recovered final file and directory before decode |
 
 `books/anchor-servers.lisp` owns the bounded name-to-endpoint/key mapping and
 the acquisition sizes.  The common image loads `host/native/crypto.lisp`

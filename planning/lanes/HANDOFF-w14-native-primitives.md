@@ -157,6 +157,17 @@ DNS resolution remains outside a whole-path deadline; send and receive
 readiness each receive the selected timeout.  Readiness can race nonblocking
 I/O and remains network uncertainty.
 
+The first persistence checkpoint (`12e78af`) was not landable: it sliced and
+appended a raw SHA-256 trailer and used a raw-Lisp `attempted` Boolean as its
+persistence policy.  The repair replaces both.  `fnn-seal` and
+`fnn-digest-of` ask ACL2 `fn-frame-trailer` for the durable trailer, while
+`books/anchor-replace.lisp` supplies the action/step/outcome machine the host
+actually calls.  The host records `:replace-issued` before rename, so death
+after namespace mutation but before its result is expressible, and restart
+must barrier the final file and store directory before decoding held FNAN.
+An injected post-rename EIO followed by a new store instance exercises that
+uncertain/recovery path.
+
 Exact-revision certification, three-host component runs and the common-image
 live acceptance/restart observation are archived in
 [`tests/evidence/2026-09-21-native-anchor-runtime.md`](../../tests/evidence/2026-09-21-native-anchor-runtime.md).

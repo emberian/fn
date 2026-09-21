@@ -88,8 +88,14 @@ store writer lock across reading the prior FNAN, acquisition, the actual
 staged FNAN write; the file is barred, atomically replaces `anchor.fnan`, and
 the store directory is barred before exit 0 is printed.  Failure after the
 replacement attempt is `:uncertain`; a later invocation decodes the final
-FNAN under the same lock.  This mutable replacement contract is separate from
-the immutable artifact publisher's no-replace contract.
+FNAN under the same lock.  `books/anchor-replace.lisp` owns these phases and
+the native host calls `fn-anchor-rp-step` before rename (`:replace-issued`) and
+after every I/O observation.  Recovery barriers the visible final file, when
+present, and then its directory before decode; visibility alone never becomes
+held state.  FNAN sealing and decode digests use `fn-frame-trailer` through
+the shared `fnn-seal` and `fnn-digest-of` helpers.  This mutable replacement
+contract is separate from the immutable artifact publisher's no-replace
+contract.
 
 `root` is a **field, not a derivation**, and that is what makes the
 reconstruction the message that was verified. Until 2026-09-20 `fn-anchor-root`
