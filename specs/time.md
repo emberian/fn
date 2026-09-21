@@ -97,6 +97,15 @@ the earliest admissible true time backwards is **not** a later observation of
 the same clock, and the theorem does not apply to it. That is deliberate: a node
 that discovers its clock was wrong is allowed to stop being sure.
 
+The owner is where that sentence became executable
+([D10-a](../planning/decisions.md), 2026-09-21). `fn-own-observe` answers
+`:observed`, `:refused` or `:invalid`, and a refusal leaves the owner with no
+clock rather than with the reading its host has just contradicted: a node that
+has stopped being sure decides nothing under the clock it used to hold. Note
+that `fn-clock-later-observationp` is **non-strict**, so a reading equal to the
+one held is a later observation of the same clock and is admitted; the owner's
+clock is a high-water mark, not a counter.
+
 `tests/acl2/clock-tests.lisp` exhibits two nodes whose clocks differ by 200
 seconds reaching opposite verdicts on one bundle, together with the fact that
 their admissible intervals are disjoint -- so at most one of them is honest, and
