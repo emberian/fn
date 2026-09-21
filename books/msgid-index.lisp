@@ -174,3 +174,61 @@
             (fn-midx-extend article trie)
             (cons article articles)))
   :hints (("Goal" :in-theory (enable fn-midx-correspondencep))))
+
+; A builder-produced branch list has one entry for each key.  This is the
+; structural fact that bounds a branch scan by the finite character alphabet
+; (plus the distinguished terminal key); no such cost claim is made for an
+; arbitrary caller-supplied alist.
+(defun fn-midx-branch-keys (branches)
+  (declare (xargs :guard t))
+  (if (consp branches)
+      (cons (fn-ag-car (fn-ag-car branches))
+            (fn-midx-branch-keys (fn-ag-cdr branches)))
+    nil))
+
+(defun fn-midx-unique-branchesp (trie)
+  (declare (xargs :guard t))
+  (if (consp trie)
+      (let* ((entry (fn-ag-car trie))
+             (key (fn-ag-car entry)))
+        (and (not (member-equal key
+                                (fn-midx-branch-keys (fn-ag-cdr trie))))
+             (if (characterp key)
+                 (fn-midx-unique-branchesp (fn-ag-cdr entry))
+               (equal key *fn-midx-value-key*))
+             (fn-midx-unique-branchesp (fn-ag-cdr trie))))
+    (null trie)))
+
+(defthm fn-midx-branch-keys-of-branch-put
+  (equal (fn-midx-branch-keys (fn-midx-branch-put key value branches))
+         (if (member-equal key (fn-midx-branch-keys branches))
+             (fn-midx-branch-keys branches)
+           (append (fn-midx-branch-keys branches) (list key))))
+  :hints (("Goal" :induct (fn-midx-branch-put key value branches))))
+
+(defthm fn-midx-no-duplicatesp-of-branch-put
+  (implies (no-duplicatesp-equal (fn-midx-branch-keys branches))
+           (no-duplicatesp-equal
+            (fn-midx-branch-keys
+             (fn-midx-branch-put key value branches)))))
+
+(defthm fn-midx-branch-get-is-subtrie-when-character
+  (implies (and (fn-midx-unique-branchesp trie)
+                (characterp key)
+                (fn-midx-branch-get key trie))
+           (fn-midx-unique-branchesp (fn-midx-branch-get key trie)))
+  :hints (("Goal" :induct trie
+           :in-theory (enable fn-midx-branch-get))))
+
+(defthm fn-midx-put-chars-preserves-unique-branches
+  (implies (and (fn-midx-unique-branchesp trie)
+                (character-listp characters))
+           (fn-midx-unique-branchesp
+            (fn-midx-put-chars characters article trie)))
+  :hints (("Goal" :induct (fn-midx-put-chars characters article trie)
+           :in-theory (enable fn-midx-branch-get fn-midx-branch-put))))
+
+(defthm fn-midx-build-has-unique-branches
+  (implies (fn-midx-string-article-listp articles)
+           (fn-midx-unique-branchesp (fn-midx-build articles)))
+  :hints (("Goal" :induct (fn-midx-build articles))))
