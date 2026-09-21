@@ -33,12 +33,20 @@ the WIRE, not the model: no host line calls any `fn-ocfg-` function, so the
 served port still answers LIST ACTIVE from the allocation domain and every
 PRF-028 owner-side event carries a `pending_subject`.
 
+**A connection posts repeatedly.** The one-durable-post-per-connection defect
+was fixed by `w5/clock-seam` (merge `7d8eff8`, the per-submission injection
+clock) and the board line was never closed; measured live on persvati at
+`dev` `5ae226f`, `tests.test_post.StorePostTests.test_a_reader_pinned_before_a_post_keeps_its_view`
+and `tests.test_owner.OwnerTests.test_clock_and_group_facts_go_through_the_owner`
+both pass. What remained at that seam, and is closed by
+[D10-a](decisions.md)/PRF-033 (w11/clock-seam), is that a REFUSED clock
+observation froze the owner's clock and the resulting duplicate identity
+reached the poster as `441 posting failed; the article was refused` -- an
+article verdict for a clock fault.
+
 The nearest known gaps behind the live re-run are, in order: the owner's three
-one-line `host/owner-host.lisp` edits from w5-config-groups; the one-durable-post-
-per-connection defect, which is the pinned clock observation and not the
-read-back re-pin ([BOARD](deputies/BOARD.md), w5/owner-followups, DIAGNOSED);
-`books/nntp-effects`, open at `FN-NNTP-HDR-LABELLED-LINE-IS-BLOCK-TEXT` after
-2598.79 s and 1.47e9 prover steps; the `NNT-001` capability/dispatch mismatch;
+one-line `host/owner-host.lisp` edits from w5-config-groups;
+the `NNT-001` capability/dispatch mismatch;
 and `books/stx-verify` at one printability lemma. See
 [the board](deputies/BOARD.md) for each item's exact form, and the [v0
 checklist](#v0-checklist-every-item-its-status-its-evidence) below for where
@@ -95,7 +103,7 @@ the whole-tree run behind these statuses is
 | --- | --- | --- |
 | The owner certifies | **blocked** | `books/owner` has no certificate; ACL2 refuses `(include-book "books/owner")`, which is why `fn run` cannot start at all ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
 | The owner runs as a service | **blocked** | the installed unit falls back to `tools/run_reader.py`, the same second choice `tools/deploy_gate.py` makes ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
-| POST is durable end to end | **partial** | one durable post per connection works and rereads byte-for-byte after a kill ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md) rows 23 to 28); a **second** post on the same connection is always refused 441, diagnosed to the one clock observation pinned at accept ([BOARD](deputies/BOARD.md), w5/owner-followups) |
+| POST is durable end to end | **partial** | a post is durable and rereads byte-for-byte after a kill ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md) rows 23 to 28), and a connection now posts REPEATEDLY: `test_a_reader_pinned_before_a_post_keeps_its_view` passes live on persvati at `dev` `5ae226f` (w5/clock-seam's per-submission injection clock, merge `7d8eff8`). Open: two submissions inside one millisecond still share a generated Message-ID ([D10-a](decisions.md), PRF-033) |
 | Capabilities match dispatch | **open** | refuted by counterexample: POST answers 340 while CAPABILITIES omits POST, against RFC 3977 5.2.2 (NNT-001 note, `planning/requirements.json`) |
 | Concurrent sessions | **open** | `tools/run_reader.py` is `listen(1)` and serves one connection to completion; the owner is the only concurrent server ([BOARD](deputies/BOARD.md), w5-deploy-gate) |
 | Three outcomes distinct at the CLI | **done** | accepted 0, refused 1, uncertain 3 ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md) rows 11 to 13) |
@@ -418,3 +426,18 @@ After each task, update the current stage/next task, decision resolutions,
 requirement status, proof status, and evidence references as applicable. Leave
 future plans unchecked. A blocked dependency names the specific open decision
 or missing evidence, rather than declaring the entire project blocked.
+
+### `books/nntp-effects` is not a gap, and the old number is a warning
+
+This list carried `books/nntp-effects` as open at
+`FN-NNTP-HDR-LABELLED-LINE-IS-BLOCK-TEXT` after 2598.79 s and 1.47e9 prover
+steps. It **certifies in 119.1 s**: persvati `run-20260921T005005Z-1235`,
+manifest `status: passed`, `book_failures: {}`, 81 of 81 roots. The lane that
+observed it changed nothing in that book and said it could not tell whether
+the book was repaired by another lane's work or whether the original verdict
+came from a contended box; neither can this note. What follows either way is
+that **a wall-clock verdict taken while the box was loaded is not evidence
+about a book**, and a 2598 s figure that becomes 119 s with no edit is the
+shape of that mistake. Timings quoted as facts elsewhere in this tree should
+name the box and its load, as the convergence-layer records now do.
+

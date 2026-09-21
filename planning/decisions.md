@@ -437,3 +437,68 @@ keystones; it is not dropped.
 
 Affects `specs/tcpcl.md` §3 and §6, `books/tcpcl-octets.lisp`,
 `books/tcpcl-session.lisp`, `tests/acl2/tcpcl-tests.lisp`. Supersedes nothing.
+### 2026-09-21: D10-a — a clock the host contradicts is a clock the owner drops
+
+**Question.** A connection pins one clock observation at accept so that time
+does not move under a reader mid-session. Every *decision* is taken under the
+reading the host supplied with that event. What happens when the owner cannot
+accept the reading it was handed?
+
+**Selected.** `fn-own-observe` answers one of three distinct outcomes and a
+refusal costs the owner its clock.
+
+- `:observed` — the reading is a later observation of the same clock
+  (`fn-clock-later-observationp`) and becomes the owner's. A reading **equal**
+  to the one held is observed, not refused: it is admitted, and nothing moves
+  because nothing has to.
+- `:refused` — the monotonic counter went backwards, `has-wall` changed, or a
+  widened error bound moved the earliest admissible true time back. The owner
+  keeps no clock at all.
+- `:invalid` — the host supplied no observation. Nothing changes.
+
+`host/owner-host.lisp` reports that word. It used to compute one by comparing
+the owner before and after the event, which put the decision in the host and
+spelled an admitted equal reading exactly like a contradicted clock.
+
+**Why the owner forgets.** [The clock spec](../specs/time.md) already says a
+node that discovers its clock was wrong is allowed to stop being sure. Keeping
+the contradicted reading is the opposite: `books/injection.lisp` derives a
+generated Message-ID from the reading alone, so every POST after the first in
+that window mints the identity of the first, the durable path refuses it as a
+duplicate, and the poster is told `441 posting failed; the article was
+refused`. That is an article verdict for a clock fault, and it is the shape of
+the defect two earlier lanes recorded. With no clock the owner refuses to
+inject (`fn-inj-decide`'s `:clock-unusable`, `441 posting failed; this server
+has no usable clock reading`), refuses to declare a group, and answers DATE
+with `503 no clock observation supplied` — three distinct, honest answers. A
+clock-less owner is not a new state: `fn-own-start` and `fn-own-reopen` both
+leave one and `fn-own-relation` admits it.
+
+**What it costs.**
+
+- A POST or a DECLARE-GROUP attempted between a contradicted reading and the
+  next accepted one is refused, with its own reason. The window is one event:
+  the clock being absent, the very next reading is admitted whatever it says.
+- A connection accepted inside that window pins no observation and answers
+  DATE 503 for its whole session. That is the already-modelled behaviour of a
+  node with no clock, not a new one.
+- After a backwards correction the node may mint a generated Message-ID it
+  already used in the lost interval; the durable path refuses that as the
+  duplicate it is. Recorded, not claimed away.
+
+**Rejected: keep the contradicted reading** (the behaviour before this). The
+node then goes on deciding under a clock its host has withdrawn, and the
+symptom reaches the client as an article verdict.
+
+**Rejected: a fourteenth owner field remembering the last reading a generated
+identity was minted under.** It would additionally separate two submissions
+inside one millisecond, which the reading-level rule cannot, because
+`fn-clock-later-observationp` is non-strict and an equal reading is admitted.
+It costs a field through every `fn-own-make` call site and the whole
+served/owner/peer closure, and the case it buys needs two durable barriers
+inside one millisecond. Recorded open instead, under NNT-005.
+
+Registry: PRF-033. Keystones
+`fn-own-observe-refusal-names-a-contradiction` (`books/owner-invariants.lisp`)
+and `fn-post-without-a-clock-refuses-with-the-clock-line`
+(`books/nntp-post.lisp`).
