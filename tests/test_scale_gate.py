@@ -247,7 +247,7 @@ class ReuseAndAdoptTests(DryRun, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        series = cls.home / "fn-deploy/{}/gate-run/series-1024.json".format(cls.rev)
+        series = cls.home / "fn-deploy/dev-{}/gate-run/series-1024.json".format(cls.rev)
         cls.adopted = json.loads(series.read_text())
         second = Path(cls.temp.name) / "scale-evidence-2.md"
         argv = [cls.rev, "--dry-run", "--home", str(cls.home), "--repo", str(ROOT),

@@ -660,6 +660,7 @@ class DeployGate:
         self.deploy_id = deployment_identity(tree, rev)
         self.deploy = "{}/{}".format(DEPLOY_ROOT, self.deploy_id)
         self.deploy_lock = "{}/.locks/{}.lock".format(DEPLOY_ROOT, self.deploy_id)
+        self.deploy_lock_acquired = False
         self.run = "{}/gate-run".format(self.deploy)
         self.store = "{}/store".format(self.run)
         self.log = "{}/server.log".format(self.run)
@@ -891,6 +892,7 @@ fi
 """.format(root=DEPLOY_ROOT, lock=self.deploy_lock, identity=self.deploy_id))
         if lock.rc != 0:
             raise GateError(lock.first_line or "deploy identity is already active")
+        self.deploy_lock_acquired = True
         start = time.monotonic()
         done = self.host.deploy(self.repo, self.commit, self.deploy, timeout=600)
         output = done.stdout.decode("utf-8", "replace")
@@ -921,6 +923,16 @@ fi
             self.sh("overlay {}".format(rel),
                     "mkdir -p {}/{}".format(self.deploy, rel.parent))
             self.push_file(path.read_bytes(), "{}/{}".format(self.deploy, rel), mode="755")
+
+    def release_deploy_lock(self):
+        """Release this tree+revision's lock; safe to call once at cleanup."""
+        if not self.deploy_lock_acquired:
+            return None
+        step = self.sh("release deploy lock", "rmdir {}".format(self.deploy_lock),
+                       expect=None)
+        if step.rc == 0:
+            self.deploy_lock_acquired = False
+        return step
 
     def certificates(self):
         """Acquire one coherent set and prove that ACL2 can load it."""
@@ -1267,7 +1279,7 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
         self.sh("server log tail", "tail -15 {}/server-main.log".format(self.run))
         if not self.keep:
             self.sh("remove the deploy tree", "rm -rf {}".format(self.deploy))
-        self.sh("release deploy lock", "rmdir {}".format(self.deploy_lock), expect=None)
+        self.release_deploy_lock()
 
     # -- evidence ---------------------------------------------------------
     def evidence(self, path: Path, started: str, elapsed: float) -> Path:
@@ -1550,6 +1562,7 @@ def main(argv=None) -> int:
         failure = str(error)
         gate.limitation("gate-stopped-early",
                         "the gate stopped early: {}".format(error))
+        gate.release_deploy_lock()
     elapsed = time.monotonic() - clock
     gate.finalize_findings()
     date = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")

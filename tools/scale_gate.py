@@ -625,6 +625,7 @@ class ScaleGate(deploy_gate.DeployGate):
         self.stop_server("scale")
         if not self.keep:
             self.sh("remove the deploy tree", "rm -rf {}".format(self.deploy))
+        self.release_deploy_lock()
 
     # -- evidence ---------------------------------------------------------
     def evidence(self, path: Path, started: str, elapsed: float):
@@ -883,7 +884,7 @@ def main(argv=None) -> int:
                         help="seconds to wait for LISTENING over a large store")
     parser.add_argument("--reuse", action="store_true",
                         help="do not re-ship: measure against the tree and stores "
-                             "already at $HOME/fn-deploy/<rev> on the host")
+                             "already at $HOME/fn-deploy/<tree>-<rev> on the host")
     parser.add_argument("--adopt-series", action="append", default=[],
                         metavar="PAYLOAD=PATH",
                         help="take this payload size's series from a JSON an earlier "
