@@ -803,6 +803,20 @@ echo TAP-TIMEOUT; cat {out}; exit 1
                 " | ".join(step.output.strip().splitlines()[-6:]) or "none"))
         return False
 
+    def log_tail(self, node: NodeSpec, why: str) -> Step:
+        """The node's own last lines, kept beside the step that needed them.
+
+        `require_live` prints them when a process is GONE. A process that is
+        alive and still closing every connection at accept prints nothing,
+        and then the evidence carries `server closed the connection` with no
+        way to tell what raised -- which is where gate `27cb717` stopped.
+        `ACCEPT-FAULT` and `FEED-FAULT` both land in these logs.
+        """
+        return self.sh("node {} server log ({})".format(node.upper, why),
+                       "tail -40 {}/server-{}-*.log 2>/dev/null | tail -40 || "
+                       "echo NO-SERVER-LOG".format(node.dir, node.name),
+                       timeout=120, expect=None)
+
     def tap_mark(self, node: NodeSpec) -> int:
         """Where the tap log stands now, so the next read is this step alone.
 
@@ -1093,6 +1107,8 @@ else echo NONE; fi
                 .format(label, target.upper, msgid, seconds, source.upper))
             self.read_tap(target, "{}: what {}'s feed put on the wire".format(
                 label, source.upper), since=mark, expect=None)
+            self.log_tail(source, "its feed did not deliver")
+            self.log_tail(target, "it did not receive")
             return False
         target.accepted.append(msgid)
         self.derive("{}: {} serves {} byte for byte as {} does".format(
@@ -1253,8 +1269,13 @@ else echo NONE; fi
         if not result.get("ok"):
             self.gaps.append(
                 "owner feed: after `kill -9` of node A and a restart of both nodes, "
-                "node B never served {} within 90 s. K5's restart-by-offer is NOT "
-                "evidenced by this run.".format(msgid))
+                "node B never served {} within 90 s ({}). K5's restart-by-offer is "
+                "NOT evidenced by this run.".format(
+                    msgid, result.get("last_error", "no error reported")))
+            for node in self.nodes:
+                self.log_tail(node, "the K5 arrival did not happen")
+            self.read_tap(self.b, "owner feed: what crossed after A's restart",
+                          since=mark, expect=None)
             return
         self.b.accepted.append(msgid)
         counted = self.feed(
