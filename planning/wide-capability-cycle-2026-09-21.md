@@ -48,6 +48,11 @@ small book or adapter followed by another handoff.
 - Acceptance-recorded verdicts retain their original policy/key generation.
   Key rotation may change a separate current-trust view; it must not rewrite
   what acceptance recorded or cause per-query signature/history replay.
+- The accepted article and its recorded verdict need one atomic durable
+  binding. An article commit followed by an independent verdict append leaves
+  a crash gap. Standalone evidence records do not close that gap; the native
+  acceptance representation or its preparation protocol must preserve the
+  exact binding without recomputing historical trust during recovery.
 - Shared state/record format changes are versioned and coordinated with recovery,
   the owner and reader. No opaque host field bypasses the logical representation.
 - TLS authenticates the transport boundary only after a successful handshake;
