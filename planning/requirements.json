@@ -412,7 +412,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-007",
-        "PRF-032"
+        "PRF-032",
+        "PRF-034"
       ],
       "verification": [
         "proof",
@@ -432,7 +433,9 @@
         "books/store-observed.lisp",
         "tests/test_store_node_host.py",
         "planning/evidence/wave-realignment-2026-09-19.md",
-        "planning/evidence/deploy-cce4b11-2026-09-20.md"
+        "planning/evidence/deploy-cce4b11-2026-09-20.md",
+        "tests/evidence/2026-09-21-four-node-lab.md",
+        "tests/evidence/2026-09-21-four-node-lab.json"
       ],
       "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, and every process-death cut is a model crash point. Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open.",
       "keystones": [
@@ -546,7 +549,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-007"
+        "PRF-007",
+        "PRF-034"
       ],
       "verification": [
         "proof",
@@ -561,7 +565,9 @@
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
-        "planning/evidence/deploy-cce4b11-2026-09-20.md"
+        "planning/evidence/deploy-cce4b11-2026-09-20.md",
+        "tests/evidence/2026-09-21-four-node-lab.md",
+        "tests/evidence/2026-09-21-four-node-lab.json"
       ],
       "implementation_note": "Uncertain publication/completion fences mutation. File-kernel traces and real Store recovery have scoped evidence; sender binding covers uncertain completion/restart/recovery. Five actual BP receiver process-death cuts distinguish durable staging, article, context, pending intent requiring explicit recovery, and committed receipt before deletion. General physical byte/host correspondence remains open.",
       "keystones": [
