@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 283 |
-| Certification roots in the Makefile | 283 |
-| Books inside the root closure | 283 |
-| `defthm` and `defthmd` events | 5820 |
-| `defun` events | 3981 |
-| Functions with verified guards | 1491 |
+| Books read | 285 |
+| Certification roots in the Makefile | 285 |
+| Books inside the root closure | 285 |
+| `defthm` and `defthmd` events | 5826 |
+| `defun` events | 3994 |
+| Functions with verified guards | 1497 |
 | Functions declared `:verify-guards nil` and never verified | 192 |
-| Functions left at the default with an explicit guard | 1803 |
-| Functions left at the default with no guard | 495 |
-| `assert-event` checks | 5919 |
-| `must-fail` checks | 63 |
+| Functions left at the default with an explicit guard | 1807 |
+| Functions left at the default with no guard | 498 |
+| `assert-event` checks | 5950 |
+| `must-fail` checks | 65 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 48 |
 | Export-hygiene warnings | 73 |
 | Enabled-projection warnings | 21 |
 | Teeth-form warnings | 0 |
-| Include-hygiene warnings | 90 |
-| Host-names warnings | 33 |
+| Include-hygiene warnings | 91 |
+| Host-names warnings | 35 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -156,6 +156,7 @@ that `make certify` requests.
 | `books/deftransition.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/exchange.lisp` | root | 40 | 43 | 34/0/9/0 | 0 | 0 | 1 |
+| `books/feed-journal.lisp` | root | 3 | 6 | 2/0/4/0 | 0 | 0 | 0 |
 | `books/frame-fields.lisp` | root | 23 | 38 | 13/0/25/0 | 0 | 0 | 0 |
 | `books/frame-invariants.lisp` | root | 80 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/frame-journal.lisp` | root | 2 | 10 | 7/0/3/0 | 0 | 0 | 0 |
@@ -174,7 +175,7 @@ that `make certify` requests.
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
-| `books/nntp-auth.lisp` | root | 65 | 46 | 29/3/14/0 | 0 | 0 | 2 |
+| `books/nntp-auth.lisp` | root | 68 | 50 | 33/3/14/0 | 0 | 0 | 2 |
 | `books/nntp-effects.lisp` | root | 139 | 12 | 0/0/0/12 | 0 | 0 | 1 |
 | `books/nntp-index.lisp` | root | 33 | 25 | 25/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-invariants.lisp` | root | 91 | 4 | 0/0/0/4 | 0 | 0 | 0 |
@@ -307,6 +308,7 @@ that `make certify` requests.
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/defrecord-tests.lisp` | root | 37 | 19 | 9/0/10/0 | 37 | 0 | 2 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
+| `tests/acl2/feed-journal-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 18 | 2 | 0 |
 | `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 48 | 0 | 0 |
 | `tests/acl2/frame-trailer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
@@ -315,7 +317,7 @@ that `make certify` requests.
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
-| `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 120 | 0 | 0 |
+| `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 133 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
 | `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 92 | 0 | 0 |
 | `tests/acl2/nntp-post-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
@@ -378,7 +380,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ag-less-is-less` | `books/acceptance-alloc.lisp` | 58 | definition-restated: the conclusion is the body of fn-ag-less; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-anchor-octets-of-lengthp-forward` | `books/anchor.lisp` | 130 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp |
 | `fn-auth-consistent-forward` | `books/nntp-auth.lisp` | 409 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp |
-| `fn-auth-token-argp-forward` | `books/nntp-auth.lisp` | 622 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp |
+| `fn-auth-token-argp-forward` | `books/nntp-auth.lisp` | 663 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp |
 | `fn-bp-effect-for-pending-attempt-unfolds` | `books/bp-workflow-invariants.lisp` | 884 | branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value |
 | `fn-bpb-decode-refuses-overlong-input` | `books/bp-bundle-invariants.lisp` | 530 | branch-of-definition: the hypothesis is a branch test of fn-bpb-decode and the conclusion is that branch's value |
 | `fn-bpbi-bpp-encode-unfolds` | `books/bp-bundle-invariants.lisp` | 277 | definition-restated: the conclusion is the body of fn-bpp-encode |

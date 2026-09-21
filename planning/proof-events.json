@@ -1268,6 +1268,19 @@
           "note": "The re-pin cannot drop a connection: it leaves the reader session identical, so fn-own-conn-boundedp -- the test fn-own-read applies after the step, and the one that made ADVANCE a silent no-op for a wave when a rebuild lost a wrapper -- answers exactly as before."
         }
       ]
+    },
+    {
+      "id": "PRF-043",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-feed-journal-next-is-bounded-progress"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-journal-uncertainty-survives-all-later-observations"
+        }
+      ]
     }
   ]
 }

@@ -373,7 +373,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-007",
-        "PRF-027"
+        "PRF-027",
+        "PRF-043"
       ],
       "verification": [
         "proof",
@@ -394,9 +395,10 @@
         "books/store-observed.lisp",
         "tests/test_store_node_host.py",
         "planning/evidence/wave-realignment-2026-09-19.md",
-        "planning/evidence/deploy-cce4b11-2026-09-20.md"
+        "planning/evidence/deploy-cce4b11-2026-09-20.md",
+        "planning/evidence/feed-journal-w12-host.json"
       ],
-      "implementation_note": "Recovery/read/publication/completion faults fence mutations; 47 injected cases and six process-death boundaries preserve the applicable obligations. Closed/read-only owners now reject mutation and lock lifecycle regressions pass. Live wrapper adoption and physical refinement remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open.",
+      "implementation_note": "Recovery/read/publication/completion faults fence mutations; 47 injected cases and six process-death boundaries preserve the applicable obligations. Closed/read-only owners now reject mutation and lock lifecycle regressions pass. Live wrapper adoption and physical refinement remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open. W12 adds bounded ACL2 FNFD prefix recovery, durable torn-suffix repair and an owner-wide fence after ambiguous journal I/O. Its scanner/phase theorems and component tests are scoped by PRF-043; physical correspondence and integrated acceptance/feed recovery remain open.",
       "keystones": [
         "fn-sf-fenced-rejects-frontier-start",
         "fn-sf-fenced-rejects-record-prepare",
@@ -504,7 +506,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-035"
+        "PRF-035",
+        "PRF-043"
       ],
       "verification": [
         "integration",
@@ -513,10 +516,11 @@
       "evidence": [
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/feed-journal-w12-host.json"
       ],
-      "implementation_note": "Real frame checksum/truncation/schema/namespace faults refuse normal recovery. Repair workflow and old-valid-store rollback detection remain open.",
-      "note": "No proof target. Detection would be the frame integrity trailer; K11 of DESIGN-crash-model-v2 (truncation and resize never validate) is a design, and no repair path is written. The deploy gate also found a durable staging orphan that recovery reports and leaves in place, with no owner in this registry."
+      "implementation_note": "Real frame checksum/truncation/schema/namespace faults refuse normal recovery. Repair workflow and old-valid-store rollback detection remain open. W12 adds bounded ACL2 FNFD prefix recovery, durable torn-suffix repair and an owner-wide fence after ambiguous journal I/O. Its scanner/phase theorems and component tests are scoped by PRF-043; physical correspondence and integrated acceptance/feed recovery remain open.",
+      "note": "Frame integrity evidence is scoped by PRF-035. W12 repairs only a torn final FNFD envelope; complete invalid evidence is preserved and fails startup. General media repair, durable staging orphan collection and old-valid-store rollback detection remain open."
     },
     {
       "id": "FLR-001",
@@ -1200,7 +1204,9 @@
       "specification": "specs/host.md#core-interface",
       "milestone": "M2",
       "status": "specified",
-      "proof_targets": [],
+      "proof_targets": [
+        "PRF-043"
+      ],
       "verification": [
         "integration",
         "scenario"
@@ -1214,9 +1220,10 @@
         "books/store-observed.lisp",
         "tests/test_store_node_host.py",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/feed-journal-w12-host.json"
       ],
-      "implementation_note": "POSIX adapter has 47 enumerated syscall/completion fault rows, six process-death boundaries, ownership/lifecycle regressions and actual ACL2 reopen. Logical file and live completion correspondence are certified components. Hardware durability and complete host refinement remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open.",
+      "implementation_note": "POSIX adapter has 47 enumerated syscall/completion fault rows, six process-death boundaries, ownership/lifecycle regressions and actual ACL2 reopen. Logical file and live completion correspondence are certified components. Hardware durability and complete host refinement remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open. W12 adds bounded ACL2 FNFD prefix recovery, durable torn-suffix repair and an owner-wide fence after ambiguous journal I/O. Its scanner/phase theorems and component tests are scoped by PRF-043; physical correspondence and integrated acceptance/feed recovery remain open.",
       "note": "Integration-verified, and the first real evidence exists: tools/deploy_gate.py ran one commit as a service on persvati with a kill cut and a recovery. It records its own gaps -- the owner did not start, no independent nntplib decoder (the host has only Python 3.13.7 and PEP 594 removed it), no newsreader installed, one kill point, and a SIGKILL is not a power loss -- so the persistence contract is not met as written."
     },
     {
