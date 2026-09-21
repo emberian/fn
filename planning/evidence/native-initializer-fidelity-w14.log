@@ -1,0 +1,12 @@
+test_fresh_init_then_new_process_recover (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_fresh_init_then_new_process_recover) ... ok
+test_post_history_fence_eio_stops_before_frontier_publication (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_post_history_fence_eio_stops_before_frontier_publication) ... ok
+test_second_config_enumeration_fault_is_not_an_empty_history (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_second_config_enumeration_fault_is_not_an_empty_history) ... ok
+test_sigkill_after_frontier_publication_recovers_in_a_new_process (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_sigkill_after_frontier_publication_recovers_in_a_new_process) ... ok
+test_sigkill_at_history_fence_is_process_death_then_faulted_restart (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_sigkill_at_history_fence_is_process_death_then_faulted_restart) ... ok
+test_sigkill_before_metadata_makes_restart_fault (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_sigkill_before_metadata_makes_restart_fault) ... ok
+test_source_map_exposes_each_current_initializer_model_cut (tests.test_native_initializer_fidelity.NativeInitializerSourceMapTests.test_source_map_exposes_each_current_initializer_model_cut) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.235s
+
+OK

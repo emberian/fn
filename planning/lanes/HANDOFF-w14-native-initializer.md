@@ -26,17 +26,13 @@ though history were absent.  This does not claim that an injected post-call EIO
 models all platform EIO outcomes; the published staging content was already
 file-fenced before its link.
 
-Validation on this isolated source:
-
-* SBCL reader with `sb-posix` and `sb-bsd-sockets`: `reader-ok forms=219`.
-* `python3 -m unittest tests.test_native_initializer_fidelity`: source-map
-  test passed; five runtime tests skipped because no `build/fn-host` exists.
-* `git diff --check` passed.
-* `tools/build_native_host.sh` stopped before raw host loading because the
-  `37ec36b` worktree has no certificates for the native image closure
-  (`books/replay` and dependent books are uncertified).  It is an environment
-  closure limitation, not a claimed native-image result.  No ACL2 book changed,
-  so there is no owned certification root in this packet.
+Runtime closure and exact results are in
+`planning/evidence/native-initializer-fidelity-w14-2026-09-21.md`.  The W14
+raw-I/O packet was replayed onto the native-codec frozen source, acquired via
+the manifest-backed coherent artifact set, and passed `proof_artifacts.py
+validate`, a default native image build, and all seven initializer fidelity
+tests on hbox.  No ACL2 book changed, so this packet adds runtime source
+correspondence evidence without claiming a new certification root.
 
 Open: existing directories/lock/files and EEXIST/load branches; physical crash
 outcome qualification; K0; and the reported frozen-image missing-`staging/`
