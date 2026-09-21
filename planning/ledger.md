@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 355 |
-| Certification roots in the Makefile | 356 |
-| Books inside the root closure | 354 |
-| `defthm` and `defthmd` events | 6226 |
-| `defun` events | 4808 |
-| Functions with verified guards | 1617 |
+| Books read | 357 |
+| Certification roots in the Makefile | 358 |
+| Books inside the root closure | 356 |
+| `defthm` and `defthmd` events | 6231 |
+| `defun` events | 4839 |
+| Functions with verified guards | 1620 |
 | Functions declared `:verify-guards nil` and never verified | 235 |
-| Functions left at the default with an explicit guard | 2362 |
-| Functions left at the default with no guard | 594 |
-| `assert-event` checks | 6624 |
+| Functions left at the default with an explicit guard | 2391 |
+| Functions left at the default with no guard | 593 |
+| `assert-event` checks | 6649 |
 | `must-fail` checks | 138 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 58 |
 | Export-hygiene warnings | 79 |
 | Enabled-projection warnings | 24 |
 | Teeth-form warnings | 4 |
-| Include-hygiene warnings | 125 |
-| Host-names warnings | 488 |
+| Include-hygiene warnings | 127 |
+| Host-names warnings | 515 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -196,12 +196,13 @@ that `make certify` requests.
 | `books/index.lisp` | root | 32 | 23 | 22/0/1/0 | 0 | 0 | 0 |
 | `books/injection-invariants.lisp` | root | 38 | 5 | 0/0/5/0 | 0 | 0 | 1 |
 | `books/injection.lisp` | root | 11 | 72 | 57/0/15/0 | 0 | 0 | 0 |
-| `books/journal-publish.lisp` | root | 5 | 12 | 0/0/0/12 | 0 | 0 | 0 |
+| `books/journal-publish.lisp` | root | 5 | 12 | 2/0/0/10 | 0 | 0 | 0 |
 | `books/journal.lisp` | root | 9 | 61 | 0/0/0/61 | 0 | 0 | 0 |
 | `books/lace-invariants.lisp` | root | 65 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
+| `books/native-admin.lisp` | root | 5 | 30 | 1/0/29/0 | 0 | 0 | 0 |
 | `books/native-auth-admin.lisp` | root | 6 | 46 | 0/0/46/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 3 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/native-config.lisp` | root | 2 | 59 | 0/0/59/0 | 0 | 0 | 0 |
@@ -377,6 +378,7 @@ that `make certify` requests.
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
+| `tests/acl2/native-admin-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 25 | 0 | 0 |
 | `tests/acl2/native-auth-admin-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 42 | 0 | 0 |
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
