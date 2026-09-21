@@ -30,6 +30,23 @@
 (defconst *fn-bs-meta-config-spec*
   '(:text :nat :nat :nat :nat :text))
 
+; The frontier is one RFC 8949 deterministic uint in the existing bounded
+; CBOR profile.  Naming this small length fact before the encoder keeps the
+; frame guard proof about the concrete five-octet payload rather than asking
+; ACL2 to rediscover the four CBOR argument cases through fn-frame-seal.
+(local
+ (defthm fn-bs-frontier-cbor-payload-bound
+   (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+            (and (fn-cbor-octet-listp (fn-cbor-encode (cons :uint n)))
+                 (<= (len (fn-cbor-encode (cons :uint n)))
+                     *fn-bs-meta-max-frontier-payload*)))
+   :hints (("Goal" :cases ((< n 24) (< n 256) (< n 65536))
+            :use ((:instance fn-frame-u32-bytes-len (n n))
+                  (:instance fn-frame-u16-bytes-len (n n)))
+            :in-theory (enable fn-cbor-encode fn-cbor-valuep
+                               fn-cbor-encode-argument
+                               fn-cbor-octet-listp fn-cbor-octetp)))))
+
 (defconst *fn-bs-meta-format-development*
   '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
     101 110 116 45 54)) ; fn-store-experiment-6
@@ -60,12 +77,16 @@
        (<= (len payload) bound)))
 
 (defun fn-bs-frontier-encode-impl (n)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (not (and (natp n) (<= n *fn-cbor-max-uint*)))
       nil
     (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
                    *fn-bs-meta-frontier-kind*
                    (fn-cbor-encode (cons :uint n)))))
+
+(verify-guards fn-bs-frontier-encode-impl
+  :hints (("Goal" :use ((:instance fn-bs-frontier-cbor-payload-bound
+                                     (n n))))))
 
 ; The allocation ceiling is a codec decision: a frontier at the largest CBOR
 ; uint is a valid persisted value, but it has no successor.  Hosts ask this
@@ -90,9 +111,132 @@
         (let ((decoded (fn-cbor-decode-exact
                         (fn-frame-result-payload frame))))
           (if (and (fn-cbor-result-okp decoded)
-                   (equal (car (fn-cbor-result-value decoded)) :uint))
-              (cdr (fn-cbor-result-value decoded))
+                   (equal (fn-cbor-ag-car
+                           (fn-cbor-result-value decoded))
+                          :uint)
+                   (natp (fn-cbor-ag-cdr
+                           (fn-cbor-result-value decoded))))
+              (fn-cbor-ag-cdr (fn-cbor-result-value decoded))
             nil))))))
+
+(defthm fn-bs-frontier-frame-inputp
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+           (fn-frame-inputp *fn-bs-meta-magic* *fn-bs-meta-version*
+                            *fn-bs-meta-frontier-kind*
+                            (fn-cbor-encode (cons :uint n))
+                            *fn-bs-meta-max-frontier-payload*))
+  :hints (("Goal"
+           :use ((:instance fn-bs-frontier-cbor-payload-bound (n n)))
+           :in-theory (enable fn-frame-inputp fn-frame-magicp))))
+
+(defthm fn-bs-frontier-payload-fits-frame-length
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+           (<= (len (fn-cbor-encode (cons :uint n)))
+               *fn-cbor-max-uint*))
+  :hints (("Goal"
+           :use ((:instance fn-bs-frontier-cbor-payload-bound (n n))))))
+
+(defthm fn-bs-frontier-open-of-encode
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+           (equal (fn-frame-open
+                   (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
+                                  *fn-bs-meta-frontier-kind*
+                                  (fn-cbor-encode (cons :uint n)))
+                   *fn-bs-meta-max-frontier-payload*)
+                  (fn-frame-ok *fn-bs-meta-magic* *fn-bs-meta-version*
+                               *fn-bs-meta-frontier-kind*
+                               (fn-cbor-encode (cons :uint n)))))
+  :hints (("Goal"
+           :use ((:instance fn-frame-open-of-seal
+                            (magic *fn-bs-meta-magic*)
+                            (version *fn-bs-meta-version*)
+                            (kind *fn-bs-meta-frontier-kind*)
+                            (payload (fn-cbor-encode (cons :uint n)))
+                            (max-payload *fn-bs-meta-max-frontier-payload*))
+                 (:instance fn-bs-frontier-frame-inputp (n n))))))
+
+(defthm fn-bs-frontier-protected-octet-listp
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+           (fn-cbor-octet-listp
+            (fn-frame-protected *fn-bs-meta-magic* *fn-bs-meta-version*
+                                *fn-bs-meta-frontier-kind*
+                                (fn-cbor-encode (cons :uint n)))))
+  :hints (("Goal"
+           :use ((:instance fn-bs-frontier-cbor-payload-bound (n n))
+                 (:instance fn-bs-frontier-payload-fits-frame-length (n n))
+                 (:instance fn-cbor-u32-bytes-are-octets
+                            (n (len (fn-cbor-encode (cons :uint n)))))
+                 (:instance fn-cbor-octet-listp-append
+                            (xs (fn-cbor-u32-bytes
+                                 (len (fn-cbor-encode (cons :uint n)))))
+                            (ys (fn-cbor-encode (cons :uint n))))
+                 (:instance fn-cbor-octet-listp-append
+                            (xs *fn-bs-meta-magic*)
+                            (ys (cons *fn-bs-meta-version*
+                                      (cons *fn-bs-meta-frontier-kind*
+                                            (append
+                                             (fn-cbor-u32-bytes
+                                              (len (fn-cbor-encode
+                                                    (cons :uint n))))
+                                             (fn-cbor-encode
+                                              (cons :uint n))))))))
+           :in-theory (enable fn-frame-protected fn-frame-header))))
+
+(defthm fn-bs-frontier-seal-octet-listp
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+           (fn-cbor-octet-listp
+            (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
+                           *fn-bs-meta-frontier-kind*
+                           (fn-cbor-encode (cons :uint n)))))
+  :hints (("Goal"
+           :use ((:instance fn-bs-frontier-protected-octet-listp (n n))
+                 (:instance fn-frame-digestp-of-fn-frame-digest
+                            (octets
+                             (fn-frame-protected
+                              *fn-bs-meta-magic* *fn-bs-meta-version*
+                              *fn-bs-meta-frontier-kind*
+                              (fn-cbor-encode (cons :uint n)))))
+                 (:instance fn-cbor-octet-listp-append
+                            (xs (fn-frame-protected
+                                 *fn-bs-meta-magic* *fn-bs-meta-version*
+                                 *fn-bs-meta-frontier-kind*
+                                 (fn-cbor-encode (cons :uint n))))
+                            (ys (fn-frame-digest
+                                 (fn-frame-protected
+                                  *fn-bs-meta-magic* *fn-bs-meta-version*
+                                  *fn-bs-meta-frontier-kind*
+                                  (fn-cbor-encode (cons :uint n)))))))
+           :in-theory (enable fn-frame-seal fn-frame-encode))))
+
+(defthm fn-bs-frontier-cbor-round-trip
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+           (equal (fn-cbor-decode-exact (fn-cbor-encode (cons :uint n)))
+                  (fn-cbor-ok (cons :uint n) nil)))
+  :hints (("Goal"
+           :use ((:instance fn-cbor-value-round-trip
+                            (value (cons :uint n))))
+           :in-theory (enable fn-cbor-valuep))))
+
+(defthm fn-bs-frontier-decode-impl-nat-or-nil
+  (or (natp (fn-bs-frontier-decode-impl octets))
+      (null (fn-bs-frontier-decode-impl octets)))
+  :rule-classes :type-prescription
+  :hints (("Goal"
+           :in-theory (enable fn-bs-frontier-decode-impl
+                              fn-bs-meta-frame-okp))))
+
+(defthm fn-bs-frontier-impl-round-trip
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+           (equal (fn-bs-frontier-decode-impl
+                   (fn-bs-frontier-encode-impl n))
+                  n))
+  :hints (("Goal"
+           :use ((:instance fn-bs-frontier-open-of-encode (n n))
+                 (:instance fn-bs-frontier-seal-octet-listp (n n))
+                 (:instance fn-bs-frontier-cbor-round-trip (n n)))
+           :in-theory (enable fn-bs-frontier-encode-impl
+                              fn-bs-frontier-decode-impl
+                              fn-bs-meta-frame-okp))))
 
 (defun fn-bs-config-encode (values)
   (declare (xargs :guard t))
@@ -126,8 +270,9 @@
 ; The constrained functions remain the scan's public names.  Attachment gives
 ; a concrete executable interpretation without changing any theorem proved
 ; against their deliberately weak P3 constraints.
-(defattach fn-bs-frontier-encode fn-bs-frontier-encode-impl)
-(defattach fn-bs-frontier-decode fn-bs-frontier-decode-impl)
+(defattach (fn-bs-frontier-encode fn-bs-frontier-encode-impl)
+           (fn-bs-frontier-decode fn-bs-frontier-decode-impl)
+           :hints (("Goal" :use fn-bs-frontier-impl-round-trip)))
 (defattach fn-bs-config-okp fn-bs-config-okp-impl)
 
 ; ACL2 calls these two values from host/store-host.lisp.  A request outside
@@ -154,11 +299,6 @@
 ; These are concrete correspondence facts for the host calls.  The bounded
 ; domain is the actual uint32 allocator domain used by run_store, a strict
 ; subset of the CBOR uint profile.
-(defthm fn-bs-frontier-decode-impl-nat-or-nil
-  (or (natp (fn-bs-frontier-decode-impl octets))
-      (null (fn-bs-frontier-decode-impl octets)))
-  :rule-classes :type-prescription)
-
 (defthm fn-bs-frontier-encode-impl-unfolds
   (implies (and (natp n) (<= n *fn-cbor-max-uint*))
            (equal (fn-bs-frontier-encode-impl n)
