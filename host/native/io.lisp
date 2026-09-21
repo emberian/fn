@@ -742,7 +742,9 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defun fnn-at (store point)
   "Production has no injection branch; a scripted point raises its outcome."
   (when (eq point (fnn-store-fault-point store))
-    (error (fnn-store-fault-class store) :message (fnn-store-fault-message store))))
+    (if (eq (fnn-store-fault-class store) 'fnn-os-error)
+        (fnn-os-fail sb-posix:eio)
+      (error (fnn-store-fault-class store) :message (fnn-store-fault-message store)))))
 
 (defun fnn-config-path (s) (fnn-join (fnn-store-root s) "config.json"))
 (defun fnn-transactions (s) (fnn-join (fnn-store-root s) "transactions"))
@@ -1043,7 +1045,8 @@ The core decides whether the records replay."
             (fnn-indeterminate "ACL2 rejected allocator replacement after the namespace attempt"))
           (fnn-at store :frontier-attempted)
           (setf (fnn-store-fenced store) t)
-          (handler-case (fnn-fsync-dir (fnn-store-root store))
+          (handler-case (progn (fnn-at store :frontier-barrier)
+                               (fnn-fsync-dir (fnn-store-root store)))
             (fnn-os-error (e) (fnn-observe store :frontier-directory :error) (error e)))
           (fnn-at store :frontier-durable)
           (unless (eq (fnn-observe store :frontier-directory :ok) :reserved)
@@ -1083,7 +1086,8 @@ The core decides whether the records replay."
             (setf (fnn-store-fenced store) t)
             (fnn-indeterminate "ACL2 rejected record publication after the final-name attempt"))
           (fnn-at store :record-attempted)
-          (handler-case (fnn-fsync-dir (fnn-transactions store))
+          (handler-case (progn (fnn-at store :record-barrier)
+                               (fnn-fsync-dir (fnn-transactions store)))
             (fnn-os-error (e) (fnn-observe store :record-directory :error) (error e)))
           (fnn-at store :record-durable)
           (unless (eq (fnn-observe store :record-directory :ok) :completing)
@@ -1182,7 +1186,11 @@ provenance the model only compares."
   (list (cons "prepublish" (list :record-staged-durable 'fnn-store-error
                                  "injected known abort before publication"))
         (cons "postpublish" (list :record-attempted 'fnn-store-indeterminate
-                                  "indeterminate injected failure after final publication"))))
+                                  "indeterminate injected failure after final publication"))
+        (cons "frontierbarrier" (list :frontier-barrier 'fnn-os-error
+                                      "injected allocator directory barrier failure"))
+        (cons "recordbarrier" (list :record-barrier 'fnn-os-error
+                                    "injected transaction directory barrier failure"))))
 
 (defun fnn-command-post (root message-id payload-path charge-text inject groups)
   (let* ((msgid (fnn-octets (fnn-ascii-octet-list message-id)))

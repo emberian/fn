@@ -63,6 +63,15 @@ class NativeStorageCodecTests(unittest.TestCase):
         arguments[3] = self.payload
         return self.invoke(native, store, "post", *arguments, expected=expected)
 
+    def direct_native_post(self, store, message_id, fault, expected):
+        result = subprocess.run(
+            [str(IMAGE), "--fn", "store", str(store), "post", message_id,
+             str(self.payload), "-", fault, "fn.letters"], cwd=ROOT,
+            env=host_env(True), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=False)
+        self.assertEqual(result.returncode, expected, result.stderr.decode("utf-8", "replace"))
+        return result
+
     def test_native_and_python_cross_open_identical_acl2_frames(self):
         native_store = self.base / "native-store"
         self.invoke(True, native_store, "init")
@@ -140,6 +149,34 @@ class NativeStorageCodecTests(unittest.TestCase):
         self.assertIn(b"transactions=1 articles=1", recovered.stdout)
         inspected = self.invoke(False, store, "inspect", "--message-id",
                                 "<uncertain@example.invalid>")
+        self.assertEqual(inspected.stdout, self.payload.read_bytes())
+
+    def test_injected_allocator_barrier_failure_consumes_the_id_after_recovery(self):
+        store = self.base / "allocator-barrier"
+        self.invoke(True, store, "init")
+        failed = self.direct_native_post(
+            store, "<allocator-barrier@example.invalid>", "frontierbarrier",
+            run_store.EXIT_UNCERTAIN)
+        self.assertIn(b"allocation-frontier update is indeterminate", failed.stderr)
+        self.assertEqual(list((store / "transactions").iterdir()), [])
+        self.invoke(True, store, "recover")
+        self.post(True, store, "<after-allocator-barrier@example.invalid>")
+        # Sequence remains local and gap-free; the stored transaction ID is
+        # the ACL2 frontier after the uncertain reservation, not the old ID.
+        self.assertEqual([path.name for path in (store / "transactions").iterdir()],
+                         ["00000000000000000000.txn"])
+        self.invoke(False, store, "recover")
+
+    def test_injected_record_barrier_failure_replays_visible_publication(self):
+        store = self.base / "record-barrier"
+        self.invoke(True, store, "init")
+        failed = self.direct_native_post(
+            store, "<record-barrier@example.invalid>", "recordbarrier",
+            run_store.EXIT_UNCERTAIN)
+        self.assertIn(b"transaction publication outcome is indeterminate", failed.stderr)
+        self.invoke(True, store, "recover")
+        inspected = self.invoke(False, store, "inspect", "--message-id",
+                                "<record-barrier@example.invalid>")
         self.assertEqual(inspected.stdout, self.payload.read_bytes())
 
 
