@@ -630,3 +630,65 @@
 (nio-reader-preserves-subtypes)
 (nio-actual-socketpair-peer-close-and-backpressure)
 (format t "native-io-progress: ok~%")
+
+;; The configuration namespace test substitutes only the core decision and
+;; syscalls.  It exercises the actual raw observer and rejects a regression to
+;; the unbounded/suffix-filter helper before the bridge is reached.
+(defun nio-with-config-observation-stubs (names thunk)
+  (let* ((symbols '(fnn-list-directory fnn-list-directory-bounded
+                    fnn-bridge-config-observation-limit
+                    fnn-bridge-config-observation fnn-lstat fnn-symlink-p
+                    fnn-regular-p fnn-read-regular-bounded))
+         (saved (mapcar (lambda (symbol) (cons symbol (symbol-function symbol))) symbols)))
+    (unwind-protect
+         (progn
+           (setf (symbol-function 'fnn-list-directory)
+                 (lambda (&rest ignored) (declare (ignore ignored))
+                   (error "unbounded configuration enumeration"))
+                 (symbol-function 'fnn-list-directory-bounded)
+                 (lambda (path limit namespace)
+                   (declare (ignore path))
+                   (nio-check (string= namespace "configuration namespace")
+                              "config observer used the wrong namespace label")
+                   (when (> (length names) limit)
+                     (fnn-fault "configuration namespace exceeds ACL2 observation bound"))
+                   names)
+                 (symbol-function 'fnn-bridge-config-observation-limit)
+                 (lambda () 2)
+                 (symbol-function 'fnn-lstat)
+                 (lambda (&rest ignored) (declare (ignore ignored)) :regular)
+                 (symbol-function 'fnn-symlink-p)
+                 (lambda (&rest ignored) (declare (ignore ignored)) nil)
+                 (symbol-function 'fnn-regular-p) (lambda (st) (eq st :regular))
+                 (symbol-function 'fnn-read-regular-bounded)
+                 (lambda (path limit)
+                   (declare (ignore limit))
+                   (fnn-octets (if (search "00000001.cfg" path) '(1) '(2))))
+                 (symbol-function 'fnn-bridge-config-observation)
+                 (lambda (observed)
+                   (nio-check (= (length observed) (length names))
+                              "config observer lost an observed entry")
+                   ;; The raw code must consume this ACL2-issued ordering,
+                   ;; not sort/filter names a second time.
+                   (reverse observed)))
+           (funcall thunk))
+      (dolist (pair saved)
+        (setf (symbol-function (car pair)) (cdr pair))))))
+
+(defun nio-config-enumeration-is-bounded-and-core-ordered ()
+  (let ((store (make-fnn-store :root "/native-config-observer")))
+    (nio-with-config-observation-stubs
+     '("00000001.cfg" "00000002.cfg")
+     (lambda ()
+       (nio-check (equal (mapcar #'car (fnn-config-record-observation store))
+                         '("00000002.cfg" "00000001.cfg"))
+                  "config observer did not consume ACL2 plan ordering")))
+    (nio-with-config-observation-stubs
+     '("00000001.cfg" "00000002.cfg" "00000003.cfg")
+     (lambda ()
+       (nio-check (nio-expects 'fnn-store-fault
+                               (lambda () (fnn-config-record-observation store)))
+                  "config observer accepted the first entry beyond its ACL2 bound")))))
+
+(nio-config-enumeration-is-bounded-and-core-ordered)
+(format t "native-config-observation: ok~%")
