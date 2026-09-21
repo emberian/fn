@@ -156,7 +156,7 @@ class Listener:
 
 
 class SessionTests(unittest.TestCase):
-    """The client half: the greeting, the line reader and the dot block."""
+    """The client half: greeting, line reader, and exact ACL2 byte writes."""
 
     def connected(self, greeting=b"200 fake ready\r\n"):
         listener = Listener(greeting)
@@ -175,65 +175,17 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(session.line(), b"438 two")
         listener.stop()
 
-    def test_a_leading_dot_is_doubled_and_the_block_ends_with_a_lone_dot(self):
-        # RFC 3977 section 3.1.1.  A body line that begins with `.` must
-        # reach the peer as `..`, or the peer reads it as the terminator.
+    def test_acl2_rendered_block_crosses_the_socket_byte_for_byte(self):
+        # The renderer's semantic witnesses live in tests/acl2/wire-tests.
+        # Session has no framing branch left: it writes this vector exactly,
+        # including a literal leading dot, a dot-only line, and two trailing
+        # empty source lines that ACL2 rendered and terminated.
+        rendered = (b"Subject: t\r\n\r\n..literal\r\n..\r\nbody\r\n"
+                    b"\r\n\r\n.\r\n")
         listener, session = self.connected()
-        session.send_block(b"Subject: t\r\n\r\n.signature\r\nlast\r\n")
+        session.send_block(rendered)
         listener.stop()
-        self.assertTrue(listener.received.endswith(b"\r\n.\r\n"),
-                        listener.received)
-        self.assertIn(b"\r\n..signature\r\n", listener.received)
-        self.assertNotIn(b"\r\n.signature\r\n", listener.received)
-
-    def test_a_bare_lf_article_goes_out_crlf_terminated(self):
-        listener, session = self.connected()
-        session.send_block(b"Subject: t\n\nbody\n")
-        listener.stop()
-        self.assertEqual(listener.received,
-                         b"Subject: t\r\n\r\nbody\r\n.\r\n")
-        # no bare LF survives: every \n on the wire is preceded by \r
-        for index, byte in enumerate(listener.received):
-            if byte == 0x0a:
-                self.assertEqual(listener.received[index - 1], 0x0d)
-
-    def test_an_article_that_ends_in_a_blank_line_crosses_with_it(self):
-        # The defect the corrected two-node gate caught at f49a844:
-        # `identical=False` on all three owner-feed articles, with
-        # `source_lines: 11, target_lines: 10` and NO line differing in
-        # content. An article POSTed through the server stores the blank
-        # last line its dot block carried; `rstrip(b"\r\n")` took it off
-        # again on the way out. RFC 5537 3.6: Path and Xref, nothing else.
-        listener, session = self.connected()
-        session.send_block(b"Subject: t\r\n\r\nbody\r\n\r\n")
-        listener.stop()
-        self.assertEqual(listener.received,
-                         b"Subject: t\r\n\r\nbody\r\n\r\n.\r\n")
-
-    def test_two_blank_lines_at_the_end_both_cross(self):
-        listener, session = self.connected()
-        session.send_block(b"Subject: t\r\n\r\nbody\r\n\r\n\r\n")
-        listener.stop()
-        self.assertEqual(listener.received,
-                         b"Subject: t\r\n\r\nbody\r\n\r\n\r\n.\r\n")
-
-    def test_the_block_unstuffs_back_to_the_article_it_was_given(self):
-        # The round trip, over the four shapes that separate the defect:
-        # the terminator the block supplies is the only octet difference.
-        for article in (b"Subject: t\r\n\r\nbody\r\n",
-                        b"Subject: t\r\n\r\nbody\r\n\r\n",
-                        b"Subject: t\r\n\r\nbody\r\n\r\n\r\n",
-                        b"Subject: t\r\n\r\n.\r\n"):
-            listener, session = self.connected()
-            session.send_block(article)
-            listener.stop()
-            block = listener.received
-            self.assertTrue(block.endswith(b"\r\n.\r\n"), block)
-            inner = block[:-len(b".\r\n")]
-            back = b"\r\n".join(
-                one[1:] if one.startswith(b"..") else one
-                for one in inner.split(b"\r\n")[:-1]) + b"\r\n"
-            self.assertEqual(back, article)
+        self.assertEqual(listener.received, rendered)
 
     def test_a_response_line_over_the_bound_is_refused_and_leaks_nothing(self):
         listener = Listener(b"2" * (feed_wire.MAX_LINE + 10))
