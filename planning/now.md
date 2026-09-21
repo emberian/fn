@@ -112,7 +112,36 @@ must compose before the next image is frozen. Large-event and partial-deletion
 witnesses are source/component evidence; full caller guards and native fault
 execution remain open. The [crypto review](review-2026-09-21-hybrid-cross-model.md)
 identified and prompted repair of the Ed25519 observation-size mismatch; general
-subject injectivity remains a separate proof obligation.
+subject injectivity was completed in the subsequent scoped batch below.
+
+The next source batch now separates the carried journal sequence from the
+allocation frontier. Refused reservations may burn transaction identifiers
+without consuming journal positions. An actual Store-machine trace covers
+enrollment, atomic signed acceptance, observed reopen and recovery barriers,
+such a refusal, and subsequent legacy and retention commits. Source evaluation
+passes; the current integrated certification remains open. Native kind-4
+historical verdicts survive recovery; legacy `fn-r` live verdict observations
+have no durable representation and are deliberately absent after reopen.
+
+The native distribution has landed with [task-local installation evidence](evidence/native-distribution-qualification-2026-09-21.md)
+for frozen `8c231978`: relocated SBCL, installed core, owner startup and SIGTERM,
+with no Python child observed. Public principal administration now composes the
+existing ACL2 credential planner and durable executor. Its new public route
+awaits image qualification. The two-node investigation also found a concrete
+native feed conversion defect: cached peer identifiers were byte vectors where
+ACL2 expects lists. Main repairs that boundary and includes a regression that
+fails against the old constructor; the older image gate is applying the same
+repair before continuing exchange tests.
+
+The combined successor freezes `df21773d` for certification and image builds
+on persvati. Live hybrid control remains a separate in-progress packet: review
+identified boundary-call and test-harness defects, plus the need to compose
+source-derived article admission and durable outbound feed intent. An inner
+kind-4 writer alone is not the complete author-posting workflow. Hybrid subject
+injectivity books and concrete counterexamples now have
+[source-matched certification](evidence/hybrid-injectivity-certification-2026-09-21.md)
+on hbox; root checked every selected closure source digest against main. The
+initial failed attempt used older CBOR source and remains separately recorded.
 
 ## Parallel paths to the next service batch
 
