@@ -128,7 +128,7 @@ class CallMeter:
         bridge.call = counted
 
 
-def build(root, count, groups, payload_bytes, seed, profile, fanout,
+def build(root, count, groups, payload_bytes, seed, profile_name, profile, fanout,
           payload_kind="random", msgid_octets=0):
     names = list(GROUP_NAMES[:groups])
     result = {
@@ -140,7 +140,7 @@ def build(root, count, groups, payload_bytes, seed, profile, fanout,
         "status": "running", "root": str(root),
     }
     started = time.monotonic()
-    store = Store(root, writable=True, profile=profile)
+    store = Store(root, writable=True, profile=profile_name)
     bridge = None
     try:
         store.initialize()
@@ -232,7 +232,7 @@ def main():
         parser.error("%s bounds a store at %d transactions"
                      % (args.profile, profile["max_transactions"]))
     result = build(Path(args.root), args.articles, args.groups, args.payload,
-                   args.seed, profile, fanout, args.payload_kind,
+                   args.seed, args.profile, profile, fanout, args.payload_kind,
                    args.message_id_octets)
     result["loadavg"] = os.getloadavg()
     text = json.dumps(result, sort_keys=True)
