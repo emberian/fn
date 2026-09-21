@@ -64,14 +64,6 @@
             (push generation found))))
       (sort found #'<))))
 
-(defun fnn-checkpoint-next-generation (store)
-  (let ((answer (fnn-core 'fn-store-checkpoint-next-generation
-                          (fnn-checkpoint-generations store))))
-    (case answer
-      (:bad (fnn-fault "checkpoint generation namespace is not gap-free"))
-      (:exhausted (fnn-refuse "checkpoint generation domain exhausted"))
-      (otherwise (fnn-nat answer)))))
-
 (defun fnn-checkpoint-capture (records store)
   (let ((protected
           (fnn-core-state 'fn-store-checkpoint-protected
@@ -160,8 +152,9 @@
                     (handler-case
                         (progn (fnn-checkpoint-test-fault "selection-file" stage)
                                (fnn-write-staged stage frame)
-                               (fnn-checkpoint-test-stop "selection-file")
-                               (fnn-checkpoint-marker-step phase :ok))
+                               (let ((next (fnn-checkpoint-marker-step phase :ok)))
+                                 (fnn-checkpoint-test-stop "selection-file")
+                                 next))
                       (fnn-os-error ()
                         (fnn-checkpoint-marker-step phase :known-fail)))))
              (:replace
@@ -169,8 +162,9 @@
                     (handler-case
                         (progn (fnn-checkpoint-test-fault "selection-replace" final)
                                (fnn-replace stage final)
-                               (fnn-checkpoint-test-stop "selection-replace")
-                               (fnn-checkpoint-marker-step phase :ok))
+                               (let ((next (fnn-checkpoint-marker-step phase :ok)))
+                                 (fnn-checkpoint-test-stop "selection-replace")
+                                 next))
                       (fnn-os-error ()
                         (fnn-checkpoint-marker-step phase :error)))))
              (:directory-barrier
@@ -178,8 +172,9 @@
                     (handler-case
                         (progn (fnn-checkpoint-test-fault "selection-directory" directory)
                                (fnn-fsync-dir directory)
-                               (fnn-checkpoint-test-stop "selection-directory")
-                               (fnn-checkpoint-marker-step phase :ok))
+                               (let ((next (fnn-checkpoint-marker-step phase :ok)))
+                                 (fnn-checkpoint-test-stop "selection-directory")
+                                 next))
                       (fnn-os-error ()
                         (fnn-checkpoint-marker-step phase :error)))))
              (:done (return))
