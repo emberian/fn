@@ -169,7 +169,8 @@
 ; while the kernel crash of that same component is a :replaying image carrying
 ; the linked record.  The two are not equal.
 (defconst *snt-forged*
-  (fn-sn-make *snt-groups* 10 (fn-sn-files *snt-record-durable*) :not-a-node))
+  (fn-sn-make *snt-groups* 10 (fn-sn-files *snt-record-durable*) :not-a-node
+              nil (fn-stx-index-empty)))
 (assert-event (not (fn-sn-statep *snt-forged*)))
 (assert-event (fn-sf-crash-choicep :old :present))
 (assert-event (equal (fn-sn-crash *snt-forged* :old :present) *snt-forged*))
@@ -256,7 +257,7 @@
 ; guarantees the configuration the reopen is handed is the one that replays.
 (defconst *snt-relation-forged*
   (fn-sn-make '(:not-a-group) 10 (fn-sn-files *snt-finished*)
-              (fn-sn-node *snt-finished*)))
+              (fn-sn-node *snt-finished*) nil (fn-stx-index-empty)))
 (assert-event (not (fn-snt-relation *snt-relation-forged*)))
 (assert-event
  (fn-sf-crash-imagep (fn-sn-files *snt-relation-forged*) 1 (list *snt-record*)))
