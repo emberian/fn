@@ -519,17 +519,41 @@
        (null (fn-wire-state-line-rev wire-state))
        (null (fn-wire-state-pending-crp wire-state))))
 
-(defun fn-wire-begin-article (wire-state)
+; RFC 3977's multiline data grammar has no command-line-sized article-line
+; ceiling.  The chosen profile admits every source line within the retained
+; article bound plus one physical octet for the only outbound expansion, a
+; line-leading dot.  Keeping this calculation in ACL2 makes the served mode
+; switch and the outbound renderer share one capacity contract.
+(defun fn-wire-article-line-limit (wire-state)
+  (declare (xargs :guard t))
+  (+ 1 (nfix (fn-wire-state-body-limit wire-state))))
+
+; RFC 3977's 510-octet command-content ceiling does not constrain article
+; data.  A caller switches to its selected physical article-line profile only
+; after a complete, quiescent command has requested article mode.  The byte
+; machine continues to carry one active ceiling, so its per-byte work stays
+; constant; this transition is the explicit mode/profile seam rather than an
+; accidental reuse of the command ceiling for article bytes.
+(defun fn-wire-begin-article-with-line-limit (wire-state article-line-limit)
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-wire-begin-article-admissiblep wire-state)
-      (fn-wire-make-result
-       (fn-wire-make-state :article nil 0 nil nil 0
-                           (fn-wire-state-line-limit wire-state)
-                           (fn-wire-state-body-limit wire-state))
-       nil)
+      (if (posp article-line-limit)
+          (fn-wire-make-result
+           (fn-wire-make-state :article nil 0 nil nil 0
+                               article-line-limit
+                               (fn-wire-state-body-limit wire-state))
+           nil)
+        (fn-wire-make-result
+         wire-state
+         (list (fn-wire-reject-event :begin-article-bad-line-limit))))
     (fn-wire-make-result
      wire-state
      (list (fn-wire-reject-event :begin-article-unquiesced)))))
+
+(defun fn-wire-begin-article (wire-state)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-wire-begin-article-with-line-limit
+   wire-state (fn-wire-state-line-limit wire-state)))
 
 (defun fn-wire-begin-article-refusedp (result)
   (declare (xargs :guard (or (consp result) (null result))
@@ -542,6 +566,7 @@
   (equal (fn-wire-begin-article-refusedp (fn-wire-begin-article wire-state))
          (not (fn-wire-begin-article-admissiblep wire-state)))
   :hints (("Goal" :in-theory (enable fn-wire-begin-article
+                                      fn-wire-begin-article-with-line-limit
                                       fn-wire-begin-article-refusedp
                                       ))))
 
@@ -552,6 +577,7 @@
                 (equal (fn-wire-result-events (fn-wire-begin-article wire-state))
                        (list (fn-wire-reject-event :begin-article-unquiesced)))))
   :hints (("Goal" :in-theory (enable fn-wire-begin-article
+                                      fn-wire-begin-article-with-line-limit
                                       ))))
 
 (defthm fn-wire-begin-article-acceptance-enters-empty-article-mode
@@ -569,6 +595,7 @@
                   (equal (fn-wire-state-body-limit next)
                          (fn-wire-state-body-limit wire-state)))))
   :hints (("Goal" :in-theory (enable fn-wire-begin-article
+                                      fn-wire-begin-article-with-line-limit
                                       fn-wire-begin-article-admissiblep
                                       fn-wire-statep))))
 
@@ -577,7 +604,43 @@
            (fn-wire-statep
             (fn-wire-result-state (fn-wire-begin-article wire-state))))
   :hints (("Goal" :in-theory (enable fn-wire-begin-article
+                                      fn-wire-begin-article-with-line-limit
                                       fn-wire-begin-article-admissiblep
+                                      fn-wire-statep))))
+
+(defthm fn-wire-begin-article-with-line-limit-acceptance
+  (implies (and (fn-wire-begin-article-admissiblep wire-state)
+                (posp article-line-limit))
+           (let ((next (fn-wire-result-state
+                        (fn-wire-begin-article-with-line-limit
+                         wire-state article-line-limit))))
+             (and (fn-wire-statep next)
+                  (equal (fn-wire-state-mode next) :article)
+                  (equal (fn-wire-state-line-limit next) article-line-limit)
+                  (equal (fn-wire-state-body-limit next)
+                         (fn-wire-state-body-limit wire-state))
+                  (null (fn-wire-state-line-rev next))
+                  (null (fn-wire-state-body-rev next)))))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-begin-article-with-line-limit
+                              fn-wire-begin-article-admissiblep
+                              fn-wire-statep))))
+
+(defthm fn-wire-begin-article-with-line-limit-preserves-statep
+  (implies (fn-wire-statep wire-state)
+           (fn-wire-statep
+            (fn-wire-result-state
+             (fn-wire-begin-article-with-line-limit
+              wire-state article-line-limit))))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-begin-article-with-line-limit
+                              fn-wire-begin-article-admissiblep
+                              fn-wire-statep))))
+
+(defthm fn-wire-article-line-limit-is-positive
+  (implies (fn-wire-statep wire-state)
+           (posp (fn-wire-article-line-limit wire-state)))
+  :hints (("Goal" :in-theory (enable fn-wire-article-line-limit
                                       fn-wire-statep))))
 
 ; -----------------------------------------------------------------------------
@@ -1025,6 +1088,8 @@
 (verify-guards fn-wire-reject-event)
 (verify-guards fn-wire-close)
 (verify-guards fn-wire-begin-article-admissiblep)
+(verify-guards fn-wire-article-line-limit)
+(verify-guards fn-wire-begin-article-with-line-limit)
 (verify-guards fn-wire-begin-article)
 (verify-guards fn-wire-begin-article-refusedp)
 (verify-guards fn-wire-after-line)
@@ -1053,7 +1118,9 @@
 (deftheory fn-wire-step-vocabulary
   '(fn-wire-statep fn-wire-modep fn-wire-initial-state
     fn-wire-line-cost fn-wire-close
-    fn-wire-begin-article-admissiblep fn-wire-begin-article
+    fn-wire-begin-article-admissiblep fn-wire-article-line-limit
+    fn-wire-begin-article-with-line-limit
+    fn-wire-begin-article
     fn-wire-begin-article-refusedp
     fn-wire-after-line fn-wire-feed-byte fn-wire-feed-byte-reference
     fn-wire-feed-proper fn-wire-feed fn-wire-continue

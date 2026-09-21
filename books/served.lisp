@@ -323,7 +323,11 @@
 ; composed in: it answers the offer, reassembles the article body and decides
 ; injection.  This step does two things with its result.  The 340 offer
 ; carries the begin-article marker, and here the wire is switched with
-; fn-wire-begin-article, so the next byte is framed in article mode; and a
+; fn-wire-begin-article-with-line-limit.  Command content remains under the
+; RFC 3977 ceiling in the opening state; article physical lines receive the
+; ACL2-derived body-limit-plus-dot-stuffing profile, so opaque long body lines
+; are not accidentally refused as commands.  The next byte is then framed in
+; article mode; and a
 ; submission leaves as a :submit effect rather than a reply.
 
 (defun fn-served-dispatch (conn event)
@@ -338,7 +342,9 @@
          (submission (fn-post-result-submission r))
          (wire (fn-served-conn-wire conn))
          (wire2 (if (fn-post-offeredp effects)
-                    (fn-wire-result-state (fn-wire-begin-article wire))
+                    (fn-wire-result-state
+                     (fn-wire-begin-article-with-line-limit
+                      wire (fn-wire-article-line-limit wire)))
                   wire)))
     (fn-served-make-result
      (fn-served-make-conn wire2 (fn-post-result-session r)
@@ -384,7 +390,8 @@
                 (fn-served-result-conn (fn-served-dispatch conn event)))
                (fn-served-conn-injection conn)))
    :hints (("Goal" :in-theory (disable fn-auth-step fn-post-offeredp
-                                       fn-wire-begin-article)))))
+                                       fn-wire-begin-article-with-line-limit
+                                       fn-wire-article-line-limit)))))
 
 (local
  (defthm fn-served-dispatch-effects-unfold
@@ -401,7 +408,8 @@
                                (fn-post-result-submission r)))
                       nil))))
    :hints (("Goal" :in-theory (disable fn-auth-step fn-post-offeredp
-                                       fn-wire-begin-article)))))
+                                       fn-wire-begin-article-with-line-limit
+                                       fn-wire-article-line-limit)))))
 
 (defthm fn-served-dispatch-preserves-wire-statep
   (implies (fn-wire-statep (fn-served-conn-wire conn))
@@ -409,11 +417,15 @@
             (fn-served-conn-wire
              (fn-served-result-conn (fn-served-dispatch conn event)))))
   :hints (("Goal"
-           :in-theory (disable fn-wire-statep fn-wire-begin-article
+           :in-theory (disable fn-wire-statep fn-wire-begin-article-with-line-limit
+                               fn-wire-article-line-limit
                                fn-auth-step fn-post-offeredp
-                               fn-wire-begin-article-preserves-statep)
-           :use ((:instance fn-wire-begin-article-preserves-statep
-                            (wire-state (fn-served-conn-wire conn)))))))
+                               fn-wire-begin-article-with-line-limit-preserves-statep)
+           :use ((:instance fn-wire-begin-article-with-line-limit-preserves-statep
+                            (wire-state (fn-served-conn-wire conn))
+                            (article-line-limit
+                             (fn-wire-article-line-limit
+                              (fn-served-conn-wire conn))))))))
 
 (defthm fn-served-dispatch-preserves-connp
   (implies (fn-served-connp conn)
