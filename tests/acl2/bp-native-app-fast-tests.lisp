@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/bp-native-app-fast")
-(local (include-book "bp-native-app-tests"))
+(include-book "bp-native-app-tests")
 
 ; Recovery is the one deep validation boundary.  Its successful result carries
 ; the invariant used by every subsequent served projection.
