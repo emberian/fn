@@ -1,3 +1,12 @@
+UTC 2026-09-21T08:45:12Z
+Darwin nextop.local 25.6.0 Darwin Kernel Version 25.6.0: Sat Jul 11 15:25:34 PDT 2026; root:xnu-12377.161.13~4/RELEASE_ARM64_T6020 arm64
+e25dd673c38a03b5d395e07a8830aab4d384520bd9d3ba6fad2c05fefd9501cc  books/anchor-wire.lisp
+a969eacfbfe7decbb4efe6f514cde118ab0bd69bf175b4d2d617c022af5decd7  host/anchor-wire-host.lisp
+b1d6ff7b01c838554ba112749366ed9f18d06d04135c7985456956152886e09d  host/native/io.lisp
+4ee2a19a83d825ecbed8b0f70518411ae4c7597547318e3b8c8d653a3bf83192  host/native/crypto.lisp
+91f5012da4525b97303e12a4e98f802f41756229bee8b1da871c13d003ff7fff  host/native/anchor.lisp
+a4aeae1162812c2dc3c6aa82ce8ddb6a80b468bb2ab3f721b4e86f6e7f0130e4  /tmp/w14-native-anchor-integration.lsp
+COMMAND python3 tools/acl2 --timeout 120 < /tmp/w14-native-anchor-integration.lsp
 This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
 More information about SBCL is available at <http://www.sbcl.org/>.
 
@@ -21,13 +30,6 @@ Type :help for help.
 Type (quit) to quit completely out of ACL2.
 
 ACL2 !>
-Project-dir-alist:
-((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
-Type :help for help.
-Type (quit) to quit completely out of ACL2.
-
-ACL2 !>> "ACL2"
-ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "anchor" ...):  Unable
 to load compiled file for book
   /Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor.lisp
@@ -41,11 +43,27 @@ wire.lisp
 
 
 Summary
-Form:  ( INCLUDE-BOOK "../books/anchor-wire" ...)
+Form:  ( INCLUDE-BOOK "books/anchor-wire" ...)
 Rules: NIL
 Warnings:  Compiled file
-Time:  0.53 seconds (prove: 0.00, print: 0.00, other: 0.53)
+Time:  0.75 seconds (prove: 0.00, print: 0.00, other: 0.75)
  "/Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor-wire.lisp"
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/anchor-wire" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/anchor-wire" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
 ACL2 !>> T
 ACL2 !>>ACL2 p!>>
 Summary
@@ -72,8 +90,17 @@ Rules: NIL
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-ANCHOR-WIRE-HOST-MAX-RESPONSE
 ACL2 p!>>ACL2 !>>Bye.
-FN_HOST_CHECK_LD_OK host/anchor-wire-host.lisp
+ :EOF
+ACL2 !>
+TTAG NOTE: Adding ttag :FN-NATIVE-ANCHOR-COMPONENT from the top level loop.
+ :FN-NATIVE-ANCHOR-COMPONENT
+ACL2 !>FN_NATIVE_ANCHOR_INTEGRATION passed nonce=32 request=1024 crypto=("/opt/homebrew/opt/libsodium/lib/libsodium.dylib"
+                                                                         "1.0.22")
+
+Summary
+Form:  ( PROGN! (SET-RAW-MODE T) ...)
+Rules: NIL
+Time:  0.27 seconds (prove: 0.00, print: 0.00, other: 0.27)
  NIL
-ACL2 !>FN_HOST_CHECK_LOADED host/anchor-wire-host.lisp
-NIL
+ACL2 !> NIL
 ACL2 !>

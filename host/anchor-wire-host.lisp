@@ -39,6 +39,12 @@
               (fn-anchor-signed-octets a)
               (if (fn-anchor-wire-single-leafp parsed) 1 0))))))
 
+(defun fn-anchor-wire-host-request (nonce)
+  (let ((result (fn-anchor-wire-request nonce)))
+    (if (not (fn-anchor-wire-result-okp result))
+        (list :refused (fn-anchor-wire-result-reason result))
+      (list :request (fn-anchor-wire-result-value result)))))
+
 (defun fn-anchor-wire-host-max-response ()
   *fn-anchor-wire-max-response*)
 

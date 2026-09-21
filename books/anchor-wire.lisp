@@ -7,11 +7,11 @@
 (in-package "ACL2")
 (include-book "anchor")
 
-(set-verify-guards-eagerness 0)
-
 (defconst *fn-anchor-wire-max-response* 4096)
 (defconst *fn-anchor-wire-max-tags* 32)
 (defconst *fn-anchor-wire-max-path-nodes* 32)
+(defconst *fn-anchor-wire-request-octets* 1024)
+(defconst *fn-anchor-wire-request-padding-octets* 976)
 
 (defconst *fn-anchor-wire-tag-sig* '(83 73 71 0))
 (defconst *fn-anchor-wire-tag-nonc* '(78 79 78 67))
@@ -20,6 +20,9 @@
 (defconst *fn-anchor-wire-tag-cert* '(67 69 82 84))
 (defconst *fn-anchor-wire-tag-indx* '(73 78 68 88))
 (defconst *fn-anchor-wire-tag-dele* '(68 69 76 69))
+(defconst *fn-anchor-wire-tag-pad* '(80 65 68 255))
+(defconst *fn-anchor-wire-request-prefix*
+  '(2 0 0 0 32 0 0 0 78 79 78 67 80 65 68 255))
 
 (defun fn-anchor-wire-result-ok (value rest)
   (declare (xargs :guard t))
@@ -35,16 +38,16 @@
 
 (defun fn-anchor-wire-result-value (x)
   (declare (xargs :guard t))
-  (if (consp (cdr x)) (car (cdr x)) nil))
+  (fn-anchor-ag-car (fn-anchor-ag-cdr x)))
 
 (defun fn-anchor-wire-result-rest (x)
   (declare (xargs :guard t))
-  (if (consp (cdr (cdr x))) (car (cdr (cdr x))) nil))
+  (fn-anchor-ag-car (fn-anchor-ag-cdr (fn-anchor-ag-cdr x))))
 
 (defun fn-anchor-wire-result-reason (x)
   (declare (xargs :guard t))
-  (if (and (consp x) (equal (car x) :error) (consp (cdr x)))
-      (car (cdr x))
+  (if (and (consp x) (equal (car x) :error))
+      (fn-anchor-ag-car (fn-anchor-ag-cdr x))
     nil))
 
 (defun fn-anchor-wire-nth (n xs)
@@ -81,7 +84,7 @@
   (fn-anchor-wire-le-value octets 1))
 
 (defun fn-anchor-wire-read-u32s (count octets values-rev)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (natp count) (true-listp values-rev))))
   (if (not (natp count))
       (fn-anchor-wire-result-error :count)
     (if (zp count)
@@ -94,7 +97,7 @@
            (cons (fn-anchor-wire-le32 (car head)) values-rev)))))))
 
 (defun fn-anchor-wire-read-tags (count octets tags-rev)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (natp count) (true-listp tags-rev))))
   (if (not (natp count))
       (fn-anchor-wire-result-error :count)
     (if (zp count)
@@ -115,7 +118,8 @@
             (cdr tags) value t)))))
 
 (defun fn-anchor-wire-build-fields (tags ends previous body fields-rev)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (natp previous)
+                              (true-listp fields-rev))))
   (if (atom tags)
       (if (and (null tags) (null ends) (null body))
           (fn-anchor-wire-result-ok (reverse fields-rev) nil)
@@ -132,8 +136,15 @@
                (cdr tags) (cdr ends) end (cdr field)
                (cons (list (car tags) (car field)) fields-rev)))))))))
 
-(defun fn-anchor-wire-parse-message-counted (count octets)
+(defun fn-anchor-wire-add-final-end (offsets final)
   (declare (xargs :guard t))
+  (if (consp offsets)
+      (cons (car offsets)
+            (fn-anchor-wire-add-final-end (cdr offsets) final))
+    (list final)))
+
+(defun fn-anchor-wire-parse-message-counted (count octets)
+  (declare (xargs :guard (and (natp count) (< 0 count))))
   (let ((offsets (fn-anchor-wire-read-u32s (1- (nfix count)) octets nil)))
     (if (not (fn-anchor-wire-result-okp offsets))
         offsets
@@ -147,8 +158,8 @@
                 (fn-anchor-wire-result-error :tag-order)
               (fn-anchor-wire-build-fields
                tag-values
-               (append (fn-anchor-wire-result-value offsets)
-                       (list (len body)))
+               (fn-anchor-wire-add-final-end
+                (fn-anchor-wire-result-value offsets) (len body))
                0 body nil))))))))
 
 (defun fn-anchor-wire-parse-message (octets)
@@ -192,6 +203,26 @@
 (defun fn-anchor-wire-widthp (value width)
   (declare (xargs :guard t))
   (and (fn-cbor-octet-listp value) (equal (len value) (nfix width))))
+
+(defun fn-anchor-wire-zeroes (count)
+  (declare (xargs :guard (natp count)))
+  (if (zp count)
+      nil
+    (cons 0 (fn-anchor-wire-zeroes (1- count)))))
+
+; The deployed v1 request is the NONC/PAD message used by the current int08h
+; profile.  ACL2 produces every octet; native code supplies only a nonce from
+; its OS CSPRNG and sends this result as one UDP datagram.
+(defun fn-anchor-wire-request (nonce)
+  (declare (xargs :guard t))
+  (if (not (fn-anchor-wire-widthp nonce *fn-anchor-nonce-octets*))
+      (fn-anchor-wire-result-error :nonce)
+    (fn-anchor-wire-result-ok
+     (append *fn-anchor-wire-request-prefix*
+             nonce
+             (fn-anchor-wire-zeroes
+              *fn-anchor-wire-request-padding-octets*))
+     nil)))
 
 (defun fn-anchor-wire-parsed-anchor (parsed)
   (declare (xargs :guard t))
@@ -393,7 +424,9 @@
                               fn-anchor-wire-result-error
                               fn-anchor-wire-result-okp
                               fn-anchor-wire-result-value
-                              fn-anchor-wire-parsed-anchor))))
+                              fn-anchor-wire-parsed-anchor
+                              fn-anchor-ag-car
+                              fn-anchor-ag-cdr))))
 
 (defthm fn-anchor-wire-parse-success-has-anchor
   (implies (fn-anchor-wire-result-okp
@@ -435,11 +468,14 @@
     (:d fn-anchor-wire-read-tags)
     (:d fn-anchor-wire-tags-increasingp)
     (:d fn-anchor-wire-build-fields)
+    (:d fn-anchor-wire-add-final-end)
     (:d fn-anchor-wire-parse-message-counted)
     (:d fn-anchor-wire-has-fieldp)
     (:d fn-anchor-wire-field)
     (:d fn-anchor-wire-requiredp)
     (:d fn-anchor-wire-widthp)
+    (:d fn-anchor-wire-zeroes)
+    (:d fn-anchor-wire-request)
     (:d fn-anchor-wire-parsed-anchor)
     (:d fn-anchor-wire-parsed-path)
     (:d fn-anchor-wire-parsed-index)

@@ -1,0 +1,1755 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built August 28, 2026  20:52:14.                                   +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>
+Note: Writing .port file, /Users/ember/dev/fn/build/lanes/w14-native-
+primitives/books/anchor-wire.port.
+
+CERTIFICATION ATTEMPT FOR 
+"/Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor-wire.lisp"
+
+ACL2 Version 8.7
+
+* Step 1: Read 
+"/Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor-wire.lisp"
+and compute its book-hash.
+
+* Step 2:  There were 54 forms in the file.  We now attempt to establish
+that each form, whether local or non-local, is indeed an admissible
+embedded event form in the context of the previously admitted ones.
+
+
+ACL2 !>>>(INCLUDE-BOOK "anchor")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "anchor" ...):  Unable
+to load compiled file for book
+  /Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+No load was in progress for any parent book.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "anchor" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.49 seconds (prove: 0.00, print: 0.00, other: 0.49)
+"/home/ember/fn-lanes/w12-bp-sequence/books/anchor.lisp"
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-MAX-RESPONSE*
+           4096)
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-MAX-RESPONSE* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-MAX-RESPONSE*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-MAX-TAGS* 32)
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-MAX-TAGS* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-MAX-TAGS*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-MAX-PATH-NODES*
+           32)
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-MAX-PATH-NODES* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-MAX-PATH-NODES*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-REQUEST-OCTETS*
+           1024)
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-REQUEST-OCTETS* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-REQUEST-OCTETS*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-REQUEST-PADDING-OCTETS*
+           976)
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-REQUEST-PADDING-OCTETS* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-REQUEST-PADDING-OCTETS*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-TAG-SIG*
+           '(83 73 71 0))
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-TAG-SIG* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-TAG-SIG*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-TAG-NONC*
+           '(78 79 78 67))
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-TAG-NONC* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-TAG-NONC*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-TAG-PATH*
+           '(80 65 84 72))
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-TAG-PATH* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-TAG-PATH*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-TAG-SREP*
+           '(83 82 69 80))
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-TAG-SREP* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-TAG-SREP*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-TAG-CERT*
+           '(67 69 82 84))
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-TAG-CERT* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-TAG-CERT*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-TAG-INDX*
+           '(73 78 68 88))
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-TAG-INDX* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-TAG-INDX*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-TAG-DELE*
+           '(68 69 76 69))
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-TAG-DELE* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-TAG-DELE*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-TAG-PAD*
+           '(80 65 68 255))
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-TAG-PAD* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-TAG-PAD*
+
+
+ACL2 !>>>(DEFCONST *FN-ANCHOR-WIRE-REQUEST-PREFIX*
+           '(2 0
+               0 0 32 0 0 0 78 79 78 67 80 65 68 255))
+
+Summary
+Form:  ( DEFCONST *FN-ANCHOR-WIRE-REQUEST-PREFIX* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+*FN-ANCHOR-WIRE-REQUEST-PREFIX*
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-RESULT-OK (VALUE REST)
+           (DECLARE (XARGS :GUARD T))
+           (LIST :OK VALUE REST))
+
+Since FN-ANCHOR-WIRE-RESULT-OK is non-recursive, its admission is trivial.
+We observe that the type of FN-ANCHOR-WIRE-RESULT-OK is described by
+the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-RESULT-OK VALUE REST))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-RESULT-OK VALUE REST))).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-RESULT-OK....
+
+The guard conjecture for FN-ANCHOR-WIRE-RESULT-OK is trivial to prove.
+FN-ANCHOR-WIRE-RESULT-OK is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-RESULT-OK ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-RESULT-OK
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-RESULT-ERROR (REASON)
+           (DECLARE (XARGS :GUARD T))
+           (LIST :ERROR REASON))
+
+Since FN-ANCHOR-WIRE-RESULT-ERROR is non-recursive, its admission is
+trivial.  We observe that the type of FN-ANCHOR-WIRE-RESULT-ERROR is
+described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-RESULT-ERROR REASON))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-RESULT-ERROR REASON))).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-RESULT-ERROR....
+
+The guard conjecture for FN-ANCHOR-WIRE-RESULT-ERROR is trivial to
+prove.  FN-ANCHOR-WIRE-RESULT-ERROR is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-RESULT-ERROR ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-RESULT-ERROR
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-RESULT-OKP (X)
+           (DECLARE (XARGS :GUARD T))
+           (AND (CONSP X) (EQUAL (CAR X) :OK)))
+
+Since FN-ANCHOR-WIRE-RESULT-OKP is non-recursive, its admission is
+trivial.  We observe that the type of FN-ANCHOR-WIRE-RESULT-OKP is
+described by the theorem 
+(OR (EQUAL (FN-ANCHOR-WIRE-RESULT-OKP X) T)
+    (EQUAL (FN-ANCHOR-WIRE-RESULT-OKP X)
+           NIL)).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-RESULT-OKP....
+
+The guard conjecture for FN-ANCHOR-WIRE-RESULT-OKP is trivial to prove.
+FN-ANCHOR-WIRE-RESULT-OKP is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-RESULT-OKP ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-RESULT-OKP
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-RESULT-VALUE (X)
+           (DECLARE (XARGS :GUARD T))
+           (FN-ANCHOR-AG-CAR (FN-ANCHOR-AG-CDR X)))
+
+Since FN-ANCHOR-WIRE-RESULT-VALUE is non-recursive, its admission is
+trivial.  We could deduce no constraints on the type of 
+FN-ANCHOR-WIRE-RESULT-VALUE.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-RESULT-VALUE....
+
+The guard conjecture for FN-ANCHOR-WIRE-RESULT-VALUE is trivial to
+prove.  FN-ANCHOR-WIRE-RESULT-VALUE is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-RESULT-VALUE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-RESULT-VALUE
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-RESULT-REST (X)
+           (DECLARE (XARGS :GUARD T))
+           (FN-ANCHOR-AG-CAR (FN-ANCHOR-AG-CDR (FN-ANCHOR-AG-CDR X))))
+
+Since FN-ANCHOR-WIRE-RESULT-REST is non-recursive, its admission is
+trivial.  We could deduce no constraints on the type of 
+FN-ANCHOR-WIRE-RESULT-REST.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-RESULT-REST....
+
+The guard conjecture for FN-ANCHOR-WIRE-RESULT-REST is trivial to prove.
+FN-ANCHOR-WIRE-RESULT-REST is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-RESULT-REST ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-RESULT-REST
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-RESULT-REASON (X)
+           (DECLARE (XARGS :GUARD T))
+           (IF (AND (CONSP X) (EQUAL (CAR X) :ERROR))
+               (FN-ANCHOR-AG-CAR (FN-ANCHOR-AG-CDR X))
+             NIL))
+
+Since FN-ANCHOR-WIRE-RESULT-REASON is non-recursive, its admission
+is trivial.  We could deduce no constraints on the type of 
+FN-ANCHOR-WIRE-RESULT-REASON.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-RESULT-REASON....
+
+The guard conjecture for FN-ANCHOR-WIRE-RESULT-REASON is trivial to
+prove.  FN-ANCHOR-WIRE-RESULT-REASON is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-RESULT-REASON ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-RESULT-REASON
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-NTH (N XS)
+           (DECLARE (XARGS :GUARD T))
+           (IF (CONSP XS)
+               (IF (ZP (NFIX N))
+                   (CAR XS)
+                 (FN-ANCHOR-WIRE-NTH (1- (NFIX N))
+                                     (CDR XS)))
+             NIL))
+
+For the admission of FN-ANCHOR-WIRE-NTH we will use the relation O<
+(which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT N).  The non-trivial part of the measure
+conjecture is
+
+Goal
+(IMPLIES (AND (CONSP XS) (NOT (ZP (NFIX N))))
+         (O< (ACL2-COUNT (+ -1 (NFIX N)))
+             (ACL2-COUNT N))).
+Goal'
+Goal''
+
+Q.E.D.
+
+That completes the proof of the measure theorem for FN-ANCHOR-WIRE-NTH.
+Thus, we admit this function under the principle of definition.  We
+could deduce no constraints on the type of FN-ANCHOR-WIRE-NTH.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-NTH....
+
+The guard conjecture for FN-ANCHOR-WIRE-NTH is trivial to prove, given
+the :compound-recognizer rule ZP-COMPOUND-RECOGNIZER, primitive type
+reasoning and the :type-prescription rule NFIX.  FN-ANCHOR-WIRE-NTH
+is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-NTH ...)
+Rules: ((:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION ACL2-COUNT)
+        (:DEFINITION INTEGER-ABS)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O<)
+        (:DEFINITION SYNP)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE ZP-OPEN)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  185
+FN-ANCHOR-WIRE-NTH
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-SPLIT (N XS)
+           (DECLARE (XARGS :GUARD T))
+           (IF (NOT (NATP N))
+               NIL
+             (IF (ZP N)
+                 (CONS NIL XS)
+               (IF (CONSP XS)
+                   (LET ((REST (FN-ANCHOR-WIRE-SPLIT (1- N) (CDR XS))))
+                     (AND REST
+                          (CONS (CONS (CAR XS) (CAR REST))
+                                (CDR REST))))
+                 NIL))))
+
+The admission of FN-ANCHOR-WIRE-SPLIT is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT N).  We observe that the type of 
+FN-ANCHOR-WIRE-SPLIT is described by the theorem 
+(OR (CONSP (FN-ANCHOR-WIRE-SPLIT N XS))
+    (EQUAL (FN-ANCHOR-WIRE-SPLIT N XS)
+           NIL)).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-SPLIT....
+
+The guard conjecture for FN-ANCHOR-WIRE-SPLIT is trivial to prove,
+given the :compound-recognizer rules NATP-COMPOUND-RECOGNIZER and 
+ZP-COMPOUND-RECOGNIZER, primitive type reasoning and the :type-prescription
+rule FN-ANCHOR-WIRE-SPLIT.  FN-ANCHOR-WIRE-SPLIT is compliant with
+Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-SPLIT ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-SPLIT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-SPLIT
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-LE-VALUE (OCTETS FACTOR)
+           (DECLARE (XARGS :GUARD T))
+           (IF (CONSP OCTETS)
+               (+ (* (NFIX FACTOR) (NFIX (CAR OCTETS)))
+                  (FN-ANCHOR-WIRE-LE-VALUE (CDR OCTETS)
+                                           (* 256 (NFIX FACTOR))))
+             0))
+
+The admission of FN-ANCHOR-WIRE-LE-VALUE is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT OCTETS).  We observe that the type of 
+FN-ANCHOR-WIRE-LE-VALUE is described by the theorem 
+(AND (INTEGERP (FN-ANCHOR-WIRE-LE-VALUE OCTETS FACTOR))
+     (<= 0
+         (FN-ANCHOR-WIRE-LE-VALUE OCTETS FACTOR))).
+We used primitive type reasoning and the :type-prescription rule NFIX.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-LE-VALUE....
+
+The guard conjecture for FN-ANCHOR-WIRE-LE-VALUE is trivial to prove,
+given primitive type reasoning and the :type-prescription rules 
+FN-ANCHOR-WIRE-LE-VALUE and NFIX.  FN-ANCHOR-WIRE-LE-VALUE is compliant
+with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-LE-VALUE ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-LE-VALUE)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-LE-VALUE
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-LE32 (OCTETS)
+           (DECLARE (XARGS :GUARD T))
+           (FN-ANCHOR-WIRE-LE-VALUE OCTETS 1))
+
+Since FN-ANCHOR-WIRE-LE32 is non-recursive, its admission is trivial.
+We observe that the type of FN-ANCHOR-WIRE-LE32 is described by the
+theorem 
+(AND (INTEGERP (FN-ANCHOR-WIRE-LE32 OCTETS))
+     (<= 0 (FN-ANCHOR-WIRE-LE32 OCTETS))).
+We used the :type-prescription rule FN-ANCHOR-WIRE-LE-VALUE.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-LE32....
+
+The guard conjecture for FN-ANCHOR-WIRE-LE32 is trivial to prove. 
+FN-ANCHOR-WIRE-LE32 is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-LE32 ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-LE-VALUE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-LE32
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-LE64 (OCTETS)
+           (DECLARE (XARGS :GUARD T))
+           (FN-ANCHOR-WIRE-LE-VALUE OCTETS 1))
+
+Since FN-ANCHOR-WIRE-LE64 is non-recursive, its admission is trivial.
+We observe that the type of FN-ANCHOR-WIRE-LE64 is described by the
+theorem 
+(AND (INTEGERP (FN-ANCHOR-WIRE-LE64 OCTETS))
+     (<= 0 (FN-ANCHOR-WIRE-LE64 OCTETS))).
+We used the :type-prescription rule FN-ANCHOR-WIRE-LE-VALUE.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-LE64....
+
+The guard conjecture for FN-ANCHOR-WIRE-LE64 is trivial to prove. 
+FN-ANCHOR-WIRE-LE64 is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-LE64 ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-LE-VALUE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-LE64
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-READ-U32S (COUNT OCTETS VALUES-REV)
+           (DECLARE (XARGS :GUARD (AND (NATP COUNT)
+                                       (TRUE-LISTP VALUES-REV))))
+           (IF (NOT (NATP COUNT))
+               (FN-ANCHOR-WIRE-RESULT-ERROR :COUNT)
+             (IF (ZP COUNT)
+                 (FN-ANCHOR-WIRE-RESULT-OK (REVERSE VALUES-REV)
+                                           OCTETS)
+               (LET ((HEAD (FN-ANCHOR-WIRE-SPLIT 4 OCTETS)))
+                 (IF (NOT HEAD)
+                     (FN-ANCHOR-WIRE-RESULT-ERROR :TRUNCATED-OFFSETS)
+                   (FN-ANCHOR-WIRE-READ-U32S
+                        (1- COUNT)
+                        (CDR HEAD)
+                        (CONS (FN-ANCHOR-WIRE-LE32 (CAR HEAD))
+                              VALUES-REV)))))))
+
+The admission of FN-ANCHOR-WIRE-READ-U32S is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT COUNT).  We observe that the type of 
+FN-ANCHOR-WIRE-READ-U32S is described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-READ-U32S COUNT OCTETS VALUES-REV))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-READ-U32S COUNT OCTETS VALUES-REV))).
+We used the :type-prescription rules FN-ANCHOR-WIRE-RESULT-ERROR and
+FN-ANCHOR-WIRE-RESULT-OK.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-READ-U32S....
+
+The guard conjecture for FN-ANCHOR-WIRE-READ-U32S is trivial to prove,
+given the :compound-recognizer rules NATP-COMPOUND-RECOGNIZER and 
+ZP-COMPOUND-RECOGNIZER, primitive type reasoning and the :type-prescription
+rule FN-ANCHOR-WIRE-SPLIT.  FN-ANCHOR-WIRE-READ-U32S is compliant with
+Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-READ-U32S ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-OK)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-SPLIT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-READ-U32S
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-READ-TAGS (COUNT OCTETS TAGS-REV)
+           (DECLARE (XARGS :GUARD (AND (NATP COUNT)
+                                       (TRUE-LISTP TAGS-REV))))
+           (IF (NOT (NATP COUNT))
+               (FN-ANCHOR-WIRE-RESULT-ERROR :COUNT)
+             (IF (ZP COUNT)
+                 (FN-ANCHOR-WIRE-RESULT-OK (REVERSE TAGS-REV)
+                                           OCTETS)
+               (LET ((HEAD (FN-ANCHOR-WIRE-SPLIT 4 OCTETS)))
+                 (IF (NOT HEAD)
+                     (FN-ANCHOR-WIRE-RESULT-ERROR :TRUNCATED-TAGS)
+                   (FN-ANCHOR-WIRE-READ-TAGS (1- COUNT)
+                                             (CDR HEAD)
+                                             (CONS (CAR HEAD) TAGS-REV)))))))
+
+The admission of FN-ANCHOR-WIRE-READ-TAGS is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT COUNT).  We observe that the type of 
+FN-ANCHOR-WIRE-READ-TAGS is described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-READ-TAGS COUNT OCTETS TAGS-REV))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-READ-TAGS COUNT OCTETS TAGS-REV))).
+We used the :type-prescription rules FN-ANCHOR-WIRE-RESULT-ERROR and
+FN-ANCHOR-WIRE-RESULT-OK.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-READ-TAGS....
+
+The guard conjecture for FN-ANCHOR-WIRE-READ-TAGS is trivial to prove,
+given the :compound-recognizer rules NATP-COMPOUND-RECOGNIZER and 
+ZP-COMPOUND-RECOGNIZER, primitive type reasoning and the :type-prescription
+rule FN-ANCHOR-WIRE-SPLIT.  FN-ANCHOR-WIRE-READ-TAGS is compliant with
+Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-READ-TAGS ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-OK)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-SPLIT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-READ-TAGS
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-TAGS-INCREASINGP (TAGS PREVIOUS HAVE-PREVIOUS)
+           (DECLARE (XARGS :GUARD T))
+           (IF (ATOM TAGS)
+               (NULL TAGS)
+             (LET ((VALUE (FN-ANCHOR-WIRE-LE32 (CAR TAGS))))
+               (AND (OR (NOT HAVE-PREVIOUS)
+                        (< (NFIX PREVIOUS) VALUE))
+                    (FN-ANCHOR-WIRE-TAGS-INCREASINGP (CDR TAGS)
+                                                     VALUE T)))))
+
+The admission of FN-ANCHOR-WIRE-TAGS-INCREASINGP is trivial, using
+the relation O< (which is known to be well-founded on the domain recognized
+by O-P) and the measure (ACL2-COUNT TAGS).  We observe that the type
+of FN-ANCHOR-WIRE-TAGS-INCREASINGP is described by the theorem 
+(OR (EQUAL (FN-ANCHOR-WIRE-TAGS-INCREASINGP TAGS PREVIOUS HAVE-PREVIOUS)
+           T)
+    (EQUAL (FN-ANCHOR-WIRE-TAGS-INCREASINGP TAGS PREVIOUS HAVE-PREVIOUS)
+           NIL)).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-TAGS-INCREASINGP....
+
+The guard conjecture for FN-ANCHOR-WIRE-TAGS-INCREASINGP is trivial
+to prove, given the :type-prescription rules FN-ANCHOR-WIRE-LE32 and
+NFIX.  FN-ANCHOR-WIRE-TAGS-INCREASINGP is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-TAGS-INCREASINGP ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-LE32)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-TAGS-INCREASINGP
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-BUILD-FIELDS
+                (TAGS ENDS PREVIOUS BODY FIELDS-REV)
+          (DECLARE (XARGS :GUARD (AND (NATP PREVIOUS)
+                                      (TRUE-LISTP FIELDS-REV))))
+          (IF (ATOM TAGS)
+              (IF (AND (NULL TAGS)
+                       (NULL ENDS)
+                       (NULL BODY))
+                  (FN-ANCHOR-WIRE-RESULT-OK (REVERSE FIELDS-REV)
+                                            NIL)
+                (FN-ANCHOR-WIRE-RESULT-ERROR :FIELD-COUNT))
+            (IF (ATOM ENDS)
+                (FN-ANCHOR-WIRE-RESULT-ERROR :FIELD-COUNT)
+              (LET ((END (NFIX (CAR ENDS))))
+                (IF (< END (NFIX PREVIOUS))
+                    (FN-ANCHOR-WIRE-RESULT-ERROR :DECREASING-OFFSET)
+                  (LET ((FIELD (FN-ANCHOR-WIRE-SPLIT (- END (NFIX PREVIOUS))
+                                                     BODY)))
+                    (IF (NOT FIELD)
+                        (FN-ANCHOR-WIRE-RESULT-ERROR :OFFSET-OUTSIDE-MESSAGE)
+                      (FN-ANCHOR-WIRE-BUILD-FIELDS
+                           (CDR TAGS)
+                           (CDR ENDS)
+                           END (CDR FIELD)
+                           (CONS (LIST (CAR TAGS) (CAR FIELD))
+                                 FIELDS-REV)))))))))
+
+The admission of FN-ANCHOR-WIRE-BUILD-FIELDS is trivial, using the
+relation O< (which is known to be well-founded on the domain recognized
+by O-P) and the measure (ACL2-COUNT TAGS).  We observe that the type
+of FN-ANCHOR-WIRE-BUILD-FIELDS is described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-BUILD-FIELDS TAGS ENDS PREVIOUS BODY FIELDS-REV))
+     (TRUE-LISTP
+          (FN-ANCHOR-WIRE-BUILD-FIELDS TAGS ENDS PREVIOUS BODY FIELDS-REV))).
+We used the :type-prescription rules FN-ANCHOR-WIRE-RESULT-ERROR and
+FN-ANCHOR-WIRE-RESULT-OK.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-BUILD-FIELDS....
+
+The guard conjecture for FN-ANCHOR-WIRE-BUILD-FIELDS is trivial to
+prove, given the :compound-recognizer rule NATP-COMPOUND-RECOGNIZER,
+primitive type reasoning and the :type-prescription rules 
+FN-ANCHOR-WIRE-SPLIT and NFIX.  FN-ANCHOR-WIRE-BUILD-FIELDS is compliant
+with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-BUILD-FIELDS ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-OK)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-SPLIT)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-BUILD-FIELDS
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-ADD-FINAL-END (OFFSETS FINAL)
+           (DECLARE (XARGS :GUARD T))
+           (IF (CONSP OFFSETS)
+               (CONS (CAR OFFSETS)
+                     (FN-ANCHOR-WIRE-ADD-FINAL-END (CDR OFFSETS)
+                                                   FINAL))
+             (LIST FINAL)))
+
+The admission of FN-ANCHOR-WIRE-ADD-FINAL-END is trivial, using the
+relation O< (which is known to be well-founded on the domain recognized
+by O-P) and the measure (ACL2-COUNT OFFSETS).  We observe that the
+type of FN-ANCHOR-WIRE-ADD-FINAL-END is described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-ADD-FINAL-END OFFSETS FINAL))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-ADD-FINAL-END OFFSETS FINAL))).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-ADD-FINAL-END....
+
+The guard conjecture for FN-ANCHOR-WIRE-ADD-FINAL-END is trivial to
+prove.  FN-ANCHOR-WIRE-ADD-FINAL-END is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-ADD-FINAL-END ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-ADD-FINAL-END
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED (COUNT OCTETS)
+          (DECLARE (XARGS :GUARD (AND (NATP COUNT) (< 0 COUNT))))
+          (LET ((OFFSETS (FN-ANCHOR-WIRE-READ-U32S (1- (NFIX COUNT))
+                                                   OCTETS NIL)))
+           (IF (NOT (FN-ANCHOR-WIRE-RESULT-OKP OFFSETS))
+               OFFSETS
+            (LET
+             ((TAGS
+               (FN-ANCHOR-WIRE-READ-TAGS (NFIX COUNT)
+                                         (FN-ANCHOR-WIRE-RESULT-REST OFFSETS)
+                                         NIL)))
+             (IF (NOT (FN-ANCHOR-WIRE-RESULT-OKP TAGS))
+                 TAGS
+               (LET* ((TAG-VALUES (FN-ANCHOR-WIRE-RESULT-VALUE TAGS))
+                      (BODY (FN-ANCHOR-WIRE-RESULT-REST TAGS)))
+                 (IF (NOT (FN-ANCHOR-WIRE-TAGS-INCREASINGP TAG-VALUES 0 NIL))
+                     (FN-ANCHOR-WIRE-RESULT-ERROR :TAG-ORDER)
+                   (FN-ANCHOR-WIRE-BUILD-FIELDS
+                        TAG-VALUES
+                        (FN-ANCHOR-WIRE-ADD-FINAL-END
+                             (FN-ANCHOR-WIRE-RESULT-VALUE OFFSETS)
+                             (LEN BODY))
+                        0 BODY NIL))))))))
+
+Since FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED is non-recursive, its admission
+is trivial.  We observe that the type of FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED
+is described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED COUNT OCTETS))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED COUNT OCTETS))).
+We used the :type-prescription rules FN-ANCHOR-WIRE-BUILD-FIELDS, 
+FN-ANCHOR-WIRE-READ-TAGS, FN-ANCHOR-WIRE-READ-U32S and 
+FN-ANCHOR-WIRE-RESULT-ERROR.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED....
+
+The non-trivial part of the guard conjecture for 
+FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED, given the :compound-recognizer
+rule NATP-COMPOUND-RECOGNIZER, the :executable-counterparts of NATP
+and TRUE-LISTP and the :type-prescription rule NFIX, is
+
+Goal
+(IMPLIES (AND (< 0 COUNT) (NATP COUNT))
+         (NATP (+ -1 (NFIX COUNT)))).
+Goal'
+
+Q.E.D.
+
+That completes the proof of the guard theorem for 
+FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED.  FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED
+is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION NATP)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART NATP)
+        (:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-BUILD-FIELDS)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-READ-TAGS)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-READ-U32S)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  90
+FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-PARSE-MESSAGE (OCTETS)
+          (DECLARE (XARGS :GUARD T))
+          (COND
+               ((NOT (FN-CBOR-AT-MOSTP OCTETS *FN-ANCHOR-WIRE-MAX-RESPONSE*))
+                (FN-ANCHOR-WIRE-RESULT-ERROR :MESSAGE-LENGTH))
+               ((NOT (FN-CBOR-OCTET-LISTP OCTETS))
+                (FN-ANCHOR-WIRE-RESULT-ERROR :NOT-OCTETS))
+               (T (LET ((COUNT-HEAD (FN-ANCHOR-WIRE-SPLIT 4 OCTETS)))
+                    (IF (NOT COUNT-HEAD)
+                        (FN-ANCHOR-WIRE-RESULT-ERROR :TRUNCATED-COUNT)
+                      (LET ((COUNT (FN-ANCHOR-WIRE-LE32 (CAR COUNT-HEAD))))
+                        (IF (OR (ZP COUNT)
+                                (< *FN-ANCHOR-WIRE-MAX-TAGS* COUNT))
+                            (FN-ANCHOR-WIRE-RESULT-ERROR :TAG-COUNT)
+                          (FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED
+                               COUNT (CDR COUNT-HEAD)))))))))
+
+Since FN-ANCHOR-WIRE-PARSE-MESSAGE is non-recursive, its admission
+is trivial.  We observe that the type of FN-ANCHOR-WIRE-PARSE-MESSAGE
+is described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-PARSE-MESSAGE OCTETS))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-PARSE-MESSAGE OCTETS))).
+We used the :compound-recognizer rule ZP-COMPOUND-RECOGNIZER and the
+:type-prescription rules FN-ANCHOR-WIRE-LE32, 
+FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED and FN-ANCHOR-WIRE-RESULT-ERROR.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-PARSE-MESSAGE....
+
+The guard conjecture for FN-ANCHOR-WIRE-PARSE-MESSAGE is trivial to
+prove, given the :compound-recognizer rules NATP-COMPOUND-RECOGNIZER
+and ZP-COMPOUND-RECOGNIZER, the :definition NOT, the :executable-counterpart
+of NATP, primitive type reasoning and the :type-prescription rules
+FN-ANCHOR-WIRE-LE32 and FN-ANCHOR-WIRE-SPLIT.  FN-ANCHOR-WIRE-PARSE-MESSAGE
+is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-PARSE-MESSAGE ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART NATP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-LE32)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-SPLIT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-PARSE-MESSAGE
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-HAS-FIELDP (TAG FIELDS)
+           (DECLARE (XARGS :GUARD T))
+           (IF (ATOM FIELDS)
+               NIL
+             (OR (EQUAL TAG (FN-ANCHOR-WIRE-NTH 0 (CAR FIELDS)))
+                 (FN-ANCHOR-WIRE-HAS-FIELDP TAG (CDR FIELDS)))))
+
+The admission of FN-ANCHOR-WIRE-HAS-FIELDP is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT FIELDS).  We observe that the type of 
+FN-ANCHOR-WIRE-HAS-FIELDP is described by the theorem 
+(OR (EQUAL (FN-ANCHOR-WIRE-HAS-FIELDP TAG FIELDS)
+           T)
+    (EQUAL (FN-ANCHOR-WIRE-HAS-FIELDP TAG FIELDS)
+           NIL)).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-HAS-FIELDP....
+
+The guard conjecture for FN-ANCHOR-WIRE-HAS-FIELDP is trivial to prove.
+FN-ANCHOR-WIRE-HAS-FIELDP is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-HAS-FIELDP ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-HAS-FIELDP
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-FIELD (TAG FIELDS)
+           (DECLARE (XARGS :GUARD T))
+           (IF (ATOM FIELDS)
+               NIL
+             (IF (EQUAL TAG (FN-ANCHOR-WIRE-NTH 0 (CAR FIELDS)))
+                 (FN-ANCHOR-WIRE-NTH 1 (CAR FIELDS))
+               (FN-ANCHOR-WIRE-FIELD TAG (CDR FIELDS)))))
+
+The admission of FN-ANCHOR-WIRE-FIELD is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT FIELDS).  We could deduce no constraints
+on the type of FN-ANCHOR-WIRE-FIELD.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-FIELD....
+
+The guard conjecture for FN-ANCHOR-WIRE-FIELD is trivial to prove.
+FN-ANCHOR-WIRE-FIELD is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-FIELD ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-FIELD
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-REQUIREDP (TAGS FIELDS)
+           (DECLARE (XARGS :GUARD T))
+           (IF (ATOM TAGS)
+               (NULL TAGS)
+             (AND (FN-ANCHOR-WIRE-HAS-FIELDP (CAR TAGS)
+                                             FIELDS)
+                  (FN-ANCHOR-WIRE-REQUIREDP (CDR TAGS)
+                                            FIELDS))))
+
+The admission of FN-ANCHOR-WIRE-REQUIREDP is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT TAGS).  We observe that the type of 
+FN-ANCHOR-WIRE-REQUIREDP is described by the theorem 
+(OR (EQUAL (FN-ANCHOR-WIRE-REQUIREDP TAGS FIELDS)
+           T)
+    (EQUAL (FN-ANCHOR-WIRE-REQUIREDP TAGS FIELDS)
+           NIL)).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-REQUIREDP....
+
+The guard conjecture for FN-ANCHOR-WIRE-REQUIREDP is trivial to prove.
+FN-ANCHOR-WIRE-REQUIREDP is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-REQUIREDP ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-REQUIREDP
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-WIDTHP (VALUE WIDTH)
+           (DECLARE (XARGS :GUARD T))
+           (AND (FN-CBOR-OCTET-LISTP VALUE)
+                (EQUAL (LEN VALUE) (NFIX WIDTH))))
+
+Since FN-ANCHOR-WIRE-WIDTHP is non-recursive, its admission is trivial.
+We observe that the type of FN-ANCHOR-WIRE-WIDTHP is described by the
+theorem 
+(OR (EQUAL (FN-ANCHOR-WIRE-WIDTHP VALUE WIDTH)
+           T)
+    (EQUAL (FN-ANCHOR-WIRE-WIDTHP VALUE WIDTH)
+           NIL)).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-WIDTHP....
+
+The guard conjecture for FN-ANCHOR-WIRE-WIDTHP is trivial to prove.
+FN-ANCHOR-WIRE-WIDTHP is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-WIDTHP ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-WIDTHP
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-ZEROES (COUNT)
+           (DECLARE (XARGS :GUARD (NATP COUNT)))
+           (IF (ZP COUNT)
+               NIL
+             (CONS 0 (FN-ANCHOR-WIRE-ZEROES (1- COUNT)))))
+
+The admission of FN-ANCHOR-WIRE-ZEROES is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT COUNT).  We observe that the type of 
+FN-ANCHOR-WIRE-ZEROES is described by the theorem 
+(TRUE-LISTP (FN-ANCHOR-WIRE-ZEROES COUNT)).  We used primitive type
+reasoning.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-ZEROES....
+
+The guard conjecture for FN-ANCHOR-WIRE-ZEROES is trivial to prove,
+given the :compound-recognizer rules NATP-COMPOUND-RECOGNIZER and 
+ZP-COMPOUND-RECOGNIZER and primitive type reasoning.  FN-ANCHOR-WIRE-ZEROES
+is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-ZEROES ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-ZEROES
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-REQUEST (NONCE)
+          (DECLARE (XARGS :GUARD T))
+          (IF (NOT (FN-ANCHOR-WIRE-WIDTHP NONCE *FN-ANCHOR-NONCE-OCTETS*))
+              (FN-ANCHOR-WIRE-RESULT-ERROR :NONCE)
+           (FN-ANCHOR-WIRE-RESULT-OK
+            (APPEND
+             *FN-ANCHOR-WIRE-REQUEST-PREFIX* NONCE
+             (FN-ANCHOR-WIRE-ZEROES *FN-ANCHOR-WIRE-REQUEST-PADDING-OCTETS*))
+            NIL)))
+
+Since FN-ANCHOR-WIRE-REQUEST is non-recursive, its admission is trivial.
+We observe that the type of FN-ANCHOR-WIRE-REQUEST is described by
+the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-REQUEST NONCE))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-REQUEST NONCE))).
+We used the :type-prescription rules FN-ANCHOR-WIRE-RESULT-ERROR and
+FN-ANCHOR-WIRE-RESULT-OK.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-REQUEST....
+
+The non-trivial part of the guard conjecture for FN-ANCHOR-WIRE-REQUEST,
+given the :executable-counterparts of NATP and TRUE-LISTP, is
+
+Goal
+(IMPLIES (FN-ANCHOR-WIRE-WIDTHP NONCE 32)
+         (TRUE-LISTP NONCE)).
+
+Q.E.D.
+
+That completes the proof of the guard theorem for FN-ANCHOR-WIRE-REQUEST.
+FN-ANCHOR-WIRE-REQUEST is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-REQUEST ...)
+Rules: ((:DEFINITION FN-ANCHOR-WIRE-WIDTHP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART NATP)
+        (:EXECUTABLE-COUNTERPART NFIX)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-OK))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  23
+FN-ANCHOR-WIRE-REQUEST
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-PARSED-ANCHOR (PARSED)
+           (DECLARE (XARGS :GUARD T))
+           (FN-ANCHOR-WIRE-NTH 0 PARSED))
+
+Since FN-ANCHOR-WIRE-PARSED-ANCHOR is non-recursive, its admission
+is trivial.  We could deduce no constraints on the type of 
+FN-ANCHOR-WIRE-PARSED-ANCHOR.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-PARSED-ANCHOR....
+
+The guard conjecture for FN-ANCHOR-WIRE-PARSED-ANCHOR is trivial to
+prove.  FN-ANCHOR-WIRE-PARSED-ANCHOR is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-PARSED-ANCHOR ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-PARSED-ANCHOR
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-PARSED-PATH (PARSED)
+           (DECLARE (XARGS :GUARD T))
+           (FN-ANCHOR-WIRE-NTH 1 PARSED))
+
+Since FN-ANCHOR-WIRE-PARSED-PATH is non-recursive, its admission is
+trivial.  We could deduce no constraints on the type of 
+FN-ANCHOR-WIRE-PARSED-PATH.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-PARSED-PATH....
+
+The guard conjecture for FN-ANCHOR-WIRE-PARSED-PATH is trivial to prove.
+FN-ANCHOR-WIRE-PARSED-PATH is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-PARSED-PATH ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-PARSED-PATH
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-PARSED-INDEX (PARSED)
+           (DECLARE (XARGS :GUARD T))
+           (FN-ANCHOR-WIRE-NTH 2 PARSED))
+
+Since FN-ANCHOR-WIRE-PARSED-INDEX is non-recursive, its admission is
+trivial.  We could deduce no constraints on the type of 
+FN-ANCHOR-WIRE-PARSED-INDEX.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-PARSED-INDEX....
+
+The guard conjecture for FN-ANCHOR-WIRE-PARSED-INDEX is trivial to
+prove.  FN-ANCHOR-WIRE-PARSED-INDEX is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-PARSED-INDEX ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-PARSED-INDEX
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-PARSE-DELE (OCTETS)
+          (DECLARE (XARGS :GUARD T))
+          (LET ((RESULT (FN-ANCHOR-WIRE-PARSE-MESSAGE OCTETS)))
+           (IF (NOT (FN-ANCHOR-WIRE-RESULT-OKP RESULT))
+               (FN-ANCHOR-WIRE-RESULT-ERROR :DELE-MESSAGE)
+            (LET ((FIELDS (FN-ANCHOR-WIRE-RESULT-VALUE RESULT)))
+             (IF (NOT (FN-ANCHOR-WIRE-REQUIREDP (LIST *FN-ANCHOR-TAG-PUBK*
+                                                      *FN-ANCHOR-TAG-MINT*
+                                                      *FN-ANCHOR-TAG-MAXT*)
+                                                FIELDS))
+                 (FN-ANCHOR-WIRE-RESULT-ERROR :MISSING-DELE-FIELD)
+              (LET
+               ((DELEGATE (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-TAG-PUBK* FIELDS))
+                (MINT (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-TAG-MINT* FIELDS))
+                (MAXT (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-TAG-MAXT* FIELDS)))
+               (IF
+                (NOT
+                 (AND (FN-ANCHOR-WIRE-WIDTHP DELEGATE *FN-ANCHOR-KEY-OCTETS*)
+                      (FN-ANCHOR-WIRE-WIDTHP MINT 8)
+                      (FN-ANCHOR-WIRE-WIDTHP MAXT 8)))
+                (FN-ANCHOR-WIRE-RESULT-ERROR :DELE-FIELD)
+                (FN-ANCHOR-WIRE-RESULT-OK
+                     (LIST DELEGATE (FN-ANCHOR-WIRE-LE64 MINT)
+                           (FN-ANCHOR-WIRE-LE64 MAXT))
+                     NIL))))))))
+
+Since FN-ANCHOR-WIRE-PARSE-DELE is non-recursive, its admission is
+trivial.  We observe that the type of FN-ANCHOR-WIRE-PARSE-DELE is
+described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-PARSE-DELE OCTETS))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-PARSE-DELE OCTETS))).
+We used the :type-prescription rules FN-ANCHOR-WIRE-RESULT-ERROR and
+FN-ANCHOR-WIRE-RESULT-OK.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-PARSE-DELE....
+
+The guard conjecture for FN-ANCHOR-WIRE-PARSE-DELE is trivial to prove.
+FN-ANCHOR-WIRE-PARSE-DELE is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-PARSE-DELE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-OK))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-PARSE-DELE
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-PARSE-CERT (OCTETS)
+          (DECLARE (XARGS :GUARD T))
+          (LET ((RESULT (FN-ANCHOR-WIRE-PARSE-MESSAGE OCTETS)))
+           (IF (NOT (FN-ANCHOR-WIRE-RESULT-OKP RESULT))
+               (FN-ANCHOR-WIRE-RESULT-ERROR :CERT-MESSAGE)
+            (LET ((FIELDS (FN-ANCHOR-WIRE-RESULT-VALUE RESULT)))
+             (IF
+              (NOT (FN-ANCHOR-WIRE-REQUIREDP (LIST *FN-ANCHOR-WIRE-TAG-DELE*
+                                                   *FN-ANCHOR-WIRE-TAG-SIG*)
+                                             FIELDS))
+              (FN-ANCHOR-WIRE-RESULT-ERROR :MISSING-CERT-FIELD)
+              (LET*
+               ((SIGNATURE
+                     (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-WIRE-TAG-SIG* FIELDS))
+                (DELE-OCTETS
+                     (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-WIRE-TAG-DELE* FIELDS))
+                (DELE-RESULT (FN-ANCHOR-WIRE-PARSE-DELE DELE-OCTETS)))
+               (IF
+                (NOT
+                    (FN-ANCHOR-WIRE-WIDTHP SIGNATURE *FN-ANCHOR-SIG-OCTETS*))
+                (FN-ANCHOR-WIRE-RESULT-ERROR :CERT-SIGNATURE)
+                (IF (NOT (FN-ANCHOR-WIRE-RESULT-OKP DELE-RESULT))
+                    DELE-RESULT
+                  (LET ((DELE (FN-ANCHOR-WIRE-RESULT-VALUE DELE-RESULT)))
+                    (FN-ANCHOR-WIRE-RESULT-OK
+                         (LIST SIGNATURE
+                               DELE-OCTETS (FN-ANCHOR-WIRE-NTH 0 DELE)
+                               (FN-ANCHOR-WIRE-NTH 1 DELE)
+                               (FN-ANCHOR-WIRE-NTH 2 DELE))
+                         NIL))))))))))
+
+Since FN-ANCHOR-WIRE-PARSE-CERT is non-recursive, its admission is
+trivial.  We observe that the type of FN-ANCHOR-WIRE-PARSE-CERT is
+described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-PARSE-CERT OCTETS))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-PARSE-CERT OCTETS))).
+We used the :type-prescription rules FN-ANCHOR-WIRE-PARSE-DELE, 
+FN-ANCHOR-WIRE-RESULT-ERROR and FN-ANCHOR-WIRE-RESULT-OK.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-PARSE-CERT....
+
+The guard conjecture for FN-ANCHOR-WIRE-PARSE-CERT is trivial to prove.
+FN-ANCHOR-WIRE-PARSE-CERT is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-PARSE-CERT ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-PARSE-DELE)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-OK))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-PARSE-CERT
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-PARSE-SREP (OCTETS)
+          (DECLARE (XARGS :GUARD T))
+          (LET ((RESULT (FN-ANCHOR-WIRE-PARSE-MESSAGE OCTETS)))
+           (IF (NOT (FN-ANCHOR-WIRE-RESULT-OKP RESULT))
+               (FN-ANCHOR-WIRE-RESULT-ERROR :SREP-MESSAGE)
+            (LET ((FIELDS (FN-ANCHOR-WIRE-RESULT-VALUE RESULT)))
+             (IF (NOT (FN-ANCHOR-WIRE-REQUIREDP (LIST *FN-ANCHOR-TAG-RADI*
+                                                      *FN-ANCHOR-TAG-MIDP*
+                                                      *FN-ANCHOR-TAG-ROOT*)
+                                                FIELDS))
+                 (FN-ANCHOR-WIRE-RESULT-ERROR :MISSING-SREP-FIELD)
+              (LET
+               ((RADIUS (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-TAG-RADI* FIELDS))
+                (MIDPOINT (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-TAG-MIDP* FIELDS))
+                (ROOT (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-TAG-ROOT* FIELDS)))
+               (IF
+                (NOT
+                  (AND (FN-ANCHOR-WIRE-WIDTHP RADIUS 4)
+                       (FN-ANCHOR-WIRE-WIDTHP MIDPOINT 8)
+                       (FN-ANCHOR-WIRE-WIDTHP ROOT *FN-ANCHOR-ROOT-OCTETS*)))
+                (FN-ANCHOR-WIRE-RESULT-ERROR :SREP-FIELD)
+                (FN-ANCHOR-WIRE-RESULT-OK
+                     (LIST (FN-ANCHOR-WIRE-LE32 RADIUS)
+                           (FN-ANCHOR-WIRE-LE64 MIDPOINT)
+                           ROOT)
+                     NIL))))))))
+
+Since FN-ANCHOR-WIRE-PARSE-SREP is non-recursive, its admission is
+trivial.  We observe that the type of FN-ANCHOR-WIRE-PARSE-SREP is
+described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-PARSE-SREP OCTETS))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-PARSE-SREP OCTETS))).
+We used the :type-prescription rules FN-ANCHOR-WIRE-RESULT-ERROR and
+FN-ANCHOR-WIRE-RESULT-OK.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-PARSE-SREP....
+
+The guard conjecture for FN-ANCHOR-WIRE-PARSE-SREP is trivial to prove.
+FN-ANCHOR-WIRE-PARSE-SREP is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-PARSE-SREP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-OK))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-PARSE-SREP
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-PARSE-TOP (PACKET NONCE)
+          (DECLARE (XARGS :GUARD T))
+          (LET ((RESULT (FN-ANCHOR-WIRE-PARSE-MESSAGE PACKET)))
+           (IF (NOT (FN-ANCHOR-WIRE-RESULT-OKP RESULT))
+               RESULT
+            (LET ((FIELDS (FN-ANCHOR-WIRE-RESULT-VALUE RESULT)))
+             (IF
+              (NOT (FN-ANCHOR-WIRE-REQUIREDP (LIST *FN-ANCHOR-WIRE-TAG-SIG*
+                                                   *FN-ANCHOR-WIRE-TAG-NONC*
+                                                   *FN-ANCHOR-WIRE-TAG-PATH*
+                                                   *FN-ANCHOR-WIRE-TAG-SREP*
+                                                   *FN-ANCHOR-WIRE-TAG-CERT*
+                                                   *FN-ANCHOR-WIRE-TAG-INDX*)
+                                             FIELDS))
+              (FN-ANCHOR-WIRE-RESULT-ERROR :MISSING-TOP-FIELD)
+              (LET*
+               ((SIGNATURE
+                     (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-WIRE-TAG-SIG* FIELDS))
+                (CARRIED-NONCE
+                     (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-WIRE-TAG-NONC* FIELDS))
+                (PATH
+                     (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-WIRE-TAG-PATH* FIELDS))
+                (SREP
+                     (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-WIRE-TAG-SREP* FIELDS))
+                (CERT
+                     (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-WIRE-TAG-CERT* FIELDS))
+                (INDEX-OCTETS
+                     (FN-ANCHOR-WIRE-FIELD *FN-ANCHOR-WIRE-TAG-INDX* FIELDS))
+                (INDEX (FN-ANCHOR-WIRE-LE32 INDEX-OCTETS))
+                (DEPTH (FLOOR (LEN PATH)
+                              *FN-ANCHOR-ROOT-OCTETS*)))
+               (IF
+                (NOT
+                 (AND
+                     (FN-ANCHOR-WIRE-WIDTHP SIGNATURE *FN-ANCHOR-SIG-OCTETS*)
+                     (FN-ANCHOR-WIRE-WIDTHP
+                          CARRIED-NONCE *FN-ANCHOR-NONCE-OCTETS*)
+                     (EQUAL CARRIED-NONCE NONCE)
+                     (FN-CBOR-OCTET-LISTP PATH)
+                     (EQUAL (MOD (LEN PATH) *FN-ANCHOR-ROOT-OCTETS*)
+                            0)
+                     (<= (LEN PATH)
+                         (* *FN-ANCHOR-WIRE-MAX-PATH-NODES*
+                            *FN-ANCHOR-ROOT-OCTETS*))
+                     (FN-ANCHOR-WIRE-WIDTHP INDEX-OCTETS 4)))
+                (FN-ANCHOR-WIRE-RESULT-ERROR :TOP-FIELD)
+                (IF (NOT (< INDEX (EXPT 2 DEPTH)))
+                    (FN-ANCHOR-WIRE-RESULT-ERROR :INDEX-DEPTH)
+                  (FN-ANCHOR-WIRE-RESULT-OK
+                       (LIST SIGNATURE PATH INDEX SREP CERT)
+                       NIL)))))))))
+
+Since FN-ANCHOR-WIRE-PARSE-TOP is non-recursive, its admission is trivial.
+We observe that the type of FN-ANCHOR-WIRE-PARSE-TOP is described by
+the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-PARSE-TOP PACKET NONCE))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-PARSE-TOP PACKET NONCE))).
+We used the :type-prescription rules FN-ANCHOR-WIRE-PARSE-MESSAGE,
+FN-ANCHOR-WIRE-RESULT-ERROR and FN-ANCHOR-WIRE-RESULT-OK.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-PARSE-TOP....
+
+The guard conjecture for FN-ANCHOR-WIRE-PARSE-TOP is trivial to prove,
+given the :executable-counterparts of ACL2-NUMBERP, EQL, EQUAL, NOT
+and RATIONALP and the :type-prescription rules 
+EXPT-TYPE-PRESCRIPTION-NON-ZERO-BASE, FLOOR, FN-ANCHOR-WIRE-LE32, LEN
+and RATIONALP-EXPT-TYPE-PRESCRIPTION.  FN-ANCHOR-WIRE-PARSE-TOP is
+compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-PARSE-TOP ...)
+Rules: ((:EXECUTABLE-COUNTERPART ACL2-NUMBERP)
+        (:EXECUTABLE-COUNTERPART EQL)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART RATIONALP)
+        (:TYPE-PRESCRIPTION EXPT-TYPE-PRESCRIPTION-NON-ZERO-BASE)
+        (:TYPE-PRESCRIPTION FLOOR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-LE32)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-PARSE-MESSAGE)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-OK)
+        (:TYPE-PRESCRIPTION LEN)
+        (:TYPE-PRESCRIPTION RATIONALP-EXPT-TYPE-PRESCRIPTION))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-PARSE-TOP
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-COMPOSE-RESPONSE (TOP CERT SREP NONCE KEY)
+           (DECLARE (XARGS :GUARD T))
+           (LET* ((SIGNATURE (FN-ANCHOR-WIRE-NTH 0 TOP))
+                  (PATH (FN-ANCHOR-WIRE-NTH 1 TOP))
+                  (INDEX (FN-ANCHOR-WIRE-NTH 2 TOP))
+                  (SREP-OCTETS (FN-ANCHOR-WIRE-NTH 3 TOP))
+                  (DELEGATION-SIGNATURE (FN-ANCHOR-WIRE-NTH 0 CERT))
+                  (DELE-OCTETS (FN-ANCHOR-WIRE-NTH 1 CERT))
+                  (DELEGATE (FN-ANCHOR-WIRE-NTH 2 CERT))
+                  (MINT (FN-ANCHOR-WIRE-NTH 3 CERT))
+                  (MAXT (FN-ANCHOR-WIRE-NTH 4 CERT))
+                  (RADIUS (FN-ANCHOR-WIRE-NTH 0 SREP))
+                  (MIDPOINT (FN-ANCHOR-WIRE-NTH 1 SREP))
+                  (ROOT (FN-ANCHOR-WIRE-NTH 2 SREP))
+                  (ANCHOR (FN-ANCHOR KEY
+                                     DELEGATE MINT MAXT DELEGATION-SIGNATURE
+                                     MIDPOINT RADIUS NONCE SIGNATURE ROOT)))
+             (COND ((NOT (FN-ANCHOR-P ANCHOR))
+                    (FN-ANCHOR-WIRE-RESULT-ERROR :ANCHOR-FIELDS))
+                   ((NOT (EQUAL DELE-OCTETS
+                                (FN-ANCHOR-DELE-OCTETS ANCHOR)))
+                    (FN-ANCHOR-WIRE-RESULT-ERROR :DELEGATION-CANONICAL))
+                   ((NOT (EQUAL SREP-OCTETS
+                                (FN-ANCHOR-SREP-OCTETS ANCHOR)))
+                    (FN-ANCHOR-WIRE-RESULT-ERROR :RESPONSE-CANONICAL))
+                   (T (FN-ANCHOR-WIRE-RESULT-OK (LIST ANCHOR PATH INDEX)
+                                                NIL)))))
+
+Since FN-ANCHOR-WIRE-COMPOSE-RESPONSE is non-recursive, its admission
+is trivial.  We observe that the type of FN-ANCHOR-WIRE-COMPOSE-RESPONSE
+is described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-COMPOSE-RESPONSE TOP CERT SREP NONCE KEY))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-COMPOSE-RESPONSE TOP CERT SREP NONCE KEY))).
+We used the :type-prescription rules FN-ANCHOR-WIRE-RESULT-ERROR and
+FN-ANCHOR-WIRE-RESULT-OK.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-COMPOSE-RESPONSE....
+
+The guard conjecture for FN-ANCHOR-WIRE-COMPOSE-RESPONSE is trivial
+to prove.  FN-ANCHOR-WIRE-COMPOSE-RESPONSE is compliant with Common
+Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-COMPOSE-RESPONSE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-OK))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-COMPOSE-RESPONSE
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-PARSE-RESPONSE (PACKET NONCE KEY)
+          (DECLARE (XARGS :GUARD T))
+          (IF
+            (NOT (AND (FN-ANCHOR-WIRE-WIDTHP NONCE *FN-ANCHOR-NONCE-OCTETS*)
+                      (FN-ANCHOR-WIRE-WIDTHP KEY *FN-ANCHOR-KEY-OCTETS*)))
+            (FN-ANCHOR-WIRE-RESULT-ERROR :ARGUMENTS)
+           (LET ((TOP-RESULT (FN-ANCHOR-WIRE-PARSE-TOP PACKET NONCE)))
+            (IF (NOT (FN-ANCHOR-WIRE-RESULT-OKP TOP-RESULT))
+                TOP-RESULT
+              (LET*
+               ((TOP (FN-ANCHOR-WIRE-RESULT-VALUE TOP-RESULT))
+                (SREP-RESULT
+                     (FN-ANCHOR-WIRE-PARSE-SREP (FN-ANCHOR-WIRE-NTH 3 TOP)))
+                (CERT-RESULT
+                     (FN-ANCHOR-WIRE-PARSE-CERT (FN-ANCHOR-WIRE-NTH 4 TOP))))
+               (IF (NOT (FN-ANCHOR-WIRE-RESULT-OKP SREP-RESULT))
+                   SREP-RESULT
+                 (IF (NOT (FN-ANCHOR-WIRE-RESULT-OKP CERT-RESULT))
+                     CERT-RESULT
+                   (FN-ANCHOR-WIRE-COMPOSE-RESPONSE
+                        TOP
+                        (FN-ANCHOR-WIRE-RESULT-VALUE CERT-RESULT)
+                        (FN-ANCHOR-WIRE-RESULT-VALUE SREP-RESULT)
+                        NONCE KEY))))))))
+
+Since FN-ANCHOR-WIRE-PARSE-RESPONSE is non-recursive, its admission
+is trivial.  We observe that the type of FN-ANCHOR-WIRE-PARSE-RESPONSE
+is described by the theorem 
+(AND (CONSP (FN-ANCHOR-WIRE-PARSE-RESPONSE PACKET NONCE KEY))
+     (TRUE-LISTP (FN-ANCHOR-WIRE-PARSE-RESPONSE PACKET NONCE KEY))).
+We used the :type-prescription rules FN-ANCHOR-WIRE-COMPOSE-RESPONSE,
+FN-ANCHOR-WIRE-PARSE-CERT, FN-ANCHOR-WIRE-PARSE-SREP, 
+FN-ANCHOR-WIRE-PARSE-TOP and FN-ANCHOR-WIRE-RESULT-ERROR.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-PARSE-RESPONSE....
+
+The guard conjecture for FN-ANCHOR-WIRE-PARSE-RESPONSE is trivial to
+prove.  FN-ANCHOR-WIRE-PARSE-RESPONSE is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-PARSE-RESPONSE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-COMPOSE-RESPONSE)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-PARSE-CERT)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-PARSE-SREP)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-PARSE-TOP)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-PARSE-RESPONSE
+
+
+ACL2 !>>>(DEFUN FN-ANCHOR-WIRE-SINGLE-LEAFP (PARSED)
+           (DECLARE (XARGS :GUARD T))
+           (AND (NULL (FN-ANCHOR-WIRE-PARSED-PATH PARSED))
+                (EQUAL (FN-ANCHOR-WIRE-PARSED-INDEX PARSED)
+                       0)))
+
+Since FN-ANCHOR-WIRE-SINGLE-LEAFP is non-recursive, its admission is
+trivial.  We observe that the type of FN-ANCHOR-WIRE-SINGLE-LEAFP is
+described by the theorem 
+(OR (EQUAL (FN-ANCHOR-WIRE-SINGLE-LEAFP PARSED)
+           T)
+    (EQUAL (FN-ANCHOR-WIRE-SINGLE-LEAFP PARSED)
+           NIL)).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-ANCHOR-WIRE-SINGLE-LEAFP....
+
+The guard conjecture for FN-ANCHOR-WIRE-SINGLE-LEAFP is trivial to
+prove.  FN-ANCHOR-WIRE-SINGLE-LEAFP is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-SINGLE-LEAFP ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-ANCHOR-WIRE-SINGLE-LEAFP
+
+
+ACL2 !>>>(DEFTHM FN-ANCHOR-WIRE-COMPOSE-SUCCESS-HAS-ANCHOR
+          (IMPLIES
+           (FN-ANCHOR-WIRE-RESULT-OKP
+                (FN-ANCHOR-WIRE-COMPOSE-RESPONSE TOP CERT SREP NONCE KEY))
+           (FN-ANCHOR-P
+            (FN-ANCHOR-WIRE-PARSED-ANCHOR
+             (FN-ANCHOR-WIRE-RESULT-VALUE
+                (FN-ANCHOR-WIRE-COMPOSE-RESPONSE TOP CERT SREP NONCE KEY)))))
+          :HINTS
+          (("Goal" :IN-THEORY (ENABLE FN-ANCHOR-WIRE-COMPOSE-RESPONSE
+                                      FN-ANCHOR-WIRE-RESULT-OK
+                                      FN-ANCHOR-WIRE-RESULT-ERROR
+                                      FN-ANCHOR-WIRE-RESULT-OKP
+                                      FN-ANCHOR-WIRE-RESULT-VALUE
+                                      FN-ANCHOR-WIRE-PARSED-ANCHOR
+                                      FN-ANCHOR-AG-CAR FN-ANCHOR-AG-CDR))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-ANCHOR-WIRE-COMPOSE-SUCCESS-HAS-ANCHOR
+...):  A :REWRITE rule generated from 
+FN-ANCHOR-WIRE-COMPOSE-SUCCESS-HAS-ANCHOR will be triggered only by
+terms containing the function symbols FN-ANCHOR-WIRE-PARSED-ANCHOR,
+FN-ANCHOR-WIRE-RESULT-VALUE and FN-ANCHOR-WIRE-COMPOSE-RESPONSE, which
+have non-recursive definitions.  Unless these definitions are disabled,
+this rule is unlikely ever to be used.
+
+Goal'
+
+Splitter note (see :DOC splitter) for Goal' (40 subgoals).
+  if-intro: ((:DEFINITION FN-ANCHOR-WIRE-COMPOSE-RESPONSE)
+             (:DEFINITION FN-ANCHOR-WIRE-NTH))
+
+Subgoal 40
+Subgoal 40'
+Subgoal 39
+Subgoal 38
+Subgoal 37
+Subgoal 37'
+Subgoal 36
+Subgoal 36'
+Subgoal 35
+Subgoal 35'
+Subgoal 34
+Subgoal 33
+Subgoal 32
+Subgoal 32'
+Subgoal 31
+Subgoal 31'
+Subgoal 30
+Subgoal 30'
+Subgoal 29
+Subgoal 28
+Subgoal 27
+Subgoal 27'
+Subgoal 26
+Subgoal 26'
+Subgoal 25
+Subgoal 25'
+Subgoal 24
+Subgoal 23
+Subgoal 22
+Subgoal 22'
+Subgoal 21
+Subgoal 21'
+Subgoal 20
+Subgoal 20'
+Subgoal 19
+Subgoal 18
+Subgoal 17
+Subgoal 17'
+Subgoal 16
+Subgoal 16'
+Subgoal 15
+Subgoal 15'
+Subgoal 14
+Subgoal 13
+Subgoal 12
+Subgoal 12'
+Subgoal 11
+Subgoal 11'
+Subgoal 10
+Subgoal 10'
+Subgoal 9
+Subgoal 8
+Subgoal 7
+Subgoal 7'
+Subgoal 6
+Subgoal 6'
+Subgoal 5
+Subgoal 5'
+Subgoal 4
+Subgoal 3
+Subgoal 2
+Subgoal 2'
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+The storage of FN-ANCHOR-WIRE-COMPOSE-SUCCESS-HAS-ANCHOR depends upon
+the :type-prescription rule FN-ANCHOR-P.
+
+Summary
+Form:  ( DEFTHM FN-ANCHOR-WIRE-COMPOSE-SUCCESS-HAS-ANCHOR ...)
+Rules: ((:DEFINITION FN-ANCHOR-AG-CAR)
+        (:DEFINITION FN-ANCHOR-AG-CDR)
+        (:DEFINITION FN-ANCHOR-WIRE-COMPOSE-RESPONSE)
+        (:DEFINITION FN-ANCHOR-WIRE-NTH)
+        (:DEFINITION FN-ANCHOR-WIRE-PARSED-ANCHOR)
+        (:DEFINITION FN-ANCHOR-WIRE-RESULT-OK)
+        (:DEFINITION FN-ANCHOR-WIRE-RESULT-OKP)
+        (:DEFINITION FN-ANCHOR-WIRE-RESULT-VALUE)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART CAR)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ANCHOR-P)
+        (:EXECUTABLE-COUNTERPART FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:EXECUTABLE-COUNTERPART NFIX)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART ZP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-DELE-OCTETS)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-P)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-OK))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-ANCHOR-WIRE-COMPOSE-RESPONSE)
+             (:DEFINITION FN-ANCHOR-WIRE-NTH))
+Warnings:  Non-rec
+Time:  0.02 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  22929
+FN-ANCHOR-WIRE-COMPOSE-SUCCESS-HAS-ANCHOR
+
+
+ACL2 !>>>(DEFTHM FN-ANCHOR-WIRE-PARSE-SUCCESS-HAS-ANCHOR
+          (IMPLIES
+           (FN-ANCHOR-WIRE-RESULT-OKP
+                (FN-ANCHOR-WIRE-PARSE-RESPONSE PACKET NONCE KEY))
+           (FN-ANCHOR-P
+               (FN-ANCHOR-WIRE-PARSED-ANCHOR
+                    (FN-ANCHOR-WIRE-RESULT-VALUE
+                         (FN-ANCHOR-WIRE-PARSE-RESPONSE PACKET NONCE KEY)))))
+          :HINTS
+          (("Goal"
+            :IN-THEORY
+            (E/D
+               (FN-ANCHOR-WIRE-PARSE-RESPONSE)
+               (FN-ANCHOR-WIRE-PARSE-TOP FN-ANCHOR-WIRE-PARSE-SREP
+                                         FN-ANCHOR-WIRE-PARSE-CERT
+                                         FN-ANCHOR-WIRE-PARSE-DELE
+                                         FN-ANCHOR-WIRE-COMPOSE-RESPONSE
+                                         FN-ANCHOR-WIRE-RESULT-OKP
+                                         FN-ANCHOR-WIRE-RESULT-VALUE
+                                         FN-ANCHOR-WIRE-PARSED-ANCHOR
+                                         FN-ANCHOR-WIRE-PARSE-MESSAGE
+                                         FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED
+                                         FN-ANCHOR-WIRE-BUILD-FIELDS
+                                         FN-ANCHOR-WIRE-READ-U32S
+                                         FN-ANCHOR-WIRE-READ-TAGS)))))
+
+ACL2 Warning [Non-rec] in ( DEFTHM FN-ANCHOR-WIRE-PARSE-SUCCESS-HAS-ANCHOR
+...):  A :REWRITE rule generated from FN-ANCHOR-WIRE-PARSE-SUCCESS-HAS-ANCHOR
+will be triggered only by terms containing the function symbols 
+FN-ANCHOR-WIRE-PARSED-ANCHOR, FN-ANCHOR-WIRE-RESULT-VALUE and 
+FN-ANCHOR-WIRE-PARSE-RESPONSE, which have non-recursive definitions.
+Unless these definitions are disabled, this rule is unlikely ever to
+be used.
+
+
+Splitter note (see :DOC splitter) for Goal (4 subgoals).
+  if-intro: ((:DEFINITION FN-ANCHOR-WIRE-PARSE-RESPONSE)
+             (:DEFINITION FN-ANCHOR-WIRE-WIDTHP))
+
+Subgoal 4
+Subgoal 3
+Subgoal 2
+Subgoal 1
+
+Q.E.D.
+
+The storage of FN-ANCHOR-WIRE-PARSE-SUCCESS-HAS-ANCHOR depends upon
+the :type-prescription rule FN-ANCHOR-P.
+
+Summary
+Form:  ( DEFTHM FN-ANCHOR-WIRE-PARSE-SUCCESS-HAS-ANCHOR ...)
+Rules: ((:DEFINITION FN-ANCHOR-WIRE-PARSE-RESPONSE)
+        (:DEFINITION FN-ANCHOR-WIRE-WIDTHP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-ANCHOR-P)
+        (:EXECUTABLE-COUNTERPART FN-ANCHOR-WIRE-PARSED-ANCHOR)
+        (:EXECUTABLE-COUNTERPART FN-ANCHOR-WIRE-RESULT-ERROR)
+        (:EXECUTABLE-COUNTERPART FN-ANCHOR-WIRE-RESULT-OKP)
+        (:EXECUTABLE-COUNTERPART FN-ANCHOR-WIRE-RESULT-VALUE)
+        (:EXECUTABLE-COUNTERPART NFIX)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:REWRITE FN-ANCHOR-WIRE-COMPOSE-SUCCESS-HAS-ANCHOR)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-P)
+        (:TYPE-PRESCRIPTION FN-ANCHOR-WIRE-RESULT-OKP)
+        (:TYPE-PRESCRIPTION FN-CBOR-OCTET-LISTP))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-ANCHOR-WIRE-PARSE-RESPONSE)
+             (:DEFINITION FN-ANCHOR-WIRE-WIDTHP))
+Warnings:  Non-rec
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  762
+FN-ANCHOR-WIRE-PARSE-SUCCESS-HAS-ANCHOR
+
+
+ACL2 !>>>(DEFTHEORY FN-ANCHOR-WIRE-VOCABULARY
+                    '((:D FN-ANCHOR-WIRE-RESULT-OK)
+                      (:D FN-ANCHOR-WIRE-RESULT-ERROR)
+                      (:D FN-ANCHOR-WIRE-RESULT-OKP)
+                      (:D FN-ANCHOR-WIRE-RESULT-VALUE)
+                      (:D FN-ANCHOR-WIRE-RESULT-REST)
+                      (:D FN-ANCHOR-WIRE-RESULT-REASON)
+                      (:D FN-ANCHOR-WIRE-NTH)
+                      (:D FN-ANCHOR-WIRE-SPLIT)
+                      (:D FN-ANCHOR-WIRE-LE-VALUE)
+                      (:D FN-ANCHOR-WIRE-LE32)
+                      (:D FN-ANCHOR-WIRE-LE64)
+                      (:D FN-ANCHOR-WIRE-READ-U32S)
+                      (:D FN-ANCHOR-WIRE-READ-TAGS)
+                      (:D FN-ANCHOR-WIRE-TAGS-INCREASINGP)
+                      (:D FN-ANCHOR-WIRE-BUILD-FIELDS)
+                      (:D FN-ANCHOR-WIRE-ADD-FINAL-END)
+                      (:D FN-ANCHOR-WIRE-PARSE-MESSAGE-COUNTED)
+                      (:D FN-ANCHOR-WIRE-HAS-FIELDP)
+                      (:D FN-ANCHOR-WIRE-FIELD)
+                      (:D FN-ANCHOR-WIRE-REQUIREDP)
+                      (:D FN-ANCHOR-WIRE-WIDTHP)
+                      (:D FN-ANCHOR-WIRE-ZEROES)
+                      (:D FN-ANCHOR-WIRE-REQUEST)
+                      (:D FN-ANCHOR-WIRE-PARSED-ANCHOR)
+                      (:D FN-ANCHOR-WIRE-PARSED-PATH)
+                      (:D FN-ANCHOR-WIRE-PARSED-INDEX)
+                      (:D FN-ANCHOR-WIRE-PARSE-MESSAGE)
+                      (:D FN-ANCHOR-WIRE-PARSE-DELE)
+                      (:D FN-ANCHOR-WIRE-PARSE-CERT)
+                      (:D FN-ANCHOR-WIRE-PARSE-SREP)
+                      (:D FN-ANCHOR-WIRE-PARSE-TOP)
+                      (:D FN-ANCHOR-WIRE-COMPOSE-RESPONSE)
+                      (:D FN-ANCHOR-WIRE-PARSE-RESPONSE)
+                      (:D FN-ANCHOR-WIRE-SINGLE-LEAFP)
+                      FN-ANCHOR-WIRE-COMPOSE-SUCCESS-HAS-ANCHOR
+                      FN-ANCHOR-WIRE-PARSE-SUCCESS-HAS-ANCHOR))
+
+Summary
+Form:  ( DEFTHEORY FN-ANCHOR-WIRE-VOCABULARY ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+36
+
+
+ACL2 !>>>(IN-THEORY (DISABLE FN-ANCHOR-WIRE-VOCABULARY))
+
+Summary
+Form:  ( IN-THEORY (DISABLE ...))
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+(:NUMBER-OF-ENABLED-RUNES 6262)
+
+* Step 3:  That completes the admissibility check.  Each form read
+was an embedded event form and was admissible.  No LOCAL or SET-GUARD-
+CHECKING forms make it necessary to check for local incompatibilities,
+so we skip that check.
+
+ACL2 Warning [Guards] in (CERTIFY-BOOK "books/anchor-wire" ...):  For
+the book 
+"/Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor-wire.lisp",
+its included sub-books define functions DEFUN-THEORY-FN, DEFUN-THEORY-FN-REC,
+DEFUN-TYPE/EXEC-THEORY-FN, DEFUN-TYPE/EXEC-THEORY-FN-REC, 
+FN-ANCHOR-NODE-ACCEPT-LIST, U::FORCE-TERM-LIST, U::IMPORT-AS-MACROS-FN,
+XDOC::MAKE-XDOC-FRAGMENTS and U::REASON-FOR-NOT-KEYWORD-OPTION-LISTP,
+which have not had their guards verified.  See :DOC guards.
+
+
+* Step 4:  Write the certificate for 
+"/Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor-wire.lisp"
+in 
+"/Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor-wire.cert".
+
+
+* Step 5:  Compile the functions defined in 
+"/Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor-wire.lisp".
+
+
+Note: Writing book expansion file, /Users/ember/dev/fn/build/lanes/w14-
+native-primitives/books/anchor-wire@expansion.lsp.
+
+
+Note: Deleting expansion file for the book, /Users/ember/dev/fn/build/lanes/w14-
+native-primitives/books/anchor-wire.lisp.
+
+Summary
+Form:  (CERTIFY-BOOK "books/anchor-wire" ...)
+Rules: NIL
+Warnings:  Guards, Non-rec and Compiled file
+Time:  0.96 seconds (prove: 0.02, print: 0.00, other: 0.94)
+Prover steps counted:  23989
+ "/Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor-wire.lisp"
+ACL2 !>>
+FN_CERTIFY_SUCCESS 710ca634bf4e2b65a0b60971e97bba67 e8691a423947
+ NIL
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
