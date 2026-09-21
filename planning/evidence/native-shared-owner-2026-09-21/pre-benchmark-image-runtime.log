@@ -1,0 +1,37 @@
+test_durable_feed_requeues_after_source_process_death (tests.test_native_peering.NativePeeringTests.test_durable_feed_requeues_after_source_process_death) ... FAIL
+test_public_native_nodes_exchange_both_ways_and_suppress_duplicate (tests.test_native_peering.NativePeeringTests.test_public_native_nodes_exchange_both_ways_and_suppress_duplicate) ... ERROR
+
+======================================================================
+ERROR: test_public_native_nodes_exchange_both_ways_and_suppress_duplicate (tests.test_native_peering.NativePeeringTests.test_public_native_nodes_exchange_both_ways_and_suppress_duplicate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_peering.py", line 218, in test_public_native_nodes_exchange_both_ways_and_suppress_duplicate
+    b_article = self.await_article(b, a_id)
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_peering.py", line 170, in await_article
+    article = self.article_from(node, message_id)
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_peering.py", line 151, in article_from
+    with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
+         ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/socket.py", line 864, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.13/socket.py", line 849, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+======================================================================
+FAIL: test_durable_feed_requeues_after_source_process_death (tests.test_native_peering.NativePeeringTests.test_durable_feed_requeues_after_source_process_death)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_peering.py", line 251, in test_durable_feed_requeues_after_source_process_death
+    target_article = self.await_article(b, message_id)
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_peering.py", line 174, in await_article
+    self.fail("{} did not receive {}".format(node["name"], message_id))
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: restart-b did not receive <native-requeue-after-kill@example.invalid>
+
+----------------------------------------------------------------------
+Ran 2 tests in 61.978s
+
+FAILED (failures=1, errors=1)
+native-peering launcher-sha256=4fe51b69b65530868a168b38454c1929f90e82d987eabbe3614ea6b86b35837e core-sha256=4efcb8a3f758be9c7838617cde2f67696985c5b0758d26e47b25e40426dbaa3b declared-source=401ac1f5cb9823c3d545c6eb67d6574210511e31

@@ -59,3 +59,19 @@ socket context closed. All reads completed, but the corrected harness now
 closes both resources. This evidence is scoped to the recorded launcher, host,
 input profile, and one run, with the core-provenance limitation above; it
 does not prove scalability or predict larger histories.
+
+## Image timeline correction
+
+The successful benchmark began at approximately 2026-09-21 14:25:55 -0400
+(the task directory timestamp embedded by the harness launcher) and its JSON
+records completion at 2026-09-21T18:26:08Z.  The archived immediately preceding
+runtime log completed at 14:23:55 -0400 and explicitly records launcher
+`4fe51b69...`, core `4efcb8a3...`, and declared source
+`401ac1f5cb9823c3d545c6eb67d6574210511e31`.  Those are the launcher and core
+bytes the benchmark subsequently invoked.  No matching 401ac1 build log or
+source manifest remains in the remote tree: the common
+`build/native-host-build.log` was overwritten by a later build, and the broken
+worktree metadata prevents independent reconstruction.  The archived runtime
+log therefore supports the 401ac1 declared-source association, but is not a
+build provenance manifest.  The benchmark result remains byte-scoped to the
+recorded launcher/core pair, with that source-provenance limitation.
