@@ -409,6 +409,10 @@ class Acl2Store:
         # A bridge whose correlation is lost cannot be repaired by reading
         # further: a new ACL2 process is the only recovery.
         self.poisoned = False
+        # FrameSession may adopt this process instead of starting a second
+        # ACL2.  An explicit close is the context boundary that lets its
+        # process-wide cache discard that adoption on the next use.
+        self.closed = False
         try:
             self.proc = subprocess.Popen([env.get("FN_ACL2", "acl2")], cwd=ROOT,
                                          stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -444,6 +448,8 @@ class Acl2Store:
             raise StoreError("ACL2 bridge call marker did not precede its prompt")
 
     def call(self, form, timeout=None):
+        if getattr(self, "closed", False):
+            raise StoreError("ACL2 bridge closed")
         if self.poisoned:
             raise StoreError("ACL2 bridge poisoned")
         try:
@@ -797,7 +803,10 @@ class Acl2Store:
         return acl2_boolean(self.call("(fn-store-sn-lookup-foundp '" + self.literal(msgid) + " state)"))
 
     def close(self):
+        if getattr(self, "closed", False):
+            return
         if self.proc is None:
+            self.closed = True
             return
         try:
             if self.proc.poll() is None and self.proc.stdin and not self.proc.stdin.closed:
@@ -820,6 +829,7 @@ class Acl2Store:
             for stream in (self.proc.stdin, self.proc.stdout):
                 if stream and not stream.closed:
                     stream.close()
+            self.closed = True
 
 
 class Store:
