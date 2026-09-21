@@ -35,6 +35,8 @@
 (include-book "books/nntp")
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-workflow-records")
+(include-book "books/journal-publish")
+(include-book "books/app-journal")
 ; The TCPCLv4 convergence layer: the octet grammar and the session machine the
 ; native host's host/native/tcpcl.lisp drives.  books/tcpcl-session includes
 ; books/tcpcl-octets and books/tcpcl-records; all three are Makefile roots.
@@ -59,6 +61,7 @@
 (ld "host/anchor-host.lisp" :ld-error-action :error)
 (ld "host/workflow-host.lisp" :ld-error-action :error)
 (ld "host/bp-receipt-journal-host.lisp" :ld-error-action :error)
+(ld "host/journal-publish-host.lisp" :ld-error-action :error)
 ; The ACL2 side of the TCPCLv4 host: every protocol value the convergence
 ; layer needs, so that host/native/tcpcl.lisp computes none of them.
 (ld "host/tcpcl-host.lisp" :ld-error-action :error)
@@ -76,6 +79,8 @@
   (prog2$ (cw "fn-native: raw entry not installed~%") (value :missing)))
 (progn! (set-raw-mode t)
         (load "host/native/io.lisp")
+        (load "host/native/immutable-publish.lisp")
+        (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")
         ; The BPv7 node, over the convergence layer above it and nothing else.

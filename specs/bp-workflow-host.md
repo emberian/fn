@@ -143,3 +143,32 @@ forms; text is passed as decimal octets. ACL2 owns all workflow decisions.
 The filesystem, hash implementation, interpreted bridge and local policy remain
 trusted boundaries. This adapter does not implement authenticated remote peering,
 article deletion, dependency GC, or platform power-loss qualification.
+
+## Native operator path
+
+The DTN native image loads `books/app-journal.lisp`,
+`host/journal-publish-host.lisp`, `host/native/immutable-publish.lisp`, and
+`host/native/workflow.lisp`.  Its `app-journal workflow-enqueue` command opens
+one Store, replays FNWF against that same Store image, asks
+`fn-workflow-enqueue-record` for the Store-bound enqueue, and publishes the
+intent and ordinary durable outcome as separate immutable records.  A later
+process obtains status only after replaying those records.
+
+`fn-aj-authorize` is the admission function this path calls.  Its carried
+frontier owns the exact next filename, record count, aggregate byte count,
+configuration-first order, per-domain frame bound, and intent-resolution
+headroom.  Recovery folds each observed name, frame length, and decoded kind
+through `fn-aj-recover-record` once; append does not rescan or restat the old
+journal.  An authorized operation embeds the initial `fn-jpub` publication
+state and its successor frontier.  Raw Lisp executes the requested stage,
+file barrier, no-replace link, and records-directory barrier.  It installs the
+successor only after `:durable`; an error after link begins or at the final
+directory barrier returns `:uncertain` and fences the journal.  An empty open
+explicitly resets the workflow domain globals before accepting configuration,
+so another journal previously used in the process cannot supply its image.
+
+This is currently an operator and restart/replay path.  The native owner may
+call the same store-parametric functions while holding its service lock, but
+the composed workflow-to-owner acceptance callback is still an integration
+join.  The path does not yet replace the Python BP carrier command or add a
+second Store owner.
