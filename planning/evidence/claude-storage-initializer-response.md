@@ -24,6 +24,10 @@ python3 tools/certify_books.py books/byte-store-initializer \
 
 Result: `build/acl2/certify-20260921T074553Z-44991` passed both books.
 
+The repaired owned closure also passed on hbox with two jobs:
+`run-20260921T074632Z-ecbe`, archived as
+`planning/evidence/manifests/certify-20260921T074637Z-1785855.json`.
+
 ```
 python3 tools/transcribe_check.py
 ```

@@ -77,3 +77,7 @@ certified the full local include closure, including
 `books/byte-store-initializer` and its test book. The earlier hbox run
 `run-20260921T071051Z-2934` was an obsolete pre-fix snapshot and failed at
 the then-unproved representation lemma.
+
+After the independent-review repair, hbox owned closure
+`run-20260921T074632Z-ecbe` passed at ACL2 8.7 with two jobs. Its exact
+manifest is `planning/evidence/manifests/certify-20260921T074637Z-1785855.json`.
