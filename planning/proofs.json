@@ -1643,7 +1643,7 @@
       "progress_note": "host/native/signatures.lisp calls fn-hsig-host-authorize, whose body calls fn-hsig-authorize. Reachable tests cover both-valid, each bad component, absent ML-DSA, unknown/unsupported ML-DSA, stripping, component order/profile confusion, source changes and enrolled-key changes. Native component evidence covers libsodium Ed25519 and OpenSSL 3.6.4 ML-DSA-65. Primitive security, RNG, ABI and library correctness remain trusted assumptions; key custody, recovery authority and durable article/verdict composition remain open."
     },
     {
-      "id": "PRF-050",
+      "id": "PRF-051",
       "title": "Outbound AUTHINFO phase ordering and secret custody",
       "statement": "fn-fc-step emits AUTHINFO USER/PASS only after the configured transport phase, refuses clear transport unless the durable policy explicitly allows it, and reaches MODE or ready only after 281; the host reads an owner-only bounded profile and ACL2 decodes it, while failure follows peer-local loss and durable requeue.",
       "milestone": "M4",
