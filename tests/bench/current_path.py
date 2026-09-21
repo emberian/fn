@@ -341,8 +341,8 @@ def report_text(result):
             owner["folded_stress"]["outcome"], owner["folded_stress"]["seconds"]))
     lines.extend(["", "## Recovery and native direct", "",
                   "- Owner recovery: {} (exit {}).".format(owner.get("recover", {}).get("outcome", OUTCOMES.get(owner.get("recover", {}).get("returncode"), "not-run")), owner.get("recover", {}).get("returncode", "not-run")),
-                  "- Native direct: {}.".format(result["native_direct"].get("not_measured", "recorded in machine JSON")),
-                  "", "Commands and full per-invocation outcomes, source hashes, exact input sizes, RSS, tool revisions, and logs are in the adjacent JSON artifact."])
+                  "- Native direct: {}.".format(result["native_direct"].get("not_measured", "source {} image-sha256 {}; detailed timings in machine JSON".format(result["native_direct"].get("source_revision", "unspecified"), result["native_direct"].get("image_sha256", "unavailable")))),
+                  "", "Commands and full per-invocation outcomes, source hashes, exact input sizes, RSS, tool versions, and logs are in the adjacent JSON artifact."])
     return "\n".join(lines) + "\n"
 
 def main(argv=None):
