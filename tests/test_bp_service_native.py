@@ -81,6 +81,28 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertEqual(conflict.returncode, 3, conflict.stderr)
         self.assertIn("BP queue refused reason=enqueue-conflict", conflict.stdout)
 
+    def test_shared_spool_owner_precedes_lifecycle_mutation(self):
+        owner = subprocess.Popen(
+            [str(self.image), "--fn", "tcpcl", "listen", "0", "1",
+             str(self.journal), "dtn://fn-a/", "-", "4", "1024",
+             "1048576", "-", "-"],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True,
+        )
+        try:
+            line = owner.stdout.readline()
+            self.assertIn("TCPCL LISTENING", line)
+            refused = self.run_outage()
+            self.assertEqual(refused.returncode, 1, refused.stderr)
+            self.assertIn("spool is already owned", refused.stderr)
+            self.assertFalse((self.journal / "sequence").exists())
+            self.assertFalse((self.journal / "lifecycle").exists())
+            self.assertIsNone(owner.poll())
+        finally:
+            owner.kill()
+            owner.wait(timeout=10)
+            owner.stdout.close()
+
 
 if __name__ == "__main__":
     unittest.main()

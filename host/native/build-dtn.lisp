@@ -39,6 +39,8 @@
 ; native host's host/native/tcpcl.lisp drives.  books/tcpcl-session includes
 ; books/tcpcl-octets and books/tcpcl-records; all three are Makefile roots.
 (include-book "books/tcpcl-session")
+; The spool recovery plan the raw convergence host calls before socket I/O.
+(include-book "books/tcpcl-spool")
 ; The BPv7 bundle codec and the node: what `bp send' authors and what
 ; `bp receive' decodes.
 (include-book "books/bp-node")
