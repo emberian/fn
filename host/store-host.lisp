@@ -16,6 +16,7 @@
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")
+(include-book "../books/frame-trailer")
 (include-book "../books/article-fields")
 
 (defconst *fn-store-capacity* 1048576)

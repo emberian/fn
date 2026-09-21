@@ -105,14 +105,27 @@ class DryRunTests(unittest.TestCase):
         acl2.mkdir(parents=True)
         (acl2 / "saved_acl2").write_text(FAKE_ACL2)
         (acl2 / "saved_acl2").chmod(0o755)
-        # A farm gate runs from a `git archive` tree with no repository; the
-        # fake-host run needs only a revision string, so fall back to a fixed one.
+        # This ran from 2026-09-20 with a fixed hexadecimal fallback here, on
+        # the belief that "the fake-host run needs only a revision string".
+        # It needs more than that: `LocalHost.deploy` (tools/deploy_gate.py:135)
+        # ships the tree by piping `git archive <commit>` into tar, so a tree
+        # with no repository cannot be deployed at all, and the fallback turned
+        # that into `CalledProcessError: git archive 0123...01234567 -> 128` in
+        # setUpClass -- an ERROR indistinguishable from a broken gate.  A gate
+        # directory IS such a tree (~/fn-gates/<tree>-<rev> on persvati is a
+        # `git archive` extract), which is where the whole class errored on
+        # 2026-09-21.  Skip loudly instead, on the structural condition rather
+        # than on any failure text, so a real checkout never skips.
         try:
             commit = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                     check=True).stdout.decode().strip()
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            commit = "0123456789abcdef0123456789abcdef01234567"
+        except (subprocess.CalledProcessError, FileNotFoundError) as error:
+            cls.temp.cleanup()
+            raise unittest.SkipTest(
+                "the deploy gate dry run needs a git repository at {}: its ship "
+                "step is `git archive <commit>` (tools/deploy_gate.py LocalHost."
+                "deploy), and this tree has no repository ({})".format(ROOT, error))
         cls.rev = commit[:7]
         # A host gate for exactly this revision, so the certificate branch that
         # copies pairs is the one the run takes.

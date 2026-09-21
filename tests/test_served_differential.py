@@ -52,11 +52,16 @@ class ServedDifferentialTests(unittest.TestCase):
         touches none of the bridge's globals, so it may be evaluated in the
         same session that serves the socket.
         """
-        # The posting configuration and the clock observation are pinned at
-        # open; a read-only transcript never consults them.
+        # The posting configuration, the clock observation and the AUTHINFO
+        # policy are pinned at open; a read-only transcript never consults
+        # them.  This form is `fn-reader-reset' (host/reader-host.lisp:137)
+        # spelled out: the same archive, the same limits, the same
+        # `(fn-auth-open-config)' the served side opens with.  A trailing
+        # argument added to `fn-served-open' has to be added here too, or the
+        # differential errors instead of comparing.
         open_form = ("(fn-served-open *fn-reader-archive* 510 8192"
                      " (fn-reader-post-config *fn-reader-archive* nil)"
-                     " nil nil)")
+                     " nil nil (fn-auth-open-config))")
         chunk_list = "(list " + " ".join(octet_literal(c) for c in chunks) + ")"
         form = (
             "(fn-served-reply-octets"

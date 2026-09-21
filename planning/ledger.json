@@ -47,6 +47,8 @@
     "books/frame",
     "books/frame-invariants",
     "tests/acl2/frame-tests",
+    "books/frame-trailer",
+    "tests/acl2/frame-trailer-tests",
     "books/identity",
     "books/identity-invariants",
     "tests/acl2/identity-tests",
@@ -280,22 +282,22 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 277,
-    "books_in_root_closure": 276,
-    "roots": 276,
-    "theorems": 5641,
-    "functions": 3949,
-    "assert_events": 5651,
+    "books": 279,
+    "books_in_root_closure": 278,
+    "roots": 278,
+    "theorems": 5648,
+    "functions": 3950,
+    "assert_events": 5676,
     "must_fails": 63,
     "encapsulates": 19,
     "guards": {
-      "verified": 1477,
+      "verified": 1478,
       "declared-off": 192,
       "default-guarded": 1791,
       "default-unguarded": 489
     },
     "suspect_theorems": 46,
-    "export_hygiene_warnings": 72,
+    "export_hygiene_warnings": 73,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 88,
@@ -2361,6 +2363,34 @@
       "system_includes": [
         "arithmetic/top",
         "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/frame-trailer.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "crypto-attach",
+        "frame-invariants"
+      ],
+      "system_includes": [
+        "arithmetic/top"
       ],
       "suspects": [],
       "read_error": null
@@ -6190,6 +6220,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/frame-trailer-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/frame-trailer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/identity-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8139,6 +8194,12 @@
         "theorem": "fn-jrec-config-sequence-agrees",
         "book": "books/config-records.lisp",
         "line": 87,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-frame-trailer-of-octets",
+        "book": "books/frame-trailer.lisp",
+        "line": 82,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
