@@ -235,10 +235,11 @@ def current_owner(work, counts, payload, folded_bytes, seed, acl2):
     return result
 
 
-def native_direct(work, payload, seed, native_image):
+def native_direct(work, payload, seed, native_image, native_source_revision, native_image_digest):
     """Direct native store/reader startup and recovery, explicitly not owner POST."""
     result = {"path": "native direct store and reader; no served owner/control claim",
-              "image": native_image}
+              "image": native_image, "source_revision": native_source_revision or "unspecified",
+              "image_sha256": native_image_digest or (hashlib.sha256(Path(native_image).read_bytes()).hexdigest() if native_image and Path(native_image).is_file() else "unavailable")}
     if not native_image or not Path(native_image).is_file():
         result["not_measured"] = "no executable --native-image was supplied"
         return result
@@ -291,7 +292,7 @@ def report_text(result):
     owner = result["owner_control"]
     lines = ["# Current-path performance measurement", "",
              "- Owner source: `{}`".format(result["owner_source_revision"]),
-             "- Harness revision: `{}`".format(result["harness_revision"]),
+             "- Harness revision: `{}`; harness SHA-256 `{}`.".format(result["harness_revision"], result["harness_sha256"]),
              "- Host: `{}`; load at start `{}`.".format(result["host"]["platform"], result["loadavg_at_start"]),
              "- Owner scope: development-oracle evidence only: `bin/fn post` through the live `bin/fn run` control socket; each accepted post reports `path=control`. This Python bridge path is not a production endpoint.",
              "- Native scope: direct `tools/run_store.py` / `tools/run_reader.py`; it does not measure served owner/control behavior.", "",
@@ -327,6 +328,9 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=13)
     parser.add_argument("--acl2", default=os.environ.get("FN_ACL2", ""))
     parser.add_argument("--native-image", default="")
+    parser.add_argument("--native-source-revision", default="")
+    parser.add_argument("--native-image-digest", default="")
+    parser.add_argument("--harness-revision", default="")
     parser.add_argument("--json", default=None)
     parser.add_argument("--report", default=None)
     parser.add_argument("--owner-source-revision", default="")
@@ -337,14 +341,19 @@ def main(argv=None):
     work = Path(args.work).resolve()
     work.mkdir(parents=True, exist_ok=True)
     result = {"tool": "tests/bench/current_path.py", "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-              "cwd": str(ROOT), "harness_revision": revision(),
+              "cwd": str(ROOT), "harness_revision": args.harness_revision or revision(),
+              "harness_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               "owner_source_revision": args.owner_source_revision or revision(),
               "counts_requested": counts, "python": sys.version,
               "host": {"hostname": socket.gethostname(), "platform": platform.platform(),
-                       "machine": platform.machine()}, "loadavg_at_start": os.getloadavg(),
+                       "machine": platform.machine(), "cpu_count": os.cpu_count(),
+                       "kernel": platform.release()},
+              "tool_versions": {"python": sys.version, "acl2_path": args.acl2 or "default"},
+              "loadavg_at_start": os.getloadavg(),
               "owner_control": current_owner(work, counts, args.payload,
                                                args.folded_bytes, args.seed, args.acl2),
-              "native_direct": native_direct(work, args.payload, args.seed, args.native_image)}
+              "native_direct": native_direct(work, args.payload, args.seed, args.native_image,
+                                               args.native_source_revision, args.native_image_digest)}
     result["finished_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     text = json.dumps(result, sort_keys=True)
     if args.json:
