@@ -19,6 +19,8 @@
 
 (defconstant +fnn-feed-poll-seconds+ 1/20)
 
+(define-condition fnn-feed-auth-error (error) ())
+
 (defstruct (fnn-feed-link (:constructor %make-fnn-feed-link))
   peer peer-octets socket fd tls-context tls-channel (ready nil) (next-dial 0))
 
@@ -152,13 +154,13 @@ closed by this worker, preserving the one-closer rule."
       (unless (and info (fnn-regular-p info) (not (fnn-symlink-p info))
                    (= (sb-posix:stat-uid info) (sb-posix:getuid))
                    (zerop (logand (sb-posix:stat-mode info) #o077)))
-        (fnn-refuse "outbound AUTHINFO profile must be owner-only regular file"))
+        (error 'fnn-feed-auth-error))
       (let* ((maximum (fnn-core 'fn-owner-feed-profile-max-octets))
              (raw (fnn-octet-list (fnn-read-regular-bounded path maximum)))
              (decoded (fnn-core 'fn-owner-feed-profile-decode raw)))
         (unless (and (consp decoded) (eq (car decoded) :ok)
                      (= (length decoded) 3))
-          (fnn-refuse "outbound AUTHINFO profile refused by ACL2"))
+          (error 'fnn-feed-auth-error))
         (values (second decoded) (third decoded) (third policy))))))
 
 (defun fnn-feed-connect-core (service peer-octets fd user pass allow-clear)
@@ -343,7 +345,8 @@ the shared link table."
                     (fnn-feed-enable-tls runtime link security))
                   (unless published
                     (fnn-socket-shut socket))))
-            ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error) ()
+            ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error
+                 fnn-feed-auth-error) ()
               (when (and socket (not published)) (fnn-socket-shut socket))
               ;; A failed open has no outgoing bytes, but it is still the
               ;; named peer-loss observation that advances the ACL2 backoff.
