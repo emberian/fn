@@ -233,20 +233,21 @@ one ACL2-visible symbol whose raw definition that file replaces.
 | Sockets | `fnn-listen` (`sb-bsd-sockets` `inet-socket`/`inet6-socket`, loopback unless an address is passed), `fnn-connect`, `fnn-accept-loop`, `fnn-socket-fd`, `fnn-socket-shut`; `fnn-recv`, `fnn-send-all` (`sb-sys:wait-until-fd-usable` with absolute deadlines over nonblocking read/write retries; DNS/connect remain outside this contract), `fnn-graceful-close` (alien `shutdown(fd, SHUT_WR)` then a one-second drain), `fnn-serve-client` | `tools/run_reader.py`'s loop: 512-octet reads, **one `fn-served-step` per read** and no retained suffix, the reply octets from `fn-served-reply-octets`, close after a framing rejection. These eight are the whole socket surface, and the surface `host/native/tcpcl.lisp` is to build on (planning/lanes/HANDOFF-w4-tcpcl.md) |
 | Entry | `fnn-main`, `fnn-dispatch`, `fn-native-entry` | The fixed positional protocol behind `--fn`, the outcome-to-exit-code map (reader setup and escaped core conditions retain refusal 1, uncertainty 3 and fault 4) |
 
-The native anchor follow-on is implemented as two additional raw component
-files, not yet loaded by the common saved-image build:
+The native anchor follow-on is loaded by the common saved-image build:
 
 | Surface | Functions | What it does |
 | --- | --- | --- |
 | Roughtime primitives | `fnn-crypto-startup`, `fnn-crypto-ed25519-observe`, `fnn-crypto-anchor-leaf` in `host/native/crypto.lisp` | Reinitializes libsodium after every saved-image restart; returns primitive observations only over ACL2-produced subjects |
-| Roughtime acquisition | `fnn-anchor-csprng-nonce`, `fnn-anchor-udp-exchange`, `fnn-anchor-acquire` in `host/native/anchor.lisp` | Reads 32 octets from `/dev/urandom`, sends ACL2's 1024-octet request in one connected IPv4 UDP datagram, receives at most 4096 octets, calls the ACL2 parser and crypto seam, and preserves observed/refused/uncertain/fault |
+| Roughtime acquisition | `fnn-anchor-csprng-nonce`, `fnn-anchor-udp-exchange`, `fnn-anchor-acquire` in `host/native/anchor.lisp` | Consumes ACL2's selected server/key/wire-bound profile, reads the nonce from `/dev/urandom`, sends ACL2's request in one connected IPv4 UDP datagram, probes one byte beyond ACL2's response bound, calls the ACL2 parser and crypto seam, and preserves observed/refused/uncertain/fault |
+| Anchor decision and FNAN | `fnn-command-anchor`, `fnn-anchor-decision`, `fnn-anchor-publish` | Holds the store writer lock, calls the actual ACL2 acceptance entry, and reports accepted only after staged write, replacement and store-directory barrier |
 
-The caller must inject an endpoint and pinned 32-octet key selected by a
-bounded pinned-server manifest; these files contain neither.  The common image
-must load `host/native/crypto.lisp` before `host/native/anchor.lisp` and call
-`fnn-crypto-startup` from its process entry.  Until the image, native FNAN
-store and CLI call this surface, it is component evidence rather than a
-no-Python anchor deployment claim.
+`books/anchor-servers.lisp` owns the bounded name-to-endpoint/key mapping and
+the acquisition sizes.  The common image loads `host/native/crypto.lisp`
+before `host/native/anchor.lisp`; `anchor acquire` calls
+`fnn-crypto-startup` in the restarted image before network use.  DNS has no
+whole-path deadline; send and receive readiness each get the selected timeout.
+Exit 0 follows only durable FNAN replacement, refusal is 1, uncertainty is 3,
+and host/core fault is 4.
 
 Remaining Python-only: the BP hosts (`run_bp_ingress.py`, `run_bp_receive.py`,
 `workflow_journal.py`, `receipt_journal.py`), the in-process `Acl2Store`,

@@ -120,11 +120,12 @@ disabled and therefore was not yet suitable for a native executable call.
 
 ## Native acquisition seam
 
-`host/native/anchor.lisp` exposes `fnn-anchor-acquire(host, port, pinned-key,
-timeout)`.  It accepts no default endpoint or key.  It validates the endpoint
-and exact 32-octet key before I/O, reads a 32-octet nonce from `/dev/urandom`,
-asks `fn-anchor-wire-host-request` for the 1024-octet request, performs one
-connected IPv4 UDP exchange with a 4096-octet response cap, asks
+`host/native/anchor.lisp` exposes `fnn-anchor-acquire(profile)`.  The profile
+is the exact result of ACL2 `fn-anchor-server-host-select`: endpoint, selected
+key, whole pin set, nonce/request/response sizes, and admitted timeout.  It
+reads the requested nonce width from `/dev/urandom`, asks
+`fn-anchor-wire-host-request` for the request, performs one connected IPv4 UDP
+exchange with a one-byte overbound probe, asks
 `fn-anchor-wire-host-parse` to parse and bind the response, and runs libsodium
 only over the two subjects ACL2 returned.  For the currently accepted
 one-nonce scope it also compares ACL2's signed ROOT with
@@ -143,10 +144,18 @@ raw-mode smoke reached the real executable counterpart of
 limits are archived in
 [`tests/evidence/2026-09-21-native-anchor-acquisition.md`](../../tests/evidence/2026-09-21-native-anchor-acquisition.md).
 
-Remaining deployment gates are the pinned endpoint/key manifest, common image
-load/startup ordering, native FNAN persistence/recovery, the call from
-acquisition into the actual ACL2 decision, and CLI outcome wiring.  This packet
-does not infer endpoint/key policy from the current `[anchor].server` string.
+The follow-on adds `books/anchor-servers.lisp` as the ACL2-owned pinned
+endpoint/key/bounds manifest and registers native `anchor acquire`.  The
+command calls the actual `fn-anchor-host-accept`, persists its accepted FNAN
+by mutable staged replacement under the store writer lock, and prints accepted
+only after the store-directory barrier.  This replacement is separate from
+the shared immutable publisher.  The common native image loads the certified
+wire/manifest books, anchor host wrappers, crypto and anchor raw components;
+the command invokes `fnn-crypto-startup` after image restart.
+
+DNS resolution remains outside a whole-path deadline; send and receive
+readiness each receive the selected timeout.  Readiness can race nonblocking
+I/O and remains network uncertainty.
 
 ## TLS composition contract for the owner lane
 
