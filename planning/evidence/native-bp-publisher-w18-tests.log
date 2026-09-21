@@ -11,6 +11,6 @@ test_transport_uncertain_dominates_refused_article (tests.test_bp_service_native
 test_visible_final_never_converts_failed_authority_barrier_to_durable (tests.test_bp_service_native.NativeBpServiceTests.test_visible_final_never_converts_failed_authority_barrier_to_durable) ... ok
 
 ----------------------------------------------------------------------
-Ran 11 tests in 10.746s
+Ran 11 tests in 10.840s
 
 OK

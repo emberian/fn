@@ -1,14 +1,14 @@
 # W18 BP lifecycle shared publisher handoff
 
-Functional source: `ba0409f237974858dcf4e9a501e4d959621c9a92`
+Functional source: `668130deebba1cf37ed02d3e13029ddd868e99f1`
 
 `fnn-bps-persist-record` now executes the same ACL2-owned immutable
 no-replace publication machine as the application journal, BP receive evidence,
 and checkpoint candidate publisher.  The BP-specific authorization is
 `fn-bpn-lifecycle-publication-authorize`: it accepts only the exact token and
 record currently pending in the host-called `fn-bpn-step`, requires that token
-to equal the machine frontier, and records the host observations that the
-lifecycle lock is held and the canonical final name is absent.  The host checks
+to equal the machine frontier, and records the trusted host observations that
+the lifecycle lock is held and the canonical final name is absent.  The host checks
 the returned token/record echo, invokes `fnn-immutable-publish-effect`, and
 passes its result unchanged back as `(:persist-result token outcome)`.
 
@@ -25,15 +25,33 @@ Outcome boundaries are now the shared `fn-jpub` boundaries:
   hidden stage evidence and ignores it when reconstructing the contiguous
   committed-record frontier.
 
-This intentionally removes the old stronger second-barrier acknowledgement
-condition.  It does not remove the second barrier: clean runs still unlink the
-stage and barrier the directory.  The distinction is that cleanup failure can
-only leave bounded hidden evidence; it cannot make the already-barriered final
-record ambiguous.
+This is an intentional refinement of the former conservative cleanup-barrier
+uncertainty.  The first, authority-establishing final-directory barrier still
+returns `:uncertain` on failure.  A cleanup-only barrier failure after that
+successful authority barrier returns `:durable`.  Clean runs still unlink the
+stage and barrier the cleanup directory; a cleanup failure can only leave
+bounded hidden evidence and cannot make the already-barriered final record
+ambiguous.
+
+The authorizer declares `fn-bpn-machine-statep` as its guard and retains that
+recognizer as its logical premise, while an `mbe` executable branch consumes
+the service's maintained machine invariant instead of traversing all retained
+jobs and obligations per publication.  The machine recognizer itself does not
+have verified guards, so this packet does not claim a new guard-verification
+event for the authorizer.  The
+native service installs only initial/recovered states and answer states returned
+by `fn-bpn-step`.  PRF-046 is expected to supply the preservation theorem for
+that host-called step; it was still in the wire-composition lane when this
+packet froze, so this packet does not claim that theorem as its evidence.
+
+Sharing the `fn-jpub` interpreter establishes the outcome boundaries described
+above; it is not a claim that every raw host phase has a complete model.  The
+lock-held and final-absent inputs are trusted observations supplied by the
+native service, not unforgeable capabilities.
 
 Evidence:
 
-- `planning/evidence/manifests/certify-20260921T095627Z-1996720.json`: hbox,
+- `planning/evidence/manifests/certify-20260921T100625Z-2012954.json`: hbox,
   ACL2 8.7, source-pinned certification of
   `books/bp-node-machine-codec` and `tests/acl2/bp-node-machine-tests`, both
   passed.  Teeth cover the exact pending token/record echo, lock ownership, and

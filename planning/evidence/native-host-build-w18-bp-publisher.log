@@ -21,24 +21,16 @@ Type :help for help.
 Type (quit) to quit completely out of ACL2.
 
 ACL2 !>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/replay" ...):
-Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/replay.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 Summary
 Form:  ( INCLUDE-BOOK "books/replay" ...)
 Rules: NIL
-Warnings:  Compiled file
-Time:  0.36 seconds (prove: 0.00, print: 0.00, other: 0.36)
- "/tank/fn/lanes/w11-k1-scan/books/replay.lisp"
+Time:  0.17 seconds (prove: 0.00, print: 0.00, other: 0.17)
+ "/tank/fn/lanes/w18-bp-publisher/books/replay.lisp"
 ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/store-config"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/store-config.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -52,7 +44,7 @@ ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/identity" ...):
 Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/identity.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -60,13 +52,13 @@ Summary
 Form:  ( INCLUDE-BOOK "books/identity" ...)
 Rules: NIL
 Warnings:  Compiled file
-Time:  0.58 seconds (prove: 0.00, print: 0.00, other: 0.58)
+Time:  0.62 seconds (prove: 0.00, print: 0.00, other: 0.62)
  "/tank/fn/lanes/w14-fnfd-guardfix-9eac93a/books/identity.lisp"
 ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/article-fields"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/article-fields.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -74,30 +66,22 @@ Summary
 Form:  ( INCLUDE-BOOK "books/article-fields" ...)
 Rules: NIL
 Warnings:  Compiled file
-Time:  0.10 seconds (prove: 0.00, print: 0.00, other: 0.10)
+Time:  0.11 seconds (prove: 0.00, print: 0.00, other: 0.11)
  "/tank/fn/lanes/w11-k1-scan/books/article-fields.lisp"
 ACL2 !>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/frame" ...):
-Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/frame.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "books/frame" ...) is redundant.  See :DOC
 redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "books/frame" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/store-observed"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/store-observed.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -105,13 +89,13 @@ Summary
 Form:  ( INCLUDE-BOOK "books/store-observed" ...)
 Rules: NIL
 Warnings:  Compiled file
-Time:  0.33 seconds (prove: 0.00, print: 0.00, other: 0.33)
+Time:  0.34 seconds (prove: 0.00, print: 0.00, other: 0.34)
  "/tank/fn/lanes/w11-k1-scan/books/store-observed.lisp"
 ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/store-node-resolution"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/store-node-resolution.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -128,7 +112,7 @@ ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/store-observed-traces"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/store-observed-traces.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -142,7 +126,7 @@ ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/store-node" ...):
 Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/store-node.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -159,7 +143,7 @@ ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/node-config"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/node-config.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -167,13 +151,13 @@ Summary
 Form:  ( INCLUDE-BOOK "books/node-config" ...)
 Rules: NIL
 Warnings:  Compiled file
-Time:  0.22 seconds (prove: 0.00, print: 0.00, other: 0.22)
+Time:  0.23 seconds (prove: 0.00, print: 0.00, other: 0.23)
  "/Users/ember/dev/fn/build/lanes/w15-native-checkpoint-namespace/books/node-config.lisp"
 ACL2 !>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/nntp" ...): 
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/nntp" ...):
 Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/nntp.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -181,13 +165,13 @@ Summary
 Form:  ( INCLUDE-BOOK "books/nntp" ...)
 Rules: NIL
 Warnings:  Compiled file
-Time:  0.18 seconds (prove: 0.00, print: 0.00, other: 0.18)
+Time:  0.19 seconds (prove: 0.00, print: 0.00, other: 0.18)
  "/Users/ember/dev/fn/build/lanes/w15-native-checkpoint-namespace/books/nntp.lisp"
 ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/bp-receipt-records"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/bp-receipt-records.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -201,7 +185,7 @@ ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/bp-workflow-records"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/bp-workflow-records.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -212,24 +196,16 @@ Warnings:  Compiled file
 Time:  0.11 seconds (prove: 0.00, print: 0.00, other: 0.11)
  "/tank/fn/lanes/w11-bp-node/books/bp-workflow-records.lisp"
 ACL2 !>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/journal-publish"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/journal-publish.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 Summary
 Form:  ( INCLUDE-BOOK "books/journal-publish" ...)
 Rules: NIL
-Warnings:  Compiled file
-Time:  0.02 seconds (prove: 0.00, print: 0.00, other: 0.02)
- "/Users/ember/dev/fn/build/lanes/w15-native-checkpoint-namespace/books/journal-publish.lisp"
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/tank/fn/lanes/w18-bp-publisher/books/journal-publish.lisp"
 ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/app-journal"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/app-journal.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -243,7 +219,7 @@ ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/tcpcl-session"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/tcpcl-session.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -251,13 +227,13 @@ Summary
 Form:  ( INCLUDE-BOOK "books/tcpcl-session" ...)
 Rules: NIL
 Warnings:  Compiled file
-Time:  0.25 seconds (prove: 0.00, print: 0.00, other: 0.25)
+Time:  0.26 seconds (prove: 0.00, print: 0.00, other: 0.26)
  "/tank/fn/lanes/w11-bp-node/books/tcpcl-session.lisp"
 ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/tcpcl-spool"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/tcpcl-spool.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -268,24 +244,16 @@ Warnings:  Compiled file
 Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
  "/Users/ember/dev/fn/build/lanes/w15-native-checkpoint-namespace/books/tcpcl-spool.lisp"
 ACL2 !>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/bp-node" ...):
-Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/bp-node.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 Summary
 Form:  ( INCLUDE-BOOK "books/bp-node" ...)
 Rules: NIL
-Warnings:  Compiled file
-Time:  0.17 seconds (prove: 0.00, print: 0.00, other: 0.16)
- "/tank/fn/lanes/w11-bp-node/books/bp-node.lisp"
+Time:  0.04 seconds (prove: 0.00, print: 0.00, other: 0.03)
+ "/tank/fn/lanes/w18-bp-publisher/books/bp-node.lisp"
 ACL2 !>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/bp-node-records"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/bp-node-records.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -296,50 +264,30 @@ Warnings:  Compiled file
 Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
  "/Users/ember/dev/fn/build/lanes/w15-native-checkpoint-namespace/books/bp-node-records.lisp"
 ACL2 !>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/bp-node-machine"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/bp-node-machine.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 Summary
 Form:  ( INCLUDE-BOOK "books/bp-node-machine" ...)
 Rules: NIL
-Warnings:  Compiled file
-Time:  0.16 seconds (prove: 0.00, print: 0.00, other: 0.16)
- "/tank/fn/lanes/w17-bp-namespace/books/bp-node-machine.lisp"
+Time:  0.02 seconds (prove: 0.00, print: 0.00, other: 0.02)
+ "/tank/fn/lanes/w18-bp-publisher/books/bp-node-machine.lisp"
 ACL2 !>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/bp-node-machine-codec"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/bp-node-machine-codec.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 Summary
 Form:  ( INCLUDE-BOOK "books/bp-node-machine-codec" ...)
 Rules: NIL
-Warnings:  Compiled file
-Time:  0.03 seconds (prove: 0.00, print: 0.00, other: 0.03)
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  "/tank/fn/lanes/w18-bp-publisher/books/bp-node-machine-codec.lisp"
 ACL2 !>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "journal-publish" ...):
-Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/journal-publish.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-Here is the sequence of books with loads of compiled or expansion files
-that have led down to the printing of this message, where the load
-for each is halted during the load for the next:
-
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "books/bp-receive-evidence"
+...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/bp-receive-evidence.lisp
+because the compiled file does not exist.  See :DOC include-book.
+No load was in progress for any parent book.
 
 
 Summary
 Form:  ( INCLUDE-BOOK "books/bp-receive-evidence" ...)
 Rules: NIL
 Warnings:  Compiled file
-Time:  0.02 seconds (prove: 0.00, print: 0.00, other: 0.02)
+Time:  0.03 seconds (prove: 0.00, print: 0.00, other: 0.03)
  "/tank/fn/lanes/w18-bp-publisher/books/bp-receive-evidence.lisp"
 ACL2 !>
 Project-dir-alist:
@@ -349,27 +297,19 @@ Type (quit) to quit completely out of ACL2.
 
 ACL2 !>> "ACL2"
 ACL2 !>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/replay" ...):
-Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/replay.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/replay" ...) is redundant.  See
 :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/replay" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/store-config"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/store-config.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -386,7 +326,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/identity"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/identity.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -400,78 +340,46 @@ Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/crypto-attach"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/crypto-attach.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/crypto-attach" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/crypto-attach" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/frame-trailer"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/frame-trailer.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/frame-trailer" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/frame-trailer" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/byte-store-frame"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/byte-store-frame.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/byte-store-frame" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/byte-store-frame" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/byte-store-txn-name"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/byte-store-txn-name.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/byte-store-txn-name" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/byte-store-txn-name" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/article-fields"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/article-fields.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -505,8 +413,8 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 The admission of FN-STORE-TEXT-OCTETSP-TAIL is trivial, using the relation
 O< (which is known to be well-founded on the domain recognized by O-P)
-and the measure (ACL2-COUNT XS).  We observe that the type of 
-FN-STORE-TEXT-OCTETSP-TAIL is described by the theorem 
+and the measure (ACL2-COUNT XS).  We observe that the type of
+FN-STORE-TEXT-OCTETSP-TAIL is described by the theorem
 (OR (EQUAL (FN-STORE-TEXT-OCTETSP-TAIL XS)
            T)
     (EQUAL (FN-STORE-TEXT-OCTETSP-TAIL XS)
@@ -521,7 +429,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-TEXT-OCTETSP is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-TEXT-OCTETSP is described by the
-theorem 
+theorem
 (OR (EQUAL (FN-STORE-TEXT-OCTETSP XS) T)
     (EQUAL (FN-STORE-TEXT-OCTETSP XS) NIL)).
 We used the :type-prescription rule FN-STORE-TEXT-OCTETSP-TAIL.
@@ -534,7 +442,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-MSGID-OCTETSP is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-MSGID-OCTETSP is described by
-the theorem 
+the theorem
 (OR (EQUAL (FN-STORE-MSGID-OCTETSP XS) T)
     (EQUAL (FN-STORE-MSGID-OCTETSP XS)
            NIL)).
@@ -597,7 +505,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-ARTICLE-MATCH is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-ARTICLE-MATCH is described by
-the theorem 
+the theorem
 (OR (AND (SYMBOLP (FN-STORE-ARTICLE-MATCH MSGID PAYLOAD GROUPS NODE))
          (NOT (EQUAL (FN-STORE-ARTICLE-MATCH MSGID PAYLOAD GROUPS NODE)
                      T))
@@ -614,7 +522,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-CONSTANTS is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-FRAME-CONSTANTS is described by
-the theorem 
+the theorem
 (AND (CONSP (FN-STORE-FRAME-CONSTANTS))
      (TRUE-LISTP (FN-STORE-FRAME-CONSTANTS))).
 
@@ -626,7 +534,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-RESULT is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-FRAME-RESULT is described by the
-theorem 
+theorem
 (OR (AND (CONSP (FN-STORE-FRAME-RESULT FRAME))
          (TRUE-LISTP (FN-STORE-FRAME-RESULT FRAME)))
     (EQUAL (FN-STORE-FRAME-RESULT FRAME)
@@ -641,7 +549,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-RECORD-RESULT is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-RECORD-RESULT
-is described by the theorem 
+is described by the theorem
 (OR (AND (CONSP (FN-STORE-FRAME-RECORD-RESULT FRAME))
          (TRUE-LISTP (FN-STORE-FRAME-RECORD-RESULT FRAME)))
     (EQUAL (FN-STORE-FRAME-RECORD-RESULT FRAME)
@@ -656,7 +564,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-STORE-PROTECTED is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-STORE-PROTECTED
-is described by the theorem 
+is described by the theorem
 (OR (OR (CONSP (FN-STORE-FRAME-STORE-PROTECTED RECORD))
         (AND (SYMBOLP (FN-STORE-FRAME-STORE-PROTECTED RECORD))
              (NOT (EQUAL (FN-STORE-FRAME-STORE-PROTECTED RECORD)
@@ -675,7 +583,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-WORKFLOW-PROTECTED is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-WORKFLOW-PROTECTED
-is described by the theorem 
+is described by the theorem
 (OR (CONSP (FN-STORE-FRAME-WORKFLOW-PROTECTED KIND VALUES))
     (AND (SYMBOLP (FN-STORE-FRAME-WORKFLOW-PROTECTED KIND VALUES))
          (NOT (EQUAL (FN-STORE-FRAME-WORKFLOW-PROTECTED KIND VALUES)
@@ -694,7 +602,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-RECEIPT-PROTECTED is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-RECEIPT-PROTECTED
-is described by the theorem 
+is described by the theorem
 (OR (CONSP (FN-STORE-FRAME-RECEIPT-PROTECTED KIND VALUES))
     (AND (SYMBOLP (FN-STORE-FRAME-RECEIPT-PROTECTED KIND VALUES))
          (NOT (EQUAL (FN-STORE-FRAME-RECEIPT-PROTECTED KIND VALUES)
@@ -714,7 +622,7 @@ ACL2 !>>
 The admission of FN-STORE-FRAME-NAMES-OCTETS is trivial, using the
 relation O< (which is known to be well-founded on the domain recognized
 by O-P) and the measure (ACL2-COUNT NAMES).  We observe that the type
-of FN-STORE-FRAME-NAMES-OCTETS is described by the theorem 
+of FN-STORE-FRAME-NAMES-OCTETS is described by the theorem
 (TRUE-LISTP (FN-STORE-FRAME-NAMES-OCTETS NAMES)).  We used primitive
 type reasoning.
 
@@ -726,7 +634,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-SCHEMA is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-FRAME-SCHEMA is described by the
-theorem 
+theorem
 (AND (CONSP (FN-STORE-FRAME-SCHEMA KIND NAMES-TABLE SPEC-TABLE))
      (TRUE-LISTP (FN-STORE-FRAME-SCHEMA KIND NAMES-TABLE SPEC-TABLE))).
 We used primitive type reasoning.
@@ -739,7 +647,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-WORKFLOW-SCHEMA is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-WORKFLOW-SCHEMA
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-STORE-FRAME-WORKFLOW-SCHEMA KIND))
      (TRUE-LISTP (FN-STORE-FRAME-WORKFLOW-SCHEMA KIND))).
 We used the :type-prescription rule FN-STORE-FRAME-SCHEMA.
@@ -752,7 +660,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-RECEIPT-SCHEMA is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-RECEIPT-SCHEMA
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-STORE-FRAME-RECEIPT-SCHEMA KIND))
      (TRUE-LISTP (FN-STORE-FRAME-RECEIPT-SCHEMA KIND))).
 We used the :type-prescription rule FN-STORE-FRAME-SCHEMA.
@@ -765,7 +673,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-WORKFLOW-KINDS is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-WORKFLOW-KINDS
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-STORE-FRAME-WORKFLOW-KINDS))
      (TRUE-LISTP (FN-STORE-FRAME-WORKFLOW-KINDS))).
 
@@ -777,7 +685,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-RECEIPT-KINDS is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-RECEIPT-KINDS
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-STORE-FRAME-RECEIPT-KINDS))
      (TRUE-LISTP (FN-STORE-FRAME-RECEIPT-KINDS))).
 
@@ -819,7 +727,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-STORE-ENCODE is non-recursive, its admission is
 trivial.  We observe that the type of FN-STORE-FRAME-STORE-ENCODE is
-described by the theorem 
+described by the theorem
 (OR (OR (CONSP (FN-STORE-FRAME-STORE-ENCODE RECORD DIGEST))
         (AND (SYMBOLP (FN-STORE-FRAME-STORE-ENCODE RECORD DIGEST))
              (NOT (EQUAL (FN-STORE-FRAME-STORE-ENCODE RECORD DIGEST)
@@ -838,10 +746,10 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-STORE-DECODE is non-recursive, its admission is
 trivial.  We observe that the type of FN-STORE-FRAME-STORE-DECODE is
-described by the theorem 
+described by the theorem
 (AND (CONSP (FN-STORE-FRAME-STORE-DECODE OCTETS DIGEST))
      (TRUE-LISTP (FN-STORE-FRAME-STORE-DECODE OCTETS DIGEST))).
-We used the :type-prescription rules FN-FRAME-STORE-DECODE and 
+We used the :type-prescription rules FN-FRAME-STORE-DECODE and
 FN-STORE-FRAME-RESULT.
 
 Summary
@@ -853,7 +761,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-WORKFLOW-ENCODE is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-WORKFLOW-ENCODE
-is described by the theorem 
+is described by the theorem
 (OR (OR (CONSP (FN-STORE-FRAME-WORKFLOW-ENCODE KIND VALUES DIGEST))
         (AND (SYMBOLP (FN-STORE-FRAME-WORKFLOW-ENCODE KIND VALUES DIGEST))
              (NOT (EQUAL (FN-STORE-FRAME-WORKFLOW-ENCODE KIND VALUES DIGEST)
@@ -872,10 +780,10 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-WORKFLOW-DECODE is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-WORKFLOW-DECODE
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-STORE-FRAME-WORKFLOW-DECODE OCTETS DIGEST))
      (TRUE-LISTP (FN-STORE-FRAME-WORKFLOW-DECODE OCTETS DIGEST))).
-We used the :type-prescription rules FN-FRAME-WORKFLOW-DECODE and 
+We used the :type-prescription rules FN-FRAME-WORKFLOW-DECODE and
 FN-STORE-FRAME-RECORD-RESULT.
 
 Summary
@@ -893,7 +801,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-RECEIPT-ENCODE is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-RECEIPT-ENCODE
-is described by the theorem 
+is described by the theorem
 (OR (OR (CONSP (FN-STORE-FRAME-RECEIPT-ENCODE KIND VALUES DIGEST))
         (AND (SYMBOLP (FN-STORE-FRAME-RECEIPT-ENCODE KIND VALUES DIGEST))
              (NOT (EQUAL (FN-STORE-FRAME-RECEIPT-ENCODE KIND VALUES DIGEST)
@@ -912,10 +820,10 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-RECEIPT-DECODE is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-FRAME-RECEIPT-DECODE
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-STORE-FRAME-RECEIPT-DECODE OCTETS DIGEST))
      (TRUE-LISTP (FN-STORE-FRAME-RECEIPT-DECODE OCTETS DIGEST))).
-We used the :type-prescription rules FN-FRAME-RECEIPT-DECODE and 
+We used the :type-prescription rules FN-FRAME-RECEIPT-DECODE and
 FN-STORE-FRAME-RECORD-RESULT.
 
 Summary
@@ -932,7 +840,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-STORE-FRAME-RECEIPT-LOGICAL-DECODE
 ACL2 !>>
 Since FN-STORE-FRAME-INBOUND-PREFIX is non-recursive, its admission
-is trivial.  We could deduce no constraints on the type of 
+is trivial.  We could deduce no constraints on the type of
 FN-STORE-FRAME-INBOUND-PREFIX.
 
 Summary
@@ -943,11 +851,11 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-FRAME-INBOUND-OPEN is non-recursive, its admission is
 trivial.  We observe that the type of FN-STORE-FRAME-INBOUND-OPEN is
-described by the theorem 
+described by the theorem
 (AND (CONSP (FN-STORE-FRAME-INBOUND-OPEN HEAD TOTAL-LENGTH TRAILER DIGEST))
      (TRUE-LISTP
           (FN-STORE-FRAME-INBOUND-OPEN HEAD TOTAL-LENGTH TRAILER DIGEST))).
-We used primitive type reasoning and the :type-prescription rule 
+We used primitive type reasoning and the :type-prescription rule
 FN-FRAME-INBOUND-OPEN.
 
 Summary
@@ -959,7 +867,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-SUBJECT-ID-OF-PAYLOAD is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-SUBJECT-ID-OF-PAYLOAD
-is described by the theorem 
+is described by the theorem
 (OR (CONSP (FN-STORE-SUBJECT-ID-OF-PAYLOAD PAYLOAD))
     (EQUAL (FN-STORE-SUBJECT-ID-OF-PAYLOAD PAYLOAD)
            NIL)).
@@ -973,7 +881,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-OBLIGATION-ID-OF is non-recursive, its admission is
 trivial.  We observe that the type of FN-STORE-OBLIGATION-ID-OF is
-described by the theorem 
+described by the theorem
 (OR (CONSP (FN-STORE-OBLIGATION-ID-OF MSGID SUBJECT))
     (EQUAL (FN-STORE-OBLIGATION-ID-OF MSGID SUBJECT)
            NIL)).
@@ -998,7 +906,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-SUBJECT-ID is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-SUBJECT-ID is described by the
-theorem 
+theorem
 (OR (CONSP (FN-STORE-SUBJECT-ID DIGEST))
     (EQUAL (FN-STORE-SUBJECT-ID DIGEST)
            NIL)).
@@ -1012,7 +920,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-OBLIGATION-PREIMAGE is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-OBLIGATION-PREIMAGE
-is described by the theorem 
+is described by the theorem
 (OR (CONSP (FN-STORE-OBLIGATION-PREIMAGE MSGID SUBJECT))
     (EQUAL (FN-STORE-OBLIGATION-PREIMAGE MSGID SUBJECT)
            NIL)).
@@ -1026,7 +934,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-OBLIGATION-ID is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-OBLIGATION-ID is described by
-the theorem 
+the theorem
 (OR (CONSP (FN-STORE-OBLIGATION-ID DIGEST))
     (EQUAL (FN-STORE-OBLIGATION-ID DIGEST)
            NIL)).
@@ -1038,7 +946,7 @@ Rules: ((:TYPE-PRESCRIPTION FN-ID-OBLIGATION))
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-STORE-OBLIGATION-ID
 ACL2 !>>
-Since FN-STORE-CHARGE is non-recursive, its admission is trivial. 
+Since FN-STORE-CHARGE is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-CHARGE is described by the theorem
 (AND (INTEGERP (FN-STORE-CHARGE LENGTH)) (<= 0 (FN-STORE-CHARGE LENGTH))).
 We used the :type-prescription rule FN-CHARGE-FOR-PAYLOAD.
@@ -1051,7 +959,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-MSGID-VALIDP is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-MSGID-VALIDP is described by the
-theorem 
+theorem
 (OR (EQUAL (FN-STORE-MSGID-VALIDP OCTETS) T)
     (EQUAL (FN-STORE-MSGID-VALIDP OCTETS)
            NIL)).
@@ -1065,8 +973,8 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 The admission of FN-STORE-GROUP-NAME-OCTETS is trivial, using the relation
 O< (which is known to be well-founded on the domain recognized by O-P)
-and the measure (ACL2-COUNT GROUPS).  We observe that the type of 
-FN-STORE-GROUP-NAME-OCTETS is described by the theorem 
+and the measure (ACL2-COUNT GROUPS).  We observe that the type of
+FN-STORE-GROUP-NAME-OCTETS is described by the theorem
 (TRUE-LISTP (FN-STORE-GROUP-NAME-OCTETS GROUPS)).  We used primitive
 type reasoning.
 
@@ -1098,7 +1006,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-STORE-FORMAT-ID
 ACL2 !>>
 Since FN-STORE-METADATA-CONFIG-FRAME is non-recursive, its admission
-is trivial.  We could deduce no constraints on the type of 
+is trivial.  We could deduce no constraints on the type of
 FN-STORE-METADATA-CONFIG-FRAME.
 
 Summary
@@ -1108,7 +1016,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-STORE-METADATA-CONFIG-FRAME
 ACL2 !>>
 Since FN-STORE-METADATA-CONFIG-DECODE is non-recursive, its admission
-is trivial.  We could deduce no constraints on the type of 
+is trivial.  We could deduce no constraints on the type of
 FN-STORE-METADATA-CONFIG-DECODE.
 
 Summary
@@ -1118,7 +1026,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-STORE-METADATA-CONFIG-DECODE
 ACL2 !>>
 Since FN-STORE-METADATA-FRONTIER-FRAME is non-recursive, its admission
-is trivial.  We could deduce no constraints on the type of 
+is trivial.  We could deduce no constraints on the type of
 FN-STORE-METADATA-FRONTIER-FRAME.
 
 Summary
@@ -1129,7 +1037,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-METADATA-FRONTIER-DECODE is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-METADATA-FRONTIER-DECODE
-is described by the theorem 
+is described by the theorem
 (OR (AND (INTEGERP (FN-STORE-METADATA-FRONTIER-DECODE OCTETS))
          (<= 0
              (FN-STORE-METADATA-FRONTIER-DECODE OCTETS)))
@@ -1145,7 +1053,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-METADATA-FRONTIER-NEXT is non-recursive, its admission
 is trivial.  We observe that the type of FN-STORE-METADATA-FRONTIER-NEXT
-is described by the theorem 
+is described by the theorem
 (OR (AND (INTEGERP (FN-STORE-METADATA-FRONTIER-NEXT N))
          (< 0 (FN-STORE-METADATA-FRONTIER-NEXT N)))
     (EQUAL (FN-STORE-METADATA-FRONTIER-NEXT N)
@@ -1161,7 +1069,7 @@ ACL2 !>>
 The admission of FN-STORE-OCTET-LISTS->STRINGS is trivial, using the
 relation O< (which is known to be well-founded on the domain recognized
 by O-P) and the measure (ACL2-COUNT XS).  We observe that the type
-of FN-STORE-OCTET-LISTS->STRINGS is described by the theorem 
+of FN-STORE-OCTET-LISTS->STRINGS is described by the theorem
 (OR (CONSP (FN-STORE-OCTET-LISTS->STRINGS XS))
     (AND (SYMBOLP (FN-STORE-OCTET-LISTS->STRINGS XS))
          (NOT (EQUAL (FN-STORE-OCTET-LISTS->STRINGS XS)
@@ -1180,7 +1088,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-GROUP-CODES is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-GROUP-CODES is described by the
-theorem 
+theorem
 (OR (CONSP (FN-STORE-GROUP-CODES NAME-OCTETS DOMAIN-OCTETS))
     (AND (SYMBOLP (FN-STORE-GROUP-CODES NAME-OCTETS DOMAIN-OCTETS))
          (NOT (EQUAL (FN-STORE-GROUP-CODES NAME-OCTETS DOMAIN-OCTETS)
@@ -1189,7 +1097,7 @@ theorem
                      NIL)))
     (EQUAL (FN-STORE-GROUP-CODES NAME-OCTETS DOMAIN-OCTETS)
            NIL)).
-We used primitive type reasoning and the :type-prescription rule 
+We used primitive type reasoning and the :type-prescription rule
 FN-STORE-CODES-FROM-GROUPS.
 
 Summary
@@ -1201,7 +1109,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-STORE-POST-BOUNDARY is non-recursive, its admission is trivial.
 We observe that the type of FN-STORE-POST-BOUNDARY is described by
-the theorem 
+the theorem
 (AND
  (SYMBOLP (FN-STORE-POST-BOUNDARY MSGID
                                   PAYLOAD-LENGTH GROUP-COUNT CHARGE))
@@ -1231,7 +1139,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/store-observed"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/store-observed.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -1248,7 +1156,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/store-sweep"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/store-sweep.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -1259,11 +1167,11 @@ Warnings:  Compiled file
 Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
  "/tank/fn/lanes/w15-native-recovery-fidelity/books/store-sweep.lisp"
 ACL2 !>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK 
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK
 "../books/store-node-resolution" ...):  Unable to load compiled file
 for book
   /tank/fn/lanes/w18-bp-publisher/books/store-node-resolution.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -1280,7 +1188,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/node-config"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/node-config.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -1301,27 +1209,19 @@ Type (quit) to quit completely out of ACL2.
 
 ACL2 !>>> "ACL2"
 ACL2 !>>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/replay" ...):
-Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/replay.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/replay" ...) is redundant.  See
 :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/replay" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/store-config"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/store-config.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -1338,7 +1238,7 @@ ACL2 !>>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/identity"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/identity.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -1352,78 +1252,46 @@ Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/crypto-attach"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/crypto-attach.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/crypto-attach" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/crypto-attach" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/frame-trailer"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/frame-trailer.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/frame-trailer" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/frame-trailer" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/byte-store-frame"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/byte-store-frame.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/byte-store-frame" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/byte-store-frame" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/byte-store-txn-name"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/byte-store-txn-name.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/byte-store-txn-name" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/byte-store-txn-name" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/article-fields"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/article-fields.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -1572,7 +1440,7 @@ Rules: NIL
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-The event ( DEFUN FN-STORE-FRAME-RECORD-RESULT ...) is redundant. 
+The event ( DEFUN FN-STORE-FRAME-RECORD-RESULT ...) is redundant.
 See :DOC redundant-events.
 
 Summary
@@ -1653,7 +1521,7 @@ Rules: NIL
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-The event ( DEFUN FN-STORE-FRAME-RECEIPT-KINDS ...) is redundant. 
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-KINDS ...) is redundant.
 See :DOC redundant-events.
 
 Summary
@@ -1833,7 +1701,7 @@ Rules: NIL
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-The event ( DEFUN FN-STORE-OBLIGATION-PREIMAGE ...) is redundant. 
+The event ( DEFUN FN-STORE-OBLIGATION-PREIMAGE ...) is redundant.
 See :DOC redundant-events.
 
 Summary
@@ -1973,7 +1841,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/peer-config"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/peer-config.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -1987,7 +1855,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/provenance-codec"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/provenance-codec.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -1995,7 +1863,7 @@ Summary
 Form:  ( INCLUDE-BOOK "../books/provenance-codec" ...)
 Rules: NIL
 Warnings:  Compiled file
-Time:  0.04 seconds (prove: 0.00, print: 0.00, other: 0.04)
+Time:  0.02 seconds (prove: 0.00, print: 0.00, other: 0.02)
  "/Users/ember/dev/fn/build/lanes/w15-native-checkpoint-namespace/books/provenance-codec.lisp"
 ACL2 !>>
 Summary
@@ -2310,7 +2178,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/node-config"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/node-config.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -2331,27 +2199,19 @@ Type (quit) to quit completely out of ACL2.
 
 ACL2 !>>> "ACL2"
 ACL2 !>>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/replay" ...):
-Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/replay.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/replay" ...) is redundant.  See
 :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/replay" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/store-config"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/store-config.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -2368,7 +2228,7 @@ ACL2 !>>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/identity"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/identity.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -2382,78 +2242,46 @@ Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/crypto-attach"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/crypto-attach.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/crypto-attach" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/crypto-attach" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/frame-trailer"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/frame-trailer.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/frame-trailer" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/frame-trailer" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/byte-store-frame"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/byte-store-frame.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/byte-store-frame" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/byte-store-frame" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/byte-store-txn-name"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/byte-store-txn-name.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/byte-store-txn-name" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/byte-store-txn-name" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/article-fields"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/article-fields.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -2602,7 +2430,7 @@ Rules: NIL
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-The event ( DEFUN FN-STORE-FRAME-RECORD-RESULT ...) is redundant. 
+The event ( DEFUN FN-STORE-FRAME-RECORD-RESULT ...) is redundant.
 See :DOC redundant-events.
 
 Summary
@@ -2683,7 +2511,7 @@ Rules: NIL
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-The event ( DEFUN FN-STORE-FRAME-RECEIPT-KINDS ...) is redundant. 
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-KINDS ...) is redundant.
 See :DOC redundant-events.
 
 Summary
@@ -2863,7 +2691,7 @@ Rules: NIL
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>>
-The event ( DEFUN FN-STORE-OBLIGATION-PREIMAGE ...) is redundant. 
+The event ( DEFUN FN-STORE-OBLIGATION-PREIMAGE ...) is redundant.
 See :DOC redundant-events.
 
 Summary
@@ -3002,8 +2830,8 @@ ACL2 !>>>Bye.
 ACL2 !>>
 The admission of FN-CFG-HOST-CREATIONS is trivial, using the relation
 O< (which is known to be well-founded on the domain recognized by O-P)
-and the measure (ACL2-COUNT NAMES).  We observe that the type of 
-FN-CFG-HOST-CREATIONS is described by the theorem 
+and the measure (ACL2-COUNT NAMES).  We observe that the type of
+FN-CFG-HOST-CREATIONS is described by the theorem
 (TRUE-LISTP (FN-CFG-HOST-CREATIONS NAMES)).  We used primitive type
 reasoning.
 
@@ -3021,7 +2849,7 @@ ACL2 !>>
 The admission of FN-CFG-HOST-NON-GROUP-DELTAS is trivial, using the
 relation O< (which is known to be well-founded on the domain recognized
 by O-P) and the measure (ACL2-COUNT DELTAS).  We observe that the type
-of FN-CFG-HOST-NON-GROUP-DELTAS is described by the theorem 
+of FN-CFG-HOST-NON-GROUP-DELTAS is described by the theorem
 (TRUE-LISTP (FN-CFG-HOST-NON-GROUP-DELTAS DELTAS)).  We used primitive
 type reasoning.
 
@@ -3054,7 +2882,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/anchor-invariants"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/anchor-invariants.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -3062,13 +2890,13 @@ Summary
 Form:  ( INCLUDE-BOOK "../books/anchor-invariants" ...)
 Rules: NIL
 Warnings:  Compiled file
-Time:  0.06 seconds (prove: 0.00, print: 0.00, other: 0.06)
+Time:  0.07 seconds (prove: 0.00, print: 0.00, other: 0.07)
  "/Users/ember/dev/fn/build/lanes/w15-native-checkpoint-namespace/books/anchor-invariants.lisp"
 ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/anchor-replace"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/anchor-replace.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -3188,7 +3016,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/bp-workflow-records"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/bp-workflow-records.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -3205,11 +3033,11 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/store-node"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/store-node.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
-The event ( INCLUDE-BOOK "../books/store-node" ...) is redundant. 
+The event ( INCLUDE-BOOK "../books/store-node" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
@@ -3245,7 +3073,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-WORKFLOW-VALID-CONFIG is non-recursive, its admission is trivial.
 We observe that the type of FN-WORKFLOW-VALID-CONFIG is described by
-the theorem 
+the theorem
 (OR (EQUAL (FN-WORKFLOW-VALID-CONFIG RECORD)
            T)
     (EQUAL (FN-WORKFLOW-VALID-CONFIG RECORD)
@@ -3318,7 +3146,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/bp-receipt-records"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/bp-receipt-records.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -3389,27 +3217,19 @@ Type (quit) to quit completely out of ACL2.
 
 ACL2 !>> "ACL2"
 ACL2 !>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/journal-publish"
-...):  Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/journal-publish.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/journal-publish" ...) is redundant.
 See :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/journal-publish" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/app-journal"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/app-journal.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -3425,7 +3245,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-JPUB-HOST-INITIAL is non-recursive, its admission is trivial.
 We observe that the type of FN-JPUB-HOST-INITIAL is described by the
-theorem 
+theorem
 (AND (CONSP (FN-JPUB-HOST-INITIAL AUTHORITYP))
      (TRUE-LISTP (FN-JPUB-HOST-INITIAL AUTHORITYP))).
 We used the :type-prescription rule FN-JPUB-INITIAL.
@@ -3452,7 +3272,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-JPUB-HOST-ACTION is non-recursive, its admission is trivial.
 We observe that the type of FN-JPUB-HOST-ACTION is described by the
-theorem 
+theorem
 (AND (SYMBOLP (FN-JPUB-HOST-ACTION PUBLICATION))
      (NOT (EQUAL (FN-JPUB-HOST-ACTION PUBLICATION)
                  T))
@@ -3486,7 +3306,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-JPUB-HOST-TERMINALP is non-recursive, its admission is trivial.
 We observe that the type of FN-JPUB-HOST-TERMINALP is described by
-the theorem 
+the theorem
 (OR (EQUAL (FN-JPUB-HOST-TERMINALP PUBLICATION)
            T)
     (EQUAL (FN-JPUB-HOST-TERMINALP PUBLICATION)
@@ -3500,7 +3320,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-JPUB-HOST-CRASH-OUTCOME is non-recursive, its admission is
 trivial.  We observe that the type of FN-JPUB-HOST-CRASH-OUTCOME is
-described by the theorem 
+described by the theorem
 (AND (SYMBOLP (FN-JPUB-HOST-CRASH-OUTCOME PUBLICATION))
      (NOT (EQUAL (FN-JPUB-HOST-CRASH-OUTCOME PUBLICATION)
                  T))
@@ -3516,7 +3336,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-JPUB-HOST-AUTHORIZED-INITIALP is non-recursive, its admission
 is trivial.  We observe that the type of FN-JPUB-HOST-AUTHORIZED-INITIALP
-is described by the theorem 
+is described by the theorem
 (OR (EQUAL (FN-JPUB-HOST-AUTHORIZED-INITIALP PUBLICATION)
            T)
     (EQUAL (FN-JPUB-HOST-AUTHORIZED-INITIALP PUBLICATION)
@@ -3531,7 +3351,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-AJ-HOST-INITIAL is non-recursive, its admission is trivial.
 We observe that the type of FN-AJ-HOST-INITIAL is described by the
-theorem 
+theorem
 (OR (AND (CONSP (FN-AJ-HOST-INITIAL DOMAIN))
          (TRUE-LISTP (FN-AJ-HOST-INITIAL DOMAIN)))
     (AND (SYMBOLP (FN-AJ-HOST-INITIAL DOMAIN))
@@ -3548,7 +3368,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-AJ-HOST-RECOVER is non-recursive, its admission is trivial.
 We observe that the type of FN-AJ-HOST-RECOVER is described by the
-theorem 
+theorem
 (OR (AND (CONSP (FN-AJ-HOST-RECOVER FRONTIER NAME FRAME-LENGTH KIND))
          (TRUE-LISTP (FN-AJ-HOST-RECOVER FRONTIER NAME FRAME-LENGTH KIND)))
     (AND (SYMBOLP (FN-AJ-HOST-RECOVER FRONTIER NAME FRAME-LENGTH KIND))
@@ -3566,7 +3386,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-AJ-HOST-MAX-RECORD-LENGTH is non-recursive, its admission
 is trivial.  We observe that the type of FN-AJ-HOST-MAX-RECORD-LENGTH
-is described by the theorem 
+is described by the theorem
 (AND (INTEGERP (FN-AJ-HOST-MAX-RECORD-LENGTH DOMAIN))
      (< 1
         (FN-AJ-HOST-MAX-RECORD-LENGTH DOMAIN))).
@@ -3580,7 +3400,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-AJ-HOST-NEXT-NAME is non-recursive, its admission is trivial.
 We observe that the type of FN-AJ-HOST-NEXT-NAME is described by the
-theorem 
+theorem
 (OR (EQUAL (FN-AJ-HOST-NEXT-NAME FRONTIER)
            NIL)
     (STRINGP (FN-AJ-HOST-NEXT-NAME FRONTIER))).
@@ -3594,7 +3414,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-AJ-HOST-AUTHORIZE is non-recursive, its admission is trivial.
 We observe that the type of FN-AJ-HOST-AUTHORIZE is described by the
-theorem 
+theorem
 (AND (CONSP (FN-AJ-HOST-AUTHORIZE FRONTIER KIND
                                   FRAME-LENGTH RESERVE LOCK-OWNED ABSENT))
      (TRUE-LISTP (FN-AJ-HOST-AUTHORIZE FRONTIER KIND FRAME-LENGTH
@@ -3609,7 +3429,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-AJ-HOST-OPERATIONP is non-recursive, its admission is trivial.
 We observe that the type of FN-AJ-HOST-OPERATIONP is described by the
-theorem 
+theorem
 (OR (EQUAL (FN-AJ-HOST-OPERATIONP OPERATION)
            T)
     (EQUAL (FN-AJ-HOST-OPERATIONP OPERATION)
@@ -3623,7 +3443,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-AJ-HOST-OPERATIONP
 ACL2 !>>
 Since FN-AJ-HOST-OPERATION-NAME is non-recursive, its admission is
-trivial.  We could deduce no constraints on the type of 
+trivial.  We could deduce no constraints on the type of
 FN-AJ-HOST-OPERATION-NAME.
 
 Summary
@@ -3633,7 +3453,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-AJ-HOST-OPERATION-NAME
 ACL2 !>>
 Since FN-AJ-HOST-OPERATION-PUBLICATION is non-recursive, its admission
-is trivial.  We could deduce no constraints on the type of 
+is trivial.  We could deduce no constraints on the type of
 FN-AJ-HOST-OPERATION-PUBLICATION.
 
 Summary
@@ -3643,7 +3463,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-AJ-HOST-OPERATION-PUBLICATION
 ACL2 !>>
 Since FN-AJ-HOST-OPERATION-SUCCESSOR is non-recursive, its admission
-is trivial.  We could deduce no constraints on the type of 
+is trivial.  We could deduce no constraints on the type of
 FN-AJ-HOST-OPERATION-SUCCESSOR.
 
 Summary
@@ -3664,7 +3484,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/tcpcl-session"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/tcpcl-session.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -3681,7 +3501,7 @@ ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/tcpcl-spool"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/tcpcl-spool.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -3697,7 +3517,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-TCL-HOST-SPOOL-RECOVERY-PLAN is non-recursive, its admission
 is trivial.  We observe that the type of FN-TCL-HOST-SPOOL-RECOVERY-PLAN
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-TCL-HOST-SPOOL-RECOVERY-PLAN ENTRIES))
      (TRUE-LISTP (FN-TCL-HOST-SPOOL-RECOVERY-PLAN ENTRIES))).
 We used the :type-prescription rule FN-TCL-SPOOL-RECOVERY-PLAN.
@@ -3710,7 +3530,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-TCL-HOST-TRIPLE is non-recursive, its admission is trivial.
 We observe that the type of FN-TCL-HOST-TRIPLE is described by the
-theorem 
+theorem
 (AND (CONSP (FN-TCL-HOST-TRIPLE R)) (TRUE-LISTP (FN-TCL-HOST-TRIPLE R))).
 We used primitive type reasoning.
 
@@ -3722,7 +3542,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-TCL-HOST-PARAMS is non-recursive, its admission is trivial.
 We observe that the type of FN-TCL-HOST-PARAMS is described by the
-theorem 
+theorem
 (AND (CONSP (FN-TCL-HOST-PARAMS KEEPALIVE SEGMENT-MRU TRANSFER-MRU
                                 NODE-ID CAN-TLS EXPECTED-PEER))
      (TRUE-LISTP (FN-TCL-HOST-PARAMS KEEPALIVE SEGMENT-MRU TRANSFER-MRU
@@ -3737,7 +3557,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-TCL-HOST-PARAMSP is non-recursive, its admission is trivial.
 We observe that the type of FN-TCL-HOST-PARAMSP is described by the
-theorem 
+theorem
 (OR (EQUAL (FN-TCL-HOST-PARAMSP P) T) (EQUAL (FN-TCL-HOST-PARAMSP P) NIL)).
 We used the :type-prescription rule FN-TCL-PARAMSP.
 
@@ -3818,7 +3638,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-TCL-HOST-TCP-CLOSED is non-recursive, its admission is trivial.
 We observe that the type of FN-TCL-HOST-TCP-CLOSED is described by
-the theorem 
+the theorem
 (AND (CONSP (FN-TCL-HOST-TCP-CLOSED S))
      (TRUE-LISTP (FN-TCL-HOST-TCP-CLOSED S))).
 We used the :type-prescription rule FN-TCL-HOST-TRIPLE.
@@ -3831,7 +3651,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-TCL-HOST-TERMINATE is non-recursive, its admission is trivial.
 We observe that the type of FN-TCL-HOST-TERMINATE is described by the
-theorem 
+theorem
 (AND (CONSP (FN-TCL-HOST-TERMINATE S NOW))
      (TRUE-LISTP (FN-TCL-HOST-TERMINATE S NOW))).
 We used the :type-prescription rule FN-TCL-HOST-TRIPLE.
@@ -3844,7 +3664,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-TCL-HOST-ENCODE is non-recursive, its admission is trivial.
 We observe that the type of FN-TCL-HOST-ENCODE is described by the
-theorem 
+theorem
 (OR (CONSP (FN-TCL-HOST-ENCODE M)) (EQUAL (FN-TCL-HOST-ENCODE M) NIL)).
 We used the :type-prescription rule FN-TCL-ENCODE.
 
@@ -3892,7 +3712,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-TCL-HOST-EVENT-DIGEST is non-recursive, its admission is trivial.
 We observe that the type of FN-TCL-HOST-EVENT-DIGEST is described by
-the theorem 
+the theorem
 (OR (AND (CONSP (FN-TCL-HOST-EVENT-DIGEST E))
          (TRUE-LISTP (FN-TCL-HOST-EVENT-DIGEST E)))
     (EQUAL (FN-TCL-HOST-EVENT-DIGEST E) E)).
@@ -3906,8 +3726,8 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 The admission of FN-TCL-HOST-EVENT-DIGESTS is trivial, using the relation
 O< (which is known to be well-founded on the domain recognized by O-P)
-and the measure (ACL2-COUNT EVENTS).  We observe that the type of 
-FN-TCL-HOST-EVENT-DIGESTS is described by the theorem 
+and the measure (ACL2-COUNT EVENTS).  We observe that the type of
+FN-TCL-HOST-EVENT-DIGESTS is described by the theorem
 (TRUE-LISTP (FN-TCL-HOST-EVENT-DIGESTS EVENTS)).  We used primitive
 type reasoning.
 
@@ -3974,27 +3794,19 @@ Type (quit) to quit completely out of ACL2.
 
 ACL2 !>> "ACL2"
 ACL2 !>>
-ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/bp-node" ...):
-Unable to load compiled file for book
-  /tank/fn/lanes/w18-bp-publisher/books/bp-node.lisp
-because the compiled file does not exist.  See :DOC include-book. 
-No load was in progress for any parent book.
-
-
 The event ( INCLUDE-BOOK "../books/bp-node" ...) is redundant.  See
 :DOC redundant-events.
 
 Summary
 Form:  ( INCLUDE-BOOK "../books/bp-node" ...)
 Rules: NIL
-Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>
 ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../books/bp-node-records"
 ...):  Unable to load compiled file for book
   /tank/fn/lanes/w18-bp-publisher/books/bp-node-records.lisp
-because the compiled file does not exist.  See :DOC include-book. 
+because the compiled file does not exist.  See :DOC include-book.
 No load was in progress for any parent book.
 
 
@@ -4008,7 +3820,7 @@ Warnings:  Compiled file
 Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  :REDUNDANT
 ACL2 !>>
-Since FN-BPN-HOST-EID is non-recursive, its admission is trivial. 
+Since FN-BPN-HOST-EID is non-recursive, its admission is trivial.
 We observe that the type of FN-BPN-HOST-EID is described by the theorem
 (OR (CONSP (FN-BPN-HOST-EID URI)) (EQUAL (FN-BPN-HOST-EID URI) NIL)).
 We used primitive type reasoning.
@@ -4032,7 +3844,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-NODE-IDP is non-recursive, its admission is trivial.
 We observe that the type of FN-BPN-HOST-NODE-IDP is described by the
-theorem 
+theorem
 (OR (EQUAL (FN-BPN-HOST-NODE-IDP E) T) (EQUAL (FN-BPN-HOST-NODE-IDP E) NIL)).
 We used the :type-prescription rule FN-BPP-PREVIOUS-NODEP.
 
@@ -4044,7 +3856,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-CONFIG is non-recursive, its admission is trivial.
 We observe that the type of FN-BPN-HOST-CONFIG is described by the
-theorem 
+theorem
 (TRUE-LISTP (FN-BPN-HOST-CONFIG NODE-ID LIFETIME
                                 CRC-TYPE HOP-LIMIT TRANSFER-LIMIT)).
 We used the :type-prescription rule FN-BPN-CONFIG.
@@ -4057,7 +3869,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-CONFIGP is non-recursive, its admission is trivial.
 We observe that the type of FN-BPN-HOST-CONFIGP is described by the
-theorem 
+theorem
 (OR (EQUAL (FN-BPN-HOST-CONFIGP C) T) (EQUAL (FN-BPN-HOST-CONFIGP C) NIL)).
 We used the :type-prescription rule FN-BPN-CONFIGP.
 
@@ -4069,7 +3881,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-OBSERVATION is non-recursive, its admission is trivial.
 We observe that the type of FN-BPN-HOST-OBSERVATION is described by
-the theorem 
+the theorem
 (TRUE-LISTP (FN-BPN-HOST-OBSERVATION MONOTONIC WALL WALL-ERROR HAS-WALL)).
 We used the :type-prescription rule FN-CLOCK-OBSERVATION.
 
@@ -4092,7 +3904,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-SENT-SUMMARY is non-recursive, its admission is trivial.
 We observe that the type of FN-BPN-HOST-SENT-SUMMARY is described by
-the theorem 
+the theorem
 (TRUE-LISTP (FN-BPN-HOST-SENT-SUMMARY CONFIG PEER ADU SEQUENCE OBS)).
 We used primitive type reasoning.
 
@@ -4104,7 +3916,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-SEQUENCE-RECOVER is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-SEQUENCE-RECOVER
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-BPN-HOST-SEQUENCE-RECOVER OCTETS PRESENTP FRESHP))
      (TRUE-LISTP (FN-BPN-HOST-SEQUENCE-RECOVER OCTETS PRESENTP FRESHP))).
 We used the :type-prescription rule FN-BPN-SEQUENCE-RECOVER.
@@ -4117,7 +3929,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-SEQUENCE-READY-P is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-SEQUENCE-READY-P
-is described by the theorem 
+is described by the theorem
 (OR (EQUAL (FN-BPN-HOST-SEQUENCE-READY-P ANSWER)
            T)
     (EQUAL (FN-BPN-HOST-SEQUENCE-READY-P ANSWER)
@@ -4131,7 +3943,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-SEQUENCE-READY-P
 ACL2 !>>
 Since FN-BPN-HOST-SEQUENCE-FRONTIER is non-recursive, its admission
-is trivial.  We could deduce no constraints on the type of 
+is trivial.  We could deduce no constraints on the type of
 FN-BPN-HOST-SEQUENCE-FRONTIER.
 
 Summary
@@ -4142,7 +3954,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-SEQUENCE-RESERVE is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-SEQUENCE-RESERVE
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-BPN-HOST-SEQUENCE-RESERVE FRONTIER))
      (TRUE-LISTP (FN-BPN-HOST-SEQUENCE-RESERVE FRONTIER))).
 We used the :type-prescription rule FN-BPN-SEQUENCE-RESERVE.
@@ -4155,7 +3967,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-SEQUENCE-RESERVATIONP is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-SEQUENCE-RESERVATIONP
-is described by the theorem 
+is described by the theorem
 (OR (EQUAL (FN-BPN-HOST-SEQUENCE-RESERVATIONP RESERVATION)
            T)
     (EQUAL (FN-BPN-HOST-SEQUENCE-RESERVATIONP RESERVATION)
@@ -4190,7 +4002,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-SEQUENCE-FRAME-LIMIT is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-SEQUENCE-FRAME-LIMIT
-is described by the theorem 
+is described by the theorem
 (AND (INTEGERP (FN-BPN-HOST-SEQUENCE-FRAME-LIMIT))
      (< 1 (FN-BPN-HOST-SEQUENCE-FRAME-LIMIT))).
 We used the :type-prescription rule FN-BPN-SEQUENCE-FRAME-LIMIT.
@@ -4203,7 +4015,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-RECEIVE is non-recursive, its admission is trivial.
 We observe that the type of FN-BPN-HOST-RECEIVE is described by the
-theorem 
+theorem
 (AND (CONSP (FN-BPN-HOST-RECEIVE CONFIG OCTETS OBS))
      (TRUE-LISTP (FN-BPN-HOST-RECEIVE CONFIG OCTETS OBS))).
 We used primitive type reasoning.
@@ -4215,7 +4027,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-RECEIVE
 ACL2 !>>
 Since FN-BPN-HOST-RECEIVE-OUTCOME is non-recursive, its admission is
-trivial.  We could deduce no constraints on the type of 
+trivial.  We could deduce no constraints on the type of
 FN-BPN-HOST-RECEIVE-OUTCOME.
 
 Summary
@@ -4225,7 +4037,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-RECEIVE-OUTCOME
 ACL2 !>>
 Since FN-BPN-HOST-RECEIVE-REASON is non-recursive, its admission is
-trivial.  We could deduce no constraints on the type of 
+trivial.  We could deduce no constraints on the type of
 FN-BPN-HOST-RECEIVE-REASON.
 
 Summary
@@ -4244,7 +4056,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-RECEIVE-ADU
 ACL2 !>>
 Since FN-BPN-HOST-RECEIVE-LENGTH is non-recursive, its admission is
-trivial.  We could deduce no constraints on the type of 
+trivial.  We could deduce no constraints on the type of
 FN-BPN-HOST-RECEIVE-LENGTH.
 
 Summary
@@ -4255,7 +4067,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-RUN-OUTCOME is non-recursive, its admission is trivial.
 We observe that the type of FN-BPN-HOST-RUN-OUTCOME is described by
-the theorem 
+the theorem
 (AND (SYMBOLP (FN-BPN-HOST-RUN-OUTCOME ARTICLE-ACCEPTED ARTICLE-REFUSED
                                        ARTICLE-UNCERTAIN OPERATIONAL))
      (NOT (EQUAL (FN-BPN-HOST-RUN-OUTCOME ARTICLE-ACCEPTED ARTICLE-REFUSED
@@ -4283,7 +4095,7 @@ ACL2 !>> "ACL2"
 ACL2 !>>
 Since FN-BPN-HOST-MACHINE-INITIAL is non-recursive, its admission is
 trivial.  We observe that the type of FN-BPN-HOST-MACHINE-INITIAL is
-described by the theorem 
+described by the theorem
 (TRUE-LISTP (FN-BPN-HOST-MACHINE-INITIAL CONFIG MAX-JOBS MAX-OCTETS)).
 We used the :type-prescription rule FN-BPN-INITIAL-MACHINE-STATE.
 
@@ -4295,7 +4107,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-MACHINE-STATEP is non-recursive, its admission is
 trivial.  We observe that the type of FN-BPN-HOST-MACHINE-STATEP is
-described by the theorem 
+described by the theorem
 (OR (EQUAL (FN-BPN-HOST-MACHINE-STATEP ST)
            T)
     (EQUAL (FN-BPN-HOST-MACHINE-STATEP ST)
@@ -4318,7 +4130,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-ANSWER-STATE
 ACL2 !>>
 Since FN-BPN-HOST-ANSWER-EFFECTS is non-recursive, its admission is
-trivial.  We could deduce no constraints on the type of 
+trivial.  We could deduce no constraints on the type of
 FN-BPN-HOST-ANSWER-EFFECTS.
 
 Summary
@@ -4340,7 +4152,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-EXISTING-SEQUENCE is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-EXISTING-SEQUENCE
-is described by the theorem 
+is described by the theorem
 (AND
     (CONSP (FN-BPN-HOST-EXISTING-SEQUENCE ST WORK ATTEMPT GENERATION))
     (TRUE-LISTP (FN-BPN-HOST-EXISTING-SEQUENCE ST WORK ATTEMPT GENERATION))).
@@ -4354,7 +4166,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-EXISTING-SEQUENCE-P is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-EXISTING-SEQUENCE-P
-is described by the theorem 
+is described by the theorem
 (OR (EQUAL (FN-BPN-HOST-EXISTING-SEQUENCE-P ANSWER)
            T)
     (EQUAL (FN-BPN-HOST-EXISTING-SEQUENCE-P ANSWER)
@@ -4368,7 +4180,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-EXISTING-SEQUENCE-P
 ACL2 !>>
 Since FN-BPN-HOST-EXISTING-SEQUENCE-VALUE is non-recursive, its admission
-is trivial.  We could deduce no constraints on the type of 
+is trivial.  We could deduce no constraints on the type of
 FN-BPN-HOST-EXISTING-SEQUENCE-VALUE.
 
 Summary
@@ -4378,7 +4190,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-EXISTING-SEQUENCE-VALUE
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-RECORD-FRAME is non-recursive, its admission
-is trivial.  We could deduce no constraints on the type of 
+is trivial.  We could deduce no constraints on the type of
 FN-BPN-HOST-LIFECYCLE-RECORD-FRAME.
 
 Summary
@@ -4389,7 +4201,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-RECORD-UNFRAME is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-LIFECYCLE-RECORD-UNFRAME
-is described by the theorem 
+is described by the theorem
 (TRUE-LISTP (FN-BPN-HOST-LIFECYCLE-RECORD-UNFRAME OCTETS)).  We used
 the :type-prescription rule FN-BPN-LIFECYCLE-RECORD-UNFRAME.
 
@@ -4401,7 +4213,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-FRAME-LIMIT is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-LIFECYCLE-FRAME-LIMIT
-is described by the theorem 
+is described by the theorem
 (AND (INTEGERP (FN-BPN-HOST-LIFECYCLE-FRAME-LIMIT))
      (< 1 (FN-BPN-HOST-LIFECYCLE-FRAME-LIMIT))).
 We used the :type-prescription rule FN-BPN-LIFECYCLE-FRAME-LIMIT.
@@ -4414,7 +4226,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-RECORD-NAME is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-LIFECYCLE-RECORD-NAME
-is described by the theorem 
+is described by the theorem
 (STRINGP (FN-BPN-HOST-LIFECYCLE-RECORD-NAME TOKEN)).  We used the :type-
 prescription rule FN-BPN-LIFECYCLE-RECORD-NAME.
 
@@ -4425,7 +4237,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-LIFECYCLE-RECORD-NAME
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-MAX-NAMESPACE-ENTRIES is non-recursive,
-its admission is trivial.  We observe that the type of 
+its admission is trivial.  We observe that the type of
 FN-BPN-HOST-LIFECYCLE-MAX-NAMESPACE-ENTRIES is described by the theorem
 (AND (INTEGERP (FN-BPN-HOST-LIFECYCLE-MAX-NAMESPACE-ENTRIES))
      (< 1
@@ -4440,7 +4252,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-NAMESPACE-PLAN is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-LIFECYCLE-NAMESPACE-PLAN
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-BPN-HOST-LIFECYCLE-NAMESPACE-PLAN NAMES))
      (TRUE-LISTP (FN-BPN-HOST-LIFECYCLE-NAMESPACE-PLAN NAMES))).
 We used the :type-prescription rule FN-BPN-LIFECYCLE-NAMESPACE-PLAN.
@@ -4453,7 +4265,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-PLAN-READY-P is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-LIFECYCLE-PLAN-READY-P
-is described by the theorem 
+is described by the theorem
 (OR (EQUAL (FN-BPN-HOST-LIFECYCLE-PLAN-READY-P PLAN)
            T)
     (EQUAL (FN-BPN-HOST-LIFECYCLE-PLAN-READY-P PLAN)
@@ -4478,7 +4290,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-RECOVERY is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-LIFECYCLE-RECOVERY
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-BPN-HOST-LIFECYCLE-RECOVERY NAMES RECORDS))
      (TRUE-LISTP (FN-BPN-HOST-LIFECYCLE-RECOVERY NAMES RECORDS))).
 We used the :type-prescription rule FN-BPN-LIFECYCLE-RECOVERY.
@@ -4490,7 +4302,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-LIFECYCLE-RECOVERY
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-RECOVERY-READY-P is non-recursive, its
-admission is trivial.  We observe that the type of 
+admission is trivial.  We observe that the type of
 FN-BPN-HOST-LIFECYCLE-RECOVERY-READY-P is described by the theorem
 (OR (EQUAL (FN-BPN-HOST-LIFECYCLE-RECOVERY-READY-P ANSWER)
            T)
@@ -4515,7 +4327,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-LIFECYCLE-RECOVERY-RECORDS
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-RECOVERY-STAGES is non-recursive, its admission
-is trivial.  We could deduce no constraints on the type of 
+is trivial.  We could deduce no constraints on the type of
 FN-BPN-HOST-LIFECYCLE-RECOVERY-STAGES.
 
 Summary
@@ -4525,13 +4337,13 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-LIFECYCLE-RECOVERY-STAGES
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-RECOVERY-AGREES-P is non-recursive, its
-admission is trivial.  We observe that the type of 
+admission is trivial.  We observe that the type of
 FN-BPN-HOST-LIFECYCLE-RECOVERY-AGREES-P is described by the theorem
 (OR (EQUAL (FN-BPN-HOST-LIFECYCLE-RECOVERY-AGREES-P ANSWER ST)
            T)
     (EQUAL (FN-BPN-HOST-LIFECYCLE-RECOVERY-AGREES-P ANSWER ST)
            NIL)).
-We used the :type-prescription rule 
+We used the :type-prescription rule
 FN-BPN-LIFECYCLE-RECOVERY-AGREES-WITH-STATEP.
 
 Summary
@@ -4541,7 +4353,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-LIFECYCLE-RECOVERY-AGREES-P
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-PUBLICATION-AUTHORIZE is non-recursive,
-its admission is trivial.  We observe that the type of 
+its admission is trivial.  We observe that the type of
 FN-BPN-HOST-LIFECYCLE-PUBLICATION-AUTHORIZE is described by the theorem
 (AND (CONSP (FN-BPN-HOST-LIFECYCLE-PUBLICATION-AUTHORIZE
                  ST
@@ -4558,7 +4370,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-LIFECYCLE-PUBLICATION-AUTHORIZE
 ACL2 !>>
 Since FN-BPN-HOST-LIFECYCLE-PUBLICATION-OPERATIONP is non-recursive,
-its admission is trivial.  We observe that the type of 
+its admission is trivial.  We observe that the type of
 FN-BPN-HOST-LIFECYCLE-PUBLICATION-OPERATIONP is described by the theorem
 (OR (EQUAL (FN-BPN-HOST-LIFECYCLE-PUBLICATION-OPERATIONP OPERATION)
            T)
@@ -4605,7 +4417,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-MACHINE-MAX-JOBS is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-MACHINE-MAX-JOBS
-is described by the theorem 
+is described by the theorem
 (AND (INTEGERP (FN-BPN-HOST-MACHINE-MAX-JOBS))
      (< 1 (FN-BPN-HOST-MACHINE-MAX-JOBS))).
 
@@ -4617,7 +4429,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-MACHINE-MAX-OCTETS is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-MACHINE-MAX-OCTETS
-is described by the theorem 
+is described by the theorem
 (AND (INTEGERP (FN-BPN-HOST-MACHINE-MAX-OCTETS))
      (< 1 (FN-BPN-HOST-MACHINE-MAX-OCTETS))).
 
@@ -4629,7 +4441,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-MACHINE-MAX-RECORDS is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-MACHINE-MAX-RECORDS
-is described by the theorem 
+is described by the theorem
 (AND (INTEGERP (FN-BPN-HOST-MACHINE-MAX-RECORDS))
      (< 1 (FN-BPN-HOST-MACHINE-MAX-RECORDS))).
 
@@ -4659,7 +4471,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-EVIDENCE-MAX-RECORDS is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-MAX-RECORDS
-is described by the theorem 
+is described by the theorem
 (AND (INTEGERP (FN-BPN-HOST-EVIDENCE-MAX-RECORDS))
      (< 1 (FN-BPN-HOST-EVIDENCE-MAX-RECORDS))).
 
@@ -4671,7 +4483,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-EVIDENCE-MAX-ENTRIES is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-MAX-ENTRIES
-is described by the theorem 
+is described by the theorem
 (AND (INTEGERP (FN-BPN-HOST-EVIDENCE-MAX-ENTRIES))
      (< 1 (FN-BPN-HOST-EVIDENCE-MAX-ENTRIES))).
 We used the :type-prescription rule FN-BPN-EVIDENCE-MAX-ENTRIES.
@@ -4694,7 +4506,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-EVIDENCE-RECOVER is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-RECOVER
-is described by the theorem 
+is described by the theorem
 (AND (CONSP (FN-BPN-HOST-EVIDENCE-RECOVER ENTRIES))
      (TRUE-LISTP (FN-BPN-HOST-EVIDENCE-RECOVER ENTRIES))).
 We used the :type-prescription rule FN-BPN-EVIDENCE-RECOVER.
@@ -4707,7 +4519,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-EVIDENCE-READYP is non-recursive, its admission is
 trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-READYP is
-described by the theorem 
+described by the theorem
 (OR (EQUAL (FN-BPN-HOST-EVIDENCE-READYP ST)
            T)
     (EQUAL (FN-BPN-HOST-EVIDENCE-READYP ST)
@@ -4722,7 +4534,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-EVIDENCE-AUTHORIZE is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-AUTHORIZE
-is described by the theorem 
+is described by the theorem
 (AND
   (CONSP (FN-BPN-HOST-EVIDENCE-AUTHORIZE ST OUTCOME LOCK-OWNEDP
                                          WIRE-ABSENTP RESULT-ABSENTP))
@@ -4738,7 +4550,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-EVIDENCE-NEXT-WIRE-NAME is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-NEXT-WIRE-NAME
-is described by the theorem 
+is described by the theorem
 (OR (EQUAL (FN-BPN-HOST-EVIDENCE-NEXT-WIRE-NAME ST)
            NIL)
     (STRINGP (FN-BPN-HOST-EVIDENCE-NEXT-WIRE-NAME ST))).
@@ -4751,8 +4563,8 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
  FN-BPN-HOST-EVIDENCE-NEXT-WIRE-NAME
 ACL2 !>>
 Since FN-BPN-HOST-EVIDENCE-NEXT-RESULT-NAME is non-recursive, its admission
-is trivial.  We observe that the type of 
-FN-BPN-HOST-EVIDENCE-NEXT-RESULT-NAME is described by the theorem 
+is trivial.  We observe that the type of
+FN-BPN-HOST-EVIDENCE-NEXT-RESULT-NAME is described by the theorem
 (OR (EQUAL (FN-BPN-HOST-EVIDENCE-NEXT-RESULT-NAME ST OUTCOME)
            NIL)
     (STRINGP (FN-BPN-HOST-EVIDENCE-NEXT-RESULT-NAME ST OUTCOME))).
@@ -4766,7 +4578,7 @@ Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
 ACL2 !>>
 Since FN-BPN-HOST-EVIDENCE-OPERATIONP is non-recursive, its admission
 is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-OPERATIONP
-is described by the theorem 
+is described by the theorem
 (OR (EQUAL (FN-BPN-HOST-EVIDENCE-OPERATIONP OPERATION)
            T)
     (EQUAL (FN-BPN-HOST-EVIDENCE-OPERATIONP OPERATION)
@@ -4853,7 +4665,7 @@ ACL2 !>
 Summary
 Form:  ( PROGN! (SET-RAW-MODE T) ...)
 Rules: NIL
-Time:  0.25 seconds (prove: 0.00, print: 0.00, other: 0.25)
+Time:  0.34 seconds (prove: 0.00, print: 0.00, other: 0.34)
  NIL
 ACL2 !> NIL
 ACL2 !>FN_NATIVE_BUILD_LOADED
@@ -4867,7 +4679,7 @@ Exiting the ACL2 read-eval-print loop.  To re-enter, execute (LP).
 writing 196608 bytes from the linkage space at 0xb7ffb00000
 writing 1490944 bytes from the fixedobj space at 0x50000000
 writing 2752 bytes from the static space at 0x520000000000
-writing 209813504 bytes from the dynamic space at 0x1200000000
-writing 32054208 bytes from the read-only space at 0x11fe168000
-writing 38422528 bytes from the text space at 0xb800000000
+writing 208994304 bytes from the dynamic space at 0x1200000000
+writing 32076480 bytes from the read-only space at 0x11fe160000
+writing 38275072 bytes from the text space at 0xb800000000
 done]
