@@ -127,28 +127,36 @@ class Acl2Feed:
 
     def tick(self, monotonic: int):
         """Select and drive.  Returns the command octets, or None."""
-        form = "(fn-feed-tick-step (@ ff) {})".format(self._obs(monotonic))
-        effects = self._value("(mv-nth 1 {})".format(form))
-        self.bridge.call("(assign ff (mv-nth 0 {}))".format(form))
-        if effects == b"NIL":
-            return None
+        # `fn-feed-tick-step' and `fn-feed-observe' return (mv state
+        # effects), and ACL2 refuses `(mv-nth i (f ...))' at the top level
+        # for a function of that signature ("signature mismatch", ACL2 8.7).
+        # `mv-list' is the reader-side spelling of the same value.
+        form = "(mv-list 2 (fn-feed-tick-step (@ ff) {}))".format(
+            self._obs(monotonic))
+        effects = self._value("(nth 1 {})".format(form))
         # `((:COMMAND <conn> (<octets>)))`: the octets are the third item, and
-        # ACL2 printed them, so they are read back by the same reader.
-        return parse_octets(self._value(
-            "(fn-frame-item 2 (car (mv-nth 1 {})))".format(form)))
+        # ACL2 printed them, so they are read back by the same reader.  READ
+        # BEFORE ASSIGNING: the form is re-evaluated for each read, and the
+        # assign moves `ff' to the offered state, where the next evaluation
+        # selects nothing and the command reads back empty.
+        command = (None if effects == b"NIL" else
+                   parse_octets(self._value(
+                       "(fn-frame-item 2 (car (nth 1 {})))".format(form))))
+        self.bridge.call("(assign ff (nth 0 {}))".format(form))
+        return command
 
     def observe(self, code: int, msgid: bytes, article: bytes,
                 monotonic: int):
-        form = "(fn-feed-observe (@ ff) (fn-feed-response {} {}) {} {})".format(
+        form = ("(mv-list 2 (fn-feed-observe (@ ff) (fn-feed-response {} {})"
+                " {} {}))").format(
             code, literal_octets(msgid), literal_octets(article),
             self._obs(monotonic))
-        effects = self._value("(mv-nth 1 {})".format(form))
-        self.bridge.call("(assign ff (mv-nth 0 {}))".format(form))
-        if effects == b"NIL":
-            return None
-        return parse_octets(self._value(
-            "(fn-frame-item 2 (car {}))".format(
-                "(mv-nth 1 {})".format(form))))
+        effects = self._value("(nth 1 {})".format(form))
+        transfer = (None if effects == b"NIL" else
+                    parse_octets(self._value(
+                        "(fn-frame-item 2 (car (nth 1 {})))".format(form))))
+        self.bridge.call("(assign ff (nth 0 {}))".format(form))
+        return transfer
 
     def state_of(self, msgid: bytes) -> str:
         return self._value(

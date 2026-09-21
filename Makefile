@@ -246,6 +246,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner \
 	books/owner-invariants \
 	tests/acl2/owner-tests \
+	tests/acl2/owner-config-tests \
 	books/relay \
 	books/relay-invariants \
 	books/relay-crash-invariants \

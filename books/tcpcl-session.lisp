@@ -302,6 +302,11 @@
                 (and (null (fn-tcl-session-inbound s))
                      (null (fn-tcl-session-outbound s))))))
 
+; A plain rewrite, deliberately NOT also forward-chaining.  This is the one
+; cheap-recognizer rule an includer wants enabled: it discharges
+; fn-tcl-drive's totality test wherever the session is known.  Every other
+; cheap rule below is grouped into fn-tcl-cheap-rules so a book that reasons
+; in fn-tcl-sessionp can put the whole family aside at once.
 (defthm fn-tcl-sessionp-is-cheap
   (implies (fn-tcl-sessionp s) (fn-tcl-session-cheapp s)))
 
@@ -1831,6 +1836,66 @@
            :in-theory (e/d (fn-tcl-drive)
                            (fn-tcl-session-cheapp fn-tcl-messagep fn-tcl-step
                             fn-tcl-decode-for fn-tcl-input-error fn-tcl-segment-mru)))))
+
+
+; The whole cheap-recognizer rule set under one name, so that a book which
+; reasons in fn-tcl-sessionp can put ALL of it aside at once -- not only the
+; preservation lemmas but the facts theorem and, above all, the
+; forward-chaining field family.
+;
+; The forward-chaining half is why this theory exists.  Exporting a second
+; forward-chaining family over a second whole-state recognizer, into a book
+; that enables this vocabulary wholesale, costs a fixpoint pass per goal
+; carrying either recognizer's term -- and once fn-tcl-drive's totality test
+; names fn-tcl-session-cheapp, that is every goal that opens fn-tcl-drive.
+; Measured on books/tcpcl-invariants' C1: `Time: 2688.15 seconds (prove:
+; 0.02, print: 0.00, other: 2688.13)`.  Near-zero `prove` against a large
+; `other` is the signature: the rewriter is idle and the time is going to
+; forward chaining or type reasoning, so the cure is a theory change and not
+; a hint.  fn-tcl-sessionp-is-cheap is deliberately NOT a member: it is the
+; bridge an includer keeps.
+(deftheory fn-tcl-cheap-rules
+  '(fn-tcl-inboundp-is-cheap
+    fn-tcl-initial-session-is-cheap
+    fn-tcl-session-cheapp-facts
+    fn-tcl-inbound-cheapp-forward-fields
+    fn-tcl-inbound-cheapp-forward-total
+    fn-tcl-session-cheapp-forward-fields
+    fn-tcl-session-cheapp-forward-peer
+    fn-tcl-session-cheapp-forward-negotiated
+    fn-tcl-session-cheapp-forward-inbound
+    fn-tcl-session-cheapp-forward-established
+    fn-tcl-session-cheapp-forward-outbound
+    fn-tcl-session-cheapp-next-xfer-id-natp
+    fn-tcl-session-cheapp-mru-natp
+    fn-tcl-segment-mru-natp-cheap
+    fn-tcl-transfer-mru-natp-cheap
+    fn-tcl-session-cheapp-mru-bounds
+    fn-tcl-decode-for-yields-message-cheap
+    fn-tcl-next-preserves-cheapp
+    fn-tcl-with-outbound-preserves-cheapp
+    fn-tcl-touch-rx-preserves-cheapp
+    fn-tcl-settle-preserves-cheapp
+    fn-tcl-open-preserves-cheapp
+    fn-tcl-recv-contact-preserves-cheapp
+    fn-tcl-recv-init-preserves-cheapp
+    fn-tcl-refuse-preserves-cheapp
+    fn-tcl-complete-preserves-cheapp
+    fn-tcl-stage-preserves-cheapp
+    fn-tcl-broken-stream-preserves-cheapp
+    fn-tcl-recv-segment-preserves-cheapp
+    fn-tcl-unexpected-preserves-cheapp
+    fn-tcl-recv-ack-preserves-cheapp
+    fn-tcl-recv-refuse-preserves-cheapp
+    fn-tcl-recv-term-preserves-cheapp
+    fn-tcl-terminate-preserves-cheapp
+    fn-tcl-tcp-closed-preserves-cheapp
+    fn-tcl-input-error-preserves-cheapp
+    fn-tcl-pump-preserves-cheapp
+    fn-tcl-send-preserves-cheapp
+    fn-tcl-tick-preserves-cheapp
+    fn-tcl-step-preserves-cheapp
+    fn-tcl-drive-preserves-cheapp))
 
 ; -----------------------------------------------------------------------------
 ; Executable guard closure.

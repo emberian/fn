@@ -417,17 +417,14 @@ def infer(books: list[Book], levels: Levels) -> None:
 # ---------------------------------------------------------------------------
 
 OPEN_DEFECTS = (
-    # books/owner-invariants.lisp reasons over the served connection's session
-    # in eleven places and reaches ONE LEVEL SHORT in every one: it says
-    # fn-peer-session-base where the connection holds an auth session, so the
-    # :use instances name terms the goal does not contain.  Three of the four
-    # forms the book is open at are exactly these.  Owner: w10/owner-relation
-    # (the lane holding books/owner-invariants on 2026-09-20).  The fix is
-    # fn-auth-session-base for the depth-1 reaches, fn-auth-post-session and
-    # fn-auth-reader-session for the walks, and at :1414 an fn-auth-with-base
-    # around the fn-peer-with-base so the rebuild keeps the login.
-    ("books/owner-invariants.lisp", None, "fn-peer-session-base wants a peer session"),
-    ("books/owner-invariants.lisp", None, "fn-peer-with-base argument 0 wants a peer session"),
+    # books/owner-invariants.lisp's short reaches are CLOSED (w10/owner-relation,
+    # 2026-09-20): every `:use' instance reaches the served session's full
+    # depth, the `fn-own-find-conn-of-replace-conn-same' instance carries the
+    # `fn-auth-with-base' that `fn-own-advance' builds, and the book certifies
+    # (persvati run-20260920T222651Z-97fc).  Their entries are deleted here in
+    # the same commit, as the rule above requires.  What is left in that book
+    # is 23 hand-spelled walks, which this tool reports as CHAIN and which
+    # are correct at depth.
 )
 
 
