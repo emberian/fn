@@ -294,6 +294,10 @@
         {
           "name": "fn-served-run-is-the-concatenated-step",
           "kind": "theorem"
+        },
+        {
+          "name": "fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items",
+          "kind": "theorem"
         }
       ]
     },
@@ -793,6 +797,14 @@
           "kind": "theorem"
         },
         {
+          "name": "fn-wildmat-parse-yields-rfc3977-patterns",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-wildmat-successful-parse-text-parsedp",
+          "kind": "theorem"
+        },
+        {
           "name": "fn-transfer-entry-candidate-work-value",
           "kind": "theorem"
         },
@@ -896,11 +908,16 @@
         {
           "name": "fn-stx-index-equivocators-agree",
           "kind": "theorem",
-          "pending_subject": "No host line calls fn-stx-index-lookup or fn-stx-index-equivocatorp yet: the node record has no index slot. The agreement is proved of the served-path query, and the served path does not carry it. Review section 4, index row."
+          "pending_subject": "No host line calls fn-stx-index-lookup or fn-stx-index-equivocatorp: nothing in host/, bin/ or tools/ calls any fn-stx- query, and no book outside the stx cluster includes books/stx-index. The agreement is proved of the served-path query and the served path does not carry it. w11/node-index measured that a fifth slot on fn-node-statep is a dependency cycle and would not close this; the carrier belongs in fn-sn-statep (books/store-node.lisp). Review section 4, index row; planning/lanes/HANDOFF-w11-node-index.md."
         },
         {
           "name": "fn-stx-index-invariant-preserved-by-accept",
           "kind": "theorem"
+        },
+        {
+          "name": "fn-stx-durable-completion-is-an-acceptance",
+          "kind": "theorem",
+          "note": "The subject-equating theorem AGENTS.md rule 1 asks for, for the preservation half of this target: fn-stx-index-invariant-preserved-by-accept hypothesises fn-stx-acceptedp, and this proves fn-stx-acceptedp of the durable branch of fn-node-complete with the accepted article named. The host line is host/store-node-host.lisp:402 fn-store-sn-finish -> fn-sn-finish (books/store-node.lisp:200) -> that call (:204). It does NOT give the QUERY a subject; fn-stx-index-lookup still has no caller."
         }
       ]
     },
@@ -914,7 +931,7 @@
         {
           "name": "fn-stx-commits-of-batch-are-verified-and-well-formed",
           "kind": "theorem",
-          "pending_subject": "fn-stx-commits-of-batch has no caller outside books/stx-epochs: nothing on the host's reconnection path calls it yet. Review section 4."
+          "pending_subject": "fn-stx-commits-of-batch has no caller outside books/stx-epochs, and no book outside the stx cluster includes books/stx-epochs at all: there is no reconnection path in the tree to wire it to. Future feature work, not missing evidence for implemented behaviour. Review section 4."
         }
       ]
     },
@@ -1026,7 +1043,40 @@
       ]
     },
     {
-      "id": "PRF-033",
+      "id": "PRF-034",
+      "events": [
+        {
+          "name": "fn-bp-work-status-of-restart",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bp-replay-work-status-is-the-pre-crash-status-restarted",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bp-work-origin-at-open-is-recovered-or-absent",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bp-durable-enqueue-after-open-reads-enqueued",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bp-journal-events-is-durable-events-then-restart",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bp-work-status",
+          "kind": "guarded-function"
+        },
+        {
+          "name": "fn-bp-work-origin",
+          "kind": "guarded-function"
+        }
+      ]
+    },
+    {
+      "id": "PRF-036",
       "events": [
         {
           "name": "fn-snt-replayed-history-node-is-idle",

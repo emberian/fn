@@ -138,7 +138,8 @@
                                    fn-peer-local-identity fn-article-parse
                                    fn-article-result-article
                                    fn-article-result-okp fn-article-syntax-p
-                                   fn-af-proto-article-check fn-af-status-kind
+                                   fn-af-proto-article-check fn-af-relayed-article-check
+                                   fn-af-status-kind
                                    fn-af-message-id-equalp fn-af-message-idp
                                    fn-path-date-presentp fn-peer-history-hasp
                                    fn-peer-scope-groups fn-peer-stagedp
@@ -194,7 +195,8 @@
                                    fn-peer-local-identity fn-article-parse
                                    fn-article-result-article
                                    fn-article-result-okp fn-article-syntax-p
-                                   fn-af-proto-article-check fn-af-status-kind
+                                   fn-af-proto-article-check fn-af-relayed-article-check
+                                   fn-af-status-kind
                                    fn-af-message-id-equalp fn-af-message-idp
                                    fn-path-date-presentp fn-peer-history-hasp
                                    fn-peer-scope-groups fn-peer-stagedp

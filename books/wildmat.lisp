@@ -179,6 +179,10 @@
 ; -----------------------------------------------------------------------------
 ; RFC grammar parser
 
+; RFC 3977 section 4.1's `<wildmat-exact>`, verbatim: %x22-29 / %x2B /
+; %x2D-3E / %x40-5A / %x5E-7E / UTF8-non-ascii, "exclude ! * , ? [ \ ]".
+; This is the NEWSGROUP-NAME profile and nothing widens it: section 9.8 reads
+; it as `newsgroup-name = 1*wildmat-exact`.
 (defun fn-wildmat-exactp (codepoint)
   (or (and (natp codepoint) (<= 128 codepoint))
       (and (integerp codepoint) (<= 34 codepoint) (<= codepoint 41))
@@ -198,6 +202,69 @@
            (fn-wildmat-items-p (cdr items)))
     (null items)))
 
+; -----------------------------------------------------------------------------
+; The header-value profile (decision D19, planning/decisions.md)
+;
+; RFC 3977 section 4.1 justifies its exclusions with "This should not be a
+; problem, since these characters cannot occur in newsgroup names, which is
+; the only current use of wildmats."  RFC 2980 section 2.9's XPAT is the other
+; use: it matches a HEADER VALUE, which is prose, contains SP, and routinely
+; contains `[' and `]'.  Section 2.9 also says "If there are additional
+; arguments the are joined together separated by a single space to form one
+; complete pattern", so a multi-token XPAT pattern ALWAYS carries an SP.
+; Section 4.3 licenses the widening explicitly: "An NNTP server or extension
+; MAY extend the syntax or semantics of wildmats provided that all wildmats
+; that meet the requirements of Section 4.1 have the meaning ascribed to them
+; by Section 4.2."
+;
+; The profile is one rule: a pattern is a fragment of a command line, so every
+; printable US-ASCII character, SP, and every UTF-8 non-ASCII character is a
+; literal, less the four wildmat metacharacters `!' (%x21), `*' (%x2A),
+; `,' (%x2C) and `?' (%x3F).  Controls and DEL stay out, as they are out of
+; section 4.1.  Against `fn-wildmat-exactp' that is exactly four more code
+; points: %x20 SP, %x5B `[', %x5C `\' and %x5D `]'.
+;
+; The cost is named in D19: section 4.1 omitted `[', `\' and `]' because "A
+; future extension to this specification may provide semantics for these
+; characters".  Reading them as literals in the header profile spends that
+; reserved syntax there.  It is spent knowingly: `[PATCH]' in a Subject is the
+; ordinary case and refusing it is the same defect as refusing SP, and section
+; 4.1 conformance is untouched either way because no section 4.1 wildmat can
+; contain them.
+(defun fn-wildmat-text-exactp (codepoint)
+  (or (and (natp codepoint) (<= 128 codepoint))
+      (equal codepoint 32)
+      (and (integerp codepoint) (<= 34 codepoint) (<= codepoint 41))
+      (equal codepoint 43)
+      (and (integerp codepoint) (<= 45 codepoint) (<= codepoint 62))
+      (and (integerp codepoint) (<= 64 codepoint) (<= codepoint 126))))
+
+(defun fn-wildmat-text-itemp (codepoint)
+  (or (fn-wildmat-text-exactp codepoint)
+      (equal codepoint 42)
+      (equal codepoint 63)))
+
+(defun fn-wildmat-text-items-p (items)
+  (if (consp items)
+      (and (fn-wildmat-text-itemp (car items))
+           (fn-wildmat-text-items-p (cdr items)))
+    (null items)))
+
+; The set of code points a section 4.1 `wildmat' production can contain: an
+; item, the separating comma, or the negation marker.  `fn-wildmat-parse'
+; tests this before scanning, which is how the newsgroup-name entry keeps
+; section 4.1 exactly while sharing one scanner with the header profile.
+(defun fn-wildmat-rfc3977-codepointp (codepoint)
+  (or (fn-wildmat-itemp codepoint)
+      (equal codepoint 44)
+      (equal codepoint 33)))
+
+(defun fn-wildmat-rfc3977-codepointsp (codepoints)
+  (if (consp codepoints)
+      (and (fn-wildmat-rfc3977-codepointp (car codepoints))
+           (fn-wildmat-rfc3977-codepointsp (cdr codepoints)))
+    (null codepoints)))
+
 (defun fn-wildmat-make-pattern (positivep items)
   (list (if positivep :positive :negative) items))
 (defun fn-wildmat-pattern-sign (pattern)
@@ -209,17 +276,31 @@
 (defun fn-wildmat-pattern-positivep (pattern)
   (declare (xargs :guard (true-listp pattern) :verify-guards nil))
   (equal (fn-wildmat-pattern-sign pattern) :positive))
+; RECORD SHAPE, not grammar conformance.  These recognize any pattern record
+; either entry point can produce, so they carry the WIDER item set; every
+; theorem that hypothesises one is thereby stronger than it was.  The section
+; 4.1-profiled shape is `fn-wildmat-rfc3977-pattern-listp' below, and
+; `fn-wildmat-parse-yields-rfc3977-patterns' is what says the newsgroup-name
+; entry still produces it.
 (defun fn-wildmat-patternp (pattern)
   (and (true-listp pattern)
        (equal (len pattern) 2)
        (or (equal (fn-wildmat-pattern-sign pattern) :positive)
            (equal (fn-wildmat-pattern-sign pattern) :negative))
        (consp (fn-wildmat-pattern-items pattern))
-       (fn-wildmat-items-p (fn-wildmat-pattern-items pattern))))
+       (fn-wildmat-text-items-p (fn-wildmat-pattern-items pattern))))
 (defun fn-wildmat-pattern-listp (patterns)
   (if (consp patterns)
       (and (fn-wildmat-patternp (car patterns))
            (fn-wildmat-pattern-listp (cdr patterns)))
+    (null patterns)))
+(defun fn-wildmat-rfc3977-patternp (pattern)
+  (and (fn-wildmat-patternp pattern)
+       (fn-wildmat-items-p (fn-wildmat-pattern-items pattern))))
+(defun fn-wildmat-rfc3977-pattern-listp (patterns)
+  (if (consp patterns)
+      (and (fn-wildmat-rfc3977-patternp (car patterns))
+           (fn-wildmat-rfc3977-pattern-listp (cdr patterns)))
     (null patterns)))
 (defun fn-wildmat-parsedp (patterns)
   (and (consp patterns) (fn-wildmat-pattern-listp patterns)))
@@ -236,7 +317,7 @@
           (if (consp items-rev)
               (list :more (reverse items-rev) (cdr codepoints))
             (fn-wildmat-error :syntax))
-        (if (fn-wildmat-itemp (car codepoints))
+        (if (fn-wildmat-text-itemp (car codepoints))
             (fn-wildmat-scan-pattern (cdr codepoints)
                                       (cons (car codepoints) items-rev))
           (fn-wildmat-error :syntax)))
@@ -288,7 +369,27 @@
 (defun fn-wildmat-parse-codepoints (codepoints)
   (fn-wildmat-parse-one codepoints t *fn-wildmat-max-octets*))
 
+; THE NEWSGROUP-NAME ENTRY.  RFC 3977 section 4.1 governs here and nothing
+; loosens: the precheck refuses any code point outside the section 4.1
+; `wildmat' production before the shared scanner runs, so this function
+; accepts and rejects exactly the octet lists it accepted and rejected before
+; the header profile existed, with the same `:error' reason in every case.
+; Callers: books/peer-config.lisp:134, books/peer-inbound.lisp:134 (through
+; fn-wildmat-match), books/owner-feed.lisp:703 (likewise),
+; books/nntp-responses.lisp:212, :235 and :1684.
 (defun fn-wildmat-parse (octets)
+  (let ((decoded (fn-wildmat-decode octets)))
+    (if (fn-wildmat-result-okp decoded)
+        (if (fn-wildmat-rfc3977-codepointsp (fn-wildmat-result-value decoded))
+            (fn-wildmat-parse-codepoints (fn-wildmat-result-value decoded))
+          (fn-wildmat-error :syntax))
+      decoded)))
+
+; THE HEADER-VALUE ENTRY (D19).  Same grammar structure -- comma alternation,
+; post-comma `!', `*' and `?' -- over the wider literal set.  One caller:
+; fn-nntp-xpat-response, books/nntp-responses.lisp:1620, which is the line
+; RFC 2980 section 2.9 hands the joined pattern to.
+(defun fn-wildmat-parse-text (octets)
   (let ((decoded (fn-wildmat-decode octets)))
     (if (fn-wildmat-result-okp decoded)
         (fn-wildmat-parse-codepoints (fn-wildmat-result-value decoded))
@@ -311,10 +412,15 @@
 (defun fn-wildmat-bool-or (left right)
   (if left t (if right t nil)))
 
+; Before D19 this read `(fn-wildmat-exactp item)'.  It reads the header-value
+; set now, which is what makes a matched SP a match at all.  It is unchanged
+; on every section 4.1 item, and
+; `fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items' below states
+; that with the previous body verbatim as its right-hand side.
 (defun fn-wildmat-item-character-matchp (item codepoint)
   (if (equal item 63)
       t
-    (if (fn-wildmat-exactp item)
+    (if (fn-wildmat-text-exactp item)
         (if (equal item codepoint) t nil)
       nil)))
 
@@ -429,6 +535,90 @@
         (fn-wildmat-match-parsed (fn-wildmat-result-value parsed) target-octets)
       parsed)))
 
+; -----------------------------------------------------------------------------
+; How the two profiles relate, and why the newsgroup-name path does not move
+;
+; D19's whole safety argument is these three facts: the header-value profile
+; CONTAINS section 4.1's; the two agree on every section 4.1 item, so the
+; widened matcher test is the old one there; and `fn-wildmat-parse' therefore
+; behaves as it did.  RFC 3977 section 4.3 asks for exactly this -- "all
+; wildmats that meet the requirements of Section 4.1 have the meaning ascribed
+; to them by Section 4.2".
+
+(defthm fn-wildmat-exactp-implies-text-exactp
+  (implies (fn-wildmat-exactp codepoint)
+           (fn-wildmat-text-exactp codepoint))
+  :hints (("Goal" :in-theory (enable fn-wildmat-exactp
+                                      fn-wildmat-text-exactp))))
+
+(defthm fn-wildmat-itemp-implies-text-itemp
+  (implies (fn-wildmat-itemp codepoint)
+           (fn-wildmat-text-itemp codepoint))
+  :hints (("Goal" :in-theory (enable fn-wildmat-itemp
+                                      fn-wildmat-text-itemp))))
+
+(defthm fn-wildmat-items-p-implies-text-items-p
+  (implies (fn-wildmat-items-p items)
+           (fn-wildmat-text-items-p items))
+  :hints (("Goal" :induct (fn-wildmat-items-p items)
+           :in-theory (enable fn-wildmat-items-p
+                               fn-wildmat-text-items-p))))
+
+(defthm fn-wildmat-rfc3977-pattern-listp-implies-pattern-listp
+  (implies (fn-wildmat-rfc3977-pattern-listp patterns)
+           (fn-wildmat-pattern-listp patterns))
+  :hints (("Goal" :induct (fn-wildmat-rfc3977-pattern-listp patterns)
+           :in-theory (enable fn-wildmat-rfc3977-pattern-listp
+                               fn-wildmat-rfc3977-patternp
+                               fn-wildmat-pattern-listp))))
+
+; The containment is STRICT and the four extra code points are named, so the
+; inclusion above is not the inclusion of a set in itself.
+(defthm fn-wildmat-text-exactp-is-strictly-wider
+  (and (fn-wildmat-text-exactp 32)
+       (fn-wildmat-text-exactp 91)
+       (fn-wildmat-text-exactp 92)
+       (fn-wildmat-text-exactp 93)
+       (not (fn-wildmat-exactp 32))
+       (not (fn-wildmat-exactp 91))
+       (not (fn-wildmat-exactp 92))
+       (not (fn-wildmat-exactp 93)))
+  :rule-classes nil)
+
+; ... and it adds nothing else: the four are the whole difference, so the
+; header profile is not a licence to accept a control octet, DEL, or any of
+; the four metacharacters.
+(defthm fn-wildmat-text-exactp-adds-exactly-four-code-points
+  (implies (and (not (equal codepoint 32))
+                (not (equal codepoint 91))
+                (not (equal codepoint 92))
+                (not (equal codepoint 93)))
+           (equal (fn-wildmat-text-exactp codepoint)
+                  (fn-wildmat-exactp codepoint)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-wildmat-exactp
+                                      fn-wildmat-text-exactp))))
+
+; THE CONSERVATION KEYSTONE.  The right-hand side is the body this function
+; had before D19, verbatim.  Every item of a pattern `fn-wildmat-parse'
+; produced satisfies `fn-wildmat-itemp', so no newsgroup-name match changed.
+; `fn-wildmat-pattern-row' dispatches 42 to the star step and never reaches
+; this function with it, but the hypothesis is not needed: 42 is in neither
+; set, so the two sides agree there too.
+(defthm fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items
+  (implies (fn-wildmat-itemp item)
+           (equal (fn-wildmat-item-character-matchp item codepoint)
+                  (if (equal item 63)
+                      t
+                    (if (fn-wildmat-exactp item)
+                        (if (equal item codepoint) t nil)
+                      nil))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-wildmat-item-character-matchp
+                                      fn-wildmat-itemp
+                                      fn-wildmat-exactp
+                                      fn-wildmat-text-exactp))))
+
 ; A small executable base fact for the RFC's anchored-star semantics.  This is
 ; deliberately modest: it does not claim the general DP work/correspondence
 ; proof, which remains future bounded-parser evidence.
@@ -471,6 +661,12 @@
            (true-listp items))
   :hints (("Goal" :induct (fn-wildmat-items-p items)
            :in-theory (enable fn-wildmat-items-p))))
+
+(defthm fn-wildmat-guard-text-items-p-true-listp
+  (implies (fn-wildmat-text-items-p items)
+           (true-listp items))
+  :hints (("Goal" :induct (fn-wildmat-text-items-p items)
+           :in-theory (enable fn-wildmat-text-items-p))))
 
 (defthm fn-wildmat-guard-octet-listp-true-listp
   (implies (fn-wildmat-octet-listp octets)
@@ -541,12 +737,19 @@
 (verify-guards fn-wildmat-exactp)
 (verify-guards fn-wildmat-itemp)
 (verify-guards fn-wildmat-items-p)
+(verify-guards fn-wildmat-text-exactp)
+(verify-guards fn-wildmat-text-itemp)
+(verify-guards fn-wildmat-text-items-p)
+(verify-guards fn-wildmat-rfc3977-codepointp)
+(verify-guards fn-wildmat-rfc3977-codepointsp)
 (verify-guards fn-wildmat-make-pattern)
 (verify-guards fn-wildmat-pattern-sign)
 (verify-guards fn-wildmat-pattern-items)
 (verify-guards fn-wildmat-pattern-positivep)
 (verify-guards fn-wildmat-patternp)
 (verify-guards fn-wildmat-pattern-listp)
+(verify-guards fn-wildmat-rfc3977-patternp)
+(verify-guards fn-wildmat-rfc3977-pattern-listp)
 (verify-guards fn-wildmat-parsedp)
 (verify-guards fn-wildmat-scan-pattern)
 (verify-guards fn-wildmat-scan-endp)
@@ -556,6 +759,7 @@
 (verify-guards fn-wildmat-parse-one)
 (verify-guards fn-wildmat-parse-codepoints)
 (verify-guards fn-wildmat-parse)
+(verify-guards fn-wildmat-parse-text)
 (verify-guards fn-wildmat-false-row)
 (verify-guards fn-wildmat-initial-row)
 (verify-guards fn-wildmat-bool-or)
@@ -595,6 +799,12 @@
   :rule-classes :forward-chaining
   :hints (("Goal" :by fn-wildmat-guard-items-p-true-listp)))
 
+(defthm fn-wildmat-text-items-p-forward-shape
+  (implies (fn-wildmat-text-items-p items)
+           (true-listp items))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :by fn-wildmat-guard-text-items-p-true-listp)))
+
 (defthm fn-wildmat-octet-listp-forward-shape
   (implies (fn-wildmat-octet-listp octets)
            (true-listp octets))
@@ -603,6 +813,7 @@
 
 (deftheory fn-wildmat-guard-backchaining
   '(fn-wildmat-guard-items-p-true-listp
+    fn-wildmat-guard-text-items-p-true-listp
     fn-wildmat-guard-octet-listp-true-listp
     fn-wildmat-guard-pattern-row-length))
 

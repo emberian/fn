@@ -88,3 +88,136 @@
 ; has no must-fail sibling; the witness above is its whole teeth requirement.
 ; What would make it vacuous is both sides being constant, and the assertions
 ; above exhibit a target each side accepts and a target each side rejects.
+
+; -----------------------------------------------------------------------------
+; Teeth for the header-value profile keystones (decision D19)
+
+(include-book "../../books/wildmat-parser-invariants")
+
+; -----------------------------------------------------------------------------
+; `fn-wildmat-exactp-implies-text-exactp' and its two siblings
+;   (implies (fn-wildmat-exactp c) (fn-wildmat-text-exactp c))
+;
+; A containment whose two sides were the same set would also be provable, so
+; the witness has to exhibit the gap AND the floor.  %x20 SP is in the wider
+; set and not in RFC 3977 §4.1's; `!' is in neither, which is what makes the
+; hypothesis do work rather than hold everywhere.
+
+(assert-event (and (fn-wildmat-text-exactp 32) (not (fn-wildmat-exactp 32))))
+(assert-event (and (fn-wildmat-text-exactp 91) (not (fn-wildmat-exactp 91))))
+(assert-event (and (fn-wildmat-text-exactp 92) (not (fn-wildmat-exactp 92))))
+(assert-event (and (fn-wildmat-text-exactp 93) (not (fn-wildmat-exactp 93))))
+(assert-event (and (fn-wildmat-exactp 97) (fn-wildmat-text-exactp 97)))
+
+; The hypothesis dropped: `!' satisfies neither side, so the implication is
+; not vacuously true of every code point.
+(local
+ (must-fail
+  (defthm wm-teeth-text-exactp-without-exactp
+    (fn-wildmat-text-exactp 33)
+    :rule-classes nil)))
+
+; `fn-wildmat-items-p-implies-text-items-p', hypothesis dropped.
+(assert-event (and (not (fn-wildmat-items-p '(33)))
+                   (not (fn-wildmat-text-items-p '(33)))))
+(assert-event (and (not (fn-wildmat-items-p '(32)))
+                   (fn-wildmat-text-items-p '(32))))
+
+; -----------------------------------------------------------------------------
+; `fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items'
+;   (implies (fn-wildmat-itemp item)
+;            (equal (fn-wildmat-item-character-matchp item codepoint)
+;                   <the body this function had before D19>))
+;
+; This is the conservation keystone: it is what says no newsgroup-name match
+; moved.  Its hypothesis has teeth at exactly the four code points D19 added.
+; At item = 32 the two sides disagree -- the widened matcher matches an SP
+; against an SP, and the pre-D19 body matched it against nothing -- so the
+; equality is false without `fn-wildmat-itemp'.
+
+(assert-event (fn-wildmat-item-character-matchp 32 32))
+(assert-event (not (fn-wildmat-itemp 32)))
+(assert-event
+ (not (equal (fn-wildmat-item-character-matchp 32 32)
+             (if (equal 32 63)
+                 t
+               (if (fn-wildmat-exactp 32) (if (equal 32 32) t nil) nil)))))
+
+(local
+ (must-fail
+  (defthm wm-teeth-matchp-conservation-without-itemp
+    (equal (fn-wildmat-item-character-matchp 32 32)
+           (if (equal 32 63)
+               t
+             (if (fn-wildmat-exactp 32) (if (equal 32 32) t nil) nil)))
+    :rule-classes nil)))
+
+; And under the hypothesis it holds at both poles: an exact item that matches,
+; an exact item that does not, and `?' which matches anything.
+(assert-event (fn-wildmat-item-character-matchp 97 97))
+(assert-event (not (fn-wildmat-item-character-matchp 97 98)))
+(assert-event (fn-wildmat-item-character-matchp 63 97))
+
+; -----------------------------------------------------------------------------
+; `fn-wildmat-parse-yields-rfc3977-patterns'
+;   (implies (fn-wildmat-result-okp (fn-wildmat-parse octets))
+;            (and (consp ...) (fn-wildmat-rfc3977-pattern-listp ...)))
+;
+; The reachable non-degenerate witness is RFC 3977 §4.2's own example, parsed
+; by the production entry point: three constituents, one of them negated.
+
+(assert-event (fn-wildmat-rfc3977-pattern-listp *wm-teeth-patterns*))
+(assert-event (equal (len *wm-teeth-patterns*) 3))
+
+; The hypothesis dropped.  On octets the newsgroup-name entry refuses, the
+; conclusion is false: the result value is the reason keyword, not a list.
+(defconst *wm-teeth-spaced* '(42 84 32 42 116 42))
+(assert-event (equal (fn-wildmat-parse *wm-teeth-spaced*) '(:error :syntax)))
+(assert-event
+ (not (consp (fn-wildmat-result-value
+              (fn-wildmat-parse *wm-teeth-spaced*)))))
+
+(local
+ (must-fail
+  (defthm wm-teeth-rfc3977-patterns-without-a-successful-parse
+    (consp (fn-wildmat-result-value (fn-wildmat-parse *wm-teeth-spaced*)))
+    :rule-classes nil)))
+
+; ... and the SECOND hypothesis of the lemma behind it,
+; `fn-wm-parse-one-rfc3977-pattern-listp', is the §4.1 restriction on the code
+; points.  The same octets parse through the HEADER entry and the result is
+; NOT §4.1-shaped, which is the whole point of the profile.
+(assert-event (fn-wildmat-result-okp (fn-wildmat-parse-text *wm-teeth-spaced*)))
+(assert-event
+ (fn-wildmat-pattern-listp
+  (fn-wildmat-result-value (fn-wildmat-parse-text *wm-teeth-spaced*))))
+(assert-event
+ (not (fn-wildmat-rfc3977-pattern-listp
+       (fn-wildmat-result-value (fn-wildmat-parse-text *wm-teeth-spaced*)))))
+(assert-event
+ (not (fn-wildmat-rfc3977-codepointsp *wm-teeth-spaced*)))
+
+(local
+ (must-fail
+  (defthm wm-teeth-parse-one-rfc3977-without-the-restriction
+    (fn-wildmat-rfc3977-pattern-listp
+     (fn-wildmat-result-value (fn-wildmat-parse-text *wm-teeth-spaced*)))
+    :rule-classes nil)))
+
+; -----------------------------------------------------------------------------
+; `fn-wildmat-rfc3977-pattern-listp-implies-pattern-listp', hypothesis dropped:
+; the widened shape admits a pattern the §4.1 shape refuses, and neither admits
+; a malformed record.
+(assert-event (not (fn-wildmat-rfc3977-pattern-listp *wm-teeth-malformed*)))
+(assert-event (not (fn-wildmat-pattern-listp *wm-teeth-malformed*)))
+
+; -----------------------------------------------------------------------------
+; Positive anchors for the three recognisers the teeth above only ever assert
+; FALSE (tools/teeth_check.py --report, `recogniser-never-true'): a definition
+; that is constantly false would satisfy a refusal witness, so each one is
+; also exhibited accepting.
+(assert-event (and (fn-wildmat-itemp 97) (fn-wildmat-itemp 42)
+                   (fn-wildmat-itemp 63)))
+(assert-event (fn-wildmat-items-p '(97 42 63)))
+(assert-event (fn-wildmat-rfc3977-codepointsp '(97 42 44 33 98)))
+(assert-event (fn-wildmat-text-items-p '(97 32 42)))
