@@ -353,6 +353,29 @@
         (fn-wire-make-state :article nil 0 '((97)) nil 3 32 2)
         nil))))
 
+; Teeth for the actual byte-line composition theorem.  Its good witness is a
+; dot-only source through the byte feeder.  Without the carried line-capacity
+; premise the served transition closes at the second octet; without clean-line
+; content a bare LF closes rather than reaching fn-wire-after-line.
+(assert-event
+ (equal
+  (fn-wire-feed-proper *fn-wire-article-start* '(46 46 13 10))
+  (fn-wire-after-line (fn-wire-clear-line-state *fn-wire-article-start*)
+                      '(46 46))))
+(defconst *fn-wire-line-cap-one*
+  (fn-wire-result-state
+   (fn-wire-begin-article (fn-wire-initial-state 1 64))))
+(assert-event
+ (not (equal
+       (fn-wire-feed-proper *fn-wire-line-cap-one* '(97 98 13 10))
+       (fn-wire-after-line (fn-wire-clear-line-state *fn-wire-line-cap-one*)
+                           '(97 98)))))
+(assert-event
+ (not (equal
+       (fn-wire-feed-proper *fn-wire-article-start* '(97 10 13 10))
+       (fn-wire-after-line (fn-wire-clear-line-state *fn-wire-article-start*)
+                           '(97 10)))))
+
 ; Empty source is a valid empty NNTP block, and is distinct from malformed
 ; source.  It is the zero-line article accepted by the inbound wire machine.
 (assert-event

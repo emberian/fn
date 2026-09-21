@@ -118,6 +118,296 @@
                            (fn-wire-feed-byte
                            fn-wire-feed-byte-event-is-not-nil)))))
 
+; The outbound renderer and the receive machine use the same explicit octet
+; reversal.  These are proof vocabulary for joining a receiver's accumulated
+; line-rev to the remaining physical line; they are withdrawn with the other
+; wire proof vocabulary at the end of this book.
+(defthm fn-wire-reverse-octets-aux-is-revappend
+  (equal (fn-wire-reverse-octets-aux octets accumulator)
+         (revappend octets accumulator))
+  :hints (("Goal"
+           :induct (fn-wire-reverse-octets-aux octets accumulator)
+           :in-theory (enable fn-wire-reverse-octets-aux))))
+
+(defthm fn-wire-reverse-octets-is-revappend
+  (equal (fn-wire-reverse-octets octets)
+         (revappend octets nil))
+  :hints (("Goal"
+           :use ((:instance fn-wire-reverse-octets-aux-is-revappend
+                            (accumulator nil)))
+           :in-theory (enable fn-wire-reverse-octets))))
+
+; A physical line can be delivered byte-by-byte only while it contains no
+; delimiter octet of its own.  The renderer establishes this from accepted
+; CRLF source; keeping it explicit here makes the receiver capacity theorem
+; say exactly why an embedded LF would not be a line payload.
+(defun fn-wire-line-contentp (line)
+  (if (consp line)
+      (and (fn-wire-octetp (car line))
+           (not (equal (car line) 13))
+           (not (equal (car line) 10))
+           (fn-wire-line-contentp (cdr line)))
+    (null line)))
+
+(defun fn-wire-clear-line-state (wire-state)
+  (declare (xargs :guard t))
+  (fn-wire-make-state (fn-wire-state-mode wire-state) nil 0
+                      (fn-wire-state-body-rev wire-state) nil
+                      (fn-wire-state-body-size wire-state)
+                      (fn-wire-state-line-limit wire-state)
+                      (fn-wire-state-body-limit wire-state)))
+
+; Once CRLF has been recognized, fn-wire-after-line reads the accumulated
+; line argument and the article body fields, never the transient line-rev or
+; pending-CR fields.  This keeps the byte proof from re-opening the whole
+; state recognizer merely to erase those transient fields.
+(defthm fn-wire-after-line-ignores-line-accumulator
+  (implies (and (fn-wire-statep wire-state)
+                (fn-wire-octet-listp line))
+           (equal (fn-wire-after-line wire-state line)
+                  (fn-wire-after-line
+                   (fn-wire-clear-line-state wire-state) line)))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-after-line
+                              fn-wire-clear-line-state
+                              fn-wire-statep
+                              fn-wire-make-state
+                              fn-wire-result-state
+                              fn-wire-result-events
+                              fn-wire-make-result))))
+
+(defthm fn-wire-after-line-recomposes-result
+  (implies (and (fn-wire-statep wire-state)
+                (fn-wire-octet-listp line))
+           (equal
+            (fn-wire-make-result
+             (fn-wire-result-state (fn-wire-after-line wire-state line))
+             (append (fn-wire-result-events
+                      (fn-wire-after-line wire-state line)) nil))
+            (fn-wire-after-line wire-state line)))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-after-line
+                              fn-wire-clear-line-state
+                              fn-wire-statep
+                              fn-wire-make-state
+                              fn-wire-result-state
+                              fn-wire-result-events
+                              fn-wire-make-result))))
+
+; The two preceding facts in the exact record shape the byte feeder leaves:
+; after CRLF, reconstructing its result record with no later events is the
+; same result as dispatching the completed line from the quiescent state.
+(defthm fn-wire-after-line-cleared-recomposes-result
+  (implies (fn-wire-statep wire-state)
+           (equal
+            (fn-wire-make-result
+             (fn-wire-result-state (fn-wire-after-line wire-state line))
+             (append (fn-wire-result-events
+                      (fn-wire-after-line wire-state line)) nil))
+            (fn-wire-after-line
+             (fn-wire-clear-line-state wire-state) line)))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-after-line
+                              fn-wire-clear-line-state
+                              fn-wire-statep
+                              fn-wire-make-state
+                              fn-wire-result-state
+                              fn-wire-result-events
+                              fn-wire-make-result))))
+
+; The CR branch of fn-wire-feed-byte reconstructs this exact state shape
+; before passing a completed line to fn-wire-after-line.  State it in that
+; shape so the byte induction can use it without a record-extensionality
+; detour through WIRE-STATE.
+(defthm fn-wire-after-line-canonical-recomposes-result
+  (implies (and (fn-wire-statep wire-state)
+                (equal (fn-wire-state-mode wire-state) :article)
+                (null (fn-wire-state-pending-crp wire-state)))
+           (equal
+            (fn-wire-make-result
+             (fn-wire-result-state
+              (fn-wire-after-line
+               (fn-wire-make-state :article
+                                   (fn-wire-state-line-rev wire-state)
+                                   (fn-wire-state-line-len wire-state)
+                                   (fn-wire-state-body-rev wire-state) nil
+                                   (fn-wire-state-body-size wire-state)
+                                   (fn-wire-state-line-limit wire-state)
+                                   (fn-wire-state-body-limit wire-state))
+               line))
+             (append (fn-wire-result-events
+                      (fn-wire-after-line
+                       (fn-wire-make-state :article
+                                           (fn-wire-state-line-rev wire-state)
+                                           (fn-wire-state-line-len wire-state)
+                                           (fn-wire-state-body-rev wire-state) nil
+                                           (fn-wire-state-body-size wire-state)
+                                           (fn-wire-state-line-limit wire-state)
+                                           (fn-wire-state-body-limit wire-state))
+                       line)) nil))
+            (fn-wire-after-line (fn-wire-clear-line-state wire-state) line)))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-after-line
+                              fn-wire-clear-line-state
+                              fn-wire-statep
+                              fn-wire-make-state
+                              fn-wire-result-state
+                              fn-wire-result-events
+                              fn-wire-make-result))))
+
+; The induction base has this reconstructed shape, not WIRE-STATE itself.
+; Keeping the fields explicit is the record-extensionality bridge: after-line
+; cannot observe line-rev or line-len once the completed line is supplied.
+(defthm fn-wire-after-line-rebuilt-article-line-recomposes
+  (equal
+   (fn-wire-make-result
+    (fn-wire-result-state
+     (fn-wire-after-line
+      (fn-wire-make-state :article line-rev line-len body-rev nil
+                          body-size line-limit body-limit)
+      (revappend line-rev nil)))
+    (append (fn-wire-result-events
+             (fn-wire-after-line
+              (fn-wire-make-state :article line-rev line-len body-rev nil
+                                  body-size line-limit body-limit)
+              (revappend line-rev nil))) nil))
+   (fn-wire-after-line
+    (fn-wire-make-state :article nil 0 body-rev nil
+                        body-size line-limit body-limit)
+    (revappend line-rev nil)))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-after-line
+                              fn-wire-make-state
+                              fn-wire-result-state
+                              fn-wire-result-events
+                              fn-wire-make-result))))
+
+; fn-wire-after-line is total and always constructs its result record.  Keep
+; this guard-free form for the induction after its IH has already reduced a
+; recursive feed to an after-line result.
+(defthm fn-wire-after-line-recomposes
+  (equal
+   (fn-wire-make-result
+    (fn-wire-result-state (fn-wire-after-line wire-state line))
+    (fn-wire-result-events (fn-wire-after-line wire-state line)))
+   (fn-wire-after-line wire-state line))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-after-line
+                              fn-wire-result-state
+                              fn-wire-result-events
+                              fn-wire-make-result))))
+
+(defthm fn-wire-feed-byte-starts-clean-article-line
+  (implies
+   (and (fn-wire-statep wire-state)
+        (equal (fn-wire-state-mode wire-state) :article)
+        (null (fn-wire-state-pending-crp wire-state))
+        (fn-wire-octetp byte)
+        (not (equal byte 13))
+        (not (equal byte 10))
+        (< (fn-wire-state-line-len wire-state)
+           (fn-wire-state-line-limit wire-state)))
+   (equal (fn-wire-feed-byte wire-state byte)
+          (fn-wire-make-result
+           (fn-wire-make-state :article
+                               (cons byte (fn-wire-state-line-rev wire-state))
+                               (+ 1 (fn-wire-state-line-len wire-state))
+                               (fn-wire-state-body-rev wire-state)
+                               nil
+                               (fn-wire-state-body-size wire-state)
+                               (fn-wire-state-line-limit wire-state)
+                               (fn-wire-state-body-limit wire-state))
+           nil)))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-feed-byte
+                              fn-wire-result-state
+                              fn-wire-result-events
+                              fn-wire-make-result
+                              fn-wire-make-state))))
+
+(defthm fn-wire-clean-byte-next-statep
+  (implies
+   (and (fn-wire-statep wire-state)
+        (equal (fn-wire-state-mode wire-state) :article)
+        (null (fn-wire-state-pending-crp wire-state))
+        (fn-wire-octetp byte)
+        (not (equal byte 13))
+        (not (equal byte 10))
+        (< (fn-wire-state-line-len wire-state)
+           (fn-wire-state-line-limit wire-state)))
+   (fn-wire-statep
+    (fn-wire-make-state
+     :article (cons byte (fn-wire-state-line-rev wire-state))
+     (+ 1 (fn-wire-state-line-len wire-state))
+     (fn-wire-state-body-rev wire-state) nil
+     (fn-wire-state-body-size wire-state)
+     (fn-wire-state-line-limit wire-state)
+     (fn-wire-state-body-limit wire-state))))
+  :hints (("Goal"
+           :use ((:instance fn-wire-feed-byte-preserves-statep))
+           :in-theory (e/d (fn-wire-result-state fn-wire-make-result)
+                           (fn-wire-feed-byte-preserves-statep
+                            fn-wire-feed-byte
+                            fn-wire-statep
+                            fn-wire-make-state)))))
+
+; The same source capacity hypothesis, normalized after the physical byte is
+; consed to line-rev.  The line theorem uses this rather than reopening LEN
+; and arithmetic under the state recognizer.
+(defthm fn-wire-clean-cons-preserves-line-capacity
+  (implies (<= (+ line-len (len (cons byte remaining))) line-limit)
+           (<= (+ (+ 1 line-len) (len remaining)) line-limit))
+  :hints (("Goal" :in-theory (enable len))))
+
+; An induction scheme over the real byte transition.  Unlike induction on
+; APPEND, its hypothesis has the post-byte state that fn-wire-feed-proper
+; actually recurs on.
+(defun fn-wire-clean-line-byte-induction (wire-state remaining)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count remaining)))
+  (if (consp remaining)
+      (fn-wire-clean-line-byte-induction
+       (fn-wire-result-state
+        (fn-wire-feed-byte wire-state (car remaining)))
+       (cdr remaining))
+    wire-state))
+
+(defthm fn-wire-feed-proper-completes-clean-article-line
+  (implies
+   (and (fn-wire-statep wire-state)
+        (equal (fn-wire-state-mode wire-state) :article)
+        (null (fn-wire-state-pending-crp wire-state))
+        (fn-wire-line-contentp remaining)
+        (<= (+ (fn-wire-state-line-len wire-state) (len remaining))
+            (fn-wire-state-line-limit wire-state)))
+   (equal (fn-wire-feed-proper wire-state (append remaining '(13 10)))
+          (fn-wire-after-line
+           (fn-wire-clear-line-state wire-state)
+           (revappend (fn-wire-state-line-rev wire-state) remaining))))
+  :hints (("Goal"
+           :induct (fn-wire-clean-line-byte-induction wire-state remaining)
+           :in-theory (e/d (fn-wire-feed-proper
+                              fn-wire-line-contentp
+                              fn-wire-clear-line-state
+                              fn-wire-clean-line-byte-induction
+                              revappend)
+                           (fn-wire-feed-proper-append
+                            fn-wire-after-line
+                            fn-wire-statep
+                            fn-wire-close
+                            fn-wire-make-state
+                            (:d fn-wire-make-result)
+                            (:d fn-wire-result-state)
+                            (:d fn-wire-result-events)
+                            (:d fn-wire-state-mode)
+                            (:d fn-wire-state-line-rev)
+                            (:d fn-wire-state-line-len)
+                            (:d fn-wire-state-body-rev)
+                            (:d fn-wire-state-pending-crp)
+                            (:d fn-wire-state-body-size)
+                            (:d fn-wire-state-line-limit)
+                            (:d fn-wire-state-body-limit)
+                            )))))
+
 ; The receive transition that consumes one complete outbound-rendered line.
 ; `fn-wire-after-line' is below fn-wire-next and fn-wire-drive, the framing
 ; path the reader host calls.  The theorem says the only data transformation
