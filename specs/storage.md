@@ -125,6 +125,16 @@ redundant copies, repair, and erasure coding are later mechanisms with separate
 assumptions; a digest alone does not repair content or guarantee all faults are
 detectable. Recovery must not emit a fresh success for missing or corrupt data.
 
+Composed recovery requires both article/retention replay and identity-evidence
+replay to succeed. A structurally valid atomic signed article with a missing
+historical enrollment is a recovery fault even when its embedded article alone
+replays successfully. `fn-sn-recover` leaves the observed history intact and
+sets the file phase to `:fault`; recovery barriers cannot turn that state into
+`:ready`. `fn-sn-open-observed` reports its existing `:replay` error instead of
+opening the seed's empty node. The negative composed trace in
+`tests/acl2/store-identity-traces-tests.lisp` exercises this separation;
+fresh certification and native corrupt-history startup evidence remain open.
+
 ## First executable scope
 
 Model logical transactions before selecting sector alignment, frame lengths,

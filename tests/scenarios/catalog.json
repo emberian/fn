@@ -870,19 +870,21 @@
         "Enroll one exact hybrid key snapshot, commit one atomically bound article-plus-verdict event, and reopen the Store.",
         "Reserve and refuse another transaction so the allocator transaction ID advances without advancing the Store journal sequence.",
         "Commit later Store events, reopen again, and query the historical verdicts.",
-        "At the shared native publication helper, inject an expected prepublication refusal and then a valid operation; separately inject indeterminate and structural-fault outcomes."
+        "At the shared native publication helper, inject an expected prepublication refusal and then a valid operation; separately inject indeterminate and structural-fault outcomes.",
+        "Open a structurally bound kind-4 history whose embedded article replays but whose historical enrollment is missing."
       ],
       "expected": [
         "The kind-4 article and its historical verdict appear together and remain bound to the exact enrolled snapshot after both reopens.",
         "The burned allocator ID creates no journal-sequence gap and does not prevent later recovery.",
         "A legacy article has no reconstructed historical verdict because its record contains no immutable verdict evidence.",
-        "Expected refusal consumes the reservation and permits the following valid commit; indeterminate and structural faults remain fenced and are never reported as refusal."
+        "Expected refusal consumes the reservation and permits the following valid commit; indeterminate and structural faults remain fenced and are never reported as refusal.",
+        "Identity recovery failure leaves the retained history intact, returns the composed replay error, and cannot reach ready through recovery barriers."
       ],
       "evidence": [
         "tests/acl2/store-identity-traces-tests.lisp",
         "tests/native_owner_publication.lisp"
       ],
-      "execution_scope": "The fresh ACL2 source trace executes the actual fn-sn transitions and reopen path; the raw SBCL witness executes the actual shared fnn-owner-publish-prepared helper with controlled publication/core observations. These results do not establish filesystem durability, cryptographic primitive correctness, arbitrary-trace preservation or the current combined saved image; PRF-050 remains in progress."
+      "execution_scope": "The fresh ACL2 source trace executes the actual fn-sn transitions and reopen path; the raw SBCL witness executes the actual shared fnn-owner-publish-prepared helper with controlled publication/core observations. These results do not establish filesystem durability, cryptographic primitive correctness, arbitrary-trace preservation or the current combined saved image; PRF-050 remains in progress. The negative missing-enrollment composed trace also evaluates successfully from current ACL2 sources; no native corrupted-store startup or new certificate is claimed."
     }
   ]
 }

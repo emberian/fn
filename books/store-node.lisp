@@ -625,7 +625,14 @@
              s files node
              (fn-stx-index-of-store (fn-stx-store node) (fn-sn-keyring s))
              identity-context)
-          (fn-sn-update s files (fn-sn-node s))))
+          ; The article replay and the identity replay are both required.
+          ; Never leave :recovering visible when only the former succeeded:
+          ; observed open uses that phase to authorize its durability barriers.
+          (fn-sn-update
+           s (fn-sf-make :fault (fn-sf-frontier files) nil
+                         (fn-sf-records files) nil nil
+                         (fn-sf-successes files) 0)
+           (fn-sn-node s))))
     s))
 
 (verify-guards fn-sn-recover
