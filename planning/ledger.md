@@ -13,9 +13,9 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 276 |
 | Certification roots in the Makefile | 275 |
 | Books inside the root closure | 275 |
-| `defthm` and `defthmd` events | 5559 |
-| `defun` events | 3929 |
-| Functions with verified guards | 1461 |
+| `defthm` and `defthmd` events | 5578 |
+| `defun` events | 3937 |
+| Functions with verified guards | 1469 |
 | Functions declared `:verify-guards nil` and never verified | 190 |
 | Functions left at the default with an explicit guard | 1789 |
 | Functions left at the default with no guard | 489 |
@@ -24,7 +24,7 @@ stale. Counts describe artifacts, not coverage; see
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 46 |
 | Export-hygiene warnings | 72 |
-| Enabled-projection warnings | 26 |
+| Enabled-projection warnings | 27 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 87 |
 | Host-names warnings | 33 |
@@ -254,10 +254,10 @@ that `make certify` requests.
 | `books/transfer-work.lisp` | root | 35 | 13 | 0/0/0/13 | 0 | 0 | 0 |
 | `books/transfer.lisp` | root | 14 | 67 | 58/0/9/0 | 0 | 0 | 0 |
 | `books/wildmat-matcher-invariants.lisp` | root | 19 | 5 | 0/0/0/5 | 0 | 0 | 0 |
-| `books/wildmat-parser-invariants.lisp` | root | 9 | 1 | 0/0/0/1 | 0 | 0 | 0 |
-| `books/wildmat-utf8-invariants.lisp` | root | 29 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/wildmat-parser-invariants.lisp` | root | 17 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/wildmat-utf8-invariants.lisp` | root | 31 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/wildmat-work.lisp` | root | 52 | 17 | 0/0/0/17 | 0 | 0 | 0 |
-| `books/wildmat.lisp` | root | 13 | 54 | 54/0/0/0 | 0 | 0 | 0 |
+| `books/wildmat.lisp` | root | 22 | 62 | 62/0/0/0 | 0 | 0 | 0 |
 | `books/wire-invariants.lisp` | root | 40 | 2 | 1/0/0/1 | 0 | 0 | 0 |
 | `books/wire.lisp` | root | 44 | 49 | 31/0/18/0 | 0 | 0 | 1 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 246 | 0 | 0 |
