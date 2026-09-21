@@ -95,6 +95,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/journal-publish \
 	books/native-admin \
 	tests/acl2/native-admin-tests \
+	books/native-config-observation \
+	tests/acl2/native-config-observation-tests \
 	books/native-operator \
 	host/native-operator-host \
 	tests/acl2/native-operator-tests \
