@@ -15,10 +15,13 @@ identity/anchor operations must not require a Python interpreter, module or
 helper subprocess. Python remains permitted in build, certification, test,
 benchmark and differential-oracle tooling outside the deployed node.
 
-This is a requirement, not the current implementation: `bin/fn` and the service
-unit still start the Python owner. Native store, reader and BP components do not
-yet establish complete service parity. `FN_HOST=native` through a Python argument
-parser is a test convenience, not a conforming production entry point.
+The repository `bin/fn` and its legacy service templates still start the Python
+development owner. `packaging/install-native.sh` now installs a separate native
+`bin/fn`, saved core, relocated SBCL runtime and native service templates without
+starting a service. Its [scoped installation evidence](../planning/evidence/native-distribution-qualification-2026-09-21.md)
+covers the frozen production image's startup and shutdown on persvati; it does
+not establish complete service parity. `FN_HOST=native` through a Python argument
+parser remains a test convenience, not the production entry point.
 
 HST-001 includes this runtime boundary. The replacement host must call the same
 ACL2 semantic subjects or a named justified refinement; translating Python's
@@ -171,6 +174,15 @@ is 11.7 s for 128 records, so the bound is about 158 s: an order of magnitude
 above measurement, instead of a fixed 20 s that sat within 2x of it.
 
 ## The native host
+
+Native feed links retain peer identifiers as ACL2 octet lists. Socket buffers
+remain byte vectors, converted explicitly at the core boundary. The actual
+`fnn-feed-link-for-peer` constructor and `fnn-feed-dial-plan` calls are exercised
+by `tests/native_feed_peer_octets.lisp` using the production conversion helpers
+and a boundary observer. This regression rejects the previous vector-valued
+identifier, which made the logical peer lookup report an absent endpoint. It
+checks representation transport only; configured lookup, reconnection and
+two-node exchange still require the saved-image gate.
 
 The native transaction namespace observer bounds physical enumeration before
 allocation, then passes names to `fn-store-txn-observation`, which uses

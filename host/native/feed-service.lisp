@@ -66,7 +66,10 @@
 
 (defun fnn-feed-link-for-peer (peer)
   (%make-fnn-feed-link
-   :peer peer :peer-octets (fnn-octets (fnn-string-octets peer))))
+   ;; This slot crosses into ACL2 wrappers, whose octets are lists. Socket
+   ;; buffers use vectors; retaining one here makes the logical peer lookup
+   ;; see malformed input and lose the configured endpoint.
+   :peer peer :peer-octets (fnn-octet-list (fnn-string-octets peer))))
 
 (defun fnn-feed-refresh-links (runtime)
   "Make the socket workers follow ACL2's current live feed table.
