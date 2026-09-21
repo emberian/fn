@@ -224,6 +224,16 @@ clock observations fit its schema-0 representation."
       (or (equal name (car names)) (fn-native-admin-name-memberp name (cdr names)))
     nil))
 
+(defun fn-native-admin-append-record (records record)
+  "Total, one-record extension for the candidate replay.  The byte decoder
+supplies proper record lists, but this boundary remains executable for a
+malformed logical value and therefore does not make an unproved LISTP claim
+to Common Lisp's guarded APPEND."
+  (declare (xargs :guard t))
+  (if (consp records)
+      (cons (car records) (fn-native-admin-append-record (cdr records) record))
+    (list record)))
+
 (defun fn-native-admin-publication-authorize
     (records frontier config-records record lock-owned observed-names)
   "Authorize this exact final configuration name once.  LOCK-OWNED and
@@ -237,10 +247,14 @@ shared immutable publication state before raw Lisp may execute an I/O action."
       (if (not (equal (fn-replay-result-kind replayed) :ok))
           (fn-native-admin-publication-result :refused :configuration nil nil nil)
         (let* ((current (fn-cnode-config (fn-replay-result-node replayed)))
-               (generation (+ 1 (fn-cfg-generation current)))
+               ; Replay success supplies a configuration generation.  NFIX
+               ; keeps this public executable boundary total for malformed
+               ; logical inputs without changing a valid replay's generation.
+               (generation (+ 1 (nfix (fn-cfg-generation current))))
                (name (fn-native-admin-config-name generation))
                (candidate (fn-native-admin-candidate-openp
-                           records frontier (append config-records (list record)))))
+                           records frontier
+                           (fn-native-admin-append-record config-records record))))
           (cond ((not (fn-cfg-recordp record))
                  (fn-native-admin-publication-result :refused :record nil nil nil))
                 ((or (not (equal (fn-cfg-record-sequence record)
