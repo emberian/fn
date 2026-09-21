@@ -127,16 +127,16 @@ Use explicit result events rather than an event called simply `commit`:
    abort consumes the reservation. Recovery returns ready without restoring it;
    another preparation requires a fresh durable allocator advance.
 
-The live host calls `fn-spc-prepare` for step 9. It retains the exact record,
-candidate-counter and pending-node binding checks but does not replay
-`append(stable-records, [record])` on each prepare. The theorem
-`fn-spc-prepare-equals-specification-under-relation` equates it to the original
-`fn-sn-prepare` under `fn-snt-relation`. Successful `fn-sn-open-observed`
-establishes that relation by authoritative replay; `fn-spc-run` proves it is
-preserved by prepare, file observations, finish, refusal, known abort, keyring
-adoption and staging sweep. The relation is proof state, not an executable host
-flag or per-command recognizer. Recovery continues to replay the complete
-observed history and does not use the projection.
+   The standalone live store wrapper calls `fn-spc-prepare` for this step.
+   It retains the exact record, candidate-counter and pending-node binding
+   checks but does not replay `append(stable-records, [record])` per prepare.
+   `fn-spc-prepare-equals-specification-under-relation` equates it to
+   `fn-sn-prepare` under `fn-snt-relation`. Successful `fn-sn-open-observed`
+   establishes that relation by authoritative replay; `fn-spc-run` preserves
+   it through the modeled prepare, I/O, finish, refusal, known abort, keyring
+   and staging-sweep transitions. The relation is not a runtime flag or
+   per-command recognizer. Shared-owner adoption remains a separate obligation.
+
 10. `record-write(result)` creates an exclusive staging file. Write/create/file
     barrier failures before a final-name operation are known aborts. After a
     successful file barrier the candidate is `data-durable`.

@@ -86,10 +86,12 @@ claimed proved function. Certify the pure core in a clean environment.
 
 ## Durability barriers by platform
 
-Every barrier the specifications call a durability barrier — staged file data,
-final directory namespace, configuration, allocation frontier, journal record
-and inbound frame — goes through one helper, `run_store.durable_barrier`, which
-`workflow_journal` and `receipt_journal` import rather than reimplement.
+Native file and directory barriers use `fnn-durable-barrier` in
+`host/native/io.lisp`. The development Python adapter uses
+`run_store.durable_barrier`, imported by its workflow and receipt journals.
+These are platform adapters to the same stated contract; their agreement is
+an adapter obligation, not a theorem about the operating system. Publication
+ordering and uncertain outcomes belong to the ACL2 storage/journal machines.
 
 | Platform | Primitive | What it establishes |
 | --- | --- | --- |
@@ -159,6 +161,11 @@ the certified definitions and nothing reinterpreted. `tools/fn_native.py`
 launches it with the Python hosts' command-line surface, and `FN_HOST=native`
 makes `tools/run_store.py` and `tools/run_reader.py` delegate to it after
 parsing, so the same tests drive either host.
+
+The Python launchers above are development conveniences. The Python-free
+component launcher is `packaging/fn-native`; its current operator commands and
+unsupported profiles are documented in [the operator guide](../docs/operator.md).
+It does not yet satisfy the full two-node production gate.
 
 The decimal-octet pipe, its nonce correlation and its reply bounds do not
 exist in this host: every call is an in-process application of the wrapper's
