@@ -40,9 +40,52 @@
   (declare (xargs :mode :program))
   (fn-cpc-selection-decode octets digest))
 
-; The native adapter parses only the bounded filename grammar.  ACL2 owns the
-; namespace decision: ascending generation numbers must be gap-free from zero,
-; and the uint32 successor has a distinct exhaustion result.
+; ACL2 owns the complete checkpoint directory vocabulary, its finite
+; observation bound, canonical decimal parsing/rendering, and the sorted
+; generation plan.  Hosts marshal directory-entry strings as UTF-8 octets.
+(defun fn-store-checkpoint-generation-name-octets (generation)
+  (declare (xargs :mode :program))
+  (let ((chars (fn-cpp-generation-name-chars generation)))
+    (if (equal chars :bad)
+        :bad
+      (fn-record-string-octets (coerce chars 'string)))))
+
+(defun fn-store-checkpoint-selection-name-octets ()
+  (declare (xargs :mode :program))
+  (fn-record-string-octets (coerce *fn-cpp-selection-name* 'string)))
+
+(defun fn-store-checkpoint-selection-read-bound ()
+  (declare (xargs :mode :program))
+  *fn-cpp-selection-read-bound*)
+
+(defun fn-store-checkpoint-namespace-observation-limit ()
+  (declare (xargs :mode :program))
+  *fn-cpp-namespace-observation-limit*)
+
+(defun fn-store-checkpoint-name-octets->chars (octets)
+  (declare (xargs :mode :program))
+  (if (fn-cbor-octet-listp octets)
+      (coerce (fn-record-octets-string octets) 'list)
+    :bad))
+
+(defun fn-store-checkpoint-names-octets->chars (names)
+  (declare (xargs :mode :program))
+  (if (consp names)
+      (let ((name (fn-store-checkpoint-name-octets->chars (car names))))
+        (if (equal name :bad)
+            :bad
+          (let ((rest (fn-store-checkpoint-names-octets->chars (cdr names))))
+            (if (equal rest :bad) :bad (cons name rest)))))
+    (if (null names) nil :bad)))
+
+(defun fn-store-checkpoint-namespace-plan (name-octets)
+  (declare (xargs :mode :program))
+  (let ((names (fn-store-checkpoint-names-octets->chars name-octets)))
+    (if (equal names :bad) '(:error :octets)
+      (fn-cpp-namespace-plan names))))
+
+; The sorted generation plan is gap-checked here.  Exhaustion names both the
+; finite retained-generation policy and the enclosing uint32 codec domain.
 (defun fn-store-checkpoint-next-generation (generations)
   (declare (xargs :mode :program))
   (fn-cpp-next-generation generations))

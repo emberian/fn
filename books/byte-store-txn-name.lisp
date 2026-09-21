@@ -32,6 +32,12 @@
   (declare (xargs :guard t))
   (fn-bs-txn-reverse (fn-bs-txn-natural-digits-rev n)))
 
+(defthm fn-bs-txn-natural-digits-consp
+  (consp (fn-bs-txn-natural-digits n))
+  :hints (("Goal" :in-theory (enable fn-bs-txn-natural-digits
+                                      fn-bs-txn-natural-digits-rev
+                                      fn-bs-txn-reverse))))
+
 (defun fn-bs-txn-digits (n)
   (declare (xargs :guard t))
   (let ((digits (fn-bs-txn-natural-digits n)))
@@ -47,26 +53,31 @@
   (declare (xargs :guard t :verify-guards nil))
   (coerce (fn-bs-txn-name-chars n) 'string))
 
-(local
- (defun fn-bs-txn-digit-value (char)
-   (declare (xargs :guard t))
-   (case char
-     (#\1 1) (#\2 2) (#\3 3) (#\4 4) (#\5 5)
-     (#\6 6) (#\7 7) (#\8 8) (#\9 9)
-     (otherwise 0))))
+(defun fn-bs-txn-digit-value (char)
+  (declare (xargs :guard t))
+  (case char
+    (#\1 1) (#\2 2) (#\3 3) (#\4 4) (#\5 5)
+    (#\6 6) (#\7 7) (#\8 8) (#\9 9)
+    (otherwise 0)))
 
-(local
- (defun fn-bs-txn-undigits-rev (chars)
-   (declare (xargs :guard t))
-   (if (consp chars)
-       (+ (fn-bs-txn-digit-value (car chars))
-          (* 10 (fn-bs-txn-undigits-rev (cdr chars))))
-     0)))
+(defun fn-bs-txn-digit-char-listp (chars)
+  (declare (xargs :guard t))
+  (if (consp chars)
+      (and (member-equal (car chars)
+                         '(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9))
+           (fn-bs-txn-digit-char-listp (cdr chars)))
+    (null chars)))
 
-(local
- (defun fn-bs-txn-decode-digits (chars)
-   (declare (xargs :guard t))
-   (fn-bs-txn-undigits-rev (fn-bs-txn-reverse chars))))
+(defun fn-bs-txn-undigits-rev (chars)
+  (declare (xargs :guard t))
+  (if (consp chars)
+      (+ (fn-bs-txn-digit-value (car chars))
+         (* 10 (fn-bs-txn-undigits-rev (cdr chars))))
+    0))
+
+(defun fn-bs-txn-decode-digits (chars)
+  (declare (xargs :guard t))
+  (fn-bs-txn-undigits-rev (fn-bs-txn-reverse chars)))
 
 (local
  (defthm fn-bs-txn-append-associative
@@ -76,20 +87,17 @@
  (defthm fn-bs-txn-append-nil-right
    (implies (true-listp xs) (equal (append xs nil) xs))))
 
-(local
- (defthm fn-bs-txn-reverse-true-listp
-   (true-listp (fn-bs-txn-reverse xs))))
+(defthm fn-bs-txn-reverse-true-listp
+  (true-listp (fn-bs-txn-reverse xs)))
 
-(local
- (defthm fn-bs-txn-reverse-append
-   (equal (fn-bs-txn-reverse (append a b))
-          (append (fn-bs-txn-reverse b) (fn-bs-txn-reverse a)))
-   :hints (("Goal" :induct (append a b)))))
+(defthm fn-bs-txn-reverse-append
+  (equal (fn-bs-txn-reverse (append a b))
+         (append (fn-bs-txn-reverse b) (fn-bs-txn-reverse a)))
+  :hints (("Goal" :induct (append a b))))
 
-(local
- (defthm fn-bs-txn-reverse-involution
-   (implies (true-listp xs)
-            (equal (fn-bs-txn-reverse (fn-bs-txn-reverse xs)) xs))))
+(defthm fn-bs-txn-reverse-involution
+  (implies (true-listp xs)
+           (equal (fn-bs-txn-reverse (fn-bs-txn-reverse xs)) xs)))
 
 (local
  (defthm fn-bs-txn-digit-value-of-digit-to-char
@@ -113,13 +121,12 @@
           (fn-bs-txn-undigits-rev chars))
    :hints (("Goal" :induct (fn-bs-txn-undigits-rev chars)))))
 
-(local
- (defthm fn-bs-txn-undigits-rev-inverts-natural-digits-rev
-   (equal (fn-bs-txn-undigits-rev (fn-bs-txn-natural-digits-rev n))
-          (nfix n))
-   :hints (("Goal"
-            :in-theory (e/d (fn-bs-txn-natural-digits-rev) (floor mod))
-            :induct (fn-bs-txn-natural-digits-rev n)))))
+(defthm fn-bs-txn-undigits-rev-inverts-natural-digits-rev
+  (equal (fn-bs-txn-undigits-rev (fn-bs-txn-natural-digits-rev n))
+         (nfix n))
+  :hints (("Goal"
+           :in-theory (e/d (fn-bs-txn-natural-digits-rev) (floor mod))
+           :induct (fn-bs-txn-natural-digits-rev n))))
 
 (local
  (defthm fn-bs-txn-append-zero-to-zeroes
@@ -136,14 +143,21 @@
             :in-theory (e/d (fn-bs-txn-reverse fn-bs-txn-zeroes)
                             (floor mod))))))
 
-(local
- (defthm fn-bs-txn-decode-digits-left-inverse
-   (equal (fn-bs-txn-decode-digits (fn-bs-txn-digits n)) (nfix n))
-   :hints (("Goal"
-            :use ((:instance fn-bs-txn-reverse-involution
-                             (xs (fn-bs-txn-natural-digits-rev n))))
-            :in-theory (enable fn-bs-txn-decode-digits fn-bs-txn-digits
-                               fn-bs-txn-natural-digits)))))
+(defthm fn-bs-txn-decode-digits-left-inverse
+  (equal (fn-bs-txn-decode-digits (fn-bs-txn-digits n)) (nfix n))
+  :hints (("Goal"
+           :use ((:instance fn-bs-txn-reverse-involution
+                            (xs (fn-bs-txn-natural-digits-rev n))))
+           :in-theory (enable fn-bs-txn-decode-digits fn-bs-txn-digits
+                              fn-bs-txn-natural-digits))))
+
+(defthm fn-bs-txn-decode-natural-digits-left-inverse
+  (equal (fn-bs-txn-decode-digits (fn-bs-txn-natural-digits n)) (nfix n))
+  :hints (("Goal"
+           :use ((:instance fn-bs-txn-reverse-involution
+                            (xs (fn-bs-txn-natural-digits-rev n))))
+           :in-theory (enable fn-bs-txn-decode-digits
+                              fn-bs-txn-natural-digits))))
 
 (local
  (defthm fn-bs-txn-zeroes-characters

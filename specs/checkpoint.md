@@ -158,6 +158,15 @@ restores through `fn-store-checkpoint-restore` (the proved subject) and asks
 full replay produced. The outcome (`none`, `ok`, `corrupt`) is printed by
 `recover` and `checkpoint.py status`; `corrupt` exits 4.
 
+Both hosts obtain `selected.fncp`, canonical `generation-N.fncp` rendering,
+the inverse filename decoder, the exact 47-octet selection-frame read bound,
+and the checkpoint-directory observation plan from
+`books/checkpoint-publish.lisp`.  The plan sorts decoded generations and
+rejects every other entry.  Hosts call the ACL2-owned 4097-entry observation
+bound before retaining directory names: at most 4096 generation files plus
+the selection marker.  Generation allocation refuses at that retained-set
+limit, before the uint32 codec limit could be reached.
+
 What the host still asserts, outside the proofs:
 
 - SHA-256 is a fixed function of the bytes (the digest the host supplies at
@@ -167,9 +176,9 @@ What the host still asserts, outside the proofs:
   leaves the old or the new marker, and `fsync` orders them: the store's
   A-DURABILITY and A-WRITE-ISOLATION premises, exercised by process-death
   tests with the OS cache retained, not by power-loss qualification.
-- The differential equality is a debug assertion under
-  `FN_CHECKPOINT_DIFFERENTIAL`, not a production dependency; production
-  recovery is the full replay.
+- Production recovery remains full replay, but differential inequality is
+  always a corrupt-checkpoint outcome and exit 4.  The mismatch cannot alter
+  live state, and an operator flag cannot turn it into `ok`.
 - Rollback of a valid older generation together with a truncated journal
   still needs an external freshness anchor (C2-12); a detected invalid
   checkpoint is a diagnostic failure, never permission to discard history.
@@ -194,8 +203,9 @@ This is diagnostic adoption only: suffix-only startup is not claimed because
 the physical assumptions needed to replace full replay have not been
 discharged.
 
-The decimal grammar mapping `generation-N.fncp` to `N` remains a bounded raw
-host boundary in both hosts.  ACL2 decides whether the parsed ascending list
-is gap-free and returns its next uint32 generation or `:bad`/`:exhausted`.
-An authoritative filename decoder is future boundary work; this adoption does
-not widen into the transaction-name namespace refactor.
+The filename codec reuses the byte store's proved natural-decimal renderer.
+`fn-cpp-generation-name-decode-of-render` is its called-codec round trip;
+canonical re-rendering rejects leading-zero aliases, signs, overflow and
+partial prefix/suffix values.  Native and Python hosts now marshal entry
+octets and execute the returned plan; neither parses, formats or sorts the
+generation namespace.

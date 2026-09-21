@@ -81,11 +81,45 @@
               (fn-cpp-phase *cpp-bad-driver-state*) :ok)
              (fn-cpp-phase (fn-cpp-marker-step *cpp-bad-driver-state* :ok)))))
 
-; Namespace parsing is a host boundary; ACL2 alone decides contiguous next,
-; malformed/gapped, and exhausted outcomes.
+; ACL2 owns the exact on-disk names, both read bounds, canonical parsing, the
+; sorted namespace plan, contiguous allocation and exhausted outcomes.
+(assert-event
+ (equal (fn-cpp-generation-name-chars 0)
+        (coerce "generation-0.fncp" 'list)))
+(assert-event
+ (equal (fn-cpp-generation-name-decode
+         (coerce "generation-4294967295.fncp" 'list))
+        '(:ok 4294967295)))
+(assert-event
+ (equal (fn-cpp-namespace-name-decode *fn-cpp-selection-name*)
+        '(:selection)))
+(assert-event (equal *fn-cpp-selection-read-bound* 47))
+(assert-event (equal *fn-cpp-namespace-observation-limit* 4097))
+(assert-event
+ (equal (fn-cpp-namespace-plan
+         (list (coerce "generation-2.fncp" 'list)
+               *fn-cpp-selection-name*
+               (coerce "generation-0.fncp" 'list)
+               (coerce "generation-1.fncp" 'list)))
+        '(:ok (0 1 2))))
+; Canonicality, numeric domain and observation bound are independent teeth.
+(assert-event
+ (equal (fn-cpp-generation-name-decode
+         (coerce "generation-00.fncp" 'list)) '(:error :name)))
+(assert-event
+ (equal (fn-cpp-generation-name-decode
+         (coerce "generation-4294967296.fncp" 'list)) '(:error :name)))
+(assert-event
+ (equal (fn-cpp-generation-name-decode
+         (coerce "generation--1.fncp" 'list)) '(:error :name)))
+(assert-event
+ (equal (fn-cpp-namespace-plan
+         (make-list 4098 :initial-element *fn-cpp-selection-name*))
+        '(:error :bound)))
 (assert-event (equal (fn-cpp-next-generation nil) 0))
 (assert-event (equal (fn-cpp-next-generation '(0 1 2)) 3))
 (assert-event (equal (fn-cpp-next-generation '(0 2)) :bad))
+(assert-event (equal (fn-cpp-next-generation-from nil 4096) :exhausted))
 (assert-event (equal (fn-cpp-next-generation-from nil 4294967296) :exhausted))
 
 ; The immutable executor receives authority only through this ACL2 gate.

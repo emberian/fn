@@ -7,11 +7,6 @@
 ;;; checkpoint as the live store state.
 (in-package "ACL2")
 
-(defconstant +fnn-checkpoint-selection-bound+ 4096)
-(defconstant +fnn-checkpoint-prefix+ "generation-")
-(defconstant +fnn-checkpoint-suffix+ ".fncp")
-(defconstant +fnn-checkpoint-selection-name+ "selected.fncp")
-
 (define-condition fnn-checkpoint-corruption (error)
   ((reason :initarg :reason :reader fnn-checkpoint-corruption-reason)))
 
@@ -21,48 +16,72 @@
 (defun fnn-checkpoints (store)
   (fnn-join (fnn-store-root store) "checkpoints"))
 
+(defun fnn-checkpoint-name-result (value description)
+  "Validate and decode one ACL2-owned path component."
+  (unless (and (fnn-octet-list-p value) value
+               (every (lambda (octet) (< octet 128)) value)
+               (not (member (char-code #\/) value))
+               (not (member 0 value)))
+    (fnn-fault "ACL2 returned invalid ~a" description))
+  (fnn-octets-string (fnn-octets value)))
+
+(defun fnn-checkpoint-selection-name ()
+  (fnn-checkpoint-name-result
+   (fnn-core 'fn-store-checkpoint-selection-name-octets)
+   "checkpoint selection name"))
+
 (defun fnn-checkpoint-selection-path (store)
-  (fnn-join (fnn-checkpoints store) +fnn-checkpoint-selection-name+))
+  (fnn-join (fnn-checkpoints store) (fnn-checkpoint-selection-name)))
 
 (defun fnn-checkpoint-generation-name (generation)
-  ; Filename grammar remains a bounded host boundary.  ACL2 owns generation
-  ; selection and the uint32 domain through fn-store-checkpoint-next-generation.
-  (format nil "~a~d~a" +fnn-checkpoint-prefix+ generation +fnn-checkpoint-suffix+))
+  (fnn-checkpoint-name-result
+   (fnn-core 'fn-store-checkpoint-generation-name-octets generation)
+   "checkpoint generation name"))
 
 (defun fnn-checkpoint-generation-path (store generation)
   (fnn-join (fnn-checkpoints store)
             (fnn-checkpoint-generation-name generation)))
 
-(defun fnn-checkpoint-generation-from-name (name)
-  "A canonical generation filename's natural, or NIL for another entry."
-  (let* ((prefix-length (length +fnn-checkpoint-prefix+))
-         (suffix-length (length +fnn-checkpoint-suffix+))
-         (name-length (length name)))
-    (when (and (> name-length (+ prefix-length suffix-length))
-               (string= +fnn-checkpoint-prefix+ name :end2 prefix-length)
-               (string= +fnn-checkpoint-suffix+ name
-                        :start2 (- name-length suffix-length)))
-      (let ((digits (subseq name prefix-length (- name-length suffix-length))))
-        (when (every #'digit-char-p digits)
-          (let ((generation (parse-integer digits)))
-            ; Reject aliases such as generation-00.fncp.
-            (when (string= name (fnn-checkpoint-generation-name generation))
-              generation)))))))
+(defun fnn-checkpoint-namespace-observation-limit ()
+  (let ((limit (fnn-core 'fn-store-checkpoint-namespace-observation-limit)))
+    (unless (and (integerp limit) (>= limit 0))
+      (fnn-fault "ACL2 returned invalid checkpoint namespace bound"))
+    limit))
+
+(defun fnn-checkpoint-selection-read-bound ()
+  (let ((bound (fnn-core 'fn-store-checkpoint-selection-read-bound)))
+    (unless (and (integerp bound) (> bound 0))
+      (fnn-fault "ACL2 returned invalid checkpoint selection read bound"))
+    bound))
 
 (defun fnn-checkpoint-generations (store)
-  "Published generation naturals, boundary-checked and ascending."
+  "The ACL2-owned sorted plan for one bounded directory observation."
   (let ((directory (fnn-checkpoints store)))
     (unless (fnn-lstat directory) (return-from fnn-checkpoint-generations nil))
     (fnn-safe-directory directory)
-    (let ((found nil))
-      (dolist (name (fnn-list-directory directory))
-        (unless (string= name +fnn-checkpoint-selection-name+)
-          (let ((generation (fnn-checkpoint-generation-from-name name)))
-            (unless generation
-              (fnn-fault "unexpected checkpoint namespace entry: ~a" name))
-            (fnn-check-regular (fnn-join directory name))
-            (push generation found))))
-      (sort found #'<))))
+    (let* ((names (fnn-list-directory-bounded
+                   directory (fnn-checkpoint-namespace-observation-limit)
+                   "checkpoint namespace"))
+           (plan (fnn-core
+                  'fn-store-checkpoint-namespace-plan
+                  (mapcar (lambda (name)
+                            (fnn-octet-list (fnn-string-octets name)))
+                          names))))
+      (unless (and (listp plan) (eq (first plan) :ok)
+                   (listp (second plan))
+                   (every (lambda (generation)
+                            (and (integerp generation) (>= generation 0)))
+                          (second plan)))
+        (fnn-fault "ACL2 rejected checkpoint namespace: ~s" plan))
+      (dolist (generation (second plan))
+        (fnn-check-regular (fnn-checkpoint-generation-path store generation)))
+      (second plan))))
+
+(defun fnn-checkpoint-require-mutation-ready (store)
+  "Checkpoint mutation requires the common writer gate and an unfenced Store."
+  (fnn-require-writer store)
+  (when (fnn-store-fenced store)
+    (fnn-indeterminate "store is fenced pending recovery")))
 
 (defun fnn-checkpoint-capture (records store)
   (let ((protected
@@ -82,7 +101,7 @@
 
 (defun fnn-checkpoint-publish (store records)
   "Publish one immutable generation through the shared fn-jpub I/O effect."
-  (fnn-require-writer store)
+  (fnn-checkpoint-require-mutation-ready store)
   (let ((directory (fnn-checkpoints store)))
     (fnn-safe-directory directory t)
     (let* ((generations (fnn-checkpoint-generations store))
@@ -109,14 +128,21 @@
             (:exhausted (fnn-refuse "checkpoint generation domain exhausted"))
             (otherwise (fnn-fault "ACL2 refused checkpoint publication authority: ~s"
                                   authorization))))
+        (setf (fnn-store-fenced store) t)
         (case (fnn-immutable-publish-effect
                (third authorization) stage final directory frame
                :cleanup-directory (fnn-staging store)
                :observer #'fnn-checkpoint-candidate-observer)
-        (:durable generation)
-        (:refused (fnn-refuse "checkpoint generation publication refused"))
-        (:uncertain (fnn-indeterminate "checkpoint generation publication is uncertain"))
-        (otherwise (fnn-fault "invalid immutable checkpoint publication outcome")))))))
+          (:durable
+           (setf (fnn-store-fenced store) nil)
+           generation)
+          (:refused
+           (setf (fnn-store-fenced store) nil)
+           (fnn-refuse "checkpoint generation publication refused"))
+          (:uncertain
+           (fnn-indeterminate "checkpoint generation publication is uncertain"))
+          (otherwise
+           (fnn-fault "invalid immutable checkpoint publication outcome")))))))
 
 (defun fnn-checkpoint-test-fault (point path)
   (when (string= (or (sb-ext:posix-getenv "FN_CHECKPOINT_TEST_FAIL") "") point)
@@ -132,7 +158,7 @@
 
 (defun fnn-checkpoint-select (store generation)
   "Replace the authority marker under the ACL2 marker driver."
-  (fnn-require-writer store)
+  (fnn-checkpoint-require-mutation-ready store)
   (unless (member generation (fnn-checkpoint-generations store))
     (fnn-refuse "checkpoint generation ~d is not published" generation))
   (let* ((protected (fnn-core 'fn-store-checkpoint-selection-protected generation))
@@ -158,6 +184,7 @@
                       (fnn-os-error ()
                         (fnn-checkpoint-marker-step phase :known-fail)))))
              (:replace
+              (setf (fnn-store-fenced store) t)
               (setq phase
                     (handler-case
                         (progn (fnn-checkpoint-test-fault "selection-replace" final)
@@ -182,8 +209,12 @@
       ; Cleanup occurs after the model's terminal outcome and cannot change it.
       (ignore-errors (fnn-unlink stage) (fnn-fsync-dir (fnn-staging store))))
     (case (fnn-core 'fn-store-checkpoint-marker-outcome phase)
-      (:durable :durable)
-      (:refused (fnn-refuse "checkpoint selection refused before replacement"))
+      (:durable
+       (setf (fnn-store-fenced store) nil)
+       :durable)
+      (:refused
+       (setf (fnn-store-fenced store) nil)
+       (fnn-refuse "checkpoint selection refused before replacement"))
       (:uncertain (fnn-indeterminate "checkpoint selection replacement is uncertain"))
       (otherwise (fnn-fault "ACL2 left checkpoint marker replacement pending")))))
 
@@ -191,7 +222,8 @@
   (let ((path (fnn-checkpoint-selection-path store)))
     (unless (fnn-check-regular path)
       (return-from fnn-checkpoint-selected-generation nil))
-    (let* ((raw (fnn-read-regular-bounded path +fnn-checkpoint-selection-bound+))
+    (let* ((raw (fnn-read-regular-bounded
+                 path (fnn-checkpoint-selection-read-bound)))
            (answer (fnn-core 'fn-store-checkpoint-selection-decode
                              (fnn-octet-list raw) (fnn-digest-of raw))))
       (unless (and (listp answer) (eq (first answer) :ok)
@@ -232,12 +264,21 @@
                   (fnn-checkpoint-corrupt "selected generation ~d does not restore: ~s"
                                           generation restored))
                 (let ((differential
-                        (eq (fnn-core-state 'fn-store-checkpoint-differential) t)))
-                  (when (and (not differential)
-                             (not (member (or (sb-ext:posix-getenv
-                                               "FN_CHECKPOINT_DIFFERENTIAL") "")
-                                          '("" "0") :test #'string=)))
-                    (fnn-fault "checkpoint plus suffix differs from full replay"))
+                        (and (eq (fnn-core-state
+                                  'fn-store-checkpoint-differential) t)
+                             ; Developer-only reachability hook for the
+                             ; otherwise theorem-excluded mismatch branch.
+                             (not (string=
+                                   (or (sb-ext:posix-getenv
+                                        "FN_CHECKPOINT_TEST_MISMATCH") "")
+                                   "1")))))
+                  ; Full replay remains live authority, but an ACL2-computed
+                  ; mismatch means the selected checkpoint is not a valid
+                  ; diagnostic image.  Surface corruption on every open;
+                  ; an environment flag must not turn disagreement into OK.
+                  (unless differential
+                    (fnn-checkpoint-corrupt
+                     "checkpoint plus suffix differs from full replay"))
                   (list :ok generation sequence differential)))))))
     (fnn-checkpoint-corruption (e)
       (list :corrupt (fnn-checkpoint-corruption-reason e)))))
