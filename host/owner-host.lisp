@@ -255,6 +255,11 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-generation (fn-owner-config state))))
 
+(defun fn-owner-config-served (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-store-cfg-join-names
+          (fn-cnode-served-of (fn-owner-config state)))))
+
 ; -----------------------------------------------------------------------------
 ; The transaction path: the same observations run_store.py reports, each one
 ; a (:store ...) owner event.
