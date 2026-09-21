@@ -422,7 +422,7 @@ written, `CAPABILITIES` carried no AUTHINFO line, and POST was never gated.
 The measurement, one variable at a time, is
 [the live record](../planning/evidence/auth-live-2026-09-21.md); the repair is
 the `acfg` argument through `fn-served-open-peer`, `fn-own-open-peer` and
-`fn-owner-open-peer`, and PRF-039 is the pair of theorems that are false of
+`fn-owner-open-peer`, and PRF-039 carries the theorems that are false of
 the old definition. The operator sets the policy with `fn init
 --auth-required` / `--auth-protected-only`, which is also new: before it there
 was no way to reach `fn-auth-config-requiredp` from the operator surface. `fn principal

@@ -1150,6 +1150,10 @@
         {
           "kind": "theorem",
           "name": "fn-served-open-peer-pins-the-configuration"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-open-greets-200-exactly-when-the-connection-may-post"
         }
       ]
     }

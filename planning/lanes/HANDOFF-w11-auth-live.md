@@ -42,19 +42,27 @@ in with them.
 `fn-owner-open-peer` can read it. Under the default policy nothing changes,
 because the default IS `(fn-auth-open-config)`.
 
-**PRF-039**, two theorems in `books/served.lisp`, both false of the old
-definition: `fn-served-open-peer-pins-the-configuration`, and the keystone
+**PRF-039**, first half: two theorems in `books/served.lisp`, both false of
+the old definition: `fn-served-open-peer-pins-the-configuration`, and the keystone
 `fn-served-peer-and-reader-open-under-the-same-policy`. Teeth in
 `tests/acl2/served-tests.lisp` drive `fn-served-step` over two connections
 differing in that one argument and get `281` against the operator's policy
 and `481` against the empty one.
+
+Both theorems are unconditional equalities, so there is no hypothesis to
+`must-fail`: what the teeth rule asks for here is the reachable
+non-degenerate witness and the separating one, and both are there --- a
+policy with a real credential, a real `required` bit and a real certificate
+(`fn-auth-configp` asserted of it), and the same two reads against the
+value the old definition pinned, which separate by every reply they draw
+and not by a weakest clause.
 
 **The greeting (RFC 3977 §5.1.2).** `fn-served-greeting` read the injection
 configuration alone, so a connection under `required = true` greeted `200`
 and then answered `POST` `480`. It now takes the opened session and reads the
 same value the POST capability label and `fn-auth-postingp` read.
 `fn-served-open-greets-200-exactly-when-the-connection-may-post` is the
-keystone; `fn-served-open-greeting-agrees-with-the-post-label` is the
+keystone (PRF-039's second half); `fn-served-open-greeting-agrees-with-the-post-label` is the
 sentence `specs/nntp.md` makes, over the octets.
 
 **One principal registry.** `fn principal list` read
@@ -94,7 +102,9 @@ root `/home/ember/fn-lanes/w11-auth-live`:
 | --- | --- |
 | `run-20260921T015401Z-ec5c` | **passed**, 0 failures, 196 s (the `acfg` change): `books/served`, `books/owner`, `books/owner-invariants`, `books/owner-config`, `books/nntp-auth`, `books/nntp-auth-invariants`, `books/peer-inbound`, `tests/acl2/owner-tests`, `tests/acl2/served-tests` |
 | `run-20260921T020122Z-d422` | **passed**, `tests/acl2/served-tests` with the PRF-039 teeth, 112 assertions, 0 errors |
-| `run-20260921T021107Z-808e` | the greeting change, same roots — see the table below |
+| `run-20260921T021107Z-808e` | **failed** at one form, recorded because it is the only one: `fn-auth-capability-lines-offer-post-by-definition` was stated with `fn-nntp-capability-lines` disabled, so `member-equal` over the append had no law. Made `local` with `:rule-classes nil` and both definitions open |
+| `run-20260921T021603Z-e2e8` | **passed**, 0 failures, 266 s, with the greeting keystones: `books/served`, `books/owner`, `books/owner-invariants`, `books/owner-config`, `books/nntp-auth`, `books/nntp-auth-invariants`, `books/ideal`, `tests/acl2/served-tests`, `tests/acl2/owner-tests`, `tests/acl2/owner-config-tests` |
+| `run-20260921T022610Z-355a` | **passed**, 0 failures, 212 s, on the tree AFTER merging dev, over the closure of `books/served.lisp` AND `books/owner.lisp` (`--jobs 8`, installed 46 kept 100 uncached 133). **This is the certification of record for the lane.** |
 
 ## Open, named, not weakened
 
@@ -117,6 +127,9 @@ root `/home/ember/fn-lanes/w11-auth-live`:
   neither: it made the policy REACH the peer connection, which strengthens
   the gate, and stopped there.
 - **OB-AUTH-FOLD** (PRF-031) is untouched and still open.
+- **The outbound feed tolerates the 201 greeting** (`tools/run_owner.py:910`
+  tests `startswith(b"20")`), so a node that requires a login still feeds a
+  peer it dials. Checked, not assumed.
 - The independent client (`V0-CLIENT-NNTPLIB`) now performs the login through
   the standard library's own `nntplib`, so the 281 is observed by something
   that is not fn — but only on persvati, where a Python 3.12 exists. On a box
