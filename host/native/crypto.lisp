@@ -155,13 +155,15 @@
   (sb-alien:sap-alien (sb-sys:vector-sap vector)
                       (* sb-alien:unsigned-char)))
 
-(defun fnn-crypto-ed25519-verify (public-key message signature)
+(defun fnn-crypto-ed25519-verify
+    (public-key message signature
+     &optional (maximum-message-octets +fnn-crypto-max-message-octets+))
   "Return T or NIL for one bounded detached signature; signal facility faults."
   (fnn-crypto-initialize)
   (let ((key (fnn-crypto-octets public-key
                                 +fnn-crypto-ed25519-public-key-octets+
                                 "Ed25519 public key"))
-        (text (fnn-crypto-octets message +fnn-crypto-max-message-octets+
+        (text (fnn-crypto-octets message maximum-message-octets
                                  "Ed25519 message"))
         (sig (fnn-crypto-octets signature
                                 +fnn-crypto-ed25519-signature-octets+
@@ -183,10 +185,13 @@
                                           "Ed25519 verifier returned ~d"
                                           result)))))))))
 
-(defun fnn-crypto-ed25519-observe (public-key message signature)
+(defun fnn-crypto-ed25519-observe
+    (public-key message signature
+     &optional (maximum-message-octets +fnn-crypto-max-message-octets+))
   "Three-way host observation.  :UNAVAILABLE/:FAULT are not signature verdicts."
   (handler-case
-      (if (fnn-crypto-ed25519-verify public-key message signature)
+      (if (fnn-crypto-ed25519-verify public-key message signature
+                                      maximum-message-octets)
           :verified
         :refused)
     (fnn-crypto-unavailable () :unavailable)
