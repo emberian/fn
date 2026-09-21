@@ -313,6 +313,9 @@
       (if (equal pairs :invalid) :invalid
         (list :ok selected-lower pairs)))))
 
+(verify-guards fn-bs-txn-observation-covered)
+(verify-guards fn-bs-txn-observation-selected)
+
 (defthm fn-bs-txn-observation-selected-zero-is-default
   (equal (fn-bs-txn-observation-selected names 0)
          (if (equal (fn-bs-txn-observation-pairs names 0) :invalid)
