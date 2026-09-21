@@ -312,3 +312,701 @@
   :hints (("Goal"
            :induct (fn-wire-receive-source-lines lines body-rev)
            :in-theory (enable fn-wire-receive-source-lines revappend))))
+
+(defthm fn-wire-line-contentp-implies-octet-listp
+  (implies (fn-wire-line-contentp line)
+           (fn-wire-octet-listp line))
+  :hints (("Goal"
+           :induct (fn-wire-line-contentp line)
+           :in-theory (enable fn-wire-line-contentp))))
+
+(defthm fn-wire-line-contentp-implies-true-listp
+  (implies (fn-wire-line-contentp line)
+           (true-listp line))
+  :hints (("Goal"
+           :use ((:instance fn-wire-line-contentp-implies-octet-listp)
+                 (:instance fn-wire-octet-list-is-true-list
+                            (octets line)))
+           :in-theory (disable fn-wire-line-contentp-implies-octet-listp
+                               fn-wire-octet-list-is-true-list))))
+
+(defthm fn-wire-line-contentp-of-stuff-line
+  (implies (fn-wire-line-contentp line)
+           (fn-wire-line-contentp (fn-wire-stuff-line line)))
+  :hints (("Goal" :in-theory (enable fn-wire-stuff-line
+                                      fn-wire-line-contentp))))
+
+(defthm fn-wire-lines-size-of-append
+  (equal (fn-wire-lines-size (append left right))
+         (+ (fn-wire-lines-size left)
+            (fn-wire-lines-size right)))
+  :hints (("Goal"
+           :induct (append left right)
+           :in-theory (enable fn-wire-lines-size))))
+
+(defthm fn-wire-lines-size-of-cdr-is-at-most-lines-size
+  (<= (fn-wire-lines-size (cdr lines))
+      (fn-wire-lines-size lines))
+  :hints (("Goal" :in-theory (enable fn-wire-lines-size
+                                      fn-wire-line-cost))))
+
+(defthm fn-wire-first-line-fits-total-body-bound
+  (implies (and (consp lines)
+                (<= (+ body-size (fn-wire-lines-size lines)) body-limit))
+           (<= (+ body-size (fn-wire-line-cost (car lines))) body-limit))
+  :hints (("Goal" :in-theory (enable fn-wire-lines-size
+                                      fn-wire-line-cost))))
+
+(defthm fn-wire-rest-lines-fit-after-first
+  (implies (and (consp lines)
+                (<= (+ body-size (fn-wire-lines-size lines)) body-limit))
+           (<= (+ body-size
+                  (fn-wire-line-cost (car lines))
+                  (fn-wire-lines-size (cdr lines)))
+               body-limit))
+  :hints (("Goal" :in-theory (enable fn-wire-lines-size))))
+
+(defthm fn-wire-stuffed-first-line-length-at-most-lines-size
+  (implies (consp lines)
+           (<= (len (fn-wire-stuff-line (car lines)))
+               (fn-wire-lines-size lines)))
+  :hints (("Goal"
+           :use ((:instance fn-wire-stuff-line-length-at-most-one-more
+                            (line (car lines)))
+                 (:instance fn-wire-lines-size-natp
+                            (lines (cdr lines))))
+           :in-theory (e/d (fn-wire-lines-size fn-wire-line-cost)
+                           (fn-wire-stuff-line-length-at-most-one-more
+                            fn-wire-lines-size-natp))
+           :do-not-induct t)))
+
+(defthm fn-wire-stuffed-line-fits-article-profile
+  (implies (and (consp lines)
+                (natp body-size)
+                (natp body-limit)
+                (natp line-limit)
+                (<= (+ body-size (fn-wire-lines-size lines)) body-limit)
+                (<= (+ 1 body-limit) line-limit))
+           (<= (len (fn-wire-stuff-line (car lines))) line-limit))
+  :hints (("Goal"
+           :use ((:instance fn-wire-stuffed-first-line-length-at-most-lines-size))
+           :in-theory (disable fn-wire-stuff-line
+                               fn-wire-lines-size
+                               fn-wire-stuffed-first-line-length-at-most-lines-size)
+           :do-not-induct t)))
+
+(defthm fn-wire-after-line-of-rendered-source-line
+  (implies
+   (and (fn-wire-statep wire-state)
+        (equal (fn-wire-state-mode wire-state) :article)
+        (null (fn-wire-state-line-rev wire-state))
+        (equal (fn-wire-state-line-len wire-state) 0)
+        (null (fn-wire-state-pending-crp wire-state))
+        (fn-wire-line-contentp source)
+        (<= (len (fn-wire-stuff-line source))
+            (fn-wire-state-line-limit wire-state))
+        (<= (+ (fn-wire-state-body-size wire-state)
+               (fn-wire-line-cost source))
+            (fn-wire-state-body-limit wire-state)))
+   (equal
+    (fn-wire-feed-proper
+     wire-state
+     (append (fn-wire-stuff-line source) '(13 10)))
+    (fn-wire-make-result
+     (fn-wire-make-state
+      :article nil 0
+      (cons source (fn-wire-state-body-rev wire-state)) nil
+      (+ (fn-wire-state-body-size wire-state)
+         (fn-wire-line-cost source))
+      (fn-wire-state-line-limit wire-state)
+      (fn-wire-state-body-limit wire-state))
+     nil)))
+  :hints (("Goal"
+           :use ((:instance fn-wire-feed-proper-completes-clean-article-line
+                            (remaining (fn-wire-stuff-line source)))
+                 (:instance fn-wire-after-line-unstuffs-rendered-source-line))
+           :in-theory (disable fn-wire-feed-proper
+                               fn-wire-after-line
+                               fn-wire-statep
+                               fn-wire-feed-proper-append
+                               fn-wire-feed-proper-completes-clean-article-line
+                               fn-wire-after-line-unstuffs-rendered-source-line)
+           :do-not-induct t)))
+
+(defthm fn-wire-append-when-true-listp
+  (implies (true-listp left)
+           (equal (fn-wire-append left right)
+                  (append left right)))
+  :hints (("Goal"
+           :induct (fn-wire-append left right)
+           :in-theory (enable fn-wire-append))))
+
+(defthm fn-wire-octet-listp-of-total-append
+  (implies (and (fn-wire-octet-listp left)
+                (fn-wire-octet-listp right))
+           (fn-wire-octet-listp (fn-wire-append left right)))
+  :hints (("Goal"
+           :induct (fn-wire-append left right)
+           :in-theory (enable fn-wire-append))))
+
+(defthm fn-wire-rendered-line-prefix-is-append
+  (implies (true-listp source)
+           (equal
+            (fn-wire-append (fn-wire-stuff-line source)
+                            (fn-wire-append '(13 10) tail))
+            (append (append (fn-wire-stuff-line source) '(13 10)) tail)))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-append fn-wire-stuff-line))))
+
+(defthm fn-wire-rendered-block-cons-decomposition
+  (implies
+   (true-listp source)
+   (equal
+    (fn-wire-append
+     (fn-wire-append (fn-wire-stuff-line source)
+                     (list* 13 10 rendered-rest))
+     '(46 13 10))
+    (append
+     (append (fn-wire-stuff-line source) '(13 10))
+     (fn-wire-append rendered-rest '(46 13 10)))))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-append fn-wire-stuff-line))))
+
+(defthm fn-wire-rendered-source-line-next-statep
+  (implies
+   (and (fn-wire-statep wire-state)
+        (equal (fn-wire-state-mode wire-state) :article)
+        (null (fn-wire-state-line-rev wire-state))
+        (equal (fn-wire-state-line-len wire-state) 0)
+        (null (fn-wire-state-pending-crp wire-state))
+        (fn-wire-line-contentp source)
+        (<= (len (fn-wire-stuff-line source))
+            (fn-wire-state-line-limit wire-state))
+        (<= (+ (fn-wire-state-body-size wire-state)
+               (fn-wire-line-cost source))
+            (fn-wire-state-body-limit wire-state)))
+   (fn-wire-statep
+    (fn-wire-make-state
+     :article nil 0
+     (cons source (fn-wire-state-body-rev wire-state)) nil
+     (+ (fn-wire-state-body-size wire-state)
+        (fn-wire-line-cost source))
+     (fn-wire-state-line-limit wire-state)
+     (fn-wire-state-body-limit wire-state))))
+  :hints (("Goal"
+           :use ((:instance fn-wire-line-contentp-implies-octet-listp))
+           :in-theory (e/d (fn-wire-statep
+                             fn-wire-lines-size
+                             fn-wire-line-cost)
+                            (fn-wire-line-contentp-implies-octet-listp))
+           :do-not-induct t)))
+
+(defthm fn-wire-feed-proper-after-rendered-source-line
+  (implies
+   (and (fn-wire-statep wire-state)
+        (equal (fn-wire-state-mode wire-state) :article)
+        (null (fn-wire-state-line-rev wire-state))
+        (equal (fn-wire-state-line-len wire-state) 0)
+        (null (fn-wire-state-pending-crp wire-state))
+        (fn-wire-line-contentp source)
+        (<= (len (fn-wire-stuff-line source))
+            (fn-wire-state-line-limit wire-state))
+        (<= (+ (fn-wire-state-body-size wire-state)
+               (fn-wire-line-cost source))
+            (fn-wire-state-body-limit wire-state)))
+   (equal
+    (fn-wire-feed-proper
+     wire-state
+     (append (append (fn-wire-stuff-line source) '(13 10)) tail))
+    (fn-wire-feed-proper
+     (fn-wire-make-state
+      :article nil 0
+      (cons source (fn-wire-state-body-rev wire-state)) nil
+      (+ (fn-wire-state-body-size wire-state)
+         (fn-wire-line-cost source))
+      (fn-wire-state-line-limit wire-state)
+      (fn-wire-state-body-limit wire-state))
+     tail)))
+  :hints (("Goal"
+           :use ((:instance fn-wire-feed-proper-append
+                            (left (append (fn-wire-stuff-line source)
+                                          '(13 10)))
+                            (right tail))
+                 (:instance fn-wire-after-line-of-rendered-source-line))
+           :in-theory (e/d (fn-wire-result-state
+                             fn-wire-result-events
+                             fn-wire-make-result)
+                            (fn-wire-feed-proper
+                             fn-wire-feed-proper-append
+                             fn-wire-after-line-of-rendered-source-line))
+           :do-not-induct t)))
+
+; Follow the receiver state that the first rendered line establishes, so the
+; induction hypothesis speaks about the actual cumulative counters and body.
+(local
+ (defun fn-wire-render-lines-induction (wire-state lines)
+   (declare (xargs :guard t :verify-guards nil
+                   :measure (acl2-count lines)))
+   (if (consp lines)
+       (fn-wire-render-lines-induction
+        (fn-wire-make-state
+         :article nil 0
+         (cons (car lines) (fn-wire-state-body-rev wire-state)) nil
+         (+ (fn-wire-state-body-size wire-state)
+            (fn-wire-line-cost (car lines)))
+         (fn-wire-state-line-limit wire-state)
+         (fn-wire-state-body-limit wire-state))
+        (cdr lines))
+     wire-state)))
+
+(defthm fn-wire-append-associative
+  (equal (fn-wire-append (fn-wire-append first second) third)
+         (fn-wire-append first (fn-wire-append second third)))
+  :hints (("Goal"
+           :induct (fn-wire-append first second)
+           :in-theory (enable fn-wire-append))))
+
+(defthm fn-wire-octet-linesp-is-true-list
+  (implies (fn-wire-octet-linesp lines)
+           (true-listp lines))
+  :hints (("Goal" :induct (fn-wire-octet-linesp lines))))
+
+(defthm fn-wire-statep-has-positive-line-limit
+  (implies (fn-wire-statep wire-state)
+           (posp (fn-wire-state-line-limit wire-state)))
+  :hints (("Goal" :in-theory (enable fn-wire-statep))))
+
+(defthm fn-wire-statep-has-true-list-body
+  (implies (fn-wire-statep wire-state)
+           (true-listp (fn-wire-state-body-rev wire-state)))
+  :hints (("Goal"
+           :use ((:instance fn-wire-octet-linesp-is-true-list
+                            (lines (fn-wire-state-body-rev wire-state))))
+           :in-theory (e/d (fn-wire-statep)
+                           (fn-wire-octet-linesp-is-true-list)))))
+
+(defthm fn-wire-first-line-fits-state-profile
+  (implies
+   (and (fn-wire-statep wire-state)
+        (consp lines)
+        (<= (+ (fn-wire-state-body-size wire-state)
+               (fn-wire-lines-size lines))
+            (fn-wire-state-body-limit wire-state))
+        (<= (+ 1 (fn-wire-state-body-limit wire-state))
+            (fn-wire-state-line-limit wire-state)))
+   (<= (len (fn-wire-stuff-line (car lines)))
+       (fn-wire-state-line-limit wire-state)))
+  :hints (("Goal"
+           :use ((:instance fn-wire-stuffed-line-fits-article-profile
+                            (body-size (fn-wire-state-body-size wire-state))
+                            (body-limit (fn-wire-state-body-limit wire-state))
+                            (line-limit (fn-wire-state-line-limit wire-state))))
+           :in-theory (e/d (fn-wire-statep)
+                           (fn-wire-stuffed-line-fits-article-profile)))))
+
+(defthm fn-wire-feed-proper-of-article-terminator
+  (implies
+   (and (fn-wire-statep wire-state)
+        (equal (fn-wire-state-mode wire-state) :article)
+        (null (fn-wire-state-line-rev wire-state))
+        (equal (fn-wire-state-line-len wire-state) 0)
+        (null (fn-wire-state-pending-crp wire-state)))
+   (equal
+    (fn-wire-feed-proper wire-state '(46 13 10))
+    (fn-wire-make-result
+     (fn-wire-make-state
+      :command nil 0 nil nil 0
+      (fn-wire-state-line-limit wire-state)
+      (fn-wire-state-body-limit wire-state))
+     (list (fn-wire-article-event
+            (reverse (fn-wire-state-body-rev wire-state)))))))
+  :hints (("Goal"
+           :use ((:instance fn-wire-feed-proper-completes-clean-article-line
+                            (remaining '(46)))
+                 (:instance fn-wire-statep-has-positive-line-limit)
+                 (:instance fn-wire-statep-has-true-list-body))
+           :in-theory (e/d (fn-wire-after-line
+                             fn-wire-clear-line-state
+                             fn-wire-line-contentp)
+                            (fn-wire-feed-proper
+                             fn-wire-statep
+                             fn-wire-statep-has-positive-line-limit
+                             fn-wire-statep-has-true-list-body
+                             fn-wire-feed-proper-append
+                             fn-wire-feed-proper-completes-clean-article-line))
+           :do-not-induct t)))
+
+; Keystone fold: every clean source line and the final dot terminator are
+; delivered through the real byte feeder, in order, under the same cumulative
+; body counter and physical-line ceiling the served path carries.  The result
+; is one article event containing the exact source-line sequence.
+(defthm fn-wire-feed-proper-of-rendered-block-lines
+  (implies
+   (and (fn-wire-statep wire-state)
+        (equal (fn-wire-state-mode wire-state) :article)
+        (null (fn-wire-state-line-rev wire-state))
+        (equal (fn-wire-state-line-len wire-state) 0)
+        (null (fn-wire-state-pending-crp wire-state))
+        (fn-wire-clean-linesp lines)
+        (<= (+ (fn-wire-state-body-size wire-state)
+               (fn-wire-lines-size lines))
+            (fn-wire-state-body-limit wire-state))
+        (<= (+ 1 (fn-wire-state-body-limit wire-state))
+            (fn-wire-state-line-limit wire-state)))
+   (equal
+    (fn-wire-feed-proper
+     wire-state
+     (fn-wire-append (fn-wire-render-lines lines) '(46 13 10)))
+    (fn-wire-make-result
+     (fn-wire-make-state
+      :command nil 0 nil nil 0
+      (fn-wire-state-line-limit wire-state)
+      (fn-wire-state-body-limit wire-state))
+     (list
+      (fn-wire-article-event
+       (reverse
+        (fn-wire-receive-source-lines
+         lines (fn-wire-state-body-rev wire-state))))))))
+  :hints (("Goal"
+           :induct (fn-wire-render-lines-induction wire-state lines)
+           :in-theory (e/d (fn-wire-render-lines
+                             fn-wire-clean-linesp
+                             fn-wire-receive-source-lines
+                             fn-wire-render-lines-induction)
+                            (fn-wire-statep
+                             fn-wire-feed-proper
+                             fn-wire-after-line
+                             fn-wire-make-result
+                             fn-wire-make-state
+                             fn-wire-feed-proper-append
+                             fn-wire-after-line-of-rendered-source-line
+                             fn-wire-append-associative
+                             fn-wire-append-when-true-listp
+                             fn-wire-rendered-line-prefix-is-append
+                             fn-wire-receive-source-lines-is-revappend))
+           :do-not '(generalize fertilize))))
+
+(defthm fn-wire-clean-linesp-implies-octet-linesp
+  (implies (fn-wire-clean-linesp lines)
+           (fn-wire-octet-linesp lines))
+  :hints (("Goal"
+           :induct (fn-wire-clean-linesp lines)
+           :in-theory (enable fn-wire-clean-linesp))))
+
+(defthm fn-wire-clean-linesp-implies-true-listp
+  (implies (fn-wire-clean-linesp lines)
+           (true-listp lines))
+  :hints (("Goal"
+           :use ((:instance fn-wire-clean-linesp-implies-octet-linesp)
+                 (:instance fn-wire-octet-linesp-is-true-list))
+           :in-theory (disable fn-wire-clean-linesp-implies-octet-linesp
+                               fn-wire-octet-linesp-is-true-list))))
+
+(defthm fn-wire-revappend-of-revappend
+  (equal (revappend (revappend left middle) right)
+         (revappend middle (append left right)))
+  :hints (("Goal"
+           :induct (revappend left middle)
+           :in-theory (enable revappend append))))
+
+(defthm fn-wire-reverse-received-source-lines-from-empty
+  (implies (true-listp lines)
+           (equal (reverse (fn-wire-receive-source-lines lines nil))
+                  lines))
+  :hints (("Goal"
+           :use ((:instance fn-wire-revappend-of-revappend
+                            (left lines) (middle nil) (right nil))
+                 (:instance fn-wire-receive-source-lines-is-revappend
+                            (body-rev nil)))
+           :in-theory (e/d (reverse)
+                           (fn-wire-revappend-of-revappend
+                            fn-wire-receive-source-lines-is-revappend)))))
+
+(defthm fn-wire-render-lines-is-an-octet-list
+  (implies (fn-wire-clean-linesp lines)
+           (fn-wire-octet-listp (fn-wire-render-lines lines)))
+  :hints (("Goal"
+           :induct (fn-wire-render-lines lines)
+           :in-theory (enable fn-wire-render-lines
+                              fn-wire-clean-linesp
+                              fn-wire-append))))
+
+(defthm fn-wire-successful-render-block-octets
+  (implies
+   (fn-wire-outbound-okp (fn-wire-render-block article limit))
+   (equal
+    (fn-wire-outbound-octets (fn-wire-render-block article limit))
+    (fn-wire-append
+     (fn-wire-render-lines
+      (fn-wire-outbound-octets (fn-wire-outbound-lines article limit)))
+     '(46 13 10))))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-render-block
+                              fn-wire-outbound-okp
+                              fn-wire-outbound-ok
+                              fn-wire-outbound-octets))))
+
+(defthm fn-wire-successful-render-block-is-an-octet-list
+  (implies (fn-wire-outbound-okp (fn-wire-render-block article limit))
+           (fn-wire-octet-listp
+            (fn-wire-outbound-octets
+             (fn-wire-render-block article limit))))
+  :hints (("Goal"
+           :use ((:instance fn-wire-outbound-lines-success-is-clean
+                            (octets article))
+                 (:instance fn-wire-render-lines-is-an-octet-list
+                            (lines (fn-wire-outbound-octets
+                                    (fn-wire-outbound-lines article limit))))
+                 (:instance fn-wire-octet-listp-of-total-append
+                            (left (fn-wire-render-lines
+                                   (fn-wire-outbound-octets
+                                    (fn-wire-outbound-lines article limit))))
+                            (right '(46 13 10))))
+           :in-theory (e/d (fn-wire-render-block
+                             fn-wire-outbound-okp
+                             fn-wire-outbound-octets
+                             fn-wire-outbound-ok
+                             fn-wire-append)
+                            (fn-wire-outbound-lines-success-is-clean
+                             fn-wire-render-lines-is-an-octet-list
+                             fn-wire-octet-listp-of-total-append)))))
+
+(defun fn-wire-outbound-receiver-start (body-limit)
+  (declare (xargs :guard t))
+  (fn-wire-make-state :article nil 0 nil nil 0
+                      (+ 1 (nfix body-limit))
+                      (nfix body-limit)))
+
+(defthm fn-wire-outbound-receiver-start-is-statep
+  (implies (posp body-limit)
+           (fn-wire-statep
+            (fn-wire-outbound-receiver-start body-limit)))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-outbound-receiver-start
+                              fn-wire-statep))))
+
+; This is the exact article profile selected by fn-served-dispatch before it
+; consumes the first article byte.  The host path calls fn-served-step, whose
+; dispatch uses this begin transition; the helper above only names its result.
+(defthm fn-wire-served-article-profile-is-outbound-receiver-start
+  (implies (and (posp command-limit) (posp body-limit))
+           (equal
+            (fn-wire-result-state
+             (fn-wire-begin-article-with-line-limit
+              (fn-wire-initial-state command-limit body-limit)
+              (fn-wire-article-line-limit
+               (fn-wire-initial-state command-limit body-limit))))
+            (fn-wire-outbound-receiver-start body-limit)))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-initial-state
+                              fn-wire-article-line-limit
+                              fn-wire-begin-article-with-line-limit
+                              fn-wire-begin-article-admissiblep
+                              fn-wire-outbound-receiver-start
+                              fn-wire-statep
+                              fn-wire-state-shapep
+                              fn-wire-result-state
+                              fn-wire-make-result))))
+
+(defthm fn-wire-successful-render-block-lines-fit-body-limit
+  (implies
+   (and (fn-wire-outbound-okp (fn-wire-render-block article limit))
+        (<= (nfix limit) (nfix body-limit)))
+   (<= (fn-wire-lines-size
+        (fn-wire-outbound-octets
+         (fn-wire-outbound-lines article limit)))
+       (nfix body-limit)))
+  :hints (("Goal"
+           :use ((:instance fn-wire-outbound-lines-success-reconstructs-source
+                            (octets article))
+                 (:instance fn-wire-source-lines-equal-implies-lines-size
+                            (lines (fn-wire-outbound-octets
+                                    (fn-wire-outbound-lines article limit))))
+                 (:instance fn-wire-outbound-lines-success-respects-limit
+                            (octets article)))
+           :in-theory (e/d (fn-wire-render-block)
+                           (fn-wire-outbound-lines-success-reconstructs-source
+                            fn-wire-source-lines-equal-implies-lines-size
+                            fn-wire-outbound-lines-success-respects-limit)))))
+
+; The universal renderer/receiver composition.  The subject on the left is
+; fn-wire-drive, the adapter-loop semantics, over the octets produced by the
+; real outbound renderer.  Success, the configured source/body relation and a
+; positive body profile are exactly what prevent malformed input, line close
+; and cumulative body close.  The sole event contains every parsed source line
+; in order, including empty and trailing-empty lines and literal leading dots.
+(defthm fn-wire-drive-of-successful-render-block-preserves-source
+  (implies
+   (and (posp body-limit)
+        (fn-wire-outbound-okp (fn-wire-render-block article limit))
+        (<= (nfix limit) (nfix body-limit)))
+   (let ((lines (fn-wire-outbound-octets
+                 (fn-wire-outbound-lines article limit))))
+     (and
+      (equal
+       (fn-wire-drive
+        (fn-wire-outbound-receiver-start body-limit)
+        (fn-wire-outbound-octets
+         (fn-wire-render-block article limit)))
+       (fn-wire-make-result
+        (fn-wire-make-state :command nil 0 nil nil 0
+                            (+ 1 (nfix body-limit))
+                            (nfix body-limit))
+        (list (fn-wire-article-event lines))))
+      (equal (fn-wire-source-lines lines) article))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-wire-feed-proper-of-rendered-block-lines
+                            (wire-state
+                             (fn-wire-outbound-receiver-start body-limit))
+                            (lines (fn-wire-outbound-octets
+                                    (fn-wire-outbound-lines article limit))))
+                 (:instance fn-wire-drive-is-feed-proper
+                            (wire-state
+                             (fn-wire-outbound-receiver-start body-limit))
+                            (octets
+                             (fn-wire-outbound-octets
+                              (fn-wire-render-block article limit))))
+                 (:instance fn-wire-outbound-lines-success-reconstructs-source
+                            (octets article))
+                 (:instance fn-wire-outbound-lines-success-is-clean
+                            (octets article))
+                 (:instance fn-wire-successful-render-block-lines-fit-body-limit)
+                 (:instance fn-wire-successful-render-block-is-an-octet-list)
+                 (:instance fn-wire-successful-render-block-octets)
+                 (:instance fn-wire-outbound-receiver-start-is-statep)
+                 (:instance fn-wire-clean-linesp-implies-true-listp
+                            (lines (fn-wire-outbound-octets
+                                    (fn-wire-outbound-lines article limit))))
+                 (:instance fn-wire-reverse-received-source-lines-from-empty
+                            (lines (fn-wire-outbound-octets
+                                    (fn-wire-outbound-lines article limit)))))
+           :in-theory
+           (e/d (fn-wire-render-block
+                  fn-wire-outbound-receiver-start)
+                (fn-wire-drive
+                 fn-wire-feed-proper
+                 fn-wire-statep
+                 fn-wire-render-lines
+                 fn-wire-feed-proper-of-rendered-block-lines
+                 fn-wire-drive-is-feed-proper
+                 fn-wire-outbound-lines-success-reconstructs-source
+                 fn-wire-outbound-lines-success-is-clean
+                 fn-wire-successful-render-block-lines-fit-body-limit
+                 fn-wire-successful-render-block-is-an-octet-list
+                 fn-wire-successful-render-block-octets
+                 fn-wire-outbound-receiver-start-is-statep
+                 fn-wire-clean-linesp-implies-true-listp
+                 fn-wire-reverse-received-source-lines-from-empty))
+           :do-not '(generalize fertilize))))
+
+; By-definition bridge for the article arm of the exact renderer called at
+; host/owner-host.lisp:483.  Empty input is the host's no-command sentinel;
+; CHECK, IHAVE and TAKETHIS select the other protocol arms.
+(defthm fn-wire-render-feed-command-article-arm-unfolds
+  (implies
+   (and (consp article)
+        (not (fn-wire-prefixp *fn-wire-check-prefix* article))
+        (not (fn-wire-prefixp *fn-wire-ihave-prefix* article))
+        (not (fn-wire-prefixp *fn-wire-takethis-prefix* article)))
+   (equal (fn-wire-render-feed-command article command-limit article-limit)
+          (fn-wire-render-block article article-limit)))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (enable fn-wire-render-feed-command))))
+
+; A nonempty source accepted within the receiver's cumulative ceiling forces
+; that ceiling to be positive.  This discharges the profile premise below
+; instead of exposing a redundant hypothesis on the host-level theorem.
+(defthm fn-wire-render-block-success-implies-lines-success
+  (implies
+   (fn-wire-outbound-okp (fn-wire-render-block article article-limit))
+   (fn-wire-outbound-okp (fn-wire-outbound-lines article article-limit)))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-render-block
+                              fn-wire-outbound-okp))))
+
+(defthm fn-wire-consp-has-positive-len
+  (implies (consp value)
+           (< 0 (len value)))
+  :hints (("Goal" :expand ((len value)))))
+
+(defthm fn-wire-nonempty-successful-render-block-needs-positive-body-limit
+  (implies
+   (and (consp article)
+        (fn-wire-outbound-okp (fn-wire-render-block article article-limit))
+        (<= (nfix article-limit) (nfix body-limit)))
+   (posp body-limit))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance
+                  fn-wire-successful-render-block-lines-fit-body-limit
+                  (limit article-limit))
+                 (:instance
+                  fn-wire-outbound-lines-success-reconstructs-source
+                  (octets article) (limit article-limit))
+                 (:instance
+                  fn-wire-render-block-success-implies-lines-success)
+                 (:instance fn-wire-consp-has-positive-len
+                            (value article))
+                 (:instance fn-wire-source-lines-equal-implies-lines-size
+                            (lines (fn-wire-outbound-octets
+                                    (fn-wire-outbound-lines
+                                     article article-limit)))))
+           :in-theory
+           (e/d (len)
+                (fn-wire-successful-render-block-lines-fit-body-limit
+                 fn-wire-outbound-lines-success-reconstructs-source
+                 fn-wire-render-block-success-implies-lines-success
+                 fn-wire-consp-has-positive-len
+                 fn-wire-source-lines-equal-implies-lines-size)))))
+
+; Host-called renderer / served receiver composition.  These are exactly the
+; conditions selecting fn-wire-render-feed-command's article arm.  The host
+; calls that function at host/owner-host.lisp:483.  COMMAND-LIMIT initializes
+; the served connection, while BODY-LIMIT+1 is the physical-line ceiling
+; selected by fn-served-dispatch and BODY-LIMIT is the cumulative decoded-body
+; ceiling.  ARTICLE-LIMIT may be tighter, but may not exceed BODY-LIMIT.
+(defthm fn-wire-drive-of-host-rendered-article-preserves-source
+  (implies
+   (and (posp command-limit)
+        (consp article)
+        (not (fn-wire-prefixp *fn-wire-check-prefix* article))
+        (not (fn-wire-prefixp *fn-wire-ihave-prefix* article))
+        (not (fn-wire-prefixp *fn-wire-takethis-prefix* article))
+        (fn-wire-outbound-okp
+         (fn-wire-render-feed-command article command-limit article-limit))
+        (<= (nfix article-limit) (nfix body-limit)))
+   (let ((lines (fn-wire-outbound-octets
+                 (fn-wire-outbound-lines article article-limit))))
+     (and
+      (equal
+       (fn-wire-drive
+        (fn-wire-result-state
+         (fn-wire-begin-article-with-line-limit
+          (fn-wire-initial-state command-limit body-limit)
+          (fn-wire-article-line-limit
+           (fn-wire-initial-state command-limit body-limit))))
+        (fn-wire-outbound-octets
+         (fn-wire-render-feed-command
+          article command-limit article-limit)))
+       (fn-wire-make-result
+        (fn-wire-make-state :command nil 0 nil nil 0
+                            (+ 1 (nfix body-limit))
+                            (nfix body-limit))
+        (list (fn-wire-article-event lines))))
+      (equal (fn-wire-source-lines lines) article))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance
+                  fn-wire-drive-of-successful-render-block-preserves-source
+                  (limit article-limit))
+                 (:instance
+                  fn-wire-served-article-profile-is-outbound-receiver-start)
+                 (:instance
+                  fn-wire-render-feed-command-article-arm-unfolds)
+                 (:instance
+                  fn-wire-nonempty-successful-render-block-needs-positive-body-limit))
+           :in-theory
+           (disable fn-wire-served-article-profile-is-outbound-receiver-start)
+           :do-not '(generalize fertilize))))
