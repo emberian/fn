@@ -152,6 +152,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-relation-tests \
 	books/byte-store-program-invariants \
 	tests/acl2/byte-store-program-invariants-tests \
+	books/byte-store-native-correspondence \
+	tests/acl2/byte-store-native-correspondence-tests \
 	books/assumptions \
 	tests/acl2/assumptions-tests \
 	tests/acl2/store-node-guards-tests \
