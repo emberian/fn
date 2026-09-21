@@ -117,13 +117,17 @@ their own conventions and are outside this table.
 | Code | Meaning | Source |
 | --- | --- | --- |
 | 0 | Accepted, or the query answered. A durable acceptance whose BPA delete has not completed also exits 0 and names the pending obligation on stdout (`bpa-delete=pending`). | normal return |
-| 1 | Refused: a known, clean refusal that changed no durable state. A duplicate Message-ID conflict, a contended store lock, a configured bound reached, an absent article on `inspect`. | `StoreError` |
+| 1 | Refused: known nonacceptance of this request, such as a Message-ID conflict, contended lock, configured bound, or absent article on `inspect`. A refusal after reservation may consume a durable allocator number; it does not imply byte-for-byte unchanged storage. | `StoreError`, native `fnn-store-error` |
 | 3 | Uncertain: the outcome of a publication is unknown and recovery is required before further mutation. | `StoreIndeterminate` |
 | 4 | Fault: invalid durable state or an I/O fault. Corrupt or ungapped committed history, a store whose core cannot replay it, a barrier or descriptor failure, a poisoned ACL2 bridge. | `StoreFault`, `OSError` |
 | 5 | Usage: the invocation itself is wrong. | `UsageParser`, `UnicodeError` on arguments |
 
 A reader whose ACL2 bridge is poisoned exits 4 rather than answering the next
 client from a pipe whose replies can no longer be matched to its commands.
+Native conditions use the same outcome distinctions through `fnn-exit-code-for`;
+the operator plan's code projection is ACL2-owned. Successful queries and an
+article accepted with a retention obligation both use code 0, so callers must
+also interpret the named operation and its result.
 
 ## ACL2 bridge correlation
 
