@@ -105,3 +105,30 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sn-statep fn-sn-io fn-sn-file-step fn-sn-update
                                      fn-sf-record-dir-result fn-sf-fencedp))))
+
+(defthm fn-bs-frontier-directory-error-resolves-choice-and-fences
+  (implies (and (fn-bs-store-relation bs ks)
+                (equal (fn-sf-phase ks) :frontier-attempted)
+                (consp outcome))
+           (mv-let (result bs1)
+             (fn-bs-fsync-dir bs :root outcome)
+             (and (equal result (car outcome))
+                  (fn-bs-dir-quietp bs1 :root)
+                  (fn-sf-fencedp (fn-sf-frontier-dir-result ks :error)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 (:instance fn-bs-ops-for-dir-of-ops-not-for-dir
+                            (ops (fn-bs-pending bs)) (dir :root)))
+           :in-theory (enable fn-bs-fsync-dir fn-bs-dir-quietp
+                              fn-bs-ops-for-dir fn-bs-ops-not-for-dir
+                              fn-sf-frontier-dir-result fn-sf-fencedp))))
+
+(defthm fn-bs-native-frontier-directory-error-fences-composed-subject
+  (implies (and (fn-sn-statep s)
+                (equal (fn-sf-phase (fn-sn-files s)) :frontier-attempted))
+           (fn-sf-fencedp
+            (fn-sn-files (fn-sn-io s :frontier-directory :error))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-sn-statep fn-sn-io fn-sn-file-step fn-sn-update
+                                     fn-sf-frontier-dir-result fn-sf-fencedp))))
