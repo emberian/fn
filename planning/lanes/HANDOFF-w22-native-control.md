@@ -83,3 +83,11 @@ its exact command and output are in
 As with the earlier local saved-image trace, the raw behavior is exact but the
 local image build is not the clean build gate because unrelated copied
 certificates have different absolute book names.
+
+The final exact-source Linux gate then certified the remaining native build
+roots, built the 282 MiB saved image with no uncertified-book marker, and ran
+the same seven cases 7/7 in 14.445 seconds. Commands, source and manifest
+digests, platform versions, result, and the one compiled-object fallback are
+recorded in
+`planning/evidence/native-control-linux-build-2026-09-21.md`; the exact runtime
+output is `planning/evidence/native-control-linux-4ef765a6-2026-09-21-tests.log`.
