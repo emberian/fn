@@ -92,6 +92,18 @@
         (fn-record-string-octets "*")
         (fn-record-string-octets "198.51.100.5")
         (fn-record-string-octets "true")))
+(defconst *fn-nctrl-admin-tls-argv*
+  (append *fn-nctrl-admin-symmetric-argv*
+          (list (fn-record-string-octets "starttls")
+                (fn-record-string-octets "host.example")
+                (fn-record-string-octets "anchor.example"))))
+(defun fn-nctrl-test-repeat-argv (count)
+  (if (zp count)
+      nil
+    (cons (fn-record-string-octets "extra")
+          (fn-nctrl-test-repeat-argv (1- count)))))
+(defconst *fn-nctrl-admin-over-budget-argv*
+  (fn-nctrl-test-repeat-argv (1+ *fn-native-admin-max-arguments*)))
 (defconst *fn-nctrl-admin-512-octets*
   (append (fn-record-string-octets
            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
@@ -114,13 +126,17 @@
          (fn-native-control-admin-encode *fn-nctrl-admin-symmetric-argv*))
         (list :admin *fn-nctrl-admin-symmetric-argv*)))
 (assert-event
+ (or (< *fn-native-admin-max-arguments* (len *fn-nctrl-admin-tls-argv*))
+     (equal (fn-native-control-admin-decode
+             (fn-native-control-admin-encode *fn-nctrl-admin-tls-argv*))
+            (list :admin *fn-nctrl-admin-tls-argv*))))
+(assert-event
  (equal (fn-native-control-admin-decode
          (fn-native-control-admin-encode (list *fn-nctrl-admin-512-octets*)))
         (list :admin (list *fn-nctrl-admin-512-octets*))))
 (assert-event
  (equal (fn-native-control-admin-encode
-         (append *fn-nctrl-admin-symmetric-argv*
-                 (list (fn-record-string-octets "extra"))))
+         *fn-nctrl-admin-over-budget-argv*)
         :bad))
 (assert-event
  (equal (fn-native-control-admin-encode
@@ -130,11 +146,16 @@
  (equal (car (fn-native-control-admin-decode
               (fn-nctrl-seal
                *fn-nctrl-admin-kind*
-               (append (fn-cbor-encode (cons :uint 11))
+               (append (fn-cbor-encode
+                        (cons :uint (1+ *fn-native-admin-max-arguments*)))
                        (fn-nctrl-admin-words-encode
-                        (append *fn-nctrl-admin-symmetric-argv*
-                                (list (fn-record-string-octets "extra"))))))))
+                        *fn-nctrl-admin-over-budget-argv*)))))
         :refused))
+(assert-event
+ (equal (fn-nctrl-admin-words-encode '(bad)) nil))
+(assert-event
+ (equal (fn-nctrl-admin-words-decode 'bad nil)
+        (fn-record-parse-error :arguments)))
 (assert-event
  (equal (car (fn-native-control-admin-decode
               (fn-nctrl-seal
