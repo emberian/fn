@@ -154,6 +154,26 @@ persvati under `/home/ember/fn-lanes/w11-twonode-feed`.
 the whole failure mode, reproduced and repaired in two commands, and it is
 why the check fails rather than reports.
 
+## What landing it cost, measured
+
+Two merges in a row produced eight newly cited runs and the check refused
+the tree both times.
+
+| merge | new citations | where the manifest was |
+| --- | --- | --- |
+| dev `3a2640c` into the lane | 2, in `planning/evidence/twonode-feed-w11-2026-09-20.md` | persvati only; the lane worktree was already removed here |
+| the lane into dev | 6, in `HANDOFF-w11-bytestore-k2.md` and `BOARD.md` | `build/lanes/` here; neither box had a copy |
+
+All eight were recovered, in one command each. Both cases are the failure
+mode: in the first the laptop copy was already gone, in the second the box
+copies never existed. Neither would have survived the week. So `check` names,
+for each missing run, whether it is still under `build/` on this laptop, and
+the repair at merge time is:
+
+    python3 tools/evidence_manifests.py sync --add
+    python3 tools/evidence_manifests.py harvest --host persvati   # if needed
+    python3 tools/evidence_manifests.py harvest --host hbox       # if needed
+
 ## Next global step
 
 1. **The 177 rows belong to lanes, not to this one.** Their owners re-run the
