@@ -86,10 +86,11 @@ class NativeAdminTests(unittest.TestCase):
     def config_report(self):
         return self.native("store", self.store, "config").stdout.decode("ascii")
 
-    def start_owner(self):
+    def start_owner(self, env=None):
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "owner", "run", str(self.store), "0", "0", "8"],
-            cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
+            cwd=ROOT, env=env or self.env,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         ready = select.select([process.stdout], [], [], 60)[0]
         self.assertTrue(ready, "native owner did not announce a port")
         line = process.stdout.readline()
@@ -142,10 +143,21 @@ class NativeAdminTests(unittest.TestCase):
                       removed.stdout)
         self.assertIn("generation=3", self.config_report())
 
-    def test_running_owner_refuses_offline_administration(self):
-        self.start_owner()
-        refused = self.operator("group", "create", "fn.locked", expected=1)
-        self.assertIn(b"already locked", refused.stderr)
+    def test_running_owner_applies_durable_administration(self):
+        process = self.start_owner()
+        changed = self.operator("group", "create", "fn.live")
+        self.assertIn(b"accepted operator group", changed.stderr)
+        self.stop_owner(process)
+        self.assertIn("generation=2", self.config_report())
+
+    def test_live_uncertain_publication_fences_and_recovers(self):
+        fault_env = dict(self.env)
+        fault_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
+        process = self.start_owner(env=fault_env)
+        uncertain = self.operator("group", "create", "fn.live-recover", expected=3)
+        self.assertIn(b"uncertain operator group", uncertain.stderr)
+        self.assertEqual(process.wait(timeout=15), 3)
+        self.assertIn("generation=2", self.config_report())
 
     def test_uncertain_publication_recovers_and_sweeps_admitted_stage_residue(self):
         uncertain_env = dict(self.env)

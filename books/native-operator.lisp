@@ -130,7 +130,7 @@
   (declare (xargs :guard t))
   (let ((plan (fn-native-admin-plan argv)))
     (if (equal (fn-native-admin-result-status plan) :accepted)
-        (fn-nop-result :accepted :plan command config plan)
+        (fn-nop-result :accepted :plan command config (list plan argv))
       (fn-nop-usage (list :administration (fn-native-admin-result-reason plan))
                     command config argv))))
 
@@ -351,13 +351,20 @@ is installed into the owner for both served and control submission."
   (declare (xargs :guard t))
   (and (equal (fn-native-operator-result-status result) :accepted)
        (or (equal (fn-native-operator-result-command result) "group")
-           (equal (fn-native-operator-result-command result) "capacity"))))
+           (equal (fn-native-operator-result-command result) "capacity")
+           (equal (fn-native-operator-result-command result) "peer"))))
 
 (defun fn-native-operator-result-admin-plan (result)
   "The exact ACL2 administrative plan; no raw argv reaches the executor."
   (declare (xargs :guard t))
   (if (fn-native-operator-result-admin-planp result)
-      (fn-native-operator-result-arguments result)
+      (car (fn-native-operator-result-arguments result))
+    nil))
+
+(defun fn-native-operator-result-admin-argv (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-admin-planp result)
+      (cadr (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-native-operator-result-native-action (result)
@@ -374,5 +381,6 @@ callbacks.  Neither is translated into a direct Store call."
           ((equal (fn-native-operator-result-command result) "status") :status)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
           ((or (equal (fn-native-operator-result-command result) "group")
-               (equal (fn-native-operator-result-command result) "capacity")) :admin)
+               (equal (fn-native-operator-result-command result) "capacity")
+               (equal (fn-native-operator-result-command result) "peer")) :admin)
           (t :owner-required))))

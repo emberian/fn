@@ -10,11 +10,13 @@
 (include-book "records-invariants")
 (include-book "injection")
 (include-book "native-config")
+(include-book "native-admin")
 
 (defconst *fn-nctrl-magic* '(70 78 67 84)) ; FNCT
 (defconst *fn-nctrl-version* 1)
 (defconst *fn-nctrl-request-kind* 1)
 (defconst *fn-nctrl-reply-kind* 2)
+(defconst *fn-nctrl-admin-kind* 3)
 (defconst *fn-nctrl-request-spec* '(:blob :text :blob))
 (defconst *fn-nctrl-statuses*
   '(:accepted :duplicate :refused :busy :uncertain :fault))
@@ -120,6 +122,13 @@
                (fn-frame-fields-octets *fn-nctrl-request-spec* values)))
           (fn-nctrl-seal *fn-nctrl-request-kind* payload))))))
 
+(defun fn-native-control-admin-encode (argv)
+  (declare (xargs :guard t))
+  (if (or (not (fn-native-admin-argvp argv)) (not (consp argv)))
+      :bad
+    (let ((payload (fn-nctrl-groups-encode argv)))
+      (if payload (fn-nctrl-seal *fn-nctrl-admin-kind* payload) :bad))))
+
 (defun fn-nctrl-open (octets expected-kind)
   (declare (xargs :guard t))
   (if (not (fn-cbor-octet-listp octets))
@@ -160,6 +169,19 @@
                               (fn-nctrl-requestp msgid groups article)))
                     (list :refused :request)
                   (list :request msgid groups article))))))))))))
+
+(defun fn-native-control-admin-decode (octets)
+  (declare (xargs :guard t))
+  (let ((opened (fn-nctrl-open octets *fn-nctrl-admin-kind*)))
+    (if (not (fn-frame-result-okp opened))
+        (list :refused :frame)
+      (let ((parsed (fn-nctrl-groups-decode (fn-frame-result-payload opened))))
+        (if (not (fn-record-parse-okp parsed))
+            (list :refused :arguments)
+          (let ((argv (fn-record-parse-value parsed)))
+            (if (and (consp argv) (fn-native-admin-argvp argv))
+                (list :admin argv)
+              (list :refused :arguments))))))))
 
 (defun fn-native-control-reply-encode (status)
   (declare (xargs :guard t))

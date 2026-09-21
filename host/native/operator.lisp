@@ -161,9 +161,22 @@
   "Execute only the exact accepted ACL2 administrative plan."
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
         (command (fnn-core 'fn-native-operator-host-result-command result))
-        (plan (fnn-core 'fn-native-operator-host-result-admin-plan result)))
+        (plan (fnn-core 'fn-native-operator-host-result-admin-plan result))
+        (argv (fnn-core 'fn-native-operator-host-result-admin-argv result))
+        (control-path-list
+          (fnn-core 'fn-native-operator-host-result-admin-control-path-octets
+                    result)))
     (handler-case
-        (let ((code (fnn-admin-execute root plan)))
+        (let* ((control-path (and (fnn-octet-list-p control-path-list)
+                                  (fnn-octets control-path-list)))
+               (livep (and control-path
+                           (fnn-control-socket-path-p
+                            (fnn-lstat (fnn-octets-string control-path)))))
+               (code
+                 (if livep
+                     (fnn-core 'fn-native-control-host-status-exit-code
+                               (fnn-control-admin control-path argv))
+                   (fnn-admin-execute root plan))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command)
           code)
       (error (condition)

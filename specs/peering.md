@@ -477,6 +477,22 @@ with the equality theorem `fn-peer-history-index-agrees-with-history`.
 
 ## 3. The outbound feed machine
 
+### 3.0.1 Proposed versioned TLS transport profile
+
+The current durable peer transport is exactly `(:nntp host port)` and selects
+clear NNTP.  A future schema revision will use
+`(:nntp 1 host port security)`, where `security` is `(:clear)` or
+`(:tls mode server-name trust-anchor-path)` and `mode` is `:implicit` or
+`:starttls`.  `server-name` is the exact certificate identity and SNI value;
+`trust-anchor-path` names the client trust bundle.  Both are required for TLS.
+The host must enable peer and hostname verification and must refuse a missing,
+unreadable, or invalid trust bundle before dialing.  It must not infer TLS from
+the port, use a listener certificate/private key as client trust, or fall back
+to cleartext after TLS selection.  ACL2 will project the selected mode and
+bounded strings to the adapter and will own when STARTTLS is sent.  This is a
+proposal until the configuration codec, feed connection machine, proofs, and
+native client context land together.
+
 ### 3.1 State
 
 One feed state per configured outbound peer, all inside F_node's state as a

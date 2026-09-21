@@ -26,6 +26,14 @@
   (declare (xargs :mode :program))
   (fn-native-control-request-decode octets))
 
+(defun fn-native-control-host-admin-encode (argv)
+  (declare (xargs :mode :program))
+  (fn-native-control-admin-encode argv))
+
+(defun fn-native-control-host-admin-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-native-control-admin-decode octets))
+
 (defun fn-native-control-host-reply-encode (status)
   (declare (xargs :mode :program))
   (fn-native-control-reply-encode status))

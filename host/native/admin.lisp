@@ -108,6 +108,43 @@ result as a refusal or uncertainty."
       (setf (fnn-store-fenced store) t)
       :unavailable)))
 
+(defun fnn-owner-live-admin-serialized (service argv)
+  "Publish one ACL2-planned configuration mutation through the live owner."
+  (fnn-owner-serialized
+   service nil
+   (lambda ()
+     (let* ((plan (fnn-core 'fn-native-admin-host-plan argv))
+            (generation
+              (fnn-nat (fnn-owner-core 'fn-owner-config-generation))))
+       (unless (fnn-admin-plan-acceptedp plan)
+         (return-from fnn-owner-live-admin-serialized :refused))
+       (unless (eq (fnn-owner-action
+                    'fn-native-admin-host-owner-reconfigure generation plan)
+                   :staged)
+         (return-from fnn-owner-live-admin-serialized :refused))
+       (let* ((record-list (fnn-owner-core 'fn-owner-reconfigure-octets))
+              (record (progn
+                        (unless (fnn-octet-list-p record-list)
+                          (fnn-fault "owner staged malformed configuration octets"))
+                        (fnn-octets record-list)))
+              (store (fnn-owner-service-store service))
+              (observation (fnn-config-record-observation store))
+              (config-records (fnn-config-records-from-observation observation))
+              (authorization
+                (fnn-admin-authorize store (fnn-durable-records store)
+                                     config-records record
+                                     (mapcar #'car observation))))
+         (multiple-value-bind (published ignored-name)
+             (fnn-admin-publish store record authorization)
+           (declare (ignore ignored-name))
+           (unless (eq (fnn-owner-action
+                        'fn-owner-reconfigure-complete published)
+                       :durable)
+             (fnn-indeterminate
+              "owner rejected a durably published configuration"))
+           (fnn-owner-feed-refresh-configuration service)
+           :accepted))))))
+
 (defun fnn-admin-execute (root plan)
   "Private callback for the one public native operator entry.
 PLAN is the exact ACL2 `fn-native-admin-plan' result; no command words reach

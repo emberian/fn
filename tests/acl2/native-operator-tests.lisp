@@ -103,14 +103,14 @@
 (assert-event (equal (fn-native-operator-result-status *fn-nop-group-create*) :accepted))
 (assert-event (equal (fn-native-operator-result-native-action *fn-nop-group-create*) :admin))
 (assert-event (equal (fn-native-admin-result-kind
-                      (fn-native-operator-result-arguments *fn-nop-group-create*))
+                      (fn-native-operator-result-admin-plan *fn-nop-group-create*))
                      :create-group))
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run *fn-nop-minimal-config*
                                               (fn-nop-test-argv '("group" "retire" "fn.letters"))))
                      :accepted))
 (assert-event (equal (fn-native-admin-result-capacity
-                      (fn-native-operator-result-arguments
+                      (fn-native-operator-result-admin-plan
                        (fn-native-operator-run *fn-nop-minimal-config*
                                                (fn-nop-test-argv '("capacity" "1048576")))))
                      1048576))
