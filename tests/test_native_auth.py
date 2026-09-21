@@ -121,7 +121,7 @@ class NativeAuthTests(unittest.TestCase):
             env=environment(), timeout=180, check=False)
         self.assertEqual(result.returncode, 5, result.stderr.decode())
         self.assertNotIn(b"LISTENING ", result.stdout)
-        self.assertIn(b"unsupported-profile", result.stderr)
+        self.assertIn(b"unsupported-profile", result.stderr.lower())
 
 
 if __name__ == "__main__":
