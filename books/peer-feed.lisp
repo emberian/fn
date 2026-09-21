@@ -851,7 +851,7 @@
 
 (defconst *fn-feed-kinds*
   '(:feed-enqueue :feed-offer :feed-sent :feed-outcome :feed-drop
-    :feed-restart :feed-intent :feed-commit :feed-abort))
+    :feed-restart :feed-intent :feed-commit :feed-abort :feed-retry :feed-lost))
 
 (defconst *fn-feed-specs*
   (list (cons :feed-enqueue '(:text :text :nat))           ; peer msgid tick
@@ -875,7 +875,9 @@
         ; resolve an older incarnation.
         (cons :feed-intent  '(:text :text :text :text :nat :nat :nat))
         (cons :feed-commit  '(:text :text :text :text :nat :nat :nat))
-        (cons :feed-abort   '(:text :text :text :text :nat :nat :nat))))
+        (cons :feed-abort   '(:text :text :text :text :nat :nat :nat))
+        (cons :feed-retry   '(:text :text :nat :nat :nat))
+        (cons :feed-lost    '(:text :nat))))
 
 (defthm fn-feed-spec-for-is-spec-list
   (implies (not (equal (fn-frame-spec-for kind *fn-feed-specs*) :none))
@@ -886,10 +888,11 @@
   (let ((spec (fn-frame-spec-for kind *fn-feed-specs*)))
     (and (not (equal spec :none))
          (fn-frame-values-okp spec values)
-         (or (not (equal kind :feed-outcome))
-             (and (member-equal (fn-frame-item 3 values)
-                                *fn-feed-outcome-codes*)
-                  t)))))
+         (and (or (not (equal kind :feed-outcome))
+                  (and (member-equal (fn-frame-item 3 values)
+                                    *fn-feed-outcome-codes*) t))
+              (or (not (equal kind :feed-retry))
+                  (and (member-equal (fn-frame-item 3 values) '(431 436)) t))))))
 
 (verify-guards fn-feed-record-okp)
 
@@ -1110,6 +1113,12 @@
                       (t (fn-feed-with-queue
                           f (fn-feed-queue-requeue-inflight
                              (fn-feed-queue f) 0))))))
+             ((equal kind :feed-retry)
+              (fn-feed-back-off f msgid
+                (fn-clock-observation (fn-feed-record-nat 4 values) 0 0 nil)))
+             ((equal kind :feed-lost)
+              (fn-feed-lost f
+                (fn-clock-observation (fn-feed-record-nat 1 values) 0 0 nil)))
              ((equal kind :feed-drop)
               (fn-feed-give-up f msgid (fn-frame-item 2 values)))
              ((equal kind :feed-restart) (fn-feed-restart f))
@@ -1152,6 +1161,13 @@
           ((equal kind :feed-outcome)
            (fn-feed-state-inflightp
             (fn-feed-state-of msgid (fn-feed-queue f))))
+          ((equal kind :feed-retry)
+           (and (fn-feed-state-inflightp
+                 (fn-feed-state-of msgid (fn-feed-queue f)))
+                (equal (fn-feed-state-attempt
+                        (fn-feed-state-of msgid (fn-feed-queue f)))
+                       (fn-feed-record-nat 2 values))))
+          ((equal kind :feed-lost) t)
           ((equal kind :feed-drop)
            (and (consp (fn-feed-find msgid (fn-feed-queue f)))
                 (not (equal (fn-feed-state-of msgid (fn-feed-queue f)) :done))
