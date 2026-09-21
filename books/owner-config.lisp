@@ -337,7 +337,8 @@
            :stale-generation)
           ((fn-ocfg-group-pinned-by-readerp deltas (fn-own-conns o))
            :group-pinned-by-reader)
-          ((consp (fn-node-stage (fn-sn-node (fn-own-store o)))) :group-staged)
+          ((not (null (fn-node-stage (fn-sn-node (fn-own-store o)))))
+           :group-staged)
           (t (or (fn-cfg-admissible-reason
                   (fn-cfg-value (fn-ocfg-config oc))
                   (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
