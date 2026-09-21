@@ -7,6 +7,12 @@ image with its `.core` under `libexec/fn`, records hashes and runtime libraries,
 and renders native systemd/launchd definitions. It never falls back to Python,
 and installation itself creates no service side effect.
 
+The exact frozen `8c` image inspected for this distribution predates the live
+administration callback: `operator CONFIG peer add ...` returns usage 5 both
+offline and against a running operator. It may be installed for its actual
+command set, but it is not native-peering evidence. That claim requires a new
+source-matched image containing the live-admin integration.
+
 ## Boundary and completed scaffold
 
 The deployed command must execute `build/fn-host --fn ...` directly.  A shell
@@ -58,14 +64,14 @@ are not `bin/fn` subcommands.
 | `bin/fn` command | Current runtime dependency surface | Native wrapper now | Migration work required |
 | --- | --- | --- | --- |
 | `init` | TOML read/write; `run_store`; ACL2 subprocess | `store ROOT init [GROUP...]` | Native config writer plus ACL2 configuration construction and validation. |
-| `run` | TOML; `run_owner`; TCP/Unix sockets; TLS; auth file; owner control protocol | owner protocol is being added by owner convergence | Native config handoff, listener/auth/TLS startup, control lifecycle, and service integration. |
-| `post` | TOML; `run_store`; local control socket or ACL2 bridge | `store ROOT post ...` | Native operator option parser and config-derived routing; preserve control-owner behavior. |
-| `group` | TOML; `run_store`; ACL2 bridge | none | Native ACL2 configuration-change wrapper and parser. |
-| `capacity` | TOML; `run_store`; ACL2 bridge | none | Native ACL2 capacity wrapper and parser. |
-| `peer` | TOML; `run_store`; ACL2 bridge; NNTP/BP peer values | none | Native ACL2 peer-record wrapper and parser. |
+| `run` | TOML; `run_owner`; TCP/Unix sockets; TLS; auth file; owner control protocol | `operator CONFIG run` | Native configuration, owner, control, auth, TLS, feed lifecycle and SIGTERM teardown are composed; frozen distribution qualification remains. |
+| `post` | TOML; `run_store`; local control socket or ACL2 bridge | `operator CONFIG post ...` | Native operator routes the ACL2-normalized request through local owner control; broader CLI parity remains. |
+| `group` | TOML; `run_store`; ACL2 bridge | `operator CONFIG group ...` | Native ACL2 plan and durable offline/live-owner publication implemented. |
+| `capacity` | TOML; `run_store`; ACL2 bridge | `operator CONFIG capacity ...` | Native ACL2 plan and durable offline/live-owner publication implemented. |
+| `peer` | TOML; `run_store`; ACL2 bridge; NNTP/BP peer values | `operator CONFIG peer ...` | Native ACL2 peer plan and durable offline/live-owner publication implemented; transport profiles continue to evolve. |
 | `policy` | TOML; `run_store`; ACL2 bridge | none | Native ACL2 policy-slot wrapper and parser. |
-| `status` | TOML; `run_store`; optional local owner probe | `store ROOT status` | Native configuration-derived root/control lookup and owner-liveness path. |
-| `recover` | TOML; `run_store`; Roughtime client/verification | `store ROOT recover` only | Native pinned-anchor selection, UDP request, signature verification, and recovery report. |
+| `status` | TOML; `run_store`; optional local owner probe | `operator CONFIG status` | Native configuration-derived store status implemented; full liveness-report parity remains. |
+| `recover` | TOML; `run_store`; Roughtime client/verification | `operator CONFIG recover` | Native store recovery is implemented; external pinned-anchor selection and UDP verification remain separate. |
 | `anchor` | TOML; Roughtime JSON server table; UDP; crypto bridge | none | Native anchor client, pinned-key manifest reader, and ACL2 anchor-record boundary. |
 | `principal` | TOML; credential TOML; terminal password prompt; ACL2 secret/signing helpers | none | Native credential parser/writer, secret boundary, principal derivation/listing. |
 | `statement` | `tools/stx`; ACL2 subprocess; optional real Ed25519 | none | Native statement parser, keyring boundary, and verified Ed25519 implementation. |

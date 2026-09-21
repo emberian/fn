@@ -83,6 +83,10 @@ and execs `fn-host --fn operator CONFIG ...`; it has no Python fallback.
 `share/fn/native-artifacts.txt` records launcher/core hashes and runtime
 libraries. Rendered service files live under `share/fn/systemd` and
 `share/fn/launchd`. Installation does not enable, start, or restart them.
+The package does not widen the selected image's command set. In particular,
+the frozen `8c` qualification image refuses public `peer add` with usage 5
+because it predates the live owner callback; native peering requires a newly
+qualified image built from the later integration source.
 
 Native owner and reader component tests use a distinct saved image. Building it
 is an explicit evidence action and does not replace `build/fn-host`:
