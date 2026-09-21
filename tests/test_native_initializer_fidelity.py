@@ -57,6 +57,11 @@ class NativeInitializerSourceMapTests(unittest.TestCase):
                        "(fnn-publish-initial-file store (fnn-frontier-path store)",
                        "(fnn-init-cut store \"init-parent-fenced\")"):
             self.assertIn(anchor, source)
+        config_names = re.search(r"\(defun fnn-config-record-names.*?\n\n\(defun fnn-config-records",
+                                 source, re.S)
+        self.assertIsNotNone(config_names)
+        self.assertNotIn("handler-case", config_names.group(0))
+        self.assertIn(":init-config-records-final-enumerate", source)
 
 
 @unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
