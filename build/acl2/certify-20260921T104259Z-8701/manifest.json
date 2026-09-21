@@ -1,0 +1,108 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2p",
+  "acl2_executable_sha256": "c0a0dfbde5e111168673e845a6daa8d019236b14123e39e4a8548d9f592e56b9",
+  "acl2_exit_codes": {
+    "books/byte-store-invariants": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "book_failures": {},
+  "book_results": {
+    "books/byte-store-invariants": "passed"
+  },
+  "book_wall_seconds": {
+    "books/byte-store-invariants": 4.005
+  },
+  "certificate_digests_sha256": {
+    "books/byte-store-invariants": "58db57803b2b9de639ba6445f6d94b3556bb5237737e8e0badeb4c5011cbf147"
+  },
+  "certify_wall_seconds": 14.47,
+  "closure": false,
+  "command": [
+    "/opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2p"
+  ],
+  "driver_digests_sha256": {
+    "books/byte-store-invariants": "cd8d8b6e9fe8f578757aaf606b44fb5f6129505a28eee05249225852ffbea39e"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS c4d71e693d740fbbb672a1e168a5eb37 42e5d5a6d4cd"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T10:43:22+00:00",
+  "git_branch": "w23/native-operator-admin-join",
+  "git_dirty": true,
+  "git_revision": "00bb04db3fa02f13fc5d0099fa6eb42bea4365b9",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS c4d71e693d740fbbb672a1e168a5eb37 42e5d5a6d4cd"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "books/byte-store-invariants"
+  ],
+  "requested_books": [
+    "books/byte-store-invariants"
+  ],
+  "run_id": "certify-20260921T104259Z-8701",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/byte-store-invariants": 10.45,
+    "version-probe": 7.976
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/byte-store-invariants.lisp": "8481c1f6ea615daf4b900d7c92ba27b49c0138476447dba01d9cd589876afe70",
+    "books/byte-store.lisp": "9c9864e72118155c5e1a4bd2c6dfee88c93d9d1f93f123197d77281f75d94432",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-journal.lisp": "a67624c2c8390faec404253353765075e7a66f707c6ef3341ea8ab4a99a3c1b8",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/byte-store-invariants.lisp": "8481c1f6ea615daf4b900d7c92ba27b49c0138476447dba01d9cd589876afe70",
+    "books/byte-store.lisp": "9c9864e72118155c5e1a4bd2c6dfee88c93d9d1f93f123197d77281f75d94432",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-journal.lisp": "a67624c2c8390faec404253353765075e7a66f707c6ef3341ea8ab4a99a3c1b8",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0"
+  },
+  "start_order": [
+    "books/byte-store-invariants"
+  ],
+  "started_utc": "2026-09-21T10:42:59+00:00",
+  "status": "passed",
+  "timeout_seconds": 180,
+  "tree": "/Users/ember/dev/fn/build/lanes/w23-native-operator-admin-join"
+}
