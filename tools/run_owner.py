@@ -814,6 +814,18 @@ class Owner:
             else:
                 word = self.attempt(msgid, payload, groups)
                 reply = self.bridge.outcome(cid, word)
+            # Durable before the effect it authorizes. A durable acceptance
+            # enqueues the article on every outbound peer's feed
+            # (fn-own-feed-durable, inside fn-own-outcome) and owes the
+            # journal one (:feed-enqueue peer msgid tick) record per target
+            # BEFORE the entry is offered (specs/peering.md 3.3). Nothing
+            # wrote it: the queue existed in memory and nowhere else until
+            # its first offer, so an article accepted while a peer was
+            # unreachable did not survive the process that accepted it --
+            # which is what stopped K5's kill-and-re-offer from delivering
+            # on gate 15ac399. The frames land here, before the loop writes
+            # the 240 to the poster.
+            self.feed_flush()
             for conn in self.connections.values():
                 if conn.cid == cid:
                     conn.outbuf += reply

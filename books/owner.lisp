@@ -1361,6 +1361,37 @@
                   next)))
       (cons nil o))))
 
+; THE RECORDS THE OUTCOME OWES THE JOURNAL, read off the owner BEFORE the
+; outcome moves it.  specs/peering.md sec. 3.3: `(:feed-enqueue peer msgid
+; tick)' is written BEFORE the entry is :queued.  Nothing wrote it.
+; `fn-own-outcome' and `fn-own-transit-outcome' both fold
+; `fn-own-feed-durable' into the new owner and the host installed only the
+; served effects, so a queued entry existed in memory and NOWHERE ELSE
+; until its first offer -- and an article accepted while a peer was
+; unreachable did not survive the process (measured: gate 15ac399, node A
+; posts <fed-restart@example.invalid> with node B down, is killed with -9,
+; restarts, replays EIGHT records, and never offers it; node B answers 430
+; to 179 polls over 90 s).  The condition is the same one the transition
+; itself uses, stated once here so the host does not restate it.
+(defun fn-own-outcome-records (o id word)
+  (declare (xargs :guard t))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
+        (sub (fn-own-inflight o)))
+    (if (and conn sub (equal (fn-own-sub-id sub) id)
+             (equal (fn-own-outcome-completion o word) :durable))
+        (fn-own-feed-durable-records o sub)
+      nil)))
+
+(defun fn-own-transit-outcome-records (o id kind word)
+  (declare (xargs :guard t))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
+        (sub (fn-own-inflight o)))
+    (if (and conn sub (equal (fn-own-sub-id sub) id) (fn-own-transit-subp sub)
+             (equal kind :want)
+             (equal (fn-own-outcome-completion o word) :durable))
+        (fn-own-feed-durable-records o sub)
+      nil)))
+
 ; -----------------------------------------------------------------------------
 ; The owner event machine.  (:octets id octets) is the served port; (:read id
 ; event) is its per-event law; (:take) is the writer step; (:outcome id word)
@@ -1441,6 +1472,7 @@
     fn-own-transit-outcome
     fn-own-with-feeds fn-own-sub-origin fn-own-sub-msgid fn-own-sub-octets
     fn-own-feed-stamp fn-own-feed-durable fn-own-feed-durable-records
+    fn-own-outcome-records fn-own-transit-outcome-records
     fn-own-feeds-reconfigure fn-own-tick fn-own-tick-records
     fn-own-tick-peer fn-own-tick-peer-records
     fn-own-feed-article fn-own-feed-reply fn-own-feed-reply-records
