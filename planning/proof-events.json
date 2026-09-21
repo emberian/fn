@@ -1356,7 +1356,20 @@
     },
     {
       "id": "PRF-046",
-      "events": []
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-step-preserves-lifecycle-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-step-queue-acceptance-is-durable-or-exact-duplicate"
+        }
+      ]
     }
   ]
 }

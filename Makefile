@@ -303,6 +303,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
 	books/served \
+	books/served-tls-prefix \
+	books/owner-tls-prefix \
+	tests/acl2/served-tls-prefix-tests \
 	books/nntp-auth-invariants \
 	tests/acl2/served-tests \
 	books/config-stream \
