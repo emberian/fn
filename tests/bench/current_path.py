@@ -248,9 +248,9 @@ def current_owner(work, counts, payload, folded_bytes, seed, acl2):
                 quota_taken = True
                 if quota["outcome"] != "refused":
                     result["stopped_by"] = "configured quota post returned {}".format(quota["outcome"])
-                break
+                    break
         if not result["stopped_by"] and not quota_taken:
-            result["stopped_by"] = "completed requested targets below development transaction bound"
+            result["stopped_by"] = "completed requested targets within development transaction bound"
     finally:
         result["owner_log"] = log.read_text(errors="replace")[-4000:] if log.exists() else ""
         stop(owner, control)
