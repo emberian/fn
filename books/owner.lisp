@@ -57,9 +57,14 @@
 ;
 ; The served port is fn-own-read: one socket read of one connection is one
 ; fn-served-step (books/served.lisp) over the connection's wire, session and
-; PINNED archive, never over the live node.  fn-own-read-step is the
-; per-event law underneath it (one fn-served-dispatch, the byte fold's step,
-; against the pinned archive).
+; PINNED archive, never over the live node.  The READER's view is what is
+; pinned there.  A PEER connection's OFFER decision is not a reader view: it
+; is the transit history question, and it reads the owner's live node, which
+; fn-own-conn-live-session re-pins into the session once per read.  Those two
+; are not in tension -- what a reader may see is the prefix its connection
+; pinned, and what a peer is told about a Message-ID is what the node holds
+; now.  fn-own-read-step is the per-event law underneath the read (one
+; fn-served-dispatch, the byte fold's step, against the pinned archive).
 ; The committed view is refreshed only when the store is at an idle phase,
 ; where fn-snt-relation says the live node is the exact replay of the durable
 ; records (books/store-node-traces.lisp).
@@ -656,10 +661,14 @@
 ; reader (specs/peering.md 1.1): the host resolves the source to a configured
 ; peer record at accept and passes its name here, and the role of the
 ; connection is decided by that record and by nothing the client says.  The
-; session pins the node and the configuration once (fn-served-open-peer ->
-; fn-peer-open-session), so the offer decision reads a snapshot and the
-; transfer decides again over the live node, which is what RFC 4644 2.4.2
-; makes advisory.  The body limit is the peer record's inbound-max-octets:
+; session pins the peer record once (fn-served-open-peer ->
+; fn-peer-open-session); the node it pins there is the opening value and is
+; re-pinned per read by fn-own-conn-live-session, so the offer decision and
+; the transfer decision both read the node as it is now.  RFC 4644 2.4.2
+; makes a CHECK answer advisory -- a server MAY answer 238 and refuse later
+; -- but it does not ask a server to forget what it holds, and answering 335
+; for an article this connection delivered a moment ago costs the peer the
+; whole article twice.  The body limit is the peer record's inbound-max-octets:
 ; an oversize article is cut by the wire machine and never by a second
 ; parser (specs/peering.md 1.3).  An unconfigured name opens a connection
 ; whose every offer is refused `:not-a-peer', which is the same refusal the
@@ -731,12 +740,47 @@
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                (fn-ag-append (fn-own-queue o) (list sub)) (fn-own-inflight o) (fn-own-feeds o)))
 
+; The node a peer connection's OFFER decision reads.
+;
+; `fn-peer-decide-offer' (books/peer-inbound.lisp, the IHAVE and CHECK arms
+; of `fn-peer-command') answers from the node its session carries, and only
+; `fn-peer-open-session' ever wrote that field: the offer was decided against
+; the node as it stood when the connection opened, for the whole life of the
+; connection.  A peer that transferred an article and then offered the same
+; Message-ID again on the same connection was told `335'/`238' -- and then
+; `437'/`439' after paying for the bytes -- because K3's duplicate
+; suppression, which is proved of `fn-peer-decide-offer', was handed a node
+; that did not hold the article yet.  A persistent streaming feed pays that
+; for every article it has already sent.  Measured on `tools/v0_matrix.py'
+; at `6fb30ca': `V0-TRANSIT-DUPLICATE-AB/BA' `335' where the model says
+; `435', `V0-TRANSIT-CHECK-DUP-AB/BA' `238' where it says `438'.
+;
+; The node is re-pinned here from the owner's own store, once per socket
+; read.  That is the finest granularity that can differ: nothing becomes
+; durable inside one read (the submission this read produces is drained
+; after it), so a finer re-pin could not change an answer.  It is one field
+; assignment on one connection and no recognizer runs over the store, so it
+; is not the whole-state revalidation D3 forbids on a served path.
+;
+; The PEER RECORD stays pinned: the owner holds no store configuration to
+; re-read, so `fn-peer-session-cfg' is still the value `fn-own-open-peer'
+; took at `:open'.  The transfer decision does read the live configuration,
+; because the host passes it (host/owner-host.lisp `fn-owner-transit-decide').
+; A reader connection is returned unchanged.
+(defun fn-own-conn-live-session (o conn)
+  (declare (xargs :guard t))
+  (let* ((as (fn-own-conn-session conn))
+         (ps (fn-auth-session-base as)))
+    (if (fn-peer-session-peer ps)
+        (fn-auth-with-base as (fn-peer-with-node ps (fn-sn-node (fn-own-store o))))
+      as)))
+
 (defun fn-own-read (o id octets)
   (declare (xargs :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
         (let* ((result (fn-served-step (fn-served-make-conn (fn-own-conn-wire conn)
-                                                            (fn-own-conn-session conn)
+                                                            (fn-own-conn-live-session o conn)
                                                             (fn-own-conn-archive conn)
                                                             (fn-own-conn-config conn)
                                                             (fn-own-conn-observation conn)
@@ -1415,6 +1459,7 @@
 (deftheory fn-own-vocabulary
   '(fn-own-group-factp fn-own-prefix-archive fn-own-store-idlep fn-own-refresh
     fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-open fn-own-enqueue
+    fn-own-conn-live-session
     fn-own-read fn-own-read-step fn-own-advance fn-own-close fn-own-begin
     fn-own-store-step fn-own-complete fn-own-reopen
     fn-own-observe-outcome fn-own-observe

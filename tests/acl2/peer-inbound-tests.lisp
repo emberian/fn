@@ -259,6 +259,117 @@
 (assert-event (consp (fn-node-find-binding "<a1@example.invalid>" (fn-node-bindings *pt-node1*))))
 
 ; -----------------------------------------------------------------------------
+; The defect w11/transit-correct closes: ONE connection, before and after the
+; article it delivered became durable (fn-peer-with-node, applied per socket
+; read by books/owner.lisp fn-own-conn-live-session).
+;
+; *pt-ps0* is the session exactly as fn-peer-open-session pinned it, over
+; *pt-node0*, which holds nothing.  The first offer on it is 335 and that is
+; right.  The second offer -- after the SAME connection transferred the
+; article and the store made it durable -- was 335 again, because nothing
+; ever replaced the node in the session.  Observed on the wire:
+; V0-TRANSIT-DUPLICATE-AB/BA 335 and V0-TRANSIT-CHECK-DUP-AB/BA 238 at
+; 6fb30ca (planning/evidence/v0-matrix-2026-09-21.md).
+
+(defconst *pt-ps0-stale*
+  (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
+                (pt-cmd "IHAVE <a1@example.invalid>")))
+(assert-event (equal (fn-post-result-effects *pt-ps0-stale*)
+                     (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>")
+                           (fn-nntp-begin-article-effect))))
+
+(defconst *pt-ps0-live* (fn-peer-with-node *pt-ps0* *pt-node1*))
+(assert-event (fn-peer-sessionp *pt-ps0-live*))
+(assert-event (fn-peer-session-consistentp *pt-ps0-live* *pt-archive*))
+; Everything but the node is the session it was.
+(assert-event (equal (fn-peer-session-peer *pt-ps0-live*) "innA"))
+(assert-event (equal (fn-peer-session-cfg *pt-ps0-live*) (fn-peer-session-cfg *pt-ps0*)))
+(assert-event (equal (fn-peer-session-base *pt-ps0-live*) (fn-peer-session-base *pt-ps0*)))
+(assert-event (equal (fn-peer-session-transfer *pt-ps0-live*) (fn-peer-session-transfer *pt-ps0*)))
+(assert-event (equal (fn-peer-session-inflight *pt-ps0-live*) (fn-peer-session-inflight *pt-ps0*)))
+(assert-event (equal (fn-peer-session-node *pt-ps0-live*) *pt-node1*))
+
+; The reply, and no article mode: the peer pays no bytes for what we hold.
+(assert-event (equal (fn-post-result-effects
+                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
+                                    (pt-cmd "IHAVE <a1@example.invalid>")))
+                     (list (pt-reply "435 duplicate"))))
+(assert-event (null (fn-peer-session-transfer
+                     (fn-post-result-session
+                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
+                                    (pt-cmd "IHAVE <a1@example.invalid>"))))))
+(assert-event (equal (fn-post-result-effects
+                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
+                                    (pt-cmd "CHECK <a1@example.invalid>")))
+                     (list (pt-echo "438 " *pt-id1*))))
+
+; Teeth for fn-peer-ihave-of-a-held-message-id-is-435-and-no-article and
+; fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding: one
+; concrete violating value per hypothesis, each answering something the
+; theorem's conclusion is not.
+;
+; (a) the history hypothesis: a Message-ID the live node does not hold.
+(assert-event (equal (fn-post-result-effects
+                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
+                                    (pt-cmd "IHAVE <loop@example.invalid>")))
+                     (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>")
+                           (fn-nntp-begin-article-effect))))
+(assert-event (equal (fn-post-result-effects
+                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
+                                    (pt-cmd "CHECK <loop@example.invalid>")))
+                     (list (pt-echo "238 " *pt-idloop*))))
+; (b) the peer hypothesis: a reader connection carries no node and gets the
+; reader's answer to a transit keyword, not a duplicate refusal.
+(assert-event (null (fn-peer-session-peer (fn-peer-with-node *pt-reader* *pt-node1*))))
+(assert-event (equal (fn-post-result-effects
+                      (fn-peer-step (fn-peer-with-node *pt-reader* *pt-node1*)
+                                    (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs*
+                                    (pt-cmd "IHAVE <a1@example.invalid>")))
+                     (list (pt-reply "502 transit is not permitted on this connection"))))
+; (c) the peer-record hypothesis: a connection whose name is in no peer
+; table answers :not-a-peer, which is a 435 with a different text and a 438
+; with the same code for a different reason.
+(defconst *pt-ghost* (fn-peer-with-node
+                      (fn-peer-open-session *pt-archive* "ghost" *pt-node1* *pt-cfg*)
+                      *pt-node1*))
+(assert-event (equal (fn-post-result-effects
+                      (fn-peer-step *pt-ghost* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
+                                    (pt-cmd "IHAVE <a1@example.invalid>")))
+                     (list (pt-reply "435 not wanted; not a peer"))))
+; (d) the inbound-half hypothesis: a feed-only peer record.
+(defconst *pt-feedonly*
+  (fn-cfg-peer-make "outC" "outc.example" '(:nntp "127.0.0.1" 1120)
+                    nil '("fn.*" t 256 1000) '(:source-address "127.0.0.1")))
+(assert-event (fn-cfg-peerp *pt-feedonly*))
+(defconst *pt-cfg-feedonly*
+  (fn-config-replay 0 510
+                    (list (fn-cfg-record-make
+                           0 0 1
+                           (append *fn-cfg-default-change*
+                                   (list (fn-cfg-set-policy "path-identity" "fnA.hbox.test")
+                                         (fn-cfg-set-peer-delta *pt-feedonly*)))
+                           *fn-cfg-default-stamp*))))
+(assert-event (fn-cfgp *pt-cfg-feedonly*))
+(defconst *pt-ps-feedonly*
+  (fn-peer-with-node
+   (fn-peer-open-session *pt-archive* "outC" *pt-node1* *pt-cfg-feedonly*)
+   *pt-node1*))
+(assert-event (equal (fn-post-result-effects
+                      (fn-peer-step *pt-ps-feedonly* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
+                                    (pt-cmd "IHAVE <a1@example.invalid>")))
+                     (list (pt-reply "435 not wanted; no inbound feed configured"))))
+; (e) the Message-ID hypothesis: a token that is not one is a syntax error,
+; never a duplicate refusal.
+(assert-event (equal (fn-post-result-effects
+                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
+                                    (pt-cmd "IHAVE not-a-message-id")))
+                     (list (pt-reply "501 syntax error"))))
+(assert-event (equal (fn-post-result-effects
+                      (fn-peer-step *pt-ps0-live* *pt-archive* *pt-inj* *pt-obs* *pt-obs*
+                                    (pt-cmd "CHECK not-a-message-id")))
+                     (list (pt-reply "501 syntax error"))))
+
+; -----------------------------------------------------------------------------
 ; Transcript: CHECK/TAKETHIS refused by groups (RFC 4644 section 2.4.3 shape)
 
 (defconst *pt-c1* (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <alt@example.invalid>")))

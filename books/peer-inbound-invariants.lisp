@@ -223,6 +223,100 @@
                                    fn-node-find-binding fn-acceptedp)))))
 
 ; -----------------------------------------------------------------------------
+; The offer the wire carries is the offer decision (AGENTS.md, the theorem
+; subject is the function the host calls)
+;
+; The host line is books/owner.lisp `fn-own-read', which the host calls once
+; per socket read at host/owner-host.lisp `fn-owner-chunk'; it runs
+; `fn-served-step' -> `fn-served-dispatch' -> `fn-auth-step' -> `fn-peer-step'
+; -> `fn-peer-command', and the IHAVE and CHECK arms of `fn-peer-command' are
+; the only two callers of `fn-peer-decide-offer' on this tree.  K3
+; (`fn-peer-history-is-have-at-offer', books/peer-inbound-invariants.lisp) is
+; about `fn-peer-decide-offer'; these two theorems are the equation between
+; that decision and the octets, so the keystone is about the answer a peer
+; reads off the socket and not only about a function beside it.
+;
+; What each one says beyond the definition: the reply is the decision's code
+; AND the connection does not enter article mode, so a duplicate offer costs
+; the peer no bytes.  Their hypotheses are the connection facts
+; `fn-peer-decide-offer' needs before it can reach its history arm -- the
+; peer record exists and has an inbound half, the offered identifier is a
+; Message-ID -- and the history itself; the teeth in
+; tests/acl2/peer-inbound-tests.lisp remove one at a time.
+
+(defthm fn-peer-ihave-of-a-held-message-id-is-435-and-no-article
+  (implies (and (fn-peer-session-peer ps)
+                (fn-nntp-keywordp keyword "IHAVE")
+                (fn-peer-msgid-argp args)
+                (fn-cfg-peer-find (fn-peer-session-peer ps)
+                                  (fn-cfg-peers (fn-cfg-value (fn-peer-session-cfg ps))))
+                (fn-cfg-peer-inbound
+                 (fn-cfg-peer-find (fn-peer-session-peer ps)
+                                   (fn-cfg-peers (fn-cfg-value (fn-peer-session-cfg ps)))))
+                (fn-peer-history-hasp (fn-record-octets-string (car args))
+                                      (fn-peer-session-node ps)))
+           (and (equal (fn-post-result-effects (fn-peer-command ps keyword args))
+                       (fn-peer-single ps "435 duplicate"))
+                (equal (fn-peer-session-transfer
+                        (fn-post-result-session (fn-peer-command ps keyword args)))
+                       (fn-peer-session-transfer ps))))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-command) (:d fn-peer-msgid-argp)
+                                   (:d fn-peer-ihave-offer-line))
+                                  ((:d fn-peer-decide-offer) (:d fn-peer-single)
+                                   (:d fn-peer-echo-reply)
+                                   (:d fn-peer-history-hasp) (:d fn-cfg-peer-find)
+                                   (:d fn-cfg-peer-inbound)
+                                   (:d fn-record-octets-string)
+                                   (:d fn-af-message-idp)
+                                   (:d fn-nntp-printable-tokenp)
+                                   (:d fn-nntp-multi) (:d fn-peer-capability-lines)
+                                   (:d fn-nntp-capability-lines)))
+           :use ((:instance fn-peer-history-is-have-at-offer
+                            (node (fn-peer-session-node ps))
+                            (cfg (fn-peer-session-cfg ps))
+                            (peer (fn-peer-session-peer ps))
+                            (session ps)
+                            (msgid (car args))
+                            (clock nil)
+                            (inflight (fn-peer-session-inflight ps)))))))
+
+(defthm fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding
+  (implies (and (fn-peer-session-peer ps)
+                (fn-nntp-keywordp keyword "CHECK")
+                (fn-peer-msgid-argp args)
+                (fn-cfg-peer-find (fn-peer-session-peer ps)
+                                  (fn-cfg-peers (fn-cfg-value (fn-peer-session-cfg ps))))
+                (fn-cfg-peer-inbound
+                 (fn-cfg-peer-find (fn-peer-session-peer ps)
+                                   (fn-cfg-peers (fn-cfg-value (fn-peer-session-cfg ps)))))
+                (fn-peer-history-hasp (fn-record-octets-string (car args))
+                                      (fn-peer-session-node ps)))
+           (and (equal (fn-post-result-effects (fn-peer-command ps keyword args))
+                       (fn-peer-echo-reply "438 " (car args)))
+                (equal (fn-post-result-session (fn-peer-command ps keyword args)) ps)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-command) (:d fn-peer-msgid-argp)
+                                   (:d fn-peer-check-code) (:d fn-nntp-keywordp)
+                                   (:d fn-nntp-string-octets))
+                                  ((:d fn-peer-decide-offer) (:d fn-peer-single)
+                                   (:d fn-peer-echo-reply)
+                                   (:d fn-peer-history-hasp) (:d fn-cfg-peer-find)
+                                   (:d fn-cfg-peer-inbound)
+                                   (:d fn-record-octets-string)
+                                   (:d fn-af-message-idp)
+                                   (:d fn-nntp-printable-tokenp)
+                                   (:d fn-nntp-upcase-keyword)
+                                   (:d fn-nntp-multi) (:d fn-peer-capability-lines)
+                                   (:d fn-nntp-capability-lines)))
+           :use ((:instance fn-peer-history-is-have-at-offer
+                            (node (fn-peer-session-node ps))
+                            (cfg (fn-peer-session-cfg ps))
+                            (peer (fn-peer-session-peer ps))
+                            (session ps)
+                            (msgid (car args))
+                            (clock nil)
+                            (inflight (fn-peer-session-inflight ps)))))))
+
+; -----------------------------------------------------------------------------
 ; The provenance of a transit acceptance
 ;
 ; The typed record and the string the transit path writes today are the same
