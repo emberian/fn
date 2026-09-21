@@ -1,0 +1,9 @@
+revision=d073fa9979cac368567adbd3aa6600e820b92d44
+nextop.local
+SBCL 2.6.8
+48e23a2b9235551d4c55b759188d2c01a49d10510b7ebb9ff1b93306342d0ff1  books/anchor-replace.lisp
+97948477bc57b9c4909019bb01f03319daa6e49d6c07af0818c24be15f164963  host/native/anchor.lisp
+6932ce0f0863e51d7adea8e091ffee24f8ca18700d13f467c4c986786c22aaa2  host/native/io.lisp
+5792a2148afdab0f2d15d84156dc818e24daf2fc34c7ed2abf2e4dc9673e7407  tests/native_anchor_acquisition.lisp
+FN_NATIVE_ANCHOR_REPLACE_EIO_RESTART passed
+FN_NATIVE_ANCHOR_ACQUISITION_TEST passed library="/opt/homebrew/opt/libsodium/lib/libsodium.dylib" version="1.0.22"

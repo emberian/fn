@@ -1,0 +1,13 @@
+revision=d073fa9979cac368567adbd3aa6600e820b92d44
+build_exit=1
+e19c544fa3152f4a658a4078b81676a7b7294866781bd6fe79e647a73eb0e3f2  build/fn-host
+bf1bb82d6fbbdf2dda1d6a501ffa82764894f9607a0374a2fd5dc5974608d817  build/fn-host.core
+8adca594a680ba921d56d7dfd63593d875b0a8052690b441ec94b64884a4624d  host/native/build.lisp
+97948477bc57b9c4909019bb01f03319daa6e49d6c07af0818c24be15f164963  host/native/anchor.lisp
+6932ce0f0863e51d7adea8e091ffee24f8ca18700d13f467c4c986786c22aaa2  host/native/io.lisp
+201:ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "books/served" ...): 
+210:Warnings:  Uncertified and Compiled file
+2773:ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "../books/anchor-invariants"
+2779:ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "anchor-record" ...):
+2788:Warnings:  Uncertified and Compiled file
+3759:ACL2 !>FN_NATIVE_BUILD_LOADED

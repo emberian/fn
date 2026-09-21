@@ -1,0 +1,10 @@
+revision=d073fa9979cac368567adbd3aa6600e820b92d44
+image_sha256=bf1bb82d6fbbdf2dda1d6a501ffa82764894f9607a0374a2fd5dc5974608d817
+initialized /var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp.496K9LSf7O/store
+init_exit=0
+anchor accepted incarnation=0
+anchor refused: stale
+replay_1_exit=1
+first_exit=0
+     394 /var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp.496K9LSf7O/store/anchor.fnan
+1f58f78c16a81ba36ce765a0297dd1458bfd7eaba01b6b4e553b44b69d553b21  /var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp.496K9LSf7O/store/anchor.fnan
