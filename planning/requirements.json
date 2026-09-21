@@ -454,7 +454,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-008"
+        "PRF-008",
+        "PRF-037"
       ],
       "verification": [
         "proof",
@@ -464,7 +465,8 @@
         "books/checkpoint.lisp",
         "tests/acl2/checkpoint-tests.lisp",
         "specs/checkpoint.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/checkpoint-validator-2026-09-21.md"
       ],
       "implementation_note": "Logical checkpoint plus suffix replay equivalence is implemented; persisted checkpoint bytes, generation publication, crash selection and freshness remain open.",
       "keystones": [
