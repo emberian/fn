@@ -229,6 +229,7 @@
 (defconstant +fnn-lock-nb+ 4)
 (defconstant +fnn-lock-un+ 8)
 (defconstant +fnn-shut-wr+ 1)
+(defconstant +fnn-shut-rdwr+ 2)
 
 (sb-alien:define-alien-routine ("flock" fnn-%flock) sb-alien:int
   (fd sb-alien:int) (operation sb-alien:int))
@@ -2061,6 +2062,9 @@ connection `fn-reader-reset' opens and projects with
 ;;; host built without that layer should say.
 
 (defvar *fnn-verbs* nil)
+(defvar *fnn-sigterm-owner-active* nil)
+(defvar *fnn-sigterm-requested* nil)
+(defvar *fnn-sigterm-wakeup-fd* nil)
 
 (defun fnn-register-verb (verb handler)
   (push (cons verb handler) *fnn-verbs*)
@@ -2118,7 +2122,18 @@ connection `fn-reader-reset' opens and projects with
   (sb-sys:enable-interrupt sb-unix:sigterm
                            (lambda (signal info context)
                              (declare (ignore signal info context))
-                             (fnn-exit (+ 128 sb-unix:sigterm))))
+                             ;; Owner mode keeps one captured listener fd open
+                             ;; through all cleanup. Signal context sets one
+                             ;; monotonic global and performs raw shutdown(2);
+                             ;; it invokes no callback, mutex, allocator or
+                             ;; semantic core call.
+                             (if *fnn-sigterm-owner-active*
+                                 (progn
+                                   (setq *fnn-sigterm-requested* t)
+                                   (when *fnn-sigterm-wakeup-fd*
+                                     (fnn-%shutdown *fnn-sigterm-wakeup-fd*
+                                                    +fnn-shut-rdwr+)))
+                               (fnn-exit (+ 128 sb-unix:sigterm)))))
   (let* ((argv (cdr (member "--fn" sb-ext:*posix-argv* :test #'string=)))
          (reader-p (and argv (string= (first argv) "reader")))
          (code

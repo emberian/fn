@@ -2,10 +2,9 @@
 ;;;
 ;;; This raw module transports only bounded ASCII argv/configuration octets to
 ;;; host/native-operator-host.lisp.  ACL2 chooses command grammar, defaults,
-;;; profile availability, the result tag, and the exit-code projection.  Only
-;;; ACL2-designated help/status/recover actions execute here, and an accepted
-;;; run plan reaches the one normalized owner callback.  Post remains explicit
-;;; usage until shared submission exists; no direct store shortcut is present.
+;;; profile availability, the result tag, and the exit-code projection.  RUN
+;;; installs the local-control lifecycle and POST calls that control socket;
+;;; neither command has a direct Store path.
 
 (in-package "ACL2")
 
@@ -76,7 +75,7 @@
                (list (fnn-native-auth-startup-hook
                       auth-path auth-required auth-protected)))
              (code
-               (fnn-owner-run-normalized
+               (fnn-control-owner-run-normalized
                 (fnn-octets (fnn-core
                              'fn-native-operator-host-result-run-store-octets result))
                 (fnn-octets (fnn-core
@@ -84,12 +83,46 @@
                 (fnn-core 'fn-native-operator-host-result-run-listener-port result)
                 (fnn-core 'fn-native-operator-host-result-run-oncep result)
                 (fnn-core
-                 'fn-native-operator-host-result-run-max-connections result))))
+                 'fn-native-operator-host-result-run-max-connections result)
+                (fnn-octets (fnn-core
+                             'fn-native-operator-host-result-run-control-path-octets
+                             result))
+                (fnn-core
+                 'fn-native-operator-host-result-run-posting-enabledp result))))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run")
         code)
     (error (condition)
       (let ((code (fnn-exit-code-for condition)))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run" condition)
+        code))))
+
+(defun fnn-operator-execute-post (result)
+  "Use only ACL2-normalized request fields and ACL2-framed local control."
+  (handler-case
+      (let* ((status
+               (fnn-control-submit
+                (fnn-octets
+                 (fnn-core
+                  'fn-native-operator-host-result-post-control-path-octets result))
+                (fnn-octets
+                 (fnn-core
+                  'fn-native-operator-host-result-post-msgid-octets result))
+                (mapcar #'fnn-octets
+                        (fnn-core
+                         'fn-native-operator-host-result-post-group-octets result))
+                (fnn-octets
+                 (fnn-core
+                  'fn-native-operator-host-result-post-payload-path-octets result))))
+             (class
+               (fnn-core 'fn-native-control-host-status-class status))
+             (code
+               (fnn-core 'fn-native-control-host-status-exit-code status)))
+        (fnn-operator-emit-status class "post" status)
+        code)
+    (error (condition)
+      (let ((code (fnn-exit-code-for condition)))
+        (fnn-operator-emit-status
+         (fnn-operator-status-of-exit-code code) "post" condition)
         code))))
 
 (defun fnn-operator-execute-store-action (result action)
@@ -131,6 +164,7 @@ configuration usage result."
         (case action
           (:help (fnn-operator-execute-help result))
           (:run (fnn-operator-execute-run result))
+          (:post (fnn-operator-execute-post result))
           ((:status :recover) (fnn-operator-execute-store-action result action))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")

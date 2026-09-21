@@ -63,6 +63,10 @@
   (declare (xargs :guard t))
   (fn-nop-result :usage reason command config arguments))
 
+(defun fn-nop-refused (reason command config arguments)
+  (declare (xargs :guard t))
+  (fn-nop-result :refused reason command config arguments))
+
 (defun fn-nop-parse-run (words once)
   (declare (xargs :guard t))
   (if (consp words)
@@ -70,6 +74,36 @@
           (fn-nop-parse-run (cdr words) t)
         :bad)
     (list :run :once once)))
+
+(defun fn-nop-parse-post-aux (words msgid payload groups)
+  (declare (xargs :guard t :measure (len words)))
+  (if (atom words)
+      (if (and (stringp msgid) (fn-record-msgidp msgid)
+               (stringp payload) (not (equal payload ""))
+               (<= (length payload) *fn-ncfg-max-path*)
+               (consp groups) (fn-record-groupsp (fn-ncfg-reverse groups)))
+          (list :post msgid payload (fn-ncfg-reverse groups))
+        :bad)
+    (if (atom (cdr words))
+        :bad
+      (let ((option (car words)) (value (cadr words)) (rest (cddr words)))
+        (cond ((and (equal option "--message-id") (null msgid))
+               (fn-nop-parse-post-aux rest value payload groups))
+              ((and (equal option "--payload") (null payload))
+               (fn-nop-parse-post-aux rest msgid value groups))
+              ((and (equal option "--group")
+                    (< (len groups) *fn-record-max-groups*))
+               (fn-nop-parse-post-aux rest msgid payload (cons value groups)))
+              (t :bad))))))
+
+(defun fn-nop-parse-post (words config)
+  (declare (xargs :guard t))
+  (let ((arguments (fn-nop-parse-post-aux words nil nil nil)))
+    (if (equal arguments :bad)
+        (fn-nop-usage :invalid-post-options "post" config words)
+      (if (not (fn-native-config-posting-enabledp config))
+          (fn-nop-refused :posting-disabled "post" config arguments)
+        (fn-nop-result :accepted :plan "post" config arguments)))))
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
@@ -80,7 +114,7 @@
   (declare (xargs :guard t))
   (cond ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "post")
-         "usage: fn operator CONFIG post SOURCE (shared submission unavailable)")
+         "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
         ((equal subject "status") "usage: fn operator CONFIG status")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
@@ -104,10 +138,7 @@
                (if (equal arguments :bad)
                    (fn-nop-usage :invalid-run-options "run" config rest)
                  (fn-nop-result :accepted :plan "run" config arguments))))
-            ((equal command "post")
-             ; Shared submission is an owner callback.  Do not publish the
-             ; old direct-store payload grammar as a native operator contract.
-             (fn-nop-usage :shared-submission-unavailable "post" config rest))
+            ((equal command "post") (fn-nop-parse-post rest config))
             ((equal command "status")
              (if (null rest)
                  (fn-nop-result :accepted :plan "status" config (list :status))
@@ -142,8 +173,8 @@ so malformed argv and help syntax remain ACL2-owned before any host file I/O."
   "One semantic authority for config defaults, argv grammar, and CLI tag.
 
 A profile the current native owner cannot consume is USAGE, never an accepted
-service plan.  `posting.enabled = false' remains explicit unsupported-profile
-until owner convergence exposes one ACL2 posting projection to served/control."
+service plan.  `posting.enabled = false' is a configured refusal for POST and
+is installed into the owner for both served and control submission."
   (declare (xargs :guard t))
   (let ((preflight (fn-native-operator-command-preflight argv-octets)))
     (if (not (fn-native-operator-preflight-needs-config-p preflight))
@@ -221,18 +252,70 @@ until owner convergence exposes one ACL2 posting projection to served/control."
         (fn-native-operator-result-config result))
        t))
 
+(defun fn-native-operator-result-run-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-run-planp result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
+(defun fn-native-operator-result-run-posting-enabledp (result)
+  (declare (xargs :guard t))
+  (and (fn-native-operator-result-run-planp result)
+       (fn-native-config-posting-enabledp
+        (fn-native-operator-result-config result))))
+
+(defun fn-native-operator-result-post-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (equal (fn-native-operator-result-command result) "post")))
+
+(defun fn-native-operator-result-post-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-post-planp result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
+(defun fn-native-operator-result-post-msgid-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-post-planp result)
+      (fn-record-string-octets
+       (fn-ncfg-nth 1 (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-native-operator-result-post-payload-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-post-planp result)
+      (fn-record-string-octets
+       (fn-ncfg-nth 2 (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-native-operator-post-group-octets (groups)
+  (declare (xargs :guard t))
+  (if (consp groups)
+      (cons (fn-record-string-octets (car groups))
+            (fn-native-operator-post-group-octets (cdr groups)))
+    nil))
+
+(defun fn-native-operator-result-post-group-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-post-planp result)
+      (fn-native-operator-post-group-octets
+      (fn-ncfg-nth 3 (fn-native-operator-result-arguments result)))
+    nil))
+
 (defun fn-native-operator-result-native-action (result)
   "The only commands the current raw native module may execute by itself.
 
-`run' retains its normalized plan for the one owner callback.  `post' is usage
-until that owner exposes its shared-submission callback.  Neither is translated
-into a direct store call, which would create another owner of lifecycle or
-submission semantics."
+`run' and `post' retain normalized plans for the owner and local-control
+callbacks.  Neither is translated into a direct Store call."
   (declare (xargs :guard t))
   (if (not (equal (fn-native-operator-result-status result) :accepted))
       :none
     (cond ((equal (fn-native-operator-result-command result) "help") :help)
           ((equal (fn-native-operator-result-command result) "run") :run)
+          ((equal (fn-native-operator-result-command result) "post") :post)
           ((equal (fn-native-operator-result-command result) "status") :status)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
           (t :owner-required))))

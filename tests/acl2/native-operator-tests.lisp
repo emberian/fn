@@ -47,7 +47,20 @@
                        *fn-nop-minimal-config*
                        (fn-nop-test-argv '("post" "--message-id" "<one@example.invalid>"
                                            "--payload" "/tmp/one.eml" "--group" "fn.letters"))))
-                     :usage))
+                     :accepted))
+
+(defconst *fn-nop-post*
+  (fn-native-operator-run
+   *fn-nop-minimal-config*
+   (fn-nop-test-argv '("post" "--message-id" "<one@example.invalid>"
+                       "--payload" "/tmp/one.eml" "--group" "fn.letters"))))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-post*) :post))
+(assert-event
+ (equal (fn-native-operator-result-post-msgid-octets *fn-nop-post*)
+        (fn-record-string-octets "<one@example.invalid>")))
+(assert-event
+ (equal (fn-native-operator-result-post-group-octets *fn-nop-post*)
+        (list (fn-record-string-octets "fn.letters"))))
 
 ; Command teeth: repeated/conflicting runtime options and unsupported verbs lose a plan.
 (assert-event (equal (fn-native-operator-result-status
@@ -85,13 +98,20 @@
                        (fn-nop-test-argv '("status"))))
                      :usage))
 
-; A parsed disabled posting profile is explicit unsupported usage until the
-; owner consumes one ACL2 posting projection for served and control paths.
+; The service may run with posting disabled, but POST is an explicit refusal.
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run
                        (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[posting]" "enabled = false"))
                        (fn-nop-test-argv '("run"))))
-                     :usage))
+                     :accepted))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""
+                                            "[posting]" "enabled = false"))
+                       (fn-nop-test-argv
+                        '("post" "--message-id" "<one@example.invalid>"
+                          "--payload" "/tmp/one.eml" "--group" "fn.letters"))))
+                     :refused))
 
 (assert-event (equal (fn-native-operator-exit-code
                       (fn-native-operator-run

@@ -745,6 +745,18 @@
                       *own-after-post* '(60 62) *own-control-groups*
                       *own-control-source*)
                      :refused))
+(defconst *own-control-disabled*
+  (fn-own-configure
+   *own-after-post*
+   (fn-inj-make-config nil
+                       (fn-inj-config-agent (fn-own-config *own-after-post*))
+                       (fn-inj-config-groups (fn-own-config *own-after-post*))
+                       (fn-inj-config-max-octets
+                        (fn-own-config *own-after-post*)))))
+(assert-event (equal (fn-own-control-submit-result
+                      *own-control-disabled* *own-control-msgid*
+                      *own-control-groups* *own-control-source*)
+                     :refused))
 (assert-event (equal (fn-own-control-submit-result
                       *own-control-taken* *own-control-msgid*
                       *own-control-groups* *own-control-source*)

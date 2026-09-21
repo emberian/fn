@@ -10,9 +10,14 @@
 
 (in-package "ACL2")
 
+(defvar *fnn-owner-start-hooks* nil)
+(defvar *fnn-owner-stop-hooks* nil)
+(defvar *fnn-owner-close-hooks* nil)
+
 (defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
   store records lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
-  (workers nil) (clients nil))
+  (workers nil) (clients nil)
+  (start-hooks nil) (stop-hooks nil) (close-hooks nil))
 
 (defstruct (fnn-owner-feed-journal (:constructor %make-fnn-owner-feed-journal))
   peer path fd phase (replayed 0))
@@ -382,6 +387,9 @@ directories because one encoded label can be a prefix of a longer label.
                     (%make-fnn-owner-service
                      :store store :records (length records)
                      :lock (sb-thread:make-mutex :name "fn owner/store")
+                     :start-hooks *fnn-owner-start-hooks*
+                     :stop-hooks *fnn-owner-stop-hooks*
+                     :close-hooks *fnn-owner-close-hooks*
                      :stopping nil))
               (let ((configured (fnn-owner-name-list peers)))
                 (setf (fnn-owner-service-feeds service)
@@ -412,12 +420,15 @@ directories because one encoded label can be a prefix of a longer label.
       ;; on Linux.  Shutdown first so the accept loop observes a socket error,
       ;; sees STOPPING while this mutex is still held, and returns.
       (ignore-errors
-        (sb-bsd-sockets:socket-shutdown listener :direction :io))
-      (ignore-errors (fnn-socket-shut listener))))
+        (sb-bsd-sockets:socket-shutdown listener :direction :io))))
   ;; Wake every client before command cleanup waits for its worker.  Shared
   ;; journals and Store state remain open until all workers have returned.
   (dolist (socket (fnn-owner-service-clients service))
-    (ignore-errors (fnn-socket-shut socket))))
+    (ignore-errors (fnn-socket-shut socket)))
+  ;; Hooks only signal external listeners/clients.  They run inside the same
+  ;; first-terminal boundary and must be idempotent and nonblocking.
+  (dolist (hook (fnn-owner-service-stop-hooks service))
+    (ignore-errors (funcall hook service))))
 
 (defun fnn-owner-stop-service (service exit-code)
   (fnn-with-owner (service)
@@ -513,7 +524,7 @@ directories because one encoded label can be a prefix of a longer label.
       ((or fnn-store-error fnn-os-error) () :refused))))
 
 (defun fnn-owner-drain-one (service)
-  "Take and complete at most one queued local submission; return cid/reply."
+  "Take and complete at most one queued served submission; return cid/reply."
   (let ((taken (fnn-owner-action 'fn-owner-take)))
     (unless (member taken '(:idle :taken :taken-control :taken-transit))
       (fnn-fault "owner returned unexpected take result"))
@@ -592,6 +603,24 @@ and control-outcome sequence."
             (when (eq result :uncertain)
               (fnn-indeterminate "owner bound Store outcome is uncertain"))
             result))))))
+
+(defun fnn-owner-control-submit-serialized (service msgid groups payload)
+  "Queue and drain one exact authored article through the shared owner writer."
+  (fnn-owner-serialized
+   service nil
+   (lambda ()
+     (let ((evidence (fnn-octets (fnn-owner-core 'fn-owner-prov-post)))
+           (generation
+             (fnn-nat (fnn-owner-core 'fn-owner-config-generation)))
+           (txid (fnn-nat (fnn-owner-core 'fn-owner-next-txid))))
+       (fnn-owner-complete-bound-submission
+        service
+        (lambda ()
+          (fnn-owner-action 'fn-owner-control-submit
+                            (fnn-octet-list msgid)
+                            (mapcar #'fnn-octet-list groups)
+                            (fnn-octet-list payload)))
+        msgid payload groups evidence generation txid)))))
 
 (defun fnn-owner-handle-chunk (service cid incoming)
   "Run one owner read and its serial writer drain under the service mutex."
@@ -693,39 +722,97 @@ and control-outcome sequence."
 
 (defun fnn-owner-accept (service listener once)
   (if once
-      (fnn-owner-serve-client service
-                              (sb-bsd-sockets:socket-accept listener))
+      (handler-case
+          (fnn-owner-serve-client service
+                                  (sb-bsd-sockets:socket-accept listener))
+        (sb-bsd-sockets:socket-error (condition)
+          (unless (or *fnn-sigterm-requested*
+                      (fnn-owner-service-stopping service))
+            (error condition))))
       (loop until (fnn-owner-service-stopping service) do
         (handler-case
             (let ((socket (sb-bsd-sockets:socket-accept listener)))
               (fnn-owner-launch-client service socket))
           (sb-bsd-sockets:socket-error (e)
-            (unless (fnn-owner-service-stopping service) (error e)))))))
+            (cond (*fnn-sigterm-requested* (return))
+                  ((fnn-owner-service-stopping service) (return))
+                  (t (error e))))))))
 
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet))
   "Run one service from already-normalized boundary values."
-  (let ((service nil) (listener nil))
+  (let ((service nil) (listener nil)
+        (old-active *fnn-sigterm-owner-active*)
+        (old-requested *fnn-sigterm-requested*)
+        (old-wakeup-fd *fnn-sigterm-wakeup-fd*))
     (unwind-protect
          (progn
-           (setq service (fnn-owner-install root max-connections fault))
-           (fnn-owner-run-startup-hooks service)
-           (multiple-value-bind (bound bound-port)
-               (fnn-listen port :address address :family family)
-             (setf listener bound
-                   (fnn-owner-service-listener service) bound)
-             (fnn-out "LISTENING ~d" bound-port))
-           (fnn-owner-accept service listener once)
-           (fnn-owner-service-exit-code service))
-      (when listener (fnn-socket-shut listener))
-      (when service
-        ;; Cleanup itself is a stop boundary too: wake workers before joining,
-        ;; even when accept unwound for a reason other than an owner fence.
-        (fnn-owner-stop-service service
-                                (fnn-owner-service-exit-code service))
-        (fnn-owner-wait-workers service)
-        (fnn-owner-feed-close-all service)
-        (fnn-store-close (fnn-owner-service-store service))))))
+           (setq *fnn-sigterm-owner-active* t
+                 *fnn-sigterm-requested* nil
+                 *fnn-sigterm-wakeup-fd* nil)
+           (unwind-protect
+                (progn
+                  (setq service (fnn-owner-install root max-connections fault))
+                  (fnn-owner-run-startup-hooks service)
+                  ;; Deterministic native witness for the signal window in
+                  ;; which recovery is complete but no listener fd or module
+                  ;; resource exists yet.  The signal still travels through
+                  ;; fnn-main's real handler; this branch supplies no shortcut
+                  ;; to the stop machinery.
+                  (when (string= (or (sb-ext:posix-getenv
+                                      "FN_NATIVE_OWNER_TEST_SIGTERM") "")
+                                 "after-install")
+                    (fnn-out "OWNER-PRELISTEN")
+                    (sb-posix:kill (sb-posix:getpid) sb-unix:sigterm)
+                    (loop repeat 1000
+                          until *fnn-sigterm-requested*
+                          do (sb-thread:thread-yield)))
+                  (when *fnn-sigterm-requested*
+                    (fnn-owner-stop-service service +fnn-exit-ok+)
+                    (return-from fnn-owner-run +fnn-exit-ok+))
+                  (multiple-value-bind (bound bound-port)
+                      (fnn-listen port :address address :family family)
+                    (setf listener bound
+                          (fnn-owner-service-listener service) bound
+                          *fnn-sigterm-wakeup-fd*
+                          (sb-bsd-sockets:socket-file-descriptor bound))
+                    ;; A signal in the small post-install/pre-bind window set
+                    ;; the flag but had no fd to wake.  Consume it here before
+                    ;; any module resource starts.
+                    (if *fnn-sigterm-requested*
+                        (fnn-owner-stop-service service +fnn-exit-ok+)
+                      (progn
+                        (dolist (hook (fnn-owner-service-start-hooks service))
+                          (funcall hook service))
+                        (fnn-out "LISTENING ~d" bound-port)
+                        (fnn-owner-accept service listener once))))
+                  (when *fnn-sigterm-requested*
+                    (fnn-owner-stop-service service +fnn-exit-ok+))
+                  (fnn-owner-service-exit-code service))
+             (unwind-protect
+                  (when service
+                    ;; Cleanup itself is a stop boundary too: wake workers
+                    ;; before joining, then close modules/FNFD/Store while the
+                    ;; wake fd remains open and cannot be reused.
+                    (fnn-owner-stop-service
+                     service (fnn-owner-service-exit-code service))
+                    (fnn-owner-wait-workers service)
+                    ;; Keep the captured listener fd live while the focused
+                    ;; test delivers a repeated SIGTERM during cleanup.
+                    (when (string= (or (sb-ext:posix-getenv
+                                        "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP") "")
+                                   "1")
+                      (fnn-out "OWNER-CLEANUP")
+                      (sleep 2))
+                    (dolist (hook (fnn-owner-service-close-hooks service))
+                      (ignore-errors (funcall hook service)))
+                    (fnn-owner-feed-close-all service)
+                    (fnn-store-close (fnn-owner-service-store service)))
+               (setq *fnn-sigterm-wakeup-fd* nil)
+               (when listener (fnn-socket-shut listener)))))
+      (setq *fnn-sigterm-wakeup-fd* old-wakeup-fd
+            *fnn-sigterm-requested* old-requested
+            *fnn-sigterm-owner-active* old-active))))
 
 (defun fnn-owner-run-normalized (store-octets listener-host-octets
                                  listener-port oncep max-connections)
