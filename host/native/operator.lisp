@@ -43,14 +43,14 @@
 
 (defun fnn-operator-emit-result (result)
   (fnn-operator-emit-status
-   (fnn-core-state 'fn-native-operator-host-result-status result)
-   (or (fnn-core-state 'fn-native-operator-host-result-command result) "request")
-   (fnn-core-state 'fn-native-operator-host-result-reason result)))
+   (fnn-core 'fn-native-operator-host-result-status result)
+   (or (fnn-core 'fn-native-operator-host-result-command result) "request")
+   (fnn-core 'fn-native-operator-host-result-reason result)))
 
 (defun fnn-operator-execute-help (result)
   "Emit only the ACL2-normalized, bounded help text after the action succeeds."
   (let* ((arguments
-           (fnn-core-state 'fn-native-operator-host-result-arguments result))
+           (fnn-core 'fn-native-operator-host-result-arguments result))
          (text (third arguments)))
     (unless (stringp text)
       (fnn-fault "ACL2 help action returned no text"))
@@ -67,8 +67,8 @@
                             'fn-native-operator-host-result-run-store-octets result))
                (fnn-octets (fnn-core-state
                             'fn-native-operator-host-result-run-listener-host-octets result))
-               (fnn-core-state 'fn-native-operator-host-result-run-listener-port result)
-               (fnn-core-state 'fn-native-operator-host-result-run-oncep result)
+               (fnn-core 'fn-native-operator-host-result-run-listener-port result)
+               (fnn-core 'fn-native-operator-host-result-run-oncep result)
                (fnn-core-state
                 'fn-native-operator-host-result-run-max-connections result))))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run")
@@ -79,7 +79,7 @@
         code))))
 
 (defun fnn-operator-execute-store-action (result action)
-  (let ((root (fnn-core-state 'fn-native-operator-host-result-store-root result)))
+  (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
     (handler-case
         (let ((code (case action
                       (:status (fnn-command-status root))
@@ -101,11 +101,11 @@
       (values nil condition))))
 
 (defun fnn-operator-dispatch-plan (result)
-  (let ((status (fnn-core-state 'fn-native-operator-host-result-status result)))
+  (let ((status (fnn-core 'fn-native-operator-host-result-status result)))
     (if (not (eq status :accepted))
         (progn (fnn-operator-emit-result result)
-               (fnn-core-state 'fn-native-operator-host-result-exit-code result))
-      (let ((action (fnn-core-state 'fn-native-operator-host-result-native-action result)))
+               (fnn-core 'fn-native-operator-host-result-exit-code result))
+      (let ((action (fnn-core 'fn-native-operator-host-result-native-action result)))
         (case action
           (:help (fnn-operator-execute-help result))
           (:run (fnn-operator-execute-run result))
@@ -116,17 +116,17 @@
           (t (fnn-fault "ACL2 operator returned no native action")))))))
 
 (defun fnn-command-operator (config-path argv)
-  (let* ((max-arguments (fnn-core-state 'fn-native-operator-host-argv-max-arguments))
-         (max-octets (fnn-core-state 'fn-native-operator-host-argv-max-octets))
+  (let* ((max-arguments (fnn-core 'fn-native-operator-host-argv-max-arguments))
+         (max-octets (fnn-core 'fn-native-operator-host-argv-max-octets))
          (argv-octets (fnn-operator-argv-octets argv max-arguments max-octets))
          ; Asking ACL2 first makes config-free HELP its own normalized action.
-         (preflight (fnn-core-state 'fn-native-operator-host-run nil argv-octets))
-         (status (fnn-core-state 'fn-native-operator-host-result-status preflight))
-         (reason (fnn-core-state 'fn-native-operator-host-result-reason preflight))
-         (action (fnn-core-state 'fn-native-operator-host-result-native-action preflight)))
+         (preflight (fnn-core 'fn-native-operator-host-run nil argv-octets))
+         (status (fnn-core 'fn-native-operator-host-result-status preflight))
+         (reason (fnn-core 'fn-native-operator-host-result-reason preflight))
+         (action (fnn-core 'fn-native-operator-host-result-native-action preflight)))
     (cond ((eq action :help) (fnn-operator-dispatch-plan preflight))
           ((and (eq status :usage) (eq reason :configuration-bounds))
-           (let ((config-bound (fnn-core-state 'fn-native-config-host-max-octets)))
+           (let ((config-bound (fnn-core 'fn-native-config-host-max-octets)))
              (multiple-value-bind (config-octets problem)
                  (fnn-operator-read-config config-path config-bound)
                (if problem
@@ -134,7 +134,7 @@
                      (fnn-operator-emit-status :usage "configuration" problem)
                      +fnn-exit-usage+)
                  (fnn-operator-dispatch-plan
-                  (fnn-core-state 'fn-native-operator-host-run config-octets argv-octets))))))
+                  (fnn-core 'fn-native-operator-host-run config-octets argv-octets))))))
           (t (fnn-operator-dispatch-plan preflight)))))
 
 (fnn-register-verb "operator"
