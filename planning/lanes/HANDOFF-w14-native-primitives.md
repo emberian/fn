@@ -42,11 +42,15 @@ raw Lisp under the existing `fnn-` native prefix.  It exposes:
   nonce.
 - `fnn-crypto-initialize` and `fnn-crypto-version`: load/inspect the library and
   check the public-key, signature and digest widths exported by its ABI.
+- `fnn-crypto-startup`: clears facility state serialized in a saved image, then
+  reloads/reinitializes the library and repeats every ABI check.
 
 The message cap is 4096 octets, the existing maximum Roughtime response size.
 The actual ACL2-produced DELE and SREP signed subjects are 111 and 133 octets.
-Wrong Ed25519 key/signature widths are negative verification results, matching
-the ACL2 seam constraints.  Non-octet inputs and library faults are host faults.
+A shorter wrong Ed25519 key/signature width is a negative verification result,
+matching the ACL2 seam constraints.  A value beyond the fixed key/signature
+buffer bound faults before allocation or primitive entry.  Non-octet inputs and
+library faults are also host faults.  None can become a verified observation.
 
 The trust boundary contains libsodium's dynamic object and CPU implementation,
 SBCL's alien interface and pinning, the integrity of the supplied key/message/
@@ -90,8 +94,11 @@ This lane supplies no TLS socket code and does not overlap the owner lane.
 ## Loading and evidence
 
 The common image should load `host/native/crypto.lisp` inside the existing raw
-host block, before native owner/anchor callers, and call
-`fnn-crypto-initialize` while building or starting the image.  It has no
+host block, before native owner/anchor callers.  A build may call
+`fnn-crypto-initialize` as an early dependency gate, but **every restored image
+must call `fnn-crypto-startup` from its process entry before dispatch**.  A
+serialized `*fnn-crypto-state*` of `:ready` is not evidence that this process
+loaded the same object, ran `sodium_init`, or checked its ABI.  The file has no
 dependency on `host/native/io.lisp`.  Refusing an unavailable library is the
 deployment gate; there is no Python or alternate semantic fallback.
 
@@ -109,3 +116,8 @@ It passed on the laptop with libsodium 1.0.22 and on `hbox` and `persvati` with
 libsodium 1.0.18.  This is component evidence for the primitive seam.  Native
 anchor acquisition, FNAN persistence/recovery, owner STARTTLS and the no-Python
 deployment gate remain separate integration evidence.
+
+`tests/test_native_crypto_saved_image.sh` writes a temporary SBCL core whose
+serialized state falsely says the facility is ready, restarts it, requires the
+startup hook to replace the stale path/version, and calls SHA-512 through the
+fresh process binding.
