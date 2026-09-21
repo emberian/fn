@@ -252,7 +252,11 @@ class ReaderSocketTests(unittest.TestCase):
         The seed article is `Message-ID: <reader@example.invalid>' with no
         Subject, so `XPAT subject' matches only the empty value and
         `XPAT message-id' matches the identifier.  Expected replies are
-        written from section 2.9.1's response list, not recorded.
+        written from section 2.9.1's response list, not recorded; that list
+        is 221/430/502 and has no 501 in it.  No header value of this fixture
+        contains an SP, so the matching multi-token case lives in
+        tests/acl2/nntp-legacy-tests.lisp, which carries an article whose
+        Subject is a phrase.
         """
         sock = self.reader.connect()
         self.addCleanup(sock.close)
@@ -285,21 +289,34 @@ class ReaderSocketTests(unittest.TestCase):
         self.reader.assert_bytes(
             sock, b"430 no article with that message-id\r\n")
         # Section 2.9 requires at least one pattern, and joins the trailing
-        # arguments with a single space into one pattern.  The third command
-        # is DIVERGENCE OB-XPAT-SPACE: the joined pattern carries an SP, RFC
-        # 3977 section 4.1's <wildmat-exact> excludes SP, and fn's parser
-        # refuses it, so fn answers 501 where INN answers 221 with an empty
-        # list (planning/evidence/inn-xpat-2026-09-20.md).  The fourth
-        # command is the control: one token, no SP, and it matches.
+        # arguments with a single space into one pattern.  The first two
+        # commands are the arity refusals.  The third is the one OB-XPAT-SPACE
+        # was about: the joined pattern `*reader* *invalid*' carries an SP,
+        # which RFC 3977 section 4.1's <wildmat-exact> excludes and the
+        # header-value profile of decision D19 admits, so it PARSES.  This
+        # message-id contains no SP, so the pattern does not match and the
+        # reply is section 2.9's 221 with an empty list -- which is what INN
+        # 2.7.4 answers for the same command
+        # (planning/evidence/inn-xpat-2026-09-20.md).  Before D19 it was 501.
+        # The fourth command is the single-token control, unchanged.
         sock.sendall(b"XPAT message-id 1-1\r\nXPAT\r\n"
                      b"XPAT message-id 1-1 *reader* *invalid*\r\n"
                      b"XPAT message-id 1-1 *reader*\r\n")
         self.reader.assert_bytes(sock, b"501 syntax error\r\n")
         self.reader.assert_bytes(sock, b"501 syntax error\r\n")
-        self.reader.assert_bytes(sock, b"501 syntax error\r\n")
+        self.reader.assert_bytes(sock, b"221 header follows\r\n.\r\n")
         self.reader.assert_bytes(
             sock,
             b"221 header follows\r\n1 <reader@example.invalid>\r\n.\r\n")
+        # A pattern whose SP falls where the value has one does match: the
+        # message-id has no SP anywhere, so `*@example* *invalid*' is still
+        # the empty list, while a genuinely malformed pattern is still 501.
+        # A bare `!' is the post-comma negation marker in both profiles and an
+        # item in neither.
+        sock.sendall(b"XPAT message-id 1-1 *@example* *invalid*\r\n"
+                     b"XPAT message-id 1-1 !reader\r\n")
+        self.reader.assert_bytes(sock, b"221 header follows\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"501 syntax error\r\n")
 
     def test_list_variants_transcript_over_a_real_socket(self):
         """LIST HEADERS, LIST NEWSGROUPS, LIST ACTIVE wildmat, ACTIVE.TIMES.

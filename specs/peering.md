@@ -1329,3 +1329,69 @@ Open at the end of this lane, with the obligation each needs:
 | fn does not prepend its own path-identity to a transit article's Path (RFC 5537 §3.2.1) | open, inbound lane's | `fn-peer-injection-arguments` stages the peer's octets verbatim. The outbound loop check still refuses a target already in Path and refuses the origin outright, but on the return leg loop suppression rests on the peer's history answer (435/438) rather than on Path. |
 | RFC 3977 §3.1.1 dot stuffing of an outgoing article block | host | `tools/run_feed.py`'s `Session.send_block`, reused by `tools/run_owner.py`. `books/wire.lisp` has the stuffer; wiring the owner's feed through it is one packet. |
 | The two-node outbound evidence | **harness written, not run** | `tools/twonode_gate.py` gains `scenario_owner_feed` (A posts, A's own feed offers it to B, then B to A, with the byte-identity check and the 435/438 second offer) and `scenario_feed_restart` (B down, A posts, `kill -9` A, both restart, B ends with exactly one copy: K5). `tests/test_twonode_gate.py` is green (19 tests) against the fake; no run on persvati in this lane. |
+
+## Status (wave 11, `w11/twonode-feed`, the first crossing)
+
+An article has crossed between two fn nodes. Node A accepted a POST, the
+feed table of `books/owner-feed.lisp` enqueued it for peer `b`, the owner
+offered it over a real NNTP connection, node B accepted it through the same
+durable path a POST takes, and a reader on B fetched octets identical to the
+ones A serves. Evidence:
+[`twonode-feed-w11-2026-09-20`](../planning/evidence/twonode-feed-w11-2026-09-20.md).
+
+### The reason it had never happened, and the correction
+
+§2.2's decision table and §3.2's scope decision both read an article through
+`fn-af-proto-article-check`, which is **RFC 5537 §3.4.1: the INJECTING
+agent's check on a PROTO-ARTICLE**. Its first refusal is a present
+`Injection-Info`, and that refusal is right — adding the field is the
+injecting agent's own job (§3.2.3). But a transit article has already been
+injected, and every article fn posts carries the field, so:
+
+- `fn-peer-decide-transfer` answered `:refuse :proto-article` to every offer
+  of an article any fn node had posted. **No fn node could accept an article
+  from another fn node.**
+- `fn-own-feed-groups-of` answered `NIL`, so `fn-own-feed-offerablep`'s
+  wildmat had nothing to match, `fn-own-feed-targets` was empty, and no peer
+  was ever a feed target. **The outbound feed enqueued nothing.**
+
+The correction is a second function, not a weakened one.
+**`fn-af-relayed-article-check`** (`books/article-fields.lisp`) is RFC 5537
+§3.6 step 1 — §3.4.1's check without the two refusals that belong to the
+injecting agent alone (`Injection-Info`, and `Xref`, which RFC 5536 §3.2.13
+gives to a serving agent). `fn-af-proto-article-check` is now that check
+behind those two tests, in the same order, so **its value on every input is
+unchanged and no theorem about it moves**. Both transit sites and
+`fn-peer-injection-arguments`' memberships call the relaying check.
+`tests/acl2/article-fields-tests.lisp` carries the separation: the two
+articles the checks disagree on, and three that say they agree everywhere
+else.
+
+This changes what §2.2 decides. The reason `:proto-article` now means "not a
+well-formed article", not "an article that has been injected".
+
+### The accept path and the peer record
+
+Two more things had to be true before the first offer could be a transit
+offer at all, and neither was an ACL2 decision.
+
+- **`peer add` could never make a record.** `fn-cfg-peer-inboundp` caps the
+  inbound bound at `*fn-record-max-payload*` (32768) and the CLI's default
+  was 1048576, so every invocation made with the defaults was refused
+  `:peer-record`. The default is now 0 and `fn-store-cfg-peer-record`
+  supplies the ceiling, so the number has one owner again.
+- **The accept path of §1.1 was already correct.** `tools/run_owner.py`
+  resolves the source address through `fn-owner-peer-for-address` and opens
+  with `fn-own-open-peer`; with a record in place a loopback connection
+  draws `335` from `IHAVE`, not `502`. `tests/test_owner.py`'s
+  `TransitPortTests` is the unit evidence: the reader control, the peer
+  connection, and the tooth that a record for another address does not open
+  transit.
+
+### Open, and recorded rather than claimed
+
+| Item | State |
+| --- | --- |
+| `CAPABILITIES` on a transit connection | **defect, open.** The book renders the reader block on a peer session, so a peer that probes before it offers is told there is no transit surface (RFC 3977 §5.2.2 wants the capability exactly when the command is available). `tests/test_owner.py` asserts the current behaviour so the day it changes is visible. This is the reverse half of NNT-001, which `w10/v0-matrix` also reported. |
+| fn does not prepend its own path-identity to a transit article's Path (§3.2.1) | unchanged from wave 10: `fn-peer-injection-arguments` stages the peer's octets verbatim, so on the return leg loop suppression rests on the peer's history answer rather than on Path. |
+| A feed fault ending the service | **contained, not cured.** `tools/run_owner.py`'s feed loop no longer lets an unexpected error unwind through `run`; it prints `FEED-FAULT <peer>: ...` and drops that feed. Three such faults were live on this path and are fixed by name; the containment is for the fourth. Whether a host fault should reach the wire as the `403` fourth outcome on a transit connection is an open design question. |
