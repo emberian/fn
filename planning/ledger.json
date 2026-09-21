@@ -281,16 +281,16 @@
     "books": 275,
     "books_in_root_closure": 274,
     "roots": 274,
-    "theorems": 5548,
+    "theorems": 5549,
     "functions": 3928,
     "assert_events": 5323,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1458,
+      "verified": 1460,
       "declared-off": 190,
-      "default-guarded": 1783,
-      "default-unguarded": 497
+      "default-guarded": 1789,
+      "default-unguarded": 489
     },
     "suspect_theorems": 46,
     "export_hygiene_warnings": 72,
@@ -3118,7 +3118,7 @@
       "book": "books/owner-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 19,
+      "theorems": 20,
       "functions": 34,
       "guards": {
         "verified": 0,
@@ -3178,8 +3178,8 @@
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 7
+        "default-guarded": 5,
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -4166,12 +4166,12 @@
       "theorems": 52,
       "functions": 5,
       "guards": {
-        "verified": 0,
+        "verified": 2,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 5
+        "default-guarded": 1,
+        "default-unguarded": 2
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -7753,7 +7753,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 532,
+      "line": 615,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]
