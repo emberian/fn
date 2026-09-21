@@ -325,6 +325,8 @@
                    (fn-stxk-context-verdicts ctx)
                    (fn-stxk-context-current-generation ctx) nil))
 
+(verify-guards fn-replay-identity-advance)
+
 (defun fn-replay-identity-step (ctx event)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (equal (fn-stxk-context-kind ctx) :ok)) ctx
