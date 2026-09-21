@@ -41,3 +41,11 @@
 (defun fn-native-operator-host-result-store-root (result)
   (declare (xargs :mode :program))
   (fn-native-config-store (fn-native-operator-result-config result)))
+
+(defun fn-native-operator-host-result-config (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-config result))
+
+(defun fn-native-operator-host-result-arguments (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-arguments result))

@@ -16,3 +16,7 @@
 (assert-event (equal (fn-native-operator-host-result-native-action *fn-nop-host-result*)
                      :status))
 (assert-event (equal (fn-native-operator-host-result-exit-code *fn-nop-host-result*) 0))
+(assert-event (equal (fn-native-operator-host-result-config *fn-nop-host-result*)
+                     (fn-native-operator-result-config *fn-nop-host-result*)))
+(assert-event (equal (fn-native-operator-host-result-arguments *fn-nop-host-result*)
+                     '(:status)))
