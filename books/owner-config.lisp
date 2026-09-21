@@ -635,7 +635,7 @@
    (implies (fn-ocfg-pin-find id pins)
             (equal (cons id (cdr (fn-ocfg-pin-find id pins)))
                    (fn-ocfg-pin-find id pins)))
-   :hints (("Goal" :induct pins
+   :hints (("Goal" :induct (fn-ocfg-pin-find id pins)
             :in-theory (enable (:d fn-ocfg-pin-find))))))
 
 (local
