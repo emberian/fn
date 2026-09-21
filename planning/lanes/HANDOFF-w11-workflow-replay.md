@@ -48,7 +48,7 @@ Four keystones.
   attempt of a well-formed work carries a `fn-bp-transport-statusp`, which is
   what keeps the three non-attempt answers from being attempt answers.
 - `fn-bp-replay-work-status-is-the-pre-crash-status-restarted`. Lifts that to
-  `fn-bp-replay-journal`, which `host/workflow-host.lisp:9` calls on open. New
+  `fn-bp-replay-journal`, which `host/workflow-host.lisp:8` calls on open. New
   `fn-bp-durable-events` names the pre-crash machine: the journal's denotation
   without the trailing restart, so "what the machine that never died would
   have answered" is a term and not a phrase.
@@ -58,7 +58,8 @@ Four keystones.
 - `fn-bp-durable-enqueue-after-open-reads-enqueued`. This session's durable
   enqueue of an id that list does not name reads `:enqueued`.
 
-Registered as `PRF-034`, milestone M3, requirements STO-005, FLR-002, RET-007.
+Registered as `PRF-034`, milestone M3, requirements STO-005 and FLR-002,
+with its events curated in `planning/proof-events.json`.
 
 ## Why provenance is a second answer and not a fourth status word
 
@@ -131,7 +132,7 @@ than fn's. Each `submit` now encodes a real primary block through the new
 `bundle_bridge.encode_primary` (ACL2's `fn-bpi-host-bundle-prefix`; nothing in
 Python spells a BPv7 field), `deliver_into` carries the same octets under a
 fresh BID, and the spool keeps them with a digest. Carried-media items are
-triples with their own bundles. The run costs 164.5 s where it cost 40.5 s,
+triples with their own bundles. The run costs 67.1 s where it cost 40.5 s,
 inside the 300 s budget.
 
 Expiry in the lab stays the scheduler's: the primary block's lifetime is long
@@ -142,12 +143,20 @@ tests the thing it means to. That is written into the lab's limitations.
 ## Evidence
 
 - `tests/evidence/2026-09-21-four-node-lab.md` and `.json`: 22 of 22.
-- Certification: hbox `run-20260921T005523Z-05dc`,
-  `build/acl2/certify-20260921T005528Z-1361353`, 37 books, 0 failures, 352.8 s
-  at `--jobs 8`, ACL2 8.7 `/tank/fn/acl2-8.7/saved_acl2`
-  sha256 `64030dda0b03bbb6…`. This ran BEFORE the `dev` merge at `e67b6cb`,
-  which touches `books/wildmat` and is in this closure, so the pairs must be
-  regenerated on the merged tree.
+- Certification, on the merged tree: hbox `run-20260921T010656Z-5f0e`,
+  `build/acl2/certify-20260921T010700Z-1373865`, **37 books attempted, 37
+  passed, 0 failed**, 398.4 s at `--jobs 8`, ACL2 8.7
+  `/tank/fn/acl2-8.7/saved_acl2` sha256 `64030dda0b03bbb6…`, Python 3.12.7 on
+  Linux 6.11. `books/bp-workflow-replay-status` 0.33 s,
+  `books/bp-workflow-records` 0.65 s, `books/bp-workflow-records-invariants`
+  0.64 s, `tests/acl2/bp-workflow-records-tests` 0.60 s,
+  `tests/acl2/bp-workflow-records-guards-tests` 0.23 s. An earlier run on the
+  pre-merge tree (`run-20260921T005523Z-05dc`) passed the same 37.
+- A third run covers the commit after it, which changes three COMMENT lines
+  in `books/bp-workflow-replay-status.lisp` (host line numbers that moved when
+  `fn-workflow-work-origin` was added) plus `docs/prefixes.md` and registry
+  prose. Content hashing means a comment invalidates a certificate, so the
+  pairs are regenerated; nothing in it is a proof change. See the board.
 
 ## Open, and named
 

@@ -1,10 +1,10 @@
 ; What the reopened image answers about one work, and where a work recovered
 ; from a cut parts from one this session enqueued.
 ;
-; host/workflow-host.lisp:9 (fn-workflow-install-replay) installs the image
+; host/workflow-host.lisp:8 (fn-workflow-install-replay) installs the image
 ; fn-bp-replay-journal computes and records the work ids it holds;
-; host/workflow-host.lisp:65 (fn-workflow-work-status) calls fn-bp-work-status
-; on that image's works; host/workflow-host.lisp:71
+; host/workflow-host.lisp:63 (fn-workflow-work-status) calls fn-bp-work-status
+; on that image's works; host/workflow-host.lisp:73
 ; (fn-workflow-work-origin) calls fn-bp-work-origin on the same works with the
 ; recorded id list.  Every theorem here is about one of those three functions,
 ; so the host computes nothing about a work that ACL2 has not decided.
@@ -353,7 +353,7 @@
 ; KEYSTONE.  A work this session enqueues after the reopen reads :enqueued,
 ; not :recovered -- so the two situations the status word cannot separate are
 ; separated here.  The subject is fn-bp-complete of an :enqueue pending, which
-; is the transition host/workflow-host.lisp:46 (fn-workflow-apply-record)
+; is the transition host/workflow-host.lisp:48 (fn-workflow-apply-record)
 ; performs for the :outcome record of an enqueue.
 (defthm fn-bp-durable-enqueue-after-open-reads-enqueued
   (implies (and (fn-bp-pending-matchesp s txid generation)
