@@ -41,6 +41,14 @@ def summary(values):
             "max_seconds": ordered[-1], "total_seconds": sum(ordered)}
 
 
+
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
 def tree_rss_kib(pid):
     """Resident KiB of the owner and children, Linux only."""
     pending, seen, total = [pid], set(), 0
@@ -239,7 +247,7 @@ def native_direct(work, payload, seed, native_image, native_source_revision, nat
     """Direct native store/reader startup and recovery, explicitly not owner POST."""
     result = {"path": "native direct store and reader; no served owner/control claim",
               "image": native_image, "source_revision": native_source_revision or "unspecified",
-              "image_sha256": native_image_digest or (hashlib.sha256(Path(native_image).read_bytes()).hexdigest() if native_image and Path(native_image).is_file() else "unavailable")}
+              "image_sha256": native_image_digest or (file_sha256(native_image) if native_image and Path(native_image).is_file() else "unavailable")}
     if not native_image or not Path(native_image).is_file():
         result["not_measured"] = "no executable --native-image was supplied"
         return result
