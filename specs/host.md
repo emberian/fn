@@ -203,7 +203,7 @@ one ACL2-visible symbol whose raw definition that file replaces.
 | Cryptography | `fnn-trailer` calls `fn-frame-trailer`; `fnn-sha256` remains only behind the diagnostic `sha256` verb | Store and metadata trailers are computed by `books/sha256.lisp` through `books/crypto-attach.lisp`, as they are in the Python bridge. `python3 tools/fn_native.py sha256-selftest` still compares the separate diagnostic raw-Lisp SHA-256 with `hashlib`; that result is not used to frame durable data. |
 | Store metadata | `fnn-metadata-config-frame/-decode`, `fnn-metadata-frontier-frame/-decode/-next`, `fnn-transaction-name`, `fnn-load-config`, `fnn-load-frontier` | `config.json` and `allocation-frontier.json` contain the same ACL2-sealed `FNSM` frames that the Python adapter uses. `books/byte-store-frame.lisp` owns profile values, framing, parsing, integrity and the frontier successor; `books/byte-store-txn-name.lisp` owns the published transaction name. The native host moves octets and retains format-5 JSON in place while refusing normal open pending offline migration. |
 | Core calls | `fnn-call`, `fnn-core`, `fnn-core-state`, `fnn-global` | Counterparts of `fn-store-sn-reset/-recover/-io/-prepare/-existing-action/-pending-octets/-known-abort/-refuse-reservation/-finish/-article-count/-next-txid/-group-next/-pin-count/-reserved/-lookup/-lookup-foundp`, `fn-store-record-sequence/-txid`, `fn-store-frame-constants/-store-protected/-store-decode`, `fn-store-metadata-config-frame/-decode`, `fn-store-metadata-frontier-frame/-decode/-next`, `fn-store-txn-name`, `fn-store-subject-id`, `fn-store-obligation-preimage/-id`, `fn-store-post-boundary`, `fn-store-charge`, `fn-store-group-codes` (names against the replayed domain), `fn-store-cfg-generation/-served/-domain`, `fn-cfg-host-initial-octets`, `fn-reader-use-seed/-use-store/-set-posting/-reset/-chunk/-outcome`, `fn-reader-model-octets`; the globals `fn-reader-output`, `fn-reader-closep`, `fn-reader-submit-octets/-msgid`, `guard-checking-on`. A `raw-ev-fncall` throw, Lisp error, core error flag or malformed result is a fault; a returned semantic refusal remains a refusal |
-| Sockets | `fnn-listen` (`sb-bsd-sockets` `inet-socket`/`inet6-socket`, loopback unless an address is passed), `fnn-connect`, `fnn-accept-loop`, `fnn-socket-fd`, `fnn-socket-shut`; `fnn-recv`, `fnn-send-all` (`sb-sys:wait-until-fd-usable` with absolute readiness/retry deadlines; blocking syscalls themselves are not yet bounded), `fnn-graceful-close` (alien `shutdown(fd, SHUT_WR)` then a one-second drain), `fnn-serve-client` | `tools/run_reader.py`'s loop: 512-octet reads, **one `fn-served-step` per read** and no retained suffix, the reply octets from `fn-served-reply-octets`, close after a framing rejection. These eight are the whole socket surface, and the surface `host/native/tcpcl.lisp` is to build on (planning/lanes/HANDOFF-w4-tcpcl.md) |
+| Sockets | `fnn-listen` (`sb-bsd-sockets` `inet-socket`/`inet6-socket`, loopback unless an address is passed), `fnn-connect`, `fnn-accept-loop`, `fnn-socket-fd`, `fnn-socket-shut`; `fnn-recv`, `fnn-send-all` (`sb-sys:wait-until-fd-usable` with absolute deadlines over nonblocking read/write retries; DNS/connect remain outside this contract), `fnn-graceful-close` (alien `shutdown(fd, SHUT_WR)` then a one-second drain), `fnn-serve-client` | `tools/run_reader.py`'s loop: 512-octet reads, **one `fn-served-step` per read** and no retained suffix, the reply octets from `fn-served-reply-octets`, close after a framing rejection. These eight are the whole socket surface, and the surface `host/native/tcpcl.lisp` is to build on (planning/lanes/HANDOFF-w4-tcpcl.md) |
 | Entry | `fnn-main`, `fnn-dispatch`, `fn-native-entry` | The fixed positional protocol behind `--fn`, the outcome-to-exit-code map (reader setup and escaped core conditions retain refusal 1, uncertainty 3 and fault 4) |
 
 Remaining Python-only: the BP hosts (`run_bp_ingress.py`, `run_bp_receive.py`,
@@ -220,8 +220,18 @@ progress. `tests/native_io_progress.lisp`, run by
 raw functions and exercises reader condition propagation. Its error assertions
 check the requested condition type; a wrong-type witness checks the test helper.
 These are deterministic host tests, not ACL2 proofs or physical I/O qualification.
-Socket deadlines currently cover readiness and retry loops; nonblocking I/O is
-an open implementation obligation for a deadline that also bounds backpressure.
+The follow-on socket packet `28c5b90` sets `O_NONBLOCK` at `fnn-socket-fd`
+and returns EAGAIN/EWOULDBLOCK races to the same absolute-deadline readiness
+loop. Real socketpair EOF/backpressure tests accompany deterministic EINTR,
+partial-write and zero-time-poll tests. DNS and connection establishment remain
+outside this read/write deadline contract; this is not real-time OS qualification.
+
+The [native guard review and disposition](../planning/evidence/claude-native-store-guard-response.md)
+distinguish verified callee guards from unverified program-mode host wrappers.
+Selecting an executable counterpart does not discharge all caller preconditions
+or prove that every inner guard runs. The adapter's maintained-state and boundary
+correspondence remains explicit; no new validation/proof claim follows from its
+startup check of `guard-checking-on`.
 
 ### Differential evidence and measurements
 

@@ -618,7 +618,7 @@
         "The stored evidence is the canonical wire form: prefixed, printable in octets 33 to 126, and at most 256 octets, so the host boundary guard and the record grammar both admit it.",
         "The provenance read back after the reopen is the provenance the acceptance recorded, field for field.",
         "A value written before the typed record existed reads back as the :legacy kind, verbatim, and renders as the string it always rendered as.",
-        "A Message-ID the node does not hold is a refusal (exit 1), distinct from a fault (exit 3)."
+        "A Message-ID the node does not hold is a refusal (exit 1), distinct from uncertainty (exit 3) and a fault (exit 4)."
       ],
       "evidence": [
         "tests/test_provenance.py",
