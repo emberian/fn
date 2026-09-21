@@ -907,8 +907,10 @@ fi
             profile=self.artifact_profile)
         certified = self.sh(
             "certify declared artifact closure",
-            self.cd("python3 tools/certify_books.py --jobs {jobs} --closure {roots}".format(
-                jobs=self.jobs, roots=roots)), timeout=6 * 3600,
+            self.cd("export FN_CERT_CACHE={cache}\n"
+                    "export FN_CERT_ORIGIN_KIND=gate\n"
+                    "python3 tools/certify_books.py --jobs {jobs} --closure {roots}".format(
+                        cache=cache, jobs=self.jobs, roots=roots)), timeout=6 * 3600,
             note="bounded to the selected native image and deployed entry points")
         loaded = self.sh(
             "load declared artifact closure",

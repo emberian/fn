@@ -24,8 +24,10 @@ absolute-origin conflict, missing ready marker or uncertified warning.
 
 The deployment gate uses that acquisition instead of the newest neighbouring
 gate.  On a miss it certifies only the selected profile closure and load-checks
-it.  `V0Matrix` and `InnLab` no longer run a second per-book installer after
-that decision.  The deployment directory and lock are both keyed by
+it.  The bounded fallback publishes to the same configured cache as an
+immutable `gate` origin, so a kept deployment remains a reusable coherent set.
+`V0Matrix` and `InnLab` no longer run a second per-book installer after that
+decision.  The deployment directory and lock are both keyed by
 `<tree>-<revision>`, so equal revisions under different `--tree` values do
 not share a remove target or lock.
 
