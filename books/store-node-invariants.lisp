@@ -521,6 +521,196 @@
        fn-state-pending
     ))))
 
+;------------------------------------------------------------------------------
+; The carried statement index (decision D21)
+;
+; fn-sn-indexedp is fn-sn-statep plus the agreement between the carried index
+; and the store's lace projection.  It is the guard of nothing -- putting it
+; in fn-sn-statep would re-derive the index, and so re-verify every signature
+; in the store, inside the guard the host checks on every call (D20, D3).
+; What makes it usable is this chain: it holds at fn-sn-initial and every
+; transition preserves it, so it holds of every reachable state, and
+; fn-sn-statement-lookup-is-the-lace-lookup below can hypothesise it.
+;
+; Which of these are proof events and which are not, said plainly:
+; fn-sn-finish-preserves-indexedp is the one that does work -- the store grows
+; there and the keystone underneath it is fn-stx-index-invariant-preserved-by-
+; accept (books/stx-index.lisp), whose hypothesis is discharged by
+; fn-stx-durable-completion-is-an-acceptance (books/stx-lace.lisp).  The
+; prepare/io ones ride on a store-unchanged equation.  The recover, crash and
+; set-keyring ones hold because those three transitions RECOMPUTE, so their
+; conclusion is the recomputation restated; they are named -by-recomputation
+; and are not offered as proof events.  They are still obligations: what they
+; rule out is a transition that reaches a new store carrying the old index.
+
+(local (in-theory (enable fn-sn-indexedp fn-sn-set-keyring fn-sn-accepted-delta
+                          fn-sn-statement-lookup fn-sn-equivocatorp)))
+
+; The store-unchanged equations the carrying transitions need.  Each is an
+; unfolding of one transition -- named -unfolds, per the assurance rule that
+; forbids offering a definition restated as a proof event.
+(defthm fn-sn-prepare-node-keeps-the-store-unfolds
+  (implies (fn-node-statep node)
+           (equal (fn-stx-store (fn-sn-prepare-node node record))
+                  (fn-stx-store node)))
+  :hints (("Goal" :in-theory (e/d (fn-stx-store fn-sn-prepare-node)
+                                  (fn-node-prepare fn-replay-advance-txid))
+           :use ((:instance fn-replay-advance-preserves-node-statep
+                            (node node) (recorded-txid (fn-record-txid record)))
+                 (:instance fn-node-prepare-does-not-publish-or-commit-retention
+                            (s (fn-replay-advance-txid node (fn-record-txid record)))
+                            (generation (fn-record-generation record))
+                            (msgid (fn-record-msgid record))
+                            (payload (fn-record-payload record))
+                            (groups (fn-record-groups record))
+                            (obligation-id (fn-record-obligation-id record))
+                            (subject (fn-record-content-subject record))
+                            (evidence (fn-record-release-evidence record))
+                            (charge (fn-record-charge record)))))))
+
+(defthm fn-sn-initial-node-has-an-empty-store-unfolds
+  (equal (fn-stx-store (fn-node-initial-state groups capacity)) nil)
+  :hints (("Goal" :in-theory (enable fn-stx-store fn-node-initial-state
+                                     fn-initial-state))))
+
+(defthm fn-sn-index-of-an-empty-store-unfolds
+  (equal (fn-stx-index-of-store nil keyring) (fn-stx-index-empty))
+  :hints (("Goal" :in-theory (enable fn-stx-index-of-store))))
+
+; Every reachable state is indexed: the base case.
+(defthm fn-sn-initial-is-indexed
+  (implies (and (fn-string-listp groups) (fn-no-duplicatesp groups)
+                (natp capacity))
+           (fn-sn-indexedp (fn-sn-initial groups capacity)))
+  :hints (("Goal" :in-theory (e/d (fn-stx-index-invariantp)
+                                  (fn-node-initial-state fn-stx-index-of-store))
+           :use ((:instance fn-sn-initial-is-state)))))
+
+(defthm fn-sn-prepare-preserves-indexedp
+  (implies (fn-sn-indexedp s)
+           (fn-sn-indexedp (fn-sn-prepare s record)))
+  :hints (("Goal" :in-theory (e/d (fn-stx-index-invariantp)
+                                  (fn-sn-prepare-node fn-node-statep
+                                   fn-stx-index-of-store fn-stx-store
+                                   fn-sf-prepare-record))
+           :use ((:instance fn-sn-prepare-preserves-state)
+                 (:instance fn-sn-prepare-node-keeps-the-store-unfolds
+                            (node (fn-sn-node s)))))))
+
+(defthm fn-sn-io-preserves-indexedp
+  (implies (fn-sn-indexedp s)
+           (fn-sn-indexedp (fn-sn-io s operation result)))
+  :hints (("Goal" :in-theory (e/d (fn-stx-index-invariantp)
+                                  (fn-sn-file-step fn-node-statep
+                                   fn-stx-index-of-store fn-stx-store))
+           :use ((:instance fn-sn-io-preserves-state)))))
+
+; THE ONE THAT DOES WORK.  The store grows here, by the one article
+; fn-install-pending conses, and the index grows by the delta of exactly that
+; article -- at most one cons, never a walk.  The subject is fn-sn-finish,
+; which host/store-node-host.lisp line 402 (fn-store-sn-finish) calls.
+(defthm fn-sn-finish-preserves-indexedp
+  (implies (fn-sn-indexedp s)
+           (fn-sn-indexedp (fn-sn-finish s)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sn-completion-enabledp fn-sn-record-bindsp)
+                           (fn-sf-core-completion fn-sf-emit-success
+                            fn-node-statep fn-node-complete
+                            fn-stx-index-of-store fn-stx-store
+                            fn-stx-index-invariantp fn-stx-index-add
+                            fn-sn-completion-record fn-node-pending-matchesp))
+           :use ((:instance fn-sn-finish-preserves-state)
+                 (:instance fn-stx-durable-completion-is-an-acceptance
+                            (s (fn-sn-node s))
+                            (txid (fn-record-txid (fn-sn-completion-record s)))
+                            (generation (fn-record-generation
+                                         (fn-sn-completion-record s))))
+                 (:instance fn-stx-index-invariant-preserved-by-accept
+                            (index (fn-sn-index s))
+                            (node (fn-sn-node s))
+                            (keyring (fn-sn-keyring s))
+                            (next (fn-node-complete
+                                   (fn-sn-node s)
+                                   (fn-record-txid (fn-sn-completion-record s))
+                                   (fn-record-generation
+                                    (fn-sn-completion-record s))
+                                   :durable))
+                            (article (fn-article-from-pending
+                                      (fn-state-pending
+                                       (fn-node-acceptance (fn-sn-node s))))))))))
+
+; -by-recomputation: a crash resets the node to the empty store, so the empty
+; index is the recomputation and not a carried value.  Not a proof event; the
+; obligation it discharges is that the crash does not keep the old index.
+(defthm fn-sn-crash-preserves-indexedp-by-recomputation
+  (implies (fn-sn-indexedp s)
+           (fn-sn-indexedp (fn-sn-crash s frontier-choice record-choice)))
+  :hints (("Goal" :in-theory (e/d (fn-stx-index-invariantp)
+                                  (fn-sf-crash fn-node-statep
+                                   fn-node-initial-state
+                                   fn-stx-index-of-store fn-stx-store))
+           :use ((:instance fn-sn-crash-preserves-state)))))
+
+; -by-recomputation: recovery's node comes from a replay, not from a step of
+; this machine, so its index is recomputed over the replayed store.
+(defthm fn-sn-recover-preserves-indexedp-by-recomputation
+  (implies (fn-sn-indexedp s)
+           (fn-sn-indexedp (fn-sn-recover s)))
+  :hints (("Goal" :in-theory (e/d (fn-stx-index-invariantp)
+                                  (fn-sf-replay-node fn-sf-recover
+                                   fn-node-statep fn-stx-index-of-store
+                                   fn-stx-store))
+           :use ((:instance fn-sn-recover-preserves-state)))))
+
+; -by-recomputation: the reconfiguration transition recomputes over the whole
+; store, which is correct and is not a served path.
+(defthm fn-sn-set-keyring-preserves-indexedp-by-recomputation
+  (implies (fn-sn-indexedp s)
+           (fn-sn-indexedp (fn-sn-set-keyring s keyring)))
+  :hints (("Goal" :in-theory (e/d (fn-stx-index-invariantp fn-sn-statep)
+                                  (fn-sf-statep fn-node-statep
+                                   fn-stx-index-of-store fn-stx-store)))))
+
+; -----------------------------------------------------------------------------
+; The served query, and what licenses it
+;
+; :rule-classes nil on purpose.  As a rewrite rule this would replace the
+; cheap index query by the linear lace projection in every proof above, which
+; is the direction the index exists to avoid.  It is cited with :use.
+;
+; The host line: host/store-node-host.lisp fn-store-sn-statement calls
+; fn-sn-statement-lookup on (f-get-global 'fn-store-sn state), whose value is
+; produced by fn-sn-initial and the transitions above and by nothing else.
+(defthm fn-sn-statement-lookup-is-the-lace-lookup
+  (implies (fn-sn-indexedp s)
+           (equal (fn-sn-statement-lookup s id)
+                  (fn-lace-lookup (fn-stx-lace (fn-sn-node s) (fn-sn-keyring s))
+                                  id)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-stx-index-agrees-with-lace
+                                   (index (fn-sn-index s))
+                                   (node (fn-sn-node s))
+                                   (keyring (fn-sn-keyring s))))
+           :in-theory (disable fn-stx-index-invariantp fn-stx-lace
+                               fn-stx-index-lookup fn-stx-index-equivocatorp
+                               fn-node-statep fn-sf-statep))))
+
+(defthm fn-sn-equivocatorp-is-the-lace-equivocator
+  (implies (fn-sn-indexedp s)
+           (iff (fn-sn-equivocatorp s creator incarnation)
+                (fn-lace-equivocatorp
+                 (fn-stx-lace (fn-sn-node s) (fn-sn-keyring s))
+                 creator incarnation)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-stx-index-agrees-with-lace
+                                   (index (fn-sn-index s))
+                                   (node (fn-sn-node s))
+                                   (keyring (fn-sn-keyring s))
+                                   (p creator) (i incarnation)))
+           :in-theory (disable fn-stx-index-invariantp fn-stx-lace
+                               fn-stx-index-lookup fn-stx-index-equivocatorp
+                               fn-node-statep fn-sf-statep))))
+
 ; -----------------------------------------------------------------------------
 ; Export theory.  Withdrawn under a name: the replay-composition and
 ; frontier-advance lemmas (proof vocabulary for the trace books) and the
