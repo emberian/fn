@@ -178,10 +178,11 @@
                      (fn-lace-lookup (fn-stx-lace (fn-sn-node *sni-finished*)
                                                   (fn-sn-keyring *sni-finished*))
                                      (fn-stmt-id *sni-stmt*))))
-(assert-event (iff (fn-sn-equivocatorp *sni-finished* *sni-creator* 1)
-                   (fn-lace-equivocatorp (fn-stx-lace (fn-sn-node *sni-finished*)
-                                                      (fn-sn-keyring *sni-finished*))
-                                         *sni-creator* 1)))
+; The equivocator half of the keystone is instantiated in the FORK section
+; below, where both of its sides are true.  Asserting it here, where both are
+; NIL, would distinguish nothing (tools/teeth_check.py --report,
+; both-sides-degenerate), so the single-statement run states the negative
+; case directly instead, beside the fork.
 
 ; -----------------------------------------------------------------------------
 ; TEETH.  fn-sn-statement-lookup-is-the-lace-lookup has one hypothesis,
@@ -237,14 +238,18 @@
                                              (fn-stmt-id *sni-stmt*))
                      nil))
 
-; And the keystone still holds of it, because both sides are absent: the
-; index tracks the keyring, it does not pretend the statement is not there.
-(assert-event (equal (fn-sn-statement-lookup *sni-unkeyed-finished*
-                                             (fn-stmt-id *sni-stmt*))
-                     (fn-lace-lookup (fn-stx-lace
-                                      (fn-sn-node *sni-unkeyed-finished*)
-                                      (fn-sn-keyring *sni-unkeyed-finished*))
-                                     (fn-stmt-id *sni-stmt*))))
+; The two runs are separated by the keyring field and by nothing else: the
+; same id, the same store, two different answers.  (The keystone instance on
+; the unkeyed run is not asserted here: both of its sides are NIL, so it
+; would distinguish nothing -- tools/teeth_check.py --report calls that
+; both-sides-degenerate and it is right.)
+; The keyed run's answer for the same id is asserted above, at the S-lookup
+; section: it is *sni-stmt*.  So the two runs differ on one id over one
+; store, and the keyring field is the only thing that differs between them.
+(assert-event (null (fn-sn-statement-lookup *sni-unkeyed-finished*
+                                            (fn-stmt-id *sni-stmt*))))
+(assert-event (equal (fn-stx-store (fn-sn-node *sni-unkeyed-finished*))
+                     (fn-stx-store (fn-sn-node *sni-finished*))))
 
 ; -----------------------------------------------------------------------------
 ; Reconfiguration after the fact: installing the keyring on the unkeyed run's
@@ -262,6 +267,80 @@
                      *sni-stmt*))
 
 ; -----------------------------------------------------------------------------
+; -----------------------------------------------------------------------------
+; A FORK, accepted.  The same creator signs a second, different article at
+; the same (incarnation, sequence) slot.  Both articles are accepted and
+; stored -- refusing the second would let a hostile peer delete content by
+; replaying a fork, and would destroy the evidence -- and what the index
+; records is the equivocation.  This is the witness that keeps
+; fn-sn-equivocatorp from being satisfiable by a constantly-false
+; definition, which tools/teeth_check.py --report is right to demand.
+
+(make-event (list 'defconst '*sni-src-2*
+                  (list 'quote (fn-sni-authored "Subject: two" "second"))))
+(make-event (list 'defconst '*sni-stmt-2*
+                  (list 'quote (fn-stmt-sign *sni-sk* *sni-creator* 1 1 nil
+                                             :article *sni-src-2*))))
+(assert-event (not (equal (fn-stmt-id *sni-stmt-2*) (fn-stmt-id *sni-stmt*))))
+; Same slot, different content: a fork of the first, not a second slot.
+(assert-event (equal (fn-stx-slot-key *sni-stmt-2*)
+                     (fn-stx-slot-key *sni-stmt*)))
+
+(make-event (list 'defconst '*sni-octets-2*
+                  (list 'quote (fn-sni-received
+                                (fn-stx-header-value *sni-stmt-2*) *sni-src-2*))))
+(make-event (list 'defconst '*sni-record-2*
+                  (list 'quote (fn-record-make 1 1 1 "<sni2@example>"
+                                               *sni-octets-2* *sni-groups*
+                                               "sni-pin-2" "sni-content-2"
+                                               "sni-release-2" 2))))
+(assert-event (fn-record-p *sni-record-2*))
+
+(make-event (list 'defconst '*sni-forked*
+                  (list 'quote (fn-sn-finish
+                                (fn-sni-publish
+                                 (fn-sn-prepare (fn-sni-reserve *sni-finished*)
+                                                *sni-record-2*))))))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sni-forked*)) :ready))
+(assert-event (fn-sn-indexedp *sni-forked*))
+
+; Both articles are in the store and both statements are in the index.
+(assert-event (equal (len (fn-stx-store (fn-sn-node *sni-forked*))) 2))
+(assert-event (equal (len (fn-stx-index-bindings (fn-sn-index *sni-forked*))) 2))
+
+; THE EQUIVOCATION.  fn-sn-equivocatorp answers T here and NIL on the
+; single-statement run, so the predicate is anchored on both sides.
+(assert-event (fn-sn-equivocatorp *sni-forked* *sni-creator* 1))
+(assert-event (not (fn-sn-equivocatorp *sni-finished* *sni-creator* 1)))
+(assert-event (not (fn-sn-equivocatorp *sni-forked* '(1 2 3) 1)))
+
+; The keystone instance, with BOTH sides true rather than both nil.
+(assert-event (iff (fn-sn-equivocatorp *sni-forked* *sni-creator* 1)
+                   (fn-lace-equivocatorp
+                    (fn-stx-lace (fn-sn-node *sni-forked*)
+                                 (fn-sn-keyring *sni-forked*))
+                    *sni-creator* 1)))
+
+; Neither fork is dropped: each is still reachable by its own content id, and
+; the slot still answers with the OLDER one, which is what fn-lace-lookup
+; reads.
+(assert-event (equal (fn-sn-statement-lookup *sni-forked*
+                                             (fn-stmt-id *sni-stmt*))
+                     *sni-stmt*))
+(assert-event (equal (fn-sn-statement-lookup *sni-forked*
+                                             (fn-stmt-id *sni-stmt-2*))
+                     *sni-stmt-2*))
+(assert-event (equal (fn-stx-index-slot-first (fn-sn-index *sni-forked*)
+                                              (fn-stx-slot-key *sni-stmt*))
+                     *sni-stmt*))
+
+; And the lookup keystone on the forked run, with both sides NON-nil.
+(assert-event (equal (fn-sn-statement-lookup *sni-forked*
+                                             (fn-stmt-id *sni-stmt-2*))
+                     (fn-lace-lookup (fn-stx-lace (fn-sn-node *sni-forked*)
+                                                  (fn-sn-keyring *sni-forked*))
+                                     (fn-stmt-id *sni-stmt-2*))))
+
 ; A crash resets the store, so it resets the index; recovery replays the
 ; store and RECOMPUTES the index over it.  This is the one transition whose
 ; node does not come from a step of this machine, and it is the reason
