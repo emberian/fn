@@ -7,8 +7,10 @@ still need implementation/qualification; no public ABI is frozen (D08).
 Cryptographic unforgeability remains an A-CRYPTO assumption in
 [failures](failures.md), not an ACL2 theorem.
 
-The selected profile must bind its version, required algorithms, enrolled key
-set and exact authored-source subject in a domain-separated signed preimage.
+The selected native-article profile must bind its version, required algorithms,
+enrolled key set and length-delimited exact authored-source octets in a
+domain-separated signed preimage. Both primitives sign that framed message;
+an externally supplied content digest alone is not the authored message.
 Both signatures must verify; unsupported, absent or invalid components cannot
 authorize via a classical-only fallback. Legacy unsigned NNTP submissions
 retain their explicit gateway provenance. The standard primitive is
