@@ -38,9 +38,9 @@
 (defthm fn-bpn-lifecycle-record-name-chars-character-listp
   (character-listp (fn-bpn-lifecycle-record-name-chars token))
   :hints (("Goal"
+           :use ((:instance fn-bs-txn-name-chars-characters (n token)))
            :in-theory (enable fn-bpn-lifecycle-record-name-chars
-                              fn-bs-txn-digits
-                              fn-bs-txn-natural-digits))))
+                              fn-bs-txn-name-chars))))
 
 ; This renderer is on every persist path.  Its executable guard is checked
 ; here rather than relying on the recovery-only functions' guard T contracts.
