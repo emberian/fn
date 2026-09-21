@@ -1,0 +1,21 @@
+{
+  "scope": "Raw ACL2 admission and executable witnesses for selected-compaction reclaim prefix and model-crash preservation of uncovered suffix bindings and exact payloads",
+  "input_revision": "2e01a696033a670079753ef0a92d974f8d99dd10",
+  "tool": "ACL2 Version 8.7, built August 28, 2026 20:52:14; SBCL 2.6.8",
+  "invocation": "ACL2_CUSTOMIZATION=NONE acl2 < /tmp/fn-reclaim-tests.lsp > build/reclaim-tests.log 2>&1",
+  "driver": [
+    "(ld \"books/byte-store-txn-name.lisp\")",
+    "(ld \"books/byte-store-compaction-correspondence.lisp\")",
+    "(ld \"tests/acl2/byte-store-compaction-correspondence-tests.lisp\")",
+    "(value-triple :reclaim-tests-passed)",
+    "(quit)"
+  ],
+  "sha256": {
+    "driver": "0063f4662e3e17a3297991fe3f7686ce907add67dd0d339892335e5d9fd525fb",
+    "books/byte-store-compaction-correspondence.lisp": "0006c0086c8e8b975f72758f837b3ed67e5a31fc905296e9aad6c7e4340b52ed",
+    "tests/acl2/byte-store-compaction-correspondence-tests.lisp": "8e9f917940eee8b6d96a3177bdfc85bf1880722efb38eda063905fb6d9c002f8",
+    "output_log": "87477a02b87287fd7e3455f9bd3496b10bb7d9d12ffb5e2b039da2e8a3761da8"
+  },
+  "result": "pass; :RECLAIM-TESTS-PASSED at output line 5020 and no ACL2 Error, FAILED, or assertion failure",
+  "limitations": "This is raw source evaluation, not a certificate manifest. Remote focused certification is queued behind the active qualified persvati closure. The model result covers admissible model crashes after successful program prefixes; it does not assert physical power-loss behavior."
+}
