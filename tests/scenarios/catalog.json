@@ -753,7 +753,7 @@
         "tests/test_native_owner.py",
         "tests/test_native_peering.py"
       ],
-      "execution_scope": "A source-matched production image ran two native owners on one host over private loopback. Public operator configuration drove one A-to-B byte-identical transfer, a held Message-ID drew 435, and a client reset before reading a durable transit reply without stopping the target. The run did not exercise TLS, two hosts, a partition, latency or clock disagreement, and one article crossing once is not the merge property of specs/peering.md section 4."
+      "execution_scope": "A source-matched production image ran two native owners on one host over private loopback. Public operator configuration drove byte-identical A-to-B and B-to-A transfers, and each held Message-ID drew 435. A separate client reset while a transit completed; the target retained the article and stayed live, but the test did not observe whether the reply write itself failed. The run did not exercise TLS, two hosts, a partition, latency or clock disagreement, and two articles crossing once is not the merge property of specs/peering.md section 4."
     },
     {
       "id": "SCN-024",
@@ -790,7 +790,7 @@
         "planning/lanes/HANDOFF-w12-feed-durability.md",
         "tests/test_native_peering.py"
       ],
-      "execution_scope": "The owner drives outbound feeds; the former standalone tools/run_feed.py is retired. A source-matched production image ran the combined public operator, owner, feed and inbound NNTP path over private loopback. It transferred one article byte-identically, suppressed its duplicate, and requeued a durable FNFD obligation after the source process was killed and restarted. W12 separately covers bounded journal replay and cuts. Article-commit/feed-intent atomicity and general K5 correspondence remain active work, so the whole scenario is not marked validated."
+      "execution_scope": "The owner drives outbound feeds; the former standalone tools/run_feed.py is retired. A source-matched production image ran the combined public operator, owner, feed and inbound NNTP path over private loopback. It transferred one article byte-identically in each direction, suppressed both duplicates, and requeued a durable FNFD obligation after the source process was killed and restarted. W12 separately covers bounded journal replay and cuts. Article-commit/feed-intent atomicity and general K5 correspondence remain active work, so the whole scenario is not marked validated."
     },
     {
       "id": "SCN-025",
