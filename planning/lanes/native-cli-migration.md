@@ -14,7 +14,7 @@ launcher may locate the image, clear ACL2 customization variables, and `exec`
 it; it must not import Python, parse TOML, select a profile, fill defaults,
 check semantic bounds, or translate a command into a second protocol.  The
 new [`packaging/fn-native`](../../packaging/fn-native) does exactly that.  A
-missing image is a usage error (exit 5); once it execs, the image's outcome is
+missing image is an unavailable runtime fault (exit 4); once it execs, the image's outcome is
 passed through unchanged: accepted/query 0, refused 1, uncertain 3, fault 4,
 and usage 5 (HST-003).
 

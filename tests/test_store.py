@@ -388,8 +388,11 @@ class StoreTests(unittest.TestCase):
 
         ahead = Store(self.path, writable=True)
         ahead.initialize()
-        contents = ahead._frontier_with_checksum(3)
-        (self.path / "allocation-frontier.json").write_bytes(run_store.canonical_json(contents) + b"\n")
+        # Exercise the current ACL2-owned FNSM frontier grammar, not the
+        # removed JSON/checksum implementation.
+        from tools import frame_bridge
+        contents = frame_bridge.session().metadata_frontier_frame(3)
+        (self.path / "allocation-frontier.json").write_bytes(contents)
         bridge = None
         try:
             ahead.acquire()
@@ -402,10 +405,10 @@ class StoreTests(unittest.TestCase):
             ahead.close()
 
         (self.path / "allocation-frontier.json").write_bytes(
-            run_store.canonical_json(ahead._frontier_with_checksum(0)) + b"\n")
+            frame_bridge.session().metadata_frontier_frame(0))
         self.post("<frontier@example.invalid>", b"frontier")
         (self.path / "allocation-frontier.json").write_bytes(
-            run_store.canonical_json(ahead._frontier_with_checksum(0)) + b"\n")
+            frame_bridge.session().metadata_frontier_frame(0))
         self.assertIn(b"rejected", self.invoke("recover", expected=run_store.EXIT_FAULT).stderr)
 
     def test_initialize_refuses_missing_frontier_when_history_exists(self):

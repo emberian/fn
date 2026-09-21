@@ -9,18 +9,23 @@ makes no availability or flight-readiness claim; see
 
 Everything below is one command, `fn`, and one configuration file.
 
-Status at the time of writing: every store-side subcommand runs against
-a real ACL2 core. `fn run` is complete and tested, but it cannot start on
-this revision, because `books/owner.lisp` does not currently include: the
-served connection grew two fields and the owner cluster has not caught up.
-Until that repair lands, `fn post`, `fn group`, `fn status`, `fn recover`
-and `fn anchor` work against a stopped store and the service section below
-describes what the unit files and the CLI already do, not a node you can
-leave running. See `planning/lanes/HANDOFF-w5-fn-cli.md`.
+Status (2026-09-21): these instructions describe the **development service**.
+The owner now certifies and runs; the earlier owner-load failure is historical.
+The [frozen two-node exercise](../planning/evidence/v0-integrated-runtime-w12-2026-09-21.md)
+records authentication and BP crash disagreements, not a passing release gate.
+
+D07 requires the eventual deployed node and CLI to run without Python. That
+native service migration is active, and the Python service described below does
+not meet its production gate. `packaging/fn-native` directly launches a saved
+Lisp image, but currently exposes its component interface; it is not yet a
+drop-in replacement for this operator CLI. See the
+[native migration plan](../planning/lanes/native-cli-migration.md) for the command
+parity work and [host contract](../specs/host.md#selected-production-runtime) for
+the runtime boundary.
 
 ## Install
 
-fn needs Python 3.11 or newer (for `tomllib`) and ACL2 8.7 with a certified
+The development service needs Python 3.11 or newer (for `tomllib`) and ACL2 8.7 with a certified
 copy of this repository's books. The ACL2 core is not optional: every
 acceptance, refusal and recovery decision below is a call into it.
 
