@@ -214,14 +214,19 @@ persist was a stale certificate rather than a missing check — which is what
 content-keyed certificates (`docs/proofs.md`) fix. A host file is never
 certified, and a Lisp form in a Python string is not Lisp to anything until it
 reaches ACL2. `tools/host_check.py` answers the host half dynamically and only
-when `FN_ACL2` names an ACL2; this is the always-on static half. Docstrings
-are prose and are skipped; a form holding a `{}` or a `%s` is not decided at
-all, because a `" ".join(...)` in that slot stands for any number of
-arguments. 904 applications over 25 host files and 480 readable Python
-strings, 264 undecided, and three findings left: `fn-sched-pos` twice and
-`fn-feed-observe` once in `tests/test_teeth_check.py`, which are synthetic
-fixtures for the teeth checker rather than calls anything makes, and are
-another lane's to spell correctly.
+when `FN_ACL2` names an ACL2; this is the always-on static half. Two kinds of
+prose are skipped, each after it produced findings on the real tree: a
+docstring, and a sentence that merely *mentions* a form — `"... the
+authenticated principal's allowance (fn-auth-postingp, RFC 3977 section
+6.3.1.1). The feed was never reached."` parses, so a string counts only when
+every top-level item in it is a form, which prose never is. A form holding a
+`{}` or a `%s` is not decided at all, because a `" ".join(...)` in that slot
+stands for any number of arguments. 918 applications over 25 host files and
+371 readable Python strings, 262 undecided, and three findings left:
+`fn-sched-pos` twice and `fn-feed-observe` once in
+`tests/test_teeth_check.py`, which are synthetic fixtures for the teeth
+checker rather than calls anything makes, and are another lane's to spell
+correctly.
 
 `waivers` flags a skip whose predicate reads a **failure** rather than a
 dependency: a substring of an exception, a non-zero return code, an NNTP
