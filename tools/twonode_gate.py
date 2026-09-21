@@ -232,7 +232,18 @@ def wait(args):
             if args.from_port:
                 source, source_lines = fetch(args.from_port, args.msgid)
                 out["source"] = source
+                out["source_lines"] = len(source_lines)
+                out["target_lines"] = len(lines)
                 out["identical"] = (lines == source_lines)
+                if not out["identical"]:
+                    # WHICH lines differ, not just that some do. RFC 5537
+                    # 3.6 lets a relaying agent alter Path and Xref and
+                    # nothing else, so the answer decides whether this is
+                    # conformance or corruption.
+                    out["only_on_target"] = [
+                        one for one in lines if one not in source_lines][:8]
+                    out["only_on_source"] = [
+                        one for one in source_lines if one not in lines][:8]
             return out
         time.sleep(0.5)
     out.update(ok=False, status=status if "status" in dir() else "", attempts=attempts)
@@ -832,9 +843,7 @@ else echo NONE; fi
                 # from, which is what decides the role at accept
                 # (specs/peering.md 1.1, fn-owner-peer-for-address).
                 added = self.sh(
-                    "node {} peer record for {} ({})".format(
-                        node.upper, other.upper,
-                        "streaming" if streaming else "IHAVE"),
+                    "node {} peer record for {}".format(node.upper, other.upper),
                     self.cd(self.fn(
                         "--store {} peer add {} --path-identity {} "
                         "--nntp 127.0.0.1:{} --inbound-groups 'fn.*' "
@@ -843,7 +852,12 @@ else echo NONE; fi
                             node.store, other.name, other.path_identity,
                             other.tap_port or other.port,
                             "--streaming " if streaming else ""))),
-                    timeout=900, expect=None)
+                    timeout=900,
+                    note="outbound half: {} (RFC 4644 streaming is the peer "
+                         "record's flag, and the owner reads the table once, "
+                         "at start-up)".format(
+                             "CHECK/TAKETHIS" if streaming else "IHAVE"),
+                    expect=None)
                 if added.rc != 0:
                     self.gaps.append(
                         "node {} refused the peer record for {} ({}), so this node "
