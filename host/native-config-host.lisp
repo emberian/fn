@@ -10,3 +10,8 @@
 (defun fn-native-config-host-max-octets ()
   (declare (xargs :mode :program))
   *fn-ncfg-max-octets*)
+
+(defun fn-native-config-host-listener-address (host-octets)
+  "The raw owner consumes this ACL2 projection instead of resolving HOST."
+  (declare (xargs :mode :program))
+  (fn-native-config-listener-address host-octets))
