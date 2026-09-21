@@ -1333,7 +1333,11 @@
   ; every branch of fn-wire-feed-byte); only the step and the two
   ; constructors open.  fn-wire-article-event is the dev name of what this
   ; hint used to call fn-wire-event-article.
-  :hints (("Goal" :in-theory (e/d (fn-wire-step-vocabulary)
+  :hints (("Goal" :in-theory (e/d (fn-wire-feed-byte
+                                    fn-wire-after-line
+                                    fn-wire-close
+                                    fn-wire-article-event
+                                    fn-wire-reject-event)
                                   ((:d fn-wire-state-mode)
                                    (:d fn-wire-octet-listp)
                                    (:d fn-wire-octet-linesp)
