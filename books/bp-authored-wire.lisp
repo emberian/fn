@@ -10,6 +10,12 @@
 (include-book "byte-store-txn-name")
 (include-book "journal-publish")
 
+; journal-publish is a total phase interpreter whose guards are intentionally
+; not verified as a unit.  As in bp-node-machine-codec, verify only this book's
+; host-facing leaf functions after admission rather than requiring every
+; imported publication accessor to have a verified guard.
+(set-verify-guards-eagerness 0)
+
 (defconst *fn-bpn-authored-wire-prefix*
   '(#\a #\u #\t #\h #\o #\r #\e #\d #\-))
 (defconst *fn-bpn-authored-wire-suffix*
