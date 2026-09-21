@@ -919,6 +919,31 @@
       ]
     },
     {
+      "id": "PRF-028",
+      "events": [
+        {
+          "name": "fn-ocfg-open-pins-the-live-configuration",
+          "kind": "theorem",
+          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+        },
+        {
+          "name": "fn-ocfg-advance-observes-the-live-configuration",
+          "kind": "theorem",
+          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+        },
+        {
+          "name": "fn-ocfg-pin-is-stable-without-advance",
+          "kind": "theorem",
+          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+        },
+        {
+          "name": "fn-ocfg-list-active-lists-the-pinned-served-table",
+          "kind": "theorem",
+          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+        }
+      ]
+    },
+    {
       "id": "PRF-030",
       "events": [
         {

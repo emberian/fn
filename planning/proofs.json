@@ -986,7 +986,7 @@
     {
       "id": "PRF-028",
       "title": "What a configuration generation serves (R5)",
-      "statement": "fn-cstr-created-group-is-served-exactly-from-its-generation: a group created by the delta that produces generation g is live at every generation from g on and at none below it -- both directions, so a connection pinned below g must not see it. fn-cstr-retired-group-is-served-exactly-below-its-generation: a group retired at g is live exactly at the generations from its creation up to g, and the entry, its stamp and its watermark stay (NNT-006). Covered scope: one delta over a typed configuration value; the per-connection pin that observes these is books/owner-config, which does not certify.",
+      "statement": "fn-cstr-created-group-is-served-exactly-from-its-generation: a group created by the delta that produces generation g is live at every generation from g on and at none below it -- both directions, so a connection pinned below g must not see it. fn-cstr-retired-group-is-served-exactly-below-its-generation: a group retired at g is live exactly at the generations from its creation up to g, and the entry, its stamp and its watermark stay (NNT-006). fn-ocfg-open-pins-the-live-configuration: under the state relation fn-ocfg-statep, an open that installs a connection at the identifier the owner was about to allocate gives that connection the owner's LIVE configuration as its pin -- the two hypotheses are fn-ocfg-statep and that the open was not refused. fn-ocfg-advance-observes-the-live-configuration: under fn-ocfg-statep, a connection that survives its advance is re-pinned to the live configuration -- the two hypotheses are fn-ocfg-statep and that the advance kept a connection at that identifier. fn-ocfg-pin-is-stable-without-advance: over an arbitrary finite event list holding no (:advance id) and no (:close id), a pinned connection keeps the configuration it opened at -- the hypotheses are that it has a pin and that the list re-pins nothing for it. fn-ocfg-list-active-lists-the-pinned-served-table: for an open connection, LIST ACTIVE renders the group names of the PIN's generation and never the allocation domain. Covered scope: one delta over a typed configuration value for the two fn-cstr theorems; for the four fn-ocfg theorems, the owner paired with a pin table whose domain the recognizer fixes to the open connections, over the owner's own events. NOT covered: no host line calls any fn-ocfg- function, so none of the four has the equating theorem the assurance rules ask for; the served port still answers LIST ACTIVE from the allocation domain, which is the R5 wire seam recorded at the end of books/owner-config.lisp and in specs/reconfiguration.md section 8.",
       "milestone": "M2",
       "requirements": [
         "NNT-006"
@@ -997,7 +997,13 @@
       "assumptions": [],
       "status": "in-progress",
       "evidence": [],
-      "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20); teeth in tests/acl2/config-stream-tests over a two-group value, with the served TABLE compared at two generations, not only the predicate. The owner-side consumer (books/owner-config, the per-connection pin and LIST ACTIVE at the pin) is written and claims no event: books/owner has no certificate on any box."
+      "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20); teeth in tests/acl2/config-stream-tests over a two-group value, with the served TABLE compared at two generations, not only the predicate. Status 2026-09-20 (w11/owner-config): books/owner-config's two open keystones are CLOSED, neither weakened -- each gained the hypothesis (fn-ocfg-statep oc), which is the carried state relation. Closing the first needed one new conjunct of fn-own-relation, fn-own-ids-below-next-p (every open connection's identifier is strictly below fn-own-next-id); the bound was already true of every reachable owner state and merely unstated, so it is not an allocation defect. Teeth ship with them in the new tests/acl2/owner-config-tests, whose scenario holds two configurations and two pins at once so no assertion can hold of an empty value. The R5 wire seam is still open: the served port answers LIST ACTIVE from the allocation domain, so fn-ocfg-served-port-answers-list-active-at-the-pin is false and is recorded rather than stated.",
+      "events": [
+        "fn-ocfg-open-pins-the-live-configuration",
+        "fn-ocfg-advance-observes-the-live-configuration",
+        "fn-ocfg-pin-is-stable-without-advance",
+        "fn-ocfg-list-active-lists-the-pinned-served-table"
+      ]
     },
     {
       "id": "PRF-029",

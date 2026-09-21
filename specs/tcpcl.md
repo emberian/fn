@@ -124,7 +124,26 @@ still quadratic in n; §6 records that as open with the obligation it needs.
 
 ## 4. Keystones C1 to C4 (`books/tcpcl-invariants`)
 
-Status (2026-09-20, w6/tcpcl-c4): C1 to C4 are proved by ACL2 and `books/tcpcl-invariants` certifies over `books/tcpcl-session` (evidence `build/acl2/certify-20260920T052819Z-3093104` on persvati; invariants 671.8 s, closure 840.9 s, ACL2 8.7). Two C4 defects were found by the proof and fixed in the statements, not the hints: `fn-tcl-no-interleaving` asserted the phase after the step is `:ending` where the session can close in that step (section 6), and it did not state the Retransmit refusal of the live transfer that section 5.2.2 requires. C2 is proved with `fn-tcl-sessionp` and every sub-recognizer closed: six local `-emits-no-bundle-received` lemmas dismiss the non-segment branches of `fn-tcl-step`, the local `fn-tcl-recv-segment-final-ack-means-every-segment` carries the content at the transition that owns it (115 subgoals, 0.3 s), and C2 lifts it to the step by `:use` at `(fn-tcl-touch-rx s now)`; the carried sum reaches the proof through the forward-chaining field facts `fn-tcl-sessionp-forward-inbound`, `fn-tcl-inboundp-forward-fields` and `fn-tcl-inboundp-forward-total`.
+Status (2026-09-20, w11/tcpcl-theory): C1 to C4 are proved by ACL2 and `books/tcpcl-invariants` certifies over `books/tcpcl-session` in **7.40 s**, with `books/tcpcl-session` at 65.30 s and `tests/acl2/tcpcl-tests` at 0.48 s (hbox, ACL2 8.7, no prover step limit, evidence `build/acl2/certify-20260920T233937Z-1307933` in `/tank/fn/lanes/w11-tcpcl-theory`). It took 609.53 s before that lane and 671.8 s when C4 first closed. Two C4 defects were found by the proof and fixed in the statements, not the hints: `fn-tcl-no-interleaving` asserted the phase after the step is `:ending` where the session can close in that step (section 6), and it did not state the Retransmit refusal of the live transfer that section 5.2.2 requires. C2 is proved with `fn-tcl-sessionp` and every sub-recognizer closed: six local `-emits-no-bundle-received` lemmas dismiss the non-segment branches of `fn-tcl-step`, the local `fn-tcl-recv-segment-final-ack-means-every-segment` carries the content at the transition that owns it (115 subgoals, 0.3 s), and C2 lifts it to the step by `:use` at `(fn-tcl-touch-rx s now)`; the carried sum reaches the proof through the forward-chaining field facts `fn-tcl-sessionp-forward-inbound`, `fn-tcl-inboundp-forward-fields` and `fn-tcl-inboundp-forward-total`.
+
+
+**What an includer of this vocabulary owes (w11/tcpcl-theory, 2026-09-20).**
+`books/tcpcl-invariants` enables `fn-tcl-session-vocabulary` wholesale, and
+that is the whole of its cost: it must therefore close, in one place, both
+whole-state recognizers (`fn-tcl-sessionp` and `fn-tcl-session-cheapp`, since
+`fn-tcl-drive`'s totality test names the second), the whole cheap rule family
+(`fn-tcl-cheap-rules` -- facts, forward-chaining fields and preservation
+together, keeping only the bridge `fn-tcl-sessionp-is-cheap`), and the four
+transitions the profile named: `fn-tcl-step`, `fn-tcl-recv-segment`,
+`fn-tcl-recv-init`, `fn-tcl-broken-stream`. Each is opened at the eight forms
+that need it and nowhere else. Two measurements say why. (i) Leaving
+`fn-tcl-sessionp` open above C3 -- as the book did until now -- cost 596.12 s
+of its 609.53 s across six forms, each carrying the recognizer's eleven
+sub-recognizers into its clause. (ii) A subgoal `:in-theory` hint is
+evaluated against the book's *current* theory and not against its parent
+goal's, so C1's `("Subgoal *1/3" :in-theory (enable ...))` had been undoing
+C1's own `Goal` `(e/d ... (fn-tcl-step ...))`; closing the transitions once at
+the top is what makes a Goal-level `e/d` hold under the fold.
 
 **C1** `fn-tcl-drive-partition-independence`. Hypotheses: `fn-tcl-sessionp`,
 two octet lists, `fn-clock-timep`. Driving `(append left right)` is driving
