@@ -22,16 +22,18 @@ The native metadata and history bytes come from `fnn-metadata-*-frame` and
 `fnn-bridge-config-initial`, which call the ACL2 bridge.  The test seam does
 not construct or compare those values.
 
-The normal image has no initializer fault hook.  The bounded implementation
+The baseline image had no initializer fault hook. This test-enabled implementation
 adds `FN_NATIVE_INIT_FAULT`, a developer/test-only environment seam that names
-one table cut and selects either `:eio` or `:kill`.  It calls the existing
+one table cut and selects `:eio` or `:kill`; the separate enumeration control
+uses `:eacces` to change access permissions before the real directory read.  It calls the existing
 `fnn-at` only after the named native syscall returns.  `:kill` sends SIGKILL to
 the native process, so cleanup handlers do not run; the next command is a
 new-process `recover`, not an in-process exception retry.  Targeted tests use
 the pre-lock and config-history-directory cuts (which correctly fault before
 frontier publication), plus a post-frontier cut that recovers in an independent
-process.  The source-map test checks the complete label set against the model
-labels.
+process.  The source-map test checks the native label set against a frozen expected
+label list from this source review. It does not mechanically extract the model
+program or establish operation ordering.
 
 `fnn-config-record-names` previously converted any directory-enumeration OS
 error to an empty list.  This packet propagates that error.  A separate,

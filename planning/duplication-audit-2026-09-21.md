@@ -189,3 +189,9 @@ ordinary refusal, and check EINTR, partial progress and zero writes. Root review
 also corrected the original test helper's accidental catch of every condition.
 Absolute deadlines bound readiness/retry loops; blocking syscall duration remains
 open and has a separate nonblocking-I/O implementation lane.
+
+Initializer enumeration repair `6e1f18d` is also integrated. Its regression makes
+the real directory listing return EACCES; an error merely raised before the
+listing would not distinguish the former swallowing handler. Selected SIGKILL
+and independent restart tests accompany the source cut map. That map remains
+source-reviewed correspondence, not a whole-program or every-crash-point proof.
