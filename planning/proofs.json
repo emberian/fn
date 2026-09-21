@@ -1618,6 +1618,37 @@
       ],
       "pending_subject": "Name and certify keystones over the host-called owner open/read composition; current ground witnesses exercise the ACL2 dispatcher and role reset but do not prove raw password-verifier correctness or host transport behavior.",
       "progress_note": "Source implementation and focused logical witnesses are present; integrated certification and native reconnect evidence remain pending."
+    },
+    {
+      "id": "PRF-048",
+      "title": "Mandatory hybrid authored-source profile binding",
+      "statement": "The host-called fn-hsig-authorize authorizes only a canonical version-1 Ed25519-and-ML-DSA-65 profile with exact fixed component widths and two verified primitive observations; its domain-separated, length-delimited signing preimage contains the principal, ordered enrolled key set and exact authored source octets.",
+      "milestone": "M3",
+      "requirements": [
+        "OBJ-003",
+        "OBJ-007",
+        "ENC-003"
+      ],
+      "depends_on": [
+        "PRF-005"
+      ],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "certified",
+      "events": [
+        "fn-hsig-subject-body-is-octets",
+        "fn-hsig-authorization-requires-both-components",
+        "fn-hsig-authorization-binds-complete-profile"
+      ],
+      "evidence": [
+        "books/hybrid-signature.lisp",
+        "tests/acl2/hybrid-signature-tests.lisp",
+        "host/hybrid-signature-host.lisp",
+        "host/native/signatures.lisp",
+        "tests/native_hybrid_signatures.lisp"
+      ],
+      "progress_note": "host/native/signatures.lisp calls fn-hsig-host-authorize, whose body calls fn-hsig-authorize. Reachable tests cover both-valid, each bad component, absent ML-DSA, unknown/unsupported ML-DSA, stripping, component order/profile confusion, source changes and enrolled-key changes. Native component evidence covers libsodium Ed25519 and OpenSSL 3.6.4 ML-DSA-65. Primitive security, RNG, ABI and library correctness remain trusted assumptions; key custody, recovery authority and durable article/verdict composition remain open."
     }
   ]
 }

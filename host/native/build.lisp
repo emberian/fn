@@ -12,6 +12,7 @@
 (include-book "books/replay")
 (include-book "books/store-config")
 (include-book "books/identity")
+(include-book "books/hybrid-signature")
 (include-book "books/article-fields")
 (include-book "books/frame")
 (include-book "books/store-observed")
@@ -82,6 +83,7 @@
 (ld "host/feed-filename-host.lisp" :ld-error-action :error)
 (ld "host/native-operator-host.lisp" :ld-error-action :error)
 (ld "host/native-control-host.lisp" :ld-error-action :error)
+(ld "host/hybrid-signature-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
 (ld "host/workflow-host.lisp" :ld-error-action :error)
@@ -118,10 +120,16 @@
         ; after io.lisp because its deadline/descriptor helpers are physical
         ; transport primitives, not protocol decisions.
         (load "host/native/tls.lisp")
+        ; D09 uses the same process-wide OpenSSL pair as TLS and refuses the
+        ; image unless that pair provides ML-DSA-65 (OpenSSL >= 3.5).
+        (load "host/native/signatures.lisp")
+        (fnn-hsig-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
           (fnn-crypto-startup)
           (fnn-tls-reset)
+          (fnn-hsig-reset)
+          (fnn-hsig-initialize)
           (fnn-main)
           (values nil :exited *the-live-state*))
         ; Bounded raw file read only; parsing, defaults and availability are

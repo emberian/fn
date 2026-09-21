@@ -2,23 +2,29 @@
 
 Status: local engineering substrate with a selected native signature suite.
 D09 now requires Ed25519 **and** ML-DSA-65 from the first release (user decision,
-2026-09-21). The native profile, binding, key custody and runtime integration
-still need implementation/qualification; no public ABI is frozen (D08).
+2026-09-21). The native profile and runtime primitive boundary are implemented;
+key custody, durable article composition and deployment qualification remain
+open, and no public ABI is frozen (D08).
 Cryptographic unforgeability remains an A-CRYPTO assumption in
 [failures](failures.md), not an ACL2 theorem.
 
-The selected native-article profile must bind its version, required algorithms,
-enrolled key set and length-delimited exact authored-source octets in a
-domain-separated signed preimage. Both primitives sign that framed message;
-an externally supplied content digest alone is not the authored message.
+The executable profile in `books/hybrid-signature.lisp` binds version 1,
+required suite 1, the principal, the ordered algorithm-tagged enrolled Ed25519
+and ML-DSA-65 keys, and a length-delimited exact authored-source subject under
+`fn-authored-source-hybrid-v1`. Both pure signatures cover those full bytes;
+authorship is not reduced to an externally supplied content-id digest.
 Both signatures must verify; unsupported, absent or invalid components cannot
-authorize via a classical-only fallback. Legacy unsigned NNTP submissions
+authorize via a classical-only fallback. `fn-hsig-authorize` is the final ACL2
+decision called through `host/hybrid-signature-host.lisp`. The native boundary
+uses libsodium for Ed25519 and OpenSSL 3.5 or newer for ML-DSA-65, sharing the
+TLS process library and explicitly fetching the provider algorithm. Callers
+supply independent key material. Legacy unsigned NNTP submissions
 retain their explicit gateway provenance. The standard primitive is
 [ML-DSA in FIPS 204](https://csrc.nist.gov/pubs/fips/204/final);
 [OpenSSL 3.5's ML-DSA interface](https://docs.openssl.org/3.5/man7/EVP_SIGNATURE-ML-DSA/)
-is a candidate native implementation boundary, not a proved primitive.
+is the native implementation boundary, not a proved primitive.
 
-Books: `books/crypto-seam.lisp`, `books/principal.lisp`,
+Books: `books/crypto-seam.lisp`, `books/hybrid-signature.lisp`, `books/principal.lisp`,
 `books/principal-invariants.lisp`; tests `tests/acl2/crypto-seam-tests.lisp`,
 `tests/acl2/principal-tests.lisp`. The [decision packet](../planning/decision-packet-d09-d11.md)
 carries the proposals this profile assumes.
