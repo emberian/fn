@@ -142,7 +142,7 @@ until owner convergence exposes one ACL2 posting projection to served/control."
                      (let ((config (fn-ncfg-second loaded)))
                        (if (not (fn-native-config-operator-availablep config))
                            (fn-nop-usage :unsupported-profile nil config nil)
-                         (fn-nop-parse-command words config))))))))))
+                         (fn-nop-parse-command words config)))))))))))
 
 (in-theory (disable fn-native-operator-run))
 
