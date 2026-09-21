@@ -42,6 +42,19 @@
     (append (fn-cbor-u32-bytes (len frame)) frame)))
 (verify-guards fn-feed-journal-wrap)
 
+; Old journals encoded retryable replies and lost/unknown replies as
+; :feed-outcome.  Those records do not carry the monotonic observation that
+; the current :feed-retry/:feed-lost fold needs.  Final old outcomes remain
+; exact and replayable.  A timing-bearing old outcome is valid evidence, but
+; advancing past it would invent a tick and make the live/journal
+; correspondence false, so recovery stops at its first byte and preserves it
+; for an explicit migration.
+(defun fn-feed-journal-migration-requiredp (entry)
+  (declare (xargs :guard t))
+  (and (equal (fn-feed-journal-kind entry) :feed-outcome)
+       (member-equal (fn-frame-item 3 (fn-feed-journal-values entry))
+                     '(431 436 400))))
+
 ; Result: (status safe-offset entry). safe-offset advances only over a
 ; complete verified frame for this peer. It is the sole truncate authority.
 ; Replay retains the existing fn-feed-apply-record semantics, not drivenp:
@@ -59,11 +72,14 @@
                (if (and (fn-frame-result-okp decoded)
                         (equal (fn-feed-record-peer
                                 (fn-frame-result-payload decoded)) peer))
-                   (list :next (+ (nfix offset)
-                                  *fn-feed-journal-prefix-size* plan)
-                         (fn-feed-journal-entry
-                          (fn-frame-result-kind decoded)
-                          (fn-frame-result-payload decoded)))
+                   (let ((entry (fn-feed-journal-entry
+                                 (fn-frame-result-kind decoded)
+                                 (fn-frame-result-payload decoded))))
+                     (if (fn-feed-journal-migration-requiredp entry)
+                         (list :migration-required (nfix offset) entry)
+                       (list :next (+ (nfix offset)
+                                     *fn-feed-journal-prefix-size* plan)
+                             entry)))
                  (list :invalid (nfix offset) nil)))))))
 
 ; Physical barriers/cuts named in the model and host: creation/open,

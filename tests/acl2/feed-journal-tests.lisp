@@ -9,6 +9,13 @@
     (fn-frame-fields-octets '(:text :text :nat) *fj-values*)))
 (defconst *fj-frame* (append *fj-protected* (fn-sha256 *fj-protected*)))
 (defconst *fj-prefix* (fn-cbor-u32-bytes (len *fj-frame*)))
+(defun fj-frame-of (kind values)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((zeroes '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+                   0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+         (unsigned (fn-feed-encode kind values zeroes))
+         (prefix (fn-frame-protected-prefix unsigned)))
+    (fn-feed-encode kind values (fn-sha256 prefix))))
 (defmacro fn-feed-journal-test-scan ()
   '(fn-feed-journal-scan *fj-peer* *fj-prefix* *fj-frame* 99))
 
@@ -31,6 +38,40 @@
                        (update-nth 12 255 *fj-frame*) 99) '(:invalid 99 nil)))
 (assert-event (equal (fn-feed-journal-scan '(98) *fj-prefix* *fj-frame* 99)
                      '(:invalid 99 nil)))
+; Final legacy outcomes have all information needed for replay.  Retry/lost
+; outcomes do not contain a monotonic tick, so the scanner stops before them,
+; keeps the last safe offset, and returns the exact evidence to a migration.
+(defconst *fj-final-values* (list *fj-peer* '(60 97 64 102 110 62) 1 239))
+(defconst *fj-final-frame* (fj-frame-of :feed-outcome *fj-final-values*))
+(defconst *fj-retry-values* (list *fj-peer* '(60 97 64 102 110 62) 1 431))
+(defconst *fj-retry-frame* (fj-frame-of :feed-outcome *fj-retry-values*))
+(defconst *fj-defer-values* (list *fj-peer* '(60 97 64 102 110 62) 1 436))
+(defconst *fj-defer-frame* (fj-frame-of :feed-outcome *fj-defer-values*))
+(defconst *fj-lost-values* (list *fj-peer* '(60 97 64 102 110 62) 1 400))
+(defconst *fj-lost-frame* (fj-frame-of :feed-outcome *fj-lost-values*))
+(assert-event
+ (equal (car (fn-feed-journal-scan
+              *fj-peer* (fn-cbor-u32-bytes (len *fj-final-frame*))
+              *fj-final-frame* 99))
+        :next))
+(assert-event
+ (equal (fn-feed-journal-scan
+         *fj-peer* (fn-cbor-u32-bytes (len *fj-retry-frame*))
+         *fj-retry-frame* 99)
+        (list :migration-required 99
+              (fn-feed-journal-entry :feed-outcome *fj-retry-values*))))
+(assert-event
+ (equal (fn-feed-journal-scan
+         *fj-peer* (fn-cbor-u32-bytes (len *fj-defer-frame*))
+         *fj-defer-frame* 99)
+        (list :migration-required 99
+              (fn-feed-journal-entry :feed-outcome *fj-defer-values*))))
+(assert-event
+ (equal (fn-feed-journal-scan
+         *fj-peer* (fn-cbor-u32-bytes (len *fj-lost-frame*))
+         *fj-lost-frame* 99)
+        (list :migration-required 99
+              (fn-feed-journal-entry :feed-outcome *fj-lost-values*))))
 ; Teeth: drop :next from bounded-progress, EOF has no strict progress.
 (must-fail
  (assert-event (< 99 (cadr (fn-feed-journal-scan *fj-peer* nil nil 99)))))
