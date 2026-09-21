@@ -1255,6 +1255,29 @@
       "assumptions": [],
       "status": "in-progress",
       "note": "Lane w11/bp-node, 2026-09-21; the codec keystones are lane w10/dtn-3's. All seven named theorems are in books/bp-bundle-invariants.lisp and books/bp-node.lisp, both certified (hbox run-20260921T005707Z-8672 and run-20260921T021131Z-1eb0). Teeth in tests/acl2/bp-bundle-tests.lisp and tests/acl2/bp-node-tests.lisp, including the 32-block boundary and the refusal one past it, the three distinct outcomes, and a node configured for a 16-octet transfer refusing a bundle a larger node accepts. The EXTERNAL check is *bpb-dtn7-0-21-0*: 132 octets dtn7-rs 0.21.0 authored, which fn decodes and re-encodes byte for byte (planning/evidence/bp-dtn7-w11-2026-09-21.md). OPEN under this target, and recorded rather than weakened: fn-bpb-decode-blocks-are-canonical-by-construction and fn-bpb-accepted-input-is-canonical-by-construction were REMOVED by w10/dtn-3 after a rewriter runaway with three cures measured and none stopping it, so 'every accepted input re-encodes to itself' is NOT proved for a whole bundle -- it holds of dtn7-rs's captured vector by evaluation only. The node's processing machine (fn-bpn-step) does not exist, so T1 to T6 of specs/bp-design.md section 1.6 have no subject and are not claimed here."
+    },
+    {
+      "id": "PRF-039",
+      "title": "Every connection the owner opens carries the operator's AUTHINFO policy, and its greeting says what that policy allows",
+      "statement": "fn-served-peer-and-reader-open-under-the-same-policy: the AUTHINFO configuration pinned into a connection the owner resolved to a peer record (fn-served-open-peer) is the same value pinned into a reader connection opened under that policy (fn-served-open), so no decision in books/nntp-auth.lisp -- the credential fn-auth-authinfo searches, the AUTHINFO and STARTTLS labels fn-auth-capability-lines emits, the 480 gate fn-auth-gatedp applies and the posting allowance fn-auth-postingp computes -- can answer one way for a client the owner resolved as a peer and another way for the client beside it. fn-served-open-peer-pins-the-configuration is the field-level half: the pinned value is the argument, coerced by fn-auth-open-session to fn-auth-open-config only when it is not a configuration. Covered scope: the OPEN transition of one connection; what happens to the policy afterwards is fn-auth-step-preserves-consistent-session's and OB-AUTH-FOLD's. The subject is what host/owner-host.lisp fn-owner-open-peer calls through fn-own-open-peer, which tools/run_owner.py Owner.accept_nntp calls for every accepted socket whose source address matches a peer record. Second half, the same value read where a client first sees it: fn-served-open-greets-200-exactly-when-the-connection-may-post says the greeting the open emits is RFC 3977 section 5.1.2's 200 exactly when the pinned injection configuration allows posting AND fn-auth-postingp of the session just built is true -- which is the conjunction fn-auth-command hands fn-nntp-capability-lines for the POST label and the one fn-auth-postingp decides 340 against 440 and 480 by. fn-served-open-greeting-agrees-with-the-post-label states that over the octets a client sees, and is named for what it is: a corollary of the keystone and a local unfold of fn-auth-capability-lines, doing no work of its own. Covered scope: the OPEN transition. It says nothing about the greeting a connection would deserve LATER, after a 281 changes the allowance; RFC 4643 section 2.2 sends the client back to CAPABILITIES for that, and fn-auth-authinfo-is-not-advertised-once-authenticated is the only statement fn has about the block after a login.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-001",
+        "NNT-004",
+        "OBJ-007"
+      ],
+      "depends_on": [
+        "PRF-031"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "note": "Lane w11/auth-live, decided by measurement and not by inspection. fn-served-open-peer pinned the literal (fn-auth-open-config) while fn-served-open pinned the operator's, and the owner resolves a connection to a peer by SOURCE ADDRESS alone, so on a box where a configured peer is reachable on loopback every client was opened without the operator's policy: AUTHINFO PASS answered 481 with the secret just written, CAPABILITIES carried no AUTHINFO line and POST was never gated. Both theorems are FALSE of that definition. The live before/after is planning/evidence/auth-live-2026-09-21.md and the boundary test is tests/test_auth.py ServedCredentialTests, which starts the node with `bin/fn run` over an fn.toml and writes the peer record, because no test that starts tools/run_owner.py directly can reach this. The greeting half is a second defect the same measurement found: fn-served-greeting read the injection configuration alone, so a connection under [auth] required = true greeted 200 and then answered POST 480, where section 5.1.2's MUST is 201. It takes the opened session now.",
+      "evidence": [],
+      "events": [
+        "fn-served-peer-and-reader-open-under-the-same-policy",
+        "fn-served-open-peer-pins-the-configuration",
+        "fn-served-open-greets-200-exactly-when-the-connection-may-post"
+      ]
     }
   ]
 }

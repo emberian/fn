@@ -33,6 +33,27 @@ the WIRE, not the model: no host line calls any `fn-ocfg-` function, so the
 served port still answers LIST ACTIVE from the allocation domain and every
 PRF-028 owner-side event carries a `pending_subject`.
 
+**AUTHINFO works on a running server** as of 2026-09-21 (w11/auth-live). It
+did not, and the model was never the reason: `fn-served-open-peer` pinned the
+empty AUTHINFO profile where `fn-served-open` pinned the operator's, and the
+owner resolves a connection to a peer by source address alone, so on a box
+where a configured peer answers on loopback every client was opened with no
+credential --- which is every two-node harness fn has. `AUTHINFO PASS`
+answered 481 with the secret the CLI had just written, no AUTHINFO label was
+advertised and POST was never gated (v0 matrix `c3b99f8`, eight F-AUTH rows).
+The before-and-after measurement is
+[auth-live](evidence/auth-live-2026-09-21.md), PRF-039 carries the
+theorems, and the boundary test that would have caught it --- `bin/fn run`
+over an `fn.toml`, with a peer record, logging in with a credential written
+in the same test --- is `tests/test_auth.py ServedCredentialTests`. `fn init`
+gains `--auth-required`, so the policy is reachable from the operator surface
+for the first time; `fn principal list` now reads the one registry the server
+reads. **Open and on the board**: `[auth] required = true` also gates a
+transit peer's `IHAVE`, so a node cannot yet both require a reader login and
+take a feed. The v0 matrix at `6fb30ca` records six of the eight F-AUTH
+rows moving (F-AUTH 15 accepted / 2 refused / 2 disagreements, from 9 / 8 /
+8), and `nntplib 3.12.13` --- not fn's client --- logged in to both nodes.
+
 **The checkpoint validator refused nothing about its prefix.** The one root
 of the 2026-09-21 persvati gate of `dev` `e4fb8bc` (272 of 275) that no lane
 owned, `tests/acl2/checkpoint-codec-tests`, failed a true assertion:

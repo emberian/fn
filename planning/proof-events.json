@@ -1153,6 +1153,23 @@
           "pending_subject": "fn-cpc-validp has no caller in host/, tools/ or any other book; the served restore path is host/checkpoint-host.lisp -> fn-checkpoint-restore (which tests the same journal-interval condition as its :suffix clause) and no theorem equates the two. Review section 4, the theorem-subject rule."
         }
       ]
+    },
+    {
+      "id": "PRF-039",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-served-peer-and-reader-open-under-the-same-policy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-open-peer-pins-the-configuration"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-open-greets-200-exactly-when-the-connection-may-post"
+        }
+      ]
     }
   ]
 }
