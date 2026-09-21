@@ -127,10 +127,77 @@ instance, an undecided verdict with no blocker and an unknown verdict each
 raise; an assertion the run never reached is emitted `not-exercised` with a
 blocker; and editing one row's verdict breaks the digest.
 
+## The corrected gate against real nodes, persvati, `f49a844`
+
+[`planning/evidence/twonode-f49a844-2026-09-21.md`](../evidence/twonode-f49a844-2026-09-21.md)
+and its `.findings.json`. Two fn nodes from this commit on persvati, each with
+its own store and listener, peered both ways. **Exit 1.** 132 steps, 2 failed
+steps, and the assertion tally that used to be invisible: **40 held, 7
+violated, 4 inconclusive, 10 not-exercised, 4 limitations**, 428.7 s wall. Run
+twice (`4317743` and `f49a844`, 423.5 s and 428.7 s); the two differ only where I
+moved `certificates-match` from violated to inconclusive between them.
+
+Violated:
+
+- `duplicate-435` -- the second `IHAVE <alpha@a.example.invalid>` drew **335**,
+  not 435, and `check-438` -- `CHECK` of an article node B already holds drew
+  **238**, not 438. The Message-ID history does not refuse a duplicate on the
+  hand-driven transit path, while the owner feed's own re-offer of
+  `<fed-ab@>` draws 435 and 438 correctly (`owner feed ab duplicate` in the
+  facts). **Two paths into the same node disagree about what B already holds.**
+- `feed-identical[ab]`, `[ba]` and `[stream-ab]` -- node B does not serve
+  `<fed-ab@>` byte for byte as node A serves it, node A does not serve
+  `<fed-ba@>` as node B does, and neither does the streamed article.
+  `twonode-a5c6792` measured `identical=True` for all three on 2026-09-21, so
+  something between `a5c6792` and `f49a844` changed the octets a receiver
+  serves. RFC 5537 3.6 permits Path and Xref and nothing else; the gate does
+  not say which octets differ, and that is the next measurement.
+- `k5-arrival` -- after `kill -9` of node A and a restart of both nodes, node B
+  never served `<fed-restart@>` within 90 s (`server closed the connection`).
+  This is F2's lane (`w11/feed-k5`) reaching the exit code for the first time.
+- `tcpcl-image` -- the native image did not build (uncertified-book marker).
+
+Inconclusive, and each one is a claim this run does NOT support:
+
+- `certificates-match` -- 41 of 272 book pairs did not hash to this revision,
+  so 41 books were read uncertified and no "this certified commit serves"
+  claim follows.
+- `k5-exactly-one` and `k5-offer-recorded` -- undecidable behind the K5
+  arrival that never happened.
+- `cut-copies` -- node B's GROUP line carried no count before the cut, so
+  "exactly one copy" across the lost reply rests on the reread alone.
+
+Held, and worth naming because they are what the run DOES establish: the cut
+was taken, node B served the article after the lost reply, node A observed
+zero accepted transfers across it, the owner feed delivered in both directions
+and under streaming, both re-offers drew 435/438, the loop article was
+refused, the three D13 outcomes stayed distinct on both nodes, and node A
+survived node B's SIGKILL.
+
 ## What this invalidates
 
-See the report. The committed gate evidence already carried the sentences; the
-runs carried exit 0.
+Every sentence in the middle column is quoted from the cited run's own
+evidence file. None of it is new measurement; what is new is that it now
+reaches the exit code. Three of the two-node runs already carried one FAILED
+step, so those processes exited 1 -- what F1 cost there is that the scenario
+assertions beside it were invisible in `failed=`, in the counts quoted from
+them, and in every claim that cited them.
+
+| cited run | what its own record already said | corrected verdict |
+| --- | --- | --- |
+| [`twonode-dfd8758`](../evidence/twonode-dfd8758-2026-09-20.md), quoted in [HANDOFF-w6-two-node](HANDOFF-w6-two-node.md) as "63 steps, 0 failed, 5 not exercised" | both nodes' owner entry point did not reach LISTENING; the gate served from `run_reader.py` | `entry-point-listening[a]` and `[b]` **violated**, exit 1. Every served result in that run is the reader's, not the owner's. |
+| [`twonode-e8372fa`](../evidence/twonode-e8372fa-2026-09-20.md), quoted in [HANDOFF-w6-peering-inbound](HANDOFF-w6-peering-inbound.md) as "63 steps, 0 failed, 6 not exercised" -- the load-bearing green | the native image did not build; 6 book pairs did not match | `tcpcl-image` **violated** (the build script ran and failed, so the layer is broken, not absent) and `certificates-match` **inconclusive**, exit 1 |
+| [`twonode-d8b1e8f`](../evidence/twonode-d8b1e8f-2026-09-20.md) | the independence CONTROL failed on both nodes, both servers were DEAD at the end of it, and node A did not survive node B's SIGKILL | `independence[a]`, `[b]`, `nodes-up`, `a-survives-b-kill`, `tcpcl-image` **violated**. It exited 1 on its five failed steps, and none of those five is any of these. |
+| [`twonode-bbd1f47`](../evidence/twonode-bbd1f47-2026-09-21.md) | an article whose Path already names B was ACCEPTED by B; the second IHAVE drew 335; CHECK drew 238; every POST answered nothing | `loop-refused`, `duplicate-435`, `check-438` **violated**, and the feed/K5/cut rows **inconclusive** behind a violated POST |
+| [`twonode-ea76826`](../evidence/twonode-ea76826-2026-09-21.md) | `identical=False` for `<fed-ab@>` and the streamed article; re-offering drew `None`, not 435; POST on node B answered nothing; K5 not evidenced | eight assertions **violated** |
+| [`twonode-a5c6792`](../evidence/twonode-a5c6792-2026-09-21.md), cited by `planning/milestones.md` for K4 and for "Two nodes exchange both ways" | the second IHAVE drew 335 not 435; CHECK drew 238 not 438; K5's restart-by-offer NOT evidenced; node B's GROUP line carried no count | three **violated**, one **inconclusive** |
+| [`inn-lab-f4e8272`](../evidence/inn-lab-f4e8272-2026-09-20.md), cited by `planning/milestones.md` as "Real INN on the other end, done, 75 steps, 0 failed" | the owner entry point did not reach LISTENING and the lab fell back to `run_reader.py --post`; 97 of 160 book pairs did not match | `entry-point-listening` **violated**, exit 1; `certificates-match` **inconclusive**. INN's own rows all hold. |
+| [`deploy-cce4b11`](../evidence/deploy-cce4b11-2026-09-20.md) | the owner entry point did not reach LISTENING; POST is enabled and answered 340 but CAPABILITIES does not list POST | `entry-point-listening` and `post-capability` **violated**, exit 1 |
+
+Three milestone rows are walked back in the same commit as this file:
+"Two nodes exchange both ways" loses "the receiver's octets IDENTICAL to the
+sender's", "K4 restart" loses "byte-identical" and gains the inconclusive
+copy count, and "Real INN on the other end" loses "75 steps, 0 failed".
 
 ## Open, and who owns it
 
