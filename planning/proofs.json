@@ -1237,6 +1237,21 @@
         "planning/evidence/checkpoint-validator-2026-09-21.md"
       ],
       "progress_note": "fn-cpc-validp accepted a prefix that fn-checkpoint-capture refuses as :history until 2026-09-21, because fn-replay carries a record generation into the node transitions without comparing it with the txid and validation compared only replay results. The journal-interval clause is now in the recognizer. Open, and not claimed here: fn-cpc-validp has no host caller, so these are properties of a sibling API to the served restore path (host/checkpoint-host.lisp calls fn-checkpoint-restore, which tests the condition itself)."
+    },
+    {
+      "id": "PRF-038",
+      "title": "The BPv7 bundle codec inverts, and what fn authors another implementation accepts",
+      "statement": "For every bundle satisfying fn-bpb-bundlep whose encoding is within the caller's transfer bound, fn-bpb-decode of fn-bpb-encode is that same bundle and nothing else (fn-bpb-decode-of-encode), resting on the one-block round trip fn-bpb-decode-block-of-encode-block, the fold over the block sequence fn-bpb-decode-blocks-of-encode-blocks and the primary block's half fn-bpb-scan-primary-of-encode; every accepted input yields a bundle (fn-bpb-decode-yields-bundle) and an input over the bound is refused before any octet is examined (fn-bpb-decode-refuses-overlong-input). Over those, the node's two ends: what fn-bpn-send puts on the wire is a bundle (fn-bpn-send-bundle-is-a-bundle), and a peer that accepts what fn-bpn-send authored recovers exactly the ADU that was sent (fn-bpn-receive-of-send-carries-the-adu), under the receiver's own configuration and transfer limit. The covered scope is a whole bundle with at most *fn-bpb-max-blocks* canonical blocks plus the payload block; fragments, BPSec and status reports are outside it.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-005"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "note": "Lane w11/bp-node, 2026-09-21; the codec keystones are lane w10/dtn-3's. All seven named theorems are in books/bp-bundle-invariants.lisp and books/bp-node.lisp, both certified (hbox run-20260921T005707Z-8672 and run-20260921T021131Z-1eb0). Teeth in tests/acl2/bp-bundle-tests.lisp and tests/acl2/bp-node-tests.lisp, including the 32-block boundary and the refusal one past it, the three distinct outcomes, and a node configured for a 16-octet transfer refusing a bundle a larger node accepts. The EXTERNAL check is *bpb-dtn7-0-21-0*: 132 octets dtn7-rs 0.21.0 authored, which fn decodes and re-encodes byte for byte (planning/evidence/bp-dtn7-w11-2026-09-21.md). OPEN under this target, and recorded rather than weakened: fn-bpb-decode-blocks-are-canonical-by-construction and fn-bpb-accepted-input-is-canonical-by-construction were REMOVED by w10/dtn-3 after a rewriter runaway with three cures measured and none stopping it, so 'every accepted input re-encodes to itself' is NOT proved for a whole bundle -- it holds of dtn7-rs's captured vector by evaluation only. The node's processing machine (fn-bpn-step) does not exist, so T1 to T6 of specs/bp-design.md section 1.6 have no subject and are not claimed here."
     }
   ]
 }
