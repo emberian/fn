@@ -294,6 +294,10 @@
         {
           "name": "fn-served-run-is-the-concatenated-step",
           "kind": "theorem"
+        },
+        {
+          "name": "fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items",
+          "kind": "theorem"
         }
       ]
     },
@@ -790,6 +794,10 @@
         },
         {
           "name": "fn-wildmat-successful-parse-parsedp",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-wildmat-parse-yields-rfc3977-patterns",
           "kind": "theorem"
         },
         {
