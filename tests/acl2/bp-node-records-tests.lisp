@@ -10,13 +10,20 @@
                      '(:bpn-sequence 1)))
 
 ; The durable frontier, rather than the caller, supplies the next send's
-; sequence after a restart.
-(defconst *bpnr-frame*
-  (fn-bpn-sequence-record-frame (fn-bpn-sequence-reservation-record *bpnr-zero*)))
-(assert-event (fn-cbor-octet-listp *bpnr-frame*))
-(assert-event (equal (fn-bpn-sequence-record-unframe *bpnr-frame*)
-                     '(:bpn-sequence 1)))
-(assert-event (equal (fn-bpn-sequence-recover *bpnr-frame* t nil) '(:ready 1)))
+; sequence after a restart.  These are assert-events, rather than defconsts:
+; the SHA-256 attachment evaluates in ACL2 proof execution, while constrained
+; digest calls intentionally do not evaluate during defconst translation.
+(assert-event
+ (fn-cbor-octet-listp
+  (fn-bpn-sequence-record-frame (fn-bpn-sequence-reservation-record *bpnr-zero*))))
+(assert-event
+ (equal (fn-bpn-sequence-record-unframe
+         (fn-bpn-sequence-record-frame (fn-bpn-sequence-reservation-record *bpnr-zero*)))
+        '(:bpn-sequence 1)))
+(assert-event
+ (equal (fn-bpn-sequence-recover
+         (fn-bpn-sequence-record-frame (fn-bpn-sequence-reservation-record *bpnr-zero*)) t nil)
+        '(:ready 1)))
 (assert-event (equal (fn-bpn-sequence-reservation-sequence
                       (fn-bpn-sequence-reserve 1))
                      1))

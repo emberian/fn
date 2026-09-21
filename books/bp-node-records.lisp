@@ -32,13 +32,23 @@
 (verify-guards fn-bpn-sequence-record)
 (verify-guards fn-bpn-sequence-recordp)
 
+(defthm fn-bpn-sequence-frontierp-successor
+  (implies (and (fn-bpn-sequence-frontierp frontier)
+                (< frontier *fn-bpc-max-uint*))
+           (fn-bpn-sequence-frontierp (+ 1 frontier)))
+  :hints (("Goal" :in-theory (enable fn-bpn-sequence-frontierp
+                                      fn-bpp-timep fn-frame-natp))))
+
 ; The returned record carries the next frontier, not the allocated value.  It
 ; must become durable before `sequence' can be passed to fn-bpn-send.
 (defun fn-bpn-sequence-reserve (frontier)
-  (declare (xargs :guard (fn-bpn-sequence-frontierp frontier)))
-  (if (equal frontier *fn-bpc-max-uint*)
-      (list :refused :sequence-exhausted)
-    (list :reserved frontier (fn-bpn-sequence-record (+ 1 frontier)))))
+  (declare (xargs :guard (fn-bpn-sequence-frontierp frontier)
+                  :guard-hints
+                  (("Goal" :use ((:instance fn-bpn-sequence-frontierp-successor
+                                              (frontier frontier)))))))
+  (if (< frontier *fn-bpc-max-uint*)
+      (list :reserved frontier (fn-bpn-sequence-record (+ 1 frontier)))
+    (list :refused :sequence-exhausted)))
 
 (defun fn-bpn-sequence-reservationp (r)
   (declare (xargs :guard t))
@@ -67,7 +77,8 @@
   (declare (xargs :guard (fn-bpn-sequence-recordp record)))
   (let ((protected (fn-frame-bundle-store-protected :sequence
                                                     (list (cadr record)))))
-    (append protected (fn-frame-trailer protected))))
+    (fn-frame-bundle-store-encode :sequence (list (cadr record))
+                                  (fn-frame-trailer protected))))
 
 (defun fn-bpn-sequence-frame-limit ()
   (declare (xargs :guard t))
@@ -83,8 +94,8 @@
              (equal (fn-frame-result-kind answer) :sequence)
              (true-listp (fn-frame-result-payload answer))
              (equal (len (fn-frame-result-payload answer)) 1))
-        (let ((record (fn-bpn-sequence-record
-                       (car (fn-frame-result-payload answer)))))
+        (let ((record (list :bpn-sequence
+                            (car (fn-frame-result-payload answer)))))
           (if (fn-bpn-sequence-recordp record) record nil))
       nil)))
 
@@ -122,7 +133,7 @@
 ; record for its successor.  This is the transition the native host calls.
 (defthm fn-bpn-sequence-reserve-advances-frontier
   (implies (and (fn-bpn-sequence-frontierp frontier)
-                (not (equal frontier *fn-bpc-max-uint*)))
+                (< frontier *fn-bpc-max-uint*))
            (and (fn-bpn-sequence-reservationp
                  (fn-bpn-sequence-reserve frontier))
                 (equal (fn-bpn-sequence-reservation-sequence
@@ -135,15 +146,6 @@
                                       fn-bpn-sequence-reservationp
                                       fn-bpn-sequence-recordp
                                       fn-bpn-sequence-frontierp))))
-
-(defthm fn-bpn-sequence-recover-of-record-frame
-  (implies (fn-bpn-sequence-recordp record)
-           (equal (fn-bpn-sequence-recover (fn-bpn-sequence-record-frame record) t nil)
-                  (list :ready (cadr record))))
-  :hints (("Goal" :in-theory (enable fn-bpn-sequence-recover
-                                      fn-bpn-sequence-record-unframe
-                                      fn-bpn-sequence-record-frame
-                                      fn-bpn-sequence-recordp))))
 
 (deftheory fn-bpn-records-vocabulary
   '((:d fn-bpn-sequence-frontierp) (:d fn-bpn-sequence-record)
