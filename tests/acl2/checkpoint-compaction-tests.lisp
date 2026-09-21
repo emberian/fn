@@ -44,6 +44,18 @@
 (assert-event
  (equal (fn-cc-decode-exact (fn-cc-encode *cc-large-summary*))
         (list :ok *cc-large-summary*)))
+
+; One canonical kind-3 Store event crosses the legacy CBOR byte-string cap.
+; This exercises the per-item bound, independently of the aggregate witness.
+(defconst *cc-single-large-event*
+  (fn-store-event-encode
+   (fn-stxk-make 0 0 0 1 '(116 101 115 116) (cc-repeat-octet 65536))))
+(defconst *cc-single-large-summary*
+  (fn-cc-make 1 1 (list *cc-single-large-event*)))
+(assert-event (< *fn-cbor-max-bytes* (len *cc-single-large-event*)))
+(assert-event
+ (equal (fn-cc-decode-exact (fn-cc-encode *cc-single-large-summary*))
+        (list :ok *cc-single-large-summary*)))
 (local
  (must-fail
   (defthm fn-cc-decode-always-rejects-before-header
