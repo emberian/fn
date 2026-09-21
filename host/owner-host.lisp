@@ -23,6 +23,11 @@
 ; writes a reply octet.
 (in-package "ACL2")
 (include-book "../books/owner")
+; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
+; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
+; ACL2 session does not load `host/store-host.lisp', so the one owner has to
+; be a book both sessions include.  See books/frame-trailer.lisp.
+(include-book "../books/frame-trailer")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -46,9 +51,24 @@
 ; The posting configuration: the groups served at the live configuration
 ; generation (books/node-config, fn-cnode-served-of), the store's payload
 ; bound.  Derived from the replayed configuration by ACL2.
+; The node's own <path-identity>, from the ONE slot that holds it: the
+; configuration policy `path-identity`, which `fn-peer-local-identity`
+; (books/peer-inbound.lisp) and `fn-store-prov-post` also read.
+; `*fn-owner-agent*` was a second copy of a node's identity, and that is how
+; two fn nodes on one gate came to write the SAME Path -- so neither could
+; recognise itself in the other's articles and RFC 5537 section 3.5 loop
+; suppression had nothing to compare. The constant is now only the fallback
+; for a store whose slot is unset.
+(defun fn-owner-agent-of (cfg)
+  (declare (xargs :mode :program))
+  (let ((identity (fn-cfg-policy (fn-cfg-value cfg) "path-identity")))
+    (if (and (stringp identity) (not (equal identity "")))
+        (fn-record-string-octets identity)
+      *fn-owner-agent*)))
+
 (defun fn-owner-post-config (cfg)
   (declare (xargs :mode :program))
-  (fn-inj-make-config t *fn-owner-agent*
+  (fn-inj-make-config t (fn-owner-agent-of cfg)
                       (fn-owner-group-octets (fn-cnode-served-of cfg))
                       *fn-store-max-payload*))
 
@@ -365,6 +385,15 @@
 ; derives, and leaves them where the bridge can read them.  The obligation id
 ; and the subject are the host's digests, as for POST (fn-frame-digest is
 ; constrained and unattached).
+(defun fn-owner-group-octet-list (names)
+  ; Group NAMES as octets, so `fn-owner-submit-groups' holds one
+  ; representation whatever path filled it.
+  (declare (xargs :mode :program))
+  (if (consp names)
+      (cons (fn-record-string-octets (car names))
+            (fn-owner-group-octet-list (cdr names)))
+    nil))
+
 (defun fn-owner-transit-decide (id-octets subject-octets state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (f-get-global 'fn-owner state))
@@ -394,9 +423,21 @@
                  ; memberships (generation, msgid, octets, GROUPS, id,
                  ; subject, evidence, charge).  The generation passed here is
                  ; 0 because no element read from this list depends on it.
+                 ;
+                 ; It answers with STRINGS (`fn-record-octets-string', see
+                 ; books/peer-inbound.lisp fn-peer-scope-groups) where the
+                 ; POST path's `fn-inj-decision-groups' answers with octets,
+                 ; and the host reads ONE global for both.  Reading a string
+                 ; as an octet list raised `unexpected ACL2 octet-list
+                 ; result' inside `Owner.drain', which does not catch, so the
+                 ; OWNER PROCESS DIED on the first article a peer transferred
+                 ; -- the second half of the w10/v0-matrix board ASK.  The
+                 ; conversion is ACL2's own and happens here, so the two
+                 ; paths agree on a representation without Python choosing
+                 ; one.
                  (state (f-put-global 'fn-owner-submit-groups
                                       (if (equal (fn-peer-decision-kind d) :want)
-                                          (nth 3 args)
+                                          (fn-owner-group-octet-list (nth 3 args))
                                         nil)
                                       state))
                  (state (f-put-global 'fn-owner-transit-evidence
@@ -634,6 +675,49 @@
   (value (if (fn-cfg-peer-streamingp (fn-owner-feed-record peer-octets state))
              t
            nil)))
+
+; How long the host must wait between dial attempts for this peer: the peer
+; record's own outbound backoff.  Read here so the NUMBER stays ACL2's; the
+; host only measures the interval with the clock it already owns.
+;
+; Without it the host dialled on queue length alone, and the feed machine's
+; backoff does not gate a dial (it gates `fn-feed-selection`, which needs a
+; connection first).  A peer that was down therefore drew a fresh TCP
+; connection about five times a second for as long as one entry stayed
+; queued: 9,479 refused connections in one two-node gate run, all of them in
+; the window where one node was restarting.
+(defun fn-owner-feed-backoff-ms (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((record (fn-owner-feed-record peer-octets state)))
+    (value (if (and record (natp (fn-cfg-peer-backoff record)))
+               (fn-cfg-peer-backoff record)
+             0))))
+
+; Is there an entry this feed could OFFER if it had a connection: a
+; `:queued` one, which is what `fn-feed-selection` picks.  Queue length is
+; not that question -- an entry in flight is in the queue -- and answering
+; the wrong one is what made a peer that lost a reply a denial of service:
+; the entry stayed `:sent`, the host re-dialled on queue length alone every
+; few seconds, each dial took a connection on the peer that the peer did not
+; release, and the peer reached its `--max-connections` bound and began
+; refusing EVERY client at accept.  Measured on two-node gate `a5c6792`:
+; seven tap sessions, `MODE STREAM` and nothing else in each, and node B
+; closing the harness's reader probes for the next 90 s.
+;
+; This does not resolve the in-flight entry -- only a restart does today,
+; and the packet that fixes it is in the lane handoff.  It stops the host
+; opening a socket it has nothing to send on.
+(defun fn-owner-feed-has-queued (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        (value nil)
+      (value (if (fn-feed-head-queued
+                  (fn-feed-queue
+                   (fn-own-feed-find peer (fn-own-feeds
+                                           (f-get-global 'fn-owner state)))))
+                 t
+               nil)))))
 
 (defun fn-owner-feed-queue-length (peer-octets state)
   (declare (xargs :stobjs state :mode :program))

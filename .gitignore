@@ -8,3 +8,8 @@ var/
 *.cert
 *.port
 *.fasl
+# Certification run manifests are archived here by tools/evidence_manifests.py
+# on every run; the ones a committed claim CITES are tracked with `git add -f`
+# (`evidence_manifests.py sync --add`).  Ignoring the rest keeps an exploratory
+# run out of the history and keeps `git status` readable in a lane worktree.
+planning/evidence/manifests/*.json

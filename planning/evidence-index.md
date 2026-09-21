@@ -7,6 +7,19 @@ ordered by their position in the project's own narrative
 ([now.md](now.md)/[assurance-closure.md](assurance-closure.md)); several share
 the calendar date 2026-09-18 because that date compresses many batches.
 
+A record cites the certification run behind it by run id. Those runs write
+`build/acl2/certify-<UTC>-<pid>/`, which is ignored and lives only on the
+machine that ran it, so the **manifest** of every cited run is committed at
+`planning/evidence/manifests/<run-id>.json`: the requested books, the
+per-book verdict, the source and certificate digests, the ACL2 build, and
+the revision, host and times. The **logs** are not committed and die with
+their directory; each manifest's `archived_from` says where its log was.
+`python3 tools/evidence_manifests.py check` is in `make check` and fails on
+a newly cited run with no committed manifest. 177 runs cited before
+2026-09-21 were already gone when the archive was built and are named in
+`planning/evidence/manifests/LOST.txt`; a row there is a claim a reader
+cannot check, and its owner re-runs it or walks it back.
+
 | Evidence record | Source revision | Covers | Does not show |
 | --- | --- | --- | --- |
 | [2026-09-18-integrated.md](../tests/evidence/2026-09-18-integrated.md) | source/dependency digests only (no git revision recorded in this early record) | First integrated batch: acceptance/node initial-state and transition preservation, article-to-pin binding as a string triple, wire/CBOR primitives, the isolated-slot journal experiment, exchange merge, an experimental NNTP reader, independent `nntplib` traffic | Journal execution by the composed node (unexecuted); durable completion/recovery stay abstract inputs; no physical disk or host/milestone claim |

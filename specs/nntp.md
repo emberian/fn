@@ -18,7 +18,7 @@ the conjunction of that bit and `fn-auth-postingp`, so an unauthenticated
 connection greets 201 and gains the label with its 281; before 2026-09-21 the
 greeting read the injection configuration alone and promised 200 where POST
 answered 480. `fn-served-open-greets-200-exactly-when-the-connection-may-post`
-and `fn-served-open-greeting-agrees-with-the-post-label` (PRF-035) are the
+and `fn-served-open-greeting-agrees-with-the-post-label` (PRF-038) are the
 statement of it. The read-only reader profile pins a configuration that
 disallows posting, so it greets with 201 and advertises no POST. IHAVE, NEWNEWS and MODE-READER remain unadvertised. D05's checklist
 is the matrix. See [implementation status](../docs/implementation.md).
@@ -422,7 +422,7 @@ written, `CAPABILITIES` carried no AUTHINFO line, and POST was never gated.
 The measurement, one variable at a time, is
 [the live record](../planning/evidence/auth-live-2026-09-21.md); the repair is
 the `acfg` argument through `fn-served-open-peer`, `fn-own-open-peer` and
-`fn-owner-open-peer`, and PRF-035 is the pair of theorems that are false of
+`fn-owner-open-peer`, and PRF-038 is the pair of theorems that are false of
 the old definition. The operator sets the policy with `fn init
 --auth-required` / `--auth-protected-only`, which is also new: before it there
 was no way to reach `fn-auth-config-requiredp` from the operator surface. `fn principal

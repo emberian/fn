@@ -254,7 +254,13 @@
                       (fn-article-result-article parsed)
                     nil))
          (okp (and article (fn-article-syntax-p article)))
-         (check (if okp (fn-af-proto-article-check article) nil)))
+         ; RFC 5537 section 3.6 step 1 is the RELAYING agent's check, and
+         ; that is what this is. The injecting agent's check of section
+         ; 3.4.1 refuses an article carrying Injection-Info, which every
+         ; injected article carries, so applying it here refused EVERY offer
+         ; of an article any node had posted -- `:refuse :proto-article` on
+         ; the first transfer between two fn nodes, every time.
+         (check (if okp (fn-af-relayed-article-check article) nil)))
     (cond ((not record) (fn-peer-decision :refuse :not-a-peer))
           ((null (fn-cfg-peer-inbound record))
            (fn-peer-decision :refuse :no-inbound))
@@ -312,8 +318,11 @@
                            (true-listp parsed))
                       (fn-article-result-article parsed)
                     nil))
+         ; The relaying agent's check, as in `fn-peer-decide-transfer`: the
+         ; memberships staged for a transit article come from its own
+         ; Newsgroups, and an injected article is not a proto-article.
          (check (if (and article (fn-article-syntax-p article))
-                    (fn-af-proto-article-check article)
+                    (fn-af-relayed-article-check article)
                   nil)))
     (list generation
           (fn-record-octets-string msgid)
