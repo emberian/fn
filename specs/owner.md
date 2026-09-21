@@ -21,7 +21,9 @@ the Python-host evidence below does not certify this adapter.
 `fnn-owner-serialized` holds the service mutex across a semantic operation and
 installs a global stop before releasing it on uncertain persistence or a core
 fault. Later open/read/close mutations check the same stop under that mutex.
-Shutdown wakes connected clients and joins their workers before closing shared
+Shutdown calls socket shutdown before closing the listener: Linux close from
+another thread did not reliably wake its blocking accept. It wakes connected
+clients and joins their workers before closing shared
 journals or the Store. `tests/test_native_owner.py` contains the two-client
 postpublication injection: the ambiguous article may recover, but the second
 client must not obtain a fresh posting grant. That test is not passing evidence
@@ -36,8 +38,9 @@ scenario still needs native adoption. ACL2's connection-local theorem alone
 does not justify continuing after shared-state corruption, and stopping every
 connection does not discharge that survival requirement.
 
-Safe FNFD filename adoption, outbound feed/timers, auth/TLS, control and the
-public operator callback remain integration work. Configured article bounds
+Safe FNFD filename adoption and the public operator run callback are integrated
+in the `67f45a3` frozen batch, whose combined runtime evidence remains pending.
+Outbound feed/timers, auth/TLS and local control remain implementation work. Configured article bounds
 now derive from the injection configuration; frozen service tests must establish
 that ordinary NNTP and control use the same selected bound.
 

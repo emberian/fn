@@ -1025,7 +1025,7 @@
     {
       "id": "PRF-029",
       "title": "The outbound feed offers exactly the peers in scope, and never a loop (K2, outbound half)",
-      "statement": "fn-own-feed-target-is-offerable with fn-own-feed-targets-omit-no-offerable-peer: for a feed table the owner carries, the peers one durably accepted article is offered to are exactly the peers of that table whose own configured record has an outbound half, whose outbound wildmat matches one of the article's own Newsgroups names, whose path-identity the article's Path does not already name, and which is not the peer the article arrived from. fn-own-feed-never-offers-a-loop is the loop-freedom half (RFC 5537 section 3.6) and fn-own-feed-target-is-in-scope the scope half; fn-own-feed-accept-touches-only-its-targets and fn-own-feed-accept-never-enqueues-on-the-origin transport both to the table the owner holds, and fn-own-feed-tick-peer-is-the-feed-tick is the subject rule tying one peer's tick to fn-feed-tick-step on that peer's own feed. Covered scope: one article's octets against one table; the hypothesis is the carried recognizer fn-own-feed-tablep. NOT covered: the statement over fn-own-step (books/owner does not admit on this tree) and fn-feedp preservation, which is cited from books/peer-feed-invariants and not restated.",
+      "statement": "fn-own-feed-target-is-offerable with fn-own-feed-targets-omit-no-offerable-peer: for a feed table the owner carries, the peers one durably accepted article is offered to are exactly the peers of that table whose own configured record has an outbound half, whose outbound wildmat matches one of the article's own Newsgroups names, whose path-identity the article's Path does not already name, and which is not the peer the article arrived from. fn-own-feed-never-offers-a-loop is the loop-freedom half (RFC 5537 section 3.6) and fn-own-feed-target-is-in-scope the scope half; fn-own-feed-accept-touches-only-its-targets and fn-own-feed-accept-never-enqueues-on-the-origin transport both to the table the owner holds, and fn-own-feed-tick-peer-is-the-feed-tick is the subject rule tying one peer's tick to fn-feed-tick-step on that peer's own feed. Covered scope: one article's octets against one table; the hypothesis is the carried recognizer fn-own-feed-tablep. NOT covered: the statement over fn-own-step and fn-feedp preservation, which is cited from books/peer-feed-invariants and not restated.",
       "milestone": "M2",
       "requirements": [
         "REP-001",
@@ -1035,8 +1035,12 @@
       "depends_on": [],
       "assumptions": [],
       "status": "in-progress",
-      "evidence": [],
-      "progress_note": "books/owner-feed and tests/acl2/owner-feed-tests are CERTIFIED as of 2026-09-20, lane w6/peering-feed-4 (laptop ACL2 8.7, evidence build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T212559Z-13370; the persvati closure run-20260920T211802Z-ba78 reached them for the first time). What unblocked them was books/peer-feed-invariants, which now certifies with no open form. books/owner certifies too. The owner-side statement over fn-own-step is still open, and the reason has moved: books/owner-invariants is open at the :open-peer arm of fn-own-step-preserves-relation, not at the feed."
+      "evidence": [
+        "books/owner-feed-port.lisp",
+        "tests/acl2/owner-feed-port-tests.lisp",
+        "host/owner-host.lisp"
+      ],
+      "progress_note": "books/owner-feed and tests/acl2/owner-feed-tests are CERTIFIED as of 2026-09-20, lane w6/peering-feed-4 (laptop ACL2 8.7, evidence build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T212559Z-13370; the persvati closure run-20260920T211802Z-ba78 reached them for the first time). What unblocked them was books/peer-feed-invariants, which now certifies with no open form. books/owner certifies too. The owner-side statement over fn-own-step is still open, and the reason has moved: books/owner-invariants is open at the :open-peer arm of fn-own-step-preserves-relation, not at the feed. The earlier non-admission explanation above is historical; later frozen owner books certified. W22 integrates the actual host tick/reply/loss/restart projections through owner-feed-port, including an all-or-nothing logical restart fold. Its owned closure and combined source gate are tracked separately; no new theorem over fn-own-step or native outbound socket/timer behavior is claimed from this adoption."
     },
     {
       "id": "PRF-030",
