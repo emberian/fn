@@ -210,6 +210,22 @@ wants a capture from the dtn7 interop, and until one is recorded in
 `tests/bp-dtn7/` the canonical-block CRC is exercised only against fn's own
 encoder.
 
+#### 1.4.2 Status, 2026-09-21 (lane w11/bp-node): a foreign vector exists
+
+`tests/bp-dtn7/golden/` exists now and holds two captured wire images with
+their digests, one authored by each side, and the dtn7-authored one is
+inlined in `tests/acl2/bp-bundle-tests.lisp` as `*bpb-dtn7-0-21-0*`. That
+book certifies asserting that `fn-bpb-decode` accepts those 132 octets, that
+the fields it recovers are the ones dtn7-rs 0.21.0 sent, and that
+`fn-bpb-encode` **reproduces them byte for byte** — so the deterministic
+spelling of §4.1 that fn's decoder insists on is the spelling dtn7-rs
+emits. Evidence: `planning/evidence/bp-dtn7-w11-2026-09-21.md`.
+
+**The CRC point above SURVIVES.** The bundle dtn7-rs authored carries no CRC
+at all (CRC type 0), so the canonical-block CRC is still exercised only
+against fn's own encoder. A capture from a peer configured to write CRC32C
+is what closes it.
+
 ### 1.5 The processing machine: `books/bp-node.lisp`
 
 State:
@@ -416,7 +432,14 @@ where `fn-bp-observe-transport` cannot close a work
 requirement in bp-workflow.md). That is the whole force of REP-006 and
 RET-003 at the bundle layer.
 
-#### 1.5.1 Status, 2026-09-20 (lane w9/dtn-2)
+#### 1.5.1 Status, 2026-09-20 (lane w9/dtn-2), amended 2026-09-21 (w11/bp-node)
+
+**2026-09-21: `books/bp-node` and `tests/acl2/bp-node-tests` CERTIFY**, the
+first certificates either has ever had (hbox `run-20260921T021131Z-1eb0`,
+1.083 s and 0.759 s), the DTN image builds with the node in it, and fn has
+exchanged a bundle with dtn7-rs 0.21.0 with **one side authoring each way**.
+Everything below is still true: certifying the two ends did not make them
+the machine, and the absences listed here are unchanged.
 
 `books/bp-node.lisp` exists and is **two ends of this machine, not the
 machine**. What it has: `fn-bpn-send`, `fn-bpn-receive` with the three
@@ -614,9 +637,13 @@ observation, time.md's "re-established from durable state").
 
 RFC 9174 is the CL RFC 9171 §5.4 says MUST be implemented for Internet
 forwarding, and it is what dtn7-rs and ION both speak. fn implements it in
-`books/tcpcl.lisp` (`fn-tcl-*`), with the octet codec, the session machine
-and the transfer machines as ACL2 definitions and the sockets in the native
-host. TLS (§4.4) is a profile slot, §4 below; wave 4 sends `CAN_TLS = 0`.
+`books/tcpcl-octets.lisp`, `books/tcpcl-records.lisp` and
+`books/tcpcl-session.lisp` (`fn-tcl-*`), with the octet codec, the session
+machine and the transfer machines as ACL2 definitions and the sockets in the
+native host.  This design said `books/tcpcl.lisp`, one book, until
+2026-09-21; the cluster landed as those three plus
+`books/tcpcl-invariants.lisp`, and no book of that single name has ever
+existed. TLS (§4.4) is a profile slot, §4 below; wave 4 sends `CAN_TLS = 0`.
 
 ### 2.1 The octet grammar, with bounds before allocation
 
@@ -944,13 +971,23 @@ before it is merged. "Certifies" means the Makefile target list grows and
 `make certify` is green on a clean tree; every theorem named is stated as in
 this document or the packet's spec says why it changed.
 
+**Three names in this table do not resolve, and it is better to say which
+than to leave a reader hunting** (recorded 2026-09-21, lane w11/bp-node,
+answering w11/phantom-cites). `specs/bp-bundle.md` and `specs/bp-node.md`
+were never written and should not be: §1.4 and §1.5 of THIS document are
+the frame and the machine, and their status sections (§1.4.1, §1.4.2,
+§1.5.1) are where those two specs' content lives. `books/bp-node-records`
+in packet 1 is an unbuilt deliverable rather than a misnamed one — packet 1
+has not been started, and the FNBS record family it names does not exist.
+Packet 4's `books/tcpcl.lisp` was repaired to the four books that did land.
+
 | # | Packet | Owner | Deliverables | Acceptance |
 | --- | --- | --- | --- | --- |
 | 0 | Bundle frame | core | `books/bp-bundle`, `-invariants`, `tests/acl2/bp-bundle-tests`; `specs/bp-bundle.md` | `fn-bpb-decode-of-encode`, `fn-bpb-accepted-input-is-canonical`, `fn-bpb-block-numbers-unique`, bounds theorem; vectors: the `bp7` crate's `doc/encoding_samples.md` blocks (with the stale-SSP caveat already recorded) and an ION-emitted bundle captured in lab I3 |
 | 1 | Bundle store records | core + host | FNBS record family in `books/frame`, replay in `books/bp-node-records`, `(:bpn-sequence n)` frontier | `fn-bpn-replay-journal-is-trace`; the five process-death cuts of `tests/test_bp_receive_process_crash.py` re-targeted at FNBS |
 | 2 | Fragment lemmas | core | `fn-bpf-cut-covers`, `fn-bpf-reassemble-ok-agrees-with-every-fragment` uncommented and proved | both certify; T4 stated and certified against them |
 | 3 | Node machine | core | `books/bp-node`, `-invariants`, teeth; `specs/bp-node.md` | T1, T2, T3, T5, T6 certified; each with a concrete tooth (a fabricated `validated` bundle with a bad CRC is not `fn-bpn-statep`; a `:clock` event with `:uncertain` deletes nothing; an admin-record bundle produces no `:deliver`) |
-| 4 | TCPCL books | core | `books/tcpcl`, `-invariants`, teeth; `specs/tcpcl.md` | codec round trip and canonicality; C1–C4 certified; the partition tooth is the chunk-size sweep as `assert-event`s |
+| 4 | TCPCL books | core | `books/tcpcl-octets`, `-records`, `-session`, `-invariants`, teeth; `specs/tcpcl.md` | codec round trip and canonicality; C1–C4 certified; the partition tooth is the chunk-size sweep as `assert-event`s |
 | 5 | Native host | host | `host/tcpcl-host.lisp`, `host/bp-node-host.lisp`, `host/native/tcpcl.lisp`; `tools/fn_native.py` grows `serve-tcpcl` and `connect-tcpcl`; lab I1 | I1 evidence record; fn–fn exchange with the receipt returning over TCPCL; SIGKILL at every message boundary recovers per T2/T6; **deletes** `tools/bpa_dtn7.py`, `tools/bpa_payload_extract.rs`, `tests/bp-dtn7/build_payload_extractor.sh`, `lab_bpa.py`, `bp_fn_ingress_driver.py`, `fn_sender_lab.py`, `run_fn_exchange_lab.py`, `run_fn_ingress_lab.sh`, `run_two_node.sh`, the FNBI inbox code in `workflow_journal.py`, and `tests/test_bp_receive*.py` (replaced by native-host tests) |
 | 6 | Workflow and scheduler alignment | core (sender-proofs) + scheduler | `fn-bp-transport-statusp` becomes `:intent :bundle-created :attempted :forwarded :delivered :expired :deleted :lost :no-contact :restart :unknown` (rank preserved; the three BPA-era statuses removed); `fn-sched-open-event`/`close-event` drive CL sessions; `fn-bpi-context-bundle-id` becomes an `fn-bpp-bundle-id` | `bp-workflow*`, `bp-workflow-transport-invariants`, `scheduler*`, `bp-ingress*` re-certify; `fn-bp-observe-transport-never-moves-status-backward` unchanged in statement |
 | 7 | Interop labs | lab | I2 (dtn7-rs peer), I3 (ION peer), I4 (relay), I5 (hbox–persvati); reactive fragmentation on `No Resources` | one evidence record per lab with the feature matrix; no row claimed without its trace |

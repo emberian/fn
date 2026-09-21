@@ -105,6 +105,26 @@ keep that visible. Signature verification did not move: `fn-sig-verify` and
 `fn-anchor-sig-verify` stay constrained, Ed25519 stays a host facility in
 `tools/crypto_host.py`, and nothing here is evidence about a signature.
 
+**SHA-512 has not left the boundary, and the freshness anchor names what it
+still trusts.** There is no SHA-512 anywhere in `books/`: `books/sha256.lisp`
+is the only hash in logic and Roughtime's Merkle fold is SHA-512. So
+`fn-anchor-leaf-digest` (`books/anchor.lisp`) is constrained to "64 octets"
+and nothing else, no book attaches a realiser to it, and
+`tools/roughtime.py:124` (`_leaf`, SHA-512 of `0x00 || nonce`) is the trusted
+facility that decides whether a Roughtime response covers this node's own
+nonce. Its assumption, named: **the host's `_leaf` is
+`fn-anchor-leaf-digest`** — the same shape of correspondence as "the host's
+Ed25519 is `fn-anchor-sig-verify`", and equally unproved. It is what lets
+`Anchor.one_nonce` stand for `fn-anchor-one-nonce-p` at the bridge.
+`tools/roughtime.py:128,132` (`_node`, `merkle_root`, and with them the
+sibling order, the index bit order, the depth bound and the
+`INDX`-fits-`PATH` check) are unowned too, but since 2026-09-20 nothing fn
+accepts depends on them: a response with a non-empty `PATH` is reported
+`:uncertain :unmodelled-tree` and never becomes a durable anchor, so the fold
+is reached only where it returns `_leaf(nonce)` and folds nothing. The cost —
+fn cannot use a batched Roughtime response, and int08h batches — is D22 and
+[the anchor specification](../specs/anchor.md).
+
 **TLS is inside that boundary and the digest is not.** RFC 4642 STARTTLS is
 served by `books/nntp-auth.lisp`, which sees plaintext octets on both sides of
 the handshake: it answers 382 and emits a `(:starttls)` effect, and

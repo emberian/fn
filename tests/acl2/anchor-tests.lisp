@@ -56,7 +56,7 @@
 (defconst *anchor-live*
   (fn-anchor *anchor-key* *anchor-delegate* *anchor-mint* *anchor-maxt*
              *anchor-dele-sig* *anchor-midpoint* *anchor-radius*
-             *anchor-nonce* *anchor-signature*))
+             *anchor-nonce* *anchor-signature* *anchor-root*))
 
 (assert-event (fn-anchor-p *anchor-live*))
 
@@ -87,12 +87,44 @@
 (assert-event
  (not (fn-anchor-p (fn-anchor (cdr *anchor-key*) *anchor-delegate* *anchor-mint*
                               *anchor-maxt* *anchor-dele-sig* *anchor-midpoint*
-                              *anchor-radius* *anchor-nonce* *anchor-signature*))))
+                              *anchor-radius* *anchor-nonce* *anchor-signature*
+                              *anchor-root*))))
 (assert-event
  (not (fn-anchor-p (fn-anchor *anchor-key* *anchor-delegate* *anchor-mint*
                               *anchor-maxt* *anchor-dele-sig* *anchor-midpoint*
                               *anchor-radius* *anchor-nonce*
-                              (cdr *anchor-signature*)))))
+                              (cdr *anchor-signature*) *anchor-root*))))
+;; And a 63-octet ROOT is not a root: the tenth field carries the same width
+;; discipline as the other nine.
+(assert-event
+ (not (fn-anchor-p (fn-anchor *anchor-key* *anchor-delegate* *anchor-mint*
+                              *anchor-maxt* *anchor-dele-sig* *anchor-midpoint*
+                              *anchor-radius* *anchor-nonce* *anchor-signature*
+                              (cdr *anchor-root*)))))
+
+;; The root is a FIELD, so it is what the reconstruction reads, and the
+;; reconstruction of the captured response is the captured SREP octets.
+(assert-event (equal (fn-anchor-root *anchor-live*) *anchor-root*))
+(assert-event (equal (fn-anchor-srep-octets *anchor-live*) *anchor-srep*))
+(assert-event
+ (equal (fn-anchor-signed-octets *anchor-live*)
+        (append *fn-anchor-response-context* *anchor-srep*)))
+
+;; A BATCHED response: the same signed message with a root that is not the
+;; leaf digest of this node's nonce.  Nothing here is malformed -- it is a
+;; well-formed anchor, and it is the shape `books/anchor.lisp' cannot
+;; describe, so `fn-anchor-verifiedp' must refuse it
+;; (tests/acl2/anchor-teeth-tests.lisp, where the seams have realisers).
+(defconst *anchor-batched-root* (cons 0 (cdr *anchor-root*)))
+(defconst *anchor-batched*
+  (fn-anchor *anchor-key* *anchor-delegate* *anchor-mint* *anchor-maxt*
+             *anchor-dele-sig* *anchor-midpoint* *anchor-radius*
+             *anchor-nonce* *anchor-signature* *anchor-batched-root*))
+(assert-event (fn-anchor-p *anchor-batched*))
+(assert-event (not (equal (fn-anchor-root *anchor-batched*) *anchor-root*)))
+(assert-event
+ (not (equal (fn-anchor-signed-octets *anchor-batched*)
+             (fn-anchor-signed-octets *anchor-live*))))
 
 ;; -----------------------------------------------------------------------------
 ;; The interval order, on real numbers from the captured response
@@ -105,11 +137,38 @@
   (declare (xargs :guard (fn-anchor-timep midpoint)))
   (fn-anchor *anchor-key* *anchor-delegate* *anchor-mint* *anchor-maxt*
              *anchor-dele-sig* midpoint *anchor-radius* *anchor-nonce*
-             *anchor-signature*))
+             *anchor-signature* *anchor-root*))
 
 (defconst *anchor-older* (anchor-at (- *anchor-midpoint* 30000000)))
 (defconst *anchor-overlapping* (anchor-at (- *anchor-midpoint* 5000000)))
 (defconst *anchor-newer* (anchor-at (+ *anchor-midpoint* 30000000)))
+
+;; `*anchor-newer*' with a batched ROOT: strictly newer than the image's
+;; anchor, so it would be accepted on freshness alone, and refused because
+;; the model cannot say what its root covers.
+(defconst *anchor-batched-newer*
+  (fn-anchor *anchor-key* *anchor-delegate* *anchor-mint* *anchor-maxt*
+             *anchor-dele-sig* (+ *anchor-midpoint* 30000000) *anchor-radius*
+             *anchor-nonce* *anchor-signature* *anchor-batched-root*))
+
+;; A response carrying somebody else's nonce under this node's signed root.
+(defconst *anchor-other-nonce* (cons 0 (cdr *anchor-nonce*)))
+(defconst *anchor-foreign-nonce*
+  (fn-anchor *anchor-key* *anchor-delegate* *anchor-mint* *anchor-maxt*
+             *anchor-dele-sig* *anchor-midpoint* *anchor-radius*
+             *anchor-other-nonce* *anchor-signature* *anchor-root*))
+
+;; MINT one microsecond after MIDP: every signature in it is good and the
+;; delegation did not cover the moment it claims.
+(defconst *anchor-out-of-window*
+  (fn-anchor *anchor-key* *anchor-delegate* (+ *anchor-midpoint* 1)
+             *anchor-maxt* *anchor-dele-sig* *anchor-midpoint* *anchor-radius*
+             *anchor-nonce* *anchor-signature* *anchor-root*))
+
+(assert-event (fn-anchor-p *anchor-batched-newer*))
+(assert-event (fn-anchor-p *anchor-foreign-nonce*))
+(assert-event (fn-anchor-p *anchor-out-of-window*))
+(assert-event (not (equal *anchor-other-nonce* *anchor-nonce*)))
 
 (assert-event (fn-anchor-newerp *anchor-live* *anchor-older*))
 (assert-event (not (fn-anchor-newerp *anchor-older* *anchor-live*)))
@@ -132,42 +191,54 @@
 
 (assert-event
  (equal (fn-anchor-status
-         (fn-anchor-node-accept-observed *anchor-node-held* *anchor-live* t))
+         (fn-anchor-node-accept-observed *anchor-node-held* *anchor-live* t t))
         :accepted))
 (assert-event
  (equal (fn-anchor-node-latest
          (fn-anchor-payload
-          (fn-anchor-node-accept-observed *anchor-node-held* *anchor-live* t)))
+          (fn-anchor-node-accept-observed *anchor-node-held* *anchor-live* t t)))
         *anchor-live*))
 
 ;; Replaying the older response at a node that holds the live one is stale.
 (assert-event
  (equal (fn-anchor-reason
-         (fn-anchor-node-accept-observed *anchor-node-current* *anchor-older* t))
+         (fn-anchor-node-accept-observed *anchor-node-current* *anchor-older* t t))
         :stale))
 ;; An overlapping reading is refused too: not knowing which came first is not
 ;; permission to advance.
 (assert-event
  (equal (fn-anchor-reason
          (fn-anchor-node-accept-observed *anchor-node-current*
-                                         *anchor-overlapping* t))
+                                         *anchor-overlapping* t t))
         :stale))
 ;; A failed Ed25519 check is a refusal with its own reason, never an accept.
 (assert-event
  (equal (fn-anchor-reason
-         (fn-anchor-node-accept-observed *anchor-node-held* *anchor-live* nil))
+         (fn-anchor-node-accept-observed *anchor-node-held* *anchor-live* nil t))
         :unverified))
+;; A response whose tree this model cannot fold is UNCERTAIN, not refused:
+;; every signature in it is good and fn cannot tell whether it covers this
+;; node's nonce.  `tests/vectors/roughtime-int08h-2026-09-19-later2.json' is
+;; a real capture of exactly this shape.
+(assert-event
+ (equal (fn-anchor-reason
+         (fn-anchor-node-accept-observed *anchor-node-held* *anchor-live* t nil))
+        :unmodelled-tree))
+(assert-event
+ (equal (fn-anchor-status
+         (fn-anchor-node-accept-observed *anchor-node-held* *anchor-live* t nil))
+        :uncertain))
 ;; A server this node does not pin is refused, verdict or no verdict.
 (assert-event
  (equal (fn-anchor-reason
          (fn-anchor-node-accept-observed
           (fn-anchor-node (list (cons 200 (cdr *anchor-key*))) *anchor-older* 7)
-          *anchor-live* t))
+          *anchor-live* t t))
         :unpinned))
 ;; No anchor at all is uncertain, which is neither of the other two.
 (assert-event
  (equal (fn-anchor-status
-         (fn-anchor-node-accept-observed *anchor-node-held* nil t))
+         (fn-anchor-node-accept-observed *anchor-node-held* nil t t))
         :uncertain))
 
 ;; -----------------------------------------------------------------------------
@@ -179,12 +250,12 @@
 (assert-event
  (equal (fn-anchor-reason
          (fn-anchor-restore-observed *anchor-node-fresh* *anchor-image-old*
-                                     *anchor-older* t))
+                                     *anchor-older* t t))
         :possibly-stale))
 (assert-event
  (equal (fn-anchor-status
          (fn-anchor-restore-observed *anchor-node-fresh* *anchor-image-old*
-                                     *anchor-older* t))
+                                     *anchor-older* t t))
         :refused))
 
 ;; The same image under a genuinely newer anchor is accepted, and it opens the
@@ -192,25 +263,25 @@
 (assert-event
  (equal (fn-anchor-status
          (fn-anchor-restore-observed *anchor-node-fresh* *anchor-image-old*
-                                     *anchor-newer* t))
+                                     *anchor-newer* t t))
         :accepted))
 (assert-event
  (equal (fn-anchor-node-incarnation
          (fn-anchor-payload
           (fn-anchor-restore-observed *anchor-node-fresh* *anchor-image-old*
-                                      *anchor-newer* t)))
+                                      *anchor-newer* t t)))
         8))
 
 ;; An image that refers to no anchor has nothing to be stale against.
 (assert-event
  (equal (fn-anchor-status
          (fn-anchor-restore-observed *anchor-node-fresh*
-                                     *anchor-image-unanchored* *anchor-older* t))
+                                     *anchor-image-unanchored* *anchor-older* t t))
         :accepted))
 ;; With no anchor obtainable the restore is uncertain, not refused.
 (assert-event
  (equal (fn-anchor-status
-         (fn-anchor-restore-observed *anchor-node-fresh* *anchor-image-old* nil t))
+         (fn-anchor-restore-observed *anchor-node-fresh* *anchor-image-old* nil t t))
         :uncertain))
 
 ;; -----------------------------------------------------------------------------
@@ -243,7 +314,7 @@
 (defconst *anchor-values*
   (list *anchor-key* *anchor-delegate* *anchor-mint* *anchor-maxt*
         *anchor-dele-sig* *anchor-midpoint* *anchor-radius* *anchor-nonce*
-        *anchor-signature*))
+        *anchor-signature* *anchor-root*))
 (defconst *anchor-digest*
   '(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
     16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31))

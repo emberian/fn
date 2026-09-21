@@ -311,9 +311,10 @@
 ;
 ; The retry bound is NOT a slot of the peer record (books/peer-config.lisp's
 ; outbound half is groups, streaming, max-queue, backoff).  It is a local
-; policy constant, the same default tools/run_feed.py used; making it
-; configurable is a peer-record change, which is an open item and not a host
-; argument.
+; policy constant, the same default tools/run_feed.py used before that file
+; was retired on 2026-09-21 (w11/harness-health, once the owner drove the
+; feed); the value is kept, the driver is not.  Making it configurable is a
+; peer-record change, which is an open item and not a host argument.
 
 (defconst *fn-own-feed-horizon* *fn-clock-max*)
 (defconst *fn-own-feed-retry-bound* 3)
@@ -1172,7 +1173,9 @@
 ; The reply reader (RFC 3977 sec. 3.2), in ACL2
 ;
 ; tools/run_feed.py split the three-digit status in Python and the w6 handoff
-; recorded that as an open twin.  It is here now: the host hands the owner one
+; recorded that as an open twin.  That file was retired on 2026-09-21
+; (w11/harness-health) precisely because this reader replaced it, so the
+; citation is history and not a pointer.  It is here now: the host hands the owner one
 ; reply LINE and ACL2 reads the code.  The Message-ID a CHECK or TAKETHIS
 ; reply echoes is not read back from the wire -- at most one entry is in
 ; flight per peer (`fn-feedp'), so the in-flight Message-ID the owner already

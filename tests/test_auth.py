@@ -356,6 +356,278 @@ class AuthTests(unittest.TestCase):
             self.assertEqual(name, "fn.letters")
 
 
+class Service:
+    """The service an OPERATOR runs: `bin/fn run` over a configuration file.
+
+    Not `tools/run_owner.py`.  The defect this class exists to catch lived
+    in exactly the gap between them plus the peer table, and every test
+    above starts the owner directly with an explicit `--auth-file`, so none
+    of them could reach it.
+    """
+
+    def __init__(self, config, control):
+        self.config = config
+        self.control = control
+        self.proc = None
+        self.port = None
+
+    def start(self):
+        argv = [sys.executable, "bin/fn", "--config", str(self.config), "run",
+                "--control", str(self.control), "--max-connections", "4"]
+        self.proc = subprocess.Popen(argv, cwd=ROOT, stdout=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT)
+        deadline = time.monotonic() + 900
+        pending = b""
+        fd = self.proc.stdout.fileno()
+        while time.monotonic() < deadline:
+            ready, _, _ = select.select([fd], [], [], 0.2)
+            if ready:
+                chunk = os.read(fd, 4096)
+                if not chunk:
+                    break
+                pending += chunk
+                while b"\n" in pending:
+                    line, pending = pending.split(b"\n", 1)
+                    if line.startswith(b"LISTENING "):
+                        self.port = int(line.split()[1])
+                        return self
+            if self.proc.poll() is not None:
+                break
+        self.stop()
+        raise RuntimeError("`fn run` did not reach LISTENING")
+
+    def stop(self):
+        if self.proc is None:
+            return
+        if self.proc.poll() is None:
+            self.proc.terminate()
+        try:
+            self.proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+            self.proc.wait(timeout=5)
+        try:
+            self.proc.stdout.close()
+        except (OSError, ValueError):
+            pass
+        self.proc = None
+
+
+class ServedCredentialTests(unittest.TestCase):
+    """A login on a node started the ordinary way, with a peer record.
+
+    This is the boundary test that was missing, and the three things it adds
+    to `AuthTests` are exactly the three that hid the defect for a wave:
+
+    1.  the node is started by `bin/fn run` over an `fn.toml`, so the
+        credential file reaches ACL2 the way an operator's does and not
+        through an explicit `--auth-file` this file chose;
+    2.  the store holds a PEER RECORD whose source address is 127.0.0.1, so
+        the owner resolves this very client to a peer at accept
+        (host/owner-host.lisp fn-owner-peer-name-for matches the address and
+        nothing else) and opens it with `fn-own-open-peer`.  With the peer
+        connection pinned to `(fn-auth-open-config)`, `AUTHINFO PASS`
+        answered 481 with the secret just written, CAPABILITIES carried no
+        AUTHINFO line, and POST was never gated;
+    3.  the credential is written by the CLI IN THIS TEST, so what is proved
+        is the round trip and not agreement with a fixture.
+
+    No secret in this file is a credential of anything: the store is a fresh
+    temporary directory that is removed when the class ends.
+    """
+
+    POSTER, POSTER_SECRET = "poster", "correct-horse-battery"
+    READER, READER_SECRET = "lurker", "read-only-please"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temp = tempfile.TemporaryDirectory(prefix="fn-served-")
+        cls.root = Path(cls.temp.name)
+        cls.store = cls.root / "store"
+        cls.config = cls.root / "fn.toml"
+        cls.control = cls.root / "c.sock"
+        # The ordinary operator path, policy and all: nothing here writes
+        # TOML by hand.
+        run([sys.executable, "bin/fn", "--config", str(cls.config), "init",
+             "--store", str(cls.store), "--group", "fn.letters",
+             "--listen", "127.0.0.1:0", "--auth-required"])
+        run([sys.executable, "bin/fn", "--config", str(cls.config), "principal",
+             "set-password", cls.POSTER, "--password", cls.POSTER_SECRET,
+             "--posting"])
+        run([sys.executable, "bin/fn", "--config", str(cls.config), "principal",
+             "set-password", cls.READER, "--password", cls.READER_SECRET,
+             "--no-posting"])
+        # The peer record that makes this client a PEER connection.  Its
+        # fields are the ones tools/v0_matrix.py writes, including the
+        # inbound bound the CLI default cannot satisfy (w11/one-owner).
+        run([sys.executable, "tools/run_store.py", "--store", str(cls.store),
+             "peer", "add", "other", "--path-identity", "other.invalid",
+             "--nntp", "127.0.0.1:9", "--inbound-groups", "fn.*",
+             "--inbound-max-octets", "32768", "--outbound-groups", "fn.*",
+             "--source-address", "127.0.0.1"])
+        cls.service = Service(cls.config, cls.control).start()
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            cls.service.stop()
+        finally:
+            cls.temp.cleanup()
+
+    def client(self):
+        client = Client(self.service.port)
+        self.addCleanup(client.close)
+        return client
+
+    def capabilities(self, client):
+        self.assertTrue(client.command("CAPABILITIES").startswith(b"101 "))
+        return [line.strip() for line in client.block()]
+
+    def test_the_configuration_names_the_policy(self):
+        # `fn init --auth-required` wrote it; nothing else in this class did.
+        text = self.config.read_text(encoding="utf-8")
+        self.assertIn("[auth]", text)
+        self.assertIn("required = true", text)
+
+    def test_principal_list_shows_the_login_just_set(self):
+        result = run([sys.executable, "bin/fn", "--config", str(self.config),
+                      "principal", "list"])
+        listing = result.stdout.decode("utf-8")
+        self.assertIn(self.POSTER, listing)
+        self.assertIn("posting=true", listing)
+        self.assertIn("posting=false", listing)
+        # A listing is not a place to put a verifier.
+        self.assertNotIn("salt", listing)
+        self.assertNotIn(self.POSTER_SECRET, listing)
+
+    def test_authinfo_is_advertised_on_a_peer_resolved_connection(self):
+        # RFC 4643 section 2.1: the argument list is what the server will
+        # accept NOW, and it will accept USER/PASS.
+        self.assertIn(b"AUTHINFO USER", self.capabilities(self.client()))
+
+    def test_login_with_the_credential_the_cli_just_wrote(self):
+        client = self.client()
+        self.assertTrue(client.command("AUTHINFO USER " + self.POSTER)
+                        .startswith(b"381 "))
+        self.assertTrue(client.command("AUTHINFO PASS " + self.POSTER_SECRET)
+                        .startswith(b"281 "))
+        # And it is withdrawn once it has been used (RFC 4643 section 2.1).
+        self.assertNotIn(b"AUTHINFO USER", self.capabilities(client))
+
+    def test_a_wrong_password_is_481(self):
+        client = self.client()
+        client.command("AUTHINFO USER " + self.POSTER)
+        self.assertTrue(client.command("AUTHINFO PASS not-the-secret")
+                        .startswith(b"481 "))
+
+    def test_post_is_gated_by_the_configured_policy(self):
+        client = self.client()
+        self.assertTrue(client.command("POST").startswith(b"480 "))
+        client.command("AUTHINFO USER " + self.POSTER)
+        self.assertTrue(client.command("AUTHINFO PASS " + self.POSTER_SECRET)
+                        .startswith(b"281 "))
+        self.assertTrue(client.command("POST").startswith(b"340 "))
+        # Leave the wire in command mode for the next connection's sake.
+        client.send(".")
+        client.line()
+
+    def test_post_is_gated_by_the_credentials_posting_flag(self):
+        client = self.client()
+        client.command("AUTHINFO USER " + self.READER)
+        self.assertTrue(client.command("AUTHINFO PASS " + self.READER_SECRET)
+                        .startswith(b"281 "))
+        # Authenticated, past the 480 gate, and still refused: the principal
+        # was enrolled without the flag (RFC 3977 section 6.3.1.1).
+        self.assertTrue(client.command("POST").startswith(b"440 "))
+        # The capability block does not promise what it would refuse.
+        self.assertNotIn(b"POST", self.capabilities(client))
+
+    def test_a_read_still_needs_the_login_under_this_policy(self):
+        # The gate is the configuration's, not POST's alone: GROUP is in
+        # fn-auth-restricted-keywordp too.
+        client = self.client()
+        self.assertTrue(client.command("GROUP fn.letters").startswith(b"480 "))
+        client.command("AUTHINFO USER " + self.READER)
+        client.command("AUTHINFO PASS " + self.READER_SECRET)
+        self.assertTrue(client.command("GROUP fn.letters").startswith(b"211 "))
+
+
+@unittest.skipUnless(openssl_available(), "openssl is not on PATH")
+class ServedTlsTests(unittest.TestCase):
+    """RFC 4642 on a node started the ordinary way, with a peer record.
+
+    The STARTTLS label is `fn-auth-config-tls-availablep`'s, and that field
+    travelled in the same configuration the credential did: a connection the
+    owner resolved to a peer record was opened with no certificate recorded,
+    so it was answered 580 and offered no label even where the operator had
+    configured one.  This is that, live, through `bin/fn run`.
+    """
+
+    LOGIN, SECRET = "poster", "correct-horse-battery"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temp = tempfile.TemporaryDirectory(prefix="fn-servedtls-")
+        cls.root = Path(cls.temp.name)
+        cls.store = cls.root / "store"
+        cls.config = cls.root / "fn.toml"
+        cert, key = certificate(cls.root)
+        run([sys.executable, "bin/fn", "--config", str(cls.config), "init",
+             "--store", str(cls.store), "--group", "fn.letters",
+             "--listen", "127.0.0.1:0", "--auth-required",
+             "--auth-protected-only", "--tls-cert", str(cert),
+             "--tls-key", str(key)])
+        run([sys.executable, "bin/fn", "--config", str(cls.config), "principal",
+             "set-password", cls.LOGIN, "--password", cls.SECRET, "--posting"])
+        run([sys.executable, "tools/run_store.py", "--store", str(cls.store),
+             "peer", "add", "other", "--path-identity", "other.invalid",
+             "--nntp", "127.0.0.1:9", "--inbound-groups", "fn.*",
+             "--inbound-max-octets", "32768", "--outbound-groups", "fn.*",
+             "--source-address", "127.0.0.1"])
+        cls.service = Service(cls.config, cls.root / "c.sock").start()
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            cls.service.stop()
+        finally:
+            cls.temp.cleanup()
+
+    def labels(self, client):
+        self.assertTrue(client.command("CAPABILITIES").startswith(b"101 "))
+        return [line.strip() for line in client.block()]
+
+    def test_starttls_is_advertised_and_authinfo_is_not_yet(self):
+        client = Client(self.service.port)
+        self.addCleanup(client.close)
+        labels = self.labels(client)
+        # RFC 4642 section 2.1: the certificate is configured, so the label
+        # is there and STARTTLS is not 580.
+        self.assertIn(b"STARTTLS", labels)
+        # RFC 4643 section 2.1 with protected_only: the server would answer
+        # 483, so it does not offer USER/PASS yet.
+        self.assertNotIn(b"AUTHINFO USER", labels)
+        self.assertTrue(client.command("AUTHINFO USER " + self.LOGIN)
+                        .startswith(b"483 "))
+
+    def test_starttls_then_the_login_and_the_label_is_gone(self):
+        client = Client(self.service.port)
+        self.addCleanup(client.close)
+        self.assertTrue(client.starttls().startswith(b"382 "))
+        labels = self.labels(client)
+        # RFC 4642 section 2.1: MUST NOT be advertised once the layer is up.
+        self.assertNotIn(b"STARTTLS", labels)
+        self.assertIn(b"AUTHINFO USER", labels)
+        self.assertTrue(client.command("AUTHINFO USER " + self.LOGIN)
+                        .startswith(b"381 "))
+        self.assertTrue(client.command("AUTHINFO PASS " + self.SECRET)
+                        .startswith(b"281 "))
+        self.assertTrue(client.command("STARTTLS").startswith(b"502 "))
+        self.assertTrue(client.command("POST").startswith(b"340 "))
+        client.send(".")
+        client.line()
+
+
 def run(argv):
     result = subprocess.run(argv, cwd=ROOT, capture_output=True, timeout=900)
     if result.returncode != 0:

@@ -126,7 +126,11 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-sn-make groups capacity
               (fn-sf-make :replaying frontier nil records nil nil nil 0)
-              (fn-node-initial-state groups capacity)))
+              (fn-node-initial-state groups capacity)
+              ; A seed is an image fact, so it carries the empty verification
+              ; context and the empty index (D21); fn-sn-recover recomputes
+              ; the index over the replayed store.
+              nil (fn-stx-index-empty)))
 
 (verify-guards fn-sn-observed-seed)
 
@@ -342,6 +346,48 @@
   :hints (("Goal"
            :in-theory (e/d (fn-sn-open-okp )
                             (fn-sn-open-observed fn-sn-statep)))))
+
+; -----------------------------------------------------------------------------
+; The carried statement index at open (D21)
+;
+; host/store-node-host.lisp line 79 installs (fn-sn-open-state opened) into
+; the 'fn-store-sn global, so without these two the claim that fn-sn-indexedp
+; holds of every state the host installs would have a hole at open -- the one
+; place where the node does not come from a step of this machine.
+
+; The seed's node is fn-node-initial-state, whose store is empty, and the
+; index of an empty store is the empty index under EVERY keyring, so the
+; seed's empty keyring costs nothing here.
+(defthm fn-sn-observed-seed-is-indexed
+  (implies (and (fn-sn-observed-configurationp groups capacity)
+                (fn-sn-observed-historyp frontier records))
+           (fn-sn-indexedp (fn-sn-observed-seed groups capacity frontier records)))
+  :hints (("Goal"
+           :use ((:instance fn-sn-observed-seed-is-state))
+           :in-theory (e/d (fn-sn-indexedp fn-sn-observed-seed
+                            fn-stx-index-invariantp)
+                           (fn-sn-statep fn-node-initial-state
+                            fn-stx-index-of-store fn-stx-store
+                            fn-sn-observed-seed-is-state)))))
+
+; The opened state is the seed recovered, so its index is the recomputation
+; over the replayed store.  -by-recomputation, like fn-sn-recover's own row.
+(defthm fn-sn-open-observed-is-indexed-by-recomputation
+  (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
+           (fn-sn-indexedp
+            (fn-sn-open-state
+             (fn-sn-open-observed groups capacity frontier records))))
+  :hints (("Goal"
+           :use ((:instance fn-sn-recover-preserves-indexedp-by-recomputation
+                            (s (fn-sn-observed-seed groups capacity frontier
+                                                    records)))
+                 (:instance fn-sn-observed-seed-is-indexed))
+           :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp
+                            fn-sn-observed-historyp fn-record-uint32p)
+                           (fn-sn-indexedp fn-sn-recover fn-sn-observed-seed
+                            fn-sn-statep fn-sn-observed-configurationp
+                            fn-sn-observed-seed-is-indexed
+                            fn-sn-recover-preserves-indexedp-by-recomputation)))))
 
 (defthm fn-sn-open-observed-success-remains-recovering
   (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
@@ -658,6 +704,46 @@
                              fn-sf-admissible-image-facts
                              fn-sn-open-observed-succeeds-on-recoverable-image
                              fn-sn-open-observed-success-exact-history)))))
+
+; The PLATFORM twin of the reopen guarantee (D14-b, D14-c).  The host's reopen
+; entry succeeds on EVERY image the platform may leave, including both
+; rollbacks, and not only on the images a consumer may rely on.  This is the
+; half of specs/crash-model-v2.md K4 that the wider predicate makes new.
+;
+; The acknowledged-record half is deliberately NOT restated over the wider
+; predicate: on both rollback arms the arm's own (null (fn-sf-successes s))
+; and this theorem's member-equal hypothesis are contradictory, so the
+; restatement would be fn-sn-acknowledged-record-survives-observed-reopen
+; with two vacuous arms, which is not a theorem worth citing.  What carries
+; the acknowledged record across the wider predicate is
+; fn-sf-recovery-admissible-image-facts (books/store-files-invariants.lisp),
+; which says it over every arm without a vacuous one.
+(defthm fn-sn-recovery-admissible-image-reopens
+  (implies (and (fn-snt-relation s)
+                (fn-sf-recovery-crash-imagep (fn-sn-files s) frontier records))
+           (fn-sn-open-okp
+            (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
+                                 frontier records)))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-observed-configuration
+                 fn-snt-recovery-admissible-crash-image-is-recoverable
+                 (:instance fn-sf-recovery-admissible-image-facts
+                            (s (fn-sn-files s)))
+                 (:instance fn-sn-open-observed-succeeds-on-recoverable-image
+                            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))))
+           :in-theory (e/d (fn-sn-observed-historyp)
+                           (fn-snt-relation fn-sn-statep fn-sf-statep fn-node-statep
+                            fn-sn-observed-configurationp
+                            fn-snt-relation-implies-observed-configuration
+                            fn-snt-relation-implies-structural-state
+                            fn-sf-crash-imagep fn-sf-recovery-crash-imagep
+                            fn-sn-open-observed fn-sn-open-okp
+                            fn-sf-history-recoverablep
+                            fn-sf-replay-node fn-sf-record-has-pairp
+                            fn-sf-record-listp
+                            fn-snt-recovery-admissible-crash-image-is-recoverable
+                            fn-sf-recovery-admissible-image-facts
+                            fn-sn-open-observed-succeeds-on-recoverable-image)))))
 
 ; -----------------------------------------------------------------------------
 ; The trace theorems re-rooted at the process entry.

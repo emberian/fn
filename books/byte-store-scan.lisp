@@ -478,12 +478,47 @@
 ; fn-sf-recovery-admissible-image-facts proves it at the kernel.
 (defun fn-bs-replay-matches-scan (bs ks)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((scan (fn-bs-scan-store bs)))
+  (let ((scan (fn-bs-scan-store bs))
+        (root-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+        (txn-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
     (and (fn-bs-pending-shape-okp bs)
          (fn-bs-scan-okp scan)
          (equal (fn-sf-frontier ks) (fn-bs-scan-frontier scan))
          (equal (fn-sf-records ks) (fn-bs-scan-records scan))
-         (equal (fn-sf-successes ks) nil))))
+         (equal (fn-sf-successes ks) nil)
+         ; K2f, the frontier half of the window (specs/crash-model-v2.md
+         ; s3.3).  The window is entered with a pending :root rename as well
+         ; as with a pending :transactions link -- die at frontier-replaced
+         ; (run_store.py:1305), reopen, and _load_frontier reads the VIEW --
+         ; and :root is drained only by the FOURTH recovery barrier,
+         ; fsync_dir(self.root) at :1216.  So while that operation is pending
+         ; the DURABLE frontier is the scanned one minus one, because
+         ; advance_frontier writes old+1 (run_store.py:1281), and a crash
+         ; here rolls the kernel's frontier back to it.
+         ;
+         ; (null txn-ops) is the EXCLUSIVITY the phase used to supply.  In the
+         ; publish window fn-bs-pending-matches-phase gets it for free:
+         ; fn-sf-frontier-new-visiblep and fn-sf-record-present-visiblep are
+         ; disjoint phase sets, so at most one branch can hold.  In the
+         ; recovery window the phase says nothing, so the relation says it,
+         ; and it is true of the host for the same reason -- advance_frontier
+         ; fences :root and publish fences :transactions before either
+         ; returns, and neither runs before recovery completes, so a dead
+         ; process leaves at most one un-fenced authority entry behind.
+         ;
+         ; fn-sf-frontier-rollback-visiblep is named rather than spelled out:
+         ; it is exactly the arm of fn-sf-recovery-crash-imagep that the
+         ; rolled-back image lands in, and its fn-sf-record-listp conjunct --
+         ; no record holds the txid this rename reserves -- is what makes
+         ; that image a kernel state.  True of the host because the record
+         ; that consumes the reservation is published only after the rename
+         ; is durable.
+         (if root-ops
+             (and (null txn-ops)
+                  (fn-sf-frontier-rollback-visiblep ks)
+                  (equal (fn-bs-durable-frontier bs)
+                         (1- (fn-sf-frontier ks))))
+           t))))
 
 ; Every inode an authority entry names, durable or pending, is fenced: no
 ; pending write can reach it, so a crash keeps its content exactly (D1, D2).
@@ -768,13 +803,11 @@
 ; ks)) hypothesis and K2r is gone; K3 is fn-sf-recovery-crash-realizes-every-
 ; admissible-image (books/store-files-invariants.lisp) applied to K2.
 ;
-; What K2 still waits on is byte-side, and there are two things.  K1's other
-; three clauses, above.  And K2f: the recovery window can also be entered
-; with a pending :root entry operation -- die at frontier-replaced
-; (tools/run_store.py:1305), reopen, and the rename is drained only by
-; fsync_dir(self.root) at :1216, the FOURTH recovery barrier -- so a crash
-; there rolls the frontier back to the durable value, which the kernel does
-; not hold.  fn-bs-replay-matches-scan needs a clause saying the durable
-; frontier is the scanned one minus one whenever a :root operation is
-; pending, true because advance_frontier writes old+1, and
-; fn-sf-recovery-crash-imagep then needs a matching frontier arm.
+; What K2 still waits on is byte-side: K1's other three clauses, above.
+; K2f -- the recovery window entered with a pending :root entry operation --
+; is MODELLED as of 2026-09-20 (lane w11/bytestore-k2): the frontier arm of
+; fn-sf-recovery-crash-imagep and its gate fn-sf-frontier-rollback-visiblep
+; are certified in books/store-files{,-invariants}.lisp, and
+; fn-bs-replay-matches-scan above carries the matching clause.  What is not
+; proved is the same thing K2 as a whole is not proved: that the relation
+; IMPLIES the conclusion.  The clause is an obligation on K0, not a theorem.

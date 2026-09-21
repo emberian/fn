@@ -664,7 +664,7 @@
 ; parser (specs/peering.md 1.3).  An unconfigured name opens a connection
 ; whose every offer is refused `:not-a-peer', which is the same refusal the
 ; decision function gives, not a second policy here.
-(defun fn-own-open-peer (o peer cfg)
+(defun fn-own-open-peer (o peer cfg acfg)
   (declare (xargs :guard t))
   (if (< (len (fn-own-conns o)) (nfix (fn-own-max-conns o)))
       (let* ((view (fn-own-view o))
@@ -682,11 +682,18 @@
              ; books/owner did not admit at all against the merged
              ; books/served.  A transit connection takes the owner's current
              ; observation for both, exactly as a reader connection does.
+             ; `acfg' is the owner's AUTHINFO policy, the same value
+             ; `fn-own-open' pins into a reader.  It was not passed at all
+             ; and `fn-served-open-peer' pinned the empty profile, so a
+             ; connection the owner resolved to a peer record met no
+             ; credential, no protected-only bit and no certificate --
+             ; and on one box every client is resolved that way.
              (opened (fn-served-open-peer archive
                                           *fn-nntp-max-initial-line-octets*
                                           limit (fn-own-config o) (fn-own-clock o)
                                           (fn-own-clock o)
-                                          peer (fn-sn-node (fn-own-store o)) cfg))
+                                          peer (fn-sn-node (fn-own-store o)) cfg
+                                          acfg))
              (sconn (fn-served-result-conn opened))
              (conn (fn-own-conn-make id (fn-own-view-version view)
                                      (fn-own-view-frontier view)
@@ -1402,7 +1409,8 @@
   (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
   (case (car event)
     (:open (cdr (fn-own-open o (cadr event))))
-    (:open-peer (cdr (fn-own-open-peer o (cadr event) (caddr event))))
+    (:open-peer (cdr (fn-own-open-peer o (cadr event) (caddr event)
+                                       (cadddr event))))
     (:octets (cdr (fn-own-read o (cadr event) (caddr event))))
     (:read (cdr (fn-own-read-step o (cadr event) (caddr event))))
     (:advance (fn-own-advance o (cadr event)))

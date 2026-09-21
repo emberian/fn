@@ -56,8 +56,14 @@ class StatementCarrier(unittest.TestCase):
         signed = run_stx(["sign", "--seed", str(cls.tmp / "seed"),
                           "--payload", str(cls.tmp / "authored")])
         if signed.returncode != 0:
-            raise unittest.SkipTest(
-                "tools/stx.py sign did not run: {}".format(
+            # `tools/stx.py sign` is the subject of this class, not one of
+            # its dependencies.  Until 2026-09-21 a non-zero exit here raised
+            # SkipTest, so any defect in the signer turned the whole carrier
+            # suite green-by-absence; the only honest skip is the one on the
+            # class, which is ACL2 being absent.
+            raise AssertionError(
+                "tools/stx.py sign exited {}: {}".format(
+                    signed.returncode,
                     signed.stderr.decode("utf-8", "replace")[-2000:]))
         cls.field = signed.stdout.rstrip(b"\r\n")
         creator = [line.split()[1] for line in

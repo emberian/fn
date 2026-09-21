@@ -753,13 +753,28 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
 
 (defun fnn-constant (name) (cdr (assoc name (fnn-constants))))
 
+(defun fnn-trailer (prefix)
+  "The integrity trailer over a protected prefix, computed by ACL2.
+
+`books/frame-trailer.lisp' owns it: `fn-frame-trailer' is `fn-frame-digest',
+realised by `fn-sha256' through `books/crypto-attach.lisp'.  This host used
+to run `fnn-sha256' here, which made three separate SHA-256s the owners of
+one decision -- the other two being `tools/frame_bridge.py' and
+`tools/run_owner.py' -- and that is what AGENTS.md's one-owner rule forbids.
+`fnn-sha256' stays for the two host-only digests that are not twins (a log
+line's JSON body and the `sha256' CLI verb)."
+  (let ((value (fnn-core 'fn-frame-trailer (fnn-octet-list prefix))))
+    (when (eq value :bad)
+      (fnn-fault "ACL2 refused to trail a protected prefix"))
+    (fnn-as-octets value)))
+
 (defun fnn-seal (prefix)
-  (concatenate 'fnn-octets (fnn-octets prefix) (fnn-sha256 prefix)))
+  (concatenate 'fnn-octets (fnn-octets prefix) (fnn-trailer prefix)))
 
 (defun fnn-digest-of (framed)
   (if (< (length framed) (fnn-constant :trailer))
       nil
-      (fnn-octet-list (fnn-sha256 (subseq framed 0 (- (length framed) (fnn-constant :trailer)))))))
+      (fnn-octet-list (fnn-trailer (subseq framed 0 (- (length framed) (fnn-constant :trailer)))))))
 
 (defun fnn-frame (record)
   "ACL2 builds the protected prefix; the host appends the integrity trailer."
