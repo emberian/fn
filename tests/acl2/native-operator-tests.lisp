@@ -98,3 +98,13 @@
                        (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "port = \"1119\""))
                        (fn-nop-test-argv '("status"))))
                      5))
+
+; Help bypasses the config gate even for malformed octets; non-help does not.
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run '(999)
+                                              (fn-nop-test-argv '("help"))))
+                     :accepted))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run '(999)
+                                              (fn-nop-test-argv '("status"))))
+                     :usage))
