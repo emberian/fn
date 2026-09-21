@@ -12,7 +12,7 @@
 (include-book "books/replay")
 (include-book "books/store-config")
 (include-book "books/identity")
-(include-book "books/hybrid-signature")
+(include-book "books/hybrid-store")
 (include-book "books/article-fields")
 (include-book "books/frame")
 (include-book "books/store-observed")

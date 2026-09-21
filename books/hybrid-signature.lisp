@@ -8,6 +8,7 @@
 (in-package "ACL2")
 (include-book "crypto-seam")
 (include-book "article")
+(include-book "hybrid-profile")
 
 (local (in-theory (enable fn-cbor-codec-vocabulary
                           fn-record-invariants-vocabulary)))

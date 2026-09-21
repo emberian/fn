@@ -358,6 +358,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/crypto-seam \
 	tests/acl2/crypto-seam-tests \
 	tests/acl2/hybrid-signature-tests \
+	tests/acl2/hybrid-store-tests \
 	books/crypto-attach \
 	books/auth-secret \
 	tests/acl2/auth-secret-tests \
