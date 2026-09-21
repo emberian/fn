@@ -40,17 +40,27 @@ pins the complete peer CAPABILITIES block. `tests/test_auth.py` and
 
 `python3 -m unittest tests.test_auth.ServedCredentialTests.test_peer_transit_is_advertised_without_a_reader_login tests.test_owner.TransitPortTests.test_the_capability_block_names_the_effective_transit_commands` passed (2 tests).
 
-Farm run `run-20260921T061225Z-f885`, persvati,
-`--affected-by books/nntp-auth.lisp --closure --jobs 4`, certified the first
-version of `books/nntp-auth` and `tests/acl2/nntp-auth-tests`, but correctly
-failed the dependent `books/served` local reader-capability proof after the
-new composition added `fn-peer-capability-lines`. This lane fixed that proof
-by unfolding the nil-peer compatibility branch. Its replacement,
-`run-20260921T062013Z-3aea`, then reached the new keystone and failed because
-the hint did not open the three transit-keyword cases enough to exclude the
-AUTHINFO and POST arms. Commit `6058411` makes that discrimination explicit.
-Narrow replacement `run-20260921T062431Z-359d` is pending; do not claim
-certification until it returns.
+The final narrow closure farm run passed: `run-20260921T063021Z-9dec` on
+`persvati`, submitted with
+`python3 tools/farm.py submit persvati --remote-root /home/ember/fn-lanes/w12-auth-policy --jobs 4 --affected-by books/nntp-auth.lisp --closure`.
+Its 86 selected books all exited zero, including `books/nntp-auth`,
+`tests/acl2/nntp-auth-tests`, `books/served`, and
+`tests/acl2/served-tests`. It used ACL2 8.7, began
+2026-09-21T06:30:26+00:00, and finished 2026-09-21T06:34:07+00:00. The
+archived manifest is
+`planning/evidence/manifests/certify-20260921T063026Z-414371.json`; the
+downloaded certification logs are under
+`build/acl2/certify-20260921T063026Z-414371`. The manifest pins the resulting
+`books/nntp-auth.lisp` digest
+`f989bd0e5ebbfeb27616e6f78c42465b27f58d2e40d627af35049fff21cb5882` and
+certificate digest
+`da670ef43f73f7b44dd767e8e5235bade579b35e5d94d099d57b581ae74693e2`.
+
+Earlier narrow runs exposed and corrected two concrete closure defects: the
+nil-peer compatibility proof in `books/served` needed to unfold the new
+capability composition, and the delegation theorem needed to expose the three
+transit keywords. The final fixture correction in `cb2f72a` also uses the
+actual IHAVE continuation response, `335 send it; end with <CR-LF>.<CR-LF>`.
 
 ## Registry delta for root
 
@@ -61,7 +71,3 @@ central update: add or revise one proof event for the keystone
 served auth dispatcher delegates unchanged to the peer machine, so transit
 authorization depends on the pinned configured peer role and not an AUTHINFO
 subject; reader and POST authorization remain under the pinned auth policy.”
-
-The existing CAPABILITIES/open-row wording in `specs/peering.md` should be
-updated centrally to cite the final farm run and the live tests once the
-replacement run passes.
