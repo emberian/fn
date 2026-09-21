@@ -82,8 +82,12 @@
            (if (and (consp octets) (natp (car octets)) (null (cdr octets)))
                (car octets)
              nil)))
+  ; The host allocator and the deterministic CBOR uint profile are uint32.
+  ; The earlier all-natural constraint could not be realized by the bounded
+  ; metadata codec; no scan/crash theorem uses round-trip outside this domain.
   (defthm fn-bs-frontier-round-trip
-    (implies (natp n) (equal (fn-bs-frontier-decode (fn-bs-frontier-encode n)) n)))
+    (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+             (equal (fn-bs-frontier-decode (fn-bs-frontier-encode n)) n)))
   (defthm fn-bs-frontier-decode-nat-or-nil
     (or (natp (fn-bs-frontier-decode octets))
         (null (fn-bs-frontier-decode octets)))
@@ -547,6 +551,22 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-bs-all-fencedp bs (fn-bs-authority-inode-list bs)))
 
+; K0 needs allocation separation, not merely a natural-number inode
+; target.  The byte-state recognizer permits dangling directory targets,
+; and the abstract codec seams alone do not rule out decoding empty absent
+; content.  Such a target can equal next-ino and be reused by staging
+; create/write.  Actual authority publication always names a created inode.
+(defun fn-bs-inode-list-knownp (bs inos)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp inos)
+      (and (consp (assoc-equal (car inos) (fn-bs-inodes bs)))
+           (fn-bs-inode-list-knownp bs (cdr inos)))
+    t))
+
+(defun fn-bs-authority-knownp (bs)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bs-inode-list-knownp bs (fn-bs-authority-inode-list bs)))
+
 (defun fn-bs-store-relation (bs ks)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-bs-statep bs) (fn-sf-statep ks)
@@ -565,7 +585,8 @@
          (and (fn-sf-crash-imagep ks (fn-bs-durable-frontier bs)
                                   (fn-bs-durable-records bs))
               (fn-bs-pending-matches-phase bs ks)))
-       (fn-bs-authority-fencedp bs)))
+       (fn-bs-authority-fencedp bs)
+       (fn-bs-authority-knownp bs)))
 
 ; -----------------------------------------------------------------------------
 ; 5. From a crash image back to the durable state, name by name.
@@ -2739,6 +2760,7 @@
                     fn-bs-pending-shape-okp fn-bs-pending-matches-phase
                     fn-bs-replay-matches-scan fn-bs-pending-entry-targets
                     fn-bs-authority-inode-list fn-bs-all-fencedp
-                    fn-bs-authority-fencedp fn-bs-store-relation
+                    fn-bs-authority-fencedp fn-bs-inode-list-knownp
+                    fn-bs-authority-knownp fn-bs-store-relation
                     fn-bs-name-step fn-bs-names-after fn-bs-names-outcomes
                     fn-bs-txn-prefix-agreesp))

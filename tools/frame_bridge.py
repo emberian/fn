@@ -204,6 +204,53 @@ class FrameSession:
             + _octets(self.digest_of(framed)) + ")")
         return _as_bytes(payload)
 
+    # -- durable store metadata --------------------------------------------
+
+    def metadata_config_frame(self, profile: str) -> bytes:
+        """ACL2's complete FNSM configuration frame for one named profile."""
+        if profile not in {"development", "scale"}:
+            raise BridgeError("unknown metadata profile")
+        value = self.call("(fn-store-metadata-config-frame :{})".format(profile))
+        if not isinstance(value, list):
+            raise BridgeError("ACL2 refused metadata profile")
+        return _as_bytes(value)
+
+    def metadata_config_decode(self, framed: bytes):
+        """Return ACL2's fixed profile fields, or reject malformed metadata."""
+        value = self.call("(fn-store-metadata-config-decode {})".format(
+            _octets(framed)))
+        if not isinstance(value, list) or len(value) != 6:
+            raise BridgeError("ACL2 rejected durable configuration")
+        if (not isinstance(value[1], int) or not isinstance(value[2], int)
+                or not isinstance(value[3], int) or not isinstance(value[4], int)):
+            raise BridgeError("ACL2 returned malformed configuration")
+        return (_as_bytes(value[0]), value[1], value[2], value[3], value[4],
+                _as_bytes(value[5]))
+
+    def metadata_frontier_frame(self, next_txid: int) -> bytes:
+        if not isinstance(next_txid, int) or isinstance(next_txid, bool):
+            raise BridgeError("frontier is not a natural")
+        value = self.call("(fn-store-metadata-frontier-frame {})".format(next_txid))
+        if not isinstance(value, list):
+            raise BridgeError("ACL2 refused frontier")
+        return _as_bytes(value)
+
+    def metadata_frontier_decode(self, framed: bytes) -> int:
+        value = self.call("(fn-store-metadata-frontier-decode {})".format(
+            _octets(framed)))
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise BridgeError("ACL2 rejected durable frontier")
+        return value
+
+    def metadata_frontier_next(self, current: int) -> int | None:
+        value = self.call("(fn-store-metadata-frontier-next {})".format(current))
+        if value == []:
+            return None
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise BridgeError("ACL2 returned malformed frontier successor")
+        return value
+
+
     # -- journal records ----------------------------------------------------
 
     def schema(self, schema_name: str, kind: str):

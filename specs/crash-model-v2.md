@@ -1060,7 +1060,8 @@ Proposed book: `books/byte-store-scan.lisp` (scan, relation, keystones) and
            (if (and (consp octets) (natp (car octets)) (null (cdr octets)))
                (car octets) nil)))
   (defthm fn-bs-frontier-round-trip
-    (implies (natp n) (equal (fn-bs-frontier-decode (fn-bs-frontier-encode n)) n)))
+    (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+             (equal (fn-bs-frontier-decode (fn-bs-frontier-encode n)) n)))
   (defthm fn-bs-frontier-decode-nat-or-nil
     (or (natp (fn-bs-frontier-decode octets)) (null (fn-bs-frontier-decode octets)))
     :rule-classes nil))
@@ -1275,18 +1276,36 @@ previous process's un-fenced entry operation, and the recovery arm is exactly
 that state. The durable-namespace contiguity clause is what makes the scan's
 namespace test decidable from the byte store alone.
 
+The implemented relation additionally requires `fn-bs-authority-knownp`:
+every durable or pending authority target occurs in the inode table. This
+is a publication/allocation invariant, not a codec assumption. The bare
+byte-state recognizer permits dangling directory entries; without this
+clause an authority entry may name `next-ino`, which a staging create and
+write can then reuse. Successful initialization establishes actual inode
+membership. The byte crash set and the platform freedom predicates are
+unchanged; general host-program preservation of this additional clause is
+part of K0.
+
 ### 3.3 The store keystones
 
 ```lisp
-; K0. Every program step preserves the relation, for every outcome, with the
-; kernel observation the host makes for that outcome.
-(defthm fn-bs-program-step-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks)
-                (member-equal steps (list (fn-bs-frontier-program stage octets)
-                                          (fn-bs-record-program stage name frame)
-                                          (fn-bs-recover-program)))
-                (member-equal (cons bs1 ks1) (fn-bs-run bs ks steps outcomes groups capacity)))
-           (fn-bs-store-relation bs1 ks1)))
+; K0 remains OPEN. The earlier proposed formula quantified arbitrary
+; program arguments, phases, and outcomes and was false: from frontier 0,
+; staging bytes that decode to 0 instead of the candidate 1 breaks the
+; relation at frontier-replaced. The host supplies candidate bytes.
+; The corrected target requires an independent host-program input contract:
+; frontier: :ready, room to increment, a staging name, octet bytes decoding
+;   to frontier+1;
+; record: :record-staged, a staging name, octet frame decoding to the kernel
+;   candidate, final name fn-bs-txn-name(sequence of that candidate);
+; recovery: a freshly replayed kernel image of the byte-store view, before
+;   its five barriers (including the recovery-window relation clauses);
+; every syscall: the outcome domain of that syscall, including admissible
+;   torn-fsync selections. The caller's error observation must be modelled.
+; These are input/phase conditions, never the desired post-step relation.
+; Initialization has its own establishment obligation: the relation requires
+; durable config/frontier authority and therefore does not hold at its early
+; mkdir/create/write/link cuts. Those cuts remain in the byte crash model.
 
 ; K1. The scan never faults on a crash image of a related state.  No torn
 ; unit is ever under an authority name, because links and renames are
@@ -1872,9 +1891,19 @@ arm, and a model program that took it stops at `:enoent`.
 K1 to K4 are proved as of 2026-09-21 (lane `w11/k1-scan`); the byte model's
 own crash keystones K5 to K8, and K0, are open.
 
+The metadata initializer theorem is about `fn-bs-init-program` as executed
+by `fn-bs-run`. The current host's `Store.initialize` additionally publishes
+configuration-record history and fences its directory/files; those operations
+are absent from that transcription. Therefore this packet does not establish
+full current-host initialization correspondence. The successful first-frontier
+transcription retains its real syscall/cut ordering. Its theorem is conditional
+on the initial-image and input contracts; the wrong-successor theorem reaches
+the real `frontier-replaced` cut and disproves the former unqualified K0
+formula. No process-death cut or byte-crash outcome was removed.
+
 | Keystone | Status |
 | --- | --- |
-| K0 `fn-bs-program-step-preserves-relation` | **open** (P3): needs `fn-bs-store-relation`. Ground form: `fn-bs-run-statep` holds on every ground run (`byte-store-programs`) and the composed runs reach `:reserved`, `:completing`, `:ready` and recover to `:ready` (`tests/acl2/byte-store-tests.lisp`). |
+| K0 `fn-bs-program-step-preserves-relation` | **open, with a bounded establishment/preservation packet**: `byte-store-relation` proves the metadata initializer's exact final image and relation establishment under `fn-bs-initial-inputp`, and every pair of the first successful frontier program under a positive write unit and `fn-bs-frontier-inputp`. `byte-store-program-invariants` proves arbitrary-history allocation freshness, the ready-state authority quietness obligation, frontier noncommit observations (including known-failure and uncertain callbacks), and the successful directory observation under an independently stated committed-byte predicate. General syscall preservation, recovery establishment, and retained-history composition remain open. |
 | K1 `fn-bs-store-crash-image-scans` | **proved 2026-09-21** (lane `w11/k1-scan`, laptop `build/acl2/certify-20260921T024339Z-59112`). The namespace clause closed first (2026-09-20, lane `w9/storage-3`, hbox `build/acl2/certify-20260920T204940Z-1181403`): `fn-bs-apply-entries-names-is-names-after` (`tools/proof_profile.py` named four opened recognizers as the cause and closing them took it from an induction-depth-limit blowout at 2,016,278 prover steps to 33,789), then `fn-bs-crash-names-is-names-after`, `fn-bs-crash-image-names-are-an-outcome` and `fn-bs-crash-image-transaction-names`. The other three are `fn-bs-crash-image-reads-the-config`, `fn-bs-crash-image-frontier-decodes-to-a-natural` and `fn-bs-crash-image-records-do-not-fault`, over the per-name and per-window vocabulary of section 8 of the book. **No trailer assumption is used**, as this section predicted. |
 | K2 `fn-bs-store-crash-image-is-kernel-admissible` | **proved 2026-09-21** (lane `w11/k1-scan`, same run), with the three model questions decided before it. [D14-a](../planning/decisions.md) (lane `w9/storage-3`) keeps `books/byte-store-scan.lisp`'s `(fn-bs-txn-name (len (fn-bs-durable-names bs :transactions)))` and withdraws §3.2's `(fn-bs-txn-name (len (fn-sf-records ks)))`; the duplicate-record image is excluded by the publish window's `(equal (fn-bs-durable-records bs) (fn-sf-records ks))`, an equality of LISTS. [D14-b](../planning/decisions.md) (lane `w10/kernel-freedom`) makes K2's CONCLUSION the platform predicate `fn-sf-recovery-crash-imagep` rather than the reliance predicate `fn-sf-crash-imagep`, which is unchanged. [D14-c](../planning/decisions.md) (lane `w11/bytestore-k2`) adds the frontier arm K2f. **Both rollback arms are LIVE in the proof and neither is decoration**: outside the window the read is one `fn-sf-crash-imagep` already admits, so that half is `fn-sf-crash-imagep-implies-recovery-crash-imagep` applied; inside it a crash that loses the pending link reads the durable record list, which is the scanned list without its last element, and one that loses the pending rename reads the durable frontier, which is the scanned one minus one. |
 | K2r `fn-bs-replay-window-carries-no-success` | **retired 2026-09-20 into a certified kernel theorem** (D14-b, lane `w10/kernel-freedom`). The obligation was "a crash in the recovery window risks no acknowledged record", stated at the byte level because the kernel could not express it. It is now `fn-sf-recovery-admissible-image-facts` (`books/store-files-invariants.lisp`): an acknowledged pair of the pre-crash state names a record of EVERY image the platform may leave, the rolled-back one included, because the arm that drops a record carries `(null (fn-sf-successes s))` as a conjunct. Nothing at the byte level has to carry it any more. |
