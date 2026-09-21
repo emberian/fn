@@ -159,7 +159,7 @@ cannot read exits 5. Smoke-tested end to end on a fresh store: `init` then
 realiser and the store cluster's machine). **No state in it is hand-built**,
 which is the defect `w11/node-index` found in the substrate book.
 
-The run is `fn-sn-initial` → `fn-sn-set-keyring` → four `fn-sn-io` words to
+The first run is `fn-sn-initial` → `fn-sn-set-keyring` → four `fn-sn-io` words to
 reserve → `fn-sn-prepare` with an article carrying a signed `FN-Statement`
 header → three `fn-sn-io` words to publish → `fn-sn-finish`. It pins: the
 store 0 → 1 articles and the payload equal to the signed octets; the index
@@ -183,6 +183,43 @@ keystone instances evaluated on the reached state.
   state is returned unchanged.
 - **Reconfiguration after the fact**: installing the keyring on the unkeyed
   run's finished state recomputes to the keyed run's index exactly.
+- **A fork, accepted.** A second real transaction puts a second article by
+  the same creator at the same `(incarnation, sequence)` slot into the store.
+  Both are accepted and stored — refusing the second would let a hostile peer
+  delete content by replaying a fork and would destroy the evidence — the
+  index holds two bindings, `fn-sn-equivocatorp` answers **T**, the slot still
+  answers with the older statement, and both forks are still reachable by
+  their own content ids.
+
+**Two findings from `tools/teeth_check.py --report` on the first draft of
+this book, both real and both fixed rather than waived.** (1)
+`fn-sn-equivocatorp` was asserted FALSE once and TRUE nowhere in the whole
+corpus, so a constantly-false definition would have satisfied every
+assertion about it — that is what the fork run above exists for, and the
+equivocator keystone instance now has both sides TRUE. (2) The keystone
+instance on the unkeyed run had NIL on both sides and distinguished nothing;
+it is replaced by the assertion that carries the content, that the two runs
+give *different* answers for the same id over the same store.
+`--evaluate` on the book: 186 probes, prefix ok, exit 0, 186 values.
+
+**A third `--report` finding on this book is the TOOL being wrong, and it is
+worth an owner.** After the two real fixes, `--report` still says
+`both-sides-degenerate: … both sides of the equality are NIL` of
+`(equal (fn-stx-store (fn-sn-node *sni-unkeyed-finished*))
+(fn-stx-store (fn-sn-node *sni-finished*)))` — while the same book asserts,
+and `certify-book` evaluates to T, that
+`(len (fn-stx-store (fn-sn-node *sni-finished*)))` is **1**. So that side is
+not NIL and the claim does distinguish something. Twice in a row, deleting
+the flagged form moved the identical complaint to the next assertion
+(`:245` → `:248` → `:251`), which is the shape of a probe whose values have
+desynchronised from the book rather than of three real defects. The second
+residual finding, `predicate-never-anchored` on `fn-sn-statement-lookup`, is
+the same kind: that function returns a statement, not a boolean, so it never
+appears as a bare assertion and the "asserted TRUE" side of the heuristic can
+never be satisfied for it. **Neither was worked around by weakening a
+witness.** Owner: whoever owns `tools/teeth_check.py`; this book is a small
+reproducer, and it uses `make-event`-built constants, which is the obvious
+suspect for the probe prefix.
 
 ## 6. Certification
 
@@ -207,7 +244,7 @@ Per root, hbox: `books/store-node` 0.72 s, `books/store-node-invariants`
 0.01 to 0.02 s each), `books/store-node-resolution` 1.03 s,
 `books/store-observed` 1.00 s, `books/store-sweep` 1.11 s,
 `books/store-node-traces` 4.61 s, `books/stx-index` 0.78 s,
-`tests/acl2/store-node-index-tests` 0.98 s with 54 `assert-event`s.
+`tests/acl2/store-node-index-tests` 0.98 s with 69 `assert-event`s.
 hbox's cache reported `installed 23, kept 178, uncached 77` before the second
 run and `installed 103, kept 47, uncached 128` before the first; the run's
 passing pairs are published back for the next lane.
@@ -244,9 +281,35 @@ nothing in it. See §7 for the second.
    publish — but there is no `fn-bpi-ingress-prepare-preserves-indexedp`, so
    the chain has a hole at the BP ingress path and the sentence
    "`fn-sn-indexedp` holds of every state the host installs" is a claim about
-   nine sites out of ten. Owner: the BP cluster with the store cluster; the
-   theorem is one `:use` of `fn-sn-prepare-preserves-indexedp` under
-   `fn-bpi-ingress-prepare`'s `mbe` and should be cheap.
+   nine sites out of ten. Owner: the BP cluster with the store cluster.
+   **This lane attempted it and withdrew it, with a measurement worth having**
+   before anyone else tries the obvious hint. The statement is
+
+   ```lisp
+   (defthm fn-bpi-ingress-prepare-preserves-indexedp
+     (implies (and (fn-sn-indexedp store)
+                   (equal (fn-bpi-result-kind
+                           (fn-bpi-ingress-prepare store policy context adu))
+                          :prepared))
+              (fn-sn-indexedp
+               (fn-bpi-result-store
+                (fn-bpi-ingress-prepare store policy context adu)))))
+   ```
+
+   — the kind hypothesis is not decoration, because the `:rejected` branches
+   put a reason keyword where `fn-bpi-result-store` reads the state. Proved
+   by `:use` of `fn-sn-prepare-preserves-indexedp` with
+   `fn-bpi-ingress-prepare` ENABLED and `fn-article-parse`,
+   `fn-af-proto-article-check` and `fn-bpi-record-for` disabled, it did
+   **not** close in **seven minutes** on the laptop, against a baseline of
+   **1.07 s for the whole of `books/bp-ingress`** on hbox
+   (`certify-20260921T015400Z-1419906`). That is the case explosion the
+   book's own guard-hint comment warns about at `books/bp-ingress.lisp:461`.
+   `books/bp-ingress.lisp` is therefore **untouched by this lane**. The next
+   attempt should profile first (`tools/proof_profile.py`) and should almost
+   certainly keep `fn-bpi-ingress-prepare` CLOSED, proving the
+   `:prepared` branch as a `fn-deftransition`-style branch lemma instead of
+   opening the whole nested `if`.
 2. **PRF-023 stays `in-progress`, not `certified`**, for four reasons and they
    are in its registry note: `fn-stx-index-slots-agree` still has no caller
    (no served query walks the slot list); the keyring is per-invocation and
