@@ -130,6 +130,11 @@ The caller holds SERVICE's mutex for this whole function."
         (application-result nil))
     (dotimes (step 8)
       (declare (ignore step))
+      ;; The owner may have committed a Store record on the preceding
+      ;; iteration.  Rebind the FNRJ dispatcher to that same canonical Store
+      ;; before asking for its next action; a stale pre-commit snapshot would
+      ;; incorrectly ask to submit the request a second time.
+      (fnn-bpapp-bind-owner-store)
       (let ((action (fnn-bpapp-action journal request generation)))
         (case (first action)
           (:persist-intent
