@@ -474,13 +474,27 @@
             (fn-owner-feed-encode-records (cdr records)))
     nil))
 
+; This is the outbound wire boundary.  The feed machine supplies its complete
+; command/source octets; `fn-wire-render-feed-command' owns all interpretation
+; of their CRLF structure, dot quoting and terminator.  The host receives only
+; this already-rendered socket byte vector (or the separate refusal word).
+(defun fn-owner-feed-render-command (command)
+  (declare (xargs :mode :program))
+  (fn-wire-render-feed-command command *fn-nntp-max-initial-line-octets*
+                               *fn-store-max-payload*))
+
 (defun fn-owner-feed-install-feed (records effects state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-owner-feed-records records state))
+  (let* ((command (fn-own-feed-effect-octets effects))
+         (rendered (fn-owner-feed-render-command command))
+         (state (f-put-global 'fn-owner-feed-records records state))
          (state (f-put-global 'fn-owner-feed-frames
                               (fn-owner-feed-encode-records records) state))
          (state (f-put-global 'fn-owner-feed-command
-                              (fn-own-feed-effect-octets effects) state))
+                              (fn-wire-outbound-octets rendered) state))
+         (state (f-put-global 'fn-owner-feed-command-status
+                              (if (fn-wire-outbound-okp rendered) :ok
+                                (fn-wire-outbound-reason rendered)) state))
          (state (f-put-global 'fn-owner-feed-peer
                               (fn-own-feed-effect-peer effects) state)))
     state))
@@ -889,6 +903,10 @@
 (defun fn-owner-feed-command (state)
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-owner-feed-command state)))
+
+(defun fn-owner-feed-command-status (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-feed-command-status state)))
 
 ; The protected prefix and trailer belong to ACL2, including the boundary
 ; between them. Python receives the whole sealed frame and never slices it.
