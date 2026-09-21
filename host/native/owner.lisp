@@ -627,30 +627,19 @@ directories because one encoded label can be a prefix of a longer label.
           (sb-bsd-sockets:socket-error (e)
             (unless (fnn-owner-service-stopping service) (error e)))))))
 
-(defun fnn-command-owner (command args)
-  (unless (string= command "run")
-    (error 'fnn-usage-error :message "unknown owner command"))
-  (when (< (length args) 4)
-    (error 'fnn-usage-error
-           :message "owner run ROOT PORT ONCE MAX-CONNECTIONS"))
+(defun fnn-owner-run (root port once max-connections
+                      &optional fault address (family :inet))
+  "Run one service from already-normalized boundary values."
   (let ((service nil) (listener nil))
     (unwind-protect
          (progn
-           (let* ((inject (fifth args))
-                  (fault (and inject
-                              (cdr (assoc inject +fnn-cli-faults+
-                                          :test #'string=)))))
-             (when (and inject (null fault))
-               (error 'fnn-usage-error :message "unknown owner fault point"))
-             (setq service (fnn-owner-install (first args)
-                                              (parse-integer (fourth args))
-                                              fault)))
+           (setq service (fnn-owner-install root max-connections fault))
            (multiple-value-bind (bound bound-port)
-               (fnn-listen (parse-integer (second args)))
+               (fnn-listen port :address address :family family)
              (setf listener bound
                    (fnn-owner-service-listener service) bound)
              (fnn-out "LISTENING ~d" bound-port))
-           (fnn-owner-accept service listener (string= (third args) "1"))
+           (fnn-owner-accept service listener once)
            (fnn-owner-service-exit-code service))
       (when listener (fnn-socket-shut listener))
       (when service
@@ -661,5 +650,42 @@ directories because one encoded label can be a prefix of a longer label.
         (fnn-owner-wait-workers service)
         (fnn-owner-feed-close-all service)
         (fnn-store-close (fnn-owner-service-store service))))))
+
+(defun fnn-owner-run-normalized (store-octets listener-host-octets
+                                 listener-port oncep max-connections)
+  "Operator callback over ACL2-normalized projections; no argv semantics."
+  (unless (and (typep store-octets 'fnn-octets)
+               (typep listener-host-octets 'fnn-octets)
+               (integerp listener-port) (<= 0 listener-port 65535)
+               (member oncep '(t nil))
+               (integerp max-connections) (> max-connections 0))
+    (fnn-fault "malformed ACL2 owner run plan"))
+  (let* ((root (fnn-octets-string store-octets))
+         (host (fnn-octets-string listener-host-octets))
+         (address (if (string= host "::1")
+                      (sb-bsd-sockets:make-inet6-address host)
+                    (sb-bsd-sockets:host-ent-address
+                     (sb-bsd-sockets:get-host-by-name host))))
+         (family (if (= (length address) 16) :inet6 :inet)))
+    (unless (member (length address) '(4 16))
+      (fnn-fault "ACL2 listener host resolved to an unsupported address"))
+    (fnn-owner-run root listener-port oncep max-connections
+                   nil address family)))
+
+(defun fnn-command-owner (command args)
+  "Private low-level test entry; public operators use the normalized callback."
+  (unless (string= command "run")
+    (error 'fnn-usage-error :message "unknown owner command"))
+  (when (< (length args) 4)
+    (error 'fnn-usage-error
+           :message "owner run ROOT PORT ONCE MAX-CONNECTIONS"))
+  (let* ((inject (fifth args))
+         (fault (and inject
+                     (cdr (assoc inject +fnn-cli-faults+ :test #'string=)))))
+    (when (and inject (null fault))
+      (error 'fnn-usage-error :message "unknown owner fault point"))
+    (fnn-owner-run (first args) (parse-integer (second args))
+                   (string= (third args) "1") (parse-integer (fourth args))
+                   fault nil)))
 
 (fnn-register-verb "owner" #'fnn-command-owner)
