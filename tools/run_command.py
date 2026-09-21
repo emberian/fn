@@ -14,7 +14,8 @@ from __future__ import annotations
 import argparse
 import sys
 
-from process_supervisor import DEFAULT_GRACE_SECONDS, run
+from process_supervisor import (DEFAULT_GRACE_SECONDS, DEFAULT_OUTPUT_TAIL_BYTES,
+                                run)
 
 
 def main() -> int:
@@ -23,6 +24,9 @@ def main() -> int:
                         help="maximum command runtime in seconds")
     parser.add_argument("--grace", type=float, default=DEFAULT_GRACE_SECONDS,
                         help="TERM grace period before SIGKILL, in seconds")
+    parser.add_argument("--output-tail", type=int,
+                        default=DEFAULT_OUTPUT_TAIL_BYTES,
+                        help="retain and print at most this many final output bytes")
     parser.add_argument("command", nargs=argparse.REMAINDER,
                         help="command after --")
     args = parser.parse_args()
@@ -33,18 +37,22 @@ def main() -> int:
         parser.error("supply a command after --")
     try:
         result = run(command, timeout_seconds=args.timeout,
-                     grace_seconds=args.grace)
+                     grace_seconds=args.grace,
+                     output_tail_bytes=args.output_tail)
     except (ValueError, RuntimeError) as error:
         print("run_command: {}".format(error), file=sys.stderr)
         return 2
-    if result.output:
-        sys.stdout.buffer.write(result.output)
+    if result.output_tail:
+        sys.stdout.buffer.write(result.output_tail)
+    if result.output_truncated:
+        print("run_command: transcript limited to final {} bytes".format(
+            args.output_tail), file=sys.stderr)
     if result.timed_out:
-        print("run_command: timed out after {}s; task process group reaped".format(
-            args.timeout), file=sys.stderr)
+        print("run_command: timed out after {}s; task process group stopped and "
+              "direct child reaped".format(args.timeout), file=sys.stderr)
     elif result.cancelled_by is not None:
-        print("run_command: cancelled by {}; task process group reaped".format(
-            result.cancelled_by), file=sys.stderr)
+        print("run_command: cancelled by {}; task process group stopped and "
+              "direct child reaped".format(result.cancelled_by), file=sys.stderr)
     return result.returncode
 
 
