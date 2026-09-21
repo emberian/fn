@@ -5,6 +5,9 @@
 
 (defconst *fn-fap-max-octets* 1024)
 (defconst *fn-fap-magic* '(70 78 65 85 84 72 49 10))
+; AUTHINFO USER/PASS share the 14-octet prefix and CRLF.  The command passed
+; to fn-wire-outbound-command-line must fit its 510-octet bound including both.
+(defconst *fn-fap-max-token-octets* 494)
 
 (defun fn-fap-prefixp (prefix xs)
   (declare (xargs :guard t))
@@ -23,7 +26,7 @@
 (defun fn-fap-line (xs) (declare (xargs :guard t)) (fn-fap-line-aux xs nil))
 (defun fn-fap-tokenp (xs)
   (declare (xargs :guard t))
-  (and (consp xs) (<= (len xs) *fn-nntp-max-command-octets*)
+  (and (consp xs) (<= (len xs) *fn-fap-max-token-octets*)
        (fn-nntp-printable-tokenp xs)))
 (defun fn-fap-decode (octets)
   (declare (xargs :guard t))

@@ -393,6 +393,24 @@ receive an OS error for every failed read."
            (fnn-fault "read returned an invalid count"))
           (t count))))
 
+(defun fnn-read-bounded-fd (fd maximum)
+  "Read at most MAXIMUM octets from one already validated descriptor."
+  (let ((chunks nil) (remaining (+ maximum 1)) (total 0))
+             (loop while (> remaining 0) do
+               (let* ((buffer (fnn-make-octets (min 65536 remaining)))
+                      (count (fnn-read-fd fd buffer)))
+                 (when (zerop count) (return))
+                 (push (subseq buffer 0 count) chunks)
+                 (incf total count)
+                 (decf remaining count)))
+             (when (> total maximum)
+      (fnn-fault "file exceeds ACL2-owned bound"))
+             (let ((data (fnn-make-octets total)) (at 0))
+               (dolist (chunk (nreverse chunks))
+                 (replace data chunk :start1 at)
+                 (incf at (length chunk)))
+      data)))
+
 (defun fnn-read-regular-bounded (path maximum)
   "Read one regular, non-symlink file through a no-follow descriptor."
   (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
@@ -402,21 +420,7 @@ receive an OS error for every failed read."
              (fnn-fault "refusing non-regular store file: ~a" path))
            (when (> (sb-posix:stat-size info) maximum)
              (fnn-fault "store file exceeds bound: ~a" path))
-           (let ((chunks nil) (remaining (+ maximum 1)) (total 0))
-             (loop while (> remaining 0) do
-               (let* ((buffer (fnn-make-octets (min 65536 remaining)))
-                      (count (fnn-read-fd fd buffer)))
-                 (when (zerop count) (return))
-                 (push (subseq buffer 0 count) chunks)
-                 (incf total count)
-                 (decf remaining count)))
-             (when (> total maximum)
-               (fnn-fault "store file exceeds bound: ~a" path))
-             (let ((data (fnn-make-octets total)) (at 0))
-               (dolist (chunk (nreverse chunks))
-                 (replace data chunk :start1 at)
-                 (incf at (length chunk)))
-               data)))
+           (fnn-read-bounded-fd fd maximum))
       (fnn-close fd))))
 
 (defun fnn-check-regular (path)

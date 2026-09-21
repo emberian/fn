@@ -15,3 +15,5 @@
 (assert-event
  (equal (car (fn-fap-decode
               (append *fap-good* (make-list 1024 :initial-element 65)))) :bad))
+(assert-event (fn-fap-tokenp (make-list 494 :initial-element 65)))
+(assert-event (not (fn-fap-tokenp (make-list 495 :initial-element 65))))

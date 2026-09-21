@@ -98,7 +98,8 @@
 
 (defun fn-fc-auth-command (prefix token)
   (let ((rendered (fn-wire-outbound-command-line
-                   (append prefix token) *fn-nntp-max-initial-line-octets*)))
+                   (append prefix token '(13 10))
+                   *fn-nntp-max-initial-line-octets*)))
     (if (fn-wire-outbound-okp rendered)
         (fn-wire-ag-car (fn-wire-outbound-octets rendered)) nil)))
 (defun fn-fc-auth-user-command (st)
