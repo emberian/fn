@@ -34,6 +34,12 @@ class NativeServedCostTests(unittest.TestCase):
         body = definition(wire, "fn-wire-fast-statep")
         self.assertIn("fn-wire-state-shapep", body)
         self.assertNotRegex(body, re.compile(r"octet-listp|octet-linesp|lines-size|\(len "))
+        # Static source count: one fixed-spine check and twelve scalar selector
+        # applications.  This is the predicate's ACL2 expression count, not a
+        # host instruction, allocation, elapsed-time, or whole-read estimate.
+        self.assertEqual(
+            len(re.findall(r"\(fn-wire-state-[a-z-]+ x\)", body)), 12
+        )
 
     def test_fast_entry_never_calls_full_recognizer(self) -> None:
         served = (ROOT / "books/served-tls-prefix.lisp").read_text()
