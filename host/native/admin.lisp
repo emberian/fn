@@ -113,15 +113,20 @@ result as a refusal or uncertainty."
   (fnn-owner-serialized
    service nil
    (lambda ()
-     (let* ((plan (fnn-core 'fn-native-admin-host-plan argv))
-            (generation
-              (fnn-nat (fnn-owner-core 'fn-owner-config-generation))))
+     (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
        (unless (fnn-admin-plan-acceptedp plan)
          (return-from fnn-owner-live-admin-serialized :refused))
-       (unless (eq (fnn-owner-action
-                    'fn-native-admin-host-owner-reconfigure generation plan)
-                   :staged)
-         (return-from fnn-owner-live-admin-serialized :refused))
+       ;; Reuse the model's existing generation pin: a private logical
+       ;; connection is opened and closed under this mutex without acquiring
+       ;; a socket.  Its pin is therefore the current generation checked by
+       ;; fn-ocfg-reconfig-refusal; raw Lisp never supplies that decision.
+       (let* ((cid (fnn-owner-action 'fn-owner-open))
+              (staged (and (integerp cid)
+                           (fnn-owner-action
+                            'fn-native-admin-host-owner-reconfigure cid plan))))
+         (when (integerp cid) (fnn-owner-action 'fn-owner-close cid))
+         (unless (eq staged :staged)
+           (return-from fnn-owner-live-admin-serialized :refused)))
        (let* ((record-list (fnn-owner-core 'fn-owner-reconfigure-octets))
               (record (progn
                         (unless (fnn-octet-list-p record-list)
