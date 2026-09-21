@@ -213,7 +213,59 @@ of `fn-bpb-decode-of-encode` is the one the previous lane wrote.
 
 ## 3. Packet 2 — what the round trip unblocked
 
-PLACEHOLDER-P2
+**The image, the lab scenario and the dtn7 interop did NOT run, and nothing
+is claimed for the `bp` verb or for dtn7 interoperability.** They are behind
+`books/bp-node`, which is open at one guard conjecture. The substrate is
+ready: 54 of the DTN image's closure certified on persvati
+(`run-20260920T214122Z-02f2`) and `books/bp-bundle-invariants` certified on
+hbox, so `books/bp-node` is the only root between here and
+`tools/build_native_host.sh`.
+
+**`books/bp-node` had never been attempted** --- the lane that wrote it was
+blocked below it --- and with `books/bp-bundle-invariants` certified, every
+event in it runs for the first time. All of them close except
+`fn-bpn-receive`'s guard. Three things landed getting there, and the next
+lane should not redo them:
+
+- **`fn-bpn-expiry`'s guard** wanted `fn-bpb-bundlep` and `fn-bpp-blockp`
+  opened at the form and the fragment BIT TEST (`fn-bpp-fragmentp`,
+  `fn-bpp-flag-onp`) CLOSED: opened, the bit test puts `numerator` and
+  `denominator` parity goals in front of a guard about times, and the
+  branch it leaves is arithmetically false.
+- **`fn-bpn-send`'s guard** is keystone K5 (`fn-bpn-send-bundle-is-a-bundle`)
+  and nothing else, because `fn-bpb-encode` is guarded by `fn-bpb-bundlep`.
+  It is now deferred at the definition and discharged at K5, which is the
+  caller-discharges-the-callee pattern of `docs/proof-style.md` section 4;
+  K5 itself needed the bundle and block recognizers opened and the
+  endpoint-ID vocabulary closed.
+- **Three local bridges** carry `fn-bpb-decode-yields-bundle` to the
+  primary's fields, `:rewrite` and `:forward-chaining` both, because the
+  guard goals are in field vocabulary where `(fn-bpb-bundlep ...)` never
+  appears.
+
+**The one obligation left**, verbatim:
+
+```lisp
+(implies (and <fn-bpn-configp config, opened>
+              (fn-cbor-result-okp (fn-bpb-decode octets limit))
+              (fn-bpp-flags-conformantp
+               (fn-bpb-bundle-primary
+                (fn-cbor-result-value (fn-bpb-decode octets limit)))))
+         (integerp
+          (nth 1 (fn-bpb-bundle-primary
+                  (fn-cbor-result-value (fn-bpb-decode octets limit))))))
+```
+
+`fn-bpp-fragmentp`'s guard on the primary's flags. Every fact available is
+about `fn-bpp-blockp` or `(fn-bpp-flags p)`, and the goal is about
+`(nth 1 p)`: **`books/bp-primary` ships its accessors with their
+`:definition` runes ENABLED** --- six of the 26 the new `enabled_projection`
+lint counts are in that book --- so the accessor is gone from the goal
+before any rule can match it. Forward-chaining triggered on the projection
+does not help, because the projection is opened too. Repairing that lint in
+`books/bp-primary` (one name in its closing `deftheory`) is probably the
+whole fix, and it belongs to that book's owner; it is not a change this lane
+should make inside someone else's export policy at the end of a shift.
 
 ## 4. Packet 3 — the §1.5 machine, named and not started
 
@@ -259,7 +311,21 @@ restart-unsafety note in its own header.
 
 ## 5. Per-root table
 
-PLACEHOLDER-TABLE
+| root | verdict | run / evidence | note |
+| --- | --- | --- | --- |
+| `books/defrecord` | CERTIFIED | laptop `certify-20260920T213002Z-19121` | 0.13 s |
+| `tests/acl2/defrecord-tests` | CERTIFIED | laptop `certify-20260920T213002Z-19121` | 0.22 s, the new teeth |
+| `books/records`, `books/records-invariants`, `books/anchor`, `books/peer-config` and their closure (16 roots) | CERTIFIED | persvati `run-20260920T213144Z-7728` / `certify-20260920T213153Z-3503617` | packet 0 regression |
+| the DTN image substrate (54 roots, `books/replay` to `books/tcpcl-session`) | CERTIFIED | persvati `run-20260920T214122Z-02f2` / `certify-20260920T214126Z-3601692` | 203.94 s at `--jobs 6` |
+| `books/bp-primary-cbor`, `books/bp-primary`, `books/bp-primary-invariants`, `books/cbor`, `books/cbor-invariants` | CERTIFIED | hbox `run-20260920T213132Z-f558` / `certify-20260920T213139Z-1210785` | `bp-primary-invariants` 632.25 s |
+| `books/bp-bundle` | CERTIFIED | hbox `run-20260921T003648Z-4dae` / `certify-20260921T003651Z-1346980` | 7.65 s; the block-budget fix |
+| `books/bp-bundle-invariants` | CERTIFIED, two forms removed open | same run | 22.26 s; `fn-bpb-decode-of-encode` 1.27 s / 719,428 steps, the fold 0.05 s / 21,275 steps, `fn-bpb-scan-primary-of-encode` 0.01 s / 2,459 steps |
+| `tests/acl2/bp-bundle-tests` | CERTIFIED | same run | 0.71 s, 50 assertions; two of them had never run and were WRONG (below) |
+| `books/bp-node` | OPEN at one guard conjecture | hbox `run-20260921T002350Z-2a95`, then local `ld` iteration | the obligation is quoted in section 3 |
+| `tests/acl2/bp-node-tests` | NOT ATTEMPTED | --- | fails at `(include-book "../../books/bp-node")` |
+| `build/fn-host-dtn` | NOT BUILT | --- | needs `books/bp-node`; its other 59 closure books are certified |
+| `tools/tcpcl_lab.py --scenario adu` | NOT RUN | --- | needs the image |
+| `tests/bp-dtn7/run_fn_bp_interop.py` | NOT RUN | --- | needs the image; **no claim about dtn7 interoperability follows from this lane** |
 
 ## 6. What the next lane should take
 
@@ -279,3 +345,25 @@ PLACEHOLDER-TABLE
    one open item that changes a claim rather than adding a feature.
 4. **The outbound-suffix obligation of `specs/tcpcl.md` section 6**, still
    untouched by any lane.
+
+## 7. Two test assertions that had never run, and were wrong
+
+`tests/acl2/bp-bundle-tests.lisp` was written by the previous lane against a
+book that did not certify, so every assertion in it ran for the first time
+tonight. Two were false, and both are repaired to what the codec actually
+does rather than the codec changed to match them:
+
+- the "declared length above the per-block bound" witness spelled its
+  byte-string head `26`, which is major type 0. It measured
+  `:not-a-byte-string`, not `:limit`. The head is now `90` (= 64 + 26,
+  major type 2 with a four-octet argument, RFC 8949 §3), and the original
+  octets are kept beside it as the `:not-a-byte-string` witness, so the two
+  refusals stay distinct.
+- `(fn-bpb-decode (list 159 255) ...)` was asserted `:primary-block-refused`
+  and is `:malformed`: the break octet is not the start of a CBOR item, so
+  `fn-bpc-dec` refuses before `fn-bpp-decode` is reached. `(159 0 255)` is
+  the witness for `:primary-block-refused`, because `(0)` IS a CBOR item and
+  the scan hands it on.
+
+Both values were measured by evaluation before the assertion was changed
+(local ACL2 8.7, `tools/acl2`), not inferred.
