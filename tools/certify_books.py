@@ -32,6 +32,7 @@ from typing import Any
 # cannot disagree about what a book includes.  `tools/` is not a package.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import acl2_slots  # noqa: E402
+import acl2_toolchain  # noqa: E402
 import certs  # noqa: E402
 import evidence_manifests  # noqa: E402
 import ledger  # noqa: E402
@@ -227,7 +228,8 @@ def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
         # cache but unusable by every coherent selector.
         **{field: toolchain_manifest.get(field) for field in (
             "acl2_version", "acl2_executable_sha256", "environment",
-            "runner_sha256", "reader_sha256")},
+            "acl2_toolchain", "acl2_toolchain_identity",
+            "acl2_compatibility", "runner_sha256", "reader_sha256")},
     }
     try:
         report = certs.publish(ROOT, certs.cache_directory(), [partial], [book],
@@ -749,7 +751,14 @@ def main() -> int:
         return 1
 
     manifest["acl2_executable"] = str(acl2)
+    # `acl2_executable_sha256` is retained as launcher audit provenance for old
+    # manifests.  It is not a cache compatibility identity: generated ACL2
+    # launchers are small shell scripts whose saved core may change in place.
     manifest["acl2_executable_sha256"] = digest(acl2)
+    toolchain = acl2_toolchain.fingerprint(acl2)
+    manifest["acl2_toolchain"] = toolchain.provenance
+    manifest["acl2_toolchain_identity"] = toolchain.identity
+    manifest["acl2_compatibility"] = toolchain.compatibility
     slot_wait_seconds: dict[str, float] = {}
     try:
         # Every ACL2 this runner starts, the version probe included, holds one

@@ -221,11 +221,10 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
         "echo 'artifact-set EMPTY origin NONE source NONE toolchain NONE; "
         "installed 0, kept 0, missing 0, removed 0'; exit 0; fi; "
         f"acl2={settings['acl2']}; "
-        "acl2_sha=$(python3 -c 'import hashlib,sys; "
-        "print(hashlib.sha256(open(sys.argv[1], \"rb\").read()).hexdigest())' "
-        "\"$acl2\") || exit 14; "
+        "toolchain=$(python3 tools/acl2_toolchain.py identity \"$acl2\") "
+        "|| exit 14; "
         f"python3 tools/certs.py --cache {remote_quote(settings['cache'])} "
-        f"--toolchain-sha256 \"$acl2_sha\" "
+        f"--toolchain-identity \"$toolchain\" "
         f"--require-origin {remote_quote(remote)} {mode}install-set $roots")
 
 

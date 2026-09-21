@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from unittest import mock
 
+from tests.test_certs import TEST_COMPATIBILITY
+
 SPEC = importlib.util.spec_from_file_location(
     "certify_books", Path(__file__).resolve().parents[1] / "tools" / "certify_books.py"
 )
@@ -77,8 +79,14 @@ class FakeRepository:
         for book, includes in books.items():
             body = "".join(f'(include-book "{name}")\n' for name in includes)
             (self.root / f"{book}.lisp").write_text('(in-package "ACL2")\n' + body)
+        runtime = self.root / "fake-sbcl.sh"
+        runtime.write_text(FAKE_ACL2)
+        runtime.chmod(runtime.stat().st_mode | stat.S_IXUSR)
+        core = self.root / "fake-saved-acl2.core"
+        core.write_bytes(b"fake ACL2 saved core\n")
         self.acl2 = self.root / "fake-acl2.sh"
-        self.acl2.write_text(FAKE_ACL2)
+        self.acl2.write_text(
+            '#!/bin/sh\nexec "{}" --core "{}" "$@"\n'.format(runtime, core))
         self.acl2.chmod(self.acl2.stat().st_mode | stat.S_IXUSR)
         self.events = self.root / "events.log"
         self.cache = self.root / "cert-cache"
@@ -476,6 +484,10 @@ class CachePublishTests(unittest.TestCase):
             toolchain = {
                 "acl2_version": "ACL2 Version 8.7",
                 "acl2_executable_sha256": "a" * 64,
+                "acl2_compatibility": TEST_COMPATIBILITY,
+                "acl2_toolchain_identity": runner.certs.stable_identity(
+                    TEST_COMPATIBILITY),
+                "acl2_toolchain": {"status": "qualified", "fixture": True},
                 "environment": {"ACL2_BOOK_HASH_ALISTP": "NIL"},
                 "runner_sha256": "b" * 64,
                 "reader_sha256": "c" * 64,
@@ -489,7 +501,9 @@ class CachePublishTests(unittest.TestCase):
                     source_digests, output, 0, toolchain)
             self.assertTrue(event["published"])
             meta = json.loads(next(repository.cache.rglob("meta.json")).read_text())
-            self.assertEqual(meta["toolchain"], toolchain)
+            self.assertEqual(meta["toolchain"], TEST_COMPATIBILITY)
+            self.assertEqual(meta["certification_provenance"]["runner_sha256"],
+                             "b" * 64)
 
     def test_no_publish_leaves_the_cache_untouched(self):
         with tempfile.TemporaryDirectory() as directory:

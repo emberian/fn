@@ -284,7 +284,8 @@ class CacheTests(unittest.TestCase):
             self.assertIn("--require-origin /home/ember/fn-lanes/w5", scripts[install])
             self.assertIn("--dependencies-only", scripts[install])
             self.assertIn("install-set $roots", scripts[install])
-            self.assertIn("--toolchain-sha256 \"$acl2_sha\"", scripts[install])
+            self.assertIn("tools/acl2_toolchain.py identity \"$acl2\"", scripts[install])
+            self.assertIn("--toolchain-identity \"$toolchain\"", scripts[install])
             self.assertIn("cd /home/ember/fn-lanes/w5 ||", scripts[install])
             # The mirror overwrites the tree, so the install follows it.
             self.assertEqual(fake.commands[fake.commands.index(
