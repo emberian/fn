@@ -65,21 +65,35 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertTrue(stream.readline().startswith(b"200 "))
         return client, stream
 
-    def assert_live_writer_and_reader(self, writer, reader, message_id):
+    def assert_live_writer_and_reader(self, port, writer, reader, message_id):
         article = self.article(message_id, b"surviving native owner body\r\n")
         writer.write(b"POST\r\n")
         self.assertTrue(writer.readline().startswith(b"340 "))
         writer.write(article + b".\r\n")
         self.assertTrue(writer.readline().startswith(b"240 "))
 
-        reader.write(b"GROUP fn.test\r\n")
-        self.assertTrue(reader.readline().startswith(b"211 "))
-        reader.write(b"ARTICLE " + message_id + b"\r\n")
-        self.assertTrue(reader.readline().startswith(b"220 "))
-        received = bytearray()
+        # This connection predates the post and deliberately retains its
+        # pinned archive snapshot.  Prove it is still served without asking
+        # that old snapshot to expose a later commit.
+        reader.write(b"CAPABILITIES\r\n")
+        self.assertTrue(reader.readline().startswith(b"101 "))
         while True:
             line = reader.readline()
             self.assertNotEqual(line, b"", "owner closed the surviving reader")
+            if line == b".\r\n":
+                break
+
+        # A fresh reader pins the post-commit archive and proves the healthy
+        # writer's article became visible without restarting the service.
+        _, current_reader = self.connect_owner(port)
+        current_reader.write(b"GROUP fn.test\r\n")
+        self.assertTrue(current_reader.readline().startswith(b"211 "))
+        current_reader.write(b"ARTICLE " + message_id + b"\r\n")
+        self.assertTrue(current_reader.readline().startswith(b"220 "))
+        received = bytearray()
+        while True:
+            line = current_reader.readline()
+            self.assertNotEqual(line, b"", "owner closed the current reader")
             if line == b".\r\n":
                 break
             received.extend(line)
@@ -126,7 +140,7 @@ class NativeOwnerTests(unittest.TestCase):
             resetter.close()
             time.sleep(0.1)
             self.assert_live_writer_and_reader(
-                writer, reader, b"<after-native-reset@example.invalid>")
+                port, writer, reader, b"<after-native-reset@example.invalid>")
             self.assertIsNone(process.poll(), "peer reset stopped the owner")
         finally:
             if process.poll() is None:
@@ -146,7 +160,7 @@ class NativeOwnerTests(unittest.TestCase):
                 faulted.readline(),
                 b"403 internal fault; this connection is closed and the server continues\r\n")
             self.assert_live_writer_and_reader(
-                writer, reader, b"<after-native-handler-fault@example.invalid>")
+                port, writer, reader, b"<after-native-handler-fault@example.invalid>")
             self.assertIsNone(process.poll(), "local handler fault stopped the owner")
         finally:
             if process.poll() is None:
