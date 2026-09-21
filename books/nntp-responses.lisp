@@ -1511,8 +1511,27 @@
 ; Section 2.9 joins the trailing arguments with a single space to form one
 ; pattern.  The tokenizer has already split on space and TAB and bounded the
 ; whole command line at *fn-nntp-max-command-octets*, so the joined pattern
-; is bounded by the line and fn-wildmat-parse bounds it again at
+; is bounded by the line and fn-wildmat-parse-text bounds it again at
 ; *fn-wildmat-max-octets*.
+;
+; The joined pattern is read with fn-wildmat-parse-text, the HEADER-VALUE
+; wildmat profile (decision D19, books/wildmat.lisp), not with
+; fn-wildmat-parse.  RFC 3977 section 4.1's <wildmat-exact> excludes SP and
+; says why -- "these characters cannot occur in newsgroup names, which is the
+; only current use of wildmats" -- and section 2.9's join puts an SP in every
+; multi-token pattern, so reading the join with the newsgroup-name grammar
+; refused every one of them (OB-XPAT-SPACE, closed here).  Section 4.3
+; licenses the wider profile and the newsgroup-name paths above are untouched.
+; A pattern that parses and matches nothing is still section 2.9's 221 with an
+; empty list, which is what INN 2.7.4 answers for the same command
+; (planning/evidence/inn-xpat-2026-09-20.md).
+;
+; DIVERGENCE, recorded and deliberately unchanged: fn reads `,` in an XPAT
+; pattern as wildmat alternation where INN's uwildmat_simple reads it as a
+; literal.  Section 2.9 says "At least one pattern in wildmat must be
+; specified", so the comma is the wildmat separator here and fn follows the
+; RFC.  The header profile does not touch it: 44 is not an exact item in
+; either profile.
 ;
 ; LOCAL POLICY, not an RFC requirement: the match target is bounded.
 ; fn-wildmat-decode refuses an input longer than *fn-wildmat-max-octets*
@@ -1617,7 +1636,7 @@
     (let* ((field (car args))
            (token (car (cdr args)))
            (joined (fn-nntp-xpat-join (cdr (cdr args))))
-           (parsed (fn-wildmat-parse joined)))
+           (parsed (fn-wildmat-parse-text joined)))
       (if (not (fn-wildmat-result-okp parsed))
           (fn-nntp-single session "501 syntax error")
         (let ((patterns (fn-wildmat-result-value parsed)))

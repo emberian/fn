@@ -153,6 +153,7 @@
     "tests/acl2/bp-workflow-teeth-tests",
     "books/bp-workflow-records",
     "books/bp-workflow-records-invariants",
+    "books/bp-workflow-replay-status",
     "tests/acl2/bp-workflow-records-tests",
     "tests/acl2/bp-workflow-records-guards-tests",
     "books/bp-receipt",
@@ -280,25 +281,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 277,
-    "books_in_root_closure": 276,
-    "roots": 276,
-    "theorems": 5589,
-    "functions": 3944,
-    "assert_events": 5557,
-    "must_fails": 59,
+    "books": 278,
+    "books_in_root_closure": 277,
+    "roots": 277,
+    "theorems": 5639,
+    "functions": 3959,
+    "assert_events": 5652,
+    "must_fails": 63,
     "encapsulates": 19,
     "guards": {
-      "verified": 1467,
-      "declared-off": 190,
+      "verified": 1481,
+      "declared-off": 191,
       "default-guarded": 1796,
       "default-unguarded": 491
     },
     "suspect_theorems": 46,
     "export_hygiene_warnings": 72,
-    "enabled_projection_warnings": 26,
+    "enabled_projection_warnings": 27,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 88,
+    "include_hygiene_warnings": 89,
     "host_names_warnings": 33,
     "hand_written_record_warnings": 18
   },
@@ -472,14 +473,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 5,
-      "functions": 30,
+      "functions": 31,
       "guards": {
-        "verified": 30,
+        "verified": 31,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 30,
+      "verify_guards_events": 31,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 6,
@@ -1550,11 +1551,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 12,
+      "functions": 16,
       "guards": {
-        "verified": 10,
+        "verified": 15,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
       "verify_guards_events": 10,
@@ -1565,6 +1566,31 @@
       "encapsulates": 0,
       "includes": [
         "bp-workflow"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-workflow-replay-status.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 30,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-workflow-records-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -4906,7 +4932,7 @@
       "book": "books/wildmat-parser-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
+      "theorems": 18,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -4931,7 +4957,7 @@
       "book": "books/wildmat-utf8-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 29,
+      "theorems": 31,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -4985,15 +5011,15 @@
       "book": "books/wildmat.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
-      "functions": 54,
+      "theorems": 22,
+      "functions": 62,
       "guards": {
-        "verified": 54,
+        "verified": 62,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 54,
+      "verify_guards_events": 62,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -5144,7 +5170,7 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 31,
+      "assert_events": 36,
       "must_fails": 0,
       "defconsts": 11,
       "defmacros": 0,
@@ -5737,13 +5763,13 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 74,
+      "assert_events": 101,
       "must_fails": 6,
-      "defconsts": 37,
+      "defconsts": 48,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-workflow-records-invariants"
+        "../../books/bp-workflow-replay-status"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -6381,10 +6407,10 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 82,
+      "assert_events": 92,
       "must_fails": 0,
-      "defconsts": 15,
-      "defmacros": 1,
+      "defconsts": 19,
+      "defmacros": 2,
       "encapsulates": 0,
       "includes": [
         "../../books/nntp-effects"
@@ -7501,13 +7527,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 13,
-      "must_fails": 1,
-      "defconsts": 5,
+      "assert_events": 40,
+      "must_fails": 5,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/wildmat-matcher-invariants"
+        "../../books/wildmat-matcher-invariants",
+        "../../books/wildmat-parser-invariants"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -7528,9 +7555,9 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 35,
+      "assert_events": 61,
       "must_fails": 0,
-      "defconsts": 3,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7570,7 +7597,7 @@
     {
       "theorem": "fn-af-message-id-equalp-is-exact",
       "book": "books/article-fields.lisp",
-      "line": 311,
+      "line": 336,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-af-message-id-equalp with the conjuncts the hypotheses already assert struck out"
       ]
@@ -8619,7 +8646,7 @@
       {
         "function": "fn-wildmat-pattern-items",
         "book": "books/wildmat.lisp",
-        "line": 206,
+        "line": 273,
         "stated_in": [
           "books/wildmat-work.lisp"
         ],
@@ -8628,12 +8655,21 @@
       {
         "function": "fn-wildmat-scan-items",
         "book": "books/wildmat.lisp",
-        "line": 251,
+        "line": 332,
         "stated_in": [
           "books/wildmat-parser-invariants.lisp",
           "books/wildmat-utf8-invariants.lisp"
         ],
         "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-scan-rest",
+        "book": "books/wildmat.lisp",
+        "line": 335,
+        "stated_in": [
+          "books/wildmat-parser-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
       }
     ],
     "teeth_form": [],
@@ -8839,6 +8875,13 @@
         "line": 5,
         "include": "bp-workflow",
         "included": "books/bp-workflow.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-workflow-replay-status.lisp",
+        "line": 17,
+        "include": "bp-workflow-records-invariants",
+        "included": "books/bp-workflow-records-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -9129,13 +9172,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/bp-workflow-records-tests.lisp",
-        "line": 2,
-        "include": "../../books/bp-workflow-records-invariants",
-        "included": "books/bp-workflow-records-invariants.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "tests/acl2/bp-workflow-teeth-tests.lisp",
         "line": 11,
         "include": "../../books/bp-workflow-invariants",
@@ -9252,6 +9288,13 @@
         "line": 12,
         "include": "../../books/wildmat-matcher-invariants",
         "included": "books/wildmat-matcher-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/wildmat-teeth-tests.lisp",
+        "line": 95,
+        "include": "../../books/wildmat-parser-invariants",
+        "included": "books/wildmat-parser-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       }
     ],

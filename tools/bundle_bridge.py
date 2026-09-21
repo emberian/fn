@@ -17,7 +17,7 @@ from dataclasses import dataclass
 import hashlib
 import time
 
-from tools import frame_bridge
+from tools import frame_bridge, run_store
 
 # The host's claimed half-width, in milliseconds, of the interval it is willing
 # to certify contains the true DTN time.  This is configuration, not a
@@ -29,6 +29,10 @@ DEFAULT_WALL_ERROR_MS = 2_000
 # `*fn-bpc-max-input*`; a longer prefix cannot be decoded by the profile, and
 # the whole bundle is not sent -- only enough of it to cover the primary block.
 MAX_BUNDLE_PREFIX_OCTETS = 65_536
+# RFC 9171 4.1: a bundle is an indefinite-length array, so it ends in the
+# break stop code.  fn-bpi-host-bundle-prefix returns the head and the primary
+# block; a laboratory bundle carries no other block, so the break follows.
+BREAK_STOP_CODE = b"\xff"
 
 
 class BundleRefused(RuntimeError):
@@ -144,6 +148,34 @@ class BundleBridge:
         return BundleReport(identity, decision, _eid_text(value[3]),
                             value[4], value[5],
                             _optional(value[6]), _optional(value[7]))
+
+
+def encode_primary(*, destination: bytes, source: bytes, report_to: bytes,
+                   creation: int, sequence: int, lifetime: int, flags: int = 0,
+                   offset=None, total=None, bridge=None) -> bytes:
+    """One bundle's primary block, encoded by ACL2, for a laboratory transport.
+
+    A stand-in transport that hands fn a bundle has to hand it a real one: the
+    identity fn stages under is derived from these very octets, so octets
+    Python invented would be an identity Python invented.  Nothing here spells
+    a BPv7 field -- `fn-bpi-host-bundle-prefix` returns the indefinite-array
+    head and the certified primary-block encoding, and the caller appends the
+    break stop code standing in for the blocks a lab has none of.
+    """
+    bridged = session(bridge)
+    store = bridged.session.store
+
+    def eid(ssp):
+        return "(cons :dtn '" + store.literal(ssp) + ")"
+
+    def optional(value):
+        return "nil" if value is None else str(value)
+
+    form = ("(fn-bpi-host-bundle-prefix (fn-bpp-make-block {} 0 {} {} {} {} {} {} {} {}))"
+            .format(flags, eid(destination), eid(source), eid(report_to),
+                    creation, sequence, lifetime,
+                    optional(offset), optional(total)))
+    return run_store.acl2_octets(store.call(form)) + BREAK_STOP_CODE
 
 
 def session(bridge=None) -> BundleBridge:

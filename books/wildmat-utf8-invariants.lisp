@@ -133,6 +133,23 @@
            :use ((:instance fn-wildmat-items-p-revappend (ys nil)))
            :in-theory (enable fn-wildmat-items-p reverse))))
 
+; The scanner collects the header-value item set (D19), so the shape it
+; carries through `reverse' is that one.  The two above stay because the
+; section 4.1 shape is still proved of `fn-wildmat-parse' results.
+(defthm fn-wildmat-text-items-p-revappend
+  (implies (and (fn-wildmat-text-items-p xs)
+                (fn-wildmat-text-items-p ys))
+           (fn-wildmat-text-items-p (revappend xs ys)))
+  :hints (("Goal" :induct (revappend xs ys)
+           :in-theory (enable fn-wildmat-text-items-p revappend))))
+
+(defthm fn-wildmat-text-items-p-reverse
+  (implies (fn-wildmat-text-items-p xs)
+           (fn-wildmat-text-items-p (reverse xs)))
+  :hints (("Goal"
+           :use ((:instance fn-wildmat-text-items-p-revappend (ys nil)))
+           :in-theory (enable fn-wildmat-text-items-p reverse))))
+
 (defthm fn-wildmat-utf8-next-success-rest-true-listp
   (implies (and (true-listp octets)
                 (fn-wildmat-result-okp (fn-wildmat-utf8-next octets)))
@@ -221,12 +238,12 @@
                            (fn-wildmat-decode-aux)))))
 
 (defthm fn-wildmat-scan-end-success-items
-  (implies (and (fn-wildmat-items-p items-rev)
+  (implies (and (fn-wildmat-text-items-p items-rev)
                 (fn-wildmat-scan-endp
                  (fn-wildmat-scan-pattern codepoints items-rev)))
            (and (consp (fn-wildmat-scan-items
                         (fn-wildmat-scan-pattern codepoints items-rev)))
-                (fn-wildmat-items-p
+                (fn-wildmat-text-items-p
                  (fn-wildmat-scan-items
                   (fn-wildmat-scan-pattern codepoints items-rev)))))
   :hints (("Goal"
@@ -234,15 +251,15 @@
            :in-theory (enable fn-wildmat-scan-pattern
                                fn-wildmat-scan-endp
                                fn-wildmat-scan-items
-                               fn-wildmat-items-p))))
+                               fn-wildmat-text-items-p))))
 
 (defthm fn-wildmat-scan-more-success-items
-  (implies (and (fn-wildmat-items-p items-rev)
+  (implies (and (fn-wildmat-text-items-p items-rev)
                 (fn-wildmat-scan-morep
                  (fn-wildmat-scan-pattern codepoints items-rev)))
            (and (consp (fn-wildmat-scan-items
                         (fn-wildmat-scan-pattern codepoints items-rev)))
-                (fn-wildmat-items-p
+                (fn-wildmat-text-items-p
                  (fn-wildmat-scan-items
                   (fn-wildmat-scan-pattern codepoints items-rev)))))
   :hints (("Goal"
@@ -250,10 +267,10 @@
            :in-theory (enable fn-wildmat-scan-pattern
                                fn-wildmat-scan-morep
                                fn-wildmat-scan-items
-                               fn-wildmat-items-p))))
+                               fn-wildmat-text-items-p))))
 
 (defthm fn-wildmat-scan-end-success-items-consp
-  (implies (and (fn-wildmat-items-p items-rev)
+  (implies (and (fn-wildmat-text-items-p items-rev)
                 (fn-wildmat-scan-endp
                  (fn-wildmat-scan-pattern codepoints items-rev)))
            (consp (fn-wildmat-scan-items
@@ -261,16 +278,16 @@
   :hints (("Goal" :use fn-wildmat-scan-end-success-items)))
 
 (defthm fn-wildmat-scan-end-success-items-valid
-  (implies (and (fn-wildmat-items-p items-rev)
+  (implies (and (fn-wildmat-text-items-p items-rev)
                 (fn-wildmat-scan-endp
                  (fn-wildmat-scan-pattern codepoints items-rev)))
-           (fn-wildmat-items-p
+           (fn-wildmat-text-items-p
             (fn-wildmat-scan-items
              (fn-wildmat-scan-pattern codepoints items-rev))))
   :hints (("Goal" :use fn-wildmat-scan-end-success-items)))
 
 (defthm fn-wildmat-scan-more-success-items-consp
-  (implies (and (fn-wildmat-items-p items-rev)
+  (implies (and (fn-wildmat-text-items-p items-rev)
                 (fn-wildmat-scan-morep
                  (fn-wildmat-scan-pattern codepoints items-rev)))
            (consp (fn-wildmat-scan-items
@@ -278,10 +295,10 @@
   :hints (("Goal" :use fn-wildmat-scan-more-success-items)))
 
 (defthm fn-wildmat-scan-more-success-items-valid
-  (implies (and (fn-wildmat-items-p items-rev)
+  (implies (and (fn-wildmat-text-items-p items-rev)
                 (fn-wildmat-scan-morep
                  (fn-wildmat-scan-pattern codepoints items-rev)))
-           (fn-wildmat-items-p
+           (fn-wildmat-text-items-p
             (fn-wildmat-scan-items
              (fn-wildmat-scan-pattern codepoints items-rev))))
   :hints (("Goal" :use fn-wildmat-scan-more-success-items)))
@@ -293,18 +310,18 @@
   :hints (("Goal"
            :use ((:instance fn-wildmat-scan-end-success-items
                             (items-rev nil)))
-           :in-theory (enable fn-wildmat-scan-endp fn-wildmat-items-p)))
+           :in-theory (enable fn-wildmat-scan-endp fn-wildmat-text-items-p)))
   :rule-classes :forward-chaining)
 
 (defthm fn-wildmat-scan-nil-end-items-valid
   (implies (equal (car (fn-wildmat-scan-pattern codepoints nil)) :end)
-           (fn-wildmat-items-p
+           (fn-wildmat-text-items-p
             (fn-wildmat-scan-items
              (fn-wildmat-scan-pattern codepoints nil))))
   :hints (("Goal"
            :use ((:instance fn-wildmat-scan-end-success-items
                             (items-rev nil)))
-           :in-theory (enable fn-wildmat-scan-endp fn-wildmat-items-p)))
+           :in-theory (enable fn-wildmat-scan-endp fn-wildmat-text-items-p)))
   :rule-classes :forward-chaining)
 
 (defthm fn-wildmat-scan-nil-more-items-consp
@@ -314,16 +331,16 @@
   :hints (("Goal"
            :use ((:instance fn-wildmat-scan-more-success-items
                             (items-rev nil)))
-           :in-theory (enable fn-wildmat-scan-morep fn-wildmat-items-p)))
+           :in-theory (enable fn-wildmat-scan-morep fn-wildmat-text-items-p)))
   :rule-classes :forward-chaining)
 
 (defthm fn-wildmat-scan-nil-more-items-valid
   (implies (equal (car (fn-wildmat-scan-pattern codepoints nil)) :more)
-           (fn-wildmat-items-p
+           (fn-wildmat-text-items-p
             (fn-wildmat-scan-items
              (fn-wildmat-scan-pattern codepoints nil))))
   :hints (("Goal"
            :use ((:instance fn-wildmat-scan-more-success-items
                             (items-rev nil)))
-           :in-theory (enable fn-wildmat-scan-morep fn-wildmat-items-p)))
+           :in-theory (enable fn-wildmat-scan-morep fn-wildmat-text-items-p)))
   :rule-classes :forward-chaining)

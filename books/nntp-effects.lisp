@@ -1207,7 +1207,7 @@
    (fn-nntp-result-effects (fn-nntp-xpat-response session archive args)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-response)
                                   (fn-nntp-xpat-range fn-nntp-xpat-msgid
-                                   fn-nntp-xpat-join fn-wildmat-parse
+                                   fn-nntp-xpat-join fn-wildmat-parse-text
                                    fn-nntp-hdr-fieldp fn-nntp-parse-range
                                    fn-nntp-message-id-tokenp
                                    fn-nntp-single)))))

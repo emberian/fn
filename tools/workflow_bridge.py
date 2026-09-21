@@ -54,6 +54,16 @@ class Acl2WorkflowReplay:
         raw=acl2_result(self.store.call("(fn-workflow-work-status "+_string(work_id)+" state)")).lower()
         if not raw.startswith(b":"): raise JournalFault("ACL2 returned invalid workflow status")
         return raw[1:].decode("ascii")
+    def work_origin(self, work_id):
+        """Recovered from a cut, enqueued this session, or held at all.
+
+        A second question with a second answer: two works can both read
+        `outstanding` and have reached the image by materially different
+        routes.  ACL2 decides it from the id list the install recorded.
+        """
+        raw=acl2_result(self.store.call("(fn-workflow-work-origin "+_string(work_id)+" state)")).lower()
+        if not raw.startswith(b":"): raise JournalFault("ACL2 returned invalid workflow origin")
+        return raw[1:].decode("ascii")
     def preflight(self, record):
         return acl2_symbol(self.store.call("(fn-workflow-preflight-record "+
                            record_form(record)+" state)")) == "ready"

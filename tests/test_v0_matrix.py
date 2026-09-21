@@ -1,0 +1,322 @@
+"""tools/v0_matrix.py's shape, its vocabulary, and one real dry-run row.
+
+Narrow by design. The matrix's value is a run against two nodes on a box, and
+nothing here stands in for that. What is tested is the machinery a run cannot
+be trusted without:
+
+* the inventory is well formed and every id it cites is in the registries;
+* the five verdicts mean what the document says, and the three ways an exit
+  code or a status line becomes one of them do not overlap;
+* `validate` refuses a hand-edited verdict -- the ledger rule, "counts come
+  from tools, not typing", applied to a verdict word;
+* one row produced by really running a command through the dry-run host, so
+  the emit/document/validate path is exercised end to end and not only over a
+  synthetic dictionary.
+"""
+import json
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+
+import v0_matrix  # noqa: E402
+from v0_matrix import (ACCEPTED, NOT_BUILT, NOT_EXERCISED, OUTCOMES,  # noqa: E402
+                       PLAN, PLANNED_IDS, PLAN_BY_KEY, REFUSED, UNCERTAIN,
+                       VERDICTS)
+
+
+def registry(path, key):
+    return {entry["id"] for entry in json.loads((ROOT / path).read_text())[key]}
+
+
+class InventoryTests(unittest.TestCase):
+    """PLAN is the one place the feature list lives; it has to be sound."""
+
+    def test_every_row_id_is_unique(self):
+        self.assertEqual(len(PLANNED_IDS), len(set(PLANNED_IDS)))
+
+    def test_every_spec_belongs_to_a_declared_feature(self):
+        known = {fid for fid, _ in v0_matrix.FEATURES}
+        for spec in PLAN:
+            self.assertIn(spec.feature, known, spec.key)
+
+    def test_every_declared_feature_has_at_least_one_row(self):
+        used = {spec.feature for spec in PLAN}
+        for fid, _ in v0_matrix.FEATURES:
+            self.assertIn(fid, used, fid)
+
+    def test_every_requirement_id_is_in_the_registry(self):
+        known = registry("planning/requirements.json", "requirements")
+        for spec in PLAN:
+            self.assertTrue(spec.requirements, spec.key)
+            for ident in spec.requirements:
+                self.assertIn(ident, known, "{}: {}".format(spec.key, ident))
+
+    def test_every_scenario_id_is_in_the_catalog(self):
+        known = registry("tests/scenarios/catalog.json", "scenarios")
+        for spec in PLAN:
+            self.assertTrue(spec.scenarios, spec.key)
+            for ident in spec.scenarios:
+                self.assertIn(ident, known, "{}: {}".format(spec.key, ident))
+
+    def test_an_expectation_is_an_outcome_or_nothing(self):
+        for spec in PLAN:
+            self.assertIn(spec.expected, (None,) + OUTCOMES, spec.key)
+
+    def test_a_probe_row_says_why_it_has_no_expectation(self):
+        for spec in PLAN:
+            if spec.expected is None:
+                self.assertTrue(spec.limit, "{}: a row with no expectation has to say "
+                                            "what it records instead".format(spec.key))
+
+    def test_the_listing_runs_and_names_every_row(self):
+        text = v0_matrix.render_plan()
+        for spec in PLAN:
+            self.assertIn(spec.key, text)
+
+
+class VocabularyTests(unittest.TestCase):
+    """Five verdicts, and the three mappings that produce them."""
+
+    def test_the_vocabulary_is_the_three_outcomes_and_two_non_outcomes(self):
+        self.assertEqual(VERDICTS,
+                         (ACCEPTED, REFUSED, UNCERTAIN, NOT_EXERCISED, NOT_BUILT))
+        self.assertEqual(OUTCOMES, (ACCEPTED, REFUSED, UNCERTAIN))
+
+    def test_a_reply_becomes_exactly_one_outcome(self):
+        for status, want in (("200 ready", ACCEPTED), ("340 send it", ACCEPTED),
+                             ("111 date", ACCEPTED), ("430 no such article", REFUSED),
+                             ("435 not wanted", REFUSED), ("439 rejected", REFUSED),
+                             ("500 command not recognized", REFUSED),
+                             ("400 service discontinued", UNCERTAIN),
+                             ("403 internal fault", UNCERTAIN),
+                             ("503 feature not supported", UNCERTAIN),
+                             ("ConnectionResetError: [Errno 104]", UNCERTAIN),
+                             ("", UNCERTAIN)):
+            self.assertEqual(v0_matrix.reply_verdict(status), want, status)
+
+    def test_a_missing_verb_is_recognised_apart_from_a_refusal(self):
+        for status in ("500 command not recognized", "501 syntax error"):
+            self.assertTrue(v0_matrix.unsupported(status), status)
+        for status in ("435 not wanted", "430 no such article", "239 taken",
+                       "502 transit is not permitted on this connection"):
+            self.assertFalse(v0_matrix.unsupported(status), status)
+
+    def test_a_permission_answer_is_not_a_missing_verb(self):
+        # Measured on persvati: an fn node answers `IHAVE` with
+        # "502 transit is not permitted on this connection".  The verb is
+        # there and the node decided about the caller.
+        for status in ("502 transit is not permitted on this connection",
+                       "440 posting not permitted", "480 authentication required",
+                       "483 secure connection required"):
+            self.assertTrue(v0_matrix.not_permitted(status), status)
+            self.assertFalse(v0_matrix.available(status), status)
+        for status in ("411 no such group", "423 no article with that number",
+                       "430 no article with that message-id", "340 send it",
+                       "215 list follows"):
+            self.assertFalse(v0_matrix.not_permitted(status), status)
+            self.assertTrue(v0_matrix.available(status), status)
+
+    def test_the_three_exit_codes_stay_distinct(self):
+        self.assertEqual(v0_matrix.exit_verdict(0), ACCEPTED)
+        self.assertEqual(v0_matrix.exit_verdict(1), REFUSED)
+        self.assertEqual(v0_matrix.exit_verdict(3), UNCERTAIN)
+        self.assertEqual(v0_matrix.exit_verdict(None), NOT_EXERCISED)
+        # A code outside the vocabulary is not quietly folded into a refusal.
+        self.assertEqual(v0_matrix.exit_verdict(2), UNCERTAIN)
+        self.assertEqual(v0_matrix.exit_verdict(124), UNCERTAIN)
+
+    def test_the_statement_vocabulary_is_read_as_its_own(self):
+        # `fn statement verify`: 0 verified, 3 unverified, 4 absent, 2 no verdict.
+        # 3 is NOT D13's uncertain here, and the matrix does not translate it.
+        self.assertEqual(v0_matrix.V0Matrix.statement_verdict(0), ACCEPTED)
+        self.assertEqual(v0_matrix.V0Matrix.statement_verdict(3), REFUSED)
+        self.assertEqual(v0_matrix.V0Matrix.statement_verdict(4), REFUSED)
+        self.assertEqual(v0_matrix.V0Matrix.statement_verdict(2), UNCERTAIN)
+
+
+def make_gate(home):
+    host = v0_matrix.LocalHost(Path(home))
+    gate = v0_matrix.V0Matrix(host, ROOT, "a" * 40, "abc1234", "dev")
+    gate._evidence_name = "planning/evidence/v0-matrix-test.md"
+    return gate
+
+
+class EmitTests(unittest.TestCase):
+    """The only way a row is created, and what it refuses to create."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.gate = make_gate(self.temp.name)
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_a_verdict_outside_the_vocabulary_is_refused(self):
+        with self.assertRaises(v0_matrix.GateError):
+            self.gate.emit("V0-NODE-LOOPBACK", "pass", "cmd", "obs")
+
+    def test_a_row_that_did_not_run_must_name_its_blocker(self):
+        with self.assertRaises(v0_matrix.GateError):
+            self.gate.emit("V0-BP-NODE", NOT_BUILT, "cmd", "obs")
+        self.gate.emit("V0-BP-NODE", NOT_BUILT, "cmd", "obs",
+                       blocker="no BP node is wired behind the layer", owner="w9/dtn-2")
+        self.assertIn("V0-BP-NODE", self.gate.emitted)
+
+    def test_a_row_is_emitted_once(self):
+        self.gate.emit("V0-BP-NODE", NOT_BUILT, "cmd", "obs", blocker="x")
+        with self.assertRaises(v0_matrix.GateError):
+            self.gate.emit("V0-BP-NODE", NOT_BUILT, "cmd", "obs", blocker="x")
+
+    def test_agrees_is_null_for_a_row_that_is_not_an_outcome(self):
+        row = self.gate.emit("V0-BP-NODE", NOT_BUILT, "cmd", "obs", blocker="x")
+        self.assertIsNone(row.agrees)
+
+    def test_a_refusal_row_that_draws_its_refusal_agrees(self):
+        row = self.gate.emit("V0-NODE-LOOPBACK", REFUSED, "bin/fn run", "rc=1")
+        self.assertEqual(PLAN_BY_KEY["V0-NODE-LOOPBACK"].expected, REFUSED)
+        self.assertTrue(row.agrees)
+
+    def test_an_outcome_row_names_the_client_that_saw_it(self):
+        row = self.gate.emit("V0-NODE-LOOPBACK", REFUSED, "bin/fn run", "rc=1")
+        self.assertEqual(row.client, v0_matrix.CLIENT_DRIVER)
+        self.assertFalse(row.independent)
+
+    def test_a_foreign_client_is_marked_independent(self):
+        row = self.gate.emit("V0-CLIENT-NNTPLIB", ACCEPTED, "python3.12 ...", "ok",
+                             node="a", client="stdlib nntplib on python3.12")
+        self.assertTrue(row.independent)
+
+    def test_a_row_that_did_not_run_has_no_client(self):
+        row = self.gate.emit("V0-BP-NODE", NOT_BUILT, "cmd", "obs", blocker="x")
+        self.assertIsNone(row.client)
+        self.assertIsNone(row.independent)
+
+    def test_backfill_leaves_no_planned_row_silent(self):
+        self.gate.backfill()
+        self.assertEqual(len(self.gate.rows), len(PLANNED_IDS))
+        for row in self.gate.rows:
+            self.assertEqual(row.verdict, NOT_EXERCISED)
+            self.assertTrue(row.blocker)
+
+
+class DryRunRowTests(unittest.TestCase):
+    """One row from a command really run through the dry-run host."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temp = tempfile.TemporaryDirectory()
+        cls.gate = make_gate(cls.temp.name)
+        # `bin/fn run` on a non-loopback listener host exits 1 without binding
+        # anything, so the refusal row can be produced with no store, no ACL2
+        # and no socket.  The script stands in for that shape here.
+        step = cls.gate.sh("dry-run refusal", "echo 'run listener host is not "
+                                              "loopback' ; exit 1", expect=None)
+        cls.row = cls.gate.from_step("V0-NODE-LOOPBACK", step,
+                                     limit="a dry-run stand-in, not bin/fn")
+        cls.gate.backfill()
+        cls.doc = cls.gate.document("2026-09-20T00:00:00Z", 1.0)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.temp.cleanup()
+
+    def test_the_row_is_a_refusal_and_agrees(self):
+        self.assertEqual(self.row.verdict, REFUSED)
+        self.assertTrue(self.row.agrees)
+        self.assertEqual(self.row.exit_code, 1)
+        self.assertIn("not loopback", self.row.observed)
+
+    def test_the_row_names_its_invocation_its_revision_and_its_log(self):
+        payload = self.row.json("abc1234")
+        self.assertTrue(payload["invocation"])
+        self.assertEqual(payload["revision"], "abc1234")
+        self.assertTrue(payload["log"])
+        self.assertTrue(payload["limit"])
+
+    def test_the_document_validates(self):
+        self.assertEqual(v0_matrix.validate(self.doc), [])
+
+    def test_the_document_indexes_by_requirement_and_scenario(self):
+        self.assertIn("V0-NODE-LOOPBACK", self.doc["by_requirement"]["HST-003"])
+        self.assertIn("V0-NODE-LOOPBACK", self.doc["by_scenario"]["SCN-021"])
+
+    def test_the_summary_is_over_the_rows(self):
+        self.assertEqual(self.doc["summary"]["total"], len(PLANNED_IDS))
+        self.assertEqual(self.doc["summary"][REFUSED], 1)
+        self.assertEqual(self.doc["summary"][NOT_EXERCISED], len(PLANNED_IDS) - 1)
+
+
+class ValidateRefusesTypingTests(unittest.TestCase):
+    """A verdict a human wrote into the file does not survive `make check`."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        gate = make_gate(temp.name)
+        gate.backfill()
+        self.doc = gate.document("2026-09-20T00:00:00Z", 1.0)
+
+    def test_the_generated_document_is_accepted(self):
+        self.assertEqual(v0_matrix.validate(self.doc), [])
+
+    def test_a_hand_edited_verdict_breaks_the_digest(self):
+        doc = json.loads(json.dumps(self.doc))
+        doc["rows"][0]["verdict"] = ACCEPTED
+        doc["rows"][0]["agrees"] = True
+        doc["rows"][0]["blocker"] = None
+        doc["summary"][NOT_EXERCISED] -= 1
+        doc["summary"][ACCEPTED] += 1
+        problems = v0_matrix.validate(doc)
+        self.assertTrue(any("rows_digest" in p for p in problems), problems)
+
+    def test_a_forged_digest_still_fails_on_the_summary(self):
+        doc = json.loads(json.dumps(self.doc))
+        doc["rows"][0]["verdict"] = ACCEPTED
+        doc["rows"][0]["agrees"] = True
+        doc["rows"][0]["blocker"] = None
+        doc["rows_digest"] = v0_matrix.hashlib.sha256(json.dumps(
+            doc["rows"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        problems = v0_matrix.validate(doc)
+        self.assertTrue(any("summary" in p for p in problems), problems)
+
+    def test_a_client_rewritten_by_hand_is_refused(self):
+        doc = json.loads(json.dumps(self.doc))
+        doc["rows"][0]["client"] = "a newsreader that never ran"
+        problems = v0_matrix.validate(doc)
+        self.assertTrue(problems)
+
+    def test_a_missing_planned_row_is_refused(self):
+        doc = json.loads(json.dumps(self.doc))
+        doc["rows"] = doc["rows"][1:]
+        problems = v0_matrix.validate(doc)
+        self.assertTrue(any("missing from the file" in p for p in problems), problems)
+
+    def test_a_row_that_is_not_in_the_plan_is_refused(self):
+        doc = json.loads(json.dumps(self.doc))
+        doc["rows"][0]["id"] = "V0-INVENTED-001"
+        problems = v0_matrix.validate(doc)
+        self.assertTrue(any("not in the tool's PLAN" in p for p in problems), problems)
+
+    def test_a_document_written_by_something_else_is_refused(self):
+        doc = json.loads(json.dumps(self.doc))
+        doc["generated_by"] = "a person with an editor"
+        problems = v0_matrix.validate(doc)
+        self.assertTrue(any("generated_by" in p for p in problems), problems)
+
+
+class CommittedMatrixTests(unittest.TestCase):
+    """The file in the tree is the one the tool wrote."""
+
+    def test_the_committed_matrix_validates(self):
+        path = ROOT / v0_matrix.MATRIX_JSON
+        if not path.is_file():
+            self.skipTest("{} has not been generated yet".format(v0_matrix.MATRIX_JSON))
+        self.assertEqual(v0_matrix.check_file(path), [])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -381,6 +381,89 @@ recovery barriers, while the cuts are `recover-replayed` at `:1207` and
 minus one, and a matching frontier arm here; that is the next packet, not this
 one.
 
+### 2026-09-20: D19 — the header-value wildmat profile, and what fn's 501 was
+
+**The question.** RFC 2980 §2.9's XPAT matches a pattern against a *header
+value*. RFC 3977 §4.1's `<wildmat-exact>` excludes SP, and §2.9 says "If there
+are additional arguments the are joined together separated by a single space
+to form one complete pattern", so every multi-token XPAT pattern carries an
+SP. fn joined correctly (`fn-nntp-xpat-join`) and then parsed the join with
+the §4.1 grammar, so it answered `501` to every one of them and could not
+phrase-search a header, which is XPAT's ordinary use. Where does the grammar
+for a header-value pattern live?
+
+**Which of the three the 501 was.** Not an RFC requirement, and not a stronger
+fn guarantee. §2.9.1's response list is `221 / 430 / 502` and contains no 501
+at all; §4.1's grammar governs `newsgroup-name = 1*wildmat-exact` (§9.8), and
+§4.1's own note gives its reason — "This should not be a problem, since these
+characters cannot occur in newsgroup names, which is the only current use of
+wildmats" — which is exactly the assumption XPAT breaks. So the 501 was **a
+local policy choice, and an unintended one**: the consequence of reusing the
+newsgroup-name grammar in a position the RFC did not put it in. It is not
+justified by the RFC and it is not a guarantee anyone wanted, so it is
+withdrawn rather than defended. A pattern that parses and does not match is
+§2.9's 221 with an empty list, which is also what INN 2.7.4 answers for the
+same command (`planning/evidence/inn-xpat-2026-09-20.md`).
+
+**Selected: a second character profile over ONE parser.** The three candidates
+were a second recognizer beside `fn-wildmat-exactp`, a profile parameter
+threaded through the existing scanner, and a separate parser. The costs
+decided it.
+
+- *A separate parser* duplicates the scanner, `fn-wildmat-parse-one` and the
+  whole result-shape induction — including `fn-wm-parse-one-success-pattern-listp`,
+  whose proof carries twelve subgoal hints. Two copies of that is the most
+  expensive of the three and the one that rots.
+- *A profile parameter* on `fn-wildmat-scan-pattern` and
+  `fn-wildmat-parse-one` changes their arity, which restates every theorem in
+  `books/wildmat-parser-invariants` and `books/wildmat-utf8-invariants` and
+  moves the subgoal names those twelve hints are attached to.
+- *Selected:* the scanner scans the **wider** set, and the newsgroup-name
+  entry point `fn-wildmat-parse` recovers §4.1 with a **precheck** on the
+  decoded code points (`fn-wildmat-rfc3977-codepointsp`) before scanning.
+  Arities do not change, no statement in the matcher book changes, and the
+  twelve subgoal hints did not move. The measured cost was a predicate rename
+  in two books and one new induction; all five wildmat roots certified on the
+  first attempt after it.
+
+**The profile, in one rule.** A pattern is a fragment of a command line, so
+every printable US-ASCII character, SP, and every UTF-8 non-ASCII character is
+a literal, less the four wildmat metacharacters `!` `*` `,` `?`. Controls and
+DEL stay out, as they are out of §4.1. Against `<wildmat-exact>` that is
+exactly four more code points — `%x20 SP`, `%x5B [`, `%x5C \`, `%x5D ]` —
+and `fn-wildmat-text-exactp-adds-exactly-four-code-points` says the difference
+is no larger.
+
+**What licenses it.** §4.3: "An NNTP server or extension MAY extend the syntax
+or semantics of wildmats provided that all wildmats that meet the requirements
+of Section 4.1 have the meaning ascribed to them by Section 4.2." fn discharges
+that proviso rather than asserting it: `fn-wildmat-parse` accepts and refuses
+exactly the octet lists it did before, with the same reason keyword, because
+the precheck runs first; and
+`fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items` states that the
+widened matcher test is the pre-D19 body, verbatim, on every §4.1 item.
+
+**The cost, named.** §4.1 omitted `[`, `\` and `]` because "A future extension
+to this specification may provide semantics for these characters" — brackets
+for sets, backslash for quoting. Reading them as literals in the *header*
+profile spends that reserved syntax there, and adopting a future §4.3
+bracket-set extension for header patterns would then be a behaviour change for
+fn. It is spent knowingly: `[PATCH]` in a Subject is the ordinary case and
+refusing it is the same defect as refusing SP. §4.1 conformance is untouched
+either way, since no §4.1 wildmat can contain those characters. The
+newsgroup-name profile keeps all three reserved.
+
+**Not changed, and confirmed unaffected.** fn reads `,` in an XPAT pattern as
+wildmat alternation where INN's `uwildmat_simple` reads it as a literal; §2.9's
+"At least one pattern in wildmat must be specified" is on fn's side. 44 is an
+exact item in neither profile, so D19 does not touch it, and the assertion that
+pins it is unchanged.
+
+Affects NNT requirements for XPAT, `specs/wildmat.md`, `specs/nntp-audit.md`
+§2.9, `books/wildmat.lisp` and the three wildmat invariants books. Closes
+OB-XPAT-SPACE. Supersedes nothing.
+
+
 ### 2026-09-20: D20 — the outbound guard is cured by a total take and drop, not by a carried length
 
 The send-side half of the served-path guard cost that
