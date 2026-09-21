@@ -131,6 +131,94 @@
                               (lambda () (fnn-recv 9 0 (+ +fnn-max-read+ 1))))
                  "oversized receive maximum was accepted"))))
 
+(defun nio-connects-loopback-nonblocking ()
+  "Exercise a real TCP handshake through FNN-CONNECT, not a socket mock."
+  (let ((listener nil) (socket nil) (port nil))
+    (unwind-protect
+         (progn
+           (multiple-value-setq (listener port) (fnn-listen 0))
+           ;; The listener backlog is enough for TCP establishment; no raw
+           ;; client parser or accept loop is involved in this boundary test.
+           (setq socket (fnn-connect #(127 0 0 1) port :timeout 1))
+           (let ((flags (sb-posix:fcntl (fnn-socket-fd socket) sb-posix:f-getfl)))
+             (nio-check (not (zerop (logand flags sb-posix:o-nonblock)))
+                        "successful TCP connect did not retain nonblocking mode")))
+      (when socket (fnn-socket-shut socket))
+      (when listener (fnn-socket-shut listener)))))
+
+(defun nio-connect-preserves-refusal-errno ()
+  "A kernel refusal must remain its errno, rather than a generic timeout."
+  (let ((listener nil) (port nil))
+    (unwind-protect
+         (progn
+           (multiple-value-setq (listener port) (fnn-listen 0))
+           ;; Closing before the SYN leaves a loopback port with no listener.
+           (fnn-socket-shut listener)
+           (setq listener nil)
+           (handler-case
+               (progn
+                 (fnn-connect #(127 0 0 1) port :timeout 1)
+                 (error "closed loopback port unexpectedly connected"))
+             (fnn-os-error (e)
+               (nio-check (= (fnn-os-errno e) sb-posix:econnrefused)
+                          "TCP refusal lost its real errno: ~s" (fnn-os-errno e)))))
+      (when listener (fnn-socket-shut listener)))))
+
+(defun nio-connect-pending-completion-and-deadline ()
+  "The pending path has one output deadline and never repeats connect(2)."
+  (let ((attempts 0) (waits nil) (socket nil))
+    (let ((*fnn-monotonic-ticks* (lambda () 0))
+          (*fnn-connect-attempt* (lambda (&rest ignored)
+                                  (declare (ignore ignored))
+                                  (incf attempts) :pending))
+          (*fnn-fd-waiter* (lambda (fd direction seconds)
+                             (declare (ignore fd))
+                             (push (list direction seconds) waits) t))
+          (*fnn-socket-pending-error* (lambda (&rest ignored)
+                                        (declare (ignore ignored)) 0)))
+      (setq socket (fnn-connect #(127 0 0 1) 9 :timeout 1))
+      (nio-check (= attempts 1) "pending TCP connect repeated connect(2)")
+      (nio-check (and (= (length waits) 1)
+                      (eq (caar waits) :output)
+                      (= (cadar waits) 1))
+                 "pending TCP connect did not wait once with its original deadline")
+      (fnn-socket-shut socket))))
+
+(defun nio-connect-pending-timeout-does-not-reset-deadline ()
+  (let ((ticks (list 0 0 internal-time-units-per-second)) (waits 0))
+    (let ((*fnn-monotonic-ticks* (lambda () (pop ticks)))
+          (*fnn-connect-attempt* (lambda (&rest ignored)
+                                  (declare (ignore ignored)) :pending))
+          (*fnn-fd-waiter* (lambda (&rest ignored)
+                             (declare (ignore ignored)) (incf waits) t))
+          (*fnn-socket-pending-error* (lambda (&rest ignored)
+                                        (declare (ignore ignored)) sb-posix:einprogress)))
+      (handler-case
+          (progn (fnn-connect #(127 0 0 1) 9 :timeout 1)
+                 (error "pending TCP connect outlived its absolute deadline"))
+        (fnn-os-error (e)
+          (nio-check (= (fnn-os-errno e) sb-posix:etimedout)
+                     "pending TCP connect used wrong timeout errno")))
+      (nio-check (= waits 1) "pending TCP connect reset its deadline after readiness"))))
+
+(defun nio-zero-connect-poll-does-not-spin ()
+  (let ((waits 0) (attempts 0))
+    (let ((*fnn-monotonic-ticks* (lambda () 0))
+          (*fnn-connect-attempt* (lambda (&rest ignored)
+                                  (declare (ignore ignored)) (incf attempts) :pending))
+          (*fnn-fd-waiter* (lambda (&rest ignored)
+                             (declare (ignore ignored)) (incf waits) t))
+          (*fnn-socket-pending-error* (lambda (&rest ignored)
+                                        (declare (ignore ignored)) sb-posix:einprogress)))
+      (handler-case
+          (progn (fnn-connect #(127 0 0 1) 9 :timeout 0)
+                 (error "zero-time pending connect unexpectedly succeeded"))
+        (fnn-os-error (e)
+          (nio-check (= (fnn-os-errno e) sb-posix:etimedout)
+                     "zero-time pending connect used wrong outcome")))
+      (nio-check (= attempts 1) "zero-time pending connect repeated connect(2)")
+      (nio-check (= waits 1) "zero-time pending connect busy-spun readiness"))))
+
 (defun nio-store-write-progress ()
   (let ((answers '(1 2 1)) (seen nil))
     (let ((*fnn-write-syscall*
@@ -518,6 +606,11 @@
 (nio-zero-recv-polls-once)
 (nio-zero-recv-eagain-does-not-spin)
 (nio-recv-honors-caller-bound-before-read)
+(nio-connects-loopback-nonblocking)
+(nio-connect-preserves-refusal-errno)
+(nio-connect-pending-completion-and-deadline)
+(nio-connect-pending-timeout-does-not-reset-deadline)
+(nio-zero-connect-poll-does-not-spin)
 (nio-wrong-condition-is-rejected)
 (nio-store-write-progress)
 (nio-transaction-enumeration-bound-is-exact)

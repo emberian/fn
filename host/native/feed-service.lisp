@@ -85,8 +85,14 @@
          (fnn-fault "invalid ACL2 feed reply limit: ~s" limit))
        limit))))
 
+(defun fnn-feed-checked-connect-timeout (timeout)
+  "Validate ACL2's TCP completion deadline at the raw boundary."
+  (unless (and (integerp timeout) (>= timeout 0))
+    (fnn-fault "invalid ACL2 feed TCP connect timeout: ~s" timeout))
+  timeout)
+
 (defun fnn-feed-dial-plan (service peer-octets)
-  "Read only ACL2's endpoint, queue and configured reconnect delay."
+  "Read ACL2's endpoint, queue, retry delay, and TCP completion deadline."
   (fnn-owner-serialized
    service nil
    (lambda ()
@@ -102,7 +108,9 @@
          (fnn-fault "feed core returned malformed peer port"))
        (unless (and (integerp backoff) (>= backoff 0))
          (fnn-fault "feed core returned malformed peer backoff"))
-       (values queued (fnn-octets-string (fnn-octets host)) port backoff)))))
+       (values queued (fnn-octets-string (fnn-octets host)) port backoff
+               (fnn-feed-checked-connect-timeout
+                (fnn-owner-core 'fn-owner-feed-connect-timeout)))))))
 
 (defun fnn-feed-connect-core (service peer-octets fd)
   "Start ACL2's greeting/MODE phase; this does not make a feed live."
@@ -208,23 +216,23 @@ has made the kernel free to reuse it."
 (defun fnn-feed-dial (runtime link now)
   "Dial an ACL2-projected endpoint when its core queue and delay allow it.
 
-DNS resolution and connect(2) retain FNN-CONNECT's separately documented
-availability limit; after an established socket is made nonblocking, all
-read/write waits use the bounded FNN-RECV/FNN-SEND-ALL contract.  ACL2 gets a
+DNS resolution remains FNN-CONNECT's separately documented availability
+boundary.  ACL2 supplies the deadline for the nonblocking TCP completion; once
+established, read/write waits use FNN-RECV/FNN-SEND-ALL.  ACL2 gets a
 connection-phase state before the descriptor is published; a concurrent stop
 therefore makes the worker close its private socket instead of leaking it into
 the shared link table."
   (when (and (not (fnn-feed-stoppingp runtime))
              (null (fnn-feed-link-socket link))
              (<= (fnn-feed-link-next-dial link) now))
-    (multiple-value-bind (queued host port backoff)
+    (multiple-value-bind (queued host port backoff timeout)
         (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                             (fnn-feed-link-peer-octets link))
       (when queued
         (let ((socket nil) (published nil))
           (handler-case
               (progn
-                (setq socket (fnn-connect host port))
+                (setq socket (fnn-connect host port :timeout timeout))
                 (let ((fd (fnn-socket-fd socket)))
                   (fnn-feed-connect-core (fnn-feed-runtime-service runtime)
                                          (fnn-feed-link-peer-octets link) fd)
@@ -254,15 +262,15 @@ ACL2 framer."
         (case word
           (:need-input
            (when eofp
-             (multiple-value-bind (ignored host port backoff)
+             (multiple-value-bind (ignored host port backoff timeout)
                  (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
-               (declare (ignore ignored host port))
+               (declare (ignore ignored host port timeout))
                (fnn-feed-drop-link runtime link now backoff)))
            (return))
           ((:closed :invalid :connection-refused)
-           (multiple-value-bind (ignored host port backoff)
+           (multiple-value-bind (ignored host port backoff timeout)
                (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
-             (declare (ignore ignored host port))
+             (declare (ignore ignored host port timeout))
              (fnn-feed-drop-link runtime link now backoff))
            (return))
           (:ready
@@ -295,10 +303,10 @@ ACL2 framer."
       ((or fnn-os-error sb-bsd-sockets:socket-error) ()
         (if (fnn-feed-stoppingp runtime)
             (fnn-feed-close-link runtime link)
-          (multiple-value-bind (ignored host port backoff)
+          (multiple-value-bind (ignored host port backoff timeout)
               (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                                   (fnn-feed-link-peer-octets link))
-            (declare (ignore ignored host port))
+            (declare (ignore ignored host port timeout))
             (fnn-feed-drop-link runtime link now backoff)))))))
 
 (defun fnn-feed-worker (runtime)

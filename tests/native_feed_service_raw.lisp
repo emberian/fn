@@ -60,6 +60,11 @@
   (declare (ignore socket)) nil)
 (defun fnn-socket-shut (socket)
   (declare (ignore socket)) nil)
+(defun fnn-socket-fd (socket)
+  (declare (ignore socket)) 0)
+(defun fnn-connect (&rest ignored)
+  (declare (ignore ignored))
+  (error "unexpected raw TCP connect"))
 
 ;;; Only read here; worker/lifecycle functions are not entered until the final
 ;;; no-offer-before-ready check below.
@@ -165,5 +170,43 @@
     (fnn-feed-runtime-drop :stop-test)
     (setf (symbol-function 'fnn-socket-shutdown) old-shutdown
           (symbol-function 'fnn-socket-shut) old-close)))
+
+;; The feed does not choose a connect timeout in raw Lisp.  Its ACL2 dial plan
+;; carries the deadline to the shared socket helper as an explicit keyword.
+(let* ((runtime (%make-fnn-feed-runtime :service :dial-timeout-test
+                                         :lock (sb-thread:make-mutex)))
+       (link (%make-fnn-feed-link :peer "peer" :peer-octets #(112)
+                                  :next-dial 0))
+       (seen nil)
+       (old-plan (symbol-function 'fnn-feed-dial-plan))
+       (old-connect (symbol-function 'fnn-connect))
+       (old-fd (symbol-function 'fnn-socket-fd))
+       (old-core (symbol-function 'fnn-feed-connect-core)))
+  (unwind-protect
+       (progn
+         (setf (symbol-function 'fnn-feed-dial-plan)
+               (lambda (&rest ignored)
+                 (declare (ignore ignored))
+                 (values t "127.0.0.1" 119 7 13))
+               (symbol-function 'fnn-connect)
+               (lambda (host port &key family timeout)
+                 (declare (ignore family))
+                 (setq seen (list host port timeout))
+                 :connected-socket)
+               (symbol-function 'fnn-socket-fd)
+               (lambda (socket)
+                 (unless (eq socket :connected-socket)
+                   (error "feed published an unexpected socket"))
+                 17)
+               (symbol-function 'fnn-feed-connect-core)
+               (lambda (&rest ignored)
+                 (declare (ignore ignored)) :await-greeting))
+         (fnn-feed-dial runtime link 0)
+         (unless (equal seen '("127.0.0.1" 119 13))
+           (error "feed did not pass ACL2 TCP timeout to shared connect: ~s" seen)))
+    (setf (symbol-function 'fnn-feed-dial-plan) old-plan
+          (symbol-function 'fnn-connect) old-connect
+          (symbol-function 'fnn-socket-fd) old-fd
+          (symbol-function 'fnn-feed-connect-core) old-core)))
 
 (format t "native feed raw phase/sequencing test passed~%")

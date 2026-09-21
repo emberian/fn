@@ -3,6 +3,8 @@
 ; ACL2 certification root.
 (in-package "ACL2")
 
+(assert-event (equal (fn-owner-feed-connect-timeout) 10))
+
 (defconst *foch-stream* (fn-fc-initial-state t 7))
 (defconst *foch-greeting-400*
   (fn-fc-step *foch-stream* '(52 48 48 32 110 111 13 10)))
