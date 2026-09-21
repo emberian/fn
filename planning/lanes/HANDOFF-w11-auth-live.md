@@ -106,6 +106,57 @@ root `/home/ember/fn-lanes/w11-auth-live`:
 | `run-20260921T021603Z-e2e8` | **passed**, 0 failures, 266 s, with the greeting keystones: `books/served`, `books/owner`, `books/owner-invariants`, `books/owner-config`, `books/nntp-auth`, `books/nntp-auth-invariants`, `books/ideal`, `tests/acl2/served-tests`, `tests/acl2/owner-tests`, `tests/acl2/owner-config-tests` |
 | `run-20260921T022610Z-355a` | **passed**, 0 failures, 212 s, on the tree AFTER merging dev, over the closure of `books/served.lisp` AND `books/owner.lisp` (`--jobs 8`, installed 46 kept 100 uncached 133). **This is the certification of record for the lane.** |
 
+## The v0 matrix re-run: six of the eight F-AUTH rows moved
+
+`python3 tools/v0_matrix.py HEAD --host persvati --jobs 8` at `6fb30ca`,
+1336 s, written by the tool into
+[`planning/v0-matrix.json`](../v0-matrix.json) and
+[`planning/evidence/v0-matrix-2026-09-21.md`](../evidence/v0-matrix-2026-09-21.md);
+`make check` validates the rows against their sha256.
+
+| | `c3b99f8` (before) | `6fb30ca` (after) |
+| --- | --- | --- |
+| F-AUTH accepted / refused | 9 / 8 | **15 / 2** |
+| F-AUTH disagreements | 8 | **2** |
+| whole matrix | 111 accepted, 25 refused, 2 uncertain, 29 not-exercised, 23 not-built, 10 disagreed | 145 accepted, 29 refused, 2 uncertain, 13 not-exercised, 1 not-built, 17 disagreed |
+
+The six that moved, each `refused` before and `accepted` now:
+
+| row | before | after |
+| --- | --- | --- |
+| `V0-AUTH-ADVERTISED-A/B` | `VERSION, READER, POST, OVER, HDR, LIST, IMPLEMENTATION` | the same **plus `AUTHINFO`** |
+| `V0-AUTH-LOGIN-A/B` | `481 authentication failed` | `281 authentication accepted` |
+| `V0-AUTH-LIST-A/B` | `rc=0 lists matrix: False` | `rc=0 lists matrix: True` |
+
+The two that did not are `V0-AUTH-GATED-A/B`, `340` where the row expects a
+refusal, for the configuration reason in the next section and not for a
+model reason.
+
+**An independent client saw the login.** `V0-CLIENT-NNTPLIB-A/B`:
+`nntplib 3.12.13` on persvati's `uv`-installed CPython 3.12 drove
+`CAPABILITIES, AUTHINFO USER/PASS, GROUP, STAT, ARTICLE, HEAD, BODY, OVER,
+LIST, ARTICLE (absent), QUIT` against both nodes and reported
+`login=accepted authinfo-advertised=True`. The standard library's own NNTP
+implementation, not fn's, framed and parsed every one of those. The driver
+did not attempt a login before this lane; it does now, and the row fails if
+the login does.
+
+**Not this lane's, and the re-run makes them visible for the first time.**
+The matrix's `not-built` count fell from 23 to 1 because node B survived the
+first `IHAVE` this time, so F-TRANSIT, F-FEED and F-CRASH ran instead of
+being blocked behind a dead process. Twelve of the seventeen disagreements
+are theirs and every one is a new observation rather than a regression:
+`V0-TRANSIT-DUPLICATE-AB/BA` answer `335` where a second offer of a held
+Message-ID should be `435`; `V0-TRANSIT-LOOP-AB/BA` answer `235` and
+`V0-TRANSIT-LOOP-ABSENT-AB/BA` then serve the article, so the Path loop test
+is not refusing; `V0-TRANSIT-CHECK-DUP-AB/BA` answer `238` where RFC 4644
+wants `438`; `V0-TRANSIT-INDEPENDENT-A/B` no longer hold, because by the
+time they run the feed has crossed. `V0-FEED-JOURNAL`, `V0-CRASH-RESTART`
+and `V0-BP-IMAGE` are the other three. The owner feed itself WORKS both ways
+at this commit, octets identical to the source, which is in the facts table.
+None of that is touched by this lane and none of it is reported here as
+this lane's result.
+
 ## Open, named, not weakened
 
 - **`V0-AUTH-GATED-A/B` cannot pass on the v0 matrix's topology, and it is
