@@ -9,12 +9,12 @@
     (fn-frame-fields-octets '(:text :text :nat) *fj-values*)))
 (defconst *fj-frame* (append *fj-protected* (fn-sha256 *fj-protected*)))
 (defconst *fj-prefix* (fn-cbor-u32-bytes (len *fj-frame*)))
-(defmacro fj-scan ()
+(defmacro fn-feed-journal-test-scan ()
   '(fn-feed-journal-scan *fj-peer* *fj-prefix* *fj-frame* 99))
 
-(assert-event (equal (car (fj-scan)) :next))
-(assert-event (equal (cadr (fj-scan)) (+ 99 4 (len *fj-frame*))))
-(assert-event (equal (caddr (fj-scan)) (list :feed-enqueue *fj-values*)))
+(assert-event (equal (car (fn-feed-journal-test-scan)) :next))
+(assert-event (equal (cadr (fn-feed-journal-test-scan)) (+ 99 4 (len *fj-frame*))))
+(assert-event (equal (caddr (fn-feed-journal-test-scan)) (list :feed-enqueue *fj-values*)))
 (assert-event (equal (fn-feed-journal-wrap *fj-frame*)
                      (append *fj-prefix* *fj-frame*)))
 (assert-event (equal (fn-feed-journal-prefix '(255 255 255 255)) :invalid))
@@ -35,7 +35,7 @@
 (must-fail
  (assert-event (< 99 (cadr (fn-feed-journal-scan *fj-peer* nil nil 99)))))
 ; Drop :repair from preserved-offset: the live valid frame advances it.
-(must-fail (assert-event (equal (cadr (fj-scan)) 99)))
+(must-fail (assert-event (equal (cadr (fn-feed-journal-test-scan)) 99)))
 
 (defconst *fj-open-events*
   '(:opened :repair :truncated :content-durable :directory-durable :parent-durable))
@@ -48,14 +48,14 @@
   (append '(:append :written :failed) *fj-open-events*
           '(:append :written :append-durable))) :uncertain))
 ; Every process cut in the host is an event position in these traces.
-(defun fj-crash-cuts (phase events)
+(defun fn-feed-journal-test-crash-cuts (phase events)
   (declare (xargs :measure (acl2-count events)))
   (if (atom events) t
     (let ((next (fn-feed-journal-phase-step phase (car events))))
       (and (equal (fn-feed-journal-phase-run next
                    (cons :crash (cdr events))) :uncertain)
-           (fj-crash-cuts next (cdr events))))))
-(assert-event (fj-crash-cuts :closed *fj-open-events*))
-(assert-event (fj-crash-cuts :closed
+           (fn-feed-journal-test-crash-cuts next (cdr events))))))
+(assert-event (fn-feed-journal-test-crash-cuts :closed *fj-open-events*))
+(assert-event (fn-feed-journal-test-crash-cuts :closed
   '(:opened :end :content-durable :directory-durable :parent-durable)))
-(assert-event (fj-crash-cuts :ready '(:append :written :append-durable)))
+(assert-event (fn-feed-journal-test-crash-cuts :ready '(:append :written :append-durable)))
