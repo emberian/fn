@@ -407,6 +407,7 @@
 (defthm fn-sf-frontier-rollback-visiblep-unfolds
   (implies (fn-sf-frontier-rollback-visiblep s)
            (and (fn-sf-recovery-visiblep s)
+                (equal (fn-sf-successes s) nil)
                 (posp (fn-sf-frontier s))
                 (fn-sf-record-listp (fn-sf-records s) 0 0
                                     (1- (fn-sf-frontier s)))))

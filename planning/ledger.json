@@ -282,18 +282,18 @@
     "books": 276,
     "books_in_root_closure": 275,
     "roots": 275,
-    "theorems": 5573,
-    "functions": 3931,
-    "assert_events": 5400,
+    "theorems": 5580,
+    "functions": 3932,
+    "assert_events": 5436,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
       "verified": 1463,
-      "declared-off": 190,
+      "declared-off": 191,
       "default-guarded": 1789,
       "default-unguarded": 489
     },
-    "suspect_theorems": 47,
+    "suspect_theorems": 46,
     "export_hygiene_warnings": 72,
     "enabled_projection_warnings": 26,
     "teeth_form_warnings": 0,
@@ -4049,7 +4049,6 @@
         "arithmetic/top"
       ],
       "suspects": [
-        "fn-sf-frontier-rollback-visiblep-unfolds",
         "fn-sf-stable-records-outside-the-window"
       ],
       "read_error": null
@@ -4108,11 +4107,11 @@
       "book": "books/store-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 54,
-      "functions": 1,
+      "theorems": 59,
+      "functions": 2,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
         "default-unguarded": 1
       },
@@ -4165,7 +4164,7 @@
       "book": "books/store-node-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 52,
+      "theorems": 53,
       "functions": 5,
       "guards": {
         "verified": 2,
@@ -4243,7 +4242,7 @@
       "book": "books/store-observed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 36,
+      "theorems": 37,
       "functions": 13,
       "guards": {
         "verified": 12,
@@ -7271,9 +7270,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 101,
+      "assert_events": 137,
       "must_fails": 0,
-      "defconsts": 28,
+      "defconsts": 30,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7831,14 +7830,6 @@
       "line": 327,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
-      ]
-    },
-    {
-      "theorem": "fn-sf-frontier-rollback-visiblep-unfolds",
-      "book": "books/store-files-invariants.lisp",
-      "line": 407,
-      "reasons": [
-        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep"
       ]
     },
     {
