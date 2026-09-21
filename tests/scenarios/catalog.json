@@ -494,7 +494,8 @@
         "planning/evidence/wave-realignment-2026-09-19.md",
         "tests/test_native_owner.py",
         "books/store-prepare-correspondence.lisp",
-        "tests/acl2/store-prepare-correspondence-tests.lisp"
+        "tests/acl2/store-prepare-correspondence-tests.lisp",
+        "planning/evidence/store-prepare-correspondence-w18-2026-09-21.md"
       ],
       "execution_scope": "Existing logical traces and targeted Python/native component tests cover stated subcontracts. The store prepare projection is certified equal to the replaying specification under the maintained live-history relation, with a nonempty-history witness and a stale-node counterexample when the relation is removed. The frozen cdbd6b2 Python service matrix ran with recorded authentication and BP-crash disagreements; the former owner-does-not-certify blocker is historical. Full native service parity, deployment dependency evidence, concurrent backpressure/stale-completion composition, native owner adoption and complete physical adapter correspondence remain open. D07 adds a specified native-only gate, not passing evidence. The native owner fence/worker-lifetime regression is implemented at 76901c1 but its frozen integrated runtime result is pending."
     },
