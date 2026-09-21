@@ -81,6 +81,13 @@
       (fnn-refuse "ACL2 refused checkpoint capture"))
     (fnn-seal (fnn-octets protected))))
 
+(defun fnn-checkpoint-candidate-observer (point publication)
+  (declare (ignore publication))
+  (case point
+    (:file-barrier (fnn-checkpoint-test-stop "candidate-file"))
+    (:link-result (fnn-checkpoint-test-stop "candidate-link"))
+    (:directory-barrier (fnn-checkpoint-test-stop "candidate-directory"))))
+
 (defun fnn-checkpoint-publish (store records)
   "Publish one immutable generation through the shared fn-jpub I/O effect."
   (fnn-require-writer store)
@@ -112,7 +119,8 @@
                                   authorization))))
         (case (fnn-immutable-publish-effect
                (third authorization) stage final directory frame
-               :cleanup-directory (fnn-staging store))
+               :cleanup-directory (fnn-staging store)
+               :observer #'fnn-checkpoint-candidate-observer)
         (:durable generation)
         (:refused (fnn-refuse "checkpoint generation publication refused"))
         (:uncertain (fnn-indeterminate "checkpoint generation publication is uncertain"))
