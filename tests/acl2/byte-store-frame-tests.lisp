@@ -13,6 +13,28 @@
 (assert-event (equal (fn-bs-frontier-next 4294967294) 4294967295))
 (assert-event (not (fn-bs-frontier-next 4294967295)))
 
+; New stores adopt format 7's 196,608-octet record ceiling.  Persisted format
+; 6 profiles remain readable but refuse the same prospective record before
+; publication, and both profiles refuse an aggregate overflow.
+(assert-event
+ (equal (fn-bs-profile-record-ceiling *fn-bs-meta-development-values*) 196608))
+(assert-event
+ (equal (fn-bs-profile-record-ceiling
+         *fn-bs-meta-legacy-development-values*) 65538))
+(assert-event
+ (fn-bs-publication-admissiblep *fn-bs-meta-development-values*
+                                0 0 196608))
+(assert-event
+ (not (fn-bs-publication-admissiblep
+       *fn-bs-meta-legacy-development-values* 0 0 196608)))
+(assert-event
+ (not (fn-bs-publication-admissiblep
+       *fn-bs-meta-development-values* 127 25000000 196608)))
+(assert-event
+ (equal (fn-bs-config-decode
+         (fn-bs-config-encode *fn-bs-meta-legacy-development-values*))
+        *fn-bs-meta-legacy-development-values*))
+
 ; A truncated authentic frame must not become a frontier.  The visible value
 ; is not merely a wrong integer: decoding reports no value at all.
 (assert-event

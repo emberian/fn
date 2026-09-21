@@ -122,6 +122,8 @@
   (true-listp (fn-cbor-decode-unsigned additional tail)))
 (defthm fn-stmt-cbor-decode-bytes-true-listp
   (true-listp (fn-cbor-decode-bytes additional tail)))
+(defthm fn-stmt-cbor-decode-bounded-true-listp
+  (true-listp (fn-cbor-decode-bounded octets input-budget item-budget)))
 (defthm fn-stmt-cbor-decode-true-listp
   (true-listp (fn-cbor-decode octets)))
 
@@ -129,23 +131,38 @@
 ; `fuel` bounds the number of allocations; each item is bounded by the
 ; primitive decoder.  An atom that is not NIL is malformed, so a successful
 ; decode always re-encodes to its input (statement-invariants).
+(defun fn-stmt-decode-items-bounded (fuel octets outer-budget item-budget)
+  (declare (xargs :guard (and (natp fuel) (natp outer-budget)
+                              (natp item-budget))))
+  ; One bounded preflight occurs before recursive item parsing.  Recursive
+  ; calls pass the already bounded suffix without rescanning it against a
+  ; shrinking budget; fuel bounds item allocations and item-budget bounds
+  ; every byte-string allocation before TAKE.
+  (if (not (fn-cbor-at-mostp octets outer-budget))
+      (fn-stmt-error :limit)
+    (if (atom octets)
+        (if (null octets)
+            (fn-stmt-ok nil)
+          (fn-stmt-error :malformed))
+      (if (zp fuel)
+          (fn-stmt-error :too-many-items)
+        (let ((first (fn-cbor-decode-bounded octets outer-budget item-budget)))
+          (if (not (fn-cbor-result-okp first))
+              (fn-stmt-error (fn-stmt-value first))
+            (let ((tail (fn-stmt-decode-items-bounded
+                         (1- fuel) (fn-cbor-result-rest first)
+                         outer-budget item-budget)))
+              (if (not (fn-stmt-okp tail))
+                  tail
+                (fn-stmt-ok (cons (fn-cbor-result-value first)
+                                  (fn-stmt-value tail)))))))))))
+
 (defun fn-stmt-decode-items (fuel octets)
   (declare (xargs :guard (natp fuel)))
-  (if (atom octets)
-      (if (null octets)
-          (fn-stmt-ok nil)
-        (fn-stmt-error :malformed))
-    (if (zp fuel)
-        (fn-stmt-error :too-many-items)
-      (let ((first (fn-cbor-decode octets)))
-        (if (not (fn-cbor-result-okp first))
-            (fn-stmt-error (fn-stmt-value first))
-          (let ((tail (fn-stmt-decode-items (1- fuel)
-                                            (fn-cbor-result-rest first))))
-            (if (not (fn-stmt-okp tail))
-                tail
-              (fn-stmt-ok (cons (fn-cbor-result-value first)
-                                (fn-stmt-value tail))))))))))
+  ; Compatibility wrapper for every pre-existing statement caller.
+  (fn-stmt-decode-items-bounded fuel octets
+                                *fn-cbor-max-input* *fn-cbor-max-bytes*))
+
 
 ; -----------------------------------------------------------------------------
 ; Item shapes

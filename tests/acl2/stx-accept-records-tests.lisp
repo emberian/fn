@@ -1,6 +1,6 @@
 ; Evaluated binding witnesses for atomic article/verdict acceptance.
 (in-package "ACL2")
-(include-book "../../books/stx-accept-records")
+(include-book "../../books/store-events")
 
 (defconst *stxa-payload* '(70 78 45 83 116 97 116 101 109 101 110 116 58 32 49 13 10))
 (defconst *stxa-msgid* "<atomic@example.invalid>")
@@ -27,6 +27,21 @@
  (equal (fn-stxa-article-record
          (fn-stmt-value (fn-stxa-decode-exact (fn-stxa-encode *stxa-event*))))
         (fn-record-encode *stxa-record*)))
+
+; A valid composite value with two large opaque children crosses the old
+; 65,538-octet decoder ceiling.  The value round-trips exactly; semantic child
+; binding remains the separate fn-stxa-bindsp contract exercised below.
+(defconst *stxa-large-event*
+  (fn-stxa-make 4 9 12 3 '(112)
+                '(115)
+                (make-list *fn-record-max-octets* :initial-element 1)
+                (make-list *fn-stxe-max-octets* :initial-element 2)))
+(assert-event (fn-stxa-p *stxa-large-event*))
+(assert-event (< *fn-cbor-max-input* (len (fn-stxa-encode *stxa-large-event*))))
+(assert-event
+ (equal (fn-stmt-value
+         (fn-store-event-decode-exact (fn-stxa-encode *stxa-large-event*)))
+        *stxa-large-event*))
 
 ; Every binding dimension has an evaluated substitution witness.
 (assert-event

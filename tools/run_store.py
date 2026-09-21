@@ -32,7 +32,8 @@ from tools import frame_bridge  # noqa: E402
 PROMPT = b"ACL2 !>"
 MAX_ACL2_OUTPUT = 4 * 1024 * 1024
 MAX_TRANSACTION_COUNT = 128
-MAX_RECOVERY_RECORD_BYTES = MAX_TRANSACTION_COUNT * 65538
+STORE_EVENT_RECORD_BYTES = 196608
+MAX_RECOVERY_RECORD_BYTES = MAX_TRANSACTION_COUNT * STORE_EVENT_RECORD_BYTES
 DEFAULT_CONFIG = {
     # Format 5 is the first written under the v1 content identity profile of
     # `books/identity`; a store holding pre-v1 `"sha256:"`/`"archive:"`
@@ -44,7 +45,7 @@ DEFAULT_CONFIG = {
     # The encoded-record bound left with it: `books/frame` owns
     # `*fn-frame-max-store-payload*`, the host reads it from the bridge, and a
     # configuration that could disagree with the model is not written at all.
-    "format": "fn-store-experiment-6",
+    "format": "fn-store-experiment-7",
     "capacity": 1048576,
     "max_payload_bytes": 32768,
     "max_recovery_record_bytes": MAX_RECOVERY_RECORD_BYTES,
@@ -64,7 +65,7 @@ SCALE_TRANSACTION_COUNT = 4096
 SCALE_CONFIG = dict(
     DEFAULT_CONFIG,
     max_transactions=SCALE_TRANSACTION_COUNT,
-    max_recovery_record_bytes=SCALE_TRANSACTION_COUNT * 65538,
+    max_recovery_record_bytes=SCALE_TRANSACTION_COUNT * STORE_EVENT_RECORD_BYTES,
 )
 # The development profile is the ACL2 frame's fixed development record.
 SUPPORTED_PROFILES = (DEFAULT_CONFIG, SCALE_CONFIG)
@@ -73,7 +74,7 @@ SUPPORTED_PROFILES = (DEFAULT_CONFIG, SCALE_CONFIG)
 # a group table; the table a store serves is decided by the configuration
 # records ACL2 admits and replays.
 DEFAULT_GROUPS = ("fn.letters", "fn.test")
-CONFIG_RECORD_BYTES = 65538
+CONFIG_RECORD_BYTES = STORE_EVENT_RECORD_BYTES
 # `books/frame` owns the grammar.  These two are the slice arithmetic that
 # `durable_records` and the corruption tests still do over a file they never
 # interpret; `frame_bridge.FrameSession` checks both against the ACL2

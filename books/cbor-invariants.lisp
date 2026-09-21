@@ -326,7 +326,8 @@
                   (additional (car octets)) (tail (cdr octets)))
                  (:instance fn-cbor-bytes-reencode-prefix
                   (additional (- (car octets) 64)) (tail (cdr octets))))
-           :in-theory (disable fn-cbor-decode-unsigned fn-cbor-decode-bytes
+           :in-theory (disable fn-cbor-decode-unsigned
+                               fn-cbor-decode-bytes-bounded
                                fn-cbor-encode fn-cbor-at-mostp))))
 
 (defthm fn-cbor-encoding-is-true-list

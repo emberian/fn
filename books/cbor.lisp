@@ -52,7 +52,8 @@
 
 (verify-guards fn-cbor-at-mostp)
 
-(defun fn-cbor-valuep (x)
+(defun fn-cbor-valuep-bounded (x max-bytes)
+  (declare (xargs :guard (natp max-bytes)))
   (or (and (consp x)
            (equal (car x) :uint)
            (natp (cdr x))
@@ -60,8 +61,13 @@
       (and (consp x)
            (equal (car x) :bytes)
            (fn-cbor-octet-listp (cdr x))
-           (<= (len (cdr x)) *fn-cbor-max-bytes*))))
+           (<= (len (cdr x)) max-bytes)
+           (<= (len (cdr x)) *fn-cbor-max-uint*))))
 
+(defun fn-cbor-valuep (x)
+  (fn-cbor-valuep-bounded x *fn-cbor-max-bytes*))
+
+(verify-guards fn-cbor-valuep-bounded)
 (verify-guards fn-cbor-valuep)
 
 ; The decoder's result is an opaque record.  Its shape, constructors and
@@ -226,14 +232,19 @@
 ; -----------------------------------------------------------------------------
 ; Encoder
 
-(defun fn-cbor-encode (value)
-  (if (not (fn-cbor-valuep value))
+(defun fn-cbor-encode-bounded (value max-bytes)
+  (declare (xargs :guard (natp max-bytes)))
+  (if (not (fn-cbor-valuep-bounded value max-bytes))
       nil
     (if (equal (car value) :uint)
         (fn-cbor-encode-argument 0 (cdr value))
       (append (fn-cbor-encode-argument 2 (len (cdr value)))
               (cdr value)))))
 
+(defun fn-cbor-encode (value)
+  (fn-cbor-encode-bounded value *fn-cbor-max-bytes*))
+
+(verify-guards fn-cbor-encode-bounded)
 (verify-guards fn-cbor-encode)
 
 ; -----------------------------------------------------------------------------
@@ -281,9 +292,10 @@
 
 (verify-guards fn-cbor-decode-unsigned)
 
-(defun fn-cbor-decode-bytes (additional tail)
+(defun fn-cbor-decode-bytes-bounded (additional tail max-bytes)
   (declare (xargs :guard (and (natp additional)
-                              (fn-cbor-octet-listp tail))))
+                              (fn-cbor-octet-listp tail)
+                              (natp max-bytes))))
   (let ((argument (fn-cbor-decode-argument additional tail)))
     (if (not (fn-cbor-result-okp argument))
         argument
@@ -291,19 +303,30 @@
             (content (fn-cbor-result-rest argument)))
         (if (not (fn-cbor-canonical-argumentp additional length))
             (fn-cbor-error :noncanonical)
-          (if (< *fn-cbor-max-bytes* length)
+          ; This check precedes TAKE, so a declared length outside the caller's
+          ; profile cannot drive allocation.  The legacy entry point below
+          ; supplies *fn-cbor-max-bytes* and therefore keeps its exact domain.
+          (if (< max-bytes length)
               (fn-cbor-error :limit)
             (if (<= length (len content))
                 (fn-cbor-ok (cons :bytes (take length content))
                             (nthcdr length content))
               (fn-cbor-error :truncated))))))))
 
+(verify-guards fn-cbor-decode-bytes-bounded)
+
+(defun fn-cbor-decode-bytes (additional tail)
+  (declare (xargs :guard (and (natp additional)
+                              (fn-cbor-octet-listp tail))))
+  (fn-cbor-decode-bytes-bounded additional tail *fn-cbor-max-bytes*))
+
 (verify-guards fn-cbor-decode-bytes)
 
 ; A one-item streaming decoder.  Its explicit input maximum gives a fixed
 ; bound on list traversal, decoded byte allocation, and returned remainder.
-(defun fn-cbor-decode (octets)
-  (if (not (fn-cbor-at-mostp octets *fn-cbor-max-input*))
+(defun fn-cbor-decode-bounded (octets input-budget item-budget)
+  (declare (xargs :guard (and (natp input-budget) (natp item-budget))))
+  (if (not (fn-cbor-at-mostp octets input-budget))
       (fn-cbor-error :limit)
     (if (not (fn-cbor-octet-listp octets))
         (fn-cbor-error :malformed)
@@ -313,8 +336,16 @@
           (if (< head 32)
               (fn-cbor-decode-unsigned head (cdr octets))
             (if (and (< 63 head) (< head 96))
-                (fn-cbor-decode-bytes (- head 64) (cdr octets))
+                (fn-cbor-decode-bytes-bounded (- head 64) (cdr octets)
+                                              item-budget)
               (fn-cbor-error :unsupported))))))))
+
+(verify-guards fn-cbor-decode-bounded)
+
+; Compatibility entry point.  Every pre-existing caller retains both the
+; 65,538-octet whole-input cap and the 65,535-octet byte-string cap.
+(defun fn-cbor-decode (octets)
+  (fn-cbor-decode-bounded octets *fn-cbor-max-input* *fn-cbor-max-bytes*))
 
 (verify-guards fn-cbor-decode)
 
@@ -370,17 +401,22 @@
     (:d fn-cbor-result-rest)))
 
 (deftheory fn-cbor-codec-vocabulary
-  '((:d fn-cbor-valuep) (:d fn-cbor-canonical-argumentp)
-    (:d fn-cbor-encode-argument) (:d fn-cbor-encode)
+  '((:d fn-cbor-valuep-bounded) (:d fn-cbor-valuep)
+    (:d fn-cbor-canonical-argumentp)
+    (:d fn-cbor-encode-argument) (:d fn-cbor-encode-bounded) (:d fn-cbor-encode)
     (:d fn-cbor-decode-argument) (:d fn-cbor-decode-unsigned)
-    (:d fn-cbor-decode-bytes) (:d fn-cbor-decode) (:d fn-cbor-decode-exact)
+    (:d fn-cbor-decode-bytes-bounded) (:d fn-cbor-decode-bytes)
+    (:d fn-cbor-decode-bounded) (:d fn-cbor-decode) (:d fn-cbor-decode-exact)
     (:d fn-cbor-u16-bytes) (:d fn-cbor-u32-bytes)
     (:d fn-cbor-u16-from) (:d fn-cbor-u32-from)))
 
-(in-theory (disable (:d fn-cbor-valuep) (:d fn-cbor-canonical-argumentp) (:d
-             fn-cbor-encode-argument) (:d fn-cbor-encode) (:d
+(in-theory (disable (:d fn-cbor-valuep-bounded) (:d fn-cbor-valuep)
+             (:d fn-cbor-canonical-argumentp) (:d
+             fn-cbor-encode-argument) (:d fn-cbor-encode-bounded)
+             (:d fn-cbor-encode) (:d
              fn-cbor-decode-argument) (:d fn-cbor-decode-unsigned) (:d
-             fn-cbor-decode-bytes) (:d fn-cbor-decode) (:d
+             fn-cbor-decode-bytes-bounded) (:d fn-cbor-decode-bytes) (:d
+             fn-cbor-decode-bounded) (:d fn-cbor-decode) (:d
              fn-cbor-decode-exact) (:d fn-cbor-u16-bytes) (:d
              fn-cbor-u32-bytes) (:d fn-cbor-u16-from) (:d
              fn-cbor-u32-from)))
