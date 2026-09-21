@@ -14,12 +14,12 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 384 |
 | Books inside the root closure | 382 |
 | `defthm` and `defthmd` events | 6479 |
-| `defun` events | 5035 |
+| `defun` events | 5036 |
 | Functions with verified guards | 1669 |
 | Functions declared `:verify-guards nil` and never verified | 254 |
-| Functions left at the default with an explicit guard | 2513 |
+| Functions left at the default with an explicit guard | 2514 |
 | Functions left at the default with no guard | 599 |
-| `assert-event` checks | 6851 |
+| `assert-event` checks | 6856 |
 | `must-fail` checks | 166 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 61 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 25 |
 | Teeth-form warnings | 4 |
 | Include-hygiene warnings | 142 |
-| Host-names warnings | 582 |
+| Host-names warnings | 586 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -211,7 +211,7 @@ that `make certify` requests.
 | `books/native-admin.lisp` | root | 5 | 32 | 1/0/31/0 | 0 | 0 | 0 |
 | `books/native-auth-admin.lisp` | root | 6 | 46 | 0/0/46/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 3 | 19 | 0/0/19/0 | 0 | 0 | 0 |
-| `books/native-config-observation.lisp` | root | 5 | 16 | 3/0/13/0 | 0 | 0 | 0 |
+| `books/native-config-observation.lisp` | root | 5 | 17 | 3/0/14/0 | 0 | 0 | 0 |
 | `books/native-config.lisp` | root | 2 | 63 | 0/0/63/0 | 0 | 0 | 0 |
 | `books/native-control.lisp` | root | 5 | 22 | 0/0/22/0 | 0 | 0 | 0 |
 | `books/native-operator.lisp` | root | 0 | 45 | 0/0/45/0 | 0 | 0 | 0 |
@@ -402,7 +402,7 @@ that `make certify` requests.
 | `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 42 | 0 | 0 |
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/native-auth-profile-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 0 | 0 |
-| `tests/acl2/native-config-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
+| `tests/acl2/native-config-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/native-config-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 44 | 0 | 0 |
 | `tests/acl2/native-control-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/native-control-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 29 | 0 | 0 |

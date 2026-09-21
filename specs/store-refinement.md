@@ -368,6 +368,16 @@ every existing/retry opening path.
 
 ### Native immutable-initializer retry (W18)
 
+The configuration observation has two explicit ACL2 entries. Recovery uses
+`fn-nco-observe` and rejects an empty history. Before publishing genesis,
+initialization uses `fn-nco-observe-initial`, which additionally accepts the
+exact empty list. Both reject malformed, conflicting or gapped nonempty
+histories. The native adapter selects the initialization entry only at its
+first configuration enumeration; its final enumeration uses the recovery
+entry. This is fn initialization policy, not an NNTP requirement. Focused
+logical and rebuilt-image evidence for this repaired composition is pending
+in the current wide native gate.
+
 Native `store init` distinguishes an immutable `link(2)` result of `EEXIST`
 from another link error. The former retains and decodes the existing final
 metadata file, then removes the newly staged candidate; the latter is

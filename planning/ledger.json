@@ -392,14 +392,14 @@
     "books_in_root_closure": 382,
     "roots": 384,
     "theorems": 6479,
-    "functions": 5035,
-    "assert_events": 6851,
+    "functions": 5036,
+    "assert_events": 6856,
     "must_fails": 166,
     "encapsulates": 19,
     "guards": {
       "verified": 1669,
       "declared-off": 254,
-      "default-guarded": 2513,
+      "default-guarded": 2514,
       "default-unguarded": 599
     },
     "suspect_theorems": 61,
@@ -407,7 +407,7 @@
     "enabled_projection_warnings": 25,
     "teeth_form_warnings": 4,
     "include_hygiene_warnings": 142,
-    "host_names_warnings": 582,
+    "host_names_warnings": 586,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -3762,11 +3762,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 5,
-      "functions": 16,
+      "functions": 17,
       "guards": {
         "verified": 3,
         "declared-off": 0,
-        "default-guarded": 13,
+        "default-guarded": 14,
         "default-unguarded": 0
       },
       "verify_guards_events": 3,
@@ -8800,7 +8800,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 12,
+      "assert_events": 17,
       "must_fails": 0,
       "defconsts": 4,
       "defmacros": 0,
@@ -13084,9 +13084,38 @@
       },
       {
         "host": "host/bp-release-owner-host.lisp",
-        "line": 1,
-        "name": "host/bp-release-owner-host.lisp",
-        "reason": "unreadable: unterminated list"
+        "line": 6,
+        "name": "fn-bprl-replay-journal",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/bp-release-owner-host.lisp",
+        "line": 6,
+        "name": "fn-sn-node",
+        "source": "books/store-node.lisp",
+        "reason": "defined in books/store-node.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/bp-release-owner-host.lisp",
+        "line": 6,
+        "name": "fn-owner-store",
+        "source": "host/owner-host.lisp",
+        "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/bp-release-owner-host.lisp",
+        "line": 19,
+        "name": "fn-workflow-reset",
+        "source": "host/workflow-host.lisp",
+        "reason": "defined in host/workflow-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/bp-release-owner-host.lisp",
+        "line": 23,
+        "name": "fn-workflow-preflight-record",
+        "source": "host/workflow-host.lisp",
+        "reason": "defined in host/workflow-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
