@@ -1231,6 +1231,14 @@ else echo NONE; fi
             return
         msgid = "<fed-restart@example.invalid>"
         mark = self.tap_mark(self.b)
+        # B's OWN STORE, before and after: "exactly one copy" is a count in
+        # the receiver, not a status line in the sender. A reread cannot
+        # tell one copy from two -- the store would refuse the second and
+        # the reread would look identical either way.
+        before = self.feed("presence", "--port {} --groups {}".format(
+            self.b.port, GROUPS[0]),
+            name="owner feed: node B group count before the kill", expect=None)
+        start_count = self.group_count(self.payload(before), GROUPS[0])
         self.stop_node(self.b)
         posted = self.feed("post", "--port {} --msgid '{}' --group {}".format(
             self.a.port, msgid, GROUPS[0]),
@@ -1287,7 +1295,21 @@ else echo NONE; fi
                 self.b.port, GROUPS[0], msgid),
             name="owner feed: B serves {} after the restart".format(msgid),
             expect=None)
-        self.facts["owner feed restart copies"] = str(self.payload(counted))
+        end_count = self.group_count(self.payload(counted), GROUPS[0])
+        self.facts["owner feed restart copies"] = (
+            "node B {} held {} articles before the kill and holds {} after"
+            .format(GROUPS[0], start_count, end_count))
+        if start_count is None or end_count is None:
+            self.gaps.append(
+                "owner feed: node B's GROUP line did not carry a count either side "
+                "of node A's kill, so 'exactly one copy' rests on the reread alone, "
+                "which cannot tell one copy from two.")
+        elif end_count != start_count + 1:
+            self.gaps.append(
+                "owner feed: node B's {} went from {} articles to {} across node A's "
+                "kill and restart. One article crossed, so exactly one is the right "
+                "difference: K5 forbids the restart resolving by a second transfer."
+                .format(GROUPS[0], start_count, end_count))
         # K5's teeth, and the only place this gate can grow them: the tap in
         # front of B saw every octet A's feed sent across the kill. A re-offer
         # is an IHAVE or a CHECK; a duplicate TRANSFER would be a second
@@ -1303,9 +1325,12 @@ else echo NONE; fi
         accepted = [one for one in lines if one.startswith(("S< 235", "S< 239"))]
         refused = [one for one in lines if one.startswith(("S< 435", "S< 438",
                                                            "S< 439"))]
+        transfers = [one for one in lines
+                     if one.startswith(("C> TAKETHIS", "S< 335", "S< 238"))]
         self.facts["owner feed restart wire"] = (
-            "offers={} accepted={} refused-as-duplicate={} | {}".format(
-                len(offers), len(accepted), len(refused),
+            "offers={} go-aheads-and-takethis={} accepted={} "
+            "refused-as-duplicate={} | {}".format(
+                len(offers), len(transfers), len(accepted), len(refused),
                 "; ".join(one[3:] for one in lines
                           if one.startswith("C> "))[:400] or "nothing recorded"))
         if len(accepted) != 1:
@@ -1321,6 +1346,17 @@ else echo NONE; fi
                 "owner feed: the tap in front of node B recorded no offer naming {} "
                 "after node A restarted, so what delivered it is not established by "
                 "this run.".format(msgid))
+        # The negative K5 actually claims. One go-ahead means the article
+        # block crossed once; a second is a duplicate TRANSFER, which is the
+        # thing the restart-by-offer discipline exists to prevent.
+        if len(transfers) > 1:
+            self.gaps.append(
+                "owner feed: the tap in front of node B recorded {} go-aheads or "
+                "TAKETHIS commands for {} across node A's kill. K5 says a restart "
+                "resolves by RE-OFFER and the peer's own history absorbs the one "
+                "retransmission a lost reply can cause; more than one article block "
+                "on the wire is the duplicate transfer it forbids. Recorded: {}"
+                .format(len(transfers), msgid, "; ".join(transfers)[:300]))
 
     def scenario_feed_peer_cut(self):
         """The receiver has the article; the sender has not heard the outcome.
