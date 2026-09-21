@@ -552,6 +552,82 @@ class ServedCredentialTests(unittest.TestCase):
         self.assertTrue(client.command("GROUP fn.letters").startswith(b"211 "))
 
 
+@unittest.skipUnless(openssl_available(), "openssl is not on PATH")
+class ServedTlsTests(unittest.TestCase):
+    """RFC 4642 on a node started the ordinary way, with a peer record.
+
+    The STARTTLS label is `fn-auth-config-tls-availablep`'s, and that field
+    travelled in the same configuration the credential did: a connection the
+    owner resolved to a peer record was opened with no certificate recorded,
+    so it was answered 580 and offered no label even where the operator had
+    configured one.  This is that, live, through `bin/fn run`.
+    """
+
+    LOGIN, SECRET = "poster", "correct-horse-battery"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temp = tempfile.TemporaryDirectory(prefix="fn-servedtls-")
+        cls.root = Path(cls.temp.name)
+        cls.store = cls.root / "store"
+        cls.config = cls.root / "fn.toml"
+        cert, key = certificate(cls.root)
+        run([sys.executable, "bin/fn", "--config", str(cls.config), "init",
+             "--store", str(cls.store), "--group", "fn.letters",
+             "--listen", "127.0.0.1:0", "--auth-required",
+             "--auth-protected-only", "--tls-cert", str(cert),
+             "--tls-key", str(key)])
+        run([sys.executable, "bin/fn", "--config", str(cls.config), "principal",
+             "set-password", cls.LOGIN, "--password", cls.SECRET, "--posting"])
+        run([sys.executable, "tools/run_store.py", "--store", str(cls.store),
+             "peer", "add", "other", "--path-identity", "other.invalid",
+             "--nntp", "127.0.0.1:9", "--inbound-groups", "fn.*",
+             "--inbound-max-octets", "32768", "--outbound-groups", "fn.*",
+             "--source-address", "127.0.0.1"])
+        cls.service = Service(cls.config, cls.root / "c.sock").start()
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            cls.service.stop()
+        finally:
+            cls.temp.cleanup()
+
+    def labels(self, client):
+        self.assertTrue(client.command("CAPABILITIES").startswith(b"101 "))
+        return [line.strip() for line in client.block()]
+
+    def test_starttls_is_advertised_and_authinfo_is_not_yet(self):
+        client = Client(self.service.port)
+        self.addCleanup(client.close)
+        labels = self.labels(client)
+        # RFC 4642 section 2.1: the certificate is configured, so the label
+        # is there and STARTTLS is not 580.
+        self.assertIn(b"STARTTLS", labels)
+        # RFC 4643 section 2.1 with protected_only: the server would answer
+        # 483, so it does not offer USER/PASS yet.
+        self.assertNotIn(b"AUTHINFO USER", labels)
+        self.assertTrue(client.command("AUTHINFO USER " + self.LOGIN)
+                        .startswith(b"483 "))
+
+    def test_starttls_then_the_login_and_the_label_is_gone(self):
+        client = Client(self.service.port)
+        self.addCleanup(client.close)
+        self.assertTrue(client.starttls().startswith(b"382 "))
+        labels = self.labels(client)
+        # RFC 4642 section 2.1: MUST NOT be advertised once the layer is up.
+        self.assertNotIn(b"STARTTLS", labels)
+        self.assertIn(b"AUTHINFO USER", labels)
+        self.assertTrue(client.command("AUTHINFO USER " + self.LOGIN)
+                        .startswith(b"381 "))
+        self.assertTrue(client.command("AUTHINFO PASS " + self.SECRET)
+                        .startswith(b"281 "))
+        self.assertTrue(client.command("STARTTLS").startswith(b"502 "))
+        self.assertTrue(client.command("POST").startswith(b"340 "))
+        client.send(".")
+        client.line()
+
+
 def run(argv):
     result = subprocess.run(argv, cwd=ROOT, capture_output=True, timeout=900)
     if result.returncode != 0:

@@ -860,9 +860,24 @@
     101 110 116 97 108 32 115 101 114 118 101 114 32 114 101 97 100 121 13
     10))
 
-(defun fn-served-greeting (config)
+; RFC 3977 section 5.1.2, and the whole of it: 200 iff the server will
+; accept POST from this client as it stands, 201 iff it will accept further
+; commands and not POST.  This read the pinned INJECTION configuration
+; alone, which was the whole of the posting allowance until this book
+; carried authentication; under a policy that requires a login
+; (fn-auth-config-requiredp) an unauthenticated connection may not post, so
+; that spelling greeted 200 and then answered POST 480 -- measured on a
+; running node 2026-09-21.  The session argument is new.  The bit is the one
+; fn-auth-command hands fn-nntp-capability-lines for the POST label and the
+; one fn-auth-postingp decides 340 against 440/480 by, so the greeting, the
+; label and the refusal are one value read three times.
+;
+; Section 5.1.2's own note says the 200/201 distinction has proved
+; insufficient for exactly this case and that clients SHOULD use
+; CAPABILITIES; fn still answers the code the section's MUST names.
+(defun fn-served-greeting (config as)
   (declare (xargs :guard t))
-  (if (fn-inj-config-allow config)
+  (if (and (fn-inj-config-allow config) (fn-auth-postingp as))
       *fn-served-greeting-posting*
     *fn-served-greeting*))
 
@@ -877,11 +892,11 @@
 (defun fn-served-open (archive line-limit body-limit config observation
                                injection acfg)
   (declare (xargs :guard t))
-  (fn-served-make-result
-   (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
-                        (fn-auth-open-session archive nil nil nil acfg nil)
-                        archive config observation injection)
-   (list (fn-nntp-reply-effect (fn-served-greeting config)))))
+  (let ((session (fn-auth-open-session archive nil nil nil acfg nil)))
+    (fn-served-make-result
+     (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
+                          session archive config observation injection)
+     (list (fn-nntp-reply-effect (fn-served-greeting config session))))))
 
 ; A peer connection (specs/peering.md section 1.1): the host resolved the
 ; source to a peer name at :open and hands the node and configuration the
@@ -905,11 +920,11 @@
 (defun fn-served-open-peer (archive line-limit body-limit config observation
                                     injection peer node cfg acfg)
   (declare (xargs :guard t))
-  (fn-served-make-result
-   (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
-                        (fn-auth-open-session archive peer node cfg acfg nil)
-                        archive config observation injection)
-   (list (fn-nntp-reply-effect (fn-served-greeting config)))))
+  (let ((session (fn-auth-open-session archive peer node cfg acfg nil)))
+    (fn-served-make-result
+     (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
+                          session archive config observation injection)
+     (list (fn-nntp-reply-effect (fn-served-greeting config session))))))
 
 (defthm fn-served-open-is-a-connection
   (implies (and (posp line-limit) (posp body-limit))
@@ -986,6 +1001,95 @@
                                    fn-auth-open-session)
                                   (fn-auth-configp fn-auth-open-config
                                    fn-peer-open-session)))))
+
+; -----------------------------------------------------------------------------
+; The greeting and the POST label cannot disagree (RFC 3977 section 5.1.2)
+;
+; The keystone is the first: the greeting code the open emits is 200 exactly
+; when the connection may POST as it stands, and that allowance is the
+; conjunction of the pinned injection configuration and fn-auth-postingp of
+; the session just built -- the same two values fn-auth-command hands
+; fn-nntp-capability-lines for the POST label and the same ones
+; fn-auth-postingp decides 340 against 440/480 by.  The second reads the
+; label off fn-nntp-capability-lines' two ground lists and does no work; it
+; is named for what it is and exists only so the agreement below can be
+; stated over the LABEL and not over the bit again.
+
+(defthm fn-served-open-greets-200-exactly-when-the-connection-may-post
+  (equal (equal (fn-served-result-effects
+                 (fn-served-open archive line-limit body-limit config
+                                 observation injection acfg))
+                (list (fn-nntp-reply-effect *fn-served-greeting-posting*)))
+         (and (fn-inj-config-allow config)
+              (fn-auth-postingp
+               (fn-auth-open-session archive nil nil nil acfg nil))
+              t))
+  :hints (("Goal" :in-theory (e/d (fn-served-open fn-served-greeting
+                                   fn-served-make-result
+                                   fn-served-result-effects)
+                                  (fn-auth-postingp fn-auth-open-session
+                                   fn-inj-config-allow
+                                   fn-auth-open-session-is-consistent)))))
+
+; `local' and `:rule-classes nil': an unfold equality used by one theorem in
+; this book, cited by `:use' (docs/proof-style.md section 2).  Both lists
+; fn-nntp-capability-lines returns are ground, so with the two definitions
+; open every branch of fn-auth-capability-lines' append evaluates.
+(local
+ (defthm fn-auth-capability-lines-offer-post-by-definition
+   (iff (member-equal (fn-nntp-string-octets "POST")
+                      (fn-auth-capability-lines acfg subject tlsp postingp))
+        postingp)
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines
+                                    fn-nntp-capability-lines)
+                                   (fn-auth-config-creds
+                                    fn-auth-config-protected-onlyp
+                                    fn-auth-config-tls-availablep))))))
+
+; What specs/nntp.md claims in one sentence, over the octets a client sees:
+; the greeting on a fresh connection is 200 if and only if the CAPABILITIES
+; block that connection would then receive carries the POST label.  It
+; follows from the keystone above and the local unfold, and does no further
+; work of its own; it is here because the claim is about the pair and a
+; reader should not have to compose it.
+(defthm fn-served-open-greeting-agrees-with-the-post-label
+  (iff (equal (fn-served-result-effects
+               (fn-served-open archive line-limit body-limit config
+                               observation injection acfg))
+              (list (fn-nntp-reply-effect *fn-served-greeting-posting*)))
+       (member-equal
+        (fn-nntp-string-octets "POST")
+        (fn-auth-capability-lines
+         (fn-auth-session-config
+          (fn-auth-open-session archive nil nil nil acfg nil))
+         (fn-auth-session-subject
+          (fn-auth-open-session archive nil nil nil acfg nil))
+         (fn-auth-session-tlsp
+          (fn-auth-open-session archive nil nil nil acfg nil))
+         (and (fn-inj-config-allow config)
+              (fn-auth-postingp
+               (fn-auth-open-session archive nil nil nil acfg nil))))))
+  :hints (("Goal"
+           :in-theory (disable fn-served-open fn-auth-capability-lines
+                               fn-auth-open-session fn-auth-postingp
+                               fn-inj-config-allow)
+           :use ((:instance fn-served-open-greets-200-exactly-when-the-connection-may-post)
+                 (:instance fn-auth-capability-lines-offer-post-by-definition
+                            (acfg (fn-auth-session-config
+                                   (fn-auth-open-session archive nil nil nil
+                                                         acfg nil)))
+                            (subject (fn-auth-session-subject
+                                      (fn-auth-open-session archive nil nil nil
+                                                            acfg nil)))
+                            (tlsp (fn-auth-session-tlsp
+                                   (fn-auth-open-session archive nil nil nil
+                                                         acfg nil)))
+                            (postingp
+                             (and (fn-inj-config-allow config)
+                                  (fn-auth-postingp
+                                   (fn-auth-open-session archive nil nil nil
+                                                         acfg nil)))))))))
 
 (defthm fn-served-concat-is-an-octet-list
   (implies (fn-served-chunk-listp chunks)
@@ -1423,7 +1527,8 @@
   '(fn-served-closed-wirep fn-served-tls-handshakingp fn-served-starttlsp
     fn-served-submit-effectp fn-served-effectp
     fn-served-dispatch fn-served-feed fn-served-step fn-served-run
-    fn-served-greeting fn-served-open fn-served-open-peer fn-served-post-outcome
+    fn-served-greeting fn-served-open fn-served-open-peer
+    fn-served-post-outcome
     fn-served-transit-outcome
     fn-served-feed-steps fn-served-step-nntp-steps))
 

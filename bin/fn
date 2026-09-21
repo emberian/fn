@@ -796,6 +796,8 @@ def build_parser():
                       help="write [auth] protected_only = true (RFC 4643 section "
                            "2.3.2: AUTHINFO answers 483 until TLS is active)")
     init.add_argument("--auth-file", help="write [auth] path (default: <store>/auth.toml)")
+    init.add_argument("--tls-cert", help="write [listener] tls_cert (RFC 4642 STARTTLS)")
+    init.add_argument("--tls-key", help="write [listener] tls_key; both or neither")
     init.add_argument("--force", action="store_true", help="rewrite an existing configuration")
 
     run = sub.add_parser("run", help="run the owner in the foreground (the service)")
@@ -905,6 +907,14 @@ def overrides(settings, args):
         settings.auth_protected_only = True
     if getattr(args, "auth_file", None):
         settings.auth_path = args.auth_file
+    # RFC 4642, `fn init` only.  Both or neither, checked here because
+    # Settings already checked the FILE before these overrides existed.
+    cert = getattr(args, "tls_cert", None)
+    key = getattr(args, "tls_key", None)
+    if bool(cert) != bool(key):
+        raise ConfigError("--tls-cert and --tls-key are both or neither")
+    if cert:
+        settings.tls_cert, settings.tls_key = cert, key
     return settings
 
 

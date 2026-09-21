@@ -1244,11 +1244,35 @@ two-node feed scenario.
 - **The role of a connection is decided at accept, from the peer table.**
   `fn-owner-peer-for-address` matches the source address against the
   configured records' `auth-source-address` rows and `fn-own-open-peer` opens
-  the connection with `fn-served-open-peer`, pinning the node and the live
-  configuration into the session; the body limit is the record's
-  `inbound-max-octets`. `(:principal id)` is a reserved slot and matches
-  nothing yet, so A-PEER still stands: the identity is the configured
-  address.
+  the connection with `fn-served-open-peer`, pinning the node, the live
+  configuration and the operator's AUTHINFO policy into the session; the body
+  limit is the record's `inbound-max-octets`. `(:principal id)` is a reserved
+  slot and matches nothing yet, so A-PEER still stands: the identity is the
+  configured address.
+
+  **The match is the ADDRESS and nothing else, and that has a consequence
+  worth stating.** On a box where a configured peer answers on loopback —
+  which is every two-node harness fn has — *every* client is resolved to that
+  peer and opened by this branch. So the peer branch is not a rare path: it
+  is the ordinary one under test, and anything it does differently from
+  `fn-served-open` is a difference the whole reader surface sees. Until
+  2026-09-21 it pinned `(fn-auth-open-config)` in place of the operator's
+  policy, and the effect was that no credential, no `required` bit and no
+  certificate reached any connection on either node of the v0 matrix
+  ([the record](../planning/evidence/auth-live-2026-09-21.md)).
+  `fn-served-peer-and-reader-open-under-the-same-policy` (PRF-035) now says
+  the two branches pin one value.
+
+  **Open, and not this lane's to decide** (board, w11/auth-live): the policy
+  now reaches a peer connection, and a peer does not run AUTHINFO. So under
+  `[auth] required = true` a transit peer is answered 480 for `IHAVE`,
+  `CHECK` and `TAKETHIS`, because they are in `fn-auth-restricted-keywordp`.
+  Either the peer record's `auth` slot is an authentication for RFC 4643's
+  purposes — which is a claim about the network that belongs in
+  `books/assumptions.lisp` beside A-PEER, not in a branch test — or a node
+  that both serves authenticated readers and takes a feed needs two policies.
+  Nothing here decides it; `fn init --auth-required` is off by default and
+  the v0 matrix's nodes do not set it.
 - **Transit and POST share one durable path, and the theorem says so at the
   owner.** `fn-own-take-installs-the-queued-submission-whatever-it-carries`
   (books/owner-invariants.lisp) states that the writer step installs the head
