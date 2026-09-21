@@ -99,14 +99,20 @@
 ; replaces, and only `(:advance id)' calls it.
 ;
 ; The sentence that used to end the paragraph above --- "with no freshness
-; hypothesis to discharge" --- is FALSE, and is withdrawn (w11/snt-guards,
-; 2026-09-20).  Not overwriting is exactly what makes a freshness hypothesis
-; necessary: a STALE pin at the identifier about to be allocated survives the
-; add, and the new connection then serves the stale configuration.  The claim
-; had never been checked because this book had never been admitted.  See the
-; two OPEN notes at the keystones below; `fn-ocfg-pin-set' has the mirror of
-; it (it returns nil on an empty table, so it only replaces a pin that is
-; already there).
+; hypothesis to discharge" --- was FALSE and was withdrawn (w11/snt-guards,
+; 2026-09-20).  Not overwriting is exactly what makes freshness necessary: a
+; STALE pin at the identifier about to be allocated would survive the add,
+; and the new connection would then serve the stale configuration.  What
+; discharges it is not a hypothesis about the pin table but the state
+; relation: `fn-ocfg-open-pins-the-live-configuration' below hypothesises
+; `(fn-ocfg-statep oc)', whose `fn-ocfg-pins-pin-conns-only' turns a pin at
+; `(fn-own-next-id o)' into an OPEN CONNECTION there, and whose
+; `fn-own-relation' bounds every open connection's identifier strictly below
+; `fn-own-next-id' (`fn-own-ids-below-next-p',
+; books/owner-invariants.lisp).  `fn-ocfg-pin-set' has the mirror of it (it
+; returns nil on an empty table, so it only replaces a pin that is already
+; there), and `fn-ocfg-advance-observes-the-live-configuration' discharges
+; that from the same recognizer's `fn-ocfg-conns-pinnedp'.
 
 (defun fn-ocfg-pin-find (id pins)
   (declare (xargs :guard t))
@@ -457,43 +463,54 @@
 ; -----------------------------------------------------------------------------
 ; KEYSTONES
 
-; A new connection pins the latest configuration.
+; KEYSTONE.  A new connection pins the LIVE configuration: under
+; `fn-ocfg-statep', if the open installs a connection at the identifier the
+; owner was about to allocate, that connection's pinned configuration is the
+; owner's live one.  Two hypotheses and no others: the state relation, and
+; that the open was not refused.
 ;
-; OPEN (w11/snt-guards, 2026-09-20).  FALSE AS STATED, and left here unproved
-; rather than weakened.  With the guard chain below `fn-ocfg-statep' closed
-; this book admits every definition; this is the first of its two remaining
-; failures.  Key checkpoint, from `ld' of this file:
-;
-;   Subgoal 1'
-;   (IMPLIES (AND (FN-OCFG-PIN-FIND (FN-OWN-NEXT-ID (FN-OCFG-OWNER OC))
-;                                   (FN-OCFG-PINS OC))
-;                 (FN-OWN-FIND-CONN (FN-OWN-NEXT-ID (FN-OCFG-OWNER OC))
-;                                   (FN-OWN-CONNS (CDR (FN-OWN-OPEN ...)))))
-;            (EQUAL (CDR (FN-OCFG-PIN-FIND (FN-OWN-NEXT-ID (FN-OCFG-OWNER OC))
-;                                          (FN-OCFG-PINS OC)))
-;                   (FN-OCFG-CONFIG OC)))
-;
-; The missing hypothesis is freshness of the identifier in the PIN TABLE:
-; (not (fn-ocfg-pin-find (fn-own-next-id (fn-ocfg-owner oc))
-;                        (fn-ocfg-pins oc))).
-; It does not follow from `fn-ocfg-statep': that recognizer's
-; `fn-ocfg-pins-pin-conns-only' turns a pin at `next-id' into an OPEN
-; CONNECTION at `next-id', and `fn-own-relation'
-; (books/owner-invariants.lisp:155) carries no bound tying a connection's id
-; to `fn-own-next-id' --- `fn-own-conn-okp' asks only for `(natp
-; (fn-own-conn-id conn))'.  So the repair is a cross-cluster packet: add the
-; freshness conjunct to `fn-own-relation', prove it preserved by every owner
-; transition, then discharge this keystone from `fn-ocfg-statep' and ship its
-; teeth.  Do not add the bare hypothesis instead: that states a property of
-; states the owner is not known to reach.
+; `fn-ocfg-pin-add' never overwrites, so the theorem is FALSE without the
+; relation -- a stale pin at the identifier about to be allocated would
+; survive the add and the new connection would serve the stale
+; configuration.  It is the relation that rules that out, and not by
+; assumption: `fn-ocfg-pins-pin-conns-only' turns a pin at `next-id' into an
+; OPEN CONNECTION at `next-id', and `fn-own-relation' now carries
+; `fn-own-ids-below-next-p' (books/owner-invariants.lisp), which says every
+; open connection's identifier is strictly below `fn-own-next-id'.  That
+; bound was already true of every reachable owner state --- `fn-own-open'
+; and `fn-own-open-peer' are the only transitions that add a connection and
+; both take `id = (fn-own-next-id o)' and write `(1+ (nfix id))' back --- so
+; nothing about identifier allocation changed to close this; the bound was
+; unstated, not false.  `fn-own-relation-has-no-connection-at-next-id' is
+; the exported bridge.  Teeth: tests/acl2/owner-config-tests.lisp.
+(local
+ (defthm fn-ocfg-a-pinned-identifier-is-an-open-connection
+   (implies (and (fn-ocfg-pins-pin-conns-only pins conns)
+                 (fn-ocfg-pin-find id pins))
+            (fn-own-find-conn id conns))
+   ; :rule-classes nil, and not for hygiene: as a REWRITE rule this turns
+   ; `(fn-own-find-conn id conns)' into T, which destroys the very hypothesis
+   ; the :use below adds before `fn-own-relation-has-no-connection-at-next-id'
+   ; can contradict it.  Measured: the keystone failed at `Subgoal 5''' with
+   ; the pin in its hypotheses and the connection term gone.
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-ocfg-pin-find id pins)
+            :in-theory (enable (:d fn-ocfg-pin-find)
+                               (:d fn-ocfg-pins-pin-conns-only))))))
+
 (defthm fn-ocfg-open-pins-the-live-configuration
   (let ((oc2 (cdr (fn-ocfg-open oc acfg))))
-    (implies (fn-own-find-conn (fn-own-next-id (fn-ocfg-owner oc))
-                               (fn-own-conns (fn-ocfg-owner oc2)))
+    (implies (and (fn-ocfg-statep oc)
+                  (fn-own-find-conn (fn-own-next-id (fn-ocfg-owner oc))
+                                    (fn-own-conns (fn-ocfg-owner oc2))))
              (equal (fn-ocfg-conn-config oc2 (fn-own-next-id (fn-ocfg-owner oc)))
                     (fn-ocfg-config oc))))
   :hints (("Goal" :in-theory (enable (:d fn-ocfg-open) (:d fn-ocfg-conn-config)
-                                     (:d fn-ocfg-pin-add)))))
+                                     (:d fn-ocfg-pin-add) (:d fn-ocfg-statep))
+           :use ((:instance fn-ocfg-a-pinned-identifier-is-an-open-connection
+                            (id (fn-own-next-id (fn-ocfg-owner oc)))
+                            (pins (fn-ocfg-pins oc))
+                            (conns (fn-own-conns (fn-ocfg-owner oc))))))))
 
 ; Opening another connection never moves an existing pin.
 (defthm fn-ocfg-open-keeps-every-existing-pin
@@ -556,39 +573,48 @@
            :in-theory (e/d ((:d fn-ocfg-run) (:d fn-ocfg-repins-forp))
                            (fn-ocfg-step)))))
 
-; KEYSTONE.  Advancing observes the live configuration, and nothing else is
-; required of a connection: this is application liveness under the owner's
-; own scheduling, not a timing claim.
+; KEYSTONE.  Advancing observes the live configuration: under
+; `fn-ocfg-statep', a connection that survives its advance is re-pinned to
+; the owner's live configuration.  This is application liveness under the
+; owner's own scheduling, not a timing claim.  Two hypotheses and no others:
+; the state relation, and that the advance kept the connection.
 ;
-; OPEN (w11/snt-guards, 2026-09-20).  FALSE AS STATED, and left here unproved
-; rather than weakened; the second of this book's two remaining failures.
-; Key checkpoint, from `ld' of this file:
-;
-;   Goal''
-;   (IMPLIES (FN-OWN-FIND-CONN ID (FN-OWN-CONNS (FN-OWN-ADVANCE ... ID)))
-;            (EQUAL (CDR (FN-OCFG-PIN-FIND
-;                          ID (FN-OCFG-PIN-SET ID (FN-OCFG-CONFIG OC)
-;                                              (FN-OCFG-PINS OC))))
-;                   (FN-OCFG-CONFIG OC)))
-;
-; `fn-ocfg-pin-set' REPLACES and never adds --- it returns nil on an empty
-; table --- so `fn-ocfg-pin-find-of-pin-set-same' (above) needs
-; `(fn-ocfg-pin-find id (fn-ocfg-pins oc))', and the theorem as written
-; supplies nothing.  Unlike the keystone above, this one IS carried by
-; `fn-ocfg-statep': `fn-ocfg-conns-pinnedp' says every open connection has a
-; pin.  The packet is one local induction --- (implies (and
-; (fn-ocfg-conns-pinnedp conns pins) (fn-own-find-conn id conns))
-; (fn-ocfg-pin-find id pins)) --- the hypothesis `(fn-ocfg-statep oc)' on
-; this theorem, and its teeth, which need a `tests/acl2/owner-config-tests'
-; book this tree does not have yet.  Left to that packet so the statement
-; change and its witnesses land together (AGENTS.md, teeth ship with the
-; theorem).
+; `fn-ocfg-pin-set' REPLACES and never adds --- it returns `nil' on an empty
+; table --- so `fn-ocfg-pin-find-of-pin-set-same' above needs a pin at `id'
+; in the PRE-STATE table, and the conclusion is false without one (the
+; re-pin silently does nothing and the connection keeps serving whatever the
+; table said).  `fn-ocfg-statep' carries exactly that through
+; `fn-ocfg-conns-pinnedp': every open connection has a pin.  The advance is
+; on the post-state, so the two local lemmas below carry it back --- a
+; connection present after the advance was present before it
+; (`fn-own-advance-finds-only-what-it-had', books/owner-invariants.lisp),
+; and an open connection has a pin.  The hypothesis cannot be moved to the
+; pre-state: `fn-own-advance' DROPS a connection whose re-pinned session
+; leaves `fn-own-conn-boundedp', and then `fn-ocfg-advance' leaves the table
+; alone and the old pin stands.  Teeth: tests/acl2/owner-config-tests.lisp.
+(local
+ (defthm fn-ocfg-an-open-connection-has-a-pin
+   (implies (and (fn-ocfg-conns-pinnedp conns pins)
+                 (fn-own-find-conn id conns))
+            (fn-ocfg-pin-find id pins))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-own-find-conn id conns)
+            :in-theory (enable (:d fn-ocfg-conns-pinnedp))))))
+
 (defthm fn-ocfg-advance-observes-the-live-configuration
-  (implies (fn-own-find-conn id (fn-own-conns (fn-own-advance (fn-ocfg-owner oc) id)))
+  (implies (and (fn-ocfg-statep oc)
+                (fn-own-find-conn id (fn-own-conns
+                                      (fn-own-advance (fn-ocfg-owner oc) id))))
            (equal (fn-ocfg-conn-config (fn-ocfg-advance oc id) id)
                   (fn-ocfg-config oc)))
-  :hints (("Goal" :in-theory (e/d ((:d fn-ocfg-advance) (:d fn-ocfg-conn-config))
-                                  (fn-own-advance)))))
+  :hints (("Goal" :in-theory (e/d ((:d fn-ocfg-advance) (:d fn-ocfg-conn-config)
+                                   (:d fn-ocfg-statep))
+                                  (fn-own-advance))
+           :use ((:instance fn-own-advance-finds-only-what-it-had
+                            (o (fn-ocfg-owner oc)))
+                 (:instance fn-ocfg-an-open-connection-has-a-pin
+                            (conns (fn-own-conns (fn-ocfg-owner oc)))
+                            (pins (fn-ocfg-pins oc)))))))
 
 ; KEYSTONE.  LIST ACTIVE lists the served table of the connection's
 ; generation.  `fn-nntp-list-active' renders exactly the group list it is
