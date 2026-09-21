@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 
 
@@ -33,11 +34,11 @@ class NativeBpServiceTests(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp)
 
-    def invoke(self, *args):
+    def invoke(self, *args, env=None):
         return subprocess.run(
             [str(self.image), "--fn", "bp-service", *map(str, args)],
             cwd=ROOT,
-            env=self.env,
+            env=env or self.env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=30,
@@ -45,10 +46,11 @@ class NativeBpServiceTests(unittest.TestCase):
             text=True,
         )
 
-    def run_outage(self, adu=None):
+    def run_outage(self, adu=None, env=None):
         return self.invoke(
             "run", "127.0.0.1", "1", adu or self.adu, self.journal,
             "dtn://fn-a/", "dtn://fn-b/", "work-1", "attempt-1", "0",
+            env=env,
         )
 
     def records(self):
@@ -102,6 +104,95 @@ class NativeBpServiceTests(unittest.TestCase):
             owner.kill()
             owner.wait(timeout=10)
             owner.stdout.close()
+
+    def test_visible_final_never_converts_failed_barrier_to_durable(self):
+        for variable in (
+            "FN_BP_SERVICE_TEST_FAIL_FIRST_DIR_BARRIER",
+            "FN_BP_SERVICE_TEST_FAIL_SECOND_DIR_BARRIER",
+        ):
+            with self.subTest(variable=variable):
+                shutil.rmtree(self.journal, ignore_errors=True)
+                injected_env = dict(self.env)
+                injected_env[variable] = "1"
+                cut = self.run_outage(env=injected_env)
+                self.assertEqual(cut.returncode, 3, cut.stderr)
+                self.assertIn("BP queue uncertain reason=persistence", cut.stdout)
+                self.assertNotIn("BP queue accepted", cut.stdout)
+                self.assertEqual(
+                    len(self.records()), 1,
+                    "the uncertain persist must fence before attempting/forwarding records",
+                )
+
+                recovered = self.invoke("resume", self.journal, "dtn://fn-a/")
+                self.assertEqual(recovered.returncode, 3, recovered.stderr)
+                self.assertIn("BP queue recovered jobs=1", recovered.stdout)
+                self.assertNotIn("restart fenced", recovered.stderr)
+
+    def test_transport_uncertain_dominates_refused_article(self):
+        malformed = self.tmp / "malformed.bundle"
+        malformed.write_bytes(b"not a BPv7 bundle")
+        listener_log = self.tmp / "listener.log"
+        sender_log = self.tmp / "sender.log"
+        with listener_log.open("wb") as listener_output:
+            listener = subprocess.Popen(
+                [str(self.image), "--fn", "tcpcl", "listen", "0", "1",
+                 str(self.tmp / "peer-journal"), "dtn://fn-b/", "-",
+                 "4", "1024", "1048576", str(malformed), "-"],
+                cwd=ROOT, env=self.env, stdout=listener_output,
+                stderr=subprocess.STDOUT,
+            )
+            sender = None
+            try:
+                deadline = time.time() + 15
+                port = None
+                while time.time() < deadline:
+                    text = listener_log.read_text(errors="replace")
+                    for line in text.splitlines():
+                        if line.startswith("TCPCL LISTENING "):
+                            port = int(line.rsplit(" ", 1)[1])
+                            break
+                    if port is not None:
+                        break
+                    if listener.poll() is not None:
+                        self.fail(f"listener exited before listen: {text}")
+                    time.sleep(0.02)
+                self.assertIsNotNone(port, "listener did not publish a port")
+
+                with sender_log.open("wb") as sender_output:
+                    sender = subprocess.Popen(
+                        [str(self.image), "--fn", "bp", "send", "127.0.0.1",
+                         str(port), str(self.adu), str(self.tmp / "bp-journal"),
+                         "dtn://fn-a/", "dtn://fn-b/", "3600000", "2", "32",
+                         "1048576", "2", "-", "0"],
+                        cwd=ROOT, env=self.env, stdout=sender_output,
+                        stderr=subprocess.STDOUT,
+                    )
+                    deadline = time.time() + 20
+                    while time.time() < deadline:
+                        if "BP refused xfer=" in sender_log.read_text(errors="replace"):
+                            break
+                        if sender.poll() is not None:
+                            break
+                        time.sleep(0.02)
+                    self.assertIn(
+                        "BP refused xfer=", sender_log.read_text(errors="replace"),
+                        "the mixed-outcome cut requires a reachable refused article",
+                    )
+                    listener.kill()
+                    listener.wait(timeout=10)
+                    sender.wait(timeout=20)
+
+                output = sender_log.read_text(errors="replace")
+                self.assertIn("BP summary accepted=0 refused=1 uncertain=0", output)
+                self.assertIn("TCPCL active uncertain", output)
+                self.assertEqual(sender.returncode, 3, output)
+            finally:
+                if listener.poll() is None:
+                    listener.kill()
+                    listener.wait(timeout=10)
+                if sender is not None and sender.poll() is None:
+                    sender.kill()
+                    sender.wait(timeout=10)
 
 
 if __name__ == "__main__":
