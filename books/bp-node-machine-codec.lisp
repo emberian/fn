@@ -181,7 +181,7 @@
 ; contradiction, not a second admission decision.
 (defun fn-bpn-lifecycle-publication-authorize
   (st token record lock-owned final-absent)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
   (let ((pending (fn-bpn-machine-state-pending st)))
     (if (and (mbe :logic (fn-bpn-machine-statep st)
                   ; The native service installs only the initial/restart state
