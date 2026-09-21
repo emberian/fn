@@ -1,24 +1,25 @@
 # Development milestones
 
-Current task (2026-09-21): finish the frozen native owner runtime gate and
-converge the next batch of safe feed filenames, feed restart, operator callbacks,
-anchor persistence, recovery, BP receive evidence and checkpoints. Component
-packets have source-pinned tests; the combined native two-peer service remains
-unqualified. Parallel successors close application/receipt composition, namespace
-and resource-bound twins, measured prepare-path cost, and physical recovery gaps.
-The packaged Python service remains development infrastructure; no full native
-service or v0 milestone is complete. See [current work](now.md),
-[assignments](swarm-cycles.md), and the
+Current task (2026-09-21): compose the next native service batch after the
+frozen `03eb3ba3` certification, default/DTN builds and scoped runtime gate
+passed. Native authentication startup, the shared-owner prepare refinement,
+shared BP publication and bounded checkpoint namespace are now integrated.
+Parallel implementation closes native control and orderly shutdown, connection
+fault isolation, inbound/outbound peering, TLS, credential and group/capacity
+administration, BP application/receipt composition and remaining namespace twins.
+
+The two-peer native release remains unqualified. The packaged Python service
+is development infrastructure; component certificates and tests do not complete
+v0. See [current work](now.md), [assignments](swarm-cycles.md), and the
 [consolidation audit](duplication-audit-2026-09-21.md).
 
-The W18 live-store prepare packet now gives the actual native store wrapper a
-certified projection of `fn-sn-prepare`: successful observed open establishes
-the store/node relation, every modeled post-open store mutator preserves it,
-and exact equality under that relation removes the repeated appended-history
-replay from prepare. A saved-image 50/400-record probe and current-main join
-certification are recorded in
-[the W18 evidence](evidence/store-prepare-correspondence-w18-2026-09-21.md).
-Native owner adoption and complete physical correspondence remain open.
+The W18 prepare correspondences now cover both the standalone wrapper and the
+actual configured owner. Exact equality under the maintained store/owner
+relations removes repeated appended-history replay from prepare. Recovery still
+replays authoritative history. The [owner evidence](evidence/native-owner-prepare-correspondence-w18-2026-09-21.md)
+records certification and native runtime tests; the earlier [standalone probe](evidence/store-prepare-correspondence-w18-2026-09-21.md)
+does not establish concurrent-service scaling. Complete physical correspondence
+and measured shared-owner service cost remain open.
 
 The following dated landing notes preserve their original evidence and gaps;
 their phrases “current task” and “nearest gaps” refer to those earlier batches.
