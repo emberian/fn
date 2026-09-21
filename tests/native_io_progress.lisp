@@ -246,6 +246,29 @@
              (nio-check (= links 1) "post-link errno ~d did not issue link" errno)
              (nio-check (= barriers 1) "post-link errno ~d did not reach barrier" errno))))))))
 
+(defun nio-initial-publish-linked-cut-is-uncertain ()
+  "A named injected error after successful link is in the ambiguity window."
+  (let ((links 0) (barriers 0))
+    (nio-with-initial-publish-stubs
+     (lambda () (incf links))
+     (lambda () (incf barriers))
+     (lambda ()
+       (let* ((store (%make-fnn-store
+                      :root "/native-initial-publish"
+                      :fault-point :init-config-linked
+                      :fault-class 'fnn-os-error))
+              (code (handler-case
+                        (progn
+                          (fnn-publish-initial-file
+                           store "/native-initial-publish/config.json"
+                           (fnn-octets '(1)) "init-config-")
+                          :returned)
+                      (error (e) (fnn-exit-code-for e)))))
+         (nio-check (eql code +fnn-exit-uncertain+)
+                    "post-link named cut did not preserve uncertainty")
+         (nio-check (= links 1) "post-link named cut did not issue link")
+         (nio-check (zerop barriers) "post-link named cut reached barrier"))))))
+
 (defun nio-zero-writes-fault ()
   (let ((*fnn-write-syscall* (lambda (&rest ignored)
                                 (declare (ignore ignored))
@@ -464,6 +487,7 @@
 (nio-bounded-directory-actual-boundary)
 
 (nio-initial-publish-error-origins)
+(nio-initial-publish-linked-cut-is-uncertain)
 (nio-zero-writes-fault)
 (nio-send-retries-with-one-deadline)
 (nio-zero-send-faults)
