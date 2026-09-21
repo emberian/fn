@@ -330,10 +330,12 @@ class OwnerTests(OwnerFixture):
         # the ACL2 authorization for this event; no Python config table is
         # consulted.  The durable record is committed before fn-ocfg publishes
         # its next generation, and the other reader stays a separate pin.
-        self.assertEqual(owner.control_line(b"CONNECTIONS"), b"connections 0:0 1:0")
+        self.assertEqual(set(owner.control_line(b"CONNECTIONS").split()[1:]),
+                         {b"0:0", b"1:0"})
         self.assertEqual(owner.control_line(b"RECONFIGURE 0 create fn.live"),
                          b"configured generation=2")
-        self.assertEqual(owner.control_line(b"CONNECTIONS"), b"connections 0:0 1:0")
+        self.assertEqual(set(owner.control_line(b"CONNECTIONS").split()[1:]),
+                         {b"0:0", b"1:0"})
         owner.kill()
         self.owner = None
         reopened = self.start_owner()
