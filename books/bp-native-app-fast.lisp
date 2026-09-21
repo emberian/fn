@@ -580,4 +580,17 @@
                     fn-bpaj-pending-receipt-resolution-fast
                     fn-bpaj-record-matches-request-fast
                     fn-bpaj-record-lookup-fast
-                    fn-bpaj-dispatch-fast))
+                    fn-bpaj-dispatch-fast
+                    fn-bpaj-store-record-accepted-fast-is-checked
+                    fn-bpaj-request-acceptable-fast-is-checked
+                    fn-bpaj-bpr-accept-request-fast-is-checked
+                    fn-bpaj-bpr-prepare-receipt-fast-is-checked
+                    fn-bpaj-bpr-commit-receipt-fast-is-checked
+                    fn-bpaj-bpr-receipt-adu-fast-is-checked
+                    fn-bpaj-bprr-apply-record-fast-is-checked
+                    fn-bpaj-apply-record-fast-is-checked
+                    fn-bpaj-request-status-fast-is-checked
+                    fn-bpaj-pending-resolution-fast-is-checked
+                    fn-bpaj-record-matches-request-fast-is-checked
+                    fn-bpaj-record-lookup-fast-is-checked
+                    fn-bpaj-dispatch-fast-is-checked))
