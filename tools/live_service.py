@@ -207,7 +207,15 @@ cd {tree} || exit 9
   "{them}"                                  ; name: the local label
   "{them}.fn.invalid"                       ; path-identity, RFC 5537 3.2
   (:nntp "{host}" {port})                   ; transport: the peer box
-  (("fn.*") 1048576 4)                      ; inbound: groups, max octets, max in flight
+  (("fn.*") 32768 4)                        ; inbound: groups, max octets, max in flight
+;; 32768 is *fn-record-max-payload* (books/records.lisp), the ceiling
+;; `fn-cfg-peer-inboundp' (books/peer-config.lisp:150) holds an inbound
+;; record to.  This stub said 1048576, a number Python chose, and a record
+;; carrying it is REFUSED `:peer-record' -- so the "configuration the two
+;; boxes are meant to hold" could never have been held.  The same typed
+;; megabyte is still the CLI default at bin/fn:804 and
+;; tools/run_store.py:2054; that one is a live defect with an owner, not a
+;; stub, and w10/v0-matrix measured it.
   (("fn.*") nil 64 1000)                    ; outbound: groups, streaming, queue, backoff ms
   (:source-address "{host}"))               ; auth, specs/peering.md 6
 """.format(them=peer, us=self.node, us_host=self.host, rev=self.rev,

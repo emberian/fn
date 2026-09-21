@@ -294,6 +294,20 @@ that did not -- plus the driver it builds and its choice of the less loaded
 farm box. None of this is evidence about ACL2; it is evidence that the
 harness reports what ACL2 did.
 
+`tests/test_gate_reap.py` is the same kind of test for the one tool that
+deletes things: every verdict of `tools/gate_reap.py` is a pure function over
+a gate listing, so the policy (a gate with a process in it is never stale; a
+held box lock keeps everything; a box with no `/proc` keeps everything; the
+newest gates of each tree and any revision git does not know are kept) is
+exercised against listings the test writes, and the removal guards -- a
+non-stale verdict, and six names that could widen an `rm -rf` -- are shown to
+raise with nothing sent to the box. `tests/test_feed.py` covers the two host
+mechanisms `tools/run_owner.py` imports from `tools/feed_wire.py`: the FNFD
+journal's layout, including a torn tail ending the record stream, and RFC 3977
+section 3.1.1 dot stuffing. It used to drive `tools/run_feed.py`, which was
+retired on 2026-09-21; the feed scenarios it held are `tools/twonode_gate.py`'s
+`scenario_owner_feed` and `scenario_feed_restart` against a real fn node.
+
 ## Evidence record
 
 Each meaningful validation summary records: requirement/scenario/proof IDs;
