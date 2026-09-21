@@ -161,12 +161,15 @@ The roots this lane's change is about, each certified, with its wall time:
 
 Its one failure, `books/owner-config` at `( DEFUN FN-OCFG-STATEP ...)`, was a defect `w10/owner-relation` had already recorded open; lane `w11/owner-config` closed it on dev the same night, which is why the run above has none.
 
-## Run 2 and run 3: the two-node gate on persvati
+## Runs 2 to 5: the two-node gate on persvati
 
 `python3 tools/twonode_gate.py HEAD --host persvati`, invoked from this lane's
 worktree (`build/lanes/w11-twonode-feed`), which is where the evidence lands.
-Both runs are committed whole: `twonode-bbd1f47-2026-09-21.md` (99 steps, 2
-failed, 4 not exercised) and `twonode-ea76826-2026-09-21.md` (101 steps).
+Every run is committed whole: `twonode-bbd1f47-2026-09-21.md` (99 steps),
+`twonode-ea76826-2026-09-21.md` (101 steps),
+`twonode-0e5a7f8-2026-09-21.md` (123 steps) and
+`twonode-a5c6792-2026-09-21.md` (124 steps, 1 failed, 1 not exercised),
+which is the one that stands.
 
 ### What run 2 (`bbd1f47`) established, and what it hid
 
@@ -235,6 +238,70 @@ connection is refused `441` whatever the article is. A separate lane owns
 that seam. This harness was already immune -- `FEED_DRIVER`'s `post` opens a
 fresh connection per article and closes it -- so nothing here works around
 it, and nothing here exercises two posts on one connection either.
+
+### Run 5 (`a5c6792`): the record
+
+| row | value |
+| --- | --- |
+| `owner feed` | **A->B True ; B->A True** |
+| `owner feed <fed-ab@example.invalid>` | `status=220 ... attempts=1 octets identical to the source=True` |
+| `owner feed <fed-ba@example.invalid>` | `status=220 ... attempts=1 octets identical to the source=True` |
+| `owner feed streaming` | **True**, `octets identical to the source=True` |
+| `owner feed wire` | `IHAVE <fed-ba@example.invalid>` (node A's tap; node B's carries `IHAVE <fed-ab@example.invalid>`) |
+| `owner feed streaming wire` | `MODE STREAM; CHECK <fed-streaming@example.invalid>; TAKETHIS <fed-streaming@example.invalid>` |
+| `owner feed ab duplicate` | `ihave=435 duplicate check=438 takethis=439` |
+| `owner feed ba duplicate` | `ihave=435 duplicate check=438 takethis=439` |
+| `feed` (hand relay) | `offer=335 transfer=235 loop=437 transfer rejected; path loop reread=220 identical=True` |
+| `owner feed cut` | `CUT-TAKEN ; served=220 ... identical=True accepted-transfers-observed=0` |
+| `transit` | `IHAVE -> '335 send it'` |
+
+**An article crosses between two fn nodes in both directions, by each
+node's own feed, by IHAVE and by RFC 4644 CHECK/TAKETHIS, and the octets
+the receiver serves are identical to the octets the sender serves.** The
+tap in front of each node holds the commands that carried them. A second
+offer of an article a node already holds draws `435`, its `CHECK` draws
+`438` and a `TAKETHIS` that ignores the advice draws `439`. An article
+whose Path names the receiving node draws `437 transfer rejected; path
+loop`. A transfer cut between the article block and the status line leaves
+the receiver holding the article and the sender having observed no
+accepted transfer.
+
+That is every row of packets 2 and 3 of this lane's brief, and the
+lost-reply half of packet 4.
+
+### What run 5 still does not show, with the blocker named
+
+**K5's `kill -9` restart-by-offer did not deliver**, and the run named why.
+Both nodes were ALIVE at the liveness probes, and then the arrival step
+polled node B 180 times over 90 s getting `server closed the connection`
+every time. Node B's own log shows it listening and healthy. What filled it
+up is upstream, and the tap has it: after the earlier cut, node A's feed
+reconnected every five seconds, sent `MODE STREAM`, offered nothing and sat
+there -- seven sessions in one log, each one a connection node B did not
+release -- until node B reached its `--max-connections` bound and began
+refusing every client at accept, including the harness's reader probes.
+
+The root cause is one defect, and it is the last thing between this lane
+and K5 on a live machine: **the host drops a lost socket and never tells
+ACL2, so the in-flight entry is never requeued.** `feed_drop` calls
+`fn-owner-feed-connect peer nil` and nothing applies `fn-feed-lost`, which
+is the transition for exactly this. The entry stays `:sent`,
+`fn-feed-selection` will not pick it, and only `fn-own-reopen` at the next
+process start resolves it. The exact packet is in the lane handoff: a
+PER-PEER restart or loss on the owner's table -- never `fn-own-feed-restart-all`,
+because settling another peer's genuinely in-flight entry is the second
+transfer K5 forbids -- with the `(:feed-restart peer)` record written
+before the state moves.
+
+What this lane did about it, short of that packet: the host no longer dials
+for an entry it cannot offer. `fn-owner-feed-has-queued` reads
+`fn-feed-head-queued`, and `feed_poll` gates the dial on it instead of on
+queue length, so a peer that lost a reply is no longer a denial of service
+against its peer's connection table. It does NOT resolve the entry.
+
+Two more, unchanged from run 3: the TCPCLv4 image did not build on this
+commit, so that layer was not exercised at all; and `CAPABILITIES` still
+renders the reader block on a transit connection.
 
 ## The gate's own self-test
 
