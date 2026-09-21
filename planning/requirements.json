@@ -971,10 +971,12 @@
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/evidence/bp-dtn7-w11-2026-09-21.md",
-        "planning/evidence/bp-convergence-native-2026-09-21.md"
+        "planning/evidence/bp-convergence-native-2026-09-21.md",
+        "planning/evidence/native-bp-app-2026-09-21.md",
+        "tests/test_bp_app_native.py"
       ],
-      "implementation_note": "Actual pinned dtn7-rs TCP-CLA exchange exercised durable fn work, outage/restart, lost receipt, duplicate recognition and return receipt. Joint sender binding and fixed-Store receiver replay are certified; five receiver SIGKILL cuts and the 133-test suite passed. BPA observations never discharge application work/archive pins. The prior inert-bundle restart failure and explicit fn retry are retained in evidence. Authentication, changing-Store/host refinement, LTP, multi-relay and physical qualification remain open. W13 native carrier convergence adds durable allocation, queue/contact/restart/expiry, spool ownership and recovery, with certified-image tests. Receive-loop fencing, fault classification and session evidence retention remain open; see the native evidence record.",
-      "note": "The requirement remains specified: native BP codecs and an outbound lifecycle now execute in the native host, while full application composition, LTP profile/return transport, multi-relay operation and physical qualification remain incomplete. The earlier claim that fn-bpn-step does not exist is superseded by books/bp-node-machine.lisp; the stronger lifecycle and observed-file allocation targets are PRF-045/046 and are not closed by the current helper theorems."
+      "implementation_note": "Earlier pinned dtn7-rs and development workflow tests retain their recorded scope. Native carrier evidence covers durable allocation, queue/contact/restart/expiry, receive-loop fencing and cross-session evidence retention. The native BP application join now routes request intent through canonical owner Store acceptance, exact committed-record binding and durable receipt decision. Its crash-after-decision/before-receipt witness retries through a fresh process without a second article or retention pin. Full joined trace proof, all physical cuts, authenticated remote evidence, LTP, multi-relay and complete operator integration remain open.",
+      "note": "Status remains specified for the full requirement. Implemented native application composition has focused runtime evidence; broader lifecycle/physical obligations remain PRF-045/046. An application receipt is distinct from carrier completion, and neither a scoped test nor an accepted-branch projection theorem establishes full transport independence."
     },
     {
       "id": "NNT-001",

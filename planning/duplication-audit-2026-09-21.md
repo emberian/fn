@@ -15,14 +15,16 @@ Moving the second path from Python into Lisp does not remove that problem.
 
 This section supersedes the owner and pending-status sentences in the historical
 findings below.  It is a source audit, not new proof or runtime evidence.  The
-baseline is current `dev` at `90e0543`.  It was compared with pending BP
-publication implementation `668130de`, frozen owner fast-prepare
-`df8d191c`, frozen owner/control fault-isolation `a7867753`, frozen native auth
-`d111ef59`, and pending transaction namespace recovery `bdd18442`.
+source-pinned baseline was `90e0543`, compared with BP publisher `668130de`,
+owner fast prepare `df8d191c`, owner/control `a7867753`, auth `d111ef59`, and
+transaction recovery `bdd18442`. Subsequent main through `4c21171a` integrates
+the publisher, owner prepare, auth receiver, and BP application/receipt join.
+Line references below belong to the named baseline or candidate, not necessarily
+current line numbers.
 
 - **U01 — landed.**  The visibility-implies-durability fallback is absent from
   `host/native/bp-service.lisp:122-154`; failures in the current private
-  lifecycle publisher remain uncertain.  Pending `668130de` further routes
+  lifecycle publisher remain uncertain.  Integrated `668130de` further routes
   this actual caller through the shared publication interpreter, but U01's
   harmful classification is already closed on current `dev`.
 - **U02 — landed.**  `host/native/bp.lisp:357-367` calls the ACL2-owned
@@ -34,9 +36,8 @@ publication implementation `668130de`, frozen owner fast-prepare
   and `books/bp-node-machine-codec.lisp:75-149` owns namespace/token binding.
   `books/bp-node-machine.lisp:369-378` remains the admission owner; append no
   longer enumerates the retained namespace.
-- **U04 — remaining on current, complete in pending packet.**  Current
-  `host/native/bp-service.lisp:122-154` still contains its own stage/link/two
-  barrier classifier.  At `668130de`,
+- **U04 — lifecycle consolidation landed.** The baseline private lifecycle
+  classifier has been replaced. At `668130de`,
   `books/bp-node-machine-codec.lisp:177-222` authorizes the exact pending
   token/record publication and `host/native/bp-service.lisp:122-160` calls
   `fnn-immutable-publish-effect`.  This preserves authority-barrier failure as
@@ -68,7 +69,7 @@ publication implementation `668130de`, frozen owner fast-prepare
   `host/native/operator.lisp:24-48` is the current common renderer, but current
   `:111-124` still reports public `post` as owner-required.  The frozen
   owner/control packet adds the called post/control path at
-  `host/native/operator.lisp:86-113,145-156`.  Frozen native auth keeps raw
+  `host/native/operator.lisp:86-113,145-156`.  Integrated native auth keeps raw
   Lisp to bounded regular-file transport in `host/native/auth.lisp:12-44`,
   while `books/native-auth-profile.lisp:45-210` owns syntax, credentials,
   posting permission, and protected-transport policy.  That split is an
@@ -79,11 +80,11 @@ publication implementation `668130de`, frozen owner fast-prepare
   operator path installs the hook at `host/native/operator.lisp:61-87`.  This is
   a packaged-entry/UX boundary defect.  It is not a remote authentication
   bypass: invoking either process already requires local operator authority.
-- **U10 — app-history and store prepare landed; owner prepare remains frozen.**
+- **U10 — app-history, standalone and shared-owner prepare landed.**
   The duplicate raw application history list is gone.  The Store caller uses
-  `fn-spc-prepare` in `host/store-node-host.lisp:379-418`.  Current
-  `host/owner-host.lisp:273-306` still prepares through replaying
-  `fn-owner-step`; frozen `df8d191c` changes the actual wrapper at
+  `fn-spc-prepare` in `host/store-node-host.lisp:379-418`.  Baseline
+  `host/owner-host.lisp:273-306` prepared through replaying
+  `fn-owner-step`; integrated `df8d191c` changes the actual wrapper at
   `host/owner-host.lisp:275-313` to `fn-opc-prepare` under the maintained owner
   relation.  This is an optimized representation with a correspondence
   theorem, not a second semantic owner.
@@ -111,7 +112,7 @@ publication implementation `668130de`, frozen owner fast-prepare
 
 ### Deployed-path cleanup and intentional separation
 
-Two loaded projections have no caller in source or native tests:
+Four loaded projections had no caller at the audit baseline in source or native tests:
 `fn-jpub-host-initial` and `fn-jpub-host-crash-outcome` in
 `host/journal-publish-host.lisp:6-19`, and `fn-bpn-host-machine-statep` and
 `fn-bpn-host-machine-max-records` in `host/bp-node-machine-host.lisp:10-11,79`.
@@ -128,10 +129,10 @@ establishes that their durability, overwrite, or recovery contracts match.
 
 ### Prerequisite-ready consolidations
 
-1. Integrate `668130de` and its evidence tip.  It replaces the last private BP
+1. Landed: `668130de` and its evidence tip replace the last private BP
    lifecycle classifier with the shared ACL2-owned publication contract at the
    actual `:persist` caller and retains exact token/record echo checks.
-2. Integrate the frozen owner fast-prepare, owner/control, and native-auth
+2. Integrate owner/control with the now-landed owner fast-prepare and native-auth
    packets on one reconciled ancestry.  Make the packaged production entry
    dispatch only through `operator`, or gate the raw `owner` verb into an
    explicit diagnostic build, so a shipped invocation cannot accidentally
@@ -530,3 +531,21 @@ The neighboring configuration namespace also uses raw `~8d.cfg` construction,
 suffix filtering and unbounded enumeration. The administration lane will share
 its ACL2 filename codec with the existing builder; complete configuration
 namespace recovery/budget correspondence remains an explicit successor.
+
+
+### U14: control endpoint ownership differs from Store ownership
+
+The [cross-model review](evidence/claude-control-lifecycle-review-w28.md)
+found that two distinct Store roots can select the same explicit control socket
+path. Their separate Store locks do not authorize unlinking that shared endpoint;
+the later process can replace a live socket and receive the first operator's
+submissions. A lease on the endpoint itself must precede stale-node removal.
+A successful or refused connect probe alone does not serialize concurrent starts.
+The native-control lane owns this correction and a two-store collision witness.
+
+The same review identified a raw-descriptor lifetime concern: a stopping thread
+must not close a descriptor while a worker may still use its cached integer.
+Shutdown wakes the worker; final close belongs after that worker's last I/O.
+Shutdown followed immediately by close does not eliminate descriptor reuse.
+This is source-level concurrency analysis pending the lane's controlled witness,
+not a claimed stress-test failure.

@@ -259,9 +259,11 @@
         "tests/evidence/2026-09-18-bp-exchange.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "tests/test_bp_receive_process_crash.py",
-        "tests/acl2/bp-receiver-invariants-tests.lisp"
+        "tests/acl2/bp-receiver-invariants-tests.lisp",
+        "planning/evidence/native-bp-app-2026-09-21.md",
+        "tests/test_bp_app_native.py"
       ],
-      "execution_scope": "Partial: actual receiver undertaking and receipt decision survive reopen; distinct-BID duplicate regenerates identical receipt and real BP returns it to a durably reopened sender. Five actual receiver SIGKILL cuts verify exact staged request/article, single record/article/pin, explicit pending recovery and identical receipts. Joint sender binding and fixed-Store receiver decision/replay/receipt-byte invariants are certified with nonvacuity and rejected-extension cases. Authenticated remote evidence, changing-Store composition and general journal-byte/host refinement remain open."
+      "execution_scope": "Partial: actual receiver undertaking and receipt decision survive reopen; distinct-BID duplicate regenerates identical receipt and real BP returns it to a durably reopened sender. Five actual receiver SIGKILL cuts verify exact staged request/article, single record/article/pin, explicit pending recovery and identical receipts. Joint sender binding and fixed-Store receiver decision/replay/receipt-byte invariants are certified with nonvacuity and rejected-extension cases. Authenticated remote evidence, changing-Store composition and general journal-byte/host refinement remain open. The later native owner/FNRJ join independently exercises death after durable decision and before receipt authorship, then exact receipt replay after restart/retransmit without additional Store transaction/article/pin. Earlier fixed-Store theorems do not by themselves prove the new evolving-Store host composition."
     },
     {
       "id": "SCN-009",
@@ -550,9 +552,11 @@
       "evidence": [
         "tests/evidence/2026-09-18-bp-exchange.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/native-bp-app-2026-09-21.md",
+        "tests/test_bp_app_native.py"
       ],
-      "execution_scope": "Partial: the actual pinned BPA exchange carries an experimental whole-article ADU and matching receipt through outage/restart/lost receipt/duplicate retry. Sender and receiver logical assurance and five receiver process-death cuts have separate evidence. Complete portable batches, explicit expiry/contact/quota cases, authenticated handoff and additional CLA profiles remain open. Moved to M4 to match the user's A06 active BP path; status remains specified."
+      "execution_scope": "Partial: the actual pinned BPA exchange carries an experimental whole-article ADU and matching receipt through outage/restart/lost receipt/duplicate retry. Sender and receiver logical assurance and five receiver process-death cuts have separate evidence. Complete portable batches, explicit expiry/contact/quota cases, authenticated handoff and additional CLA profiles remain open. Moved to M4 to match the user's A06 active BP path; status remains specified. Native TCPCL request-to-owner-Store-to-receipt composition has a separate loopback restart witness; it is not external BPA interoperability or a complete contact-plan test."
     },
     {
       "id": "SCN-018",

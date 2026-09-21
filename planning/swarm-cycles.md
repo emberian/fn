@@ -27,9 +27,9 @@ operator coverage and the selected two-peer release gate are complete.
 | Active lane / worker | Next complete result |
 | --- | --- |
 | `owner-convergence` / Sol | Native connection-local fault isolation without weakening shared uncertainty fencing (HST-005). Frozen `03eb3ba3` certification/build/runtime gate is archived; control lane owns orderly SIGTERM. |
-| `submission-path` / Sol | Native BP inbound request intent, actual owner acceptance, durable receipt decision and lost-receipt/restart idempotence. |
+| `submission-path` / Sol | Native BP application join and lost-receipt restart witness are integrated. Next: receipt-decision namespace-barrier EIO through the actual publisher, fence/no false receipt, then recovered exact retry. |
 | `bp-fidelity-convergence` / Sol | Native local control/submission through the serialized owner, bounded framing and ambiguous-reply outcomes; shared lifecycle hooks and orderly SIGTERM. Coordinate the same completion helper with BP application submission. |
-| `artifact-set` / Sol | Refresh the consolidation audit against landed callers; BP lifecycle now uses the shared ACL2 publication interpreter. |
+| `artifact-set` / Sol | Authored BP wire publication through the shared immutable publisher, preserving allocation identity and collision/uncertainty semantics. Audit refresh and lifecycle publisher are integrated. |
 | `native-storage-codec` / Sol | Native STARTTLS using a mature OpenSSL backend and ACL2-owned consumed-prefix handling; coordinate authentication and owner lifecycle. Checkpoint namespace/mismatch/fencing packet is integrated. |
 | `native-config-impl` / Terra | Native group/capacity administration through ACL2 plans and the shared durable configuration path. Safe FNFD codec and total traversal budget are integrated. |
 | `storage-codecs` / Terra | Native outbound NNTP feed socket/timer interpreter over ACL2 effects, with durable FNFD records before transmission and actual two-node tests. |
