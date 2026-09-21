@@ -11,7 +11,8 @@
 (in-package "ACL2")
 
 (defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
-  store records lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil))
+  store records lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
+  (workers nil) (clients nil))
 
 (defstruct (fnn-owner-feed-journal (:constructor %make-fnn-owner-feed-journal))
   peer path fd phase (replayed 0))
@@ -236,8 +237,8 @@
            (fnn-fault "owner refused recovered feed resolution")))
         (t (fnn-fault "unexpected feed reconciliation: ~a" resolution))))))
 
-(defun fnn-owner-install (root max-connections)
-  (multiple-value-bind (store records) (fnn-open-live-store root t)
+(defun fnn-owner-install (root max-connections &optional fault)
+  (multiple-value-bind (store records) (fnn-open-live-store root t fault)
     (let ((service nil))
       (handler-case
           (let ((result (fnn-owner-core
@@ -298,11 +299,21 @@
 (defmacro fnn-with-owner ((service) &body body)
   `(sb-thread:with-mutex ((fnn-owner-service-lock ,service)) ,@body))
 
-(defun fnn-owner-stop-service (service exit-code)
-  (setf (fnn-owner-service-stopping service) t
-        (fnn-owner-service-exit-code service) exit-code)
+(defun fnn-owner-stop-service-locked (service exit-code)
+  "Fence while the owner mutex is held; the first terminal outcome wins."
+  (unless (fnn-owner-service-stopping service)
+    (setf (fnn-owner-service-stopping service) t
+          (fnn-owner-service-exit-code service) exit-code))
   (let ((listener (fnn-owner-service-listener service)))
-    (when listener (ignore-errors (fnn-socket-shut listener)))))
+    (when listener (ignore-errors (fnn-socket-shut listener))))
+  ;; Wake every client before command cleanup waits for its worker.  Shared
+  ;; journals and Store state remain open until all workers have returned.
+  (dolist (socket (fnn-owner-service-clients service))
+    (ignore-errors (fnn-socket-shut socket))))
+
+(defun fnn-owner-stop-service (service exit-code)
+  (fnn-with-owner (service)
+    (fnn-owner-stop-service-locked service exit-code)))
 
 (defun fnn-owner-fence-service (service)
   "Stop this owner image after an ambiguous Store or FNFD observation."
@@ -310,11 +321,26 @@
 
 (defun fnn-owner-fault-service (service cid condition)
   "Contain an invalid core/store image, distinct from client refusal or EOF."
-  (when cid
-    (ignore-errors
-      (fnn-with-owner (service) (fnn-owner-action 'fn-owner-fault cid))))
-  (fnn-owner-stop-service service +fnn-exit-fault+)
+  (fnn-with-owner (service)
+    (unless (fnn-owner-service-stopping service)
+      (when cid
+        (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
+      (fnn-owner-stop-service-locked service +fnn-exit-fault+)))
   (fnn-err "owner core/store fault; process stopped: ~a" condition))
+
+(defun fnn-owner-serialized (service cid thunk)
+  "Run one semantic action, fencing before its mutex can be released."
+  (fnn-with-owner (service)
+    (when (fnn-owner-service-stopping service)
+      (fnn-refuse "owner service is stopping"))
+    (handler-case (funcall thunk)
+      (fnn-store-indeterminate (e)
+        (fnn-owner-stop-service-locked service +fnn-exit-uncertain+)
+        (error e))
+      (fnn-store-fault (e)
+        (when cid (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
+        (fnn-owner-stop-service-locked service +fnn-exit-fault+)
+        (error e)))))
 
 (defun fnn-owner-submit-groups ()
   (let ((groups (fnn-global 'fn-owner-submit-groups)))
@@ -418,22 +444,25 @@
 
 (defun fnn-owner-handle-chunk (service cid incoming)
   "Run one owner read and its serial writer drain under the service mutex."
-  (fnn-with-owner (service)
-    (unless (eq (fnn-owner-action 'fn-owner-chunk cid
-                                  (fnn-octet-list incoming)) :ok)
-      (fnn-refuse "owner no longer knows connection ~d" cid))
-    (let ((reply (fnn-owner-octets-global 'fn-owner-output))
-          (closing (fnn-owner-bool-global 'fn-owner-closep))
-          (uncertain nil))
-      (when (fnn-owner-bool-global 'fn-owner-submittedp)
-        (multiple-value-bind (reply-cid completion stop)
-            (fnn-owner-drain-one service)
-          (when (and reply-cid (not (= reply-cid cid)))
-            (fnn-fault "writer drained a different connection"))
-          (setq reply (concatenate 'fnn-octets reply completion)
-                uncertain stop)))
-      (when uncertain (fnn-owner-fence-service service))
-      (values reply (or closing uncertain)))))
+  (fnn-owner-serialized
+   service cid
+   (lambda ()
+     (unless (eq (fnn-owner-action 'fn-owner-chunk cid
+                                   (fnn-octet-list incoming)) :ok)
+       (fnn-refuse "owner no longer knows connection ~d" cid))
+     (let ((reply (fnn-owner-octets-global 'fn-owner-output))
+           (closing (fnn-owner-bool-global 'fn-owner-closep))
+           (uncertain nil))
+       (when (fnn-owner-bool-global 'fn-owner-submittedp)
+         (multiple-value-bind (reply-cid completion stop)
+             (fnn-owner-drain-one service)
+           (when (and reply-cid (not (= reply-cid cid)))
+             (fnn-fault "writer drained a different connection"))
+           (setq reply (concatenate 'fnn-octets reply completion)
+                 uncertain stop)))
+       (when uncertain
+         (fnn-owner-stop-service-locked service +fnn-exit-uncertain+))
+       (values reply (or closing uncertain))))))
 
 (defun fnn-owner-serve-client (service socket)
   (let ((fd (fnn-socket-fd socket)) (cid nil))
@@ -441,11 +470,13 @@
          (handler-case
              (progn
                (multiple-value-bind (opened greeting)
-                   (fnn-with-owner (service)
-                     (let ((opened (fnn-owner-core 'fn-owner-open)))
-                       (values opened
-                               (if opened (fnn-owner-octets-global 'fn-owner-output)
-                                 (fnn-make-octets 0)))))
+                   (fnn-owner-serialized
+                    service nil
+                    (lambda ()
+                      (let ((opened (fnn-owner-core 'fn-owner-open)))
+                        (values opened
+                                (if opened (fnn-owner-octets-global 'fn-owner-output)
+                                  (fnn-make-octets 0))))))
                  (unless (and opened (integerp opened))
                    (return-from fnn-owner-serve-client nil))
                  (setq cid opened)
@@ -469,16 +500,45 @@
            ((or fnn-store-error fnn-os-error sb-bsd-sockets:socket-error) (e)
              (fnn-err "owner connection: ~a" e))
            (serious-condition (e)
-             (fnn-err "owner connection fault: ~a" e)
-             (when cid
-               (ignore-errors
-                 (fnn-with-owner (service)
-                   (fnn-owner-action 'fn-owner-fault cid))))))
+             (fnn-owner-fault-service service cid e)))
       (when cid
         (ignore-errors
-          (fnn-with-owner (service)
-            (fnn-owner-action 'fn-owner-close cid))))
+          (fnn-owner-serialized
+           service cid (lambda () (fnn-owner-action 'fn-owner-close cid)))))
       (fnn-socket-shut socket))))
+
+(defun fnn-owner-client-done (service socket)
+  (fnn-with-owner (service)
+    (setf (fnn-owner-service-clients service)
+          (delete socket (fnn-owner-service-clients service) :test #'eq)
+          (fnn-owner-service-workers service)
+          (delete sb-thread:*current-thread*
+                  (fnn-owner-service-workers service) :test #'eq))))
+
+(defun fnn-owner-launch-client (service socket)
+  "Register the socket and worker before either can enter the owner core."
+  (fnn-with-owner (service)
+    (if (fnn-owner-service-stopping service)
+        (progn (ignore-errors (fnn-socket-shut socket)) nil)
+      (progn
+        (push socket (fnn-owner-service-clients service))
+        (let ((worker
+                (sb-thread:make-thread
+                 (lambda ()
+                   (unwind-protect (fnn-owner-serve-client service socket)
+                     (fnn-owner-client-done service socket)))
+                 :name "fn owner client")))
+          (push worker (fnn-owner-service-workers service))
+          worker)))))
+
+(defun fnn-owner-wait-workers (service)
+  "Join client workers before closing any shared journal or Store object."
+  (loop
+    (let ((workers
+            (fnn-with-owner (service)
+              (copy-list (fnn-owner-service-workers service)))))
+      (when (null workers) (return))
+      (dolist (worker workers) (sb-thread:join-thread worker)))))
 
 (defun fnn-owner-accept (service listener once)
   (if once
@@ -487,9 +547,7 @@
       (loop until (fnn-owner-service-stopping service) do
         (handler-case
             (let ((socket (sb-bsd-sockets:socket-accept listener)))
-              (sb-thread:make-thread
-               (lambda () (fnn-owner-serve-client service socket))
-               :name "fn owner client"))
+              (fnn-owner-launch-client service socket))
           (sb-bsd-sockets:socket-error (e)
             (unless (fnn-owner-service-stopping service) (error e)))))))
 
@@ -502,8 +560,15 @@
   (let ((service nil) (listener nil))
     (unwind-protect
          (progn
-           (setq service (fnn-owner-install (first args)
-                                            (parse-integer (fourth args))))
+           (let* ((inject (fifth args))
+                  (fault (and inject
+                              (cdr (assoc inject +fnn-cli-faults+
+                                          :test #'string=)))))
+             (when (and inject (null fault))
+               (error 'fnn-usage-error :message "unknown owner fault point"))
+             (setq service (fnn-owner-install (first args)
+                                              (parse-integer (fourth args))
+                                              fault)))
            (multiple-value-bind (bound bound-port)
                (fnn-listen (parse-integer (second args)))
              (setq listener bound
@@ -513,6 +578,7 @@
            (fnn-owner-service-exit-code service))
       (when listener (fnn-socket-shut listener))
       (when service
+        (fnn-owner-wait-workers service)
         (fnn-owner-feed-close-all service)
         (fnn-store-close (fnn-owner-service-store service))))))
 

@@ -36,10 +36,13 @@ class NativeOwnerTests(unittest.TestCase):
             env=environment(), timeout=180, check=False)
         self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
 
-    def start_owner(self, once=True):
+    def start_owner(self, once=True, fault=None):
+        command = [str(IMAGE), "--fn", "owner", "run", str(self.store),
+                   "0", "1" if once else "0", "8"]
+        if fault is not None:
+            command.append(fault)
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "owner", "run", str(self.store),
-             "0", "1" if once else "0", "8"], cwd=ROOT, stdout=subprocess.PIPE,
+            command, cwd=ROOT, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, env=environment())
         ready = select.select([process.stdout], [], [], 180)[0]
         self.assertTrue(ready, "native owner did not announce its port")
@@ -48,6 +51,14 @@ class NativeOwnerTests(unittest.TestCase):
             self.fail("native owner failed: {} {}".format(
                 line, process.stderr.read().decode("utf-8", "replace")))
         return process, int(line.split()[1])
+
+    @staticmethod
+    def article(message_id, body=b"native owner body\r\n"):
+        return (b"From: sender@example.invalid\r\n"
+                b"Newsgroups: fn.test\r\n"
+                b"Subject: native owner\r\n"
+                b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
+                b"Message-ID: " + message_id + b"\r\n\r\n" + body)
 
     def test_client_disconnect_is_not_a_global_owner_fault(self):
         process, port = self.start_owner(once=False)
@@ -78,16 +89,62 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertEqual(result.returncode, 4, result.stderr.decode())
         self.assertIn(b"invalid complete FNFD evidence", result.stderr)
 
+    def test_two_client_uncertainty_fences_before_later_mutation(self):
+        process, port = self.start_owner(once=False, fault="postpublish")
+        first = socket.create_connection(("127.0.0.1", port), timeout=30)
+        second = socket.create_connection(("127.0.0.1", port), timeout=30)
+        self.addCleanup(first.close)
+        self.addCleanup(second.close)
+        one = first.makefile("rwb", buffering=0)
+        two = second.makefile("rwb", buffering=0)
+        try:
+            self.assertTrue(one.readline().startswith(b"200 "))
+            self.assertTrue(two.readline().startswith(b"200 "))
+            one.write(b"POST\r\n")
+            self.assertTrue(one.readline().startswith(b"340 "))
+            one.write(self.article(b"<uncertain-native-owner@example.invalid>")
+                      + b".\r\n")
+            try:
+                two.write(b"POST\r\n")
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                pass
+            self.assertEqual(process.wait(timeout=60), 3,
+                             process.stderr.read().decode("utf-8", "replace"))
+            # The already-open second session was shut down by the fence; it
+            # cannot enter fn-owner-chunk after the ambiguous publication.
+            try:
+                later = two.readline()
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                later = b""
+            self.assertFalse(later.startswith(b"340 "), later)
+        finally:
+            one.close()
+            two.close()
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
+
+        committed = subprocess.run(
+            [str(IMAGE), "--fn", "store", str(self.store), "inspect",
+             "<uncertain-native-owner@example.invalid>"], cwd=ROOT,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=environment(), timeout=180, check=False)
+        self.assertEqual(committed.returncode, 0, committed.stderr.decode())
+        missing = subprocess.run(
+            [str(IMAGE), "--fn", "store", str(self.store), "inspect",
+             "<later-native-owner@example.invalid>"], cwd=ROOT,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=environment(), timeout=180, check=False)
+        self.assertNotEqual(missing.returncode, 0)
+
     def test_post_is_committed_and_readable_after_owner_exit(self):
         process, port = self.start_owner()
-        article = (b"From: sender@example.invalid\r\n"
-                   b"Newsgroups: fn.test\r\n"
-                   b"Subject: native owner\r\n"
-                   b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
-                   b"Message-ID: <native-owner@example.invalid>\r\n"
-                   b"\r\n" +
-                   (b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\r\n"
-                    * 145))
+        article = self.article(
+            b"<native-owner@example.invalid>",
+            (b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\r\n"
+             * 145))
         self.assertGreater(len(article), 8192)
         self.assertLessEqual(len(article), 32768)
         try:
