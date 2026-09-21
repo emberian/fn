@@ -25,6 +25,7 @@
 (include-book "books/nntp-effects")
 (include-book "books/native-config")
 (include-book "books/native-auth-profile")
+(include-book "books/native-auth-admin")
 (include-book "books/feed-filename")
 ; Outbound feed connection establishment and reply framing remain ACL2-owned.
 (include-book "books/feed-wire-input")
@@ -68,6 +69,7 @@
 (ld "host/owner-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-host.lisp" :ld-error-action :error)
+(ld "host/native-auth-admin-host.lisp" :ld-error-action :error)
 (ld "host/feed-filename-host.lisp" :ld-error-action :error)
 (ld "host/native-operator-host.lisp" :ld-error-action :error)
 (ld "host/native-control-host.lisp" :ld-error-action :error)
@@ -109,6 +111,9 @@
         ; Bounded credential transport.  ACL2 parses and owns every field;
         ; this module also defines the composable pre-listen owner hook.
         (load "host/native/auth.lisp")
+        ; Offline credential administration.  ACL2 owns argv plans, verifier
+        ; derivation, serialization, reporting and persistence transitions.
+        (load "host/native/auth-admin.lisp")
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner.lisp")
