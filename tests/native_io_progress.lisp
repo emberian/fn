@@ -186,6 +186,66 @@
           (ignore-errors (fnn-unlink (fnn-join root name))))
         (ignore-errors (sb-posix:rmdir root))))))
 
+;; This exercises the real initializer helper with only its syscall boundary
+;; substituted.  It pins the EEXIST handler to link(2): a later directory
+;; fence error, even a synthetic EEXIST, is ambiguous after the final link and
+;; must exit as uncertain rather than take the retry branch.
+(defun nio-with-initial-publish-stubs (link-action barrier-action thunk)
+  (let* ((symbols '(fnn-open fnn-write-all fnn-fsync-file fnn-close fnn-link
+                    fnn-fsync-dir fnn-unlink fnn-random-hex))
+         (saved (mapcar (lambda (symbol) (cons symbol (symbol-function symbol))) symbols)))
+    (unwind-protect
+         (progn
+           (setf (symbol-function 'fnn-open) (lambda (&rest ignored)
+                                               (declare (ignore ignored)) 7)
+                 (symbol-function 'fnn-write-all) (lambda (&rest ignored)
+                                                    (declare (ignore ignored)) nil)
+                 (symbol-function 'fnn-fsync-file) (lambda (&rest ignored)
+                                                     (declare (ignore ignored)) nil)
+                 (symbol-function 'fnn-close) (lambda (&rest ignored)
+                                               (declare (ignore ignored)) nil)
+                 (symbol-function 'fnn-link) (lambda (&rest ignored)
+                                              (declare (ignore ignored))
+                                              (funcall link-action))
+                 (symbol-function 'fnn-fsync-dir) (lambda (&rest ignored)
+                                                   (declare (ignore ignored))
+                                                   (funcall barrier-action))
+                 (symbol-function 'fnn-unlink) (lambda (&rest ignored)
+                                                (declare (ignore ignored)) nil)
+                 (symbol-function 'fnn-random-hex) (lambda (&rest ignored)
+                                                    (declare (ignore ignored)) "test"))
+           (funcall thunk))
+      (dolist (pair saved)
+        (setf (symbol-function (car pair)) (cdr pair))))))
+
+(defun nio-initial-publish-error-origins ()
+  (flet ((store () (%make-fnn-store :root "/native-initial-publish"))
+         (publish (store)
+           (fnn-publish-initial-file store "/native-initial-publish/config.json"
+                                     (fnn-octets '(1)))))
+    (let ((links 0) (barriers 0))
+      (nio-with-initial-publish-stubs
+       (lambda () (incf links) (fnn-os-fail sb-posix:eexist))
+       (lambda () (incf barriers))
+       (lambda ()
+         (nio-check (eq (publish (store)) :existing)
+                    "link EEXIST did not retain the immutable-existing outcome")
+         (nio-check (= links 1) "link EEXIST did not issue exactly one link")
+         (nio-check (zerop barriers) "link EEXIST reached the directory barrier"))))
+    (dolist (errno (list sb-posix:eexist sb-posix:eio))
+      (let ((links 0) (barriers 0))
+        (nio-with-initial-publish-stubs
+         (lambda () (incf links) nil)
+         (lambda () (incf barriers) (fnn-os-fail errno))
+         (lambda ()
+           (let ((code (handler-case
+                           (progn (publish (store)) :returned)
+                         (error (e) (fnn-exit-code-for e)))))
+             (nio-check (= code +fnn-exit-uncertain+)
+                        "post-link errno ~d did not remain uncertain" errno)
+             (nio-check (= links 1) "post-link errno ~d did not issue link" errno)
+             (nio-check (= barriers 1) "post-link errno ~d did not reach barrier" errno))))))))
+
 (defun nio-zero-writes-fault ()
   (let ((*fnn-write-syscall* (lambda (&rest ignored)
                                 (declare (ignore ignored))
@@ -402,6 +462,8 @@
 (nio-store-write-progress)
 (nio-transaction-enumeration-bound-is-exact)
 (nio-bounded-directory-actual-boundary)
+
+(nio-initial-publish-error-origins)
 (nio-zero-writes-fault)
 (nio-send-retries-with-one-deadline)
 (nio-zero-send-faults)
