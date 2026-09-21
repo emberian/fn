@@ -11,6 +11,11 @@ remaining pillars. Previous local workers stopped; recover remote results before
 restarting jobs. Current priority is test-process containment and native service
 composition, with the full selected release scope retained.
 
+The user has now selected a [wide capability cycle](wide-capability-cycle-2026-09-21.md):
+parallel service/peering, BP/DTN, preservation, identity and crash-correspondence
+implementation, with focused checks per lane and combined gates per frozen batch.
+Usage remaining does not narrow the release scope.
+
 ## Integrated and under validation
 
 Main contains native owner/operator help/status/recover/run, feed intent and
