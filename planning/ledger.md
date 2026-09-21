@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 320 |
+| Books read | 322 |
 | Certification roots in the Makefile | 316 |
 | Books inside the root closure | 315 |
-| `defthm` and `defthmd` events | 6025 |
-| `defun` events | 4443 |
+| `defthm` and `defthmd` events | 6031 |
+| `defun` events | 4453 |
 | Functions with verified guards | 1560 |
 | Functions declared `:verify-guards nil` and never verified | 218 |
-| Functions left at the default with an explicit guard | 2100 |
+| Functions left at the default with an explicit guard | 2110 |
 | Functions left at the default with no guard | 565 |
-| `assert-event` checks | 6234 |
-| `must-fail` checks | 107 |
+| `assert-event` checks | 6255 |
+| `must-fail` checks | 108 |
 | `encapsulate` events | 19 |
-| Theorems flagged SUSPECT by shape | 49 |
+| Theorems flagged SUSPECT by shape | 53 |
 | Export-hygiene warnings | 74 |
 | Enabled-projection warnings | 22 |
 | Teeth-form warnings | 3 |
 | Include-hygiene warnings | 110 |
-| Host-names warnings | 254 |
+| Host-names warnings | 258 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -210,7 +210,8 @@ that `make certify` requests.
 | `books/node.lisp` | root | 37 | 33 | 27/0/6/0 | 0 | 0 | 2 |
 | `books/owner-config.lisp` | root | 22 | 40 | 0/4/36/0 | 0 | 0 | 1 |
 | `books/owner-fault.lisp` | root | 11 | 2 | 2/0/0/0 | 0 | 0 | 0 |
-| `books/owner-feed.lisp` | root | 84 | 67 | 0/0/67/0 | 0 | 0 | 0 |
+| `books/owner-feed-port.lisp` | - | 6 | 0 | 0/0/0/0 | 0 | 0 | 4 |
+| `books/owner-feed.lisp` | root | 84 | 77 | 0/0/77/0 | 0 | 0 | 0 |
 | `books/owner-invariants.lisp` | root | 127 | 8 | 0/0/6/2 | 0 | 0 | 1 |
 | `books/owner.lisp` | root | 46 | 118 | 0/3/115/0 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
@@ -360,6 +361,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 167 | 0 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
 | `tests/acl2/owner-config-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 75 | 0 | 0 |
+| `tests/acl2/owner-feed-port-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 21 | 1 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 119 | 0 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 15 | 0/0/1/14 | 292 | 0 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
@@ -443,6 +445,10 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 710 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
 | `fn-own-conn-live-session-of-a-reader-is-the-session` | `books/owner-invariants.lisp` | 587 | branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
+| `fn-own-feed-port-lost-is-port-peer` | `books/owner-feed-port.lisp` | 74 | definition-restated: the conclusion is the body of fn-own-feed-port-lost-peer; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-own-feed-port-observe-is-port-peer` | `books/owner-feed-port.lisp` | 69 | definition-restated: the conclusion is the body of fn-own-feed-port-observe-peer; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-own-feed-port-restart-is-port-peer` | `books/owner-feed-port.lisp` | 79 | definition-restated: the conclusion is the body of fn-own-feed-port-restart-peer; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-own-feed-port-tick-is-port-peer` | `books/owner-feed-port.lisp` | 64 | definition-restated: the conclusion is the body of fn-own-feed-port-tick-peer; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 205 | branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
 | `fn-prov-transit-kindp-forward` | `books/provenance.lisp` | 56 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-prov-transit-kindp |
 | `fn-prov-wire-of-a-string-is-itself-by-definition` | `books/provenance-codec.lisp` | 561 | branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value |

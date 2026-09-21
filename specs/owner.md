@@ -10,6 +10,37 @@ and effects" contract row for connection/generation, committed view version,
 one pending transaction and read pin lifetime. Submission identity and
 partial-output tracking stay with their own packets.
 
+## Native owner integration checkpoint
+
+The native adapter is `host/native/owner.lisp`, loaded by the common saved
+image. It calls the same `host/owner-host.lisp` entries over one exclusively
+owned Store and persists the shared submission's FNFD intent/resolution before
+releasing the corresponding effects. Its runtime validation batch is pending;
+the Python-host evidence below does not certify this adapter.
+
+`fnn-owner-serialized` holds the service mutex across a semantic operation and
+installs a global stop before releasing it on uncertain persistence or a core
+fault. Later open/read/close mutations check the same stop under that mutex.
+Shutdown wakes connected clients and joins their workers before closing shared
+journals or the Store. `tests/test_native_owner.py` contains the two-client
+postpublication injection: the ambiguous article may recover, but the second
+client must not obtain a fresh posting grant. That test is not passing evidence
+until run against the recorded integrated image.
+
+This global boundary applies to uncertain shared state and core failure. It
+does not replace HST-005's connection-local fault isolation contract: an
+attributable failure that leaves the shared state valid must still use
+`fn-own-fault` and preserve other connections. The native adapter currently
+stops the process for an unexpected serious condition; the scoped survival
+scenario still needs native adoption. ACL2's connection-local theorem alone
+does not justify continuing after shared-state corruption, and stopping every
+connection does not discharge that survival requirement.
+
+Safe FNFD filename adoption, outbound feed/timers, auth/TLS, control and the
+public operator callback remain integration work. Configured article bounds
+now derive from the injection configuration; frozen service tests must establish
+that ordinary NNTP and control use the same selected bound.
+
 ## What the owner is
 
 One process owns one store. It holds the exclusive writer lock

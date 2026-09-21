@@ -220,7 +220,8 @@ The native adapter carries the frontier rather than rescanning on append.
 and append/prefix-repair contracts remain distinct. Native owner/TCPCL callback
 joins and store-fence checks remain pending. Root also found that two test
 observers run before their successful barrier observation reaches the model;
-the lane is correcting that cut-fidelity contract. A plain ACL2 authorization
+the correction is integrated through `2f85d03`, with actual observer phase
+assertions. A plain ACL2 authorization
 record still relies on a trusted caller reporting ownership and absence honestly.
 
 
@@ -236,7 +237,10 @@ reachable two-client injected witness is assigned to owner convergence.
 Repair: establish the fence inside the serialized operation's error boundary,
 reject subsequent shared mutations, and drain workers before closing shared
 resources. Fault and uncertainty remain different terminal outcomes. The owner
-checkpoint is integrated for composition, not claimed safe for deployment.
+repair is integrated in `6ed4af2`/`ea1592b`, with a compiled listener assignment
+fix in `76901c1`. Frozen image/runtime validation is underway. HST-005 still
+requires attributable connection-local fault survival; global shutdown alone
+does not meet that separate requirement.
 
 ### U09: operator plans and effects need one public result contract
 
@@ -247,3 +251,11 @@ remains pending. Root found that help still requires valid configuration and
 routes to an unavailable owner callback, and outcome words are rendered by
 repeated maps. The operator lane owns standalone help and one rendering path.
 An accepted command plan must never be printed as accepted durable work.
+
+
+The application publisher now also uses the existing `fnn-require-writer`
+guard (`1556061`), rather than treating any held Store lock as exclusive
+mutation authority. Read-only status/replay remain separate from mutation.
+The component packet includes actual held-read-lock refusal, held-but-fenced
+uncertainty, and observer-phase tests; combined native owner adoption remains
+separate.
