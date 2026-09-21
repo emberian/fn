@@ -13,22 +13,22 @@ exactly one copy at the far end, is `tools/twonode_gate.py`'s
 offer-once-each case is `scenario_owner_feed`.
 
 What is left here is what those gates do NOT isolate: the two host-side
-mechanisms `tools/run_owner.py` imports.  Neither needs ACL2, so neither
-skips, which is why they belong in a unit test at all.
+mechanisms `tools/run_owner.py` imports.  The journal unit tests script bridge answers to isolate I/O; real codec
+and recovery composition are exercised by test_feed_journal_live.py.
 
-  * the journal's own layout -- a length prefix, a round trip, the bound, and
-    a torn tail ending the record stream rather than raising;
+  * the journal's ordered barriers, exact ACL2 envelope writes, authoritative
+    repair offset, preservation of invalid evidence and uncertainty failures;
   * RFC 3977 section 3.1.1 dot stuffing of an outgoing article block, which
     had no test of any kind while it lived in the retired driver.
 """
 from __future__ import annotations
 
 import socket
-import struct
 import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,64 +38,87 @@ import feed_wire  # noqa: E402
 
 
 class JournalTests(unittest.TestCase):
-    """`<store>/feed/<peer>.fnfd`, read back by the same rules that wrote it."""
+    """Host I/O with scripted ACL2 answers; no second codec or policy."""
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="fn-feed-journal-")
         self.addCleanup(self.temp.cleanup)
         self.root = self.temp.name
+        self.bridge = mock.Mock()
+        self.bridge.feed_journal_prefix_size.return_value = 4
+        self.bridge.feed_journal_prefix.return_value = "end"
+        self.bridge.feed_journal_scan.return_value = "end"
+        self.bridge.feed_journal_step.return_value = "ready"
+        self.bridge.feed_journal_offset.return_value = 8
+        self.bridge.feed_journal_wrap.return_value = b"encoded-envelope"
 
-    def test_a_peer_gets_its_own_file_named_after_it(self):
-        journal = feed_wire.Journal(self.root, b"inn")
+    def open(self):
+        journal = feed_wire.Journal(self.root, b"inn", self.bridge)
         self.addCleanup(journal.close)
-        self.assertEqual(Path(journal.path),
-                         Path(self.root) / "feed" / "inn.fnfd")
+        return journal
 
-    def test_records_read_back_in_order_with_their_lengths(self):
-        journal = feed_wire.Journal(self.root, b"inn")
-        self.addCleanup(journal.close)
-        frames = [b"FNFD" + bytes([0, 0, 0, n]) + bytes(n) for n in (1, 7, 40)]
-        for frame in frames:
-            journal.append(frame)
-        self.assertEqual(list(journal.records()), frames)
-        blob = Path(journal.path).read_bytes()
-        self.assertEqual(struct.unpack(">I", blob[:4])[0], len(frames[0]))
+    def test_creation_barriers_precede_any_append(self):
+        with mock.patch.object(feed_wire, "fsync_file") as content, \
+             mock.patch.object(feed_wire, "fsync_dir") as directory:
+            journal = self.open()
+            content.assert_called_once_with(journal.handle)
+            self.assertEqual(directory.call_args_list,
+                             [mock.call(journal.dir), mock.call(self.root)])
+            self.assertEqual(self.bridge.feed_journal_step.call_args_list,
+                             [mock.call("closed", "opened"),
+                              mock.call("ready", "end"),
+                              mock.call("ready", "content-durable"),
+                              mock.call("ready", "directory-durable"),
+                              mock.call("ready", "parent-durable")])
 
-    def test_a_record_over_the_bound_is_refused_and_not_written(self):
-        journal = feed_wire.Journal(self.root, b"inn")
-        self.addCleanup(journal.close)
-        journal.append(b"kept")
-        with self.assertRaises(feed_wire.FeedError):
-            journal.append(b"x" * (feed_wire.MAX_RECORD + 1))
-        self.assertEqual(list(journal.records()), [b"kept"])
+    def test_append_writes_exact_acl2_envelope(self):
+        journal = self.open()
+        journal.append(b"frame")
+        self.bridge.feed_journal_wrap.assert_called_once_with(b"frame")
+        self.assertEqual(Path(journal.path).read_bytes(), b"encoded-envelope")
 
-    def test_a_torn_tail_ends_the_record_stream(self):
-        # The crash image: a length prefix whose record is not all there.
-        # Everything written before it stands and nothing raises.
+    def test_repair_uses_acl2_safe_offset_and_barriers_before_append(self):
         path = Path(self.root) / "feed" / "inn.fnfd"
-        path.parent.mkdir(parents=True)
-        path.write_bytes(struct.pack(">I", 4) + b"abcd" +
-                         struct.pack(">I", 99) + b"xy")
-        journal = feed_wire.Journal(self.root, b"inn")
-        self.addCleanup(journal.close)
-        self.assertEqual(list(journal.records()), [b"abcd"])
+        path.parent.mkdir()
+        path.write_bytes(b"retainedTORN")
+        self.bridge.feed_journal_scan.return_value = "repair"
+        journal = self.open()
+        self.assertEqual(path.read_bytes(), b"retained")
+        journal.append(b"frame")
+        self.assertEqual(path.read_bytes(), b"retainedencoded-envelope")
 
-    def test_a_length_that_claims_more_than_the_bound_ends_the_stream(self):
+    def test_complete_invalid_evidence_is_never_truncated(self):
         path = Path(self.root) / "feed" / "inn.fnfd"
-        path.parent.mkdir(parents=True)
-        path.write_bytes(struct.pack(">I", 4) + b"abcd" +
-                         struct.pack(">I", feed_wire.MAX_RECORD + 1) +
-                         b"z" * (feed_wire.MAX_RECORD + 1))
-        journal = feed_wire.Journal(self.root, b"inn")
-        self.addCleanup(journal.close)
-        self.assertEqual(list(journal.records()), [b"abcd"])
+        path.parent.mkdir()
+        path.write_bytes(b"invalid-complete-evidence")
+        self.bridge.feed_journal_scan.return_value = "invalid"
+        with self.assertRaises(feed_wire.StoreFault):
+            self.open()
+        self.assertEqual(path.read_bytes(), b"invalid-complete-evidence")
 
-    def test_an_absent_file_yields_no_records(self):
-        path = Path(self.root) / "feed"
-        path.mkdir()
-        journal = feed_wire.Journal.__new__(feed_wire.Journal)
-        journal.path = str(path / "never-written.fnfd")
-        self.assertEqual(list(journal.records()), [])
+    def test_content_and_both_namespace_barrier_failures_are_uncertain(self):
+        for barrier, results in (("fsync_file", [OSError("content")]),
+                                 ("fsync_dir", [OSError("feed directory")]),
+                                 ("fsync_dir", [None, OSError("store directory")])):
+            with self.subTest(barrier=barrier, results=results):
+                with mock.patch.object(feed_wire, barrier, side_effect=results):
+                    with self.assertRaises(feed_wire.StoreIndeterminate):
+                        self.open()
+
+    def test_failed_append_carries_uncertain_phase(self):
+        journal = self.open()
+        self.bridge.feed_journal_step.side_effect = ["write", "sync", "uncertain"]
+        with mock.patch.object(feed_wire, "fsync_file", side_effect=OSError("sync")):
+            with self.assertRaises(feed_wire.StoreIndeterminate):
+                journal.append(b"frame")
+        self.assertEqual(journal.phase, "uncertain")
+        # It is the book that refuses the next phase, not a Python policy.
+        self.bridge.feed_journal_step.side_effect = None
+        self.bridge.feed_journal_step.return_value = "uncertain"
+        with mock.patch.object(feed_wire, "write_all") as write:
+            with self.assertRaises(feed_wire.StoreIndeterminate):
+                journal.append(b"another")
+            write.assert_not_called()
 
 
 class Listener:

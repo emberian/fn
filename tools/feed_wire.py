@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The FNFD journal file layout and the raw NNTP client half, for the owner.
+"""FNFD journal I/O and the raw NNTP client half, for the owner.
 
 These two objects were the durable-and-transport half of `tools/run_feed.py`,
 the standalone feed driver retired on 2026-09-21 (`w11/harness-health`).  The
@@ -7,12 +7,9 @@ feed itself is the owner's: `tools/run_owner.py`'s `Feed`, stepping
 `books/owner-feed.lisp` in the one process that holds the store lock.  What
 is left here is what a host must do and a book cannot, and nothing else:
 
-  * `Journal` -- an append-only file of length-prefixed FNFD frames, one per
-    peer, at `<store>/feed/<peer>.fnfd`, fsynced before the effect it
-    authorizes.  The 4-octet big-endian length is FILE LAYOUT and not a
-    frame field: it is what lets the reader hand ACL2 one whole record at a
-    time.  A torn tail ends the record stream, because a torn tail is the
-    crash image and everything before it stands.
+  * `Journal` -- ACL2 owns the length envelope, frame checks, safe repair
+    offset and barrier phase machine in books/feed-journal.lisp. The host
+    performs bounded reads, truncate, write and platform durability barriers.
   * `Session` -- a TCP connection, a CRLF line reader and RFC 3977 section
     3.1.1 dot stuffing of an outgoing article block.  `books/wire.lisp` has
     a stuffer; wiring the owner's outbound block through it is one packet
@@ -22,26 +19,17 @@ No decision of the feed machine is here.  Which article is selected, what
 command line goes out, what a response code means, when to back off and for
 how long, and what an FNFD record contains are all
 `books/peer-feed.lisp`/`books/owner-feed.lisp` through the owner's bridge.
-`MAX_RECORD` and `MAX_LINE` are host refusal bounds on untrusted input,
-deliberately above the book's own `*fn-feed-max-payload*` (1024) so that a
-frame the book would refuse is refused BY THE BOOK and not silently by a
-Python slice.
+`MAX_LINE` remains the Session host refusal bound; journal read bounds
+come directly from ACL2.
 """
 from __future__ import annotations
 
 import os
 import socket
-import struct
 
-# TRAILER_BYTES is *fn-frame-trailer-octets* (books/frame-octets.lisp:21)
-# typed a second time, and UNCHECKED: the store path cross-checks nine such
-# constants against `(fn-store-frame-constants)` at session open
-# (tools/frame_bridge.py:124-146) and the owner's feed path does not consult
-# that vector at all.  Recorded as an open twin by w11/harness-health rather
-# than fixed here, because the fix belongs where the session is.
-TRAILER_BYTES = 32
-LENGTH_BYTES = 4
-MAX_RECORD = 4096
+from run_store import (StoreFault, StoreIndeterminate, fsync_dir, fsync_file,
+                       write_all, NO_FAULTS)
+
 MAX_LINE = 4096
 
 
@@ -50,38 +38,97 @@ class FeedError(RuntimeError):
 
 
 class Journal:
-    """Append-only FNFD file for one peer.  Durable before the effect."""
+    """I/O for ACL2's FNFD envelope and durable recovery state machine.
 
-    def __init__(self, root: str, peer: bytes):
+    Construction replays and repairs before permitting append. The caller
+    holds the store writer lock. Invalid complete evidence is left untouched.
+    Every I/O failure requires recovery in a new owner process.
+    """
+
+    def __init__(self, root: str, peer: bytes, bridge, faults=NO_FAULTS):
+        self.root = root
+        self.peer = peer.decode("utf-8")
+        self.bridge = bridge
+        self.faults = faults
+        self.phase = "closed"
+        self.handle = None
+        self.replayed = 0
         self.dir = os.path.join(root, "feed")
-        os.makedirs(self.dir, exist_ok=True)
-        self.path = os.path.join(self.dir, peer.decode("ascii") + ".fnfd")
-        self.handle = open(self.path, "ab")
+        self.path = os.path.join(self.dir, self.peer + ".fnfd")
+        try:
+            os.makedirs(self.dir, exist_ok=True)
+            self.handle = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
+            self._step("opened")
+            bridge.feed_journal_begin()
+            prefix_size = bridge.feed_journal_prefix_size()
+            while True:
+                prefix = self._read(prefix_size)
+                plan = bridge.feed_journal_prefix(prefix)
+                frame = self._read(plan) if isinstance(plan, int) else b""
+                status = bridge.feed_journal_scan(self.peer, prefix, frame)
+                if status == "next":
+                    self.replayed += 1
+                    continue
+                if status == "invalid":
+                    raise StoreFault("invalid complete FNFD evidence: " + self.path)
+                self._step(status)
+                if status == "repair":
+                    os.ftruncate(self.handle, bridge.feed_journal_offset())
+                    self._step("truncated")
+                break
+            fsync_file(self.handle)
+            self._step("content-durable")
+            fsync_dir(self.dir)
+            self._step("directory-durable")
+            fsync_dir(self.root)
+            self._step("parent-durable")
+            os.lseek(self.handle, 0, os.SEEK_END)
+        except StoreFault:
+            self.close()
+            raise
+        except Exception as error:
+            self.close()
+            raise StoreIndeterminate("FNFD recovery uncertain: " + self.path) from error
+
+    def _read(self, size):
+        """Read the ACL2-authorized extent, stopping only at physical EOF."""
+        chunks = bytearray()
+        while len(chunks) < size:
+            chunk = os.read(self.handle, size - len(chunks))
+            if not chunk:
+                break
+            chunks.extend(chunk)
+        return bytes(chunks)
+
+    def _step(self, event):
+        self.phase = self.bridge.feed_journal_step(self.phase, event)
+        if self.phase == "uncertain":
+            raise StoreIndeterminate("FNFD journal requires recovery")
+        self.faults.at("feed-journal:" + event)
 
     def append(self, frame: bytes):
-        if len(frame) > MAX_RECORD:
-            raise FeedError("FNFD record over the bound")
-        self.handle.write(struct.pack(">I", len(frame)) + frame)
-        self.handle.flush()
-        os.fsync(self.handle.fileno())
-
-    def records(self):
-        if not os.path.exists(self.path):
-            return
-        with open(self.path, "rb") as handle:
-            blob = handle.read()
-        offset = 0
-        while offset + LENGTH_BYTES <= len(blob):
-            (length,) = struct.unpack(">I", blob[offset:offset + LENGTH_BYTES])
-            offset += LENGTH_BYTES
-            if length > MAX_RECORD or offset + length > len(blob):
-                # A torn tail is the crash image: everything before it stands.
-                return
-            yield blob[offset:offset + length]
-            offset += length
+        try:
+            envelope = self.bridge.feed_journal_wrap(frame)
+            self._step("append")
+            write_all(self.handle, envelope)
+            self._step("written")
+            fsync_file(self.handle)
+            self._step("append-durable")
+        except Exception as error:
+            try:
+                self.phase = self.bridge.feed_journal_step(self.phase, "failed")
+            except Exception:
+                pass  # A lost bridge has no trustworthy logical result.
+            finally:
+                # A lost bridge cannot issue a phase result; closing the I/O
+                # capability still prevents any further write from this object.
+                self.close()
+            raise StoreIndeterminate("FNFD append uncertain: " + self.path) from error
 
     def close(self):
-        self.handle.close()
+        if self.handle is not None:
+            descriptor, self.handle = self.handle, None
+            os.close(descriptor)
 
 
 class Session:
