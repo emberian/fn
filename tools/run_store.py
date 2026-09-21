@@ -808,13 +808,15 @@ class Acl2Store:
 
 
 class Store:
-    def __init__(self, root, writable=False, faults=NO_FAULTS, profile=None):
+    def __init__(self, root, writable=False, faults=NO_FAULTS, profile="development"):
         self.root = Path(root).absolute()
         self.writable = writable
         self.faults = faults
-        # Which named profile `initialize` would write.  Opening an existing
-        # store still takes the profile from its durable configuration.
-        self.profile = DEFAULT_CONFIG if profile is None else profile
+        # `init` names the ACL2-owned profile explicitly.  Opening an existing
+        # store decodes its durable frame and does not consult this input.
+        if profile not in {"development", "scale"}:
+            raise StoreError("unknown ACL2 metadata profile")
+        self.profile = profile
         self.lock_fd = None
         self.config = None
         # The replayed configuration: generation, served table and allocation
@@ -990,8 +992,7 @@ class Store:
             self.faults.at("init-staging-created")
             self._safe_directory(self.config_dir, create=True)
             session = frame_bridge.session(bridge)
-            profile = "scale" if self.profile.get("max_transactions") == SCALE_TRANSACTION_COUNT else "development"
-            config = session.metadata_config_frame(profile)
+            config = session.metadata_config_frame(self.profile)
             if self._publish_initial_file(self.config_path, config):
                 self.config = self._config_from_metadata(session.metadata_config_decode(config))
             else:
@@ -1050,8 +1051,6 @@ class Store:
                 frame_bridge.session(bridge).metadata_config_decode(raw))
         except frame_bridge.BridgeError as error:
             raise StoreFault("invalid durable config frame") from error
-        if config not in SUPPORTED_PROFILES:
-            raise StoreFault("unsupported store configuration frame")
         self.config = config
 
     def _load_frontier(self, bridge=None):
