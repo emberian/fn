@@ -442,26 +442,12 @@
 ; fault, and gives a newly opened connection the current live configuration.
 ; It is deliberately in ACL2, rather than a host-side mirror of the pin table.
 
-(defun fn-ocfg-sync-pins (old-pins conns live-config)
-  ; Rebuild the pin domain from the post-state connection domain.  A survivor
-  ; keeps its old pin; an id absent from the old table is a newly opened
-  ; connection and receives the current live configuration.  Thus a close or
-  ; fault cannot leave a stale pin, and a host transition cannot invent a
-  ; second configuration table.
-  (declare (xargs :guard t))
-  (if (consp conns)
-      (let* ((id (fn-own-conn-id (car conns)))
-             (old (fn-ocfg-pin-find id old-pins)))
-        (cons (cons id (if old (cdr old) live-config))
-              (fn-ocfg-sync-pins old-pins (cdr conns) live-config)))
-    nil))
-
 (defun fn-ocfg-with-owner (oc owner)
+  ; Reserved for raw owner transformations that preserve connection
+  ; membership.  The host uses named fn-ocfg-open/read/fault transitions for
+  ; membership changes, so this wrapper never reconstructs a second pin map.
   (declare (xargs :guard t))
-  (fn-ocfg-make owner (fn-ocfg-config oc)
-                (fn-ocfg-sync-pins (fn-ocfg-pins oc)
-                                   (fn-own-conns owner)
-                                   (fn-ocfg-config oc))
+  (fn-ocfg-make owner (fn-ocfg-config oc) (fn-ocfg-pins oc)
                 (fn-ocfg-staged oc)))
 
 (defun fn-ocfg-read (oc id octets)
@@ -483,7 +469,10 @@
 (defun fn-ocfg-fault (oc id)
   (declare (xargs :guard t))
   (let ((result (fn-own-fault (fn-ocfg-owner oc) id)))
-    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+    (cons (car result)
+          (fn-ocfg-make (cdr result) (fn-ocfg-config oc)
+                        (fn-ocfg-pin-remove id (fn-ocfg-pins oc))
+                        (fn-ocfg-staged oc)))))
 
 (defun fn-ocfg-pass (oc event)
   ; Every owner event that touches no pin: the served port, the writer step,
@@ -630,42 +619,17 @@
           (fn-ocfg-repins-forp id (cdr events)))
     nil))
 
-(local
- (defthm fn-ocfg-pin-find-reconstructs-its-entry
-   (implies (fn-ocfg-pin-find id pins)
-            (equal (cons id (cdr (fn-ocfg-pin-find id pins)))
-                   (fn-ocfg-pin-find id pins)))
-   :hints (("Goal" :induct (fn-ocfg-pin-find id pins)
-            :in-theory (enable (:d fn-ocfg-pin-find))))))
-
-(local
- (defthm fn-ocfg-pin-find-of-sync-pins
-   (implies (fn-own-find-conn id conns)
-            (equal (fn-ocfg-pin-find id
-                                      (fn-ocfg-sync-pins pins conns cfg))
-                   (if (fn-ocfg-pin-find id pins)
-                       (fn-ocfg-pin-find id pins)
-                     (cons id cfg))))
-   :hints (("Goal" :induct (fn-ocfg-sync-pins pins conns cfg)
-            :in-theory (enable (:d fn-ocfg-sync-pins)
-                               (:d fn-ocfg-pin-find))))))
-
-; An ordinary wrapped owner event preserves a surviving connection's pin.
-; Read and fault transitions are allowed to close the target, so survival is
-; explicit instead of pretending all non-advance events retain it.
 (local (defthm fn-ocfg-step-keeps-other-pins
   (implies (and (fn-ocfg-pin-find id (fn-ocfg-pins oc))
-                (fn-own-find-conn
-                 id (fn-own-conns (fn-ocfg-owner (fn-ocfg-step oc event)))))
+                (not (and (member-equal (car event) '(:advance :close))
+                          (equal (car (cdr event)) id))))
            (equal (fn-ocfg-pin-find id (fn-ocfg-pins (fn-ocfg-step oc event)))
                   (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
-  :hints (("Goal" :in-theory (enable (:d fn-ocfg-step)
-                                     (:d fn-ocfg-with-owner))
-           :use ((:instance fn-ocfg-pin-find-of-sync-pins
-                            (pins (fn-ocfg-pins oc))
-                            (conns (fn-own-conns
-                                    (fn-ocfg-owner (fn-ocfg-step oc event))))
-                            (cfg (fn-ocfg-config oc))))))))
+  :hints (("Goal" :in-theory (e/d ((:d fn-ocfg-step) (:d fn-ocfg-advance)
+                                   (:d fn-ocfg-close) (:d fn-ocfg-pass)
+                                   (:d fn-ocfg-reconfigure) (:d fn-ocfg-complete))
+                                  (fn-own-step fn-own-advance fn-own-close
+                                   fn-own-open fn-own-complete fn-own-begin))))))
 
 ; KEYSTONE.  Every connection keeps the configuration generation it opened
 ; at, for as long as it is not advanced.
