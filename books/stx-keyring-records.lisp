@@ -45,7 +45,10 @@
 
 (defun fn-stxk-encode (e)
   (declare (xargs :guard t))
-  (if (fn-stxk-p e) (fn-stxe-encode-items (fn-stxk-items e)) nil))
+  (if (fn-stxk-p e)
+      (fn-stxe-encode-items-bounded (fn-stxk-items e)
+                                    *fn-stxk-max-snapshot*)
+    nil))
 
 (defun fn-stxk-items-p (items)
   (declare (xargs :guard t))
@@ -83,7 +86,8 @@
   (declare (xargs :guard t))
   (if (not (fn-cbor-at-mostp octets *fn-stxk-max-octets*))
       (fn-stmt-error :limit)
-    (let ((decoded (fn-stmt-decode-items 9 octets)))
+    (let ((decoded (fn-stmt-decode-items-bounded
+                    9 octets *fn-stxk-max-octets* *fn-stxk-max-snapshot*)))
       (if (not (fn-stmt-okp decoded))
           decoded
         (fn-stxk-of-items (fn-stmt-value decoded))))))

@@ -47,24 +47,56 @@
                                fn-cbor-encode-argument
                                fn-cbor-octet-listp fn-cbor-octetp)))))
 
-(defconst *fn-bs-meta-format-development*
+(defconst *fn-bs-meta-format-legacy*
   '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
     101 110 116 45 54)) ; fn-store-experiment-6
+(defconst *fn-bs-meta-format-development*
+  '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
+    101 110 116 45 55)) ; fn-store-experiment-7
 (defconst *fn-bs-meta-frontier-format*
   '(102 110 45 115 116 111 114 101 45 97 108 108 111 99 97 116 105
     111 110 45 102 114 111 110 116 105 101 114 45 50))
 
+(defconst *fn-bs-meta-legacy-development-values*
+  (list *fn-bs-meta-format-legacy* 1048576 32768 8388864 128
+        *fn-bs-meta-frontier-format*))
+(defconst *fn-bs-meta-legacy-scale-values*
+  (list *fn-bs-meta-format-legacy* 1048576 32768 268443648 4096
+        *fn-bs-meta-frontier-format*))
 (defconst *fn-bs-meta-development-values*
-  (list *fn-bs-meta-format-development* 1048576 32768 8388864 128
+  (list *fn-bs-meta-format-development* 1048576 32768 25165824 128
         *fn-bs-meta-frontier-format*))
 (defconst *fn-bs-meta-scale-values*
-  (list *fn-bs-meta-format-development* 1048576 32768 268443648 4096
+  (list *fn-bs-meta-format-development* 1048576 32768 805306368 4096
         *fn-bs-meta-frontier-format*))
 
 (defun fn-bs-meta-config-valuesp (values)
   (declare (xargs :guard t))
-  (or (equal values *fn-bs-meta-development-values*)
+  (or (equal values *fn-bs-meta-legacy-development-values*)
+      (equal values *fn-bs-meta-legacy-scale-values*)
+      (equal values *fn-bs-meta-development-values*)
       (equal values *fn-bs-meta-scale-values*)))
+
+(defun fn-bs-meta-nth (n values)
+  (declare (xargs :guard (natp n) :measure (nfix n)))
+  (if (zp n) (if (consp values) (car values) nil)
+    (fn-bs-meta-nth (1- n) (if (consp values) (cdr values) nil))))
+
+(defun fn-bs-profile-record-ceiling (values)
+  (declare (xargs :guard t))
+  (if (not (fn-bs-meta-config-valuesp values)) 0
+    (floor (fn-bs-meta-nth 3 values) (fn-bs-meta-nth 4 values))))
+
+(defun fn-bs-publication-admissiblep (values committed-count
+                                             committed-octets prospective-octets)
+  (declare (xargs :guard t))
+  (and (fn-bs-meta-config-valuesp values)
+       (natp committed-count) (natp committed-octets)
+       (natp prospective-octets)
+       (< committed-count (fn-bs-meta-nth 4 values))
+       (<= prospective-octets (fn-bs-profile-record-ceiling values))
+       (<= (+ committed-octets prospective-octets)
+           (fn-bs-meta-nth 3 values))))
 
 (defun fn-bs-meta-frame-okp (frame kind payload bound)
   (declare (xargs :guard t))

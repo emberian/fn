@@ -60,3 +60,27 @@
 ; The primitive profile is intentionally not a general CBOR codec.
 (assert-event (equal (fn-cbor-encode '(:uint . 4294967296)) nil))
 (assert-event (equal (fn-cbor-encode '(:text . "not-in-profile")) nil))
+
+; The explicit-budget API admits a caller-owned larger byte string without
+; changing the legacy primitive profile.  This witness is larger than the old
+; whole-input ceiling, so it exercises both independent budgets.
+(defconst *fn-cbor-large-bytes* (make-list 65536 :initial-element 171))
+(defconst *fn-cbor-large-encoding*
+  (fn-cbor-encode-bounded (cons :bytes *fn-cbor-large-bytes*) 65536))
+(assert-event (< *fn-cbor-max-input* (len *fn-cbor-large-encoding*)))
+(assert-event
+ (equal (fn-cbor-decode-bounded *fn-cbor-large-encoding* 65541 65536)
+        (fn-cbor-ok (cons :bytes *fn-cbor-large-bytes*) nil)))
+(assert-event
+ (equal (fn-cbor-decode *fn-cbor-large-encoding*) (fn-cbor-error :limit)))
+
+; A declared length beyond the item budget is refused before the payload is
+; present, while an input beyond the outer budget is refused before octet
+; validation.  These are distinct denial-of-service boundaries.
+(assert-event
+ (equal (fn-cbor-decode-bounded '(90 0 3 0 1) 196608 196608)
+        (fn-cbor-error :limit)))
+(assert-event
+ (equal (fn-cbor-decode-bounded
+         (make-list 196609 :initial-element 0) 196608 196608)
+        (fn-cbor-error :limit)))

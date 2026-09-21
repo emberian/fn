@@ -107,6 +107,13 @@
               (fn-stxe-encode-items (cdr items)))
     nil))
 
+(defun fn-stxe-encode-items-bounded (items item-budget)
+  (declare (xargs :guard (natp item-budget)))
+  (if (consp items)
+      (append (fn-cbor-encode-bounded (car items) item-budget)
+              (fn-stxe-encode-items-bounded (cdr items) item-budget))
+    nil))
+
 (defun fn-stxe-encode (e)
   (declare (xargs :guard t))
   (if (fn-stxe-p e) (fn-stxe-encode-items (fn-stxe-items e)) nil))
@@ -162,6 +169,6 @@
                     (:d fn-stxe-authority-verdict)
                     (:d fn-stxe-verdict-detail-octets)
                     (:d fn-stxe-from-verdict) (:d fn-stxe-items)
-                    (:d fn-stxe-encode-items)
+                    (:d fn-stxe-encode-items) (:d fn-stxe-encode-items-bounded)
                     (:d fn-stxe-encode) (:d fn-stxe-items-p)
                     (:d fn-stxe-of-items) (:d fn-stxe-decode-exact)))

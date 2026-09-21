@@ -1,6 +1,6 @@
 ; Witnesses and hypothesis teeth for ordered keyring/verdict replay.
 (in-package "ACL2")
-(include-book "../../books/stx-keyring-records")
+(include-book "../../books/store-events")
 
 (defconst *stxk-profile* '(111 112 97 113 117 101 45 118 49))
 (defconst *stxk-one* (fn-stxk-make 0 10 20 7 *stxk-profile* '(1 2 3 4)))
@@ -23,6 +23,19 @@
  (equal (fn-stxk-snapshot
          (fn-stmt-value (fn-stxk-decode-exact (fn-stxk-encode *stxk-one*))))
         '(1 2 3 4)))
+
+; The advertised snapshot boundary is executable: its canonical encoding is
+; larger than the legacy generic CBOR whole-input limit and still round-trips
+; through the actual Store-event decoder.
+(defconst *stxk-large-snapshot*
+  (make-list *fn-stxk-max-snapshot* :initial-element 90))
+(defconst *stxk-large*
+  (fn-stxk-make 0 10 20 7 *stxk-profile* *stxk-large-snapshot*))
+(assert-event (< *fn-cbor-max-input* (len (fn-stxk-encode *stxk-large*))))
+(assert-event
+ (equal (fn-stmt-value
+         (fn-store-event-decode-exact (fn-stxk-encode *stxk-large*)))
+        *stxk-large*))
 
 ; A verdict naming generation 7 is refused before its snapshot.
 (defconst *stxk-missing*

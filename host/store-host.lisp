@@ -404,6 +404,14 @@
 (defun fn-store-metadata-frontier-next (n)
   (fn-bs-frontier-next n))
 
+(defun fn-store-publication-admissibility (profile committed-count
+                                                   committed-octets
+                                                   prospective-octets)
+  (if (fn-bs-publication-admissiblep profile committed-count
+                                     committed-octets prospective-octets)
+      :admissible
+    :refused))
+
 
 (defun fn-store-group-codes (name-octets domain-octets)
   ; Distinct group names, as octet lists, become their codes in the replayed

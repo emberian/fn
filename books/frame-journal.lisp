@@ -29,7 +29,10 @@
 (defconst *fn-frame-store-kind* 1)
 (defconst *fn-frame-inbound-kind* 1)
 
-(defconst *fn-frame-max-store-payload* 65538)
+; The largest canonical Store event is the kind-4 acceptance composite.  This
+; is the physical frame ceiling; a persisted Store profile may select a lower
+; per-record ceiling and must apply it before publication.
+(defconst *fn-frame-max-store-payload* 196608)
 (defconst *fn-frame-max-workflow-payload* 16342)
 (defconst *fn-frame-max-receipt-payload* 269958)
 (defconst *fn-frame-max-inbound-payload* 4194304)

@@ -52,7 +52,9 @@
 
 (defun fn-stxa-encode (e)
   (declare (xargs :guard t))
-  (if (fn-stxa-p e) (fn-stxe-encode-items (fn-stxa-items e)) nil))
+  (if (fn-stxa-p e)
+      (fn-stxe-encode-items-bounded (fn-stxa-items e) *fn-stxe-max-octets*)
+    nil))
 
 (defun fn-stxa-items-p (items)
   (declare (xargs :guard t))
@@ -98,7 +100,8 @@
   (declare (xargs :guard t))
   (if (not (fn-cbor-at-mostp octets *fn-stxa-max-octets*))
       (fn-stmt-error :limit)
-    (let ((decoded (fn-stmt-decode-items 11 octets)))
+    (let ((decoded (fn-stmt-decode-items-bounded
+                    11 octets *fn-stxa-max-octets* *fn-stxe-max-octets*)))
       (if (not (fn-stmt-okp decoded))
           decoded
         (fn-stxa-of-items (fn-stmt-value decoded))))))

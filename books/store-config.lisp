@@ -22,10 +22,12 @@
 ; rather than read with today's meaning.  Format 6 writes ACL2-owned FNSM
 ; metadata frames.  Older JSON metadata remains in place and needs explicit
 ; offline migration; merely opening a new-format store never rewrites it.
-; "fn-store-experiment-6"
+; "fn-store-experiment-7".  Format 6 remains readable through the physical
+; metadata profile, but a new store is never created under its smaller record
+; ceiling.
 (defconst *fn-store-format-id*
   '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
-    101 110 116 45 54))
+    101 110 116 45 55))
 
 (defun fn-store-group-name (code groups)
   ; The group at a zero-based code, or nil.
