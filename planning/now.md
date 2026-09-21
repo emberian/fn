@@ -19,19 +19,22 @@ Usage remaining does not narrow the release scope.
 
 ## Current integration checkpoint
 
-The next production/developer/DTN image source is frozen at `773e9ae3`.
-The preceding affected certification closure is still running on persvati;
-its source `09677bf1` is a prerequisite-cache batch, not the promised image
-source. The earlier combined
+The next production/developer/DTN image preserves the `773e9ae3` executable
+feature boundary, with an explicit descendant commit for required proof-only
+prerequisite repairs. The preceding affected closure on persvati terminated
+with one primary signature-carrier bound proof failure; its source `09677bf1`
+was a prerequisite-cache batch. That carrier repair now has
+[focused source-matched certification](evidence/stx-carrier-bound-proof-2026-09-21.md).
+Image manifests will name the actual descendant revision and input hashes. The earlier combined
 `8e8d1080` attempt failed in statement and provenance codec proofs. Focused
 repairs have real certificates; the combined successor result remains pending.
 
 Native bidirectional exchange, duplicate suppression and restart/requeue have
 [scoped immutable-image evidence](evidence/native-peering-915d5c72-2026-09-21.md)
-for `915d5c72`. That source is older than the combined freeze. A further matrix
-witness run has reproduced the selected exchange/requeue cases with the actual
-running executable and core observed through `/proc`; its failed receiver-setup
-attempt and corrected run are being archived. Protected exchange between hbox
+for `915d5c72`. That source is older than the combined freeze. A further [matrix witness run](evidence/v0-native-peering-915-2026-09-21.md)
+has reproduced selected exchange/requeue cases with the actual running executable
+and core observed through `/proc`; its failed receiver-setup attempt and corrected
+run are archived separately. Protected exchange between hbox
 and persvati, live configuration, and current-image recovery remain queued.
 
 The native hybrid enrollment/author control join is integrated: exact-source
@@ -45,8 +48,9 @@ qualification remain active work.
 
 Selected-prefix compaction tests now enumerate repeated unlink interruptions
 and preserve actual event bytes across candidate and selection cuts. Their
-runtime campaign awaits the source-matched image. General uncovered-suffix
-physical correspondence remains in progress. Tagged-event append proof repair
+runtime campaign awaits the source-matched image. General selected-suffix preservation through actual reclaim-program prefixes
+and admissible model crashes now has source-evaluated proof events; focused
+certification is queued, and physical power-loss correspondence remains open. Tagged-event append proof repair
 and hypothesis teeth are integrated; focused certification remains pending.
 The persistent Message-ID trie and builder uniqueness definitions are integrated,
 with source-evaluated correspondence events. The live reader still uses its old

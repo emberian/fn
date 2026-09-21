@@ -28,6 +28,8 @@ free_port = peer.free_port
 class NativeProtectedPeeringTests(unittest.TestCase):
     command = peer.NativePeeringTests.command
     start = peer.NativePeeringTests.start
+    process_identity = peer.NativePeeringTests.process_identity
+    verify_process_identity = peer.NativePeeringTests.verify_process_identity
     stop_all = peer.NativePeeringTests.stop_all
     article = staticmethod(peer.NativePeeringTests.article)
     post = peer.NativePeeringTests.post
