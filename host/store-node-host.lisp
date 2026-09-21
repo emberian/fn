@@ -467,7 +467,7 @@ reopen predicate, writer-lock observation and observed final namespace."
              (existing (fn-store-article-match msgid payload groups node)))
         (if existing
             (value existing)
-          (let* ((record (fn-record-make (len (fn-sf-records (fn-sn-files s)))
+          (let* ((record (fn-record-make (fn-sn-identity-next s)
                                          (fn-state-next-txid (fn-node-acceptance node))
                                          (fn-state-next-txid (fn-node-acceptance node))
                                          msgid payload groups
@@ -516,7 +516,7 @@ reopen predicate, writer-lock observation and observed final namespace."
         (value :invalid)
       (let* ((txid (fn-state-next-txid (fn-node-acceptance node)))
              (event (fn-store-retention-event-make
-                     kind (len (fn-sf-records (fn-sn-files s))) txid txid
+                     kind (fn-sn-identity-next s) txid txid
                      (fn-store-octets->string id-octets)
                      (fn-store-octets->string subject-octets)
                      (fn-store-octets->string evidence-octets) charge))
@@ -688,10 +688,12 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (value (fn-sn-keyring-generation (f-get-global 'fn-store-sn state))))
 
-; Historical acceptance evidence.  The ACL2 state recorded this verdict at
-; fn-sn-finish; this host wrapper performs only Message-ID conversion and a
-; carried-index lookup.  It neither parses article bytes nor verifies a
-; signature.  Present results are the reader-safe :fn-verified item octets.
+; Acceptance evidence carried by the ACL2 state.  Kind-4 results are durable
+; historical evidence.  A legacy fn-r result is only a current-process
+; observation and disappears on recovery because fn-r has no verdict bytes.
+; This wrapper performs only Message-ID conversion and a carried-index lookup;
+; it neither parses article bytes nor verifies a signature.  Present results
+; are the reader-safe :fn-verified item octets.
 (defun fn-store-sn-verdict (msgid-octets state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (fn-store-msgid-octetsp msgid-octets))

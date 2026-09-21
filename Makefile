@@ -82,6 +82,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/replay \
 	books/replay-invariants \
 	tests/acl2/store-event-replay-tests \
+	tests/acl2/store-identity-replay-tests \
 	tests/acl2/replay-tests \
 	books/config-records \
 	books/node-config \

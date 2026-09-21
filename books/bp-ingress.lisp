@@ -425,7 +425,7 @@
   ; fn-record-octets-string is exact for this validated ASCII Message-ID.  The
   ; original ADU itself remains the Store payload without reconstruction.
   (mbe :logic
-(fn-record-make (len (fn-sf-records (fn-sn-files store)))
+(fn-record-make (fn-sn-identity-next store)
                   (1- (fn-sf-frontier (fn-sn-files store)))
                   (1- (fn-sf-frontier (fn-sn-files store)))
                   (fn-record-octets-string msgid-octets)
@@ -437,7 +437,7 @@
                   (fn-bpi-policy-evidence policy)
                   (fn-bpi-policy-charge policy))
        :exec
-(fn-record-make (len (fn-sf-records (fn-sn-files store)))
+(fn-record-make (fn-sn-identity-next store)
                   (fn-bpi-ag-dec (fn-sf-frontier (fn-sn-files store)))
                   (fn-bpi-ag-dec (fn-sf-frontier (fn-sn-files store)))
                   (fn-record-octets-string msgid-octets)

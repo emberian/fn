@@ -165,7 +165,7 @@
         "tests/test_auth.py",
         "planning/evidence/auth-w10-2026-09-20.md"
       ],
-      "implementation_note": "D09 requires both Ed25519 and ML-DSA-65 over ACL2's exact authored-source preimage. The native primitives and ACL2 conjunction fail closed for absent, invalid or unsupported components. Durable article/verdict composition and key custody/recovery authority remain open.",
+      "implementation_note": "D09 requires both Ed25519 and ML-DSA-65 over ACL2's exact authored-source preimage. The native primitives and ACL2 conjunction fail closed for absent, invalid or unsupported components. Kind-4 atomic article/verdict events retain their enrolled snapshot and historical verdict through replay. A legacy fn-r record contains no verdict bytes: its live verification observation is explicitly non-durable and recovery reports no historical verdict. Persisting equivalent legacy authority remains an implemented-behavior evidence gap; recovery must never recompute it under current keys. Key custody and the full native recovery qualification remain open.",
       "note": "PRF-013 has no events. books/crypto-seam and books/statement certify, but they are an abstract seam: nothing there is a real signature, and AGENTS.md forbids reading an abstract model as a signature claim."
     },
     {
