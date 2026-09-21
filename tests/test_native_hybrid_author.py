@@ -55,6 +55,12 @@ class NativeHybridAuthorTest(unittest.TestCase):
             self.skipTest("active openssl lacks ML-DSA-65")
         subprocess.run(["openssl", "pkey", "-in", str(self.ml_private), "-pubout",
                         "-out", str(self.ml_public)], check=True)
+        self.ml_private_b = self.root / "ml-private-b.pem"
+        self.ml_public_b = self.root / "ml-public-b.pem"
+        subprocess.run(["openssl", "genpkey", "-algorithm", "ML-DSA-65", "-out",
+                        str(self.ml_private_b)], check=True)
+        subprocess.run(["openssl", "pkey", "-in", str(self.ml_private_b), "-pubout",
+                        "-out", str(self.ml_public_b)], check=True)
 
     def run(self, *args, timeout=60):
         return subprocess.run([str(IMAGE), "--fn", *args], cwd=ROOT,
@@ -102,6 +108,16 @@ class NativeHybridAuthorTest(unittest.TestCase):
             accepted = self.run("hybrid-author", *(common + [str(ml_sig), str(self.ml_public),
                                 "fn.test", "obligation", "subject", "release", "1"]))
             self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
+            wrong_ed = self.root / "wrong-ed-public.bin"
+            wrong_ed.write_bytes(bytes([99]) * 32)
+            enrolled_b = self.run("hybrid-enroll", str(self.control), "2",
+                                  str(self.principal), str(wrong_ed), str(self.ml_public_b))
+            self.assertEqual(enrolled_b.returncode, 0, enrolled_b.stderr.decode())
+            wrong_generation = self.run(
+                "hybrid-author", str(self.control), "2", "<wrong-key@example.invalid>",
+                str(article), str(ed_sig), str(ml_sig), str(self.ml_public_b), "fn.test",
+                "obligation", "subject", "release", "1")
+            self.assertNotEqual(wrong_generation.returncode, 0)
         finally:
             self.stop_owner(owner)
         owner = self.start_owner()
