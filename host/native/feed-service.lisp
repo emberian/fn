@@ -78,9 +78,9 @@ closed by this worker, preserving the one-closer rule."
           (let ((link (find name old :key #'fnn-feed-link-peer :test #'string=)))
             (push (or link (fnn-feed-link-for-peer name)) next)))
         (setq removed
-              (remove-if (lambda (link)
-                           (member (fnn-feed-link-peer link) names :test #'string=))
-                         old))
+              (loop for link in old
+                    unless (member (fnn-feed-link-peer link) names :test #'string=)
+                    collect link))
         (setf (fnn-feed-runtime-links runtime) (nreverse next))))
     (dolist (link removed) (fnn-feed-close-link runtime link))))
 
