@@ -10,7 +10,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-IMAGE = ROOT / "build" / "fn-host"
+IMAGE = Path(os.environ.get("FN_NATIVE_HOST", str(ROOT / "build" / "fn-host")))
 sys.path.insert(0, str(ROOT / "tools"))
 import frame_bridge  # noqa: E402
 import run_store  # noqa: E402
