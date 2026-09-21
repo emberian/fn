@@ -255,10 +255,11 @@
          (s (fn-own-store o))
          (node (fn-sn-node s)))
     (fn-cfg-record-make
-     ; The sequence is the position in the UNIFIED stream
-     ; (books/config-stream.lisp), so that replay re-checks this record at
-     ; the node the earlier article records produced.
-     (len (fn-sf-records (fn-sn-files s)))
+     ; Configuration records live in their own durable directory.  Their
+     ; sequence is therefore the prior configuration generation, exactly as
+     ; fn-store-cfg-reconfigure constructs it; article-record count is a
+     ; different coordinate and would reject a first live reconfiguration.
+     (fn-cfg-generation (fn-ocfg-config oc))
      (fn-state-next-txid (fn-node-acceptance node))
      (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
      deltas
