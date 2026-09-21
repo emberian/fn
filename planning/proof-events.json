@@ -901,6 +901,11 @@
         {
           "name": "fn-stx-index-invariant-preserved-by-accept",
           "kind": "theorem"
+        },
+        {
+          "name": "fn-stx-durable-completion-is-an-acceptance",
+          "kind": "theorem",
+          "note": "The subject-equating theorem AGENTS.md rule 1 asks for, for the preservation half of this target: fn-stx-index-invariant-preserved-by-accept hypothesises fn-stx-acceptedp, and this proves fn-stx-acceptedp of the durable branch of fn-node-complete with the accepted article named. The host line is host/store-node-host.lisp:402 fn-store-sn-finish -> fn-sn-finish (books/store-node.lisp:200) -> that call (:204). It does NOT give the QUERY a subject; fn-stx-index-lookup still has no caller."
         }
       ]
     },
