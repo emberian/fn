@@ -18,8 +18,7 @@
 
 (defun fnn-hybrid-control-author (service request)
   (destructuring-bind
-      (tag keyring-generation msgid source ed-signature ml-signature ml-path
-           groups obligation subject release charge) request
+      (tag keyring-generation source ed-signature ml-signature ml-path) request
     (declare (ignore tag))
     (fnn-owner-serialized
      service nil
@@ -30,25 +29,54 @@
                (and snapshot
                     (fnn-core 'fn-hsig-host-keyring-snapshot-value snapshot))))
          (unless (and snapshot enrollment) (return-from fnn-hybrid-control-author :refused))
-         (let* ((principal (first enrollment))
+         (let* ((fields (fnn-core 'fn-hsig-host-authored-source-fields source)))
+           (unless fields (return-from fnn-hybrid-control-author :refused))
+           (let* ((msgid (fnn-octets (first fields)))
+                (groups (mapcar #'fnn-octets (second fields)))
+                (principal (first enrollment))
                 (keys (second enrollment))
                 (signatures
                  (list (cons :ed25519 ed-signature)
                        (cons :ml-dsa-65 ml-signature)))
                 (coordinates (fnn-owner-core 'fn-owner-next-store-coordinates))
+                (charge (fnn-charge (length source)))
+                (metadata (multiple-value-list (fnn-metadata msgid (fnn-octets source))))
+                (obligation (first metadata))
+                (subject (second metadata))
+                (release (third metadata))
                 (event
                  (fnn-hsig-authorized-submission-event
                   coordinates keyring-generation
-                  (fnn-owner-core 'fn-hsig-host-keyring-snapshot-octets snapshot)
-                  (fn-record-octets-string msgid) source
-                  (fn-nctrl-group-strings groups)
-                  (fn-record-octets-string obligation)
-                  (fn-record-octets-string subject)
-                  (fn-record-octets-string release) charge
+                  (fnn-core 'fn-hsig-host-keyring-snapshot-octets snapshot)
+                  (fn-record-octets-string (fnn-octet-list msgid)) source
+                  (mapcar (lambda (g) (fn-record-octets-string (fnn-octet-list g))) groups)
+                  (fn-record-octets-string (fnn-octet-list obligation))
+                  (fn-record-octets-string (fnn-octet-list subject))
+                  (fn-record-octets-string (fnn-octet-list release)) charge
                   principal keys signatures (fn-record-octets-string ml-path))))
            (if event
-               (progn (fnn-owner-identity-commit service event) :accepted)
-             :refused)))))))
+               (let* ((evidence (fnn-octets (fnn-owner-core 'fn-owner-prov-post)))
+                      (generation (third coordinates))
+                      (txid (second coordinates))
+                      (submitted (fnn-owner-action
+                                  'fn-owner-control-submit (fnn-octet-list msgid)
+                                  (mapcar #'fnn-octet-list groups) source)))
+                 (unless (eq submitted :submitted)
+                   (return-from fnn-hybrid-control-author submitted))
+                 (unless (eq (fnn-owner-action 'fn-owner-take) :taken-control)
+                   (fnn-fault "hybrid owner take lost admitted submission"))
+                 (unless (eq (fnn-owner-action 'fn-owner-submission-intent
+                                                (fnn-octet-list evidence)
+                                                generation txid) :ready)
+                   (fnn-owner-action 'fn-owner-control-outcome :refused)
+                   (return-from fnn-hybrid-control-author :refused))
+                 (fnn-owner-feed-flush service)
+                 (let ((word (fnn-owner-identity-commit service event)))
+                   (fnn-owner-action 'fn-owner-submission-resolution
+                                     word (fnn-octet-list evidence) generation txid)
+                   (fnn-owner-feed-flush service)
+                   (fnn-owner-action 'fn-owner-control-outcome word)))
+             :refused))))))))
 
 (defun fnn-hybrid-control-handle (service frame)
   (when (typep frame 'fnn-octets)
@@ -88,10 +116,12 @@
     (error 'fnn-usage-error
            :message "hybrid-enroll CONTROL GENERATION PRINCIPAL ED-PUBLIC ML-PUBLIC-PEM"))
   (destructuring-bind (control generation principal-path ed-path ml-path) args
-    (let ((request
+    (let* ((generation-value
+            (fnn-core 'fn-native-hybrid-control-host-uint32 generation))
+           (request
            (fnn-core
             'fn-native-hybrid-control-host-enroll-encode
-            (parse-integer generation)
+            generation-value
             (fnn-hsig-command-read-exact principal-path 32 "principal")
             (fnn-hsig-command-read-exact ed-path 32 "Ed25519 public key")
             (coerce (fnn-hsig-ml-dsa-65-public-key ml-path) 'list))))
@@ -99,25 +129,21 @@
                 (fnn-hybrid-control-send control request)))))
 
 (defun fnn-command-hybrid-author (args)
-  (unless (= (length args) 12)
+  (unless (= (length args) 6)
     (error 'fnn-usage-error
-           :message "hybrid-author CONTROL GENERATION MESSAGE-ID SOURCE ED-SIGNATURE ML-SIGNATURE ML-PUBLIC-PEM GROUP OBLIGATION SUBJECT RELEASE CHARGE"))
+           :message "hybrid-author CONTROL GENERATION SOURCE ED-SIGNATURE ML-SIGNATURE ML-PUBLIC-PEM"))
   (destructuring-bind
-      (control generation msgid source-path ed-path ml-path ml-public group
-               obligation subject release charge) args
-    (let ((request
+      (control generation source-path ed-path ml-path ml-public) args
+    (let* ((generation-value
+            (fnn-core 'fn-native-hybrid-control-host-uint32 generation))
+           (request
            (fnn-core
             'fn-native-hybrid-control-host-author-encode
-            (parse-integer generation) (fnn-octet-list (fnn-string-octets msgid))
+            generation-value
             (fnn-octet-list (fnn-read-regular-bounded source-path 32768))
             (fnn-hsig-command-read-exact ed-path 64 "Ed25519 signature")
             (fnn-hsig-command-read-exact ml-path 3309 "ML-DSA-65 signature")
-            (fnn-octet-list (fnn-string-octets ml-public))
-            (list (fnn-octet-list (fnn-string-octets group)))
-            (fnn-octet-list (fnn-string-octets obligation))
-            (fnn-octet-list (fnn-string-octets subject))
-            (fnn-octet-list (fnn-string-octets release))
-            (parse-integer charge))))
+            (fnn-octet-list (fnn-string-octets ml-public)))))
       (fnn-core 'fn-native-control-host-status-exit-code
                 (fnn-hybrid-control-send control request)))))
 
