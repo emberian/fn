@@ -406,9 +406,9 @@
 
 (defun fn-store-publication-admissibility (profile committed-count
                                                    committed-octets
-                                                   prospective-octets)
+                                                   prospective-payload-octets)
   (if (fn-bs-publication-admissiblep profile committed-count
-                                     committed-octets prospective-octets)
+                                     committed-octets prospective-payload-octets)
       :admissible
     :refused))
 

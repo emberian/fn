@@ -165,6 +165,25 @@ trailer.
 The commit/checkpoint grammar must still be designed alongside the
 [storage failure model](failures.md).
 
+### Bounded Store-event profile
+
+The generic CBOR entry points retain their original 65,538-octet input and
+65,535-octet byte-string limits. Store event decoders that carry keyring
+snapshots or accepted-statement composites call the explicit-budget decoder.
+The caller supplies a whole-input budget and a per-item byte-string budget;
+both checks occur before `take` allocates the declared value. A prefix decoder
+checks the whole input once, then parses a fixed item count without rescanning
+each suffix. Canonical keyring snapshots larger than the generic ceiling and
+kind-4 composites round-trip through the actual Store-event dispatcher.
+
+FNST's 196,608-octet ceiling counts its payload, excluding the fixed 42-octet
+frame header and trailer. A persisted format-7 Store profile derives the same
+per-record payload ceiling from `max_recovery_record_bytes / max_transactions`.
+Format-6 metadata remains readable and derives its original 65,538-octet
+ceiling. The profile gate checks the prospective payload and new aggregate
+before publication, so a legacy store refuses a larger record rather than
+accepting history it cannot reopen.
+
 See [RFC 8949 §4.2](https://www.rfc-editor.org/rfc/rfc8949.html#section-4.2) for
 deterministic CBOR requirements. COSE is a candidate for signatures, not an
 already selected profile.

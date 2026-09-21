@@ -125,6 +125,26 @@
          *fn-frame-test-digest*)
         (fn-frame-error :magic)))
 
+; The physical ceiling counts payload octets.  The fixed frame overhead is 42.
+(defconst *fn-frame-max-store-witness*
+  (make-list *fn-frame-max-store-payload* :initial-element 165))
+(defconst *fn-frame-max-store-file*
+  (fn-frame-store-encode *fn-frame-max-store-witness*
+                         *fn-frame-test-digest*))
+(assert-event
+ (equal (len *fn-frame-max-store-file*)
+        (+ 42 *fn-frame-max-store-payload*)))
+(assert-event
+ (equal (fn-frame-result-payload
+         (fn-frame-store-decode *fn-frame-max-store-file*
+                                *fn-frame-test-digest*))
+        *fn-frame-max-store-witness*))
+(assert-event
+ (equal (fn-frame-store-encode
+         (make-list (1+ *fn-frame-max-store-payload*) :initial-element 165)
+         *fn-frame-test-digest*)
+        :bad))
+
 ; -----------------------------------------------------------------------------
 ; Field grammar
 

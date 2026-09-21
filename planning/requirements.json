@@ -190,7 +190,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Native schemas/signature preimages remain open.",
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -227,7 +227,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Wire event accounting, article syntax recognition/component bounds, UTF-8 scalar/progress bounds, wildmat parser/matcher correspondence, and CBOR/record guard verification are certified. Untrusted input still uses bounded octet marshalling. Full parser work/allocation and host graph guards remain open.",
+      "implementation_note": "Wire event accounting, article syntax recognition/component bounds, UTF-8 scalar/progress bounds, wildmat parser/matcher correspondence, and CBOR/record guard verification are certified. The explicit-budget CBOR path checks whole input and declared byte-string length before allocation; large keyring/composite and overbound witnesses exercise the actual Store dispatcher. Untrusted input still uses bounded octet marshalling. Full host graph guards remain open.",
       "keystones": [
         "fn-article-parse-work-input-bound",
         "fn-article-parse-work-value",
@@ -296,7 +296,7 @@
         "tests/evidence/2026-09-18-storage.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Immutable local transaction files are replayed by ACL2 into complete node articles, memberships, and pins. No disk indexes/checkpoints or full correspondence proof yet.",
+      "implementation_note": "Immutable local transaction files are replayed by ACL2 into complete node articles, memberships, and pins. Format-7 profiles derive a 196608-octet payload ceiling from persisted aggregate/count metadata; format-6 remains readable at 65538 and must refuse larger publication before mutation. No disk indexes or full correspondence proof yet.",
       "keystones": [
         "fn-index-rebuild-correspondence",
         "fn-index-range-query-correct"

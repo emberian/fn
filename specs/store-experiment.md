@@ -158,9 +158,15 @@ namespace and reports what it found, bounded for reporting, so an interrupted
 publication is visible to an operator; it never deletes a staged name and never
 treats one as history.
 
-The tested development profile fixes two groups (`fn.letters`, `fn.test`), 128
-transactions, 32,768 payload octets per article, and 8,388,864 aggregate record
-octets on recovery. Configuration is checksummed
+The tested format-7 development profile fixes two groups (`fn.letters`,
+`fn.test`), 128 transactions, 32,768 payload octets per article, and 25,165,824
+aggregate Store-event payload octets on recovery. The corresponding scale
+profile fixes 4,096 transactions and 805,306,368 aggregate payload octets.
+The quotient of aggregate octets by transaction count is the ACL2-owned
+196,608-octet per-record payload ceiling. Format-6 metadata remains readable
+with its original 65,538-octet quotient, and its publication gate refuses a
+larger prospective event before staging or final-name publication.
+Configuration is checksummed
 and exact-versioned; the adapter refuses other profiles rather than silently
 using host defaults. The aggregate cap bounds the temporary all-record replay
 input. A future streaming/checkpoint implementation requires its own argument.

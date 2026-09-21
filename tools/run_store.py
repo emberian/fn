@@ -67,14 +67,26 @@ SCALE_CONFIG = dict(
     max_transactions=SCALE_TRANSACTION_COUNT,
     max_recovery_record_bytes=SCALE_TRANSACTION_COUNT * STORE_EVENT_RECORD_BYTES,
 )
+LEGACY_DEFAULT_CONFIG = dict(
+    DEFAULT_CONFIG,
+    format="fn-store-experiment-6",
+    max_recovery_record_bytes=MAX_TRANSACTION_COUNT * 65538,
+)
+LEGACY_SCALE_CONFIG = dict(
+    LEGACY_DEFAULT_CONFIG,
+    max_transactions=SCALE_TRANSACTION_COUNT,
+    max_recovery_record_bytes=SCALE_TRANSACTION_COUNT * 65538,
+)
 # The development profile is the ACL2 frame's fixed development record.
-SUPPORTED_PROFILES = (DEFAULT_CONFIG, SCALE_CONFIG)
+SUPPORTED_PROFILES = (
+    LEGACY_DEFAULT_CONFIG, LEGACY_SCALE_CONFIG, DEFAULT_CONFIG, SCALE_CONFIG,
+)
 # The CLI's default `init --group` list: the two experimental groups every
 # existing test posts into.  A default argument for an operator command, not
 # a group table; the table a store serves is decided by the configuration
 # records ACL2 admits and replays.
 DEFAULT_GROUPS = ("fn.letters", "fn.test")
-CONFIG_RECORD_BYTES = STORE_EVENT_RECORD_BYTES
+CONFIG_RECORD_BYTES = 65538
 # `books/frame` owns the grammar.  These two are the slice arithmetic that
 # `durable_records` and the corruption tests still do over a file they never
 # interpret; `frame_bridge.FrameSession` checks both against the ACL2

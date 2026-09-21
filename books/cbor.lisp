@@ -324,21 +324,28 @@
 
 ; A one-item streaming decoder.  Its explicit input maximum gives a fixed
 ; bound on list traversal, decoded byte allocation, and returned remainder.
+(defun fn-cbor-decode-prechecked (octets item-budget)
+  (declare (xargs :guard (and (fn-cbor-octet-listp octets)
+                              (natp item-budget))))
+  (if (not (consp octets))
+      (fn-cbor-error :truncated)
+    (let ((head (car octets)))
+      (if (< head 32)
+          (fn-cbor-decode-unsigned head (cdr octets))
+        (if (and (< 63 head) (< head 96))
+            (fn-cbor-decode-bytes-bounded (- head 64) (cdr octets)
+                                          item-budget)
+          (fn-cbor-error :unsupported))))))
+
+(verify-guards fn-cbor-decode-prechecked)
+
 (defun fn-cbor-decode-bounded (octets input-budget item-budget)
   (declare (xargs :guard (and (natp input-budget) (natp item-budget))))
   (if (not (fn-cbor-at-mostp octets input-budget))
       (fn-cbor-error :limit)
     (if (not (fn-cbor-octet-listp octets))
         (fn-cbor-error :malformed)
-      (if (not (consp octets))
-          (fn-cbor-error :truncated)
-        (let ((head (car octets)))
-          (if (< head 32)
-              (fn-cbor-decode-unsigned head (cdr octets))
-            (if (and (< 63 head) (< head 96))
-                (fn-cbor-decode-bytes-bounded (- head 64) (cdr octets)
-                                              item-budget)
-              (fn-cbor-error :unsupported))))))))
+      (fn-cbor-decode-prechecked octets item-budget))))
 
 (verify-guards fn-cbor-decode-bounded)
 
@@ -406,7 +413,8 @@
     (:d fn-cbor-encode-argument) (:d fn-cbor-encode-bounded) (:d fn-cbor-encode)
     (:d fn-cbor-decode-argument) (:d fn-cbor-decode-unsigned)
     (:d fn-cbor-decode-bytes-bounded) (:d fn-cbor-decode-bytes)
-    (:d fn-cbor-decode-bounded) (:d fn-cbor-decode) (:d fn-cbor-decode-exact)
+    (:d fn-cbor-decode-prechecked) (:d fn-cbor-decode-bounded)
+    (:d fn-cbor-decode) (:d fn-cbor-decode-exact)
     (:d fn-cbor-u16-bytes) (:d fn-cbor-u32-bytes)
     (:d fn-cbor-u16-from) (:d fn-cbor-u32-from)))
 
@@ -416,7 +424,8 @@
              (:d fn-cbor-encode) (:d
              fn-cbor-decode-argument) (:d fn-cbor-decode-unsigned) (:d
              fn-cbor-decode-bytes-bounded) (:d fn-cbor-decode-bytes) (:d
-             fn-cbor-decode-bounded) (:d fn-cbor-decode) (:d
+             fn-cbor-decode-prechecked) (:d fn-cbor-decode-bounded)
+             (:d fn-cbor-decode) (:d
              fn-cbor-decode-exact) (:d fn-cbor-u16-bytes) (:d
              fn-cbor-u32-bytes) (:d fn-cbor-u16-from) (:d
              fn-cbor-u32-from)))
