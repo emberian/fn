@@ -129,6 +129,12 @@
 (assert-event
  (equal (fn-native-auth-admin-public-report (list (fn-naa-test-cred-a)))
         (fn-native-auth-admin-public-report (list (fn-naa-test-cred-b)))))
+(assert-event
+ (equal (fn-native-auth-admin-result-report
+         (fn-native-auth-admin-list
+          (fn-native-auth-admin-result-octets (fn-naa-test-set)) t))
+        (fn-native-auth-admin-public-report
+         (list (fn-naa-test-credential)))))
 
 ; The native writer retains the existing canonical writer's lexical table
 ; order even when the observed input file used another valid order.

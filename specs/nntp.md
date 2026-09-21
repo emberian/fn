@@ -403,6 +403,30 @@ credential nor hashes or compares a secret. The native operator admits
 does not yet have a TLS handshake facility. Credentials are startup-pinned;
 live reload/generation switching remains open.
 
+**Native administration component 2026-09-21**:
+`books/native-auth-admin.lisp` owns the bounded `principal list` and
+`principal set-password` tail grammar, login and principal validation, prompt
+confirmation verdict, existing `fn-authsec-enrol` call, row replacement,
+canonical sorted serialization and the public-only list report.  The password
+is not an argv, plan, result or report field.  Raw Lisp observes the two
+bounded prompt entries and one exact 16-octet OS-CSPRNG salt.  It holds a
+fixed adjacent exclusive lock, removes and directory-barriers any surviving
+fixed stage, barriers the observed final file and its directory before decode,
+and then drives the ACL2 mutable-replacement phases.  Failure after replace is
+issued, including a lost rename result or final-directory barrier, is
+`uncertain`; only the successful final directory barrier is `accepted`.
+The service still pins credentials at startup, so a successful password change
+reports that restart is required.  The public native-operator routing is a
+separate composition edge; this component does not add a second top-level
+grammar or a Python fallback.
+
+This administration path preserves the existing explicit
+`:fn-authsec-v1` compatibility format.  Salted, domain-tagged SHA-256 is not a
+tunable-cost or memory-hard password KDF, and this component makes no claim
+that low-entropy passwords resist offline guessing.  A hardening successor
+must use a new credential version and an explicit migration/refusal policy;
+it must not reinterpret the existing salt/digest fields in place.
+
 **Closed 2026-09-20**: RFC 4642 §2.2 says STARTTLS MUST NOT be pipelined,
 and the handshake begins with the first octet after the 382's CRLF, so any
 octets that arrived in the same read after the `STARTTLS` command line are

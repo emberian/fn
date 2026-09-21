@@ -24,9 +24,11 @@
     "# books/auth-secret.lisp: a 16-octet salt and the tagged SHA-256")
    (list 10)
    (fn-record-string-octets
-    "# of salt || secret.  The secret is NOT here and cannot be") (list 10)
+    "# of salt || secret.  The secret itself is not stored.  This v1") (list 10)
    (fn-record-string-octets
-    "# recovered from here.  It still crosses an unprotected") (list 10)
+    "# verifier is not a tunable-cost or memory-hard password KDF.") (list 10)
+   (fn-record-string-octets
+    "# AUTHINFO still carries the secret over an unprotected") (list 10)
    (fn-record-string-octets
     "# connection in the clear, so set [listener] tls_cert/tls_key") (list 10)
    (fn-record-string-octets
@@ -262,8 +264,8 @@
   (declare (xargs :guard t))
   (let ((loaded (fn-native-auth-load octets presentp nil nil nil)))
     (if (not (equal (fn-native-auth-result-status loaded) :accepted))
-        (list :refused (fn-native-auth-result-reason loaded))
-      (list :accepted
+      (list :refused (fn-native-auth-result-reason loaded))
+      (list :accepted nil
             (fn-native-auth-admin-public-report
              (fn-native-auth-admin-sort-credentials
               (fn-auth-config-creds
