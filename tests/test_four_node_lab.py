@@ -91,7 +91,14 @@ class FourNodeLabTests(unittest.TestCase):
         self.assertTrue(self.report.get("sources_unchanged"))
 
     def test_the_mock_bpa_run_fits_the_five_minute_budget(self):
-        self.assertLess(self.report.get("seconds", LAB_BUDGET_SECONDS), LAB_BUDGET_SECONDS)
+        # The default used to be LAB_BUDGET_SECONDS itself, so a lab that
+        # produced no duration at all failed as `300.0 not less than 300.0`,
+        # which reads as a run that outgrew its budget and is not one: on
+        # 2026-09-20 (gate dev-e4fb8bc) it was the lab dying in `git rev-parse
+        # HEAD` before it timed anything.  Say which of the two it is.
+        self.assertIn("seconds", self.report,
+                      "the lab reported no duration: {}".format(self.report.get("error")))
+        self.assertLess(self.report["seconds"], LAB_BUDGET_SECONDS)
 
     def test_every_named_assertion_was_checked_and_held(self):
         checked = self.report.get("assertions", {})
