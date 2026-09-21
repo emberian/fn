@@ -64,6 +64,36 @@
 (must-fail
  (assert-event (fn-wire-outbound-okp (fn-wire-render-block '(120 13 10) 2))))
 
+; Exact conclusion of the universal block-renderer / fn-wire-drive theorem.
+(defmacro fn-wire-block-render-roundtripp
+  (article article-limit body-limit)
+  `(let ((lines (fn-wire-outbound-octets
+                 (fn-wire-outbound-lines ,article ,article-limit))))
+     (and
+      (equal
+       (fn-wire-drive
+        (fn-wire-outbound-receiver-start ,body-limit)
+        (fn-wire-outbound-octets
+         (fn-wire-render-block ,article ,article-limit)))
+       (fn-wire-make-result
+        (fn-wire-make-state :command nil 0 nil nil 0
+                            (+ 1 (nfix ,body-limit))
+                            (nfix ,body-limit))
+        (list (fn-wire-article-event lines))))
+      (equal (fn-wire-source-lines lines) ,article))))
+
+; Non-degenerate witness and one counterexample per premise of
+; fn-wire-drive-of-successful-render-block-preserves-source.
+(assert-event
+ (fn-wire-block-render-roundtripp
+  *fn-wire-outbound-proof-witness* 64 64))
+(must-fail
+ (assert-event (fn-wire-block-render-roundtripp nil 0 0)))
+(must-fail
+ (assert-event (fn-wire-block-render-roundtripp '(120 10) 8 64)))
+(must-fail
+ (assert-event (fn-wire-block-render-roundtripp '(120 13 10) 3 2)))
+
 ; Exact conclusion of the host-renderer / served-profile composition theorem.
 ; This macro only keeps the ground witness and hypothesis teeth readable.
 (defmacro fn-wire-host-render-roundtripp
