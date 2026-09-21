@@ -1778,6 +1778,18 @@ def fault_once(error):
     return action
 
 
+def process_cut_once(code):
+    """Test-only hard process death at one modelled submission cut."""
+    fired = []
+
+    def action():
+        if fired:
+            return None
+        fired.append(True)
+        os._exit(code)  # noqa: PLW1510 - the process death is the test event
+    return action
+
+
 # Documented test-only hooks, the owner's own, beside tools/run_store.py's
 # CLI_FAULTS.  Each names one point in the serve loop; production passes
 # NO_FAULTS and the paths hold no injection branch.  The errors are
@@ -1791,6 +1803,16 @@ OWNER_FAULTS = {
     "drain": lambda: ScriptedFaults(
         "owner:drain",
         action=fault_once(RuntimeError("injected host fault carrying a submission"))),
+    "preintent-cut": lambda: ScriptedFaults(
+        "owner:preintent", action=process_cut_once(90)),
+    "intent-barrier-cut": lambda: ScriptedFaults(
+        "owner:intent-barrier", action=process_cut_once(91)),
+    "commit-barrier-cut": lambda: ScriptedFaults(
+        "owner:commit-barrier", action=process_cut_once(92)),
+    "abort-barrier-cut": lambda: ScriptedFaults(
+        "owner:abort-barrier", action=process_cut_once(93)),
+    "response-cut": lambda: ScriptedFaults(
+        "owner:response", action=process_cut_once(94)),
 }
 
 

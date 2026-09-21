@@ -803,6 +803,82 @@
                       (fn-own-feed-intent-key (own-control-new-values)))
                 :feed-abort (own-control-new-values))))
 
+; Reopen reconciliation reads the actual archived binding and its retained
+; evidence.  Exact evidence commits, a complete conflicting incarnation
+; aborts, complete absence aborts, and a partial binding/pin relation stays
+; uncertain so recovery cannot silently discard an obligation.
+(defun own-reopened-intent-values ()
+  (let* ((node (fn-sn-node (fn-own-store *own-reopened*)))
+         (msgid "<one@example>")
+         (binding (fn-node-find-binding msgid (fn-node-bindings node)))
+         (pin (fn-own-retain-find-id-unguarded
+               (fn-node-binding-id binding)
+               (fn-retain-pins (fn-node-retention node)))))
+    (fn-own-feed-intent-values
+     "out" (fn-record-string-octets msgid)
+     (fn-record-string-octets (fn-node-binding-id binding))
+     (fn-record-string-octets (fn-retain-obligation-evidence pin))
+     1 9 0)))
+
+(defun own-reopened-partial-node ()
+  (let* ((node (fn-sn-node (fn-own-store *own-reopened*)))
+         (retention (fn-node-retention node)))
+    (fn-node-make-state
+     (fn-node-acceptance node)
+     (fn-retain-make-state (fn-retain-capacity retention)
+                           0 nil nil)
+     (fn-node-stage node)
+     (fn-node-bindings node))))
+
+(assert-event
+ (equal (fn-own-feed-intent-reconcile-kind
+         (fn-sn-node (fn-own-store *own-reopened*))
+         (own-reopened-intent-values))
+        :feed-commit))
+(assert-event
+ (equal (fn-feed-journal-kind
+         (fn-own-feed-intent-reconcile-record
+          (fn-sn-node (fn-own-store *own-reopened*))
+          (own-reopened-intent-values)))
+        :feed-commit))
+(assert-event
+ (equal (fn-own-feed-intent-reconcile-kind
+         (fn-sn-node (fn-own-store *own-reopened*))
+         (fn-own-feed-intent-values
+          "out" (fn-record-string-octets "<one@example>")
+          (fn-record-string-octets "another-obligation")
+          (fn-frame-item 3 (own-reopened-intent-values)) 1 9 0))
+        :feed-abort))
+(assert-event
+ (equal (fn-own-feed-intent-reconcile-kind
+         (fn-sn-node (fn-own-store *own-reopened*))
+         (fn-own-feed-intent-values
+          "out" (fn-record-string-octets "<absent@example>")
+          (fn-record-string-octets "absent-obligation")
+          (fn-record-string-octets "absent-evidence") 1 9 0))
+        :feed-abort))
+(assert-event
+ (equal (fn-own-feed-intent-reconcile-kind
+         (own-reopened-partial-node) (own-reopened-intent-values))
+        :uncertain))
+
+; Local and transit provenance are distinct ACL2 values and therefore make
+; distinct durable intent keys even for the same object and transaction.
+(defun own-transit-evidence ()
+  (fn-record-string-octets (fn-peer-evidence "p" *own-peer-cfg*)))
+(assert-event (fn-feed-namep (own-transit-evidence)))
+(assert-event (not (equal (own-transit-evidence) *own-control-evidence*)))
+(assert-event
+ (not (equal
+       (fn-own-feed-intent-key
+        (fn-own-feed-intent-values
+         "out" *own-control-msgid* (fn-frame-item 2 (own-control-old-values))
+         *own-control-evidence* 1 2 0))
+       (fn-own-feed-intent-key
+        (fn-own-feed-intent-values
+         "out" *own-control-msgid* (fn-frame-item 2 (own-control-old-values))
+         (own-transit-evidence) 1 2 0)))))
+
 ; Capacity is decided before store mutation.  Once the only slot is occupied,
 ; a different Message-ID is refused at the intent boundary.
 (defconst *own-full-feed*
