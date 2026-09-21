@@ -907,7 +907,8 @@
         "fn-stx-index-bindings-agree",
         "fn-stx-index-slots-agree",
         "fn-stx-index-equivocators-agree",
-        "fn-stx-index-invariant-preserved-by-accept"
+        "fn-stx-index-invariant-preserved-by-accept",
+        "fn-stx-durable-completion-is-an-acceptance"
       ]
     },
     {
