@@ -24,7 +24,10 @@ class ProfileTests(unittest.TestCase):
                          ("host/native/build-dtn.lisp", "build/fn-host-dtn"))
         default_roots = proof_artifacts.profile_roots(ROOT, "default")
         dtn_roots = proof_artifacts.profile_roots(ROOT, "dtn")
-        self.assertNotIn("books/bp-node", default_roots)
+        # The common owner now consumes BP application state even in the
+        # default image. DTN transport is the profile distinction, not this
+        # shared logical dependency.
+        self.assertIn("books/bp-node", default_roots)
         self.assertIn("books/bp-node", dtn_roots)
         self.assertIn("books/owner-fault", default_roots)
         self.assertIn("books/owner-fault", dtn_roots)

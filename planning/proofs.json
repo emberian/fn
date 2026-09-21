@@ -1548,11 +1548,20 @@
         "planning/lanes/HANDOFF-w17-bp-namespace.md",
         "planning/evidence/native-bp-app-2026-09-21.md",
         "tests/test_bp_app_native.py",
-        "planning/lanes/HANDOFF-w18-bp-publisher.md"
+        "planning/lanes/HANDOFF-w18-bp-publisher.md",
+        "books/bp-node-machine-authorization.lisp",
+        "tests/acl2/bp-node-machine-authorization-tests.lisp",
+        "planning/evidence/bp-lifecycle-assurance-w18-2026-09-21.md",
+        "planning/evidence/manifests/certify-20260921T112003Z-2095559.json"
       ],
-      "pending_subject": "The adapter directly calls fn-bpn-step, but current no-release theorem assumes its output already satisfies the effect recognizer; the resume helper theorem only preserves fields of a setter. Neither is registered as a keystone. Universal valid-state/effect preservation, actual restart context preservation, physical observation correspondence and bounded served execution remain open.",
-      "progress_note": "Source-pinned native queue/contact/restart/expiry tests cover selected lifecycle traces. U01 removes visible-file-as-durable classification; U02 gives ACL2 mixed-outcome policy. Receive-loop fencing and cross-session evidence identities have separate native evidence. W17 adds bounded ACL2 namespace/token recovery and append admission without rescanning; W18 routes the actual lifecycle append through the shared immutable publisher with exact pending token/record authorization. Authority-barrier failure is uncertain; cleanup-only failure after authority is durable under retained-stage recovery. Universal lifecycle invariant/effect preservation and raw publication refinement remain open.",
-      "application_join_scope": "The later native BP request path persists exact request intent, uses the canonical serialized owner Store, binds the committed record, and persists receipt decision before producing a receipt. A source-pinned process-death test after decision/before receipt proves no universal property but observes exact receipt replay with unchanged transaction/article/pin counts on retry. General joined trace preservation and all newly reachable publication/recovery cuts remain assurance obligations; dispatcher/accepted-branch projection facts are not registered keystones. The later actual receipt-decision namespace-barrier EIO witness leaves a visible decision, reports uncertainty without a receipt, and recovers its exact receipt after new-process barriers with unchanged Store counts. Current fn-bpaj apply/status still revalidate all retained intents/facts and decode prior ADUs; eliminating that served-path scan with replay establishment and preservation is active implemented-surface assurance/cost debt."
+      "pending_subject": "The native host directly calls fn-bpn-step. The maintained lifecycle invariant and durable send/queue authorization now have source-pinned certified keystones; physical publication observations, full application/Store trace composition and all reachable crash cuts remain open.",
+      "progress_note": "The actual fn-bpn-step preserves fn-bpn-lifecycle-invariantp under that input invariant and fn-bpn-machine-eventp, and under the lifecycle invariant its send and queue-accept effects require the exact durable authorization or an exact retained duplicate. The hbox source-pinned closure and reachable authorization counterexamples are archived in bp-lifecycle-assurance-w18-2026-09-21.md; the duplicate persvati dependency timeout remains negative evidence. These logical results assume the reported persistence outcomes and do not establish physical durability or a current combined native image. Native lifecycle append consumes the shared immutable publisher; authority-barrier failure remains uncertain.",
+      "application_join_scope": "Native application/Store join and receipt-decision recovery have scoped runtime witnesses. Main now adopts maintained-state fast application and configuration projections, with explicit checked/fast correspondence obligations; the latest changed test/config projection has not yet passed the integrated certification batch. General joined trace preservation, authoritative obligation release and all publication/recovery cuts remain open. Transport completion or expiry does not establish application acceptance or release authority.",
+      "events": [
+        "fn-bpn-step-preserves-lifecycle-invariant",
+        "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record",
+        "fn-bpn-step-queue-acceptance-is-durable-or-exact-duplicate"
+      ]
     }
   ]
 }
