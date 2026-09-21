@@ -124,11 +124,15 @@
 ; the native host does not interpret, merge or recreate any transaction fact.
 (defun fn-store-checkpoint-compaction-capture (octet-records frontier)
   (declare (xargs :mode :program))
-  (fn-cc-capture octet-records frontier))
+  (let ((captured (fn-cc-capture octet-records frontier)))
+    (if (not (equal (car captured) :ok)) captured
+      (list :ok (fn-cc-encode (car (cdr captured)))))))
 
-(defun fn-store-checkpoint-compaction-expand (summary octet-suffix frontier)
+(defun fn-store-checkpoint-compaction-expand (summary-octets octet-suffix frontier)
   (declare (xargs :mode :program))
-  (fn-cc-expand summary octet-suffix frontier))
+  (let ((decoded (fn-cc-decode-exact summary-octets)))
+    (if (not (equal (car decoded) :ok)) decoded
+      (fn-cc-expand (car (cdr decoded)) octet-suffix frontier))))
 
 >>>>>>> ed90025a (model(store): preserve exact events in compaction summaries)
 (defun fn-store-checkpoint-publication-initial
