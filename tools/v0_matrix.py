@@ -3270,7 +3270,21 @@ else echo NONE; fi
                                   for k, v in self.dead.items()) or "no log"),
                         invocation="(the server was gone)")
         else:
-            blocker = "; ".join(self.node_blocker(n) for n in self.nodes if not n.port)
+            # A node reaches here without a port OR with a port and no live
+            # server, and until 2026-09-21 only the first was named: a node
+            # that started and then DIED produced an empty blocker, `emit`
+            # refused the row (rightly -- a not-exercised row must say why),
+            # and the GateError ended the whole gate, so a run that had 40
+            # outcomes in hand wrote 148 not-exercised rows instead. Both
+            # reasons are named here, and the fallback is never empty.
+            blocker = "; ".join(
+                ["node {}: {}".format(n.name.upper(), self.node_blocker(n))
+                 for n in self.nodes if not n.port]
+                + ["node {}: {}".format(name.upper(), why)
+                   for name, why in sorted(self.dead.items())]) or (
+                "fewer than two nodes were live when the paired phases would "
+                "have run, and neither a missing port nor a recorded death "
+                "says which: {} of 2 live".format(len(live)))
             self.blocked(self.PAIR_KEYS + self.TRANSIT_KEYS + self.FEED_KEYS, blocker)
 
         self.phase("campaign", self.campaign_phase)

@@ -416,7 +416,8 @@
         "PRF-007",
         "PRF-032",
         "PRF-034",
-        "PRF-036"
+        "PRF-036",
+        "PRF-041"
       ],
       "verification": [
         "proof",
@@ -438,7 +439,9 @@
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
         "tests/evidence/2026-09-21-four-node-lab.md",
-        "tests/evidence/2026-09-21-four-node-lab.json"
+        "tests/evidence/2026-09-21-four-node-lab.json",
+        "books/byte-store-scan.lisp",
+        "books/byte-store-keystones.lisp"
       ],
       "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, and every process-death cut is a model crash point. Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open.",
       "keystones": [
@@ -524,7 +527,8 @@
       "proof_targets": [
         "PRF-007",
         "PRF-032",
-        "PRF-036"
+        "PRF-036",
+        "PRF-041"
       ],
       "verification": [
         "proof",
@@ -535,7 +539,9 @@
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/byte-store-scan.lisp",
+        "books/byte-store-keystones.lisp"
       ],
       "implementation_note": "Abstract isolated-slot model plus real adapter barriers and injected failures. No claim that the slot model is already a proved refinement of this adapter or a qualified power-loss model.",
       "keystones": [
@@ -787,7 +793,7 @@
       "proof_targets": [
         "PRF-011",
         "PRF-029",
-        "PRF-040"
+        "PRF-042"
       ],
       "verification": [
         "proof",
@@ -815,7 +821,7 @@
       "proof_targets": [
         "PRF-011",
         "PRF-029",
-        "PRF-040"
+        "PRF-042"
       ],
       "verification": [
         "proof",
@@ -977,7 +983,8 @@
       "milestone": "M3",
       "status": "implemented",
       "proof_targets": [
-        "PRF-015"
+        "PRF-015",
+        "PRF-040"
       ],
       "verification": [
         "proof",
@@ -1234,6 +1241,25 @@
       ],
       "implementation_note": "Logical certification excludes program-mode host helpers and retains ACL2/runtime/adapter assumptions. BP composition evidence records 11 scoped roots, unchanged source digests and 133 Python tests without an all-roots or power-loss claim. A separate seven-book inventory records the complete 41-function ADU guard graph and 97 remaining unverified BP functions.",
       "note": "The trust boundary and the certification procedure are documented and the tooling now enforces part of it (tools/certs.py will not cache a pair except against a passed manifest, keyed on the whole include closure). What is missing for a status change is a theorem-level statement of the boundary, not a document."
+    },
+    {
+      "id": "HST-005",
+      "title": "A host fault costs one connection, not the service",
+      "specification": "specs/host.md#core-interface",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-040"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "planning/evidence/owner-survival-2026-09-21.md"
+      ],
+      "implementation_note": "tools/run_owner.py guards each selector event and each drained submission; an unexpected exception abandons the connection that caused it through fn-own-fault and the loop continues. Feeds are abandoned per peer. A fault the host cannot attribute is counted and stops the owner after MAX_UNATTRIBUTED_FAULTS; a lost ACL2 bridge stops it at once, with the fault exit code. Open: the reader host (tools/run_reader.py) has no such boundary, and no boundary exists around the control channel's own loop.",
+      "note": "The boundary is a model transition, not a Python decision: fn-own-fault (books/owner-fault.lisp) names the 403 line, closes the connection, clears its in-flight submission and its pending transaction, and is proved to leave every other connection equal to what it was. Measured: before it, an exception in Owner.drain ended the process for every connection, which is the single cause behind 33 blocked rows of the 190-row v0 matrix."
     },
     {
       "id": "SEC-001",

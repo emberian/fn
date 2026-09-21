@@ -99,6 +99,8 @@
     "books/byte-store",
     "books/byte-store-invariants",
     "books/byte-store-scan",
+    "books/byte-store-keystones",
+    "tests/acl2/byte-store-scan-tests",
     "books/byte-store-programs",
     "tests/acl2/byte-store-tests",
     "books/assumptions",
@@ -246,6 +248,7 @@
     "tests/acl2/owner-feed-tests",
     "books/owner",
     "books/owner-invariants",
+    "books/owner-fault",
     "tests/acl2/owner-tests",
     "tests/acl2/owner-config-tests",
     "books/relay",
@@ -284,25 +287,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 280,
-    "books_in_root_closure": 280,
-    "roots": 280,
-    "theorems": 5710,
-    "functions": 3973,
-    "assert_events": 5864,
+    "books": 283,
+    "books_in_root_closure": 283,
+    "roots": 283,
+    "theorems": 5813,
+    "functions": 3975,
+    "assert_events": 5895,
     "must_fails": 63,
     "encapsulates": 19,
     "guards": {
-      "verified": 1489,
+      "verified": 1491,
       "declared-off": 192,
       "default-guarded": 1797,
       "default-unguarded": 495
     },
-    "suspect_theorems": 47,
+    "suspect_theorems": 48,
     "export_hygiene_warnings": 73,
     "enabled_projection_warnings": 21,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 89,
+    "include_hygiene_warnings": 90,
     "host_names_warnings": 33,
     "hand_written_record_warnings": 18
   },
@@ -1679,6 +1682,32 @@
       "read_error": null
     },
     {
+      "book": "books/byte-store-keystones.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-scan",
+        "store-observed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/byte-store-programs.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -1708,7 +1737,7 @@
       "book": "books/byte-store-scan.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
+      "theorems": 134,
       "functions": 32,
       "guards": {
         "verified": 0,
@@ -3202,6 +3231,32 @@
       "read_error": null
     },
     {
+      "book": "books/owner-fault.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 2,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner",
+        "owner-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-feed.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4109,6 +4164,7 @@
         "arithmetic/top"
       ],
       "suspects": [
+        "fn-sf-frontier-rollback-visiblep-unfolds",
         "fn-sf-stable-records-outside-the-window"
       ],
       "read_error": null
@@ -5865,6 +5921,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/byte-store-scan-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 14,
+      "must_fails": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-keystones",
+        "../../books/byte-store-programs"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/byte-store-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -6673,12 +6755,13 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 226,
+      "assert_events": 243,
       "must_fails": 0,
-      "defconsts": 80,
+      "defconsts": 81,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/owner-fault",
         "../../books/owner-invariants"
       ],
       "system_includes": [],
@@ -7954,6 +8037,14 @@
       ]
     },
     {
+      "theorem": "fn-sf-frontier-rollback-visiblep-unfolds",
+      "book": "books/store-files-invariants.lisp",
+      "line": 407,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep"
+      ]
+    },
+    {
       "theorem": "fn-sf-stable-records-outside-the-window",
       "book": "books/store-files-invariants.lisp",
       "line": 88,
@@ -9199,6 +9290,13 @@
         "line": 3,
         "include": "../../books/bp-workflow-transport-invariants",
         "included": "books/bp-workflow-transport-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-scan-tests.lisp",
+        "line": 24,
+        "include": "../../books/byte-store-keystones",
+        "included": "books/byte-store-keystones.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
