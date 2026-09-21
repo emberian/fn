@@ -1295,6 +1295,14 @@
         {
           "kind": "theorem",
           "name": "fn-bs-first-frontier-program-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-txn-name-impl-injective"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bsi-current-init-program-establishes-current-image"
         }
       ]
     },

@@ -86,12 +86,14 @@
       "steps": [
         "Crash at each object-write, namespace/barrier, commit-record, publication, and reply boundary.",
         "Allow unsynced writes to tear/reorder within the selected model.",
-        "Recover and retry."
+        "Recover and retry.",
+        "Exercise the fresh initializer with configuration history and repeated fresh staging names, and separate a removed configuration-directory fence from the root/transactions relation."
       ],
       "expected": [
         "Modeled acknowledged commits survive; complete unacknowledged commits may survive.",
         "No partial transaction is published.",
-        "Uncertainty fences mutations; platform assumptions are recorded."
+        "Uncertainty fences mutations; platform assumptions are recorded.",
+        "Fresh successful initialization reaches the full image including durable configuration history; a weaker relation alone is not evidence of that publication. Transaction names come from the attached ACL2 renderer and remain distinct for distinct natural sequences."
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -110,9 +112,12 @@
         "books/store-observed.lisp",
         "tests/test_store_corruption.py",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "tests/acl2/byte-store-initializer-tests.lisp",
+        "tests/acl2/byte-store-txn-name-tests.lisp",
+        "planning/evidence/claude-storage-initializer-response.md"
       ],
-      "execution_scope": "Mixed actual node/file trace retention and observed replay/barrier gates have targeted certification. Forty-seven injection rows, six process-death cuts and sixteen malformed-image cases exercise the adapter. These finite tests do not qualify physical power loss or whole-store rollback. The deploy gate adds one real process-death cut on a farm box (SIGKILL from inside an open POST, recovery, reread); it is one point of the matrix, not the matrix, and a SIGKILL is not a power loss."
+      "execution_scope": "Mixed actual node/file trace retention and observed replay/barrier gates have targeted certification. Forty-seven injection rows, six process-death cuts and sixteen malformed-image cases exercise the adapter. These finite tests do not qualify physical power loss or whole-store rollback. The deploy gate adds one real process-death cut on a farm box (SIGKILL from inside an open POST, recovery, reread); it is one point of the matrix, not the matrix, and a SIGKILL is not a power loss. W13 adds exact fresh-initializer image and transaction-name component evidence. Existing/retry initialization, native execution correspondence and coverage of every syscall/death cut remain open."
     },
     {
       "id": "SCN-004",
