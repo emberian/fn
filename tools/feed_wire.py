@@ -58,6 +58,23 @@ def _directory(path):
         return False
 
 
+def fsync_ancestor_directories(directory, stop):
+    """Barrier every parent through ``stop``, refusing a non-ancestor stop.
+
+    The FNFD component codec normally makes ``stop`` an ancestor.  Keeping
+    this host traversal finite still matters if a malformed bridge result or a
+    future path construction error violates that premise: dirname('/') is '/'.
+    """
+    parent = os.path.dirname(directory)
+    while parent != stop:
+        next_parent = os.path.dirname(parent)
+        if parent == next_parent:
+            raise StoreFault("FNFD feed directory is not an ancestor: " + stop)
+        fsync_dir(parent)
+        parent = next_parent
+    fsync_dir(stop)
+
+
 def discover_journal_peers(root: str, bridge):
     """ACL2-decode every retained FNFD pathname, refusing conflicting evidence.
 
@@ -176,11 +193,7 @@ class Journal:
             fsync_dir(self.dir)
             self._step("directory-durable")
             if self.dir != self.feed_dir:
-                parent = os.path.dirname(self.dir)
-                while parent != self.feed_dir:
-                    fsync_dir(parent)
-                    parent = os.path.dirname(parent)
-                fsync_dir(self.feed_dir)
+                fsync_ancestor_directories(self.dir, self.feed_dir)
             fsync_dir(self.root)
             self._step("parent-durable")
             os.lseek(self.handle, 0, os.SEEK_END)
