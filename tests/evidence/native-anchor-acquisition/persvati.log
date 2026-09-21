@@ -1,0 +1,8 @@
+UTC 2026-09-21T08:45:01Z
+Linux persvati 6.17.0-40-generic #40-Ubuntu SMP PREEMPT_DYNAMIC Fri Jun 19 16:42:13 UTC 2026 x86_64 GNU/Linux
+SBCL 2.6.8
+4ee2a19a83d825ecbed8b0f70518411ae4c7597547318e3b8c8d653a3bf83192  host/native/crypto.lisp
+91f5012da4525b97303e12a4e98f802f41756229bee8b1da871c13d003ff7fff  host/native/anchor.lisp
+89cb5e09656d9ece6e0fe6c0c62293e0ac318ae139e59f01dc7b98ce64f3398a  tests/native_anchor_acquisition.lisp
+COMMAND /home/ember/fn-tools/sbcl/bin/sbcl --noinform --disable-debugger --script tests/native_anchor_acquisition.lisp
+FN_NATIVE_ANCHOR_ACQUISITION_TEST passed library="libsodium.so.23" version="1.0.18"

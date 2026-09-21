@@ -55,6 +55,33 @@
    58 250 108 10 34 238 158 128 135 101 114 157 254 227 170 194 121 207 0 0 0 0 0 0 0
    0 255 255 255 255 255 255 255 255 1 0 0 0))
 
+; ACL2, rather than raw Lisp, produces the deployed 1024-octet NONC/PAD
+; request.  Parsing its output through the same tagged grammar recovers the
+; nonce and exact padding width.
+(defconst *fn-anchor-wire-test-request-result*
+  (fn-anchor-wire-request *fn-anchor-wire-test-nonce*))
+(defconst *fn-anchor-wire-test-request*
+  (fn-anchor-wire-result-value *fn-anchor-wire-test-request-result*))
+(defconst *fn-anchor-wire-test-request-fields*
+  (fn-anchor-wire-result-value
+   (fn-anchor-wire-parse-message *fn-anchor-wire-test-request*)))
+(assert-event (fn-anchor-wire-result-okp
+               *fn-anchor-wire-test-request-result*))
+(assert-event (equal (len *fn-anchor-wire-test-request*)
+                     *fn-anchor-wire-request-octets*))
+(assert-event
+ (equal (fn-anchor-wire-field *fn-anchor-wire-tag-nonc*
+                              *fn-anchor-wire-test-request-fields*)
+        *fn-anchor-wire-test-nonce*))
+(assert-event
+ (equal (len (fn-anchor-wire-field *fn-anchor-wire-tag-pad*
+                                   *fn-anchor-wire-test-request-fields*))
+        *fn-anchor-wire-request-padding-octets*))
+(assert-event
+ (equal (fn-anchor-wire-result-reason
+         (fn-anchor-wire-request (cdr *fn-anchor-wire-test-nonce*)))
+        :nonce))
+
 (defconst *fn-anchor-wire-test-result*
   (fn-anchor-wire-parse-response *fn-anchor-wire-test-response*
                                  *fn-anchor-wire-test-nonce*
