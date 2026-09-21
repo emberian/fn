@@ -528,7 +528,7 @@
                       (fn-served-result-conn
                        (fn-served-open-peer archive line-limit body-limit
                                             config observation injection
-                                            peer node cfg)))
+                                            peer node cfg acfg)))
                      archive config observation)
    groups)
   :hints (("Goal"
@@ -545,7 +545,7 @@
                             fn-auth-open-session-is-consistent
                             fn-auth-open-config))
            :use ((:instance fn-auth-open-session-is-consistent
-                            (acfg (fn-auth-open-config)) (tlsp nil))))))
+                            (tlsp nil))))))
 
 (defthm fn-own-open-preserves-relation
   (implies (fn-own-relation o)
@@ -557,7 +557,7 @@
 ; port and this book has not certified since, so nothing asked.
 (defthm fn-own-open-peer-preserves-relation
   (implies (fn-own-relation o)
-           (fn-own-relation (cdr (fn-own-open-peer o peer cfg))))
+           (fn-own-relation (cdr (fn-own-open-peer o peer cfg acfg))))
   :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conn-boundedp)))))
 
 (defthm fn-own-read-preserves-relation

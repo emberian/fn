@@ -186,14 +186,65 @@ line, the log line, and the reply on the control socket. Never map
 `uncertain` onto either of the others in a wrapper script.
 
 The service log (`[log] path`, otherwise stderr, which under systemd is the
-journal) carries one line per post and one per reader connection, with the
-outcome word first:
+journal) carries one line per post and one per accepted connection, with the
+outcome word first. A connection line says the **role** the owner gave the
+connection at accept, which it decides from the peer table and not from
+anything the client says: `reader`, or `peer` with the record's name.
 
 ```
 accepted post path=control message-id=<a@example.invalid> agent=news@example.invalid detail=committed sequence=3 charge=41 time=2026-09-19T21:04:11Z
 accepted reader connection=2 time=2026-09-19T21:04:33Z
+accepted peer connection=3 peer=innA time=2026-09-19T21:04:35Z
 refused post path=control message-id=<b@example.invalid> agent=news@example.invalid detail=refused: group-unknown time=2026-09-19T21:05:02Z
 ```
+
+If a connection you expected to be a reader is logged as a `peer`, the
+source address matched a peer record's `auth` slot: the owner matches the
+address and nothing else, so a peer configured on loopback claims every
+loopback client. That is what to check first when a reader behaves oddly on
+a box that is also peering with itself.
+
+## Require a login (RFC 4643)
+
+Off by default. To turn it on, write the policy into the configuration and
+enrol at least one login:
+
+```
+fn --config /etc/fn/fn.toml init --store /var/lib/fn/store --auth-required
+fn --config /etc/fn/fn.toml principal set-password alice --posting
+fn --config /etc/fn/fn.toml principal list
+```
+
+`set-password` prompts twice, derives the salted verifier in an ACL2 session
+over `books/auth-secret.lisp`, and writes `<store>/auth.toml` at mode 0600.
+The secret is not in that file and cannot be recovered from it. `principal
+list` reads the same file, which is the one the running service loads, and
+prints the login, its principal id and its posting flag; it never prints the
+verifier.
+
+What the policy does, and every decision below is ACL2's
+(`books/nntp-auth.lisp`), not the host's:
+
+- `AUTHINFO USER` is advertised in `CAPABILITIES` while the connection is
+  unauthenticated and a credential is configured, and withdrawn once it has
+  been used (RFC 4643 §2.1).
+- `[auth] required = true` answers `480` to a command that changes durable
+  state or discloses article content until the connection authenticates.
+- Posting is the **authenticated principal's**: enrol with `--no-posting`
+  and that login passes the gate and still gets `440` for POST, and the
+  `POST` capability label is not offered to it.
+- `[auth] protected_only = true` answers `483` to AUTHINFO until TLS is
+  active. Set `[listener] tls_cert`/`tls_key` and the node advertises
+  `STARTTLS` (RFC 4642 §2.1). USER/PASS crosses in the clear otherwise.
+
+The policy reaches every connection the owner opens, including one it
+resolved to a peer record. A peer does not run AUTHINFO, so on a node with
+`required = true` a transit peer is answered `480` for `IHAVE` as well; do
+not set it on a node that is also taking a feed until that is decided
+(`planning/deputies/BOARD.md`, w11/auth-live).
+
+Restart the service after changing either the policy or the credential
+file: both are read once at start-up.
 
 ## Add a group
 

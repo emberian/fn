@@ -164,6 +164,23 @@ def render_config(settings):
              '# the injecting agent this node records for locally accepted articles',
              'agent = "{}"'.format(settings.agent),
              ""]
+    # RFC 4643.  Written only when the operator asked for a policy, so a
+    # store initialized without one reads exactly as it did before.  The
+    # credentials themselves are NOT here: `fn principal set-password`
+    # writes them to [auth] path (default <store>/auth.toml), which is 0600
+    # while this file stays world-readable.
+    if settings.auth_required or settings.auth_protected_only or settings.auth_path:
+        lines += ["[auth]",
+                  "# require AUTHINFO before a state-changing or "
+                  "article-disclosing command",
+                  "required = {}".format("true" if settings.auth_required else "false"),
+                  "# RFC 4643 section 2.3.2: refuse AUTHINFO with 483 until "
+                  "TLS is active",
+                  "protected_only = {}".format(
+                      "true" if settings.auth_protected_only else "false")]
+        if settings.auth_path:
+            lines.append('path = "{}"'.format(settings.auth_path))
+        lines.append("")
     if settings.anchor_server:
         lines += ["[anchor]", 'server = "{}"'.format(settings.anchor_server), ""]
     # Write the ACL2 path only when one is known: a literal "acl2" would be
@@ -262,14 +279,21 @@ def install_logging_owner(run_owner, log, agent):
             super().accept_nntp(listener)
             fresh = set(self.connections) - before
             if fresh:
-                log.line("accepted reader connection={}".format(
-                    self.connections[next(iter(fresh))].cid))
+                # The ROLE, not the word "reader": the owner decides it at
+                # accept from the peer table, and a connection it resolved
+                # to a peer record carries a different session.  The log
+                # used to say `reader` for both.
+                conn = self.connections[next(iter(fresh))]
+                log.line("accepted {} connection={}{}".format(
+                    "peer" if conn.peer else "reader", conn.cid,
+                    " peer={}".format(conn.peer) if conn.peer else ""))
             else:
                 log.line("refused reader connection=none "
                          "reason=connection-bound-or-accept-failed")
 
         def drop(self, conn):
-            log.line("closed reader connection={}".format(conn.cid))
+            log.line("closed {} connection={}".format(
+                "peer" if getattr(conn, "peer", None) else "reader", conn.cid))
             super().drop(conn)
 
         # -- the control channel ------------------------------------------
@@ -705,21 +729,42 @@ def command_statement(settings, args):
 
 
 def command_principal(settings, args):
+    """`fn principal new|list|set-password`, over ONE registry.
+
+    There used to be two.  `set-password` wrote the credential file and
+    `list` read `<store>/principals/*.principal` -- a directory NOTHING
+    ever wrote, because `principal new` prints its derivation and returns.
+    So `fn principal list` answered "nothing" on every store that had ever
+    existed, and a login the operator had just set did not appear in it
+    (v0 matrix rows V0-AUTH-LIST-A/B, 2026-09-21).
+
+    The registry is the credential file: `[auth] path`, or
+    `<store>/auth.toml`.  It is the file the running service reads
+    (tools/run_owner.py load_credentials), so what `list` prints and what
+    the server will accept are the same rows by construction.  `principal
+    new` derives a SIGNING identity for FN-Statement (books/stx-*) and is
+    not a registry at all; it says so and prints the keyring line.
+    """
     if args.action == "set-password":
         return _principal_set_password(settings, args)
-    from tools import stx
-    root = Path(settings.store) / "principals"
     if args.action == "new":
-        root.mkdir(parents=True, exist_ok=True)
+        from tools import stx
         code, summary = delegate(stx.principal_new,
                                  argparse.Namespace(seed=args.seed, token=args.token),
                                  "principal new")
         return code, summary
-    names = sorted(path.name for path in root.glob("*.principal")) if root.is_dir() else []
-    for name in names:
-        print("{} {}".format(name[:-len(".principal")],
-                             (root / name).read_text().strip()))
-    return EXIT_OK, "principal list count={}".format(len(names))
+    try:
+        entries = credential_entries(settings)
+    except ConfigError as error:
+        return EXIT_REFUSED, "principal list {}".format(error)
+    for name, entry in entries:
+        # The salt and the digest are NOT printed.  They are the verifier,
+        # and a listing is not a place to put one.
+        print("{} principal={} posting={}".format(
+            name, str(entry.get("principal", "-")),
+            "true" if entry.get("posting") else "false"))
+    return EXIT_OK, "principal list registry={} count={}".format(
+        auth_path(settings), len(entries))
 
 
 # -----------------------------------------------------------------------------
@@ -743,6 +788,14 @@ def build_parser():
     init.add_argument("--acl2-slots", type=int, help="machine-wide ACL2 slot count")
     init.add_argument("--control", help="control socket path")
     init.add_argument("--no-posting", action="store_true", help="write [posting] enabled = false")
+    init.add_argument("--auth-required", action="store_true",
+                      help="write [auth] required = true (RFC 4643: a connection "
+                           "must authenticate before a state-changing or "
+                           "article-disclosing command)")
+    init.add_argument("--auth-protected-only", action="store_true",
+                      help="write [auth] protected_only = true (RFC 4643 section "
+                           "2.3.2: AUTHINFO answers 483 until TLS is active)")
+    init.add_argument("--auth-file", help="write [auth] path (default: <store>/auth.toml)")
     init.add_argument("--force", action="store_true", help="rewrite an existing configuration")
 
     run = sub.add_parser("run", help="run the owner in the foreground (the service)")
@@ -845,6 +898,13 @@ def overrides(settings, args):
         settings.anchor_server = args.anchor_server
     if getattr(args, "no_posting", False):
         settings.posting_enabled = False
+    # RFC 4643, `fn init` only: the two policy bits and the credential file.
+    if getattr(args, "auth_required", False):
+        settings.auth_required = True
+    if getattr(args, "auth_protected_only", False):
+        settings.auth_protected_only = True
+    if getattr(args, "auth_file", None):
+        settings.auth_path = args.auth_file
     return settings
 
 

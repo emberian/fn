@@ -475,9 +475,15 @@ def load_credentials(path):
 
 
 class Connection:
-    def __init__(self, sock, cid):
+    def __init__(self, sock, cid, peer=None):
         self.sock = sock
         self.cid = cid
+        # The peer record this connection was resolved to at accept, or None
+        # for a reader.  Recorded so the operator log can say which role the
+        # owner gave the connection: it said `reader` for every connection,
+        # including the ones ACL2 opened with fn-own-open-peer, and that is
+        # part of why a peer-shaped reader went unnoticed for a wave.
+        self.peer = peer
         self.outbuf = b""
         self.closing = False
         self.reading = True
@@ -581,7 +587,7 @@ class Owner:
             # The configured bound is reached; the owner installed nothing.
             sock.close()
             return
-        conn = Connection(sock, cid)
+        conn = Connection(sock, cid, peer)
         conn.outbuf = greeting
         self.connections[sock] = conn
         self.selector.register(sock, selectors.EVENT_READ | selectors.EVENT_WRITE, conn)

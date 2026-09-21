@@ -1149,6 +1149,28 @@
         "fn-bp-work-status",
         "fn-bp-work-origin"
       ]
+    },
+    {
+      "id": "PRF-035",
+      "title": "Every connection the owner opens carries the operator's AUTHINFO policy",
+      "statement": "fn-served-peer-and-reader-open-under-the-same-policy: the AUTHINFO configuration pinned into a connection the owner resolved to a peer record (fn-served-open-peer) is the same value pinned into a reader connection opened under that policy (fn-served-open), so no decision in books/nntp-auth.lisp -- the credential fn-auth-authinfo searches, the AUTHINFO and STARTTLS labels fn-auth-capability-lines emits, the 480 gate fn-auth-gatedp applies and the posting allowance fn-auth-postingp computes -- can answer one way for a client the owner resolved as a peer and another way for the client beside it. fn-served-open-peer-pins-the-configuration is the field-level half: the pinned value is the argument, coerced by fn-auth-open-session to fn-auth-open-config only when it is not a configuration. Covered scope: the OPEN transition of one connection; what happens to the policy afterwards is fn-auth-step-preserves-consistent-session's and OB-AUTH-FOLD's. The subject is what host/owner-host.lisp fn-owner-open-peer calls through fn-own-open-peer, which tools/run_owner.py Owner.accept_nntp calls for every accepted socket whose source address matches a peer record.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-001",
+        "NNT-004",
+        "OBJ-007"
+      ],
+      "depends_on": [
+        "PRF-031"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "note": "Lane w11/auth-live, decided by measurement and not by inspection. fn-served-open-peer pinned the literal (fn-auth-open-config) while fn-served-open pinned the operator's, and the owner resolves a connection to a peer by SOURCE ADDRESS alone, so on a box where a configured peer is reachable on loopback every client was opened without the operator's policy: AUTHINFO PASS answered 481 with the secret just written, CAPABILITIES carried no AUTHINFO line and POST was never gated. Both theorems are FALSE of that definition. The live before/after is planning/evidence/auth-live-2026-09-21.md and the boundary test is tests/test_auth.py ServedCredentialTests, which starts the node with `bin/fn run` over an fn.toml and writes the peer record, because no test that starts tools/run_owner.py directly can reach this.",
+      "evidence": [],
+      "events": [
+        "fn-served-peer-and-reader-open-under-the-same-policy",
+        "fn-served-open-peer-pins-the-configuration"
+      ]
     }
   ]
 }
