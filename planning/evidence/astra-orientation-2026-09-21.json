@@ -1,0 +1,362 @@
+{
+  "recorded_utc": "2026-09-21T05:02:48.509830+00:00",
+  "scope": "Read-only source/history/handoff/evidence inspection. No new certification, test, lab, deployment or agent execution.",
+  "null_source_digest": "File absent at that revision.",
+  "snapshots": {
+    "dev": {
+      "commit": "9e4b7ee2ee316b8bbbb29309188e0859d94ec057",
+      "tree": "93432300e60967daeec28aefac1faec1289b2ac0",
+      "is_ancestor_of_dev": true,
+      "source_sha256": {
+        "books/owner.lisp": "f34993d4db38545f86d91be3592a0440f16ecf22c4c889428252553f7f4c1a4d",
+        "books/owner-feed.lisp": "6cba6ae2b286899e8b8f2485e9b0b2964a500a32688dc97b4464087b0e5b2a65",
+        "host/owner-host.lisp": "df18da7d70d1d08cc36e0e0db65d950426b1665ee5fd36b6b2b9df13f3c11bf4",
+        "tools/run_owner.py": "1c09140f6adc13264299eaca9b9fd628ba591f438cfd0f5e452894025daf5ee9",
+        "tools/feed_wire.py": "8f00bd7fae84036fca4f773cd6418bb11e717f29b76506a21478d90afcb6c97e",
+        "tools/deploy_gate.py": "ffc0deffbedf77ce6ea959e0711c9a888157cefb82d82dfeaa063b35465420e1",
+        "tools/certs.py": "d23f154a3fcadd97886c916f5c64a11264dca419f5641872eec32a6bdef3b703",
+        "books/byte-store-keystones.lisp": "1cd3e1f932644481d8a9b4ebd662c3ae166a46a4c6de92edd826cd2218f6aea8",
+        "books/byte-store-scan.lisp": "39743a949080566c6e3b8f610e0a4193490d3609b4aaaabd6afaf02bd2e4995b",
+        "books/served.lisp": "f2882b714d10cb7213805cb8129a11c1124a5dfc7fd9c67849dd7283f1b545f4",
+        "books/bp-node.lisp": "bfadba9ee9100787fd16a533d4386b1190b5e273bcb097a33b74dbc6a6c4ca95",
+        "books/store-node.lisp": "ba39baa2ebfacab3caa31b94b87bbeb0b15914871db599cb538d97f49916ff7d",
+        "planning/decisions.md": "6023937edf57d5587b52bab2817ee5ba09d9699d0d4c3797b44575a084a4b505",
+        "planning/v0-matrix.json": "02e206553074964e472f4a27d7bcc4ba255e1a79e2947ed2d5e59298c633a9ae"
+      },
+      "matrix_measured_revision": "2a7562e",
+      "matrix_rows_digest": "17b55cff28a505b02bea31f1808c016ea1a643bf4a1bff48ba500891f3413451",
+      "matrix_summary": {
+        "accepted": 139,
+        "refused": 35,
+        "uncertain": 2,
+        "not-exercised": 13,
+        "not-built": 1,
+        "total": 190,
+        "disagreed": 23,
+        "independent": 2,
+        "fn-observed": 174
+      },
+      "matrix_disagreements": [
+        {
+          "id": "V0-AUTH-LIST-A",
+          "observed": "rc=0 lists matrix: False",
+          "limit": "`principal set-password` writes a credential to <store>/auth.toml and `principal list` reads the <store>/principals/*.principal files: on this tree they are two registries and a login set by the first does not appear in the second"
+        },
+        {
+          "id": "V0-AUTH-LIST-B",
+          "observed": "rc=0 lists matrix: False",
+          "limit": "`principal set-password` writes a credential to <store>/auth.toml and `principal list` reads the <store>/principals/*.principal files: on this tree they are two registries and a login set by the first does not appear in the second"
+        },
+        {
+          "id": "V0-AUTH-ADVERTISED-A",
+          "observed": "CAPABILITIES before the login: VERSION, READER, POST, OVER, HDR, LIST, IMPLEMENTATION",
+          "limit": ""
+        },
+        {
+          "id": "V0-AUTH-ADVERTISED-B",
+          "observed": "CAPABILITIES before the login: VERSION, READER, POST, OVER, HDR, LIST, IMPLEMENTATION",
+          "limit": ""
+        },
+        {
+          "id": "V0-AUTH-GATED-A",
+          "observed": "340 send article to be posted",
+          "limit": "one gated command; RFC 4643 section 2.3 does not require the same code for every gated verb"
+        },
+        {
+          "id": "V0-AUTH-GATED-B",
+          "observed": "340 send article to be posted",
+          "limit": "one gated command; RFC 4643 section 2.3 does not require the same code for every gated verb"
+        },
+        {
+          "id": "V0-AUTH-LOGIN-A",
+          "observed": "481 authentication failed",
+          "limit": "USER/PASS over an unprotected loopback connection"
+        },
+        {
+          "id": "V0-AUTH-LOGIN-B",
+          "observed": "481 authentication failed",
+          "limit": "USER/PASS over an unprotected loopback connection"
+        },
+        {
+          "id": "V0-PIN-ADVERTISED-A",
+          "observed": "dispatched=READER,POST,IHAVE,STREAMING,OVER,HDR,LIST,AUTHINFO,STARTTLS,MODE-READER,XOVER,XHDR,XPAT,LISTGROUP,CHECK not advertised=IHAVE,STREAMING",
+          "limit": "only the 7 labels with a probe command are checked; VERSION and IMPLEMENTATION have none; RFC 3977 section 5.2.2 requires the capability exactly when the command is available"
+        },
+        {
+          "id": "V0-PIN-ADVERTISED-B",
+          "observed": "dispatched=READER,POST,IHAVE,STREAMING,OVER,HDR,LIST,AUTHINFO,STARTTLS,MODE-READER,XOVER,XHDR,XPAT,LISTGROUP,CHECK not advertised=IHAVE,STREAMING",
+          "limit": "only the 7 labels with a probe command are checked; VERSION and IMPLEMENTATION have none; RFC 3977 section 5.2.2 requires the capability exactly when the command is available"
+        },
+        {
+          "id": "V0-TRANSIT-INDEPENDENT-A",
+          "observed": "groups={'fn.letters': '211 8 1 8 fn.letters', 'fn.test': '211 0 1 0 fn.test'} present={'<alpha@a.example.invalid>': '220 0 <alpha@a.example.invalid> article follows', '<stream-a@example.invalid>': '220 0 <stream-a@example.invalid> article follows', '<statement-a@example.invalid>': '220 0 <statement-a@example.invalid> article follows', '<auth-a@example.invalid>': '220 0 <auth-a@example.invalid> article follows', '<socket-a@example.invalid>': '220 0 <socket-a@example.invalid> article follows'} absent={'<beta@b.example.invalid>': '430 no article with that message-id', '<stream-b@example.invalid>': '430 no article with that message-id', '<statement-b@example.invalid>': '430 no article with that message-id', '<auth-b@example.invalid>': '220 0 <auth-b@example.invalid> article follows', '<socket-b@example.invalid>': '220 0 <socket-b@example.invalid> article follows'}",
+          "limit": "this is the control: every later claim that an article reached a node rests on it"
+        },
+        {
+          "id": "V0-TRANSIT-INDEPENDENT-B",
+          "observed": "groups={'fn.letters': '211 8 1 8 fn.letters', 'fn.test': '211 0 1 0 fn.test'} present={'<beta@b.example.invalid>': '220 0 <beta@b.example.invalid> article follows', '<stream-b@example.invalid>': '220 0 <stream-b@example.invalid> article follows', '<statement-b@example.invalid>': '220 0 <statement-b@example.invalid> article follows', '<auth-b@example.invalid>': '220 0 <auth-b@example.invalid> article follows', '<socket-b@example.invalid>': '220 0 <socket-b@example.invalid> article follows'} absent={'<alpha@a.example.invalid>': '430 no article with that message-id', '<stream-a@example.invalid>': '430 no article with that message-id', '<statement-a@example.invalid>': '430 no article with that message-id', '<auth-a@example.invalid>': '220 0 <auth-a@example.invalid> article follows', '<socket-a@example.invalid>': '220 0 <socket-a@example.invalid> article follows'}",
+          "limit": "this is the control: every later claim that an article reached a node rests on it"
+        },
+        {
+          "id": "V0-TRANSIT-DUPLICATE-AB",
+          "observed": "335 send it; end with <CR-LF>.<CR-LF>",
+          "limit": "RFC 3977 6.3.2: 435 is the Message-ID history refusing an article the node already holds"
+        },
+        {
+          "id": "V0-TRANSIT-DUPLICATE-BA",
+          "observed": "335 send it; end with <CR-LF>.<CR-LF>",
+          "limit": "RFC 3977 6.3.2: 435 is the Message-ID history refusing an article the node already holds"
+        },
+        {
+          "id": "V0-TRANSIT-LOOP-AB",
+          "observed": "235 article transferred OK",
+          "limit": "RFC 5537 3.5; the Path is inside the article, so a correct server says 335 first and then refuses"
+        },
+        {
+          "id": "V0-TRANSIT-LOOP-BA",
+          "observed": "235 article transferred OK",
+          "limit": "RFC 5537 3.5; the Path is inside the article, so a correct server says 335 first and then refuses"
+        },
+        {
+          "id": "V0-TRANSIT-LOOP-ABSENT-AB",
+          "observed": "220 0 <loop-ab@example.invalid> article follows",
+          "limit": ""
+        },
+        {
+          "id": "V0-TRANSIT-LOOP-ABSENT-BA",
+          "observed": "220 0 <loop-ba@example.invalid> article follows",
+          "limit": ""
+        },
+        {
+          "id": "V0-TRANSIT-CHECK-DUP-AB",
+          "observed": "238 <alpha@a.example.invalid>",
+          "limit": "RFC 4644 2.4"
+        },
+        {
+          "id": "V0-TRANSIT-CHECK-DUP-BA",
+          "observed": "238 <beta@b.example.invalid>",
+          "limit": "RFC 4644 2.4"
+        },
+        {
+          "id": "V0-FEED-JOURNAL",
+          "observed": "(no feed journal found)",
+          "limit": "the journal's presence on disk, not its contents: the FNFD record shapes are books/owner-feed's and the restart property (K5) is tools/twonode_gate.py's scenario_feed_restart, which this matrix does not run because it kills node A"
+        },
+        {
+          "id": "V0-CRASH-RESTART",
+          "observed": "rc=1 {\"groups\": {\"fn.letters\": \"211 15 1 15 fn.letters\", \"fn.test\": \"211 0 1 0 fn.test\"}, \"present\": {\"<beta@b.example.invalid>\": \"220 0 <beta@b.example.invalid> article follows\", \"<stream-b@example.invali",
+          "limit": ""
+        },
+        {
+          "id": "V0-BP-IMAGE",
+          "observed": "579:Warnings:  Uncertified and Compiled file | 607:ACL2 Warning [Uncertified] in ( INCLUDE-BOOK \"bp-ingress\" ...):  After",
+          "limit": "the DTN-only build list; the image is not the served path"
+        }
+      ]
+    },
+    "feed_candidate": {
+      "commit": "2f802d46cedd8c87ba4a098d2894c41c2c3c05f8",
+      "tree": "78e6161844117624ff8214aabe877f9c8391bd90",
+      "is_ancestor_of_dev": false,
+      "source_sha256": {
+        "books/owner.lisp": "4b95a53b7c942899aa86f57e1e7f7972c9598250eeb2caed713a2e05804b7957",
+        "books/owner-feed.lisp": "d2fc6513cd3e88829808c638cae2ca054c3379a419db5ac17a5387d3f3f83d92",
+        "host/owner-host.lisp": "3af6ff6c6204bc6422a844dd937fc1df4be8eae7c6e6fef610512c3b654fde96",
+        "tools/run_owner.py": "30345bc48f81a2ea69e6e69dfd0e44bbbbcd98e06a8ede3047815a7ac95e64d8",
+        "tools/feed_wire.py": "8f00bd7fae84036fca4f773cd6418bb11e717f29b76506a21478d90afcb6c97e",
+        "tools/deploy_gate.py": "47e9876e45eb0dc2b5aaf52b9d21e1b33a6c431307bcd6d7e7c5f49c7df26300",
+        "tools/certs.py": "d23f154a3fcadd97886c916f5c64a11264dca419f5641872eec32a6bdef3b703",
+        "books/byte-store-keystones.lisp": null,
+        "books/byte-store-scan.lisp": "fdea4be0a9f18d9f45833e5fdc7c505441585919d27cc30bc9c32bceabb63cb7",
+        "books/served.lisp": "f2882b714d10cb7213805cb8129a11c1124a5dfc7fd9c67849dd7283f1b545f4",
+        "books/bp-node.lisp": "bfadba9ee9100787fd16a533d4386b1190b5e273bcb097a33b74dbc6a6c4ca95",
+        "books/store-node.lisp": "ba39baa2ebfacab3caa31b94b87bbeb0b15914871db599cb538d97f49916ff7d",
+        "planning/decisions.md": "6023937edf57d5587b52bab2817ee5ba09d9699d0d4c3797b44575a084a4b505",
+        "planning/v0-matrix.json": "fe7cc94685a2deee78be041b7aca331004de506bff95681b20a758d1da33a8b4"
+      },
+      "matrix_measured_revision": "9d2ada4",
+      "matrix_rows_digest": "ee9ee7679f71f15beeee6da9bb1d10868a33e5cd6dcc046c0ddd7625cc891de7",
+      "matrix_summary": {
+        "accepted": 146,
+        "refused": 28,
+        "uncertain": 2,
+        "not-exercised": 13,
+        "not-built": 1,
+        "total": 190,
+        "disagreed": 16,
+        "independent": 2,
+        "fn-observed": 174
+      },
+      "matrix_disagreements": [
+        {
+          "id": "V0-AUTH-GATED-A",
+          "observed": "340 send article to be posted",
+          "limit": "one gated command; RFC 4643 section 2.3 does not require the same code for every gated verb. The gate is the NODE POLICY (`fn init --auth-required`, [auth] required) and these two nodes do not set it: a node that serves readers unauthenticated and a transit peer on the same loopback address cannot, because fn-auth-restricted-keywordp gates the reader verbs and IHAVE alike. tests/test_auth.py ServedCredentialTests.test_post_is_gated_by_the_configured_policy is the same question asked of a node that does set it"
+        },
+        {
+          "id": "V0-AUTH-GATED-B",
+          "observed": "340 send article to be posted",
+          "limit": "one gated command; RFC 4643 section 2.3 does not require the same code for every gated verb. The gate is the NODE POLICY (`fn init --auth-required`, [auth] required) and these two nodes do not set it: a node that serves readers unauthenticated and a transit peer on the same loopback address cannot, because fn-auth-restricted-keywordp gates the reader verbs and IHAVE alike. tests/test_auth.py ServedCredentialTests.test_post_is_gated_by_the_configured_policy is the same question asked of a node that does set it"
+        },
+        {
+          "id": "V0-PIN-ADVERTISED-A",
+          "observed": "dispatched=READER,POST,IHAVE,STREAMING,OVER,HDR,LIST,AUTHINFO,STARTTLS,MODE-READER,XOVER,XHDR,XPAT,LISTGROUP,CHECK not advertised=IHAVE,STREAMING",
+          "limit": "only the 7 labels with a probe command are checked; VERSION and IMPLEMENTATION have none; RFC 3977 section 5.2.2 requires the capability exactly when the command is available"
+        },
+        {
+          "id": "V0-PIN-ADVERTISED-B",
+          "observed": "dispatched=READER,POST,IHAVE,STREAMING,OVER,HDR,LIST,AUTHINFO,STARTTLS,MODE-READER,XOVER,XHDR,XPAT,LISTGROUP,CHECK not advertised=IHAVE,STREAMING",
+          "limit": "only the 7 labels with a probe command are checked; VERSION and IMPLEMENTATION have none; RFC 3977 section 5.2.2 requires the capability exactly when the command is available"
+        },
+        {
+          "id": "V0-TRANSIT-INDEPENDENT-A",
+          "observed": "groups={'fn.letters': '211 8 1 8 fn.letters', 'fn.test': '211 0 1 0 fn.test'} present={'<alpha@a.example.invalid>': '220 0 <alpha@a.example.invalid> article follows', '<stream-a@example.invalid>': '220 0 <stream-a@example.invalid> article follows', '<statement-a@example.invalid>': '220 0 <statement-a@example.invalid> article follows', '<auth-a@example.invalid>': '220 0 <auth-a@example.invalid> article follows', '<socket-a@example.invalid>': '220 0 <socket-a@example.invalid> article follows'} absent={'<beta@b.example.invalid>': '430 no article with that message-id', '<stream-b@example.invalid>': '430 no article with that message-id', '<statement-b@example.invalid>': '430 no article with that message-id', '<auth-b@example.invalid>': '220 0 <auth-b@example.invalid> article follows', '<socket-b@example.invalid>': '220 0 <socket-b@example.invalid> article follows'}",
+          "limit": "this is the control: every later claim that an article reached a node rests on it"
+        },
+        {
+          "id": "V0-TRANSIT-INDEPENDENT-B",
+          "observed": "groups={'fn.letters': '211 8 1 8 fn.letters', 'fn.test': '211 0 1 0 fn.test'} present={'<beta@b.example.invalid>': '220 0 <beta@b.example.invalid> article follows', '<stream-b@example.invalid>': '220 0 <stream-b@example.invalid> article follows', '<statement-b@example.invalid>': '220 0 <statement-b@example.invalid> article follows', '<auth-b@example.invalid>': '220 0 <auth-b@example.invalid> article follows', '<socket-b@example.invalid>': '220 0 <socket-b@example.invalid> article follows'} absent={'<alpha@a.example.invalid>': '430 no article with that message-id', '<stream-a@example.invalid>': '430 no article with that message-id', '<statement-a@example.invalid>': '430 no article with that message-id', '<auth-a@example.invalid>': '220 0 <auth-a@example.invalid> article follows', '<socket-a@example.invalid>': '220 0 <socket-a@example.invalid> article follows'}",
+          "limit": "this is the control: every later claim that an article reached a node rests on it"
+        },
+        {
+          "id": "V0-TRANSIT-DUPLICATE-AB",
+          "observed": "335 send it; end with <CR-LF>.<CR-LF>",
+          "limit": "RFC 3977 6.3.2: 435 is the Message-ID history refusing an article the node already holds"
+        },
+        {
+          "id": "V0-TRANSIT-DUPLICATE-BA",
+          "observed": "335 send it; end with <CR-LF>.<CR-LF>",
+          "limit": "RFC 3977 6.3.2: 435 is the Message-ID history refusing an article the node already holds"
+        },
+        {
+          "id": "V0-TRANSIT-LOOP-AB",
+          "observed": "235 article transferred OK",
+          "limit": "RFC 5537 3.5; the Path is inside the article, so a correct server says 335 first and then refuses"
+        },
+        {
+          "id": "V0-TRANSIT-LOOP-BA",
+          "observed": "235 article transferred OK",
+          "limit": "RFC 5537 3.5; the Path is inside the article, so a correct server says 335 first and then refuses"
+        },
+        {
+          "id": "V0-TRANSIT-LOOP-ABSENT-AB",
+          "observed": "220 0 <loop-ab@example.invalid> article follows",
+          "limit": ""
+        },
+        {
+          "id": "V0-TRANSIT-LOOP-ABSENT-BA",
+          "observed": "220 0 <loop-ba@example.invalid> article follows",
+          "limit": ""
+        },
+        {
+          "id": "V0-TRANSIT-CHECK-DUP-AB",
+          "observed": "238 <alpha@a.example.invalid>",
+          "limit": "RFC 4644 2.4"
+        },
+        {
+          "id": "V0-TRANSIT-CHECK-DUP-BA",
+          "observed": "238 <beta@b.example.invalid>",
+          "limit": "RFC 4644 2.4"
+        },
+        {
+          "id": "V0-CRASH-RESTART",
+          "observed": "rc=1 {\"groups\": {\"fn.letters\": \"211 15 1 15 fn.letters\", \"fn.test\": \"211 0 1 0 fn.test\"}, \"present\": {\"<beta@b.example.invalid>\": \"220 0 <beta@b.example.invalid> article follows\", \"<stream-b@example.invali",
+          "limit": ""
+        },
+        {
+          "id": "V0-BP-IMAGE",
+          "observed": "410:ACL2 Warning [Uncertified] in ( INCLUDE-BOOK \"bp-receipt\" ...):  After | 515:ACL2 Warning [Uncertified] in ( INCLUDE-BOOK \"books/bp-receipt-records\"",
+          "limit": "the DTN-only build list; the image is not the served path"
+        }
+      ]
+    },
+    "transit_candidate": {
+      "commit": "3f68944327bca480820153f41625ce1ed3ac77d3",
+      "tree": "b7f05a22974c742ba601b4d8efc3821980cbc747",
+      "is_ancestor_of_dev": false,
+      "source_sha256": {
+        "books/owner.lisp": "9701a5ea991b17c98f9bcfb6198e4fa066db53d8eaf7cd1b6c2e05c4679dc5dd",
+        "books/owner-feed.lisp": "6cba6ae2b286899e8b8f2485e9b0b2964a500a32688dc97b4464087b0e5b2a65",
+        "host/owner-host.lisp": "df18da7d70d1d08cc36e0e0db65d950426b1665ee5fd36b6b2b9df13f3c11bf4",
+        "tools/run_owner.py": "1c09140f6adc13264299eaca9b9fd628ba591f438cfd0f5e452894025daf5ee9",
+        "tools/feed_wire.py": "6582f95cb79d41f83d40e01da8697d379b2544f0de442a4bca8bcdec200ae8fe",
+        "tools/deploy_gate.py": "ffc0deffbedf77ce6ea959e0711c9a888157cefb82d82dfeaa063b35465420e1",
+        "tools/certs.py": "d23f154a3fcadd97886c916f5c64a11264dca419f5641872eec32a6bdef3b703",
+        "books/byte-store-keystones.lisp": "1cd3e1f932644481d8a9b4ebd662c3ae166a46a4c6de92edd826cd2218f6aea8",
+        "books/byte-store-scan.lisp": "39743a949080566c6e3b8f610e0a4193490d3609b4aaaabd6afaf02bd2e4995b",
+        "books/served.lisp": "f2882b714d10cb7213805cb8129a11c1124a5dfc7fd9c67849dd7283f1b545f4",
+        "books/bp-node.lisp": "bfadba9ee9100787fd16a533d4386b1190b5e273bcb097a33b74dbc6a6c4ca95",
+        "books/store-node.lisp": "ba39baa2ebfacab3caa31b94b87bbeb0b15914871db599cb538d97f49916ff7d",
+        "planning/decisions.md": "6023937edf57d5587b52bab2817ee5ba09d9699d0d4c3797b44575a084a4b505",
+        "planning/v0-matrix.json": "83b779ea795bdc4071adc278d679444a06ba6f9bbd41bb97073f043267d4148d"
+      },
+      "matrix_measured_revision": "873e109",
+      "matrix_rows_digest": "fa8e5dd77d4f665e20363026a5cb3dfe181be079909d7429108a31adab1ba6f0",
+      "matrix_summary": {
+        "accepted": 142,
+        "refused": 34,
+        "uncertain": 2,
+        "not-exercised": 13,
+        "not-built": 1,
+        "total": 192,
+        "disagreed": 6,
+        "independent": 2,
+        "fn-observed": 176
+      },
+      "matrix_disagreements": [
+        {
+          "id": "V0-AUTH-GATED-A",
+          "observed": "340 send article to be posted",
+          "limit": "one gated command; RFC 4643 section 2.3 does not require the same code for every gated verb. The gate is the NODE POLICY (`fn init --auth-required`, [auth] required) and these two nodes do not set it: a node that serves readers unauthenticated and a transit peer on the same loopback address cannot, because fn-auth-restricted-keywordp gates the reader verbs and IHAVE alike. tests/test_auth.py ServedCredentialTests.test_post_is_gated_by_the_configured_policy is the same question asked of a node that does set it"
+        },
+        {
+          "id": "V0-AUTH-GATED-B",
+          "observed": "340 send article to be posted",
+          "limit": "one gated command; RFC 4643 section 2.3 does not require the same code for every gated verb. The gate is the NODE POLICY (`fn init --auth-required`, [auth] required) and these two nodes do not set it: a node that serves readers unauthenticated and a transit peer on the same loopback address cannot, because fn-auth-restricted-keywordp gates the reader verbs and IHAVE alike. tests/test_auth.py ServedCredentialTests.test_post_is_gated_by_the_configured_policy is the same question asked of a node that does set it"
+        },
+        {
+          "id": "V0-PIN-ADVERTISED-A",
+          "observed": "dispatched=READER,POST,IHAVE,STREAMING,OVER,HDR,LIST,AUTHINFO,STARTTLS,MODE-READER,XOVER,XHDR,XPAT,LISTGROUP,CHECK not advertised=IHAVE,STREAMING",
+          "limit": "only the 7 labels with a probe command are checked; VERSION and IMPLEMENTATION have none; RFC 3977 section 5.2.2 requires the capability exactly when the command is available"
+        },
+        {
+          "id": "V0-PIN-ADVERTISED-B",
+          "observed": "dispatched=READER,POST,IHAVE,STREAMING,OVER,HDR,LIST,AUTHINFO,STARTTLS,MODE-READER,XOVER,XHDR,XPAT,LISTGROUP,CHECK not advertised=IHAVE,STREAMING",
+          "limit": "only the 7 labels with a probe command are checked; VERSION and IMPLEMENTATION have none; RFC 3977 section 5.2.2 requires the capability exactly when the command is available"
+        },
+        {
+          "id": "V0-FEED-JOURNAL",
+          "observed": "(no feed journal found)",
+          "limit": "the journal's presence on disk, not its contents: the FNFD record shapes are books/owner-feed's and the restart property (K5) is tools/twonode_gate.py's scenario_feed_restart, which this matrix does not run because it kills node A"
+        },
+        {
+          "id": "V0-BP-IMAGE",
+          "observed": "529:ACL2 Warning [Uncertified] in ( INCLUDE-BOOK \"nntp-auth\" ...):  After | 799:ACL2 Warning [Uncertified] in ( INCLUDE-BOOK \"books/served\" ...):",
+          "limit": "the DTN-only build list; the image is not the served path"
+        }
+      ]
+    }
+  },
+  "k1_k4_existing_certification": {
+    "manifest": "planning/evidence/manifests/certify-20260921T034805Z-1492156.json",
+    "manifest_sha256": "0cd1407a2f87f97db005903b87f793b1346e88f05a1aa565d7326bc26046242e",
+    "recorded_status": "passed",
+    "source_map_changed_during_run": false,
+    "source_drift_against_dev": [],
+    "limitation": "Existing manifest/source correspondence inspected; ACL2 was not rerun."
+  },
+  "active_transit_working_files": {
+    "build/lanes/w11-transit-correct/planning/lanes/HANDOFF-w11-transit-correct.md": {
+      "sha256": "822a8a6ee506f4d71d451140dd71dfc315d040ce894af8a1a229ba8d2343f5b8",
+      "scope": "Working-tree record read during orientation; not assumed committed at branch head."
+    },
+    "build/lanes/w11-transit-correct/planning/evidence/twonode-3f68944-2026-09-21.findings.json": {
+      "sha256": "7dd0b20190a513c9f41c3f6ddc6be9b796e9d02f47a3bde79ba713bb768e61d0",
+      "scope": "Working-tree record read during orientation; not assumed committed at branch head."
+    },
+    "build/lanes/w11-transit-correct/planning/evidence/twonode-3f68944-2026-09-21.md": {
+      "sha256": "0419b78aa09a40d46075bd4115dc73e8ecf45f722af0ce933bdccba69cc57e83",
+      "scope": "Working-tree record read during orientation; not assumed committed at branch head."
+    }
+  }
+}
