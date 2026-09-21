@@ -1891,19 +1891,36 @@ arm, and a model program that took it stops at `:enoent`.
 K1 to K4 are proved as of 2026-09-21 (lane `w11/k1-scan`); the byte model's
 own crash keystones K5 to K8, and K0, are open.
 
-The metadata initializer theorem is about `fn-bs-init-program` as executed
-by `fn-bs-run`. The current host's `Store.initialize` additionally publishes
-configuration-record history and fences its directory/files; those operations
-are absent from that transcription. Therefore this packet does not establish
-full current-host initialization correspondence. The successful first-frontier
-transcription retains its real syscall/cut ordering. Its theorem is conditional
+The historical metadata initializer theorem is about `fn-bs-init-program` as
+executed by `fn-bs-run`; it remains a smaller subject, not the host initializer.
+`books/byte-store-initializer.lisp` now transcribes the **fresh**
+`Store.initialize` path at `tools/run_store.py:980-1024`: root/transactions/
+staging/config creation with each `_safe_directory` parent fence, fresh
+`writer.lock` creation, `config.json`, `config/00000001.cfg`, and frontier
+publication, the required `config/` directory fence, and all five final
+barriers. A cut follows every durable syscall, including the helper fences the
+old program omitted. The three publications have distinct cut-label families.
+`fn-bsi-current-init-program-establishes-current-image` is the exact successful
+**whole byte image**, and is the theorem that carries the durable
+`config/00000001.cfg` fact. `fn-bsi-current-init-program-establishes-relation`
+is only its conditional kernel-relation projection: `fn-bs-store-relation`
+currently observes `:root` and `:transactions`, not `:config` or `writer.lock`.
+The test removes the config-directory fence to show that the old relation still
+holds while the exact-image equality fails. Its I/O input contract (three
+nonempty octet strings and string staging names) is separate from
+`fn-bs-initial-inputp`, the metadata-to-kernel binding; equal fresh stage
+names are a certified positive witness because a completed stage is absent
+from the view. This is not a retry proof: existing directories, an existing
+writer lock, an EEXIST metadata link, and the read/validate branches of
+`_safe_directory` and `_publish_initial_file` remain open. The successful
+first-frontier transcription retains its real syscall/cut ordering. Its theorem is conditional
 on the initial-image and input contracts; the wrong-successor theorem reaches
 the real `frontier-replaced` cut and disproves the former unqualified K0
 formula. No process-death cut or byte-crash outcome was removed.
 
 | Keystone | Status |
 | --- | --- |
-| K0 `fn-bs-program-step-preserves-relation` | **open, with a bounded establishment/preservation packet**: `byte-store-relation` proves the metadata initializer's exact final image and relation establishment under `fn-bs-initial-inputp`, and every pair of the first successful frontier program under a positive write unit and `fn-bs-frontier-inputp`. `byte-store-program-invariants` proves arbitrary-history allocation freshness, the ready-state authority quietness obligation, frontier noncommit observations (including known-failure and uncertain callbacks), and the successful directory observation under an independently stated committed-byte predicate. General syscall preservation, recovery establishment, and retained-history composition remain open. |
+| K0 `fn-bs-program-step-preserves-relation` | **open, with bounded establishment/preservation packets**: `byte-store-relation` proves the metadata initializer's exact final image and relation establishment under `fn-bs-initial-inputp`; `byte-store-initializer` separately proves the current host's **fresh whole byte image** and its kernel-relation projection under its physical fresh-input contract plus that metadata binding. The image theorem, rather than the projection, covers config-history durability; a reachable fence-free witness separates them. It does not prove existing/retry initialization. `tools/transcribe_check.py` now names this current subject but reports its helper-inlining limit, so its zero missing-host-cut count does not claim every new model cut is host-injectable; current `faults.at` labels map to the post-helper/final-barrier cuts and the remaining distinct model cuts await host instrumentation. Every pair of the first successful frontier program is related under a positive write unit and `fn-bs-frontier-inputp`. `byte-store-program-invariants` proves arbitrary-history allocation freshness, the ready-state authority quietness obligation, frontier noncommit observations (including known-failure and uncertain callbacks), and the successful directory observation under an independently stated committed-byte predicate. General syscall preservation, recovery establishment, retained-history composition, config-history refinement, and existing/retry initialization remain open. |
 | K1 `fn-bs-store-crash-image-scans` | **proved 2026-09-21** (lane `w11/k1-scan`, laptop `build/acl2/certify-20260921T024339Z-59112`). The namespace clause closed first (2026-09-20, lane `w9/storage-3`, hbox `build/acl2/certify-20260920T204940Z-1181403`): `fn-bs-apply-entries-names-is-names-after` (`tools/proof_profile.py` named four opened recognizers as the cause and closing them took it from an induction-depth-limit blowout at 2,016,278 prover steps to 33,789), then `fn-bs-crash-names-is-names-after`, `fn-bs-crash-image-names-are-an-outcome` and `fn-bs-crash-image-transaction-names`. The other three are `fn-bs-crash-image-reads-the-config`, `fn-bs-crash-image-frontier-decodes-to-a-natural` and `fn-bs-crash-image-records-do-not-fault`, over the per-name and per-window vocabulary of section 8 of the book. **No trailer assumption is used**, as this section predicted. |
 | K2 `fn-bs-store-crash-image-is-kernel-admissible` | **proved 2026-09-21** (lane `w11/k1-scan`, same run), with the three model questions decided before it. [D14-a](../planning/decisions.md) (lane `w9/storage-3`) keeps `books/byte-store-scan.lisp`'s `(fn-bs-txn-name (len (fn-bs-durable-names bs :transactions)))` and withdraws §3.2's `(fn-bs-txn-name (len (fn-sf-records ks)))`; the duplicate-record image is excluded by the publish window's `(equal (fn-bs-durable-records bs) (fn-sf-records ks))`, an equality of LISTS. [D14-b](../planning/decisions.md) (lane `w10/kernel-freedom`) makes K2's CONCLUSION the platform predicate `fn-sf-recovery-crash-imagep` rather than the reliance predicate `fn-sf-crash-imagep`, which is unchanged. [D14-c](../planning/decisions.md) (lane `w11/bytestore-k2`) adds the frontier arm K2f. **Both rollback arms are LIVE in the proof and neither is decoration**: outside the window the read is one `fn-sf-crash-imagep` already admits, so that half is `fn-sf-crash-imagep-implies-recovery-crash-imagep` applied; inside it a crash that loses the pending link reads the durable record list, which is the scanned list without its last element, and one that loses the pending rename reads the durable frontier, which is the scanned one minus one. |
 | K2r `fn-bs-replay-window-carries-no-success` | **retired 2026-09-20 into a certified kernel theorem** (D14-b, lane `w10/kernel-freedom`). The obligation was "a crash in the recovery window risks no acknowledged record", stated at the byte level because the kernel could not express it. It is now `fn-sf-recovery-admissible-image-facts` (`books/store-files-invariants.lisp`): an acknowledged pair of the pre-crash state names a record of EVERY image the platform may leave, the rolled-back one included, because the arm that drops a record carries `(null (fn-sf-successes s))` as a conjunct. Nothing at the byte level has to carry it any more. |
