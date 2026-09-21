@@ -341,10 +341,26 @@
   (when (string= (or (sb-ext:posix-getenv "FN_CHECKPOINT_TEST_FAIL") "") point)
     (fnn-os-fail sb-posix:eio path)))
 
+(defvar *fnn-checkpoint-test-stop-counts* (make-hash-table :test #'equal))
+
+(defun fnn-checkpoint-test-stop-after ()
+  "Return the bounded matching-hook occurrence selected by the test process."
+  (let ((raw (sb-ext:posix-getenv "FN_CHECKPOINT_TEST_STOP_AFTER")))
+    (if raw
+        (handler-case
+            (let ((value (parse-integer raw :junk-allowed nil)))
+              (if (and (> value 0) (<= value 4096)) value
+                (fnn-fault "invalid checkpoint test stop occurrence")))
+          (error () (fnn-fault "invalid checkpoint test stop occurrence")))
+      1)))
+
 (defun fnn-checkpoint-test-stop (point)
-  "A deterministic process-death boundary used only when the test env names it."
+  "Stop at a selected occurrence of a named test-only process-death boundary."
   (when (string= (or (sb-ext:posix-getenv "FN_CHECKPOINT_TEST_STOP") "") point)
-    (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop)))
+    (let ((count (1+ (gethash point *fnn-checkpoint-test-stop-counts* 0))))
+      (setf (gethash point *fnn-checkpoint-test-stop-counts*) count)
+      (when (= count (fnn-checkpoint-test-stop-after))
+        (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop)))))
 
 (defun fnn-checkpoint-marker-step (phase result)
   (fnn-core 'fn-store-checkpoint-marker-step phase result))
