@@ -1,0 +1,15 @@
+revision ea20ed2c9c21d4f6b4026685176e3f93d9433a54
+platform Darwin nextop.local 25.6.0 Darwin Kernel Version 25.6.0: Sat Jul 11 15:25:34 PDT 2026; root:xnu-12377.161.13~4/RELEASE_ARM64_T6020 arm64
+image build/fn-host
+command FN_NATIVE_HOST=build/fn-host python3 -m unittest tests.test_native_control -v
+test_disabled_posting_refuses_cli_and_served_post (tests.test_native_control.NativeControlTests.test_disabled_posting_refuses_cli_and_served_post) ... ok
+test_lost_reply_after_submission_is_uncertain_and_recovers (tests.test_native_control.NativeControlTests.test_lost_reply_after_submission_is_uncertain_and_recovers) ... ok
+test_prelisten_sigterm_skips_modules_and_reopens (tests.test_native_control.NativeControlTests.test_prelisten_sigterm_skips_modules_and_reopens) ... ok
+test_shared_control_path_is_not_stolen_by_another_store (tests.test_native_control.NativeControlTests.test_shared_control_path_is_not_stolen_by_another_store) ... ok
+test_two_clients_sigterm_cleanup_and_restart (tests.test_native_control.NativeControlTests.test_two_clients_sigterm_cleanup_and_restart) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 17.202s
+
+OK
+exit 0

@@ -22,11 +22,13 @@ but before FNFD and Store close.
 
 SIGTERM while owner mode is active sets one process-global monotonic request
 flag and calls raw `shutdown(2)` on the captured, still-open listener fd. The
-ordinary owner thread performs stop, shutdown-only client wakeups, worker joins,
-module close, FNFD/Store close, clears the signal-visible fd, closes the
-listener, and restores the prior globals. Worker threads remain the sole final
-closers of client sockets, preventing a cached raw descriptor from being
-reused underneath their I/O.
+owner and control listeners use the same one-second bounded, nonblocking accept
+observation, so an ordinary owner thread consumes the request even where
+shutdown does not wake a blocking accept. That thread performs stop,
+shutdown-only client wakeups, worker joins, module close, FNFD/Store close,
+clears the signal-visible fd, closes the listener, and restores the prior
+globals. Worker threads remain the sole final closers of client sockets,
+preventing a cached raw descriptor from being reused underneath their I/O.
 
 Before stale-socket removal, control holds a nonblocking exclusive flock on
 the ACL2-derived adjacent `.lock` regular file opened with `O_NOFOLLOW`. The
@@ -53,4 +55,8 @@ submission reported as uncertain and recovered after restart, SIGTERM with
 active NNTP and partial-frame control clients, a repeated SIGTERM during
 cleanup, a pre-listener SIGTERM that starts no resource module, and immediate
 native reopen with 200/205 service. The runtime command and platform evidence
-are appended when the saved-image run completes.
+for the exact raw source are in
+`planning/evidence/native-control-ea20ed2c-2026-09-21-tests.log`; all five tests
+passed on Darwin 25.6.0 in 17.202 seconds. The preceding blocking-accept failure,
+the repair, and the local image-build limitation are recorded in
+`planning/evidence/native-control-accept-shutdown-2026-09-21.md`.
