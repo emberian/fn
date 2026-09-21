@@ -1050,9 +1050,13 @@
       "evidence": [
         "books/owner-feed-port.lisp",
         "tests/acl2/owner-feed-port-tests.lisp",
-        "host/owner-host.lisp"
+        "host/owner-host.lisp",
+        "books/feed-connection-invariants.lisp",
+        "tests/acl2/feed-connection-invariants-tests.lisp",
+        "planning/evidence/feed-connection-table-invariants-2026-09-21.md",
+        "planning/lanes/HANDOFF-w22-native-outbound-feed.md"
       ],
-      "progress_note": "books/owner-feed and tests/acl2/owner-feed-tests are CERTIFIED as of 2026-09-20, lane w6/peering-feed-4 (laptop ACL2 8.7, evidence build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T212559Z-13370; the persvati closure run-20260920T211802Z-ba78 reached them for the first time). What unblocked them was books/peer-feed-invariants, which now certifies with no open form. books/owner certifies too. The owner-side statement over fn-own-step is still open, and the reason has moved: books/owner-invariants is open at the :open-peer arm of fn-own-step-preserves-relation, not at the feed. The earlier non-admission explanation above is historical; later frozen owner books certified. W22 integrates the actual host tick/reply/loss/restart projections through owner-feed-port, including an all-or-nothing logical restart fold. Its owned closure and combined source gate are tracked separately; no new theorem over fn-own-step or native outbound socket/timer behavior is claimed from this adoption."
+      "progress_note": "books/owner-feed and tests/acl2/owner-feed-tests are CERTIFIED as of 2026-09-20, lane w6/peering-feed-4 (laptop ACL2 8.7, evidence build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T212559Z-13370; the persvati closure run-20260920T211802Z-ba78 reached them for the first time). What unblocked them was books/peer-feed-invariants, which now certifies with no open form. books/owner certifies too. The owner-side statement over fn-own-step is still open, and the reason has moved: books/owner-invariants is open at the :open-peer arm of fn-own-step-preserves-relation, not at the feed. The earlier non-admission explanation above is historical; later frozen owner books certified. W22 integrates the actual host tick/reply/loss/restart projections through owner-feed-port, including an all-or-nothing logical restart fold. Its owned closure and combined source gate are tracked separately; no new theorem over fn-own-step or native outbound socket/timer behavior is claimed from this adoption. Native feed component now carries a connection-table invariant from recovery through put/remove, validates only selected bounded input, and distinguishes handshake rejection from delivery refusal. Owned certification and raw boundary tests are separate from activation/real two-native-node evidence. The shell host-wrapper witness is withheld pending repair of its unconditional success marker."
     },
     {
       "id": "PRF-030",
@@ -1098,9 +1102,10 @@
       ],
       "status": "in-progress",
       "evidence": [
-        "planning/evidence/native-auth-runtime-2026-09-21/README.md"
+        "planning/evidence/native-auth-runtime-2026-09-21/README.md",
+        "planning/lanes/HANDOFF-w23-native-auth-admin.md"
       ],
-      "progress_note": "Historical W10 local admission and cache-origin limitations are superseded for the frozen03 closure and source-pinned native-auth continuation by their archived certification/build evidence. The native AUTHINFO startup receiver passes scoped live wrong-password/correct-password and reader-versus-peer cases. These results do not discharge the open OB-AUTH-FOLD theorem or establish independent-client interoperability, native protected transport, or complete physical adapter correspondence."
+      "progress_note": "Historical W10 local admission and cache-origin limitations are superseded for the frozen03 closure and source-pinned native-auth continuation by their archived certification/build evidence. The native AUTHINFO startup receiver passes scoped live wrong-password/correct-password and reader-versus-peer cases. These results do not discharge the open OB-AUTH-FOLD theorem or establish independent-client interoperability, native protected transport, or complete physical adapter correspondence. Native principal administration has scoped ACL2 and actual replacement/recovery evidence; public CLI composition remains open. The existing salted SHA-256 verifier is preserved without a password-hardening or secrecy theorem claim."
     },
     {
       "id": "PRF-032",
@@ -1432,7 +1437,8 @@
         "tests/test_native_initializer_fidelity.py",
         "tests/test_native_recovery.py",
         "planning/evidence/native-recovery-w15-2026-09-21.md",
-        "planning/evidence/native-initializer-composition-w18-2026-09-21.md"
+        "planning/evidence/native-initializer-composition-w18-2026-09-21.md",
+        "planning/evidence/native-txn-namespace-u13-2026-09-21.md"
       ],
       "pending_subject": "The fresh initializer transcription has source-reviewed correspondence to the fresh Python Store.initialize path, not a theorem equating the host execution to fn-bs-run; its cut checker explicitly cannot inline helpers. Existing/retry initialization, native initializer correspondence, Store.advance_frontier composition and recovery remain open. The naming wrapper invokes the attached ACL2 renderer directly; this does not close those program correspondence gaps.",
       "progress_note": "The metadata-only initial image/frontier results and conditional fn-bs-step observations remain scoped as above. W13 adds a source-reviewed fresh initializer and exact-image theorem; the configuration-directory fence separating witness leaves the old root/transactions relation true while falsifying that image. Unique model cut names do not make uninstrumented host cuts covered. Transaction naming has a guard-verified executable injective realization, including above-20-digit witnesses and hypothesis teeth, adopted by both Python Store.publish and native fnn-transaction-name through ACL2 wrappers. Native metadata/frontier serialization and posting provenance also use the ACL2 subjects; source-pinned cross-open and byte-identical committed-frame tests passed. Remaining staging-orphan and missing-staging-directory differences prevent a full adapter-equivalence claim. General K0, existing/retry branches, native host correspondence, recovery composition and platform durability remain open. W14 adds a source-reviewed native fresh initializer cut map, selected actual SIGKILL/new-process restart tests and a real EACCES enumeration regression. These tests do not establish native whole-program correspondence, every-cut crash qualification or existing/retry initialization. W15 now bounds staging enumeration before retaining names and calls fn-sn-sweep-staging after recovery barriers; writable recovery collects ACL2-selected names, while read-only open only reports. Missing staging faults explicitly. Selected unlink-error/process-death tests and native differential evidence are archived; the removal-plan theorem does not model every physical unlink cut or prove whole-adapter equivalence. W18 adds explicit existing-valid and history-fenced retry programs with EEXIST observations, plus source-pinned native repeated-init and SIGKILL/reopen tests. Non-EEXIST publication errors are uncertain. These are selected branch/runtime results, not whole-host or power-loss correspondence; the followup classifier covers expected-EEXIST links, and separate link/barrier handlers preserve uncertainty for post-link errors. Integrated raw-handler tests also exercise the named post-link error cut. Whole-image validation of these later corrections remains separate.",
@@ -1445,7 +1451,8 @@
         "fn-bs-first-frontier-program-preserves-relation",
         "fn-bs-txn-name-impl-injective",
         "fn-bsi-current-init-program-establishes-current-image"
-      ]
+      ],
+      "native_namespace_scope": "The actual native transaction observer now calls fn-store-txn-observation/fn-bs-txn-observation-pairs instead of parsing decimal filenames itself, after bounded directory enumeration. A developer-only native Store image exercised malformed names and filename/decoded-record mismatch. This does not complete K0, full production integration or configuration-history namespace correspondence."
     },
     {
       "id": "PRF-043",

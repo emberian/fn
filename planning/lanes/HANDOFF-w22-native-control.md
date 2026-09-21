@@ -44,7 +44,7 @@ python3 tools/certify_books.py --jobs 4 --closure books/native-control tests/acl
 ```
 
 All requested roots and their closure passed. The source-pinned manifest is
-`planning/evidence/manifests/certify-20260921T104008Z-6541-native-control.json` (SHA-256
+`planning/evidence/manifests/certify-20260921T104008Z-6541.json` (SHA-256
 `e9eede4e8cb46064c2d3a503a7e355064d0c22bf9fb4b62bb86399d03db750a2`). It
 records the exact ACL2/SBCL versions, source digests, and per-book results.
 
