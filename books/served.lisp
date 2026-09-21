@@ -1033,8 +1033,9 @@
 
 ; `local' and `:rule-classes nil': an unfold equality used by one theorem in
 ; this book, cited by `:use' (docs/proof-style.md section 2).  Both lists
-; fn-nntp-capability-lines returns are ground, so with the two definitions
-; open every branch of fn-auth-capability-lines' append evaluates.
+; fn-nntp-capability-lines returns are ground, so with the auth and peer
+; composition definitions open every branch of the ordinary-reader (nil peer)
+; capability append evaluates.
 (local
  (defthm fn-auth-capability-lines-offer-post-by-definition
    (iff (member-equal (fn-nntp-string-octets "POST")
@@ -1042,6 +1043,8 @@
         postingp)
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines
+                                    fn-auth-capability-lines-for-peer
+                                    fn-peer-capability-lines
                                     fn-nntp-capability-lines)
                                    (fn-auth-config-creds
                                     fn-auth-config-protected-onlyp

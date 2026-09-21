@@ -50,6 +50,30 @@
   (fn-inj-make-config t *au-agent*
                       (list (fn-nntp-string-octets "fn.letters")) 32768))
 
+; The configured source role that authorizes transit.  It is deliberately
+; independent of the AUTHINFO credentials below: a peer has no reader login
+; on this transcript, yet its transit commands reach fn-peer-step.
+(defconst *au-peer-record*
+  (fn-cfg-peer-make "transit" "transit.example.invalid"
+                    '(:nntp "127.0.0.1" 119)
+                    '("fn.*" 32768 16) '("fn.*" t 256 1000)
+                    '(:source-address "127.0.0.1")))
+(assert-event (fn-cfg-peerp *au-peer-record*))
+(defconst *au-peer-change*
+  (append *fn-cfg-default-change*
+          (list (fn-cfg-set-peer-delta *au-peer-record*))))
+(defconst *au-peer-cfg*
+  (fn-config-replay
+   0 510
+   (list (fn-cfg-record-make 0 0 1 *au-peer-change*
+                             *fn-cfg-default-stamp*))))
+(assert-event (fn-cfgp *au-peer-cfg*))
+(assert-event (equal (fn-cfg-peer-find "transit"
+                                        (fn-cfg-peers (fn-cfg-value *au-peer-cfg*)))
+                     *au-peer-record*))
+(defconst *au-peer-node* (fn-node-initial-state '("fn.letters") 1048576))
+(assert-event (fn-node-statep *au-peer-node*))
+
 ; A principal id is 32 octets (books/principal.lisp fn-prin-idp, which is the
 ; crypto seam's digest shape).  This one stands for a configured login; the
 ; test does not derive it, because deriving it needs the seam's fn-digest,
@@ -125,11 +149,16 @@
 (defconst *au-s-req* (au-session *au-required* nil))
 (defconst *au-s-req-tls* (au-session *au-required* t))
 (defconst *au-s-prot* (au-session *au-protected* nil))
+(defconst *au-s-peer-req*
+  (fn-auth-open-session (fn-node-acceptance *au-peer-node*) "transit"
+                        *au-peer-node* *au-peer-cfg* *au-required* nil))
 (assert-event (fn-auth-sessionp *au-s-open*))
 (assert-event (fn-auth-sessionp *au-s-req*))
 (assert-event (fn-auth-session-consistentp *au-s-req* *au-archive*))
 (assert-event (null (fn-auth-session-subject *au-s-req*)))
 (assert-event (equal (fn-auth-session-tlsp *au-s-req-tls*) t))
+(assert-event (fn-auth-session-consistentp *au-s-peer-req*
+                                           (fn-node-acceptance *au-peer-node*)))
 
 (defun au-step (as text)
   (fn-auth-step as *au-archive* *au-config* *au-obs* *au-obs*
@@ -138,6 +167,13 @@
   (fn-post-result-effects (au-step as text)))
 (defun au-after (as text)
   (fn-post-result-session (au-step as text)))
+
+(defun au-peer-step (as text)
+  (fn-auth-step as (fn-node-acceptance *au-peer-node*) *au-config*
+                *au-obs* *au-obs*
+                (list :command (fn-nntp-string-octets text))))
+(defun au-peer-reply (as text)
+  (fn-post-result-effects (au-peer-step as text)))
 
 ; The expected-reply assembler: its own CRLFs, no stuffing, independent of
 ; fn-nntp-single.
@@ -258,6 +294,30 @@
 (assert-event (fn-auth-restricted-keywordp (fn-nntp-string-octets "POST")))
 (assert-event (fn-auth-restricted-keywordp (fn-nntp-string-octets "ARTICLE")))
 (assert-event (fn-auth-restricted-keywordp (fn-nntp-string-octets "XPAT")))
+; Transit is authorized by the configured peer role, not AUTHINFO.  These
+; three commands therefore bypass the reader gate and let the peer machine
+; make its reachable offer/stream decisions.
+(assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "IHAVE"))))
+(assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "CHECK"))))
+(assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "TAKETHIS"))))
+(assert-event (equal (au-peer-reply *au-s-peer-req*
+                                    "IHAVE <auth-peer@example.invalid>")
+                     (append (au-single "335 send it")
+                             (list (fn-nntp-begin-article-effect)))))
+(assert-event (equal (au-peer-reply *au-s-peer-req*
+                                    "CHECK <auth-peer@example.invalid>")
+                     (list (fn-nntp-reply-effect
+                            (fn-nntp-crlf
+                             (append (fn-nntp-string-octets "238 ")
+                                     (fn-nntp-string-octets
+                                      "<auth-peer@example.invalid>")))))))
+(assert-event (equal (au-peer-reply *au-s-peer-req*
+                                    "TAKETHIS <auth-peer@example.invalid>")
+                     (list (fn-nntp-begin-article-effect))))
+; The reader control is the separating witness: it has the same required
+; AUTHINFO policy, no configured source role, and fn-peer-step refuses it.
+(assert-event (equal (au-reply *au-s-req* "IHAVE <auth-peer@example.invalid>")
+                     (au-single "502 transit is not permitted on this connection")))
 
 ; -----------------------------------------------------------------------------
 ; The posting allowance is the authenticated principal's
@@ -371,6 +431,11 @@
     "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT"
     "IMPLEMENTATION fn-nntp-lab"))
 
+(defconst *au-peer-lines*
+  '("VERSION 2" "READER" "OVER MSGID" "HDR"
+    "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT"
+    "IMPLEMENTATION fn-nntp-lab" "IHAVE" "STREAMING"))
+
 ; Unauthenticated, no TLS, a certificate configured: both labels.
 (assert-event
  (equal (au-reply *au-s-req* "CAPABILITIES")
@@ -404,6 +469,14 @@
  (equal (au-reply *au-s-prot* "CAPABILITIES")
         (au-block "101 capability list follows"
                   (append *au-reader-lines* '("STARTTLS")))))
+; The real composed path takes its base list from the peer record pinned at
+; open, then appends the access labels the reader AUTHINFO policy permits.
+; The peer is unauthenticated as a reader, but its configured source role
+; makes IHAVE and STREAMING honest promises.
+(assert-event
+ (equal (au-peer-reply *au-s-peer-req* "CAPABILITIES")
+        (au-block "101 capability list follows"
+                  (append *au-peer-lines* '("STARTTLS" "AUTHINFO USER")))))
 ; The optional keyword argument of section 5.2.1 is accepted and changes
 ; nothing.
 (assert-event (equal (au-reply *au-s-req* "CAPABILITIES READER")

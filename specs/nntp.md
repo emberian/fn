@@ -441,6 +441,17 @@ greeting code and the 440 cannot disagree
 `books/nntp-auth-invariants.lisp`: no 340 means no body means no
 submission).
 
+Reader authorization does not stand in for transit authorization. On a
+connection the owner resolved from a configured peer source role,
+`fn-auth-step` delegates IHAVE, CHECK and TAKETHIS without requiring an
+AUTHINFO principal; `fn-peer-step` owns their configured-peer decision. A
+reader connection still receives that layer's 502 refusal for the transit
+verbs, while local POST and reader commands remain subject to the pinned
+AUTHINFO policy. CAPABILITIES takes the same composed route: IHAVE and
+STREAMING appear exactly when the pinned peer record has an inbound half;
+AUTHINFO USER continues to describe only the reader mechanism the connection
+may use now.
+
 **Open, named**: the fold-level form of that statement — no read of a
 connection under a configuration that grants posting to no one emits a
 submission — is `OB-AUTH-FOLD`, recorded in `planning/proofs.json` and in

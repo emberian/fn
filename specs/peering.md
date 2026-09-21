@@ -1291,16 +1291,16 @@ two-node feed scenario.
   `fn-served-peer-and-reader-open-under-the-same-policy` (PRF-039) now says
   the two branches pin one value.
 
-  **Open, and not this lane's to decide** (board, w11/auth-live): the policy
-  now reaches a peer connection, and a peer does not run AUTHINFO. So under
-  `[auth] required = true` a transit peer is answered 480 for `IHAVE`,
-  `CHECK` and `TAKETHIS`, because they are in `fn-auth-restricted-keywordp`.
-  Either the peer record's `auth` slot is an authentication for RFC 4643's
-  purposes — which is a claim about the network that belongs in
-  `books/assumptions.lisp` beside A-PEER, not in a branch test — or a node
-  that both serves authenticated readers and takes a feed needs two policies.
-  Nothing here decides it; `fn init --auth-required` is off by default and
-  the v0 matrix's nodes do not set it.
+  **Implemented 2026-09-21: reader AUTHINFO and transit authorization are
+  separate decisions.** `fn-auth-restricted-keywordp` gates local reader
+  operations, including POST and article reads, but not `IHAVE`, `CHECK` or
+  `TAKETHIS`. `fn-auth-step-transit-command-delegates-to-peer` is the ACL2
+  equality on the dispatcher under `fn-served-dispatch`: no AUTHINFO subject
+  appears in its hypotheses. `fn-peer-step` then decides those verbs from the
+  pinned configured source-role record; its reader branch returns 502 and a
+  missing/inbound-disabled record gets the typed peer refusal. The configured
+  source address is still local authorization policy, not evidence that an
+  AUTHINFO principal or a network peer is cryptographically authenticated.
 - **Transit and POST share one durable path, and the theorem says so at the
   owner.** `fn-own-take-installs-the-queued-submission-whatever-it-carries`
   (books/owner-invariants.lisp) states that the writer step installs the head
@@ -1486,34 +1486,17 @@ that a 400 on the wire already writes, so `fn-feed-apply-record` replays it
 to the state the live machine reached. A `(:feed-restart peer)` record would
 not: `fn-feed-restart` retires the attempt where `fn-feed-lost` counts it.
 
-### `CAPABILITIES` on a transit connection: the list is proved and unreachable
+### `CAPABILITIES` on a transit connection
 
 
-The row in the wave-11 table above says "the book renders the reader block
-on a peer session". The transit capability list **exists and is proved**:
-`fn-peer-capability-lines` (`books/peer-inbound.lisp`) appends `IHAVE` and
-`STREAMING` for a peer whose record has an inbound half, it has a block-text
-lemma, and `tests/acl2/peer-inbound-tests.lisp` carries five assertions
-about it. It is **unreachable on the composed machine**. The chain is
-`fn-served-dispatch -> fn-auth-step -> fn-peer-step -> fn-nntp-post-step ->
-fn-nntp-step`, and `fn-auth-step` answers `CAPABILITIES` itself (to add
-`STARTTLS` and `AUTHINFO USER`) before it ever delegates, so
-`fn-peer-command`'s `CAPABILITIES` arm never runs.
-
-Measured in one session, gate `15ac399` step 53: the same connection reports
-`capabilities: [VERSION 2, READER, POST, OVER MSGID, HDR, LIST …,
-IMPLEMENTATION]`, then `MODE STREAM` -> `203` and `IHAVE` -> `335`. Two
-capabilities the connection demonstrably has, absent from the list RFC 3977
-§5.2.2 requires to name them.
-
-**The packet, and it is the assurance rules' shape, not a cosmetic one.**
-`fn-auth-capability-lines` must build on `fn-peer-capability-lines` instead
-of `fn-nntp-capability-lines`, taking the peer record from
-`(fn-peer-session-peer (fn-auth-session-base as))` against the session's own
-configuration -- `books/nntp-auth` already includes `books/peer-inbound`
-because it delegates to it -- and `fn-peer-command`'s `CAPABILITIES` arm is
-then removed rather than marked, because with auth above it the branch is
-unreachable in composition either way. Whoever takes it re-certifies the
-closure of `books/nntp-auth` and updates
-`tests/test_owner.py::test_the_capability_block_does_not_yet_name_the_transit_commands`,
-which exists to say the day this changes.
+`fn-auth-step` consumes CAPABILITIES so it can append the current STARTTLS
+and AUTHINFO USER labels. Its composed list is
+`fn-auth-capability-lines-for-peer`: it gets the peer record from the peer
+session pinned at accept and delegates the base list to
+`fn-peer-capability-lines`. A configured inbound peer is therefore promised
+`IHAVE` and `STREAMING`; a reader, unknown peer or peer without an inbound
+half is not. `tests/acl2/nntp-auth-tests.lisp` drives the called auth
+dispatcher through configured-peer, reader and unauthenticated-reader cases,
+and `tests/test_owner.py` observes the advertised labels and a 335 on a live
+listener. The older `fn-peer-command` CAPABILITIES arm remains a direct-peer
+unit interface; it is not the served-path capability decision.
