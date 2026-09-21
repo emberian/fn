@@ -47,11 +47,26 @@
                            "FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION") "")
                       "1"))
     (fnn-fault "bp-service: lifecycle namespace was enumerated after recovery"))
-  (let* ((names (sort (fnn-list-directory (fnn-bps-lifecycle service)) #'string<))
+  (let* ((limit (fnn-core 'fn-bpn-host-lifecycle-max-namespace-entries)))
+    (unless (and (integerp limit) (>= limit 0))
+      (fnn-fault "bp-service: ACL2 returned an invalid lifecycle namespace bound"))
+    (let* ((names
+             (sort
+              (handler-case
+                  (fnn-list-directory-bounded
+                   (fnn-bps-lifecycle service) limit
+                   "bp lifecycle namespace")
+                (fnn-store-fault (e)
+                  (fnn-indeterminate
+                   "bp-service: lifecycle namespace exceeds its bound: ~a" e))
+                (fnn-os-error (e)
+                  (fnn-indeterminate
+                   "bp-service: lifecycle namespace cannot be enumerated: ~a" e)))
+              #'string<))
          (plan (fnn-core 'fn-bpn-host-lifecycle-namespace-plan names)))
-    (unless (eq (fnn-core 'fn-bpn-host-lifecycle-plan-ready-p plan) t)
-      (fnn-indeterminate "bp-service: ACL2 rejected lifecycle namespace"))
-    (values names plan)))
+      (unless (eq (fnn-core 'fn-bpn-host-lifecycle-plan-ready-p plan) t)
+        (fnn-indeterminate "bp-service: ACL2 rejected lifecycle namespace"))
+      (values names plan))))
 
 (defun fnn-bps-read-records (service names)
   (let ((limit (fnn-core 'fn-bpn-host-lifecycle-frame-limit))
