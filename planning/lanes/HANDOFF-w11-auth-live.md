@@ -185,3 +185,30 @@ this lane's result.
   the standard library's own `nntplib`, so the 281 is observed by something
   that is not fn — but only on persvati, where a Python 3.12 exists. On a box
   with only 3.13 the row still skips and says so.
+
+## The next global step
+
+**One ASK, then one harness.** The ASK is the one above: whether a peer
+record's `auth-source-address` authenticates for RFC 4643's purposes. Until
+it is answered, `[auth] required = true` is a policy an operator can set and
+a peered node cannot use, and `V0-AUTH-GATED-A/B` is the only F-AUTH row the
+matrix cannot make an outcome. It is a one-afternoon packet for whoever owns
+`books/peer-inbound`: the cheap half is a theorem that a session with NO
+peer is already refused `502` for the three transit verbs, which makes their
+place in `fn-auth-restricted-keywordp` demonstrably load-bearing or not.
+
+The harness is **not** another auth harness. The matrix at `6fb30ca` says
+F-NODE, F-OUT, F-GROUP, F-AUTH, F-POST and F-READ are whole features that
+work between two peered nodes, the owner feed crosses both ways with
+identical octets, and the frontier has moved to **transit correctness**:
+twelve of the seventeen disagreements are peering decisions reaching the
+wire wrongly (`335` for a duplicate offer, `235` for a Path loop, `238` for
+a duplicate `CHECK`), and every one of them has a certified model theorem
+that says otherwise. That is the same shape as the defect this lane fixed —
+a model that is right and a served path that does not consult it — and it is
+where the next measurement belongs.
+
+Last: this lane is merged with dev at `9010d01` and `make check` passes,
+including `w11/lab-gate`'s new caller-signature lint (0 findings over 25766
+calls). The three `acl2-arity` findings it reports are pre-existing
+spellings in `tests/test_teeth_check.py` and are not this lane's.
