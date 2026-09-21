@@ -20,6 +20,6 @@ results, digests, native build, SIGKILL restart result, and the remaining
 raw-I/O correspondence assumption.
 
 Integration should cherry-pick the W14 branch through its tip; the required
-sequence begins at `7dd156d`.  Retain the fidelity book/test roots in
+sequence begins at `1321375`.  Retain the fidelity book/test roots in
 `Makefile`, and let root update PRF-045 and the shared assurance registry.  No
 host runtime file or shared registry was changed in this lane.
