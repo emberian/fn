@@ -11,3 +11,5 @@
       (if (zp n) (car xs) (fn-feed-filename-host-nth (1- n) (cdr xs))) nil))
 (defun fn-feed-filename-host-component (name index) (declare (xargs :mode :program))
   (fn-feed-filename-host-nth index (fn-feed-filename-components name)))
+(defun fn-feed-filename-host-decode (components) (declare (xargs :mode :program))
+  (fn-feed-filename-from-components components))
