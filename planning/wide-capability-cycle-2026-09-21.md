@@ -7,17 +7,23 @@ small book or adapter followed by another handoff.
 
 ## Parallel ownership
 
-| Lane | Complete capability and immediate work |
+| Lane | Current capability and next work |
 | --- | --- |
-| `service_join` / Sol | Native news and peering: compose HST/admin/TLS with public startup, activate ingress/feed, implement supported non-loopback configuration in ACL2, resolve transit authentication and exercise two-way exchange/requeue/restart. |
-| `bp_recovery_join` / Sol | BP/DTN: recovered lifecycle/fast/authored-wire packets, interrupted contacts and exhaustion, then durable responsibility/release tied to canonical Store pins rather than a workflow-only copy. |
-| `preservation_vertical` / Sol | Preservation/reclamation: executable protected-closure decisions and durable publication/recovery, starting with obsolete checkpoint generations; progress toward full compaction without discarding retained articles, obligations or duplicate history. |
-| `identity_vertical` / Sol | Durable keyring/authority, acceptance-recorded statement verdicts and native retrieval; exact authored bytes and separate relay projections. D09 now requires Ed25519 plus ML-DSA-65; custody/recovery authority and D11 remain open. |
-| `crash_correspondence` / Sol | Actual native publication/recovery trace relation, missing K0 and prerequisite-ready crash obligations, and fault campaigns whose cuts correspond to model transitions. |
-| `config_recovery` / Terra | Complete bounded configuration-namespace observation and canonical record/generation binding, integrate corrected dependencies and source-matched recovery witnesses. |
-| `process_containment` / Terra | Contain development commands and test descendants across timeout/cancellation; finite directory traversal; exercise leader-death and resistant-child cases. |
-| `toolchain_recovery` / Sol | Finish bounded launcher/core/runtime qualification and coherent certificate reuse without treating runner-source changes as changed prover identity. |
-| Root / Astra | Shared contracts, TLS integration, coherent batch review/merges, exact evidence scopes, frozen combined images and native feature matrix. |
+| `bp_recovery_join` / Sol | Shared Store identity writer/replay, exact enrolled snapshot binding, profile admission before reservation/publication, and refusal/recovery composition. |
+| `hybrid_signatures` / Sol | Mandatory Ed25519 plus ML-DSA-65 primitives and signing CLI are integrated; complete native live-owner authored submission and durable acceptance/restart. |
+| `bounded_event_profiles` / Sol | Large canonical events and linear bounded streaming codecs are integrated; finish real closure certification and persisted profile/publication composition. |
+| `peer_tls_vertical` / Sol | Outbound AUTHINFO, private profile descriptor handling and command framing are integrated; composed phase proofs and real two-peer runtime remain. |
+| `compaction_vertical` / Sol | Partial-deletion compaction packet is integrated; next independent assignment is full hybrid subject/preimage injectivity in a separate proof book. |
+| `crash_correspondence` / Sol | Reclaim cut/model packet is integrated; source-matched process-death execution and broader physical relation remain. |
+| `served_fast_path` / Sol | Fixed-shape framing execution and called-path correspondence; resolve fresh node-config preservation prerequisites without changing semantics to fit proofs. |
+| `service_join` / Sol | Native distribution: relocate actual saved image, runtime and support dependencies; qualify task-local installation and service lifecycle. |
+| `toolchain_recovery` / Sol | Scoped frozen repair evidence archived; repair old snapshot's missing public peer dispatch and exercise real two-node native exchange/requeue/restart. |
+| Root / Astra | Shared contracts, concrete batch review/merges, assurance scopes, next coherent image and qualification matrix. |
+
+Luna completed a bounded landed-worktree inventory; root removed only clean,
+fully ancestral historical worktrees and retained their branches. Earlier
+configuration and containment packets remain integrated; they are not idle
+implementation assignments in the current cycle.
 
 ## Working contract
 
