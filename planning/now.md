@@ -50,7 +50,15 @@ and identity events, durable key snapshots, checkpoint-based compaction and
 physical crash correspondence. These changes remain in capability lanes until
 their ordinary publication/recovery paths and obligations are composed.
 
-The frozen combined source is `03eb3ba3`, with retained persvati job
+The next frozen combined source is `f7190d69`, with persvati job
+`run-20260921T161741Z-6d04` at `/home/ember/fn-gates/freeze-f7190d69`.
+The gate uses a task-local literal ACL2 launcher, fingerprints its actual core
+and runtime, and recertifies the default/DTN include closure with the joined
+component test roots before image builds. It is pending; no result from it is
+claimed here. Live administration and ordered Store-event work continue in
+separate capability lanes while that snapshot remains immutable.
+
+The previous qualified combined source is `03eb3ba3`, with retained persvati job
 `run-20260921T095031Z-5cf4`. Certification, both same-origin image builds, scoped runtime suites and the
 public operator loopback witness passed; see the [frozen evidence](evidence/native-owner-integrated-2026-09-21.md). Later main changes
 are not part of that frozen source and must receive their own integration gate.
