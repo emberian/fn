@@ -9,11 +9,10 @@
 ; destination hypotheses are physical preconditions of link(2); the logical
 ; phase alone cannot manufacture a staging inode.
 (defthm fn-bs-issued-record-link-error-needs-recovery-fence
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-sf-statep ks)
                 (equal (fn-sf-phase ks) :record-data-durable)
                 (fn-bs-inop (fn-bs-lookup bs :staging stage))
                 (not (fn-bs-lookup bs :transactions name))
-                (consp outcome)
                 (equal (cdr outcome) :issued))
            (mv-let (result bs1)
              (fn-bs-link bs :staging stage :transactions name outcome)
@@ -24,7 +23,6 @@
                    (fn-bs-fence-dir bs1 :transactions) :transactions))))
   :rule-classes nil
   :hints (("Goal"
-           :use (fn-bs-store-relation-unfolds)
            :in-theory (enable fn-bs-link fn-bs-dir-quietp
                               fn-bs-fence-dir fn-bs-ops-for-dir
                               fn-bs-ops-for-dir-of-append
@@ -44,10 +42,9 @@
 ; The staging deletion is a separate operation, so the recovery obligation
 ; here is specifically the authority entry in :root.
 (defthm fn-bs-issued-frontier-rename-error-needs-recovery-fence
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-sf-statep ks)
                 (equal (fn-sf-phase ks) :frontier-data-durable)
                 (fn-bs-inop (fn-bs-lookup bs :staging stage))
-                (consp outcome)
                 (equal (cdr outcome) :issued))
            (mv-let (result bs1)
              (fn-bs-rename bs :staging stage :root
@@ -59,7 +56,6 @@
                    (fn-bs-fence-dir bs1 :root) :root))))
   :rule-classes nil
   :hints (("Goal"
-           :use (fn-bs-store-relation-unfolds)
            :in-theory (enable fn-bs-rename fn-bs-dir-quietp
                               fn-bs-fence-dir fn-bs-ops-for-dir
                               fn-bs-ops-for-dir-of-append
@@ -80,7 +76,7 @@
 ; that directory's pending choice either way; the kernel enters the recovery
 ; fence and therefore cannot continue publication.
 (defthm fn-bs-record-directory-error-resolves-choice-and-fences
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-sf-statep ks)
                 (equal (fn-sf-phase ks) :record-attempted)
                 (consp outcome))
            (mv-let (result bs1)
@@ -90,8 +86,7 @@
                   (fn-sf-fencedp (fn-sf-record-dir-result ks :error)))))
   :rule-classes nil
   :hints (("Goal"
-           :use (fn-bs-store-relation-unfolds
-                 (:instance fn-bs-ops-for-dir-of-ops-not-for-dir
+           :use ((:instance fn-bs-ops-for-dir-of-ops-not-for-dir
                             (ops (fn-bs-pending bs)) (dir :transactions)))
            :in-theory (enable fn-bs-fsync-dir fn-bs-dir-quietp
                               fn-bs-ops-for-dir fn-bs-ops-not-for-dir
@@ -107,7 +102,7 @@
                                      fn-sf-record-dir-result fn-sf-fencedp))))
 
 (defthm fn-bs-frontier-directory-error-resolves-choice-and-fences
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-sf-statep ks)
                 (equal (fn-sf-phase ks) :frontier-attempted)
                 (consp outcome))
            (mv-let (result bs1)
@@ -117,8 +112,7 @@
                   (fn-sf-fencedp (fn-sf-frontier-dir-result ks :error)))))
   :rule-classes nil
   :hints (("Goal"
-           :use (fn-bs-store-relation-unfolds
-                 (:instance fn-bs-ops-for-dir-of-ops-not-for-dir
+           :use ((:instance fn-bs-ops-for-dir-of-ops-not-for-dir
                             (ops (fn-bs-pending bs)) (dir :root)))
            :in-theory (enable fn-bs-fsync-dir fn-bs-dir-quietp
                               fn-bs-ops-for-dir fn-bs-ops-not-for-dir
