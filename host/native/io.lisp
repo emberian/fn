@@ -1435,6 +1435,12 @@ because the name may or may not still be present after the syscall."
 (defun fnn-publish (store sequence record)
   (fnn-require-writer store)
   (when (fnn-store-fenced store) (fnn-indeterminate "store is fenced pending recovery"))
+  ; This is a final assertion after preparation.  Normal resource refusal was
+  ; already decided from the ACL2 kind ceiling before allocator reservation.
+  (unless (eq (fnn-core 'fn-store-publication-admissibility
+                        (fnn-store-config store) sequence (length record))
+              :admissible)
+    (fnn-refuse "prepared Store transaction exceeds persisted profile"))
   (let* ((final (fnn-join (fnn-transactions store) (fnn-transaction-name sequence)))
          (stage (fnn-join (fnn-staging store)
                           (format nil ".stage-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
