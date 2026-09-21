@@ -38,8 +38,12 @@
 (defun fn-native-hybrid-control-enroll-encode
     (keyring-generation principal ed-key ml-key)
   (declare (xargs :guard t))
-  (fn-nhctrl-seal *fn-nhctrl-enroll-kind* *fn-nhctrl-enroll-spec*
-                   (list keyring-generation principal ed-key ml-key)))
+  (if (not (and (fn-record-uint32p keyring-generation)
+                (fn-hsig-exact-octets-p principal 32)
+                (fn-hsig-exact-octets-p ed-key 32)
+                (fn-hsig-exact-octets-p ml-key 1952))) :bad
+    (fn-nhctrl-seal *fn-nhctrl-enroll-kind* *fn-nhctrl-enroll-spec*
+                     (list keyring-generation principal ed-key ml-key))))
 
 (defun fn-native-hybrid-control-enroll-decode (octets)
   (declare (xargs :guard t))
@@ -56,10 +60,18 @@
     (keyring-generation msgid source ed-signature ml-signature ml-path groups
                         obligation content-subject release charge)
   (declare (xargs :guard t))
-  (fn-nhctrl-seal
-   *fn-nhctrl-author-kind* *fn-nhctrl-author-spec*
-   (list keyring-generation msgid source ed-signature ml-signature ml-path
-         (fn-nctrl-groups-encode groups) obligation content-subject release charge)))
+  (if (not (and (fn-record-uint32p keyring-generation)
+                (fn-af-message-idp msgid)
+                (fn-cbor-octet-listp source)
+                (consp source) (<= (len source) *fn-article-max-octets*)
+                (fn-hsig-exact-octets-p ed-signature 64)
+                (fn-hsig-exact-octets-p ml-signature 3309)
+                (fn-inj-group-namesp groups)
+                (fn-record-uint32p charge))) :bad
+    (fn-nhctrl-seal
+     *fn-nhctrl-author-kind* *fn-nhctrl-author-spec*
+     (list keyring-generation msgid source ed-signature ml-signature ml-path
+           (fn-nctrl-groups-encode groups) obligation content-subject release charge))))
 
 (defun fn-native-hybrid-control-author-decode (octets)
   (declare (xargs :guard t))
@@ -78,4 +90,3 @@
                   (nth 3 v) (nth 4 v) (nth 5 v)
                   (fn-record-parse-value groups) (nth 7 v) (nth 8 v)
                   (nth 9 v) (nth 10 v)) nil)))))
-
