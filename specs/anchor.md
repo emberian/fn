@@ -69,10 +69,27 @@ record.  `host/anchor-wire-host.lisp` returns those ACL2-produced signature
 subjects to a native crypto caller; it does not reconstruct them in raw Lisp.
 The same book produces the deployed 1024-octet NONC/PAD request from an exact
 32-octet nonce.  `host/native/anchor.lisp` obtains that nonce from the OS
-CSPRNG, sends ACL2's request as one connected UDP datagram, caps the response
-at 4096 octets, calls the ACL2 parser, and applies libsodium only to the two
-subjects in its `:parsed` result.  Its output is an observation for the anchor
-machine; only the existing ACL2 accept/restore/advance entry can accept it.
+CSPRNG, sends ACL2's request as one connected UDP datagram, calls the ACL2
+parser, and applies libsodium only to the two subjects in its `:parsed` result.
+`books/anchor-servers.lisp` is the deployed pinned manifest: the bounded
+`[anchor].server` name selects the endpoint and long-term key there, and the
+same ACL2 profile carries nonce/request/response sizes and admits the
+operator's per-I/O timeout.  Native code has no default endpoint or key.
+
+DNS resolution has no whole-path deadline in this packet.  Send readiness and
+receive readiness each get the selected timeout; a nonblocking race after
+readiness is network uncertainty.  Receive allocates one byte beyond ACL2's
+response limit and refuses a datagram that reaches it, so a valid bounded
+prefix of an oversized datagram cannot be parsed as complete.
+
+The native `anchor acquire STORE SERVER TIMEOUT` command holds the exclusive
+store writer lock across reading the prior FNAN, acquisition, the actual
+`fn-anchor-host-accept` call and publication.  Only `:accepted` reaches a
+staged FNAN write; the file is barred, atomically replaces `anchor.fnan`, and
+the store directory is barred before exit 0 is printed.  Failure after the
+replacement attempt is `:uncertain`; a later invocation decodes the final
+FNAN under the same lock.  This mutable replacement contract is separate from
+the immutable artifact publisher's no-replace contract.
 
 `root` is a **field, not a derivation**, and that is what makes the
 reconstruction the message that was verified. Until 2026-09-20 `fn-anchor-root`

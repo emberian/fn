@@ -17,7 +17,16 @@
 (define-condition fnn-store-indeterminate (fnn-store-error) ())
 (define-condition fnn-store-fault (fnn-store-error) ())
 (define-condition fnn-os-error (error) ())
+(defconstant +fnn-exit-ok+ 0)
+(defconstant +fnn-exit-refused+ 1)
+(defconstant +fnn-exit-uncertain+ 3)
+(defconstant +fnn-exit-fault+ 4)
 (defun fnn-fault (control &rest args) (error (apply #'format nil control args)))
+(defun fnn-out (&rest args) (declare (ignore args)) nil)
+(defun fnn-err (&rest args) (declare (ignore args)) nil)
+(defun make-fnn-store (&rest args) (declare (ignore args)) nil)
+(defun fnn-acquire (store) (declare (ignore store)) nil)
+(defun fnn-store-close (store) (declare (ignore store)) nil)
 (defun fnn-open (path flags) (sb-posix:open path flags #o600))
 (defun fnn-close (fd) (sb-posix:close fd))
 (defun fnn-read-fd (fd buffer)
@@ -28,6 +37,8 @@
     count))
 (defun fnn-socket-fd (socket) (sb-bsd-sockets:socket-file-descriptor socket))
 (defun fnn-socket-shut (socket) (ignore-errors (sb-bsd-sockets:socket-close socket)))
+(defun fnn-string-octets (x) (fnn-octets (map 'list #'char-code x)))
+(defun fnn-register-verb (name function) (declare (ignore function)) name)
 
 (load "host/native/crypto.lisp")
 
@@ -92,16 +103,23 @@
     (fn-anchor-wire-host-request
      (list :request (make-list 1024 :initial-element 0)))
     (fn-anchor-wire-host-parse *fnn-anchor-test-parsed*)
+    (fn-anchor-server-host-select
+     (list :server (map 'list #'char-code "127.0.0.1") 9
+           (fnn-octet-list *fnn-anchor-test-key*)
+           (list (fnn-octet-list *fnn-anchor-test-key*)) 32 1024 4096 1))
     (t (error "unexpected mock ACL2 call: ~s" name))))
 
 (load "host/native/anchor.lisp")
 
-(let ((nonce (fnn-anchor-csprng-nonce)))
+(let ((nonce (fnn-anchor-csprng-nonce 32)))
   (fnn-anchor-test-check (= (length nonce) 32) "OS CSPRNG nonce width")
   (fnn-anchor-test-check (typep nonce 'fnn-octets) "OS CSPRNG octet vector"))
 
 (fnn-anchor-test-check
- (equal (fnn-anchor-acquire "127.0.0.1" 9 (subseq *fnn-anchor-test-key* 1) 1)
+(equal (fnn-anchor-acquire
+         (list :server (map 'list #'char-code "127.0.0.1") 9
+               (fnn-octet-list (subseq *fnn-anchor-test-key* 1))
+               nil 32 1024 4096 1))
         '(:fault :pinned-key))
  "wrong pinned-key width faults before network acquisition")
 
@@ -145,15 +163,28 @@
  #(9 8 7)
  (lambda (port)
    (let ((packet (fnn-anchor-udp-exchange
-                  "127.0.0.1" port (fnn-make-octets 1024) 2)))
+                  "127.0.0.1" port (fnn-make-octets 1024) 1024 4096 2)))
      (fnn-anchor-test-check (equalp packet #(9 8 7))
                             "bounded connected UDP exchange"))))
+
+; A datagram with a valid-looking 4096-octet prefix plus one extra byte is
+; observed as overbound, never handed to the ACL2 parser as the prefix alone.
+(fnn-anchor-test-server
+ (make-array 4097 :element-type '(unsigned-byte 8) :initial-element 7)
+ (lambda (port)
+   (let ((packet (fnn-anchor-udp-exchange
+                  "127.0.0.1" port (fnn-make-octets 1024) 1024 4096 2)))
+     (fnn-anchor-test-check (eq packet :overbound)
+                            "oversized UDP datagram is not truncated valid"))))
 
 (fnn-anchor-test-server
  #(9 8 7)
  (lambda (port)
    (let ((outcome (fnn-anchor-acquire
-                   "127.0.0.1" port *fnn-anchor-test-key* 2)))
+                   (list :server (map 'list #'char-code "127.0.0.1") port
+                         (fnn-octet-list *fnn-anchor-test-key*)
+                         (list (fnn-octet-list *fnn-anchor-test-key*))
+                         32 1024 4096 2))))
      (fnn-anchor-test-check (eq (first outcome) :observed)
                             "acquisition reaches ACL2 parse and crypto")
      ;; The actual nonce was fresh, so the captured ROOT cannot bind it.

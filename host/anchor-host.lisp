@@ -65,6 +65,11 @@
         :bad
       (fn-frame-result-payload result))))
 
+; The only inbound allocation bound for an FNAN frame.  Native code asks the
+; certified core rather than duplicating payload/header/trailer constants.
+(defun fn-anchor-host-frame-limit ()
+  (+ *fn-anchor-max-payload* *fn-frame-overhead-octets*))
+
 ; Accepting one observation into the node's durable anchor state.
 (defun fn-anchor-host-accept (pinned latest-fields incarnation fields verdict
                               one-nonce)

@@ -39,6 +39,8 @@
 (include-book "books/bp-node-machine")
 (include-book "books/bp-node-machine-codec")
 (include-book "books/bp-receive-evidence")
+(include-book "books/anchor-wire")
+(include-book "books/anchor-servers")
 
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
@@ -50,6 +52,8 @@
 ;; anchor question at all and `recover' silently omitted the field the Python
 ;; host prints (HANDOFF-w3-native-host.md, "the differential's four findings").
 (ld "host/anchor-host.lisp" :ld-error-action :error)
+(ld "host/anchor-wire-host.lisp" :ld-error-action :error)
+(ld "host/anchor-server-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
@@ -96,6 +100,10 @@
         (load "host/native/tcpcl.lisp")
         (load "host/native/bp.lisp")
         (load "host/native/bp-service.lisp")
+        ; Native anchor acquisition and its real primitive facility.  The
+        ; anchor command calls fnn-crypto-startup in the restarted image, so
+        ; it never trusts the serialized FFI readiness state.
+        (load "host/native/anchor.lisp")
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
         ; and `--noinform' below keeps SBCL's own banner off it too.  The
         ; `model' verb writes reply octets to stdout and nothing else may.
