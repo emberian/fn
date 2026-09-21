@@ -257,10 +257,21 @@ class TheRecorderRefusesWhatItCannotCheck(unittest.TestCase):
         gate.steps, gate.found, gate.facts = [], [], {}
         return gate
 
-    def test_a_claim_must_be_declared(self):
+    def test_a_claim_of_success_must_be_declared(self):
+        """`held` is the claim; the inventory guards it."""
         gate = self.gate()
         with self.assertRaises(FindingError):
-            gate.record("no-such-assertion", VIOLATED, "invented")
+            gate.record("no-such-assertion", HELD, "invented")
+
+    def test_a_failure_may_be_reported_without_a_declaration(self):
+        """The inventory must not be a reason to swallow a failure.
+
+        `broke()` reports the subject of a step failing, which no scenario
+        declares in advance; a violation can only make the verdict worse."""
+        gate = self.gate()
+        gate.record("no-such-assertion", VIOLATED, "the subject failed")
+        self.assertEqual(gate.verdict(), VIOLATED)
+        self.assertEqual(gate.exit_code(), GATE_VIOLATED)
 
     def test_an_undeclared_instance_is_refused(self):
         gate = self.gate()

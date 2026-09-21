@@ -464,6 +464,39 @@ folding it into `fail` or `pass`. `tests/test_gate_verdicts.py` injects each
 bad outcome into the real scenario methods and requires the failed assertion
 and the nonzero exit.
 
+### Reaping gate directories, and reading a box's memory
+
+A gate is a `git archive` export plus the certificates it earned, at
+`$HOME/fn-gates/<tree>-<rev>` on persvati and `/tank/fn/gates/<tree>-<rev>`
+on hbox, and nothing ever removed one: on 2026-09-21 persvati carried 25 of
+them over 1.1 G. A retired gate also does not take its processes with it --
+three ACL2 children of the retired `dev-6ac2278` survived 19 hours at 0% CPU
+holding 1.7 G.
+
+[`tools/gate_reap.py`](../tools/gate_reap.py) lists every gate on a box with
+its revision, its age, its on-disk size, how many `.cert` files it holds,
+whether that revision is still an ancestor of `dev` (asked of the
+repository, since a gate carries no `.git`) and whether any process on the
+box has it or anything under it as its working directory. `--remove` deletes
+only the rows it called `stale`, by a name that came back from its own
+listing. Four things are never removed: a gate with a process in it; any
+gate at all while the box's `flock` is held, because that means a
+certification is running; the newest `--keep-recent` gates of each tree,
+which is what a deploy scavenges pairs from; and a gate whose revision git
+does not know, because that export may be the only copy of that tree. A box
+with no `/proc` keeps everything, since "I could not check" must not read
+the same as "nothing is running". First run, persvati: 12 of 25 removed,
+475 M, no live gate and the six newest `dev` gates untouched.
+
+**Do not judge a box by `free`.** hbox is a ZFS box: the ARC is counted in
+`used` and in unreclaimable slab and never in `buff/cache`, so `available`
+under-reports by tens of gigabytes and a lane reading it concludes the box
+is full when it is idle. Measured 2026-09-21 on hbox: `Slab` 87.0 G with
+`SUnreclaim` 82.3 G, `AnonPages` 2.4 G, RSS summed over every process 3.5 G,
+ARC 44.7 G, on a 123 G box with 24 near-idle CPUs. `gate_reap.py` prints
+`AnonPages`, the RSS sum and the ARC separately for exactly this reason;
+judge the box by the first two.
+
 ### Qualifying a platform against A-DURABILITY
 
 [`books/assumptions.lisp`](../books/assumptions.lisp) introduces each named

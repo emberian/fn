@@ -5,6 +5,14 @@
 ; fn-sf-emit-success on the result of fn-sf-core-completion, and
 ; fn-sf-core-completion-preserves-state discharges that guard.
 (include-book "store-files-invariants")
+; stx-index is included for the two fields this record gained on
+; 2026-09-21 (decision D21): the served statement index and the keyring it
+; was computed under.  The index sits ABOVE books/node -- books/stx-index
+; includes books/stx-lace includes books/node, and fn-stx-store IS
+; (fn-state-articles (fn-node-acceptance node)) -- so a slot on
+; fn-node-statep would be a cycle (w11/node-index).  This record is not in
+; books/stx-index's closure, so carrying it here is not.
+(include-book "stx-index")
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
@@ -13,10 +21,12 @@
 ; No transition accepts a replacement configuration or a host 'matching' reply.
 ; Total MBE selectors preserve the original ACL2 values on malformed inputs.
 ; The composed record is opaque below its lemmas (docs/proof-style.md s1).
-; Layout: (groups capacity files node)
+; Layout: (groups capacity files node keyring index)
+; keyring and index were appended, not inserted, so the first four accessors
+; keep their positions and their bodies (D21).
 (defun fn-sn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 4)))
+  (and (true-listp x) (equal (len x) 6)))
 
 (defun fn-sn-groups (s) (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car s)
@@ -38,22 +48,58 @@
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))
 
 (verify-guards fn-sn-node)
-(defun fn-sn-make (groups capacity files node)
+
+; The keyring the index was computed under.  It is configuration, and it is
+; the third piece of configuration this record carries beside groups and
+; capacity.  No other state or configuration record in the tree holds one
+; (w11/node-index measured it); a keyring reaches ACL2 today only as a file
+; the operator names (bin/fn --keyring).  A carried index whose keyring is not
+; also carried is not determined by the state, because two keyrings give two
+; indexes over one store -- which is why this field exists (D21).
+(defun fn-sn-keyring (s) (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cddddr s))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s)))))))
+
+(verify-guards fn-sn-keyring)
+
+; The served statement index of books/stx-index.  Its agreement with the lace
+; projection is NOT a conjunct of fn-sn-statep: that recognizer is the guard
+; of every transition below and the host checks a callee's guard on every call
+; (D20), so the agreement there would re-derive the index -- and so re-run
+; fn-stx-verdict, and so re-verify every signature in the store -- per host
+; call.  The agreement is fn-sn-indexedp, carried and proved preserved (D21).
+(defun fn-sn-index (s) (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (cadr (cddddr s))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))))
+
+(verify-guards fn-sn-index)
+(defun fn-sn-make (groups capacity files node keyring index)
   (declare (xargs :guard t))
-  (list groups capacity files node))
+  (list groups capacity files node keyring index))
 
 (defthm fn-sn-shapep-of-fn-sn-make
-  (fn-sn-shapep (fn-sn-make groups capacity files node)))
+  (fn-sn-shapep (fn-sn-make groups capacity files node keyring index)))
 (defthm fn-sn-groups-of-fn-sn-make
-  (equal (fn-sn-groups (fn-sn-make groups capacity files node)) groups))
+  (equal (fn-sn-groups (fn-sn-make groups capacity files node keyring index))
+         groups))
 (defthm fn-sn-capacity-of-fn-sn-make
-  (equal (fn-sn-capacity (fn-sn-make groups capacity files node)) capacity))
+  (equal (fn-sn-capacity (fn-sn-make groups capacity files node keyring index))
+         capacity))
 (defthm fn-sn-files-of-fn-sn-make
-  (equal (fn-sn-files (fn-sn-make groups capacity files node)) files))
+  (equal (fn-sn-files (fn-sn-make groups capacity files node keyring index))
+         files))
 (defthm fn-sn-node-of-fn-sn-make
-  (equal (fn-sn-node (fn-sn-make groups capacity files node)) node))
+  (equal (fn-sn-node (fn-sn-make groups capacity files node keyring index))
+         node))
+(defthm fn-sn-keyring-of-fn-sn-make
+  (equal (fn-sn-keyring (fn-sn-make groups capacity files node keyring index))
+         keyring))
+(defthm fn-sn-index-of-fn-sn-make
+  (equal (fn-sn-index (fn-sn-make groups capacity files node keyring index))
+         index))
 (in-theory (disable (:d fn-sn-shapep) (:d fn-sn-groups) (:d fn-sn-capacity)
-                    (:d fn-sn-files) (:d fn-sn-node) (:d fn-sn-make)))
+                    (:d fn-sn-files) (:d fn-sn-node) (:d fn-sn-keyring)
+                    (:d fn-sn-index) (:d fn-sn-make)))
 
 ; Shape facts type reasoning used to supply while the record opened
 ; (docs/proof-style.md s1), exported as forward-chaining rules only.
@@ -65,7 +111,9 @@
   (and (implies (fn-sn-groups x) (consp x))
        (implies (fn-sn-capacity x) (consp x))
        (implies (fn-sn-files x) (consp x))
-       (implies (fn-sn-node x) (consp x)))
+       (implies (fn-sn-node x) (consp x))
+       (implies (fn-sn-keyring x) (consp x))
+       (implies (fn-sn-index x) (consp x)))
   :rule-classes ((:forward-chaining :corollary (implies (fn-sn-groups x) (consp x))
                                     :trigger-terms ((fn-sn-groups x)))
                  (:forward-chaining :corollary (implies (fn-sn-capacity x) (consp x))
@@ -73,8 +121,13 @@
                  (:forward-chaining :corollary (implies (fn-sn-files x) (consp x))
                                     :trigger-terms ((fn-sn-files x)))
                  (:forward-chaining :corollary (implies (fn-sn-node x) (consp x))
-                                    :trigger-terms ((fn-sn-node x))))
-  :hints (("Goal" :in-theory (enable fn-sn-groups fn-sn-capacity fn-sn-files fn-sn-node))))
+                                    :trigger-terms ((fn-sn-node x)))
+                 (:forward-chaining :corollary (implies (fn-sn-keyring x) (consp x))
+                                    :trigger-terms ((fn-sn-keyring x)))
+                 (:forward-chaining :corollary (implies (fn-sn-index x) (consp x))
+                                    :trigger-terms ((fn-sn-index x))))
+  :hints (("Goal" :in-theory (enable fn-sn-groups fn-sn-capacity fn-sn-files
+                                     fn-sn-node fn-sn-keyring fn-sn-index))))
 
 (defun fn-sn-statep (s)
   (declare (xargs :guard t :verify-guards nil))
@@ -83,24 +136,48 @@
        (fn-no-duplicatesp (fn-sn-groups s))
        (natp (fn-sn-capacity s))
        (fn-sf-statep (fn-sn-files s))
-       (fn-node-statep (fn-sn-node s))))
+       (fn-node-statep (fn-sn-node s))
+       ; Cheap: this walks the keyring, never the store.  The index's
+       ; agreement with the store is fn-sn-indexedp, below, deliberately NOT
+       ; here -- see the comment on fn-sn-index and decision D21.
+       (fn-prin-keyringp (fn-sn-keyring s))))
 
 (verify-guards fn-sn-statep)
 (defthm fn-sn-statep-forward-shape
   (implies (fn-sn-statep x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (enable fn-sn-statep fn-sn-shapep))))
+; The initial keyring is the empty one, so this keeps arity 2 and every one of
+; its callers is source-unchanged.  nil satisfies fn-prin-keyringp, and
+; (fn-stx-index-of-store nil k) is (fn-stx-index-empty) for EVERY k, so the
+; empty store's agreement holds under any keyring.  A node that knows no
+; principal's key verifies no statement, so its lace and its index are both
+; empty: the correct answer for an unconfigured node, not a degenerate one.
 (defun fn-sn-initial (groups capacity)
   (declare (xargs :guard t :verify-guards nil))
   (fn-sn-make groups capacity (fn-sf-initial-state)
-              (fn-node-initial-state groups capacity)))
+              (fn-node-initial-state groups capacity)
+              nil (fn-stx-index-empty)))
 
 (verify-guards fn-sn-initial)
+
+; Arity 3, as before.  It now carries the keyring and the index across, which
+; is what gives the index complete coverage at every transition that already
+; rebuilds the state through it -- fn-sn-refuse-reservation, fn-sn-known-abort
+; and fn-sn-sweep-staging among them.  A transition that CHANGES the index
+; says so by using fn-sn-update-indexed instead.
 (defun fn-sn-update (s files node)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-sn-make (fn-sn-groups s) (fn-sn-capacity s) files node))
+  (fn-sn-make (fn-sn-groups s) (fn-sn-capacity s) files node
+              (fn-sn-keyring s) (fn-sn-index s)))
 
 (verify-guards fn-sn-update)
+(defun fn-sn-update-indexed (s files node index)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-sn-make (fn-sn-groups s) (fn-sn-capacity s) files node
+              (fn-sn-keyring s) index))
+
+(verify-guards fn-sn-update-indexed)
 
 ; The record is derived from the real pending proposal, including its retention
 ; stage, instead of a second host interpretation of the submission.
@@ -197,6 +274,29 @@
 ; the actual matching durable node branch; there is no externally supplied
 ; completion status.  The filesystem durability observation remains the file
 ; kernel's record-directory result, under its documented platform assumptions.
+; The statement delta of the article the durable branch below publishes.  The
+; article is NAMED, not existentially claimed: fn-install-pending
+; (books/acceptance.lisp line 236) conses exactly
+; (fn-article-from-pending (fn-state-pending ...)) onto the store, and
+; fn-stx-durable-completion-is-an-acceptance (books/stx-lace.lisp) is the
+; theorem that says so.  It is read off the state BEFORE the completion,
+; because the completion clears the pending.
+(defun fn-sn-accepted-delta (s)
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (fn-stx-delta (fn-article-payload
+                 (fn-article-from-pending
+                  (fn-state-pending (fn-node-acceptance (fn-sn-node s)))))
+                (fn-sn-keyring s)))
+
+(verify-guards fn-sn-accepted-delta
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))
+
+; The shape fact fn-stx-index-add's guard wants, with fn-sn-accepted-delta
+; withdrawn at fn-sn-finish's guard proof.
+(defthm fn-sn-accepted-delta-is-lace
+  (fn-lace-p (fn-sn-accepted-delta s))
+  :hints (("Goal" :in-theory (enable fn-sn-accepted-delta))))
+
 (defun fn-sn-finish (s)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (fn-sn-completion-enabledp s)
@@ -206,10 +306,15 @@
              (files (fn-sf-core-completion
                      (fn-sn-files s) (fn-record-sequence record)
                      (fn-record-txid record))))
-        (fn-sn-update s
-                      (fn-sf-emit-success files (fn-record-sequence record)
-                                           (fn-record-txid record))
-                      node))
+        ; The one site where the index changes, and it changes by at most one
+        ; cons (fn-stx-index-grows-by-at-most-one-binding).  No walk of the
+        ; store happens here; that is the whole point of carrying it.
+        (fn-sn-update-indexed
+         s
+         (fn-sf-emit-success files (fn-record-sequence record)
+                             (fn-record-txid record))
+         node
+         (fn-stx-index-add (fn-sn-index s) (fn-sn-accepted-delta s))))
     s))
 
 (verify-guards fn-sn-finish
@@ -217,7 +322,8 @@
            (e/d (fn-sn-statep)
                 (fn-sf-statep fn-node-statep fn-sn-completion-record
                  fn-node-pending-matchesp fn-sn-pending-record
-                 fn-sn-prepare-node fn-sf-core-completion)))))
+                 fn-sn-prepare-node fn-sf-core-completion
+                 fn-sn-accepted-delta)))))
 
 ; The I/O surface cannot inject a core-completion observation or emit success.
 ; There is deliberately no :core-completion operation here: the kernel's
@@ -257,8 +363,12 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sn-statep s)
            (fn-sf-crash-choicep frontier-choice record-choice))
-      (fn-sn-update s (fn-sf-crash (fn-sn-files s) frontier-choice record-choice)
-                    (fn-node-initial-state (fn-sn-groups s) (fn-sn-capacity s)))
+      ; The node is reset to the empty store, so the index is the empty one.
+      ; This is a recomputation whose cost is zero, not a carried value.
+      (fn-sn-update-indexed
+       s (fn-sf-crash (fn-sn-files s) frontier-choice record-choice)
+       (fn-node-initial-state (fn-sn-groups s) (fn-sn-capacity s))
+       (fn-stx-index-empty))
     s))
 
 (verify-guards fn-sn-crash)
@@ -271,10 +381,14 @@
              (node (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                        (fn-sf-records files)
                                        (fn-sf-frontier files))))
-        (fn-sn-update s files
-                      (if (equal (fn-sf-phase files) :recovering)
-                          node
-                        (fn-sn-node s))))
+        ; Recovery is the one transition whose node does not come from a
+        ; step of this machine, so it is the one that recomputes.  It is not
+        ; a served path: it runs once, at open, on the replayed store.
+        (if (equal (fn-sf-phase files) :recovering)
+            (fn-sn-update-indexed
+             s files node
+             (fn-stx-index-of-store (fn-stx-store node) (fn-sn-keyring s)))
+          (fn-sn-update s files (fn-sn-node s))))
     s))
 
 (verify-guards fn-sn-recover
@@ -301,6 +415,53 @@
 (verify-guards fn-sn-resolve-node)
 
 ; -----------------------------------------------------------------------------
+; The keyring, the carried agreement, and the two served queries (D21)
+
+; Live reconfiguration of the verification context.  It recomputes the index
+; over the whole store, and that is correct: a new keyring gives a new set of
+; verified statements, so nothing of the old index survives.  This is a
+; reconfiguration event, not a served path.  A malformed keyring is refused
+; -- the state is returned unchanged -- rather than installed, because
+; fn-sn-statep carries fn-prin-keyringp of this field.
+(defun fn-sn-set-keyring (s keyring)
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sn-statep s) :exec t)
+           (fn-prin-keyringp keyring))
+      (fn-sn-make (fn-sn-groups s) (fn-sn-capacity s) (fn-sn-files s)
+                  (fn-sn-node s) keyring
+                  (fn-stx-index-of-store (fn-stx-store (fn-sn-node s)) keyring))
+    s))
+
+(verify-guards fn-sn-set-keyring
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))
+
+; The carried agreement.  This is the guard of NOTHING: it is established at
+; fn-sn-initial, proved preserved by every transition in
+; books/store-node-invariants.lisp, and used as the hypothesis of the query
+; keystone there.  Making it a conjunct of fn-sn-statep instead would put a
+; whole-store re-derivation -- with a signature verification per article --
+; into the guard the host checks on every call into this machine (D20, D3).
+(defun fn-sn-indexedp (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-sn-statep s)
+       (fn-stx-index-invariantp (fn-sn-index s) (fn-sn-node s)
+                                (fn-sn-keyring s))))
+
+(verify-guards fn-sn-indexedp
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))
+
+; The two served queries.  Their guard is t and their bodies mention neither
+; fn-stx-store nor fn-stx-lace nor fn-node-acceptance, so no host call through
+; either of them walks the store or re-parses an article.
+(defun fn-sn-statement-lookup (s id)
+  (declare (xargs :guard t))
+  (fn-stx-index-lookup (fn-sn-index s) id))
+
+(defun fn-sn-equivocatorp (s creator incarnation)
+  (declare (xargs :guard t))
+  (fn-stx-index-equivocatorp (fn-sn-index s) creator incarnation))
+
+; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md s2).  Enabled on include: the record
 ; lemmas, fn-sn-update and fn-sn-find-record (glue and induction vocabulary)
 ; and fn-sn-prepare-node-preserves-state.  Withdrawn: the recognizer, the
@@ -309,5 +470,8 @@
 (in-theory (disable fn-sn-statep fn-sn-initial fn-sn-pending-record
                     fn-sn-record-bindsp fn-sn-prepare-node fn-sn-prepare
                     fn-sn-completion-record fn-sn-completion-enabledp
+                    fn-sn-accepted-delta
                     fn-sn-finish fn-sn-file-step fn-sn-io fn-sn-crash
-                    fn-sn-recover fn-sn-fence-node fn-sn-resolve-node))
+                    fn-sn-recover fn-sn-fence-node fn-sn-resolve-node
+                    fn-sn-set-keyring fn-sn-indexedp
+                    fn-sn-statement-lookup fn-sn-equivocatorp))

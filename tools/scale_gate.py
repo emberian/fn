@@ -399,9 +399,11 @@ class ScaleGate(deploy_gate.DeployGate):
             except ValueError:
                 data = None
         if data is None:
-            self.skip("series {} octets".format(payload), "cat " + path,
-                      "the adopted series JSON at {} could not be read or parsed"
-                      .format(path))
+            # The operator named this file with --adopt-series; a file that
+            # is there and unreadable is a broken input, not a missing one.
+            self.broke("series {} octets".format(payload), "cat " + path,
+                       "the adopted series JSON at {} could not be read or "
+                       "parsed".format(path))
             return None
         self.series[payload] = data
         self.check("series-measured", True, "", instance=str(payload),
@@ -426,8 +428,12 @@ class ScaleGate(deploy_gate.DeployGate):
             timeout=3600, expect=None)
         data = extract(step.output, "SCALE-PROFILE")
         if data is None:
-            self.skip("profile the reopen", "series.py --profile-only",
-                      "the profile pass printed no JSON: " + (step.first_line or "nothing"))
+            # series.py ran.  A pass that prints no JSON has failed to
+            # measure, which is not the same as a measurement this box cannot
+            # take.
+            self.broke("profile the reopen", "series.py --profile-only",
+                       "the profile pass printed no JSON: "
+                       + (step.first_line or "nothing"))
             return None
         self.profile = data
         return data
@@ -461,10 +467,16 @@ class ScaleGate(deploy_gate.DeployGate):
                 observed="selected={}".format(kind))
             kind = "reader (read-only)"
             if not self.start_server(kind, fallback, "scale"):
-                self.skip("reader at scale", "scale_reader.py",
-                          "no server entry point reached LISTENING over the {} article "
-                          "store; the reader figures are missing, not zero".format(
-                              self.series.get(payload, {}).get("largest_measured")))
+                # Both entry points were tried on a store this gate built
+                # and both failed to serve it.  That is the measurement's
+                # subject failing at scale, which is the finding this phase
+                # exists for, so it is a failed row.
+                self.broke("reader at scale", "scale_reader.py",
+                           "no server entry point reached LISTENING over the {} "
+                           "article store; the reader figures are missing, not "
+                           "zero: {}".format(
+                               self.series.get(payload, {}).get("largest_measured"),
+                               self.server_failure or "no symptom recorded"))
                 return None
         step = self.sh("reader at scale", self.cd(
             "python3 {run}/scale_reader.py --port {port} --group {group} "

@@ -162,6 +162,18 @@
   :hints (("Goal" :use fn-sn-sweep-staging-keeps-the-store
            :in-theory (disable fn-sn-sweep-staging fn-sn-statep))))
 
+; The sweep returns the store unchanged, so the index is carried trivially.
+; -by-definition, a corollary of fn-sn-sweep-staging-keeps-the-store; cited,
+; not registered as a proof event.  It is here because without it the claim
+; that fn-sn-indexedp holds of every state the host installs would have a
+; hole at the sweep (D21).
+(defthm fn-sn-sweep-staging-preserves-indexedp-by-definition
+  (implies (fn-sn-indexedp s)
+           (fn-sn-indexedp (cdr (fn-sn-sweep-staging s observed held))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-sn-sweep-staging-keeps-the-store
+           :in-theory (disable fn-sn-sweep-staging fn-sn-indexedp))))
+
 (defthm fn-sn-sweep-staging-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (cdr (fn-sn-sweep-staging s observed held))))
