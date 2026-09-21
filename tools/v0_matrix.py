@@ -1951,9 +1951,38 @@ else echo NONE; fi
             name="node {} POST cycle".format(node.upper), expect=None)
         result = self.payload(step)
         if not result or "POST" not in result:
-            self.blocked(keys, "the POST driver produced no result on node {}: {}".format(
-                node.upper, result.get("error", step.first_line)),
-                nodes=(node.name,), invocation=step.command)
+            error = result.get("error", step.first_line)
+            # A POST that never answers is not the same finding as a POST that
+            # was never accepted, and the difference is visible: ask the node,
+            # over a connection of its own, whether it now serves the article.
+            after = self.feed("presence", "--port {} --groups {} --present '{}'".format(
+                node.port, GROUPS[0], SOCKET_POST[node.name]),
+                name="node {} serves the article whose POST never answered".format(
+                    node.upper), expect=None)
+            served = self.payload(after).get("present", {}).get(
+                SOCKET_POST[node.name], "(no reply)")
+            committed = str(served).startswith("220")
+            self.blocked(keys, "the POST driver produced no result on node {}: {}. "
+                         "Asked afterwards on a fresh connection, the node answered "
+                         "`ARTICLE {}` with '{}'{}".format(
+                             node.upper, error, SOCKET_POST[node.name], served,
+                             ". The article was COMMITTED and is served, and the "
+                             "poster's connection never received a reply: a client "
+                             "cannot tell accepted from uncertain, which is D13's "
+                             "three outcomes not reaching the wire at all"
+                             if committed else
+                             ". The article is not there either, so nothing is known "
+                             "about whether the write happened"),
+                         nodes=(node.name,), invocation=step.command)
+            if committed:
+                self.gaps.append(
+                    "node {}: a POST through the served path COMMITTED the article -- "
+                    "the node serves {} on a later connection -- and never answered the "
+                    "poster. Measured by hand on persvati 2026-09-20 as well: 340, the "
+                    "article, the terminating dot, then no byte for 300 s while the "
+                    "group's article count rose by one.".format(
+                        node.upper, SOCKET_POST[node.name]))
+                node.accepted.append(SOCKET_POST[node.name])
             return
         if not_permitted(result["POST"]):
             self.blocked(keys,
