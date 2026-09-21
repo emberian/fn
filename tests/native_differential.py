@@ -160,15 +160,17 @@ class Differential:
                                                               lambda raw: raw[:-1] + bytes([raw[-1] ^ 1]))),
                 ("gap", lambda root: os.rename(root / "transactions" / "00000000000000000001.txn",
                                                root / "transactions" / "00000000000000000009.txn")),
-                ("config checksum", lambda root: self.rewrite(root / "config.json",
-                                                              lambda raw: raw.replace(b'"checksum":"', b'"checksum":"0'))),
-                ("frontier behind", lambda root: self.rewrite(root / "allocation-frontier.json",
-                                                              lambda raw: raw.replace(b'"next_txid":5', b'"next_txid":1'))),
-                ("frontier bool", lambda root: (root / "allocation-frontier.json").write_bytes(
-                    b'{"checksum":"x","format":"fn-store-allocation-frontier-1","next_txid":true}\n')),
-                ("frontier float", lambda root: (root / "allocation-frontier.json").write_bytes(
-                    b'{"checksum":"x","format":"fn-store-allocation-frontier-1","next_txid":5.0}\n')),
-                ("frontier garbage", lambda root: (root / "allocation-frontier.json").write_bytes(b"{not json")),
+                ("config truncated", lambda root: self.rewrite(root / "config.json",
+                                                               lambda raw: raw[:-1])),
+                ("config wrong kind", lambda root: self.rewrite(
+                    root / "config.json", lambda raw: raw[:5] + bytes([2]) + raw[6:])),
+                ("frontier truncated", lambda root: self.rewrite(
+                    root / "allocation-frontier.json", lambda raw: raw[:-1])),
+                ("frontier wrong kind", lambda root: self.rewrite(
+                    root / "allocation-frontier.json",
+                    lambda raw: raw[:5] + bytes([1]) + raw[6:])),
+                ("frontier legacy JSON", lambda root: (root / "allocation-frontier.json").write_bytes(
+                    b'{"format":"fn-store-allocation-frontier-1","next_txid":5}\n')),
                 ("stray file", lambda root: (root / "transactions" / "stray").write_bytes(b"")),
                 ("symlinked transaction", lambda root: (
                     (root / "transactions" / "00000000000000000000.txn").unlink(),
