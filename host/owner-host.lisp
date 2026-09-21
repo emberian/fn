@@ -926,6 +926,20 @@
   (declare (xargs :stobjs state :mode :program))
   (value (len (fn-state-articles (fn-node-acceptance (fn-owner-node state))))))
 
+(defun fn-owner-keyring-snapshot (generation state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-stxk-find generation
+                       (fn-sn-keyring-snapshots
+                        (fn-own-store (fn-owner-core state))))))
+
+(defun fn-owner-next-store-coordinates (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((store (fn-own-store (fn-owner-core state))))
+    (value (list (fn-sf-frontier (fn-sn-files store))
+                 (fn-state-next-txid
+                  (fn-node-acceptance (fn-sn-node store)))
+                 (fn-cfg-generation (fn-owner-config state))))))
+
 ; The local-post provenance from the owner's canonical live configuration.
 ; The native service cannot call fn-store-prov-post: that wrapper reads the
 ; standalone store bridge's shadow configuration and would stay stale after

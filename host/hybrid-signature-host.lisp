@@ -19,6 +19,14 @@
   (fn-hsig-keyring-event sequence txid generation keyring-generation
                          principal keys))
 
+(defun fn-hsig-host-keyring-snapshot-value (snapshot)
+  (declare (xargs :mode :program))
+  (fn-hsig-keyring-snapshot-value snapshot))
+
+(defun fn-hsig-host-keyring-snapshot-octets (snapshot)
+  (declare (xargs :mode :program))
+  (if (fn-stxk-p snapshot) (fn-stxk-snapshot snapshot) nil))
+
 (defun fn-hsig-host-authorized-article-event
     (sequence txid generation keyring-generation enrolled-snapshot
               msgid content-subject
@@ -29,3 +37,14 @@
    sequence txid generation keyring-generation enrolled-snapshot
    msgid content-subject
    article-record principal keys source signatures observed-ml-key ed ml))
+
+(defun fn-hsig-host-authorized-submission-event
+    (sequence txid generation keyring-generation enrolled-snapshot
+              msgid source groups obligation-id content-subject
+              release-evidence charge principal keys signatures observed-ml-key
+              ed ml)
+  (declare (xargs :mode :program))
+  (fn-hsig-authorized-submission-event
+   sequence txid generation keyring-generation enrolled-snapshot
+   msgid source groups obligation-id content-subject release-evidence charge
+   principal keys signatures observed-ml-key ed ml))

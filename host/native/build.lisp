@@ -38,6 +38,7 @@
 (include-book "books/feed-connection-invariants")
 (include-book "books/native-operator")
 (include-book "books/native-control")
+(include-book "books/native-hybrid-control")
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-native-app-fast")
 (include-book "books/bp-workflow-records")
@@ -84,6 +85,7 @@
 (ld "host/feed-filename-host.lisp" :ld-error-action :error)
 (ld "host/native-operator-host.lisp" :ld-error-action :error)
 (ld "host/native-control-host.lisp" :ld-error-action :error)
+(ld "host/native-hybrid-control-host.lisp" :ld-error-action :error)
 (ld "host/hybrid-signature-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
@@ -153,6 +155,7 @@
         ; entry retains its separate diagnostic surface.
         (load "host/native/feed-service.lisp")
         (load "host/native/control.lisp")
+        (load "host/native/hybrid-control.lisp")
         ; Public operator grammar follows the owner so its normalized run
         ; callback is present; it can call the already-loaded private admin
         ; executor for the ACL2-planned group/capacity actions.

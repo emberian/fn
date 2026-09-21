@@ -34,6 +34,30 @@
           (if (fn-stxk-p event) event nil))
       nil)))
 
+(defun fn-hsig-keyring-snapshot-value (snapshot)
+  "Return (principal keys) only for the exact canonical selected snapshot."
+  (declare (xargs :guard t))
+  (if (not (fn-stxk-p snapshot)) nil
+    (let ((decoded (fn-stmt-decode-items 5 (fn-stxk-snapshot snapshot))))
+      (if (not (fn-stmt-okp decoded)) nil
+        (let* ((items (fn-stmt-value decoded))
+               (principal (and (consp items) (cdr (nth 0 items))))
+               (keys (list (cons :ed25519 (cdr (nth 2 items)))
+                           (cons :ml-dsa-65 (cdr (nth 4 items))))))
+          (if (and (equal (fn-stxk-profile snapshot) *fn-hsig-profile-tag*)
+                   (equal (fn-stxk-snapshot snapshot)
+                          (fn-stxe-encode-items items))
+                   (equal (len items) 5)
+                   (fn-stmt-bytes-item-p (nth 0 items))
+                   (fn-stmt-uint-item-p (nth 1 items))
+                   (equal (cdr (nth 1 items)) *fn-hsig-ed25519-algorithm*)
+                   (fn-stmt-bytes-item-p (nth 2 items))
+                   (fn-stmt-uint-item-p (nth 3 items))
+                   (equal (cdr (nth 3 items)) *fn-hsig-ml-dsa-65-algorithm*)
+                   (fn-stmt-bytes-item-p (nth 4 items))
+                   (fn-hsig-subject-p principal keys nil))
+              (list principal keys) nil))))))
+
 ; The retained verdict detail contains both detached components in canonical
 ; algorithm order.  Replay can therefore preserve and independently inspect
 ; the evidence which produced :verified.
@@ -95,6 +119,24 @@
               event nil))
       nil)))
 
+(defun fn-hsig-authorized-submission-event
+    (sequence txid generation keyring-generation enrolled-snapshot
+              msgid source groups obligation-id content-subject
+              release-evidence charge principal keys signatures observed-ml-key
+              ed25519-observation ml-dsa-65-observation)
+  "Construct the legacy article record and atomic kind-4 event in ACL2."
+  (declare (xargs :guard t))
+  (let ((record
+         (fn-record-make sequence txid generation msgid source groups
+                         obligation-id content-subject release-evidence charge)))
+    (if (fn-record-p record)
+        (fn-hsig-authorized-article-event
+         sequence txid generation keyring-generation enrolled-snapshot msgid
+         (fn-record-string-octets content-subject) (fn-record-encode record)
+         principal keys source signatures observed-ml-key
+         ed25519-observation ml-dsa-65-observation)
+      nil)))
+
 ; Publication and recovery use the exact durable snapshot, not merely its
 ; generation number.  The construction-time authorization above also requires
 ; this same canonical snapshot, closing a valid-signature/wrong-enrollment
@@ -153,6 +195,8 @@
 
 (in-theory (disable (:d fn-hsig-keyring-snapshot)
                     (:d fn-hsig-keyring-event)
+                    (:d fn-hsig-keyring-snapshot-value)
                     (:d fn-hsig-verdict-detail)
                     (:d fn-hsig-authorized-article-event)
+                    (:d fn-hsig-authorized-submission-event)
                     (:d fn-hsig-article-event-snapshot-bindsp)))

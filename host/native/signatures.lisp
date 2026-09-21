@@ -312,3 +312,28 @@ The caller may pass the returned object unchanged to the identity owner."
        (and observed-ml-key (coerce observed-ml-key 'list))
        (first observations)
        (if (consp ml-observation) (first ml-observation) ml-observation)))))
+
+(defun fnn-hsig-authorized-submission-event
+    (coordinates keyring-generation enrolled-snapshot msgid source groups
+                 obligation-id content-subject release-evidence charge
+                 principal keys signatures ml-public-key-path)
+  "Verify once and ask ACL2 to construct the complete fn-r plus kind-4 event."
+  (destructuring-bind (sequence txid generation) coordinates
+    (let ((preimage (fnn-core 'fn-hsig-host-preimage principal keys source)))
+      (unless (and preimage (plusp (length preimage)))
+        (return-from fnn-hsig-authorized-submission-event nil))
+      (let* ((observations
+              (fnn-hsig-observe (cdr (first keys)) ml-public-key-path
+                                preimage signatures))
+             (ml-observation (second observations))
+             (observed-ml-key (and (consp ml-observation)
+                                   (second ml-observation))))
+        (fnn-core
+         'fn-hsig-host-authorized-submission-event
+         sequence txid generation keyring-generation enrolled-snapshot
+         msgid source groups obligation-id content-subject release-evidence
+         charge principal keys signatures
+         (and observed-ml-key (coerce observed-ml-key 'list))
+         (first observations)
+         (if (consp ml-observation) (first ml-observation)
+           ml-observation))))))

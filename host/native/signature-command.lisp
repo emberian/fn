@@ -50,5 +50,6 @@ Output is two algorithm-tagged lowercase hexadecimal lines."
         (fnn-out "ml-dsa-65 ~a" (fnn-hex ml-signature))
         0))))
 
-(fnn-register-verb "hybrid-sign" #'fnn-command-hybrid-sign)
-
+(fnn-register-verb "hybrid-sign"
+                   (lambda (first rest)
+                     (fnn-command-hybrid-sign (cons first rest))))
