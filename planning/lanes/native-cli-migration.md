@@ -106,12 +106,13 @@ substitutes for the omitted operator commands.
 
 The native configuration lane owns the inert parser, ACL2 normalization
 wrapper, and its tests.  The launcher contract is deliberately smaller: it
-passes neither parsed settings nor defaults.  The eventual operator image
-entry receives a bounded `fn.toml` octet vector and bounded raw argv byte
-vectors; the configuration wrapper returns a tagged accepted canonical
-configuration, `refused` reason, or `fault`.  The exact image verb and
-function names belong to that lane, so this document does not invent a raw
-Lisp API for them.
+passes neither parsed settings nor defaults.  Its frozen diagnostic image
+protocol is `config PROFILE-PATH`: raw host code reads bounded bytes and calls
+`fn-native-config-load`, whose ACL2 result is `(:accepted config)` or
+`(:refused reason)`.  File-read failures remain host `fault` outcomes.  The
+later operator verb receives raw `--config PATH` and argv words without shell
+or launcher parsing and uses that same boundary; its exact command spelling
+will be published with the operator grammar.
 
 The compatibility target is the entire currently documented `fn.toml`
 surface.  The table is a contract for native-config implementation and for
