@@ -54,9 +54,17 @@ class ServedDifferentialTests(unittest.TestCase):
         """
         # The posting configuration and the clock observation are pinned at
         # open; a read-only transcript never consults them.
+        # `(fn-auth-open-config)` last, exactly as host/reader-host.lisp:137
+        # passes it.  `d484e9a` gave `fn-served-open` a seventh formal and
+        # updated both Lisp callers; this call is spelled as TEXT, so nothing
+        # on either side could see it, and all seven tests here raised
+        # "FN-SERVED-OPEN takes 7 arguments ... given 6" instead of comparing
+        # bytes -- the bridge and books/served went a day with no divergence
+        # check running.  `tools/harness_check.py --lint acl2-arity` reads
+        # ACL2 forms out of Python string literals now, for this shape.
         open_form = ("(fn-served-open *fn-reader-archive* 510 8192"
                      " (fn-reader-post-config *fn-reader-archive* nil)"
-                     " nil nil)")
+                     " nil nil (fn-auth-open-config))")
         chunk_list = "(list " + " ".join(octet_literal(c) for c in chunks) + ")"
         form = (
             "(fn-served-reply-octets"
