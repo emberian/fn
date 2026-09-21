@@ -1,0 +1,895 @@
+{
+  "articles": [
+    {
+      "bytes": 1202,
+      "index": 1,
+      "message_id": "<native-shared-0001@example.invalid>",
+      "sha256": "be2ca0c57b94fa9e9570af9a5a5e872616b292196cc3c8af59f7c806f174ff99"
+    },
+    {
+      "bytes": 1202,
+      "index": 2,
+      "message_id": "<native-shared-0002@example.invalid>",
+      "sha256": "fa84d742d53f8987bcb4a3e681a39204e969c63cf3e18f21b62ddabbfe4b7d6a"
+    },
+    {
+      "bytes": 1202,
+      "index": 3,
+      "message_id": "<native-shared-0003@example.invalid>",
+      "sha256": "68aded0d2a750f1081a655b4668f2619fafbb5f0bcfb43053296c5b4352877dc"
+    },
+    {
+      "bytes": 1202,
+      "index": 4,
+      "message_id": "<native-shared-0004@example.invalid>",
+      "sha256": "ecaae40c076468f0182d7ad094b06433300853f2f755a187466b3009e9e8fa6e"
+    },
+    {
+      "bytes": 1202,
+      "index": 5,
+      "message_id": "<native-shared-0005@example.invalid>",
+      "sha256": "74ad5ab660030642d409a4947293af58388a9344c1daf7efbc6efdf19bc68941"
+    },
+    {
+      "bytes": 1202,
+      "index": 6,
+      "message_id": "<native-shared-0006@example.invalid>",
+      "sha256": "f2ef38ff11c0da0f7b1424ca5374047cf71fc9abda90a17198d6743301fa8925"
+    },
+    {
+      "bytes": 1202,
+      "index": 7,
+      "message_id": "<native-shared-0007@example.invalid>",
+      "sha256": "335ee9d9ee3af5eacb699dbab1ea26a677ad29e701b5cff01a3036e0e9cb3f73"
+    },
+    {
+      "bytes": 1202,
+      "index": 8,
+      "message_id": "<native-shared-0008@example.invalid>",
+      "sha256": "c493389a802baeb024fb4b70d262f75b5273e5b06f0de7a774a2d80b59402c35"
+    },
+    {
+      "bytes": 1202,
+      "index": 9,
+      "message_id": "<native-shared-0009@example.invalid>",
+      "sha256": "ef8e43b99088afd6e1c5b9bca0b880974ba4d17ba06a3484eca6ba330b2deef7"
+    },
+    {
+      "bytes": 1202,
+      "index": 10,
+      "message_id": "<native-shared-0010@example.invalid>",
+      "sha256": "b41342dcb90f7876c265fc9af1ae52b9f507b548c08ba0ab9b95bf7cd632b5ae"
+    },
+    {
+      "bytes": 1202,
+      "index": 11,
+      "message_id": "<native-shared-0011@example.invalid>",
+      "sha256": "098fd411c5304249ad46663fb398636e8dca13bdb0713d16d12cfd3a0823dd5e"
+    },
+    {
+      "bytes": 1202,
+      "index": 12,
+      "message_id": "<native-shared-0012@example.invalid>",
+      "sha256": "5f267db95c8c973f043e370da58f68bac9c059b296858737af33fb846517c468"
+    },
+    {
+      "bytes": 1202,
+      "index": 13,
+      "message_id": "<native-shared-0013@example.invalid>",
+      "sha256": "9c7aa39f1a6cf6839736c35f98ee30f59dce5834ff00da33cbdf30d6ed7590fb"
+    },
+    {
+      "bytes": 1202,
+      "index": 14,
+      "message_id": "<native-shared-0014@example.invalid>",
+      "sha256": "2100559e1f47d54d1935f565315ef990918726c2a11c73aebe588f9bf8eca163"
+    },
+    {
+      "bytes": 1202,
+      "index": 15,
+      "message_id": "<native-shared-0015@example.invalid>",
+      "sha256": "3377402f0c5b391b961b892102e912d77427bd7077f7c89eb10a971e4d5c5221"
+    },
+    {
+      "bytes": 1202,
+      "index": 16,
+      "message_id": "<native-shared-0016@example.invalid>",
+      "sha256": "ea251ee0ab130bffc77ceebeae8783e5c3b52dcbe91e80f893300185c1c54e63"
+    },
+    {
+      "bytes": 1202,
+      "index": 17,
+      "message_id": "<native-shared-0017@example.invalid>",
+      "sha256": "8370041abc2cd804fb65187410eb2845872fc4194144564c6ed378b1598b3536"
+    },
+    {
+      "bytes": 1202,
+      "index": 18,
+      "message_id": "<native-shared-0018@example.invalid>",
+      "sha256": "c886d1b237ad9b992b70f0a73455737a6a441d7077fe7210c513877c39ba5ac4"
+    },
+    {
+      "bytes": 1202,
+      "index": 19,
+      "message_id": "<native-shared-0019@example.invalid>",
+      "sha256": "4f1ec9cc1c72f032328f8019732428afa19fe381d2175457ccfc1ff2271d0505"
+    },
+    {
+      "bytes": 1202,
+      "index": 20,
+      "message_id": "<native-shared-0020@example.invalid>",
+      "sha256": "f12de2a955b55b3455ffd2b64812e40a4658c81eaa24d4298997d0c1f5eaa9eb"
+    },
+    {
+      "bytes": 1202,
+      "index": 21,
+      "message_id": "<native-shared-0021@example.invalid>",
+      "sha256": "88096fc574098c1749cd9d58277a86fe4300fe88ecbc36be9975a99d008f3aeb"
+    },
+    {
+      "bytes": 1202,
+      "index": 22,
+      "message_id": "<native-shared-0022@example.invalid>",
+      "sha256": "7502f1a9c8fbfe34a912c16332a2afee321b0aa249b336c97780476950f82c32"
+    },
+    {
+      "bytes": 1202,
+      "index": 23,
+      "message_id": "<native-shared-0023@example.invalid>",
+      "sha256": "8084bf82a57e19f2383b11498d14c18220d378a5e6df65b83f2fb93a9bb0efcf"
+    },
+    {
+      "bytes": 1202,
+      "index": 24,
+      "message_id": "<native-shared-0024@example.invalid>",
+      "sha256": "3e50a1f2506d62d157ad248a1c488f5122d9223ec9887c520541cd1988786f23"
+    },
+    {
+      "bytes": 1202,
+      "index": 25,
+      "message_id": "<native-shared-0025@example.invalid>",
+      "sha256": "7315edda6e6b7aa48038c87f84381e89887e4d74c2766dab0a14e8ec4099a2b9"
+    },
+    {
+      "bytes": 1202,
+      "index": 26,
+      "message_id": "<native-shared-0026@example.invalid>",
+      "sha256": "83b4ed750769c1a686b4cebdfc50abc3d8c6b1a9be740b5fc39a455b3070677d"
+    },
+    {
+      "bytes": 1202,
+      "index": 27,
+      "message_id": "<native-shared-0027@example.invalid>",
+      "sha256": "583e39ad1821204f11acb5252cd4738ed413f90c24efc0cee7da692dcc1cb35f"
+    },
+    {
+      "bytes": 1202,
+      "index": 28,
+      "message_id": "<native-shared-0028@example.invalid>",
+      "sha256": "bf9862d69fd08cd207a631a0b4d2bb6f8a139bfd1af5f9f167fa812d0a339956"
+    },
+    {
+      "bytes": 1202,
+      "index": 29,
+      "message_id": "<native-shared-0029@example.invalid>",
+      "sha256": "f7bf7f346a2dc09eea0f2e6c2984a81fa86ab50528867ce6e1939c045bd05c47"
+    },
+    {
+      "bytes": 1202,
+      "index": 30,
+      "message_id": "<native-shared-0030@example.invalid>",
+      "sha256": "02261d075ef7ad9cf613be22377f72ec022536024104556fdcf0f3ce35890d60"
+    },
+    {
+      "bytes": 1202,
+      "index": 31,
+      "message_id": "<native-shared-0031@example.invalid>",
+      "sha256": "f582d9d98e837e067916b094f645a0abaa968bc67c543e660341300345d03bcc"
+    },
+    {
+      "bytes": 1202,
+      "index": 32,
+      "message_id": "<native-shared-0032@example.invalid>",
+      "sha256": "1c7aaca09865eda93cf47def9d2ab8966fadffb6c50a614be6182b73df37eb2b"
+    },
+    {
+      "bytes": 1202,
+      "index": 33,
+      "message_id": "<native-shared-0033@example.invalid>",
+      "sha256": "46dfd2c449ea07ceb9a5ac7ead3c81d28071e44213b37471e3075706a7aeb9f1"
+    },
+    {
+      "bytes": 1202,
+      "index": 34,
+      "message_id": "<native-shared-0034@example.invalid>",
+      "sha256": "1df9685d9949d78a97313361177e72df95bd0e4131a78ed77409301ea0007ea7"
+    },
+    {
+      "bytes": 1202,
+      "index": 35,
+      "message_id": "<native-shared-0035@example.invalid>",
+      "sha256": "25bfc37ffff58626551806b5c85b3b5ae22fc8e0dba829ed6920f34e50ba7f0a"
+    },
+    {
+      "bytes": 1202,
+      "index": 36,
+      "message_id": "<native-shared-0036@example.invalid>",
+      "sha256": "17d666fa43be4a7cf33d3e3e8b47fc2da6c52684e64a01c24b89ac78410c56e0"
+    },
+    {
+      "bytes": 1202,
+      "index": 37,
+      "message_id": "<native-shared-0037@example.invalid>",
+      "sha256": "01a02da84df2f18cd11ed5571bbf54f24acbaf65e653637553d883e10531f1e5"
+    },
+    {
+      "bytes": 1202,
+      "index": 38,
+      "message_id": "<native-shared-0038@example.invalid>",
+      "sha256": "dfcbbfb9fe93b928f4e86e88634f2deb78059e7a156409b7436b2cc4fbc8f3eb"
+    },
+    {
+      "bytes": 1202,
+      "index": 39,
+      "message_id": "<native-shared-0039@example.invalid>",
+      "sha256": "ba319fefb62b6b8290283c89e16a914e64811836748aedb03dc2f5201a8b8f5b"
+    },
+    {
+      "bytes": 1202,
+      "index": 40,
+      "message_id": "<native-shared-0040@example.invalid>",
+      "sha256": "5ebea7933804e71b5584c91b65b0fccbf62b252907738c6f4e74e812053ac775"
+    },
+    {
+      "bytes": 1202,
+      "index": 41,
+      "message_id": "<native-shared-0041@example.invalid>",
+      "sha256": "0b120e55b2a1b8be3853d43726ddd74270d9b922d232367f223464ac00ab29f6"
+    },
+    {
+      "bytes": 1202,
+      "index": 42,
+      "message_id": "<native-shared-0042@example.invalid>",
+      "sha256": "d550f39949e8e8413a1964a5226aaf27061447742f373d2cd7abc1ef9f4a7e56"
+    },
+    {
+      "bytes": 1202,
+      "index": 43,
+      "message_id": "<native-shared-0043@example.invalid>",
+      "sha256": "d2086793a9ea6c1553d55b31efe2148991cf194233286418cdf5fc19d92e0d5d"
+    },
+    {
+      "bytes": 1202,
+      "index": 44,
+      "message_id": "<native-shared-0044@example.invalid>",
+      "sha256": "a12c8c49de05c2593a88b9556e81e35542c33a6d811a2ac4e853d880913f6984"
+    },
+    {
+      "bytes": 1202,
+      "index": 45,
+      "message_id": "<native-shared-0045@example.invalid>",
+      "sha256": "29c94bf4fb421e946d2809f0fa0d6966f68f834f0b53fef8759d292ab6395f2b"
+    },
+    {
+      "bytes": 1202,
+      "index": 46,
+      "message_id": "<native-shared-0046@example.invalid>",
+      "sha256": "aad8dbe15c63ecf16c3fcc08bc266846ccf97c9e4c4e85cc14da23a966fce0af"
+    },
+    {
+      "bytes": 1202,
+      "index": 47,
+      "message_id": "<native-shared-0047@example.invalid>",
+      "sha256": "61528591d44d7e881fe0155fc2ca55fcb074bcdac0cf4bab8d9c1f0e967fd3fe"
+    },
+    {
+      "bytes": 1202,
+      "index": 48,
+      "message_id": "<native-shared-0048@example.invalid>",
+      "sha256": "56ef73197f61170dd22e2e03a469f36d5265027beb04175066ef1852ab2f1a00"
+    },
+    {
+      "bytes": 1202,
+      "index": 49,
+      "message_id": "<native-shared-0049@example.invalid>",
+      "sha256": "81cc6d88388701c9bef7151b47e7f333fae8c3966aa7e75f1f9b44e50af9e0ca"
+    },
+    {
+      "bytes": 1202,
+      "index": 50,
+      "message_id": "<native-shared-0050@example.invalid>",
+      "sha256": "929a03f5093fa7466932f6c5313ebb0f77f2ee94e374e9df64f0edf1d6da8743"
+    },
+    {
+      "bytes": 1202,
+      "index": 51,
+      "message_id": "<native-shared-0051@example.invalid>",
+      "sha256": "7852b02afba964b6fbad672677b7a17ee0f91217d11a28cb34a66668c13514c4"
+    },
+    {
+      "bytes": 1202,
+      "index": 52,
+      "message_id": "<native-shared-0052@example.invalid>",
+      "sha256": "46566c6770992e118968a5f1c197b70aa7d8b6faf6353f807a41ead5d6fb43c8"
+    },
+    {
+      "bytes": 1202,
+      "index": 53,
+      "message_id": "<native-shared-0053@example.invalid>",
+      "sha256": "31a5e48614ce5d317b1192c7fd844b21cce6dce70c637b70ee39f36eb10e5fb2"
+    },
+    {
+      "bytes": 1202,
+      "index": 54,
+      "message_id": "<native-shared-0054@example.invalid>",
+      "sha256": "e83fa3c5fc045c0dba3d3fec3475861ebcfa2eecdeb26d78bd473540783e1267"
+    },
+    {
+      "bytes": 1202,
+      "index": 55,
+      "message_id": "<native-shared-0055@example.invalid>",
+      "sha256": "2cc20733b3e5ca686b61eda834982acbec41e906f1731f80c72185a82c0f882d"
+    },
+    {
+      "bytes": 1202,
+      "index": 56,
+      "message_id": "<native-shared-0056@example.invalid>",
+      "sha256": "b31312e2e1658548e0bd65810cabfb4d574c4bc0f39e81fb10df8304b5f24df5"
+    },
+    {
+      "bytes": 1202,
+      "index": 57,
+      "message_id": "<native-shared-0057@example.invalid>",
+      "sha256": "6161176da359c871e89babfb6646d633e58c2c84f575bcd9de1061aa729f9040"
+    },
+    {
+      "bytes": 1202,
+      "index": 58,
+      "message_id": "<native-shared-0058@example.invalid>",
+      "sha256": "4daee042bff05b4e4130bc97079efa419e80738a14479c1dd5bcdb8f5c27dea4"
+    },
+    {
+      "bytes": 1202,
+      "index": 59,
+      "message_id": "<native-shared-0059@example.invalid>",
+      "sha256": "6d576a419b2e57c152722f92e47dbfd37d7dd72fc8c4c38afb160d103cb412cb"
+    },
+    {
+      "bytes": 1202,
+      "index": 60,
+      "message_id": "<native-shared-0060@example.invalid>",
+      "sha256": "63f24768fefc10c56f1087bd469788c7c497c5471c4f5234f63a09b6fffb1c36"
+    },
+    {
+      "bytes": 1202,
+      "index": 61,
+      "message_id": "<native-shared-0061@example.invalid>",
+      "sha256": "8fb454886cc39ba575e92d2363742cda901e4d974e125c8bf6d1c7d59cdb1e0d"
+    },
+    {
+      "bytes": 1202,
+      "index": 62,
+      "message_id": "<native-shared-0062@example.invalid>",
+      "sha256": "71a35d09cec76f0302203140bcf87cb283afbedc6dd785d2edd1d6a3b11070ea"
+    },
+    {
+      "bytes": 1202,
+      "index": 63,
+      "message_id": "<native-shared-0063@example.invalid>",
+      "sha256": "d1b5acba1eb5a60b73ac700fb8fc14549add868595d9e9dfdacf991afee21169"
+    },
+    {
+      "bytes": 1202,
+      "index": 64,
+      "message_id": "<native-shared-0064@example.invalid>",
+      "sha256": "11651d4ae1c3ab38343c2fd860d03e2f189fe33d0c3a70cd5fc7ed764387706c"
+    },
+    {
+      "bytes": 1202,
+      "index": 65,
+      "message_id": "<native-shared-0065@example.invalid>",
+      "sha256": "5f3030a90d23e462b90cde848121c52e942a08bf4c599dae46bd20ed9b56835c"
+    },
+    {
+      "bytes": 1202,
+      "index": 66,
+      "message_id": "<native-shared-0066@example.invalid>",
+      "sha256": "67a20d62247c4fa28e92666cb1deb44ed51c8156dc1f6595d85bcd208c1b3b88"
+    },
+    {
+      "bytes": 1202,
+      "index": 67,
+      "message_id": "<native-shared-0067@example.invalid>",
+      "sha256": "009d59d7eb401a84c39484588edfeda905dd62f4f2defa7ccbd4c571330eafeb"
+    },
+    {
+      "bytes": 1202,
+      "index": 68,
+      "message_id": "<native-shared-0068@example.invalid>",
+      "sha256": "221e71f520ba327f3c33f4951bc940bb04d6618c34089e0d362ac28ba36f607b"
+    },
+    {
+      "bytes": 1202,
+      "index": 69,
+      "message_id": "<native-shared-0069@example.invalid>",
+      "sha256": "c063a5009bf57c41a2704b3d10f0532e963911ec043c2e269d155c58b28da1d5"
+    },
+    {
+      "bytes": 1202,
+      "index": 70,
+      "message_id": "<native-shared-0070@example.invalid>",
+      "sha256": "4b770d35356d64b350157e7fdf80d0cb88ac814dddcb468bbaf55eef0675f714"
+    },
+    {
+      "bytes": 1202,
+      "index": 71,
+      "message_id": "<native-shared-0071@example.invalid>",
+      "sha256": "693a0d1b8b12875bd3644d67fa96378c75621e5e8607f9fd4515619ee8727ba6"
+    },
+    {
+      "bytes": 1202,
+      "index": 72,
+      "message_id": "<native-shared-0072@example.invalid>",
+      "sha256": "96697c6c214178232d1098a9c4c040c786395dad0427f3fc9b43ee1805e5122b"
+    },
+    {
+      "bytes": 1202,
+      "index": 73,
+      "message_id": "<native-shared-0073@example.invalid>",
+      "sha256": "3b0f4382da78d4520180fb4e12cb060d7d0ec3a880adbd9384e674480b60afe7"
+    },
+    {
+      "bytes": 1202,
+      "index": 74,
+      "message_id": "<native-shared-0074@example.invalid>",
+      "sha256": "7c4eed916ebea3f5d0a7ff6f7f1a07167d8bfa0f1c2fdfa4fedc28953dcc53c2"
+    },
+    {
+      "bytes": 1202,
+      "index": 75,
+      "message_id": "<native-shared-0075@example.invalid>",
+      "sha256": "b891e4fe272f842d411214e308de5f5bfb4e3cf76577c3c41e0f9adecc02b650"
+    },
+    {
+      "bytes": 1202,
+      "index": 76,
+      "message_id": "<native-shared-0076@example.invalid>",
+      "sha256": "3d986cc1e5f2808cf4e6eac372e452da6ee576e1c8de5e3b9cb49c0eb7108943"
+    },
+    {
+      "bytes": 1202,
+      "index": 77,
+      "message_id": "<native-shared-0077@example.invalid>",
+      "sha256": "1cb13a921a77b6847a16fa50b6acc769f520fa93e086eba23c74305a7bc98a74"
+    },
+    {
+      "bytes": 1202,
+      "index": 78,
+      "message_id": "<native-shared-0078@example.invalid>",
+      "sha256": "9313f7582ae4571351ec3cb1b6a08aacbb5ffb8df5e4545b9ee31fc03ad41239"
+    },
+    {
+      "bytes": 1202,
+      "index": 79,
+      "message_id": "<native-shared-0079@example.invalid>",
+      "sha256": "dc29a184ffab73dbd9adc6c5f8bef3def10dd6a292c786b13dbcdd29a5a2cd24"
+    },
+    {
+      "bytes": 1202,
+      "index": 80,
+      "message_id": "<native-shared-0080@example.invalid>",
+      "sha256": "11ad6573c78d6877cebd64bafba6fbf1a002150356f0ef10741a7e0229eb59e9"
+    },
+    {
+      "bytes": 1202,
+      "index": 81,
+      "message_id": "<native-shared-0081@example.invalid>",
+      "sha256": "ff5e67b1402cbc98405ceee8ff9315f2a5e28aa6e0a27c575b6af2301cb96ece"
+    },
+    {
+      "bytes": 1202,
+      "index": 82,
+      "message_id": "<native-shared-0082@example.invalid>",
+      "sha256": "e03bc82718280f51f8f4a58307205c1a99e75f2d42815e2e062ccadd75745f62"
+    },
+    {
+      "bytes": 1202,
+      "index": 83,
+      "message_id": "<native-shared-0083@example.invalid>",
+      "sha256": "54093164bf42f76349f57d7911cbb3a9b7de4c3ff3265bdbd2b30acfbcf34dac"
+    },
+    {
+      "bytes": 1202,
+      "index": 84,
+      "message_id": "<native-shared-0084@example.invalid>",
+      "sha256": "90aef13ee4e7415d859c0a90c8ed456ba7d5d57118531ede389132ea8b883a2d"
+    },
+    {
+      "bytes": 1202,
+      "index": 85,
+      "message_id": "<native-shared-0085@example.invalid>",
+      "sha256": "d07d6da4999e4c4981956ad10abd35f02d67c9cee1cfb9f115483036d3d311fd"
+    },
+    {
+      "bytes": 1202,
+      "index": 86,
+      "message_id": "<native-shared-0086@example.invalid>",
+      "sha256": "bcc7740cb8e7aaa15b440c367eeffa8ac8fe3eab61101cb257e4d53e87c01f92"
+    },
+    {
+      "bytes": 1202,
+      "index": 87,
+      "message_id": "<native-shared-0087@example.invalid>",
+      "sha256": "06a51c6af4d3bbefafe4313913fd6d0b4b70951b797094b6ec82e243be8622df"
+    },
+    {
+      "bytes": 1202,
+      "index": 88,
+      "message_id": "<native-shared-0088@example.invalid>",
+      "sha256": "0dab8b5e5e37864ad3c5546ac166620a0c7c8389b25ad685806ac64ed282dc9b"
+    },
+    {
+      "bytes": 1202,
+      "index": 89,
+      "message_id": "<native-shared-0089@example.invalid>",
+      "sha256": "169650358ea5bcc42473ecab998672e35db819bd0914b0902bcb49e023bf7a10"
+    },
+    {
+      "bytes": 1202,
+      "index": 90,
+      "message_id": "<native-shared-0090@example.invalid>",
+      "sha256": "7b2865804b4e0a04a984aaf3ab5f2aee58bd99dc72ebc1d0fc8cde42257269aa"
+    },
+    {
+      "bytes": 1202,
+      "index": 91,
+      "message_id": "<native-shared-0091@example.invalid>",
+      "sha256": "85a6e2ae50cece7dbaf3dd38922c18f1c75ac2961f51e1a9dda62a8f67301999"
+    },
+    {
+      "bytes": 1202,
+      "index": 92,
+      "message_id": "<native-shared-0092@example.invalid>",
+      "sha256": "379a083e4c120af76df4fd735d4304d8a74b993914e26d82157f29493bed2163"
+    },
+    {
+      "bytes": 1202,
+      "index": 93,
+      "message_id": "<native-shared-0093@example.invalid>",
+      "sha256": "fcc840d03ba1883a5bb2b3f045c3020328b2d31f03024345f23e73f0615e7249"
+    },
+    {
+      "bytes": 1202,
+      "index": 94,
+      "message_id": "<native-shared-0094@example.invalid>",
+      "sha256": "7f1cd62beb5bf34550b8815c3e9d5e6c0e6f02fdfb08c335f22774dd3e41d462"
+    },
+    {
+      "bytes": 1202,
+      "index": 95,
+      "message_id": "<native-shared-0095@example.invalid>",
+      "sha256": "630d2dcc56035c0cf4031c998ffe7182100f36cdea3e08020dcc9e17584a0c3a"
+    },
+    {
+      "bytes": 1202,
+      "index": 96,
+      "message_id": "<native-shared-0096@example.invalid>",
+      "sha256": "0c0599ad7c991fdff0b6be37bd98c179b4af06f218da2191ccfd50a88695bc6b"
+    },
+    {
+      "bytes": 1202,
+      "index": 97,
+      "message_id": "<native-shared-0097@example.invalid>",
+      "sha256": "56be01229230a42951e1e822545cab4805e6816139d02ad0dfe1f2a0d07ac1c9"
+    },
+    {
+      "bytes": 1202,
+      "index": 98,
+      "message_id": "<native-shared-0098@example.invalid>",
+      "sha256": "81c0af8c7efbd5136bb6017a4482a4f9153f5d6548c0e7d347e5df5d4d9a8d7e"
+    },
+    {
+      "bytes": 1202,
+      "index": 99,
+      "message_id": "<native-shared-0099@example.invalid>",
+      "sha256": "f8be8ab219bce43e1e7e4b7b334e70fc323dd011b33e1c840d8af124a03b9d40"
+    },
+    {
+      "bytes": 1202,
+      "index": 100,
+      "message_id": "<native-shared-0100@example.invalid>",
+      "sha256": "fd5604cbb00ca66fae4337dd24a52e78898940b3f511412b3cb3969aa21b229a"
+    },
+    {
+      "bytes": 1202,
+      "index": 101,
+      "message_id": "<native-shared-0101@example.invalid>",
+      "sha256": "41a86b3643f0efb477f7d179ac1b4728674d816b0b06b853abccd2d8524293e4"
+    },
+    {
+      "bytes": 1202,
+      "index": 102,
+      "message_id": "<native-shared-0102@example.invalid>",
+      "sha256": "fe62f6e7e4db7547bcd35212f99f08feb895f0f19967fbeffd80da0e8e3aee41"
+    },
+    {
+      "bytes": 1202,
+      "index": 103,
+      "message_id": "<native-shared-0103@example.invalid>",
+      "sha256": "03826f9e3711e7fc839cfbe4f25134bad991072b892f924401e52011cc57ca5e"
+    },
+    {
+      "bytes": 1202,
+      "index": 104,
+      "message_id": "<native-shared-0104@example.invalid>",
+      "sha256": "63051835f29217321c8bd25b8df3adbc5753b68c84e5f504c5ec6a7be04f9e24"
+    },
+    {
+      "bytes": 1202,
+      "index": 105,
+      "message_id": "<native-shared-0105@example.invalid>",
+      "sha256": "3dae8a1ade15b1cc4a999e9aad1ac5888fec79f5d7436b9087e9726b7545845e"
+    },
+    {
+      "bytes": 1202,
+      "index": 106,
+      "message_id": "<native-shared-0106@example.invalid>",
+      "sha256": "fb84a9aa1a7b1b1b111eaa2d2627cf08032bf8ced264d56e7a4a6c23bb4f7dd0"
+    },
+    {
+      "bytes": 1202,
+      "index": 107,
+      "message_id": "<native-shared-0107@example.invalid>",
+      "sha256": "3f12d23ae9d8c306a87c65bc2b4e40f21eb7c1c0f30d30aa3ff90b09e0a72878"
+    },
+    {
+      "bytes": 1202,
+      "index": 108,
+      "message_id": "<native-shared-0108@example.invalid>",
+      "sha256": "61fb31dd2d3c07a19bdf7ccbb6f1dc8f7193d541f85c53c4c06b579b846ea21f"
+    },
+    {
+      "bytes": 1202,
+      "index": 109,
+      "message_id": "<native-shared-0109@example.invalid>",
+      "sha256": "6342ad598308547665114e207fca41ad0ed11ce720b1d7cf66920eb07aba9045"
+    },
+    {
+      "bytes": 1202,
+      "index": 110,
+      "message_id": "<native-shared-0110@example.invalid>",
+      "sha256": "1a5f4cb6e37ebfe5aac8b195de9f20367ce3cb087c1a4bc66dbb2843d52d23b0"
+    },
+    {
+      "bytes": 1202,
+      "index": 111,
+      "message_id": "<native-shared-0111@example.invalid>",
+      "sha256": "ff784844016da5ac1878d008bfeba4659e2aa989abf98f1907896639c685a1ff"
+    },
+    {
+      "bytes": 1202,
+      "index": 112,
+      "message_id": "<native-shared-0112@example.invalid>",
+      "sha256": "6784808f1aea831e2f4209ea0aa26d12a11a418faa72896ae7754d05f611468c"
+    },
+    {
+      "bytes": 1202,
+      "index": 113,
+      "message_id": "<native-shared-0113@example.invalid>",
+      "sha256": "d651081a8d65d62fbacd0cffafd183f4f8f45d8bc5430ed0fca8b93782ba1339"
+    },
+    {
+      "bytes": 1202,
+      "index": 114,
+      "message_id": "<native-shared-0114@example.invalid>",
+      "sha256": "b9bc471f5d64110adf5e389e128ae65d620ad76ca571712904b5b8f87ff7815b"
+    },
+    {
+      "bytes": 1202,
+      "index": 115,
+      "message_id": "<native-shared-0115@example.invalid>",
+      "sha256": "9220eb37d4b184030119b7dfa740bf112888cff263a7b0095a21feec35c8df75"
+    },
+    {
+      "bytes": 1202,
+      "index": 116,
+      "message_id": "<native-shared-0116@example.invalid>",
+      "sha256": "fe38e4744880461ca917de4a98cc1694cccf39f4d6191063db894cb18cfeb346"
+    },
+    {
+      "bytes": 1202,
+      "index": 117,
+      "message_id": "<native-shared-0117@example.invalid>",
+      "sha256": "425d9f36d7b62d85ce78c6c3fcf04ac701b9da3a7a599c0f6301b77e6e894729"
+    },
+    {
+      "bytes": 1202,
+      "index": 118,
+      "message_id": "<native-shared-0118@example.invalid>",
+      "sha256": "96c1a259bbca02321b12fb5058033472d89b1eb563e163d73b2caca2c7f9808a"
+    },
+    {
+      "bytes": 1202,
+      "index": 119,
+      "message_id": "<native-shared-0119@example.invalid>",
+      "sha256": "dc2d0d6d7a8d7a25a29e24cbe864120e750082ecd6d85fea53e33eb4ef1ceb09"
+    },
+    {
+      "bytes": 1202,
+      "index": 120,
+      "message_id": "<native-shared-0120@example.invalid>",
+      "sha256": "c869740b8635611a507abd0fb44dc70af236df32a02227dc3b8e0b40db94e440"
+    },
+    {
+      "bytes": 1202,
+      "index": 121,
+      "message_id": "<native-shared-0121@example.invalid>",
+      "sha256": "6356e8ac48ee7506522d91ab550401b7b5761f498f48b65a233fc182202f67ec"
+    },
+    {
+      "bytes": 1202,
+      "index": 122,
+      "message_id": "<native-shared-0122@example.invalid>",
+      "sha256": "1a0b311fcbb79151f24d8c6526920440238d1a323a7d4c173a6e3f4a23dc791b"
+    },
+    {
+      "bytes": 1202,
+      "index": 123,
+      "message_id": "<native-shared-0123@example.invalid>",
+      "sha256": "b98bde71b416df917708004702e8ab01cba66e23563852b678fa15690d5c08b9"
+    },
+    {
+      "bytes": 1202,
+      "index": 124,
+      "message_id": "<native-shared-0124@example.invalid>",
+      "sha256": "35b9a904350b0e89277a14184e528bf012657520a5c2c36ba2579f5e8260e364"
+    },
+    {
+      "bytes": 1202,
+      "index": 125,
+      "message_id": "<native-shared-0125@example.invalid>",
+      "sha256": "3b6ed6e75904527eec94b2990b6c5a8620f8b38913e88c2864d5862937787330"
+    },
+    {
+      "bytes": 1202,
+      "index": 126,
+      "message_id": "<native-shared-0126@example.invalid>",
+      "sha256": "a883cc42c95850a3e2fca771cb575ada1f08cd6e2e265b50d7e6768dd5b05d74"
+    },
+    {
+      "bytes": 1202,
+      "index": 127,
+      "message_id": "<native-shared-0127@example.invalid>",
+      "sha256": "20ba8086b23d5904fc000d9fbb806d4e30c75a6ee67ebceeb2a45d17add08905"
+    },
+    {
+      "bytes": 1202,
+      "index": 128,
+      "message_id": "<native-shared-0128@example.invalid>",
+      "sha256": "dfbd3f2885076b0b0d5825b8e56ebb22d975a30a7c296f670539cafb26c2f068"
+    }
+  ],
+  "finished_utc": "2026-09-21T18:26:08Z",
+  "first_announcement": "CONTROL /home/ember/fn-gates/bench-shared-owner-20260921T142555/work/control.sock\nLISTENING 35073",
+  "first_startup_seconds": 0.062938822,
+  "harness_sha256": "5a42d67bd8db7ea9c486086acefb3f97191d9f913308824c7c6ea4839c85857d",
+  "host": {
+    "cpu_count": 24,
+    "hostname": "persvati",
+    "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42"
+  },
+  "image": "/home/ember/fn-gates/freeze-f7190d69/build/fn-host",
+  "image_sha256": "4fe51b69b65530868a168b38454c1929f90e82d987eabbe3614ea6b86b35837e",
+  "points": [
+    {
+      "articles": 1,
+      "owner_rss_kib": 318844,
+      "post_latency": {
+        "max_seconds": 0.072763111,
+        "p50_seconds": 0.072763111,
+        "p95_seconds": 0.072763111,
+        "samples": 1
+      },
+      "posts_since_previous_point": 1,
+      "read_latency": {
+        "max_seconds": 0.003928754,
+        "p50_seconds": 0.0003006905,
+        "p95_seconds": 0.000570493,
+        "samples": 20
+      },
+      "read_response_bytes": {
+        "max": 1202,
+        "min": 1202
+      }
+    },
+    {
+      "articles": 16,
+      "owner_rss_kib": 345408,
+      "post_latency": {
+        "max_seconds": 0.08187512,
+        "p50_seconds": 0.076786072,
+        "p95_seconds": 0.08187512,
+        "samples": 15
+      },
+      "posts_since_previous_point": 15,
+      "read_latency": {
+        "max_seconds": 0.001104799,
+        "p50_seconds": 0.000443104,
+        "p95_seconds": 0.00083406,
+        "samples": 20
+      },
+      "read_response_bytes": {
+        "max": 1202,
+        "min": 1202
+      }
+    },
+    {
+      "articles": 64,
+      "owner_rss_kib": 422088,
+      "post_latency": {
+        "max_seconds": 0.083253123,
+        "p50_seconds": 0.07940617350000001,
+        "p95_seconds": 0.082746029,
+        "samples": 48
+      },
+      "posts_since_previous_point": 48,
+      "read_latency": {
+        "max_seconds": 0.0012433,
+        "p50_seconds": 0.000721533,
+        "p95_seconds": 0.000933768,
+        "samples": 20
+      },
+      "read_response_bytes": {
+        "max": 1202,
+        "min": 1202
+      }
+    },
+    {
+      "articles": 128,
+      "owner_rss_kib": 526740,
+      "post_latency": {
+        "max_seconds": 0.083728999,
+        "p50_seconds": 0.078213979,
+        "p95_seconds": 0.082755065,
+        "samples": 64
+      },
+      "posts_since_previous_point": 64,
+      "read_latency": {
+        "max_seconds": 0.002420094,
+        "p50_seconds": 0.0017964754999999998,
+        "p95_seconds": 0.00198692,
+        "samples": 20
+      },
+      "read_response_bytes": {
+        "max": 1202,
+        "min": 1202
+      }
+    }
+  ],
+  "profile": {
+    "article_bytes": [
+      1202
+    ],
+    "article_count": 128,
+    "body_bytes": 1024,
+    "counts": [
+      1,
+      16,
+      64,
+      128
+    ],
+    "reads_per_point": 20,
+    "total_source_bytes": 153856
+  },
+  "reopen": {
+    "announcement": "CONTROL /home/ember/fn-gates/bench-shared-owner-20260921T142555/work/control.sock\nLISTENING 35073",
+    "read_response_bytes": 1202,
+    "read_seconds": 0.004016189,
+    "read_status": "220 0 <native-shared-0128@example.invalid> article follows",
+    "rss_kib": 406272,
+    "startup_seconds": 0.211392392
+  },
+  "schema": "fn-native-shared-owner-benchmark-v1",
+  "source_revision": "8c231978",
+  "store_init_seconds": 0.08952655
+}
