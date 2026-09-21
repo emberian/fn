@@ -229,15 +229,16 @@ contain it.
 
 | Box | Run | Evidence | ACL2 | Jobs | Roots | Wall |
 | --- | --- | --- | --- | --- | --- | --- |
-| hbox | **`run-20260921T022409Z-7db2`** (the final tree, `8b9aa25`, after `w11/bytestore-k2` landed below this lane) | `build/acl2/certify-20260921T022417Z-1447188` | `/tank/fn/acl2-8.7/saved_acl2` sha256 `64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5`, SBCL 2.6.8 | 8 | **131 of 132**, the one failure foreign and pre-existing | 209.1 s |
+| hbox | **`run-20260921T023259Z-07ca`** (the final tree, `aecd39b`) | `build/acl2/certify-20260921T023304Z-1454300` | `/tank/fn/acl2-8.7/saved_acl2` sha256 `64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5`, SBCL 2.6.8 | 8 | **133 of 133, `passed`** | 203.7 s |
+| hbox | `run-20260921T022409Z-7db2` (`8b9aa25`, after `w11/bytestore-k2` landed below this lane) | `build/acl2/certify-20260921T022417Z-1447188` | same | 8 | 131 of 132; the one red root was the foreign `tests/acl2/checkpoint-codec-tests` | 209.1 s |
 | hbox | `run-20260921T021436Z-32a0` (before that merge) | `build/acl2/certify-20260921T021450Z-1440524` | same | 8 | 131 of 132 | 209.3 s |
 | hbox | `run-20260921T015356Z-e888` (before the fork witness) | `build/acl2/certify-20260921T015400Z-1419906` | same | 8 | 131 of 132 | 218.6 s |
 | hbox | `run-20260921T014724Z-9505` (the round before) | `build/acl2/certify-20260921T014734Z-1414858` | same | 8 | 127 of 132; **every book in `books/` passed**, the five reds were test books with a hand-built `fn-sn-make` plus the foreign one | 219.3 s |
 | laptop | local, per root | `certify-20260921T012023Z-18407` (`store-node`), `…T012817Z-29647` (`store-node-invariants`), `…T013339Z-38841` (`store-node-resolution`), `…T013506Z-40800` (`store-observed`), `…T013514Z-40943` (`store-sweep`), `…T013134Z-35686` (`store-node-traces`), `…T013924Z-49733` (`store-node-index-tests`) | `/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2` | 1 | 7 of 7 | — |
 
 **The control, stated separately from the green.** The FINAL hbox run's own
-`source_digests_sha256` (`run-20260921T022409Z-7db2`) was re-checked against
-the working tree afterwards: **132 of 132 certified sources byte-identical,
+`source_digests_sha256` (`run-20260921T023259Z-07ca`) was re-checked against
+the working tree afterwards: **133 of 133 certified sources byte-identical,
 0 changed.** So the certification is a claim about the tree as it stands, not
 about an earlier one. `dev` was merged (`3a2640c`) BEFORE that run, not
 after, and so was `w11/bytestore-k2`'s landing below this lane
@@ -276,13 +277,14 @@ steps / 0.02 s; `fn-sn-prepare-preserves-indexedp` 5,795 / 0.01 s;
 `fn-sn-initial-is-indexed` 468; the two query bridges 167 and 180. No new
 lemma needed a profile; nothing here is slow.
 
-**Two red roots are FOREIGN and pre-existing.**
-`tests/acl2/checkpoint-codec-tests` fails at its `assert-event` on line 204 —
-`(not (fn-cpc-validp *cpc-value* *cpc-groups* 10 (list *cpc-r0-bad-generation*)))`
-is simply false, the validator accepts the bad-generation witness. It was
-reported as an ASK by `w10/teeth-audit` and again by `w11/wildmat-xpat`; that
-book's include closure is `books/checkpoint-codec` alone and this lane touches
-nothing in it. See §7 for the second.
+**The fan is green with no exceptions to declare.** Until the third `dev`
+merge one root was red — `tests/acl2/checkpoint-codec-tests`, whose
+`assert-event` on line 204 was simply false (the validator accepted the
+bad-generation witness), reported as an ASK by `w10/teeth-audit` and again by
+`w11/wildmat-xpat`. `w11/checkpoint-validator` landed the fix on `dev` while
+this lane was finishing, and the final run has **no failing root at all**.
+The fan is 133 rather than 132 because `dev` also added
+`tests/acl2/store-node-resolution-traces-tests` to the Makefile roots.
 
 ## 7. Open, recorded not weakened
 
