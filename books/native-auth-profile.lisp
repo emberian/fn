@@ -88,22 +88,25 @@
 (defun fn-native-auth-assoc (key fields)
   (declare (xargs :guard t))
   (if (consp fields)
-      (if (equal key (car (car fields))) (car fields)
+      (if (equal key (fn-ncfg-first (fn-ncfg-first fields)))
+          (fn-ncfg-first fields)
         (fn-native-auth-assoc key (cdr fields)))
     nil))
 
 (defun fn-native-auth-string-field (key fields)
   (declare (xargs :guard t))
-  (let ((pair (fn-native-auth-assoc key fields)))
-    (if (and pair (equal (car (car (cdr pair))) :string))
-        (car (cdr (car (cdr pair))))
+  (let* ((pair (fn-native-auth-assoc key fields))
+         (value (fn-ncfg-second pair)))
+    (if (equal (fn-ncfg-first value) :string)
+        (fn-ncfg-second value)
       :bad)))
 
 (defun fn-native-auth-bool-field (key fields)
   (declare (xargs :guard t))
-  (let ((pair (fn-native-auth-assoc key fields)))
-    (if (and pair (equal (car (car (cdr pair))) :bool))
-        (car (cdr (car (cdr pair))))
+  (let* ((pair (fn-native-auth-assoc key fields))
+         (value (fn-ncfg-second pair)))
+    (if (equal (fn-ncfg-first value) :bool)
+        (fn-ncfg-second value)
       :bad)))
 
 (defun fn-native-auth-finish (name fields)
@@ -146,12 +149,12 @@
           (let ((next-name (fn-native-auth-table-name line))
                 (done (fn-native-auth-finish name fields)))
             (cond ((equal next-name :bad) (list :refused :table))
-                  ((equal (car done) :refused) done)
+                  ((equal (fn-ncfg-first done) :refused) done)
                   ((fn-native-auth-name-memberp next-name creds)
                    (list :refused :duplicate-login))
                   (t (let ((next-creds
-                            (if (equal (car done) :credential)
-                                (cons (car (cdr done)) creds) creds)))
+                            (if (equal (fn-ncfg-first done) :credential)
+                                (cons (fn-ncfg-second done) creds) creds)))
                        (cond
                         ((fn-native-auth-name-memberp next-name next-creds)
                          (list :refused :duplicate-login))
@@ -163,21 +166,22 @@
           (let ((field (fn-native-auth-field line)))
             (cond ((equal field :bad) (list :refused :field))
                   ((null name) (list :refused :field-before-table))
-                  ((fn-native-auth-assoc (car field) fields)
+                  ((fn-native-auth-assoc (fn-ncfg-first field) fields)
                    (list :refused :duplicate-field))
                   (t (fn-native-auth-parse-lines
                       (cdr lines) name (cons field fields) creds)))))))
     (let ((done (fn-native-auth-finish name fields)))
-      (cond ((equal (car done) :refused) done)
-            ((equal (car done) :credential)
+      (cond ((equal (fn-ncfg-first done) :refused) done)
+            ((equal (fn-ncfg-first done) :credential)
              (cond
               ((fn-native-auth-name-memberp
-                (fn-auth-cred-name (car (cdr done))) creds)
+                (fn-auth-cred-name (fn-ncfg-second done)) creds)
                (list :refused :duplicate-login))
               ((<= *fn-native-auth-max-credentials* (len creds))
                (list :refused :too-many-credentials))
-              (t (list :accepted (reverse (cons (car (cdr done)) creds))))))
-            (t (list :accepted (reverse creds)))))))
+              (t (list :accepted
+                       (fn-ncfg-reverse (cons (fn-ncfg-second done) creds))))))
+            (t (list :accepted (fn-ncfg-reverse creds)))))))
 
 (defun fn-native-auth-load (octets presentp requiredp protected-onlyp tls-availablep)
   ; The host-called semantic subject.  A missing file is the existing empty
@@ -197,29 +201,29 @@
              (if (< *fn-native-auth-max-lines* (len lines))
                  (list :refused :bounds-or-encoding)
                (let ((parsed (fn-native-auth-parse-lines lines nil nil nil)))
-                 (if (not (equal (car parsed) :accepted)) parsed
+                 (if (not (equal (fn-ncfg-first parsed) :accepted)) parsed
                    (let ((config
                           (fn-auth-make-config
                            (and requiredp t) (and protected-onlyp t)
-                           (and tls-availablep t) (car (cdr parsed)))))
+                           (and tls-availablep t) (fn-ncfg-second parsed))))
                      (if (fn-auth-configp config) (list :accepted config)
                        (list :refused :credential-shape))))))))))
 
 (defun fn-native-auth-result-status (result)
   (declare (xargs :guard t))
-  (if (consp result) (car result) :refused))
+  (if (consp result) (fn-ncfg-first result) :refused))
 
 (defun fn-native-auth-result-reason (result)
   (declare (xargs :guard t))
   (if (and (consp result) (consp (cdr result))
-           (equal (car result) :refused))
-      (car (cdr result)) nil))
+           (equal (fn-ncfg-first result) :refused))
+      (fn-ncfg-second result) nil))
 
 (defun fn-native-auth-result-config (result)
   (declare (xargs :guard t))
   (if (and (consp result) (consp (cdr result))
-           (equal (car result) :accepted))
-      (car (cdr result)) (fn-auth-open-config)))
+           (equal (fn-ncfg-first result) :accepted))
+      (fn-ncfg-second result) (fn-auth-open-config)))
 
 (defthm fn-native-auth-load-protected-without-tls-refuses
   (equal (fn-native-auth-load octets presentp requiredp t nil)
