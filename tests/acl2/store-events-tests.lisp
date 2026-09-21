@@ -2,6 +2,11 @@
 (in-package "ACL2")
 (include-book "../../books/store-events")
 
+(assert-event (equal (fn-store-publication-ceiling :article) 65538))
+(assert-event (equal (fn-store-publication-ceiling :undertake) 4096))
+(assert-event (equal (fn-store-publication-ceiling :keyring-snapshot) 131072))
+(assert-event (equal (fn-store-publication-ceiling :accepted-statement) 196608))
+
 (defconst *fn-se-test-undertake*
   (fn-store-retention-event-make :undertake 1 2 2 "forward-1" "subject-1"
                                  "evidence-1" 7))

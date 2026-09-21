@@ -87,16 +87,22 @@
   (if (not (fn-bs-meta-config-valuesp values)) 0
     (floor (fn-bs-meta-nth 3 values) (fn-bs-meta-nth 4 values))))
 
-(defun fn-bs-publication-admissiblep (values committed-count committed-octets
+(defun fn-bs-profile-aggregate-covers-recordsp (values)
+  (declare (xargs :guard t))
+  (and (fn-bs-meta-config-valuesp values)
+       (<= (* (fn-bs-meta-nth 4 values)
+              (fn-bs-profile-record-ceiling values))
+           (fn-bs-meta-nth 3 values))))
+
+(defun fn-bs-publication-admissiblep (values committed-count
                                              prospective-payload-octets)
   (declare (xargs :guard t))
   (and (fn-bs-meta-config-valuesp values)
-       (natp committed-count) (natp committed-octets)
+       (fn-bs-profile-aggregate-covers-recordsp values)
+       (natp committed-count)
        (natp prospective-payload-octets)
        (< committed-count (fn-bs-meta-nth 4 values))
-       (<= prospective-payload-octets (fn-bs-profile-record-ceiling values))
-       (<= (+ committed-octets prospective-payload-octets)
-           (fn-bs-meta-nth 3 values))))
+       (<= prospective-payload-octets (fn-bs-profile-record-ceiling values))))
 
 (defun fn-bs-meta-frame-okp (frame kind payload bound)
   (declare (xargs :guard t))
