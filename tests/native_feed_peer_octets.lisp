@@ -1,0 +1,37 @@
+;;; Exercise the actual native representation conversion and link constructor.
+;;; The boundary observer below checks arguments, not feed semantics. Actual
+;;; configured lookup and two-node behavior belong to the saved-image gate.
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(defvar *the-live-state* nil)
+(defun f-get-global (name state) (declare (ignore name state)) nil)
+(load "host/native/io.lisp")
+(load "host/native/feed-service.lisp")
+
+(defun fnn-owner-serialized (service cid thunk)
+  (declare (ignore service cid)) (funcall thunk))
+(defvar *peer-boundary-calls* nil)
+(defun fnn-core (name &rest args)
+  (assert (and (eq name 'fn-owner-feed-connect-timeout) (null args)))
+  10)
+(defun fnn-owner-core (name &rest args)
+  (unless (equal args '((112 101 101 114)))
+    (error "~s received a non-list or changed peer identity: ~s" name args))
+  (push name *peer-boundary-calls*)
+  (case name
+    (fn-owner-feed-has-queued t)
+    (fn-owner-feed-host '(49 50 55 46 48 46 48 46 49))
+    (fn-owner-feed-port 1119)
+    (fn-owner-feed-backoff-ms 1000)
+    (fn-owner-feed-security '(:clear))
+    (fn-owner-feed-auth-policy nil)
+    (otherwise (error "unexpected wrapper ~s" name))))
+
+(let ((link (fnn-feed-link-for-peer "peer")))
+  (multiple-value-bind (queued host port backoff timeout security auth)
+      (fnn-feed-dial-plan :test (fnn-feed-link-peer-octets link))
+    (assert (and queued (equal host "127.0.0.1") (= port 1119)
+                 (= backoff 1000) (= timeout 10)
+                 (equal security '(:clear)) (null auth)))
+    (assert (= (length *peer-boundary-calls*) 6))))
+(format t "native feed peer representation: PASS~%")
