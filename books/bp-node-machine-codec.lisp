@@ -8,6 +8,7 @@
 (in-package "ACL2")
 (include-book "bp-node-machine")
 (include-book "frame-trailer")
+(include-book "byte-store-txn-name")
 
 (set-verify-guards-eagerness 0)
 
@@ -20,6 +21,136 @@
 ; exact encoded bundle.  The maximum is below the generic frame layer's cap
 ; and is the only whole-payload bound the host uses.
 (defconst *fn-bpn-lifecycle-max-payload* 134144)
+(defconst *fn-bpn-lifecycle-max-hidden-stages* 16)
+(defconst *fn-bpn-lifecycle-max-stage-name-chars* 128)
+(defconst *fn-bpn-lifecycle-name-suffix* '(#\. #\f #\n #\b))
+
+; Reuse the Store transaction codec's proved decimal digit renderer.  Only the
+; namespace suffix differs; there is no second natural-number printer here.
+(defun fn-bpn-lifecycle-record-name-chars (token)
+  (declare (xargs :guard t))
+  (append (fn-bs-txn-digits token) *fn-bpn-lifecycle-name-suffix*))
+
+(defun fn-bpn-lifecycle-record-name (token)
+  (declare (xargs :guard t :verify-guards nil))
+  (coerce (fn-bpn-lifecycle-record-name-chars token) 'string))
+
+(defun fn-bpn-lifecycle-hidden-stage-namep (name)
+  (declare (xargs :guard t))
+  (and (stringp name)
+       (let ((chars (coerce name 'list)))
+         (and (consp chars)
+              (equal (car chars) #\.)
+              (<= (len chars) *fn-bpn-lifecycle-max-stage-name-chars*)))))
+
+(defun fn-bpn-lifecycle-reverse (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (append (fn-bpn-lifecycle-reverse (cdr xs)) (list (car xs)))
+    nil))
+
+; This is a recovery plan, not an admission machine.  Raw Lisp supplies the
+; sorted directory observations.  ACL2 classifies hidden stages, compares each
+; final name with the exact name generated for the contiguous token, and
+; returns both lists plus the observed next-token frontier.
+(defun fn-bpn-lifecycle-namespace-plan-aux (names token records stages)
+  (declare (xargs :guard t :measure (acl2-count names)))
+  (if (atom names)
+      (if (null names)
+          (list :ready (fn-bpn-lifecycle-reverse records)
+                (fn-bpn-lifecycle-reverse stages) token)
+        (list :fault :improper-namespace))
+    (let ((name (car names)))
+      (cond
+       ((fn-bpn-lifecycle-hidden-stage-namep name)
+        (if (< (len stages) *fn-bpn-lifecycle-max-hidden-stages*)
+            (fn-bpn-lifecycle-namespace-plan-aux
+             (cdr names) token records (cons name stages))
+          (list :fault :hidden-stage-bound)))
+       ((and (< token *fn-bpn-machine-max-records*)
+             (stringp name)
+             (equal name (fn-bpn-lifecycle-record-name token)))
+        (fn-bpn-lifecycle-namespace-plan-aux
+         (cdr names) (+ 1 token) (cons name records) stages))
+       (t (list :fault :lifecycle-namespace))))))
+
+(defun fn-bpn-lifecycle-namespace-plan (names)
+  (declare (xargs :guard t))
+  (if (and (true-listp names)
+           (<= (len names)
+               (+ *fn-bpn-machine-max-records*
+                  *fn-bpn-lifecycle-max-hidden-stages*)))
+      (fn-bpn-lifecycle-namespace-plan-aux names 0 nil nil)
+    (list :fault :namespace-entry-bound)))
+
+(defun fn-bpn-lifecycle-namespace-planp (plan)
+  (declare (xargs :guard t))
+  (and (true-listp plan) (equal (len plan) 4)
+       (equal (car plan) :ready)
+       (fn-string-listp (nth 1 plan))
+       (fn-string-listp (nth 2 plan))
+       (natp (nth 3 plan))
+       (<= (nth 3 plan) *fn-bpn-machine-max-records*)))
+
+(defun fn-bpn-lifecycle-plan-record-names (plan)
+  (declare (xargs :guard (fn-bpn-lifecycle-namespace-planp plan)))
+  (nth 1 plan))
+
+(defun fn-bpn-lifecycle-plan-hidden-stages (plan)
+  (declare (xargs :guard (fn-bpn-lifecycle-namespace-planp plan)))
+  (nth 2 plan))
+
+(defun fn-bpn-lifecycle-plan-next-token (plan)
+  (declare (xargs :guard (fn-bpn-lifecycle-namespace-planp plan)))
+  (nth 3 plan))
+
+(defun fn-bpn-lifecycle-record-bindingsp (names records token)
+  (declare (xargs :guard t :measure (acl2-count names)))
+  (if (atom names)
+      (and (null names) (null records))
+    (and (consp records)
+         (stringp (car names))
+         (fn-bpn-lifecycle-recordp (car records))
+         (equal (fn-bpn-record-token (car records)) token)
+         (equal (car names) (fn-bpn-lifecycle-record-name token))
+         (fn-bpn-lifecycle-record-bindingsp
+          (cdr names) (cdr records) (+ 1 token)))))
+
+(defun fn-bpn-lifecycle-recovery (observed-names decoded-records)
+  (declare (xargs :guard t))
+  (let ((plan (fn-bpn-lifecycle-namespace-plan observed-names)))
+    (if (and (fn-bpn-lifecycle-namespace-planp plan)
+             (fn-bpn-lifecycle-record-bindingsp
+              (fn-bpn-lifecycle-plan-record-names plan) decoded-records 0))
+        (list :ready decoded-records
+              (fn-bpn-lifecycle-plan-hidden-stages plan)
+              (fn-bpn-lifecycle-plan-next-token plan))
+      (list :fault :lifecycle-namespace-record-binding))))
+
+; The native host needs only these flat projections.  RESTART itself remains
+; fn-bpn-step; this predicate checks that its carried machine frontier is the
+; frontier established by namespace recovery.
+(defun fn-bpn-lifecycle-recovery-records (answer)
+  (declare (xargs :guard t))
+  (if (and (true-listp answer) (equal (car answer) :ready))
+      (nth 1 answer) nil))
+
+(defun fn-bpn-lifecycle-recovery-stages (answer)
+  (declare (xargs :guard t))
+  (if (and (true-listp answer) (equal (car answer) :ready))
+      (nth 2 answer) nil))
+
+(defun fn-bpn-lifecycle-recovery-next-token (answer)
+  (declare (xargs :guard t))
+  (if (and (true-listp answer) (equal (car answer) :ready))
+      (nth 3 answer) 0))
+
+(defun fn-bpn-lifecycle-recovery-agrees-with-statep (answer st)
+  (declare (xargs :guard t))
+  (and (equal (car answer) :ready)
+       (fn-bpn-machine-statep st)
+       (equal (fn-bpn-lifecycle-recovery-next-token answer)
+              (fn-bpn-machine-state-next-token st))))
 
 (defconst *fn-bpn-lifecycle-queued-spec*
   '(:nat :text :text :nat :nat :nat :nat

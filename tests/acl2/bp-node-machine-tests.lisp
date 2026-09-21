@@ -39,6 +39,41 @@
 (assert-event (fn-bpn-effect-kind-memberp
                :bundle-queue-accepted (fn-bpn-answer-effects *bpnm-a1*)))
 
+; Lifecycle filenames use the Store transaction decimal codec, and recovery
+; accepts only a contiguous ACL2-generated namespace.  Hidden stages remain
+; bounded, explicit evidence rather than silently disappearing from the plan.
+(defconst *bpnm-name0* "00000000000000000000.fnb")
+(defconst *bpnm-name1* "00000000000000000001.fnb")
+(defconst *bpnm-name2* "00000000000000000002.fnb")
+(assert-event (equal (fn-bpn-lifecycle-record-name 0) *bpnm-name0*))
+(defconst *bpnm-namespace-plan*
+  (fn-bpn-lifecycle-namespace-plan
+   (list ".interrupted-stage" *bpnm-name0* *bpnm-name1*)))
+(assert-event (fn-bpn-lifecycle-namespace-planp *bpnm-namespace-plan*))
+(assert-event
+ (equal (fn-bpn-lifecycle-plan-record-names *bpnm-namespace-plan*)
+        (list *bpnm-name0* *bpnm-name1*)))
+(assert-event
+ (equal (fn-bpn-lifecycle-plan-hidden-stages *bpnm-namespace-plan*)
+        '(".interrupted-stage")))
+(assert-event
+ (equal (fn-bpn-lifecycle-plan-next-token *bpnm-namespace-plan*) 2))
+
+; A corrupt spelling and a gap are rejected before any frame is read.
+(assert-event
+ (equal (car (fn-bpn-lifecycle-namespace-plan
+              '("00000000000000000000.fnB")))
+        :fault))
+(assert-event
+ (equal (car (fn-bpn-lifecycle-namespace-plan
+              (list *bpnm-name0* *bpnm-name2*)))
+        :fault))
+(must-fail
+ (assert-event
+  (fn-bpn-lifecycle-namespace-planp
+   (fn-bpn-lifecycle-namespace-plan
+    (list *bpnm-name0* *bpnm-name2*)))))
+
 ; Exact duplicate means the same durable object binding.  Contrary route or
 ; bytes under the same work/attempt/generation key is a refusal.
 (assert-event (fn-bpn-effect-kind-memberp
@@ -84,6 +119,27 @@
 (defconst *bpnm-a2* (fn-bpn-step *bpnm-s1* (list :contact *bpnm-peer* t)))
 (defconst *bpnm-r1* (third (car (fn-bpn-answer-effects *bpnm-a2*))))
 (assert-event (equal (car *bpnm-r1*) :attempting))
+
+; Decoded record tokens must agree with their canonical observed filenames.
+; Swapping the token-1 record under the token-0 name is a reachable namespace
+; corruption witness, not merely a malformed-frame case.
+(defconst *bpnm-lifecycle-recovery*
+  (fn-bpn-lifecycle-recovery
+   (list ".interrupted-stage" *bpnm-name0* *bpnm-name1*)
+   (list *bpnm-r0* *bpnm-r1*)))
+(assert-event (equal (car *bpnm-lifecycle-recovery*) :ready))
+(assert-event
+ (equal (fn-bpn-lifecycle-recovery-stages *bpnm-lifecycle-recovery*)
+        '(".interrupted-stage")))
+(assert-event
+ (equal (car (fn-bpn-lifecycle-recovery
+              (list *bpnm-name0*) (list *bpnm-r1*)))
+        :fault))
+(must-fail
+ (assert-event
+  (equal (car (fn-bpn-lifecycle-recovery
+               (list *bpnm-name0*) (list *bpnm-r1*)))
+         :ready)))
 (assert-event (not (fn-bpn-effect-kind-memberp
                     :cl-send (fn-bpn-answer-effects *bpnm-a2*))))
 (defconst *bpnm-a3*
@@ -123,6 +179,9 @@
   (fn-bpn-find-job (list *bpnm-work* *bpnm-attempt* 0)
                    (fn-bpn-machine-state-jobs
                     (fn-bpn-answer-state *bpnm-restart*))))
+(assert-event
+ (fn-bpn-lifecycle-recovery-agrees-with-statep
+  *bpnm-lifecycle-recovery* (fn-bpn-answer-state *bpnm-restart*)))
 (assert-event (equal (fn-bpn-job-status *bpnm-restarted-job*) :queued))
 (assert-event (equal (fn-bpn-job-route *bpnm-restarted-job*) *bpnm-route*))
 (assert-event
@@ -164,3 +223,17 @@
 (must-fail
  (assert-event
   (not (fn-bpn-effect-kind-memberp :release '((:release work-1))))))
+
+; Namespace capacity remains owned by the called fn-bpn-propose path.  A
+; machine recovered at the record frontier refuses without emitting :persist.
+(defconst *bpnm-full-state*
+  (fn-bpn-state-with *bpnm-s0* nil nil nil nil
+                     *fn-bpn-machine-max-records*))
+(defconst *bpnm-full-answer*
+  (fn-bpn-step *bpnm-full-state* *bpnm-enqueue*))
+(assert-event
+ (fn-bpn-effect-kind-memberp
+  :bundle-queue-refused (fn-bpn-answer-effects *bpnm-full-answer*)))
+(assert-event
+ (not (fn-bpn-effect-kind-memberp
+       :persist (fn-bpn-answer-effects *bpnm-full-answer*))))

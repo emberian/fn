@@ -56,6 +56,9 @@ class NativeBpServiceTests(unittest.TestCase):
     def records(self):
         return sorted((self.journal / "lifecycle").glob("*.fnb"))
 
+    def resume(self, env=None):
+        return self.invoke("resume", self.journal, "dtn://fn-a/", env=env)
+
     def test_outage_restart_duplicate_and_conflict(self):
         first = self.run_outage()
         self.assertEqual(first.returncode, 3, first.stderr)
@@ -64,7 +67,7 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertEqual(len(self.records()), 3)  # queued, attempting, requeued
 
         frontier = (self.journal / "sequence" / "frontier.fnb").read_bytes()
-        resumed = self.invoke("resume", self.journal, "dtn://fn-a/")
+        resumed = self.resume()
         self.assertEqual(resumed.returncode, 3, resumed.stderr)
         self.assertIn("BP queue recovered jobs=1", resumed.stdout)
         self.assertEqual(len(self.records()), 5)
@@ -123,7 +126,7 @@ class NativeBpServiceTests(unittest.TestCase):
                     "the uncertain persist must fence before attempting/forwarding records",
                 )
 
-                recovered = self.invoke("resume", self.journal, "dtn://fn-a/")
+                recovered = self.resume()
                 self.assertEqual(recovered.returncode, 3, recovered.stderr)
                 self.assertIn("BP queue recovered jobs=1", recovered.stdout)
                 self.assertNotIn("restart fenced", recovered.stderr)
@@ -139,6 +142,51 @@ class NativeBpServiceTests(unittest.TestCase):
             len(self.records()), 2,
             "a core fault must stop before a requeued transport record",
         )
+
+    def test_recovery_rejects_corrupt_name_gap_and_token_binding(self):
+        mutations = ("corrupt-name", "gap", "token-mismatch")
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                shutil.rmtree(self.journal, ignore_errors=True)
+                first = self.run_outage()
+                self.assertEqual(first.returncode, 3, first.stderr)
+                records = self.records()
+                self.assertEqual(len(records), 3)
+
+                if mutation == "corrupt-name":
+                    records[1].rename(records[1].with_suffix(".fnB"))
+                    expected = "ACL2 rejected lifecycle namespace"
+                elif mutation == "gap":
+                    records[1].unlink()
+                    expected = "ACL2 rejected lifecycle namespace"
+                else:
+                    records[0].write_bytes(records[1].read_bytes())
+                    expected = "do not bind decoded record tokens"
+
+                resumed = self.resume()
+                self.assertEqual(resumed.returncode, 3, resumed.stderr)
+                self.assertIn(expected, resumed.stderr)
+                self.assertNotIn("BP queue recovered", resumed.stdout)
+
+    def test_append_uses_recovered_frontier_without_namespace_rescan(self):
+        injected_env = dict(self.env)
+        injected_env["FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION"] = "1"
+        first = self.run_outage(env=injected_env)
+        self.assertEqual(first.returncode, 3, first.stderr)
+        self.assertIn("BP queue accepted", first.stdout)
+        self.assertEqual(len(self.records()), 3)
+        self.assertNotIn("enumerated after recovery", first.stderr)
+
+    def test_hidden_stage_is_bounded_recovery_evidence(self):
+        first = self.run_outage()
+        self.assertEqual(first.returncode, 3, first.stderr)
+        stage = self.journal / "lifecycle" / ".interrupted-stage"
+        stage.write_bytes(b"uncommitted evidence")
+
+        resumed = self.resume()
+        self.assertEqual(resumed.returncode, 3, resumed.stderr)
+        self.assertIn("BP queue recovered jobs=1", resumed.stdout)
+        self.assertTrue(stage.exists(), "recovery must retain hidden stage evidence")
 
     def test_transport_uncertain_dominates_refused_article(self):
         malformed = self.tmp / "malformed.bundle"

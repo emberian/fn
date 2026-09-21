@@ -8,7 +8,9 @@
 (in-package "ACL2")
 
 (defstruct fnn-bps
-  root lifecycle tally state spool-lock lock-fd (outcome :accepted))
+  root lifecycle tally state spool-lock lock-fd (stages nil) (outcome :accepted))
+
+(defvar *fnn-bps-lifecycle-enumerations* 0)
 
 (defun fnn-bps-lock (root)
   (let ((fd (fnn-open (fnn-join root "lifecycle.lock")
@@ -36,26 +38,20 @@
   (fnn-tcl-spool-release (fnn-bps-spool-lock service))
   (setf (fnn-bps-spool-lock service) nil))
 
-(defun fnn-bps-frame-name-p (name)
-  (and (= (length name) 24)
-       (string= (subseq name 20) ".fnb")
-       (every #'digit-char-p (subseq name 0 20))))
-
-(defun fnn-bps-record-names (service)
-  (let* ((limit (fnn-core 'fn-bpn-host-machine-max-records))
-         (names (fnn-list-directory (fnn-bps-lifecycle service)))
-         (frames nil))
-    ;; Bound names before reading any record.  Hidden staged files from an
-    ;; interrupted write are evidence but not committed lifecycle records.
-    (when (> (length names) (+ limit 16))
-      (fnn-fault "bp-service: lifecycle namespace exceeds its entry bound"))
-    (dolist (name names)
-      (cond ((fnn-bps-frame-name-p name) (push name frames))
-            ((and (> (length name) 0) (char= (char name 0) #\.)) nil)
-            (t (fnn-fault "bp-service: unknown lifecycle entry ~a" name))))
-    (when (> (length frames) limit)
-      (fnn-fault "bp-service: lifecycle journal exceeds its record bound"))
-    (sort frames #'string<)))
+(defun fnn-bps-namespace-plan (service)
+  ; Sorting is only observation order.  ACL2 decides which names are bounded
+  ; hidden-stage evidence and whether final names form its exact frontier.
+  (incf *fnn-bps-lifecycle-enumerations*)
+  (when (and (> *fnn-bps-lifecycle-enumerations* 1)
+             (string= (or (sb-ext:posix-getenv
+                           "FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION") "")
+                      "1"))
+    (fnn-fault "bp-service: lifecycle namespace was enumerated after recovery"))
+  (let* ((names (sort (fnn-list-directory (fnn-bps-lifecycle service)) #'string<))
+         (plan (fnn-core 'fn-bpn-host-lifecycle-namespace-plan names)))
+    (unless (eq (fnn-core 'fn-bpn-host-lifecycle-plan-ready-p plan) t)
+      (fnn-indeterminate "bp-service: ACL2 rejected lifecycle namespace"))
+    (values names plan)))
 
 (defun fnn-bps-read-records (service names)
   (let ((limit (fnn-core 'fn-bpn-host-lifecycle-frame-limit))
@@ -105,7 +101,8 @@
     (fnn-core 'fn-bpn-host-answer-effects answer)))
 
 (defun fnn-bps-record-path (service token)
-  (fnn-join (fnn-bps-lifecycle service) (format nil "~20,'0d.fnb" token)))
+  (fnn-join (fnn-bps-lifecycle service)
+            (fnn-core 'fn-bpn-host-lifecycle-record-name token)))
 
 (defun fnn-bps-persist-record (service token record)
   (let* ((dir (fnn-bps-lifecycle service))
@@ -116,9 +113,6 @@
                                       (sb-posix:getpid) (fnn-random-hex 12)))))
     (unless frame
       (fnn-fault "bp-service: ACL2 refused its pending lifecycle record"))
-    (when (>= (length (fnn-bps-record-names service))
-              (fnn-core 'fn-bpn-host-machine-max-records))
-      (fnn-refuse "bp-service: lifecycle journal capacity is exhausted"))
     (handler-case
         (progn
           (fnn-write-staged stage frame)
@@ -260,12 +254,30 @@
                                   config
                                   (fnn-core 'fn-bpn-host-machine-max-jobs)
                                   (fnn-core 'fn-bpn-host-machine-max-octets))))
-          (let* ((names (fnn-bps-record-names service))
-                 (records (fnn-bps-read-records service names))
-                 (sequence (fnn-bps-sequence-ready service (and records t))))
-            (fnn-bps-drive-effects
-             service (fnn-bps-step service (list :restart records sequence)))
-            service))
+          (setf *fnn-bps-lifecycle-enumerations* 0)
+          (multiple-value-bind (observed-names plan)
+              (fnn-bps-namespace-plan service)
+            (let* ((record-names
+                     (fnn-core 'fn-bpn-host-lifecycle-plan-record-names plan))
+                   (decoded (fnn-bps-read-records service record-names))
+                   (recovery (fnn-core 'fn-bpn-host-lifecycle-recovery
+                                       observed-names decoded)))
+              (unless (eq (fnn-core 'fn-bpn-host-lifecycle-recovery-ready-p
+                                    recovery) t)
+                (fnn-indeterminate
+                 "bp-service: lifecycle names do not bind decoded record tokens"))
+              (let* ((records
+                       (fnn-core 'fn-bpn-host-lifecycle-recovery-records recovery))
+                     (sequence (fnn-bps-sequence-ready service (and records t))))
+                (setf (fnn-bps-stages service)
+                      (fnn-core 'fn-bpn-host-lifecycle-recovery-stages recovery))
+                (fnn-bps-drive-effects
+                 service (fnn-bps-step service (list :restart records sequence)))
+                (unless (eq (fnn-core 'fn-bpn-host-lifecycle-recovery-agrees-p
+                                      recovery (fnn-bps-state service)) t)
+                  (fnn-indeterminate
+                   "bp-service: recovered namespace and machine frontier disagree"))
+                service))))
       (error (e)
         (if service
             (fnn-bps-release service)
