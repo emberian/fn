@@ -6,8 +6,8 @@
 ; the existing frame grammar and its ACL2-owned trailer; the host only moves
 ; the resulting octets to and from regular files.
 ;
-; The old JSON files remain a read-only migration input in tools/run_store.py.
-; This book never interprets them and never rewrites an old store.
+; Older JSON metadata remains in place and is refused at normal open pending
+; an explicit offline migration.  This book never interprets or rewrites it.
 
 (in-package "ACL2")
 (include-book "byte-store-scan")
@@ -296,9 +296,9 @@
 (defun fn-bs-initial-frontier-octets ()
   (fn-bs-frontier-encode-impl 0))
 
-; These are concrete correspondence facts for the host calls.  The bounded
-; domain is the actual uint32 allocator domain used by run_store, a strict
-; subset of the CBOR uint profile.
+; These are concrete correspondence facts for the host calls.  The allocator
+; and this CBOR profile share the uint32 domain; only fn-bs-frontier-next
+; refuses its maximum because that value has no successor.
 (defthm fn-bs-frontier-encode-impl-unfolds
   (implies (and (natp n) (<= n *fn-cbor-max-uint*))
            (equal (fn-bs-frontier-encode-impl n)
