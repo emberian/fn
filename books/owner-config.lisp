@@ -612,7 +612,7 @@
   (if (consp events)
       (or (and (member-equal (mbe :logic (car (car events))
                                   :exec (fn-ag-car (fn-ag-car events)))
-                             '(:advance :close))
+                             '(:advance :close :fault))
                (equal (mbe :logic (car (cdr (car events)))
                            :exec (fn-ag-car (fn-ag-cdr (fn-ag-car events))))
                       id))
@@ -621,7 +621,7 @@
 
 (local (defthm fn-ocfg-step-keeps-other-pins
   (implies (and (fn-ocfg-pin-find id (fn-ocfg-pins oc))
-                (not (and (member-equal (car event) '(:advance :close))
+                (not (and (member-equal (car event) '(:advance :close :fault))
                           (equal (car (cdr event)) id))))
            (equal (fn-ocfg-pin-find id (fn-ocfg-pins (fn-ocfg-step oc event)))
                   (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
