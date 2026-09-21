@@ -5,7 +5,7 @@ The two native owners bind remote loopback only. Four SSH forwards connect each
 remote loopback feed endpoint through the driver; Python configures and observes
 but is never an NNTP peer implementation.
 """
-import argparse, os, re, secrets, select, shlex, socket, ssl, subprocess, tempfile, time
+import argparse, hashlib, json, os, re, secrets, select, shlex, socket, ssl, subprocess, tempfile, time
 from pathlib import Path
 
 
@@ -70,23 +70,34 @@ def nntp_article(port, ca, login, password, message_id):
                 if not chunk: break
                 line.extend(chunk)
             return bytes(line)
-        if not recvline(raw).startswith((b"200 ", b"201 ")): return None
+        greeting=recvline(raw)
+        if not greeting.startswith((b"200 ", b"201 ")):
+            raise RuntimeError("protected observer greeting: {!r}".format(greeting))
         raw.sendall(b"STARTTLS\r\n")
-        if not recvline(raw).startswith(b"382 "): return None
+        response=recvline(raw)
+        if not response.startswith(b"382 "):
+            raise RuntimeError("protected observer STARTTLS: {!r}".format(response))
         context = ssl.create_default_context(cafile=ca)
         with context.wrap_socket(raw, server_hostname="localhost") as tls:
             with tls.makefile("rwb", buffering=0) as stream:
                 stream.write(b"AUTHINFO USER " + login.encode() + b"\r\n")
-                if not stream.readline().startswith(b"381 "): return None
+                response=stream.readline()
+                if not response.startswith(b"381 "):
+                    raise RuntimeError("protected observer USER: {!r}".format(response))
                 stream.write(b"AUTHINFO PASS " + password.encode() + b"\r\n")
-                if not stream.readline().startswith(b"281 "): return None
+                response=stream.readline()
+                if not response.startswith(b"281 "):
+                    raise RuntimeError("protected observer PASS: {!r}".format(response))
                 stream.write(b"ARTICLE " + message_id.encode() + b"\r\n")
-                if not stream.readline().startswith(b"220 "): return None
+                response=stream.readline()
+                if response.startswith(b"430 "): return None
+                if not response.startswith(b"220 "):
+                    raise RuntimeError("protected observer ARTICLE: {!r}".format(response))
                 out = bytearray()
                 while True:
                     line = stream.readline()
                     if line == b".\r\n": return bytes(out)
-                    if not line: return None
+                    if not line: raise RuntimeError("protected observer article EOF")
                     out.extend(line[1:] if line.startswith(b"..") else line)
 
 
@@ -103,7 +114,7 @@ def main():
     ap.add_argument("--evidence-dir", required=True)
     ap.add_argument("--timeout", type=int, default=300)
     args = ap.parse_args()
-    nodes = [] ; tunnels = [] ; owners = []
+    nodes = [] ; tunnels = [] ; owners = [] ; observations = []
     token = secrets.token_hex(6)
     local = tempfile.TemporaryDirectory(prefix="fn-two-host-protected-")
     try:
@@ -121,10 +132,11 @@ def main():
             if (launcher,core_sha,runtime_sha) != expected: raise RuntimeError("image identity mismatch on "+host)
             root="/tmp/fn-protected-{}-{}".format(args.source[:12],token)
             ssh(host,["mkdir","-m","700",root])
+            node=dict(side=side,host=host,image=image,root=root,runtime=runtime)
+            nodes.append(node)
             listen=remote_port(host); tunnel=remote_port(host)
             cert=root+"/cert.pem"; key=root+"/key.pem"; store=root+"/store"; config=root+"/fn.toml"; auth=root+"/auth.toml"
-            node=dict(side=side,host=host,image=image,root=root,listen=listen,tunnel=tunnel,cert=cert,key=key,store=store,config=config,auth=auth,runtime=runtime)
-            nodes.append(node)
+            node.update(listen=listen,tunnel=tunnel,cert=cert,key=key,store=store,config=config,auth=auth)
             ssh(host,["openssl","req","-x509","-newkey","rsa:2048","-nodes","-sha256","-days","1","-subj","/CN=localhost","-keyout",key,"-out",cert])
             ssh(host,[image,"--fn","store",store,"init","fn.test"])
         # Fetch each certificate for local validation and install it as the
@@ -181,10 +193,24 @@ def main():
             pid=ssh(n["host"],["cat",n["root"]+"/owner.pid"]).stdout.decode().strip()
             n["pid"] = pid
             observed_runtime=ssh(n["host"],["readlink","-f","/proc/"+pid+"/exe"]).stdout.decode().strip()
-            if remote_sha(n["host"],observed_runtime) != remote_sha(n["host"],n["runtime"]):
+            observed_runtime_sha=remote_sha(n["host"],observed_runtime)
+            if observed_runtime_sha != getattr(args,"runtime_sha_"+n["side"]):
                 raise RuntimeError("running runtime identity changed on "+n["host"])
-            if remote_sha(n["host"],n["image"]+".core") != getattr(args,"core_sha_"+n["side"]):
+            argv=ssh(n["host"],["cat","/proc/"+pid+"/cmdline"]).stdout.split(b"\0")
+            argv=[part.decode("utf-8","strict") for part in argv if part]
+            if "--core" not in argv or argv.index("--core")+1 >= len(argv):
+                raise RuntimeError("running argv has no core on "+n["host"])
+            observed_core=argv[argv.index("--core")+1]
+            observed_core_sha=remote_sha(n["host"],observed_core)
+            if observed_core != n["image"]+".core" or observed_core_sha != getattr(args,"core_sha_"+n["side"]):
                 raise RuntimeError("running core changed on "+n["host"])
+            observations.append(dict(event="owner-start",host=n["host"],pid=int(pid),
+                command=cmd,proc_argv=argv,runtime_path=observed_runtime,
+                runtime_sha256=observed_runtime_sha,core_path=observed_core,
+                core_sha256=observed_core_sha,launcher_path=n["image"],
+                launcher_sha256=getattr(args,"launcher_sha_"+n["side"]),
+                declared_source=args.source,
+                source_manifest_sha256=getattr(args,"source_manifest_sha_"+n["side"])))
 
         def stop_owner(n):
             pidfile=n["root"]+"/owner.pid"
@@ -225,14 +251,23 @@ def main():
         # accepted article and FNFD journal remain at A; restoring only the
         # profile and restarting A delivers that same queued obligation.
         a,b=nodes
+        journal=a["store"]+"/feed/"+b["side"]+".fnfd"
         stop_owner(a)
         write_remote(a["host"],a["profile"],("FNAUTH1\n{}\nwrong-{}\n".format(b["login"],token)).encode(),"600")
         start_owner(a)
+        before=ssh(a["host"],["cat",journal]).stdout
         bad_mid,bad_article=make_article(a,"bad-password")
         assert_absent(b,bad_mid)
         if a["owner"].poll() is not None or b["owner"].poll() is not None:
             raise RuntimeError("bad credential stopped an owner")
-        ssh(a["host"],["test","-s",a["store"]+"/feed/"+b["side"]+".fnfd"])
+        after=ssh(a["host"],["cat",journal]).stdout
+        if after == before: raise RuntimeError("bad credential added no journal evidence")
+        Path(local.name,"bad-password.before.fnfd").write_bytes(before)
+        Path(local.name,"bad-password.after.fnfd").write_bytes(after)
+        observations.append(dict(event="bad-password-observed-absent",message_id=bad_mid,
+            journal_before_sha256=hashlib.sha256(before).hexdigest(),
+            journal_after_sha256=hashlib.sha256(after).hexdigest(),
+            journal_before_bytes=len(before),journal_after_bytes=len(after)))
         stop_owner(a)
         write_remote(a["host"],a["profile"],("FNAUTH1\n{}\n{}\n".format(b["login"],b["password"])).encode(),"600")
         start_owner(a); await_article(b,bad_mid,bad_article,args.timeout)
@@ -242,14 +277,24 @@ def main():
         stop_owner(a)
         write_remote(a["host"],a["anchor"],Path(a["local_cert"]).read_bytes(),"600")
         start_owner(a)
+        before=ssh(a["host"],["cat",journal]).stdout
         ca_mid,ca_article=make_article(a,"bad-ca")
         assert_absent(b,ca_mid)
         if a["owner"].poll() is not None or b["owner"].poll() is not None:
             raise RuntimeError("untrusted CA stopped an owner")
-        ssh(a["host"],["test","-s",a["store"]+"/feed/"+b["side"]+".fnfd"])
+        after=ssh(a["host"],["cat",journal]).stdout
+        if after == before: raise RuntimeError("untrusted CA added no journal evidence")
+        Path(local.name,"bad-ca.before.fnfd").write_bytes(before)
+        Path(local.name,"bad-ca.after.fnfd").write_bytes(after)
+        observations.append(dict(event="bad-ca-observed-absent",message_id=ca_mid,
+            journal_before_sha256=hashlib.sha256(before).hexdigest(),
+            journal_after_sha256=hashlib.sha256(after).hexdigest(),
+            journal_before_bytes=len(before),journal_after_bytes=len(after)))
         stop_owner(a)
         write_remote(a["host"],a["anchor"],Path(b["local_cert"]).read_bytes(),"600")
         start_owner(a); await_article(b,ca_mid,ca_article,args.timeout)
+        observations.append(dict(event="gate-pass",declared_source=args.source,
+                                 hosts=[args.host_a,args.host_b]))
         print("PASS declared-source={} hosts={},{}".format(args.source,args.host_a,args.host_b))
     finally:
         cleanup_errors=[]
@@ -272,8 +317,11 @@ def main():
             if handle is not None and not handle.closed:
                 handle.flush(); handle.close()
         evidence=Path(args.evidence_dir); evidence.mkdir(parents=True,exist_ok=True)
-        for path in Path(local.name).glob("*.stderr"):
+        for path in Path(local.name).glob("*"):
+            if not path.is_file(): continue
             (evidence/path.name).write_bytes(path.read_bytes())
+        (evidence/"observations.json").write_text(
+            json.dumps(observations,indent=2,sort_keys=True)+"\n",encoding="utf-8")
         local.cleanup()
         if cleanup_errors:
             raise RuntimeError("remote cleanup failed: "+"; ".join(cleanup_errors))
