@@ -162,6 +162,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-machine-tests \
 	books/bp-sequence-fidelity \
 	tests/acl2/bp-sequence-fidelity-tests \
+	books/bp-receive-evidence \
+	tests/acl2/bp-receive-evidence-tests \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
 	tests/acl2/bp-fragment-tests \

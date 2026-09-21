@@ -71,6 +71,16 @@ class NativeBpReceiveIntegrityTests(unittest.TestCase):
             stderr=subprocess.PIPE, timeout=30, check=False, text=True,
         )
 
+    def wait_for_wire_count(self, count, timeout=15):
+        evidence = self.journal / "receive-evidence"
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            wires = sorted(evidence.glob("*.wire")) if evidence.exists() else []
+            if len(wires) >= count:
+                return wires
+            time.sleep(0.02)
+        self.fail(f"did not observe {count} durable wire records")
+
     def test_receive_core_fault_remains_exit_four(self):
         fault_env = dict(self.env)
         fault_env["FN_BP_TEST_DELIVER_FAULT"] = "1"
@@ -81,6 +91,46 @@ class NativeBpReceiveIntegrityTests(unittest.TestCase):
         self.assertEqual(receiver.returncode, 4, output)
         self.assertIn("injected receive core fault", output)
         self.assertNotIn("BP refused xfer=", output)
+
+    def test_two_sessions_reusing_transfer_zero_keep_both_exact_wires(self):
+        receiver, port = self.spawn_receive("two-sessions", once="0")
+        first = b"first malformed BP transfer"
+        second = b"second distinct malformed BP transfer"
+
+        sent1 = self.send(port, first, "first")
+        sent2 = self.send(port, second, "second")
+        self.assertEqual(sent1.returncode, 0, sent1.stdout + sent1.stderr)
+        self.assertEqual(sent2.returncode, 0, sent2.stdout + sent2.stderr)
+
+        wires = self.wait_for_wire_count(2)
+        self.assertEqual({path.read_bytes() for path in wires}, {first, second})
+        self.assertEqual(
+            [path.name for path in wires],
+            ["00000000000000000000.wire", "00000000000000000001.wire"],
+        )
+        output = receiver._fn_log_path.read_text(errors="replace")
+        self.assertEqual(output.count("BP refused xfer=0"), 2, output)
+
+    def test_uncertain_publication_exits_and_prevents_next_session_mutation(self):
+        fault_env = dict(self.env)
+        fault_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
+        receiver, port = self.spawn_receive("uncertain", once="0", env=fault_env)
+        first = b"visible wire with uncertain namespace barrier"
+        self.send(port, first, "uncertain-first")
+
+        receiver.wait(timeout=20)
+        output = receiver._fn_log_path.read_text(errors="replace")
+        self.assertEqual(receiver.returncode, 3, output)
+        self.assertIn("receive wire evidence publication uncertain", output)
+        wires = self.wait_for_wire_count(1)
+        self.assertEqual([path.read_bytes() for path in wires], [first])
+
+        second = self.send(port, b"must not reach the fenced owner", "after-fence")
+        self.assertNotEqual(second.returncode, 0, second.stdout + second.stderr)
+        time.sleep(0.1)
+        self.assertEqual(
+            len(list((self.journal / "receive-evidence").glob("*.wire"))), 1
+        )
 
 
 if __name__ == "__main__":

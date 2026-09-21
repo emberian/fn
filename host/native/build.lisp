@@ -37,6 +37,9 @@
 (include-book "books/bp-node-records")
 (include-book "books/bp-node-machine")
 (include-book "books/bp-node-machine-codec")
+(include-book "books/journal-publish")
+(include-book "books/app-journal")
+(include-book "books/bp-receive-evidence")
 
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
@@ -60,6 +63,8 @@
 (ld "host/tcpcl-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
+(ld "host/journal-publish-host.lisp" :ld-error-action :error)
+(ld "host/bp-receive-evidence-host.lisp" :ld-error-action :error)
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
@@ -89,6 +94,7 @@
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")
+        (load "host/native/immutable-publish.lisp")
         (load "host/native/bp.lisp")
         (load "host/native/bp-service.lisp")
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
