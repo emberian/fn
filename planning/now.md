@@ -21,6 +21,11 @@ publication now uses the shared immutable publication machine.
 Native public control/posting and orderly SIGTERM are integrated with separate
 ACL2 closure and exact-raw Darwin runtime evidence. Control transport resource
 bounds remain an assigned followup; the clean combined Linux image is pending.
+Transaction namespace recovery now uses bounded observation and ACL2-issued
+sequence/name pairs, with a source-matched developer Store image witness.
+The corrected native outbound-feed and credential-administration components
+are integrated; feed activation and public principal CLI composition remain
+with their owning lanes.
 
 The frozen combined source is `03eb3ba3`, with retained persvati job
 `run-20260921T095031Z-5cf4`. Certification, both same-origin image builds, scoped runtime suites and the
@@ -43,7 +48,7 @@ own these complete paths and their source-pinned evidence:
   witness. Receipt-decision barrier failure now has a scoped native recovery witness.
   Next is maintained joined-state assurance and removing redundant retained-state
   scans; carrier ACKs are not application acceptance.
-- Actual BP lifecycle invariant/effects, transaction/configuration namespace
+- Actual BP lifecycle invariant/effects, configuration namespace
   bounds, and wider syscall/model correspondence.
 - Measured native shared-owner service cost after prepare correspondence adoption.
   Standalone measurements do not qualify concurrent service.

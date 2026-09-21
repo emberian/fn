@@ -155,6 +155,14 @@ above measurement, instead of a fixed 20 s that sat within 2x of it.
 
 ## The native host
 
+The native transaction namespace observer bounds physical enumeration before
+allocation, then passes names to `fn-store-txn-observation`, which uses
+`fn-bs-txn-observation-pairs` and the byte-store filename codec. The returned
+sequence is compared to the decoded durable record before replay. Raw Lisp
+does not parse decimal transaction filenames or independently decide gaps.
+Configuration-history namespace recovery still has an assigned consolidation
+task; the transaction result does not cover that neighboring namespace.
+
 `build/fn-host` is one saved SBCL image: ACL2 8.7, the certified books the
 hosts drive, the `:program` wrappers in `host/*-host.lisp`, and the raw-Lisp
 adapter `host/native/io.lisp`. `tools/build_native_host.sh` feeds

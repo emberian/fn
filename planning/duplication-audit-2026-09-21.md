@@ -13,6 +13,16 @@ Moving the second path from Python into Lisp does not remove that problem.
 
 ## Current-source recheck (2026-09-21)
 
+Update through `0f0a0c7e`: U13's transaction half is integrated with the
+[source-matched Store witness](evidence/native-txn-namespace-u13-2026-09-21.md);
+configuration namespace recovery remains assigned. U15's feed table repair
+and the pending-feed caller corrections below are integrated as an inactive
+component, with certified table preservation and raw boundary evidence. Native
+owner activation and the two-node witness remain open. The feed shell-wrapper
+test's unconditional marker was found unreliable and is withheld pending a
+failure-detecting harness repair; see the
+[combined raw checks](evidence/native-raw-integration-w35-2026-09-21/README.md).
+
 Update through `927c0f62`: U09 public control/posting, U12 orderly shutdown,
 and U14 endpoint lease/worker-owned descriptor cleanup are integrated. The
 [control evidence](evidence/native-control-accept-shutdown-2026-09-21.md)
