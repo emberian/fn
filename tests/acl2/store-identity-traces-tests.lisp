@@ -31,6 +31,11 @@
                       :record-link :ok)
             :record-directory :ok))
 
+(defun fn-sit-barriers (s n)
+  (declare (xargs :measure (nfix n)))
+  (if (zp n) s
+    (fn-sit-barriers (fn-sn-io s :recovery-barrier :ok) (1- n))))
+
 (defun fn-sit-commit-identity (s event)
   (fn-sn-finish (fn-sit-publish (fn-sn-prepare-identity
                                  (fn-sit-reserve s) event))))
@@ -95,10 +100,12 @@
 (assert-event (equal (fn-article-payload
                       (car (fn-stx-store (fn-sn-node *sit-reopened*))))
                      *sit-source*))
+(defconst *sit-reopened-ready* (fn-sit-barriers *sit-reopened* 5))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sit-reopened-ready*)) :ready))
 
 ; Refusal burns allocator txid 2 but consumes no journal sequence.  The next
 ; durable legacy record therefore has sequence 2 and txid 3.
-(defconst *sit-reserved-refusal* (fn-sit-reserve *sit-reopened*))
+(defconst *sit-reserved-refusal* (fn-sit-reserve *sit-reopened-ready*))
 (defconst *sit-refused* (fn-sn-refuse-reservation *sit-reserved-refusal* 2))
 (assert-event (equal (fn-sf-frontier (fn-sn-files *sit-refused*)) 3))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-refused*))
