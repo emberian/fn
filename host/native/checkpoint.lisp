@@ -160,10 +160,7 @@
            (observed (sort (fnn-list-directory-bounded
                             (fnn-transactions store) limit "transaction namespace")
                            #'string<))
-           (plan (fnn-core 'fn-store-txn-prefix-reclaim-plan
-                           (mapcar (lambda (name)
-                                     (fnn-octet-list (fnn-string-octets name))) observed)
-                           limit lower)))
+           (plan (fnn-core 'fn-bs-pack-reclaim-plan observed limit lower)))
       (unless (and (listp plan) (<= (length plan) lower)
                    (every (lambda (name)
                             (and (stringp name)
