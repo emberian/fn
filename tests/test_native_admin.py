@@ -150,6 +150,17 @@ class NativeAdminTests(unittest.TestCase):
         self.stop_owner(process)
         self.assertIn("generation=2", self.config_report())
 
+    def test_running_owner_applies_symmetric_peer_add_and_remove(self):
+        process = self.start_owner()
+        added = self.operator("peer", "add", "near", "path-id",
+                              "host.example", "119", "*", "*",
+                              "198.51.100.5", "true")
+        self.assertIn(b"accepted operator peer", added.stderr)
+        removed = self.operator("peer", "remove", "near")
+        self.assertIn(b"accepted operator peer", removed.stderr)
+        self.stop_owner(process)
+        self.assertIn("generation=3", self.config_report())
+
     def test_live_uncertain_publication_fences_and_recovers(self):
         fault_env = dict(self.env)
         fault_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
