@@ -416,38 +416,23 @@
 (assert-event (equal (fn-own-feed-find "nodeC" *oft-lost*)
                      (fn-own-feed-find "nodeC" *oft-in-flight*)))
 
-; The record it authorizes: one (:feed-outcome peer msgid attempt 400), the
-; same record a 400 on the wire writes.
-(defconst *oft-lost-records* (fn-own-feed-lost-records-of "nodeB" *oft-in-flight*))
+; Loss records retain the observation even when no entry is in flight.
+(defconst *oft-lost-records*
+  (fn-own-feed-lost-records-of "nodeB" *oft-in-flight* *oft-obs*))
 (assert-event (equal (len *oft-lost-records*) 1))
-(assert-event (equal (fn-feed-journal-kind (car *oft-lost-records*)) :feed-outcome))
-(assert-event (equal (fn-feed-record-msgid (fn-feed-journal-values (car *oft-lost-records*)))
-                     *oft-msgid*))
-(assert-event (equal (fn-feed-record-nat 3 (fn-feed-journal-values (car *oft-lost-records*)))
-                     400))
+(assert-event (equal (fn-feed-journal-kind (car *oft-lost-records*)) :feed-lost))
+(assert-event (equal (fn-feed-record-nat 1 (fn-feed-journal-values (car *oft-lost-records*)))
+                     (fn-clock-monotonic *oft-obs*)))
 (assert-event (fn-feed-record-okp (fn-feed-journal-kind (car *oft-lost-records*))
                                   (fn-feed-journal-values (car *oft-lost-records*))))
-(assert-event (equal *oft-lost-records*
-                     (fn-own-feed-reply-records-of "nodeB" *oft-msgid* 1 400)))
-
-; Replay reaches the same entry. `fn-feed-apply-record' requeues with tick 0
-; where the live transition records the observation's own tick, and the tick
-; is provenance that no decision reads (`fn-feed-entry-tick' is read by
-; nothing but the two requeue builders), so the Message-ID, the state and the
-; attempt count are what is compared.
 (defconst *oft-lost-replayed*
-  (fn-feed-apply-record (fn-own-feed-find "nodeB" *oft-in-flight*)
-                        (fn-feed-journal-kind (car *oft-lost-records*))
-                        (fn-feed-journal-values (car *oft-lost-records*))))
-(assert-event (equal (fn-feed-state-of *oft-msgid* (fn-feed-queue *oft-lost-replayed*))
-                     :queued))
-(assert-event (equal (fn-feed-entry-attempts
-                      (fn-feed-find *oft-msgid* (fn-feed-queue *oft-lost-replayed*)))
-                     1))
+  (fn-feed-replay (fn-own-feed-find "nodeB" *oft-in-flight*) *oft-lost-records*))
+(assert-event (equal (fn-feed-durable-projection *oft-lost-replayed*)
+                     (fn-feed-durable-projection (fn-own-feed-find "nodeB" *oft-lost*))))
 
 ; TEETH.  One concrete violating value per hypothesis of the transition.
-; No entry in flight: no record at all, and nothing to requeue.
-(assert-event (null (fn-own-feed-lost-records-of "nodeB" *oft-accepted*)))
+; No entry in flight: the deadline still changes and is recorded.
+(assert-event (consp (fn-own-feed-lost-records-of "nodeB" *oft-accepted* *oft-obs*)))
 (assert-event (equal (fn-feed-state-of *oft-msgid*
                                        (fn-feed-queue
                                         (fn-own-feed-find
@@ -457,7 +442,7 @@
 ; A peer with no entry in the table: the table is the table.
 (assert-event (equal (fn-own-feed-lost-one "nodeD" *oft-in-flight* *oft-obs*)
                      *oft-in-flight*))
-(assert-event (null (fn-own-feed-lost-records-of "nodeD" *oft-in-flight*)))
+(assert-event (null (fn-own-feed-lost-records-of "nodeD" *oft-in-flight* *oft-obs*)))
 ; A :done entry is NOT requeued by a loss -- the peer answered and the
 ; outcome is settled; requeueing it would be the second transfer K5 forbids.
 (defconst *oft-done*
@@ -473,7 +458,7 @@
 (assert-event (equal (fn-feed-state-of *oft-msgid*
                                        (fn-feed-queue (fn-own-feed-find "nodeB" *oft-done*)))
                      :done))
-(assert-event (null (fn-own-feed-lost-records-of "nodeB" *oft-done*)))
+(assert-event (consp (fn-own-feed-lost-records-of "nodeB" *oft-done* *oft-obs*)))
 (assert-event (equal (fn-feed-state-of *oft-msgid*
                                        (fn-feed-queue
                                         (fn-own-feed-find

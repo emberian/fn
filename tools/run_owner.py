@@ -30,9 +30,9 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        Acl2Store, EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN,
                        NO_FAULTS, ScriptedFaults, Store,
                        StoreError, StoreFault, StoreIndeterminate, UsageParser,
-                       acl2_nat, acl2_octets, acl2_result, acl2_symbol, conservative_charge,
+                       acl2_keyword, acl2_nat, acl2_octets, acl2_result, acl2_symbol, conservative_charge,
                        durable_post, exit_code_for, group_codes, metadata,
-                       post_article, validate_post_boundary)
+                       validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
 from feed_wire import Journal, Session  # the FNFD layout and the client half
 
@@ -61,6 +61,8 @@ DTN_EPOCH_NS = 946684800 * 1_000_000_000  # 2000-01-01T00:00:00Z
 # the first and the second the same way and was computed here.
 OWNER_WORDS = {b":OBSERVED", b":REFUSED", b":INVALID", b":DECLARED", b":BEGUN",
                b":CLOSED", b":OK", b":UNKNOWN", b":FED", b":TAKEN", b":IDLE",
+               b":TAKEN-CONTROL", b":SUBMITTED", b":BUSY", b":ACCEPTED",
+               b":DUPLICATE", b":UNCERTAIN", b":ABSENT",
                # The fourth outcome (books/owner-fault.lisp): a host fault,
                # answered distinctly from accepted, refused and uncertain.
                b":FAULTED"}
@@ -158,10 +160,46 @@ class Acl2Owner(Acl2Store):
     def finish(self):
         return self._symbol("(fn-owner-finish state)")
 
+    def config_generation(self):
+        return self._nat("(fn-owner-config-generation state)")
+
+    def config_served(self):
+        return self._names("(fn-owner-config-served state)")
+
     def config_domain(self):
         # Store.recover asks the bridge for the allocation domain; the store
         # bridge's entry reads fn-store-sn, which this image never sets.
         return self._names("(fn-owner-domain state)")
+
+    def reconfigure_group(self, cid, action, name):
+        """Stage one ACL2-owned group configuration record for a live client.
+
+        The caller carries a connection id, action and UTF-8 name.  The host
+        builds the delta, checks its generation pin and exposes only the
+        admitted record octets; it does not mutate the configuration yet.
+        """
+        kind = {"create": ":create-group", "retire": ":remove-group"}.get(action)
+        if kind is None:
+            raise StoreError("unknown group reconfiguration action")
+        literal = self.literal(name.encode("utf-8", "strict"))
+        status = self._symbol_any("(fn-owner-reconfigure {} {} '{} state)".format(
+            int(cid), kind, literal))
+        if status == "staged":
+            record = bytes(acl2_octet_list(self.call(
+                "(fn-owner-reconfigure-octets state)")))
+            generation = self._nat("(fn-owner-config-generation state)") + 1
+            return "staged", generation, record
+        if status == "refused":
+            return "refused", acl2_keyword(self.call(
+                "(fn-owner-reconfigure-reason state)")), None
+        raise StoreFault("unexpected owner reconfiguration outcome: {}".format(status))
+
+    def complete_reconfigure(self, generation):
+        outcome = self._symbol_any("(fn-owner-reconfigure-complete {} state)".format(
+            int(generation)))
+        if outcome != "durable":
+            raise StoreFault("owner refused durable configuration completion")
+        return outcome
 
     def next_txid(self):
         return self._nat("(fn-owner-next-txid state)")
@@ -243,8 +281,16 @@ class Acl2Owner(Acl2Store):
         return bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
 
     def take(self):
-        """The writer step: `taken', `taken-transit' or `idle'."""
+        """The writer step: `taken', `taken-control', `taken-transit' or `idle'."""
         return self._symbol_any("(fn-owner-take state)")
+
+    def control_submit(self, msgid, groups, payload):
+        """One ACL2 control-submission event over exact authored octets."""
+        group_literal = "(" + " ".join(
+            "(" + " ".join(str(byte) for byte in group) + ")" for group in groups) + ")"
+        form = "(fn-owner-control-submit '{} '{} '{} state)".format(
+            self.literal(msgid), group_literal, self.literal(payload))
+        return self._symbol_any(form)
 
     def submit_id(self):
         """The connection the submission in flight belongs to.
@@ -328,6 +374,9 @@ class Acl2Owner(Acl2Store):
             self.literal(subject)))
         reason = self._symbol_any("(fn-owner-transit-reason state)")
         return kind, reason
+
+    def transit_evidence(self):
+        return bytes(acl2_octet_list(self.call("(fn-owner-transit-evidence state)")))
 
     def transit_outcome(self, cid, kind, reason, word):
         form = "(fn-owner-transit-outcome {} :{} {} :{} state)".format(
@@ -466,6 +515,30 @@ class Acl2Owner(Acl2Store):
     def feed_restart(self):
         return self._nat("(fn-owner-feed-restart state)")
 
+    def submission_intent(self, evidence, generation, txid):
+        """ACL2's capacity verdict and exact pre-commit intent frames."""
+        return self._symbol_any(
+            "(fn-owner-submission-intent '{} {} {} state)".format(
+                self.literal(evidence), generation, txid))
+
+    def submission_resolution(self, word, evidence, generation, txid):
+        """ACL2's exact commit/abort projection for the in-flight submit."""
+        return self._symbol_any(
+            "(fn-owner-submission-resolution :{} '{} {} {} state)".format(
+                word, self.literal(evidence), generation, txid))
+
+    def feed_reconcile_next(self):
+        """Resolve one recovered intent from the authoritative owner node."""
+        return self._symbol_any("(fn-owner-feed-reconcile-next state)")
+
+    def feed_reconcile_apply(self):
+        return self._symbol_any("(fn-owner-feed-reconcile-apply state)")
+
+    def feed_journal_peer_valid(self, peer):
+        return acl2_boolean(self.call(
+            "(fn-owner-feed-journal-peer-validp '{} state)".format(
+                self.literal(peer.encode("utf-8")))))
+
     def _symbol_any(self, form):
         body = acl2_result(self.call(form))
         text = body.decode("ascii", "replace").strip().lower()
@@ -476,6 +549,10 @@ class Acl2Owner(Acl2Store):
         if self._symbol("(fn-owner-outcome {} :{} state)".format(cid, word)) != "fed":
             raise StoreError("owner did not accept the outcome")
         return bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
+
+    def control_outcome(self, word):
+        """The ACL2 projection of accepted/refused/uncertain/duplicate."""
+        return self._symbol_any("(fn-owner-control-outcome :{} state)".format(word))
 
     def close_connection(self, cid):
         return self._symbol("(fn-owner-close {} state)".format(cid))
@@ -662,6 +739,13 @@ class Owner:
         self.feeds = {}
         self.feed_next_conn = 1
         self.feed_uncertain = False
+        # A configuration record may have reached stable storage before its
+        # write reports an error.  Its staged ACL2 transaction must never be
+        # published speculatively; this process stops and recovers the actual
+        # durable prefix instead.
+        self.config_uncertain = False
+        self.store_uncertain = False
+        self.uncertain_reply_cid = None
         self.stopping = False
 
     # -- NNTP connections -------------------------------------------------
@@ -761,6 +845,8 @@ class Owner:
     def serve(self, conn, mask):
         if self.feed_uncertain:
             return
+        if self.store_uncertain and conn.cid != self.uncertain_reply_cid:
+            return
         if mask & selectors.EVENT_READ and conn.reading and not conn.closing:
             try:
                 incoming = conn.sock.recv(MAX_READ)
@@ -817,9 +903,25 @@ class Owner:
             except (BlockingIOError, InterruptedError):
                 sent = 0
             except OSError:
-                self.drop(conn)
+                if (self.store_uncertain and
+                        conn.cid == self.uncertain_reply_cid):
+                    self.discard(conn, closed_by_model=True)
+                    self.stopping = True
+                    self.exit_code = EXIT_UNCERTAIN
+                else:
+                    self.drop(conn)
                 return
             conn.outbuf = conn.outbuf[sent:]
+        if (self.store_uncertain and
+                conn.cid == self.uncertain_reply_cid and
+                not conn.outbuf):
+            # The uncertain outcome is the last logical owner mutation in
+            # this image.  Close only the socket, then require recovery in a
+            # fresh process instead of sending another event to ACL2.
+            self.discard(conn, closed_by_model=True)
+            self.stopping = True
+            self.exit_code = EXIT_UNCERTAIN
+            return
         if conn.handshaking and not conn.outbuf and not conn.closing:
             if not self.upgrade(conn):
                 return
@@ -1083,22 +1185,12 @@ class Owner:
                 if taken == "taken-transit":
                     reply = self.transit(cid, msgid, payload)
                 else:
-                    word = self.attempt(msgid, payload, groups)
+                    intent = self.submission_intent(self.bridge.prov_post())
+                    word = (self.attempt(msgid, payload, groups)
+                            if intent is not None else "refused")
+                    if intent is not None:
+                        self.submission_resolution(word, intent)
                     reply = self.bridge.outcome(cid, word)
-                # Durable before the effect it authorizes. A durable
-                # acceptance enqueues the article on every outbound peer's
-                # feed (fn-own-feed-durable, inside fn-own-outcome) and owes
-                # the journal one (:feed-enqueue peer msgid tick) record per
-                # target BEFORE the entry is offered (specs/peering.md 3.3).
-                # Nothing wrote it: the queue existed in memory and nowhere
-                # else until its first offer, so an article accepted while a
-                # peer was unreachable did not survive the process that
-                # accepted it -- which is what stopped K5's kill-and-re-offer
-                # from delivering on gate 15ac399. The frames land here,
-                # before the loop writes the 240 to the poster, and INSIDE
-                # the fault boundary: a flush that raises costs this
-                # connection its submission and costs the service nothing.
-                self.feed_flush()
             except (SystemExit, KeyboardInterrupt):
                 raise
             except BaseException as error:   # noqa: BLE001 -- the whole point
@@ -1115,10 +1207,53 @@ class Owner:
             for conn in self.connections.values():
                 if conn.cid == cid:
                     conn.outbuf += reply
+                    if self.store_uncertain:
+                        conn.reading = False
+                        conn.closing = True
+                        self.uncertain_reply_cid = cid
                     self.rearm(conn)
                     break
+            else:
+                if self.store_uncertain:
+                    self.stopping = True
+            if self.store_uncertain:
+                return
 
-    def attempt(self, msgid, payload, groups):
+    def submission_intent(self, evidence):
+        """Make the exact acceptance intent durable before store mutation.
+
+        ACL2 fixes the original target set, object identity and capacity
+        verdict.  The transaction id distinguishes retries even when the
+        configuration generation and clock observation are unchanged.
+        """
+        generation = self.bridge.config_generation()
+        txid = self.bridge.next_txid()
+        self.faults.at("owner:preintent")
+        result = self.bridge.submission_intent(evidence, generation, txid)
+        if result != "ready":
+            if result in ("capacity", "refused"):
+                return None
+            raise StoreFault("unexpected feed intent result: {}".format(result))
+        self.feed_flush()
+        self.faults.at("owner:intent-barrier")
+        return evidence, generation, txid
+
+    def submission_resolution(self, word, intent):
+        """Durably resolve this exact intent before queueing or replying."""
+        evidence, generation, txid = intent
+        kind = self.bridge.submission_resolution(word, evidence, generation, txid)
+        if kind not in ("feed-commit", "feed-abort", "uncertain", "none"):
+            raise StoreFault("unexpected feed intent resolution: {}".format(kind))
+        if kind == "uncertain":
+            # The durable intent deliberately remains unresolved. Recovery
+            # compares it with the authoritative store before any new work.
+            return kind
+        self.feed_flush()
+        self.faults.at("owner:{}-barrier".format(
+            "commit" if kind == "feed-commit" else "abort"))
+        return kind
+
+    def attempt(self, msgid, payload, groups, charge=None, evidence=None):
         """Carry ACL2's injected octets through the CLI's durable path.
 
         Returns the word ACL2 turns into 240 or 441.  Three outcomes stay
@@ -1131,18 +1266,23 @@ class Owner:
         try:
             names = [group.decode("ascii") for group in groups]
             codes = group_codes(names, self.store)
-            charge = conservative_charge(payload)
+            charge = charge if charge is not None else conservative_charge(payload)
             validate_post_boundary(msgid, payload, codes, charge, self.store.config)
             existing = self.bridge.existing_action(msgid, payload, codes)
-            if existing in ("duplicate", "conflict"):
+            if existing == "duplicate":
+                return "duplicate"
+            if existing == "conflict":
                 return "refused"
             if self.records >= self.store.config["max_transactions"]:
                 return "refused"
-            durable_post(self.store, self.bridge, self.records, msgid, payload, codes, charge)
+            durable_post(self.store, self.bridge, self.records, msgid, payload,
+                         codes, charge, evidence=evidence)
             self.records += 1
             return "durable"
         except StoreIndeterminate as error:
             print("owner: uncertain post: {}".format(error), file=sys.stderr)
+            self.store_uncertain = True
+            self.exit_code = EXIT_UNCERTAIN
             return "uncertain"
         except UnicodeDecodeError:
             return "refused"
@@ -1172,7 +1312,15 @@ class Owner:
             return self.bridge.transit_outcome(cid, "defer", "busy", "uncertain")
         if kind != "want":
             return self.bridge.transit_outcome(cid, kind, reason, "refused")
-        word = self.attempt(msgid, payload, self.bridge.submit_groups())
+        evidence = self.bridge.transit_evidence()
+        # The intent and the store record bind the same ACL2-derived transit
+        # provenance.  The host transports it and makes no provenance choice.
+        intent = self.submission_intent(evidence)
+        word = (self.attempt(msgid, payload, self.bridge.submit_groups(),
+                             evidence=evidence)
+                if intent is not None else "refused")
+        if intent is not None:
+            self.submission_resolution(word, intent)
         return self.bridge.transit_outcome(cid, "want", "nil", word)
 
     def rearm(self, conn):
@@ -1202,11 +1350,52 @@ class Owner:
         """
         peers = self.bridge.feed_configure()
         try:
-            for peer in peers:
+            # Journal files are durable obligations, including for a peer
+            # removed or disabled after acceptance.  Discover those files in
+            # addition to current configuration; ACL2 validates each name and
+            # every decoded record binds itself to that peer.  A dormant peer
+            # remains journal-only until configuration supplies an endpoint
+            # again, at which point the same file replays into its feed.
+            journal_peers = list(peers)
+            feed_dir = os.path.join(self.store.root, "feed")
+            if os.path.isdir(feed_dir):
+                for filename in sorted(os.listdir(feed_dir)):
+                    if not filename.endswith(".fnfd"):
+                        continue
+                    peer = filename[:-len(".fnfd")]
+                    try:
+                        valid = self.bridge.feed_journal_peer_valid(peer)
+                    except UnicodeEncodeError as error:
+                        raise StoreFault("invalid FNFD peer filename: " + filename) from error
+                    if not valid:
+                        raise StoreFault("invalid FNFD peer filename: " + filename)
+                    if peer not in journal_peers:
+                        journal_peers.append(peer)
+            for peer in journal_peers:
                 journal = Journal(self.store.root, peer.encode("utf-8"),
                                   self.bridge, faults=self.faults)
                 self.feeds[peer] = Feed(peer, journal)
-                print("FEED {} replayed {}".format(peer, journal.replayed), flush=True)
+                state = "configured" if peer in peers else "dormant"
+                print("FEED {} replayed {} {}".format(
+                    peer, journal.replayed, state), flush=True)
+
+            # The store was completely and authoritatively recovered before
+            # feed_start.  Resolve every unmatched pre-commit intent against
+            # its exact binding and retention evidence, append that resolution
+            # durably to the original peer journal, then apply the same record
+            # to the live feed fold.  Partial store evidence fences startup.
+            while True:
+                resolution = self.bridge.feed_reconcile_next()
+                if resolution == "done":
+                    break
+                if resolution == "uncertain":
+                    raise StoreIndeterminate(
+                        "feed intent cannot be resolved from recovered store")
+                if resolution not in ("feed-commit", "feed-abort"):
+                    raise StoreFault("unexpected feed reconciliation: " + resolution)
+                self.feed_flush()
+                if self.bridge.feed_reconcile_apply() != "ok":
+                    raise StoreFault("ACL2 refused recovered feed resolution")
             if peers:
                 self.bridge.feed_restart()
                 self.feed_flush()
@@ -1230,6 +1419,8 @@ class Owner:
         """Durable before the effect; failure forbids every later mutation."""
         if self.feed_uncertain:
             raise StoreIndeterminate("FNFD journal requires owner restart")
+        if self.config_uncertain:
+            raise StoreIndeterminate("configuration journal requires owner restart")
         try:
             frames = self.bridge.feed_frames()
             if not frames:
@@ -1398,6 +1589,9 @@ class Owner:
                 sock.sendall(reply + b"\n")
             except OSError:
                 pass
+        if self.store_uncertain:
+            self.stopping = True
+            self.exit_code = EXIT_UNCERTAIN
 
     @staticmethod
     def outcome_word(error):
@@ -1429,6 +1623,10 @@ class Owner:
     def control(self, sock):
         if self.feed_uncertain:
             raise StoreIndeterminate("FNFD journal requires owner restart")
+        if self.config_uncertain:
+            raise StoreIndeterminate("configuration journal requires owner restart")
+        if self.store_uncertain:
+            raise StoreIndeterminate("store outcome requires owner restart")
         words = self.read_line(sock).split()
         if not words:
             raise StoreError("empty control line")
@@ -1444,12 +1642,33 @@ class Owner:
                 raise StoreError("payload exceeds configured bound")
             payload = self.read_exact(sock, length)
             self.clock.observe(self.bridge)
-            sequence, charge = post_article(self.store, self.bridge, self.records,
-                                            msgid, payload, groups, charge)
-            if sequence is None:
+            group_octets = [group.encode("ascii") for group in groups]
+            submitted = self.bridge.control_submit(msgid, group_octets, payload)
+            if submitted != "submitted":
+                if submitted in ("refused", "busy"):
+                    raise StoreError("ACL2 refused control submission: {}".format(submitted))
+                raise StoreFault("unexpected control submission result: {}".format(submitted))
+            if self.bridge.take() != "taken-control":
+                raise StoreFault("ACL2 did not take the control submission")
+            sequence = self.records
+            selected_charge = charge if charge is not None else conservative_charge(payload)
+            intent = self.submission_intent(self.bridge.prov_post())
+            word = (self.attempt(msgid, payload, group_octets, charge=selected_charge)
+                    if intent is not None else "refused")
+            if intent is not None:
+                self.submission_resolution(word, intent)
+            result = self.bridge.control_outcome(word)
+            self.faults.at("owner:response")
+            if result == "duplicate":
                 return b"duplicate"
-            self.records += 1
-            return "committed sequence={} charge={}".format(sequence, charge).encode()
+            if result == "accepted":
+                return "committed sequence={} charge={}".format(
+                    sequence, selected_charge).encode()
+            if result == "refused":
+                raise StoreError("ACL2 refused control post")
+            if result == "uncertain":
+                raise StoreIndeterminate("ACL2 reported uncertain control post")
+            raise StoreFault("unexpected control outcome: {}".format(result))
         if command == b"VERSION":
             return "version {}".format(self.bridge.version()).encode()
         if command == b"CONNECTIONS":
@@ -1467,6 +1686,29 @@ class Owner:
             return ("advanced " + " ".join(results)).encode()
         if command == b"OBSERVE":
             return self.clock.observe(self.bridge).encode()
+        if command == b"RECONFIGURE":
+            if len(words) != 4 or words[2].lower() not in (b"create", b"retire"):
+                raise StoreError("RECONFIGURE <connection-id> <create|retire> <group>")
+            try:
+                cid = int(words[1])
+                action = words[2].decode("ascii")
+                name = words[3].decode("utf-8", "strict")
+            except (ValueError, UnicodeDecodeError) as error:
+                raise StoreError("malformed reconfiguration request") from error
+            self.clock.observe(self.bridge)
+            status, detail, record = self.bridge.reconfigure_group(cid, action, name)
+            if status == "refused":
+                return "refused {}".format(detail).encode()
+            try:
+                self.store.write_config_record(detail, record)
+            except StoreIndeterminate:
+                self.config_uncertain = True
+                self.stopping = True
+                raise
+            if self.bridge.complete_reconfigure(detail) != "durable":
+                self.stopping = True
+                raise StoreFault("owner did not publish durable configuration")
+            return "configured generation={}".format(detail).encode()
         if command == b"DECLARE-GROUP":
             if len(words) != 2:
                 raise StoreError("DECLARE-GROUP <name>")
@@ -1484,6 +1726,10 @@ class Owner:
         self.feed_start()
         while not self.stopping:
             for key, mask in self.selector.select(timeout=0.2):
+                if self.store_uncertain:
+                    conn = key.data if isinstance(key.data, Connection) else None
+                    if conn is None or conn.cid != self.uncertain_reply_cid:
+                        continue
                 # Every branch below is one event under the host-fault
                 # boundary, named by what a fault in it costs.
                 if key.data == "nntp":
@@ -1513,7 +1759,7 @@ class Owner:
                             pass
                 if self.stopping:
                     break
-            if not self.stopping:
+            if not self.stopping and not self.store_uncertain:
                 self.guard("feed-poll", self.feed_poll)
         for feed in list(self.feeds.values()):
             feed.close()
@@ -1538,6 +1784,18 @@ def fault_once(error):
     return action
 
 
+def process_cut_once(code):
+    """Test-only hard process death at one modelled submission cut."""
+    fired = []
+
+    def action():
+        if fired:
+            return None
+        fired.append(True)
+        os._exit(code)  # noqa: PLW1510 - the process death is the test event
+    return action
+
+
 # Documented test-only hooks, the owner's own, beside tools/run_store.py's
 # CLI_FAULTS.  Each names one point in the serve loop; production passes
 # NO_FAULTS and the paths hold no injection branch.  The errors are
@@ -1551,6 +1809,19 @@ OWNER_FAULTS = {
     "drain": lambda: ScriptedFaults(
         "owner:drain",
         action=fault_once(RuntimeError("injected host fault carrying a submission"))),
+    "preintent-cut": lambda: ScriptedFaults(
+        "owner:preintent", action=process_cut_once(90)),
+    "intent-barrier-cut": lambda: ScriptedFaults(
+        "owner:intent-barrier", action=process_cut_once(91)),
+    "commit-barrier-cut": lambda: ScriptedFaults(
+        "owner:commit-barrier", action=process_cut_once(92)),
+    "abort-barrier-cut": lambda: ScriptedFaults(
+        "owner:abort-barrier", action=process_cut_once(93)),
+    "response-cut": lambda: ScriptedFaults(
+        "owner:response", action=process_cut_once(94)),
+    "store-uncertain": lambda: ScriptedFaults(
+        "record-attempted",
+        StoreIndeterminate("injected ambiguous article publication")),
 }
 
 
@@ -1597,7 +1868,7 @@ def main(argv=None):
     control = None
     faults = NO_FAULTS if args.inject_fault is None else OWNER_FAULTS[args.inject_fault]()
     try:
-        store = Store(args.store, writable=True)
+        store = Store(args.store, writable=True, faults=faults)
         store.acquire()
         bridge = Acl2Owner(args.max_connections)
         records = store.recover(bridge)

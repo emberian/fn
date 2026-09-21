@@ -1,0 +1,142 @@
+{
+  "acl2_executable": "/tank/fn/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5",
+  "acl2_exit_codes": {
+    "books/wire": 0,
+    "books/wire-invariants": 0,
+    "tests/acl2/wire-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/tank/fn/lanes/w12-wire-block/build/acl2/certify-20260921T075110Z-1793104",
+  "book_failures": {},
+  "book_results": {
+    "books/wire": "passed",
+    "books/wire-invariants": "passed",
+    "tests/acl2/wire-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/wire": 1.546,
+    "books/wire-invariants": 1.701,
+    "tests/acl2/wire-tests": 0.108
+  },
+  "cert_cache": {
+    "already_cached": 3,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": true,
+        "book": "books/wire",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "books/wire-invariants",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "tests/acl2/wire-tests",
+        "published": false,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/wire": "2a0ee11abd25f71832e4a0b3eacb4d96f72b38b1b9fec98c3ce09286745c3408",
+    "books/wire-invariants": "7c2c22a0dab938b7fc2fb0835e25d5704d4da7576f7747fd5ff09074b7fd37b5",
+    "tests/acl2/wire-tests": "887c771a9d4c30f45201c92f45b793ead1978bc42c05ae656282c8b7c9cd0b06"
+  },
+  "certify_wall_seconds": 3.387,
+  "closure": true,
+  "command": [
+    "/tank/fn/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/wire": "da7e1cf22ee4631721b5434a5a658885ada91aa4e3ec2d97d0357f1523f2ac2d",
+    "books/wire-invariants": "56d4e93dbb50ec9b3b6aec09b79fa6c726e9ad4490d716791454f6dae4e9a5fb",
+    "tests/acl2/wire-tests": "40849bacd755dc383feed80e28b39fa36c3bcb62d8f042480c6b4a36859406e0"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS c0acc056242aee738f46fa5056e1b0b8 ce91d7ad78a7",
+    "FN_CERTIFY_SUCCESS c0acc056242aee738f46fa5056e1b0b8 aa6f31c2bde3",
+    "FN_CERTIFY_SUCCESS c0acc056242aee738f46fa5056e1b0b8 96bb31b59842"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T07:51:14+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "jobs": 4,
+  "jobs_effective": 3,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS c0acc056242aee738f46fa5056e1b0b8 ce91d7ad78a7",
+    "FN_CERTIFY_SUCCESS c0acc056242aee738f46fa5056e1b0b8 aa6f31c2bde3",
+    "FN_CERTIFY_SUCCESS c0acc056242aee738f46fa5056e1b0b8 96bb31b59842"
+  ],
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "tests/acl2/wire-tests"
+  ],
+  "requested_books": [
+    "books/wire",
+    "books/wire-invariants",
+    "tests/acl2/wire-tests"
+  ],
+  "run_id": "certify-20260921T075110Z-1793104",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/wire": 0.0,
+    "books/wire-invariants": 0.0,
+    "tests/acl2/wire-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/wire-invariants.lisp": "f80efbfba1d072d73036348ceab355e35376ef0310430eb5af0b99aa69013aba",
+    "books/wire.lisp": "69faa44d2125fbf005a2e8bb0287fc779cd14d5b5ef4881fc2b78fb11ae23ef2",
+    "tests/acl2/wire-tests.lisp": "a0f3fb0e5a988c394468c8c2d4cad23536b08487da737d1081a2c1b4536f3650"
+  },
+  "source_digests_sha256_after": {
+    "books/wire-invariants.lisp": "f80efbfba1d072d73036348ceab355e35376ef0310430eb5af0b99aa69013aba",
+    "books/wire.lisp": "69faa44d2125fbf005a2e8bb0287fc779cd14d5b5ef4881fc2b78fb11ae23ef2",
+    "tests/acl2/wire-tests.lisp": "a0f3fb0e5a988c394468c8c2d4cad23536b08487da737d1081a2c1b4536f3650"
+  },
+  "start_order": [
+    "books/wire",
+    "books/wire-invariants",
+    "tests/acl2/wire-tests"
+  ],
+  "started_utc": "2026-09-21T07:51:10+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/tank/fn/lanes/w12-wire-block"
+}

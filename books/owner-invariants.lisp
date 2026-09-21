@@ -903,9 +903,15 @@
            (fn-own-relation (fn-own-take-submission o)))
   :hints (("Goal" :in-theory (enable fn-own-relation))))
 
+(defthm fn-own-control-submit-preserves-relation
+  (implies (fn-own-relation o)
+           (fn-own-relation (fn-own-control-submit o msgid groups octets)))
+  :hints (("Goal" :in-theory (enable fn-own-control-submit-result
+                                     fn-own-control-submit
+                                     fn-own-enqueue fn-own-relation))))
+
 ; The outcome releases the transaction and empties `inflight'; neither is
-; read by the relation, so the only content is the :durable branch's
-; fn-own-advance, which is fn-own-advance-preserves-relation above.
+; read by the relation.  Both served and control outcomes use this body.
 (local
  (defthm fn-own-outcome-body-preserves-relation
    (implies (fn-own-relation o)
@@ -915,6 +921,98 @@
                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
                           (fn-own-config o) (fn-own-queue o) nil fds)))
    :hints (("Goal" :in-theory (enable fn-own-relation)))))
+
+(defthm fn-own-control-outcome-preserves-relation
+  (implies (fn-own-relation o)
+           (fn-own-relation (fn-own-control-outcome o word)))
+  :hints (("Goal"
+           :use ((:instance fn-own-outcome-body-preserves-relation
+                            (p (if (equal (fn-own-pending o)
+                                          *fn-own-control-id*)
+                                   nil (fn-own-pending o)))
+                            (fds (if (equal (fn-own-outcome-completion o word)
+                                            :durable)
+                                     (fn-own-feed-durable o (fn-own-inflight o))
+                                   (fn-own-feeds o)))))
+           :in-theory (e/d (fn-own-control-outcome)
+                           (fn-own-relation fn-own-outcome-completion
+                            fn-own-outcome-body-preserves-relation)))))
+
+; The host calls fn-owner-control-outcome (host/owner-host.lisp), whose state
+; transition is this function.  It gates acceptance on the same completion
+; predicate as served fn-own-outcome.  The host calls
+; fn-owner-submission-intent before the store and
+; fn-owner-submission-resolution before this state transition.
+(defthm fn-own-control-accepted-uses-owner-completion
+  (implies (equal (fn-own-control-outcome-result o word) :accepted)
+           (equal (fn-own-outcome-completion o word) :durable))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-own-control-outcome-result))))
+
+(defthm fn-own-control-durable-feeds-the-owner-targets
+  (implies (and (fn-own-control-submissionp (fn-own-inflight o))
+                (equal (fn-own-outcome-completion o word) :durable))
+           (equal (fn-own-feeds (fn-own-control-outcome o word))
+                  (fn-own-feed-durable o (fn-own-inflight o))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-own-control-outcome))))
+
+; KEYSTONE.  The durable resolution the actual host wrapper writes is a
+; commit, and it repeats the exact values of the intent written before the
+; store began.  Thus the acceptance-time targets, object identity,
+; provenance, configuration generation, transaction id and tick cross both
+; crash cuts without Python reconstructing any field.
+(local
+ (defthm fn-own-feed-resolution-first-matches-intent-first
+   (implies (consp names)
+            (and (consp (fn-own-feed-resolution-records
+                         :feed-commit names msgid identity evidence
+                         generation txid tick))
+                 (equal
+                  (fn-feed-journal-kind
+                   (car (fn-own-feed-resolution-records
+                         :feed-commit names msgid identity evidence
+                         generation txid tick)))
+                  :feed-commit)
+                 (equal
+                  (fn-feed-journal-values
+                   (car (fn-own-feed-resolution-records
+                         :feed-commit names msgid identity evidence
+                         generation txid tick)))
+                  (fn-feed-journal-values
+                   (car (fn-own-feed-intent-records
+                         names msgid identity evidence generation txid
+                         tick))))))
+   :hints (("Goal" :in-theory (enable fn-own-feed-resolution-records
+                                      fn-own-feed-intent-records)))))
+
+(defthm fn-own-control-accepted-resolves-the-exact-intent
+  (implies (and (equal (fn-own-outcome-completion o word) :durable)
+                (equal (fn-own-submission-intent-result
+                        o evidence generation txid) :ready)
+                (consp (fn-own-submission-targets o)))
+           (let ((intent (fn-own-submission-intent-records
+                          o evidence generation txid))
+                 (resolution (fn-own-submission-resolution-records
+                              o word evidence generation txid)))
+             (and (consp resolution)
+                  (equal (fn-feed-journal-kind (car resolution)) :feed-commit)
+                  (equal (fn-feed-journal-values (car resolution))
+                         (fn-feed-journal-values (car intent))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance
+                  fn-own-feed-resolution-first-matches-intent-first
+                  (names (fn-own-submission-targets o))
+                  (msgid (fn-own-sub-msgid (fn-own-inflight o)))
+                  (identity
+                   (fn-own-feed-intent-id
+                    (fn-own-sub-msgid (fn-own-inflight o))
+                    (fn-own-sub-octets (fn-own-inflight o))))
+                  (tick (fn-own-feed-stamp o))))
+           :in-theory (enable fn-own-submission-intent-result
+                              fn-own-submission-intent-records
+                              fn-own-submission-resolution-records))))
 
 (defthm fn-own-outcome-preserves-relation
   (implies (fn-own-relation o)
@@ -962,7 +1060,9 @@
                                       fn-own-begin fn-own-store-step fn-own-complete
                                       fn-own-reopen fn-own-observe
                                       fn-own-declare-group fn-own-configure
-                                      fn-own-take-submission fn-own-outcome))))
+                                      fn-own-take-submission fn-own-outcome
+                                      fn-own-control-submit
+                                      fn-own-control-outcome))))
 
 (defthm fn-own-run-preserves-relation
   (implies (fn-own-relation o)

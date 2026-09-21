@@ -180,6 +180,33 @@ and holds no wire state, so `fn-wire-drive` has one owner and it is the book.
 A submission is completed as refused while the reader holds only a shared
 lock, and ACL2 -- never the host -- writes the 240 or the 441.
 
+### The owner submission path
+
+Served POST, inbound transit and a running owner's control `POST` all enter
+the same serialized owner submission slot. The control boundary is one ACL2
+event over the Message-ID, groups and exact authored article octets; it does
+not allocate an NNTP connection or synthesize a loopback protocol session.
+`fn-owner-take` then exposes the same in-flight submission shape used by the
+served path, and `fn-owner-control-outcome` consumes the same owner completion
+predicate that gates a served 240.
+
+Before the store transaction, `fn-owner-submission-intent` projects the ACL2
+chosen feed targets, object obligation identity, provenance, configuration
+generation, transaction id and tick into one FNFD intent per target. All
+intent frames reach their durable per-peer journals before the host calls
+`durable_post`. After a known result,
+`fn-owner-submission-resolution` repeats those exact values in a commit or
+abort frame; the resolution is durable before the owner enqueues a committed
+article or reports the outcome. An indeterminate store result writes no
+resolution, reports uncertain distinctly, and stops the current owner after
+that reply so recovery precedes every later mutation.
+
+Startup scans and repairs every configured or retained peer journal after the
+store's authoritative recovery. ACL2 folds unresolved intents and compares
+each with the recovered article binding and retention evidence. The host only
+appends the commit/abort frame ACL2 returns. Any incomplete or contradictory
+recovery evidence is uncertain and fences the whole owner image.
+
 The store path opens on the replayed configuration history: `config/*.cfg`,
 oldest first, to `fn-store-sn-recover` with the article records and the
 frontier. A store with no configuration record is refused, and the served
