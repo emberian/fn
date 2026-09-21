@@ -9,6 +9,45 @@
 (in-package "ACL2")
 
 (defvar *fnn-native-auth-admin-secret-reader* nil)
+(defvar *fnn-native-auth-admin-cut-callback* nil)
+
+(defparameter +fnn-native-auth-admin-test-cuts+
+  '("cleanup-unlinked" "cleanup-directory-durable"
+    "recovery-file-durable" "recovery-directory-durable"
+    "stage-durable" "replace-issued" "replace-returned"
+    "final-directory-durable"))
+
+(defun fnn-native-auth-admin-test-cut ()
+  "Developer-only FN_NATIVE_AUTH_ADMIN_FAULT=CUT:eio|kill selector."
+  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_AUTH_ADMIN_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw :from-end t)))
+        (unless colon
+          (fnn-fault
+           "invalid FN_NATIVE_AUTH_ADMIN_FAULT (expected CUT:eio|kill)"))
+        (let ((label (subseq raw 0 colon))
+              (action (subseq raw (1+ colon))))
+          (unless (member label +fnn-native-auth-admin-test-cuts+
+                          :test #'string=)
+            (fnn-fault "unknown FN_NATIVE_AUTH_ADMIN_FAULT cut: ~a" label))
+          (let ((point (intern (string-upcase label) :keyword)))
+            (cond
+             ((string= action "eio")
+              (lambda (seen)
+                (when (eq seen point) (fnn-os-fail sb-posix:eio))))
+             ((string= action "kill")
+              (lambda (seen)
+                (when (eq seen point)
+                  (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+                  (fnn-fault "test SIGKILL did not terminate the process"))))
+             (t
+              (fnn-fault
+               "invalid FN_NATIVE_AUTH_ADMIN_FAULT action: ~a" action)))))))))
+
+(defun fnn-native-auth-admin-at (label)
+  "A deterministic death-cut seam; production has no callback."
+  (when *fnn-native-auth-admin-cut-callback*
+    (funcall *fnn-native-auth-admin-cut-callback* label)))
 
 (defun fnn-native-auth-admin-core (name &rest arguments)
   (apply #'fnn-core name arguments))
@@ -113,6 +152,13 @@
       (fnn-refuse "AUTHINFO ~a path is not a regular file" kind))
     info))
 
+(defun fnn-native-auth-admin-check-directory (path)
+  (let ((info (fnn-lstat path)))
+    (when (or (null info) (fnn-symlink-p info)
+              (not (fnn-directory-p info)))
+      (fnn-refuse "AUTHINFO credential parent is not an existing directory"))
+    info))
+
 (defun fnn-native-auth-admin-open-lock (path)
   (let ((fd nil))
     (handler-case
@@ -161,6 +207,7 @@
       (handler-case
           (progn
             (fnn-unlink stage)
+            (fnn-native-auth-admin-at :cleanup-unlinked)
             (setq phase
                   (fnn-native-auth-admin-recovery-step
                    phase '(:cleanup-result :ok))))
@@ -179,6 +226,7 @@
       (handler-case
           (progn
             (fnn-fsync-dir directory)
+            (fnn-native-auth-admin-at :cleanup-directory-durable)
             (setq phase
                   (fnn-native-auth-admin-recovery-step
                    phase '(:cleanup-directory-result :ok))))
@@ -198,6 +246,7 @@
       (handler-case
           (progn
             (fnn-fsync-regular final)
+            (fnn-native-auth-admin-at :recovery-file-durable)
             (setq phase
                   (fnn-native-auth-admin-recovery-step
                    phase '(:recovery-file-result :ok))))
@@ -216,6 +265,7 @@
     (handler-case
         (progn
           (fnn-fsync-dir directory)
+          (fnn-native-auth-admin-at :recovery-directory-durable)
           (setq phase
                 (fnn-native-auth-admin-recovery-step
                  phase '(:recovery-directory-result :ok))))
@@ -257,6 +307,7 @@
     (handler-case
         (progn
           (fnn-write-staged stage (fnn-octets octets))
+          (fnn-native-auth-admin-at :stage-durable)
           (setq phase
                 (fnn-native-auth-admin-rp-step
                  phase '(:stage-result :ok))))
@@ -275,9 +326,11 @@
     ; Enter the model cut before rename(2).  A process death after the syscall
     ; can therefore never masquerade as a known pre-publication failure.
     (setq phase (fnn-native-auth-admin-rp-step phase :replace-issued))
+    (fnn-native-auth-admin-at :replace-issued)
     (handler-case
         (progn
           (fnn-replace stage final)
+          (fnn-native-auth-admin-at :replace-returned)
           (setq phase
                 (fnn-native-auth-admin-rp-step
                  phase '(:replace-result :ok))))
@@ -296,6 +349,7 @@
     (handler-case
         (progn
           (fnn-fsync-dir directory)
+          (fnn-native-auth-admin-at :final-directory-durable)
           (setq phase
                 (fnn-native-auth-admin-rp-step
                  phase '(:directory-result :ok))))
@@ -389,8 +443,11 @@
     (return-from fnn-native-auth-admin-execute +fnn-exit-usage+))
   (multiple-value-bind (final lock stage directory)
       (fnn-native-auth-admin-paths auth-path)
-    (fnn-safe-directory directory)
-    (let ((lock-fd (fnn-native-auth-admin-open-lock lock)))
+    (fnn-native-auth-admin-check-directory directory)
+    (let ((lock-fd (fnn-native-auth-admin-open-lock lock))
+          (*fnn-native-auth-admin-cut-callback*
+            (or *fnn-native-auth-admin-cut-callback*
+                (fnn-native-auth-admin-test-cut))))
       (unwind-protect
            (let* ((presentp
                     (fnn-native-auth-admin-recover stage final directory))
