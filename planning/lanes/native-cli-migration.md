@@ -3,9 +3,15 @@
 **Status: native distribution layout implemented (2026-09-21).** `bin/fn`
 remains the explicitly separate Python development CLI. The production staged
 layout installs `packaging/fn-native` as `bin/fn`, pairs the selected saved
-image with its `.core` under `libexec/fn`, records hashes and runtime libraries,
+image with its `.core` under `libexec/fn`, copies and relocates the generated
+launcher's SBCL executable and `SBCL_HOME`, records hashes and runtime libraries,
 and renders native systemd/launchd definitions. It never falls back to Python,
 and installation itself creates no service side effect.
+
+Installation verifies the production profile through the image's disabled
+reader entrypoint before recording it. The manifest names `libsodium` and
+OpenSSL 3 as system dependencies because they are loaded by the native host and
+are not implied by the SBCL executable's static dependency listing.
 
 The exact frozen `8c` image inspected for this distribution predates the live
 administration callback: `operator CONFIG peer add ...` returns usage 5 both
