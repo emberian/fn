@@ -76,6 +76,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-anchor-` | `anchor`, `anchor-wire`, `anchor-record`, `anchor-invariants` | The external freshness anchor: the bounded deployed RoughTime v1 wire grammar, the statement and exact octets its two signatures cover, the strictly-newer interval order, the monotone rule for acceptance, restore and incarnation advance, fork evidence, and the FNAN durable record family |
 | `fn-digest-`, `fn-sig-` | `crypto-seam` | Constrained digest and signature seam with shape-only constraints; tagged preimages; hex rendering |
 | `fn-hsig-` | `hybrid-signature`, `hybrid-store`, `host/hybrid-signature-host` | D09 ordered Ed25519/ML-DSA-65 key and signature shapes, exact authored-source signing preimage and conjunctive observed-verification gate; primitive correctness remains trusted |
+| `fn-hsigi-` | `hybrid-signature-invariants` | Fixed-width projections and framing lemmas for the D09 authored-source subject |
 | `fn-store-event-`, `fn-retention-event-` | `store-events` | Tagged article and retention Store events, shared sequence/transaction/generation coordinates and bounded event dispatch codecs |
 | `fn-nrt-` | `node-retention-transitions` | Node projection after authoritative retention undertaking/release transitions |
 | `fn-prin-` | `principal`, `principal-invariants` | Principal ids from (public key, token), key succession chains, keyrings |
