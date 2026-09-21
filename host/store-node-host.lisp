@@ -6,6 +6,7 @@
 ; these entries. Do not add whole-store recognition per served operation.
 (in-package "ACL2")
 (include-book "../books/store-observed")
+(include-book "../books/native-config-observation")
 (include-book "../books/store-sweep")
 (include-book "../books/store-node-resolution")
 (include-book "../books/store-prepare-correspondence")
@@ -60,7 +61,9 @@
             (let ((rest (fn-store-config-observation-entries (cdr entries))))
               (if (equal rest :bad)
                   :bad
-                (cons (list (fn-store-octets->string (car entry)) (cadr entry)) rest)))
+                 (cons (list (fn-store-octets->string (car entry))
+                             (car (cdr entry)))
+                       rest)))
           :bad))
     (if (null entries) nil :bad)))
 
