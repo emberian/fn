@@ -385,9 +385,12 @@
         "books/checkpoint.lisp",
         "tests/acl2/checkpoint-tests.lisp",
         "specs/checkpoint.md",
-        "tests/evidence/2026-09-18-reader-checkpoint-index.md"
+        "tests/evidence/2026-09-18-reader-checkpoint-index.md",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_checkpoint.py",
+        "planning/evidence/native-checkpoint-w15-2026-09-21.md"
       ],
-      "progress_note": "Logical capture stores the exact prefix node; restore runs the actual suffix loop without prefix input. General admissible-split equivalence includes consumed allocator gaps and final frontier normalization. Physical encoding/publication/generation selection and freshness remain open."
+      "progress_note": "Logical capture stores the exact prefix node; restore runs the actual suffix loop without prefix input. General admissible-split equivalence includes consumed allocator gaps and final frontier normalization. Native W15 adopts immutable generation publication, selection-marker replacement, and selected checkpoint validation against authoritative full journal replay. Source-pinned component image tests cover selected corruption, unselected isolation and selected process-death cuts. The native path still performs full replay; namespace grammar ownership, mismatch outcome policy, shared-owner composition and physical syscall/refinement/freshness assurance remain open. These tests do not enlarge the logical theorem hypotheses or establish suffix-only recovery."
     },
     {
       "id": "PRF-009",
@@ -1405,10 +1408,12 @@
         "tests/test_native_storage_codec.py",
         "planning/evidence/manifests/certify-20260921T074821Z-1788915.json",
         "planning/evidence/native-initializer-fidelity-w14-2026-09-21.md",
-        "tests/test_native_initializer_fidelity.py"
+        "tests/test_native_initializer_fidelity.py",
+        "tests/test_native_recovery.py",
+        "planning/evidence/native-recovery-w15-2026-09-21.md"
       ],
       "pending_subject": "The fresh initializer transcription has source-reviewed correspondence to the fresh Python Store.initialize path, not a theorem equating the host execution to fn-bs-run; its cut checker explicitly cannot inline helpers. Existing/retry initialization, native initializer correspondence, Store.advance_frontier composition and recovery remain open. The naming wrapper invokes the attached ACL2 renderer directly; this does not close those program correspondence gaps.",
-      "progress_note": "The metadata-only initial image/frontier results and conditional fn-bs-step observations remain scoped as above. W13 adds a source-reviewed fresh initializer and exact-image theorem; the configuration-directory fence separating witness leaves the old root/transactions relation true while falsifying that image. Unique model cut names do not make uninstrumented host cuts covered. Transaction naming has a guard-verified executable injective realization, including above-20-digit witnesses and hypothesis teeth, adopted by both Python Store.publish and native fnn-transaction-name through ACL2 wrappers. Native metadata/frontier serialization and posting provenance also use the ACL2 subjects; source-pinned cross-open and byte-identical committed-frame tests passed. Remaining staging-orphan and missing-staging-directory differences prevent a full adapter-equivalence claim. General K0, existing/retry branches, native host correspondence, recovery composition and platform durability remain open. W14 adds a source-reviewed native fresh initializer cut map, selected actual SIGKILL/new-process restart tests and a real EACCES enumeration regression. These tests do not establish native whole-program correspondence, every-cut crash qualification or existing/retry initialization.",
+      "progress_note": "The metadata-only initial image/frontier results and conditional fn-bs-step observations remain scoped as above. W13 adds a source-reviewed fresh initializer and exact-image theorem; the configuration-directory fence separating witness leaves the old root/transactions relation true while falsifying that image. Unique model cut names do not make uninstrumented host cuts covered. Transaction naming has a guard-verified executable injective realization, including above-20-digit witnesses and hypothesis teeth, adopted by both Python Store.publish and native fnn-transaction-name through ACL2 wrappers. Native metadata/frontier serialization and posting provenance also use the ACL2 subjects; source-pinned cross-open and byte-identical committed-frame tests passed. Remaining staging-orphan and missing-staging-directory differences prevent a full adapter-equivalence claim. General K0, existing/retry branches, native host correspondence, recovery composition and platform durability remain open. W14 adds a source-reviewed native fresh initializer cut map, selected actual SIGKILL/new-process restart tests and a real EACCES enumeration regression. These tests do not establish native whole-program correspondence, every-cut crash qualification or existing/retry initialization. W15 now bounds staging enumeration before retaining names and calls fn-sn-sweep-staging after recovery barriers; writable recovery collects ACL2-selected names, while read-only open only reports. Missing staging faults explicitly. Selected unlink-error/process-death tests and native differential evidence are archived; the removal-plan theorem does not model every physical unlink cut or prove whole-adapter equivalence.",
       "events": [
         "fn-bs-related-allocation-is-fresh",
         "fn-bs-frontier-noncommit-observation-preserves-relation",

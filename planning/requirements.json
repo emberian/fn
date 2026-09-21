@@ -487,15 +487,18 @@
         "tests/acl2/checkpoint-tests.lisp",
         "specs/checkpoint.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
-        "planning/evidence/checkpoint-validator-2026-09-21.md"
+        "planning/evidence/checkpoint-validator-2026-09-21.md",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_checkpoint.py",
+        "planning/evidence/native-checkpoint-w15-2026-09-21.md"
       ],
-      "implementation_note": "Logical checkpoint plus suffix replay equivalence is implemented; persisted checkpoint bytes, generation publication, crash selection and freshness remain open.",
+      "implementation_note": "Logical checkpoint equivalence and concrete codec/publication are implemented. Native capture/select/status now validate selected checkpoints after authoritative full journal replay; the private restored state is compared and never installed as the live node. Suffix-only recovery, ACL2 filename codec adoption, mismatch outcome policy, shared-owner composition and physical/freshness assurance remain open.",
       "keystones": [
         "fn-checkpoint-plus-suffix-equals-full-replay",
         "fn-checkpoint-admissible-capture-is-exact",
         "fn-checkpoint-admissible-capture-value-is-valid"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). A capture plus its suffix replay equals the full replay, and an admissible capture is exact, with an explicit rejection theorem for a suffix that reuses a transaction id below the frontier. Scope: this is the logical checkpoint only. There is no persisted checkpoint codec, no publication and no crash-generation selection, so no durable checkpoint is claimed."
+      "note": "The earlier logical-only certification remains evidence for its stated theorem. W15 adds separately source-pinned native image tests of capture, selection, corruption and selected crash cuts; it does not certify current integrated owner behavior or every physical crash cut."
     },
     {
       "id": "STO-007",

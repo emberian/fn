@@ -277,3 +277,33 @@ Its timings are totals for sequential commits in a test-only scale image,
 not single-post latency or a proved asymptotic bound. The active correspondence
 lane must derive an incremental prepare entry from the maintained storage
 relation and prove equality to the specification before actual host adoption.
+
+
+### U11: bounds applied after collecting external names
+
+The integrated BP receive-evidence adapter (`33ca412`) obtains the complete
+native directory listing before comparing its size with the ACL2 maximum. This
+bounds admitted state but fails to bound the allocation used to reach admission.
+Use the shared bounded directory observer with the ACL2 limit before collection;
+retain the logical validator for the actual namespace decision. The bounded
+observer already serves native staging recovery (`9e2d159`). A Terra successor
+owns the BP correction and actual enumeration regression. The checkpoint
+namespace is under the same audit, alongside its remaining host filename codec.
+
+### Current component dispositions
+
+Receive evidence now uses an ACL2-owned identity and the shared immutable
+publisher; actual separate TCPCL sessions with transfer ID zero retain both
+wire records. Uncertain publication exits the receive loop, and restart consumes
+the visible wire-only identity after recovery barriers. See the
+[receive evidence packet](evidence/bp-receive-integrity-w15-2026-09-21.md).
+This closes the demonstrated overwrite path, not the pending BP-to-application
+acceptance/receipt composition.
+
+Native [checkpoint adoption](evidence/native-checkpoint-w15-2026-09-21.md)
+uses the same immutable publisher for generations and a separate ACL2 marker
+replacement contract. It preserves authoritative full journal replay and only
+compares a checkpoint restore in private state. The host filename grammar,
+uncertain-store reuse guard and optional differential-mismatch outcome remain
+assigned convergence items. A checkpoint report must not call a known unequal
+restore healthy merely because a developer environment switch is absent.
