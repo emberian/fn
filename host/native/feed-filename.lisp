@@ -21,8 +21,9 @@
          (ok (fnn-core 'fn-feed-filename-host-okp peer-octets)))
     (unless (eq ok t)
       (fnn-fault "ACL2 refused FNFD peer filename"))
-    (let ((count (fnn-nat (fnn-core 'fn-feed-filename-host-count peer-octets))))
-      (unless (and (> count 0) (<= count 7))
+    (let ((count (fnn-nat (fnn-core 'fn-feed-filename-host-count peer-octets)))
+          (limit (fnn-nat (fnn-core 'fn-feed-filename-host-max-components))))
+      (unless (and (> count 0) (<= count limit))
         (fnn-fault "ACL2 returned invalid FNFD component count"))
       (let ((components
               (loop for index below count
@@ -34,6 +35,10 @@
         (unless (every #'fnn-feed-filename-component-p components)
           (fnn-fault "ACL2 returned unsafe FNFD filename component"))
         components))))
+
+(defun fnn-feed-filename-max-v1-chunks ()
+  "The ACL2-owned depth bound used before raw directory recursion."
+  (fnn-nat (fnn-core 'fn-feed-filename-host-max-v1-chunks)))
 
 (defun fnn-feed-filename-decode-components (components)
   "Return PEER and T only for an ACL2-canonical component vector.

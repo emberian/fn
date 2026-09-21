@@ -89,6 +89,16 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertEqual(result.returncode, 4, result.stderr.decode())
         self.assertIn(b"invalid complete FNFD evidence", result.stderr)
 
+    def test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence(self):
+        (self.store / "feed" / "v1").mkdir(parents=True)
+        result = subprocess.run(
+            [str(IMAGE), "--fn", "owner", "run", str(self.store),
+             "0", "1", "8"], cwd=ROOT, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env=environment(), timeout=180, check=False)
+        self.assertEqual(result.returncode, 4, result.stderr.decode())
+        self.assertIn(b"empty FNFD v1 namespace", result.stderr)
+        self.assertTrue((self.store / "feed" / "v1").is_dir())
+
     def test_two_client_uncertainty_fences_before_later_mutation(self):
         process, port = self.start_owner(once=False, fault="postpublish")
         first = socket.create_connection(("127.0.0.1", port), timeout=30)

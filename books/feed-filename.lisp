@@ -7,6 +7,8 @@
 (defconst *fn-ff-max-name* 256)
 (defconst *fn-ff-legacy-max-name* 250)
 (defconst *fn-ff-chunk* 120)
+(defconst *fn-ff-max-v1-chunks* 5)
+(defconst *fn-ff-max-components* 7)
 (defconst *fn-ff-v1* '(118 49))                 ; v1
 (defconst *fn-ff-journal* '(106 111 117 114 110 97 108 46 102 110 102 100))
 (defconst *fn-ff-suffix* '(46 102 110 102 100)) ; .fnfd
