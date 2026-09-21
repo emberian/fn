@@ -1283,6 +1283,14 @@
 ; A different complete binding proves this incarnation did not commit; a
 ; partial binding/article/pin relation is recovery corruption and remains
 ; uncertain instead of losing the obligation.
+(defun fn-own-retain-find-id-unguarded (id pins)
+  (declare (xargs :guard t))
+  (if (consp pins)
+      (if (equal id (fn-retain-obligation-id (car pins)))
+          (car pins)
+        (fn-own-retain-find-id-unguarded id (cdr pins)))
+    nil))
+
 (defun fn-own-feed-intent-reconcile-kind (node values)
   (declare (xargs :guard t))
   (let* ((msgid (fn-record-octets-string (fn-frame-item 1 values)))
@@ -1292,7 +1300,7 @@
                    msgid (fn-state-articles (fn-node-acceptance node))))
          (binding (fn-node-find-binding msgid (fn-node-bindings node)))
          (pin (and (consp binding)
-                   (fn-retain-find-id
+                   (fn-own-retain-find-id-unguarded
                     (fn-node-binding-id binding)
                     (fn-retain-pins (fn-node-retention node))))))
     (cond ((and (consp article) (consp binding) (consp pin)
@@ -1732,11 +1740,17 @@
     fn-own-open-peer fn-own-transit-subp fn-own-transit-inflightp
     fn-own-transit-outcome
     fn-own-with-feeds fn-own-sub-origin fn-own-sub-msgid fn-own-sub-octets
+    fn-own-sub-feed-groups fn-own-submission-targets
+    fn-own-submission-intent-result fn-own-submission-intent-records
+    fn-own-submission-resolution-records
     fn-own-feed-stamp fn-own-feed-durable fn-own-feed-durable-records
     fn-own-outcome-records fn-own-transit-outcome-records
     fn-own-feeds-reconfigure fn-own-tick fn-own-tick-records
     fn-own-tick-peer fn-own-tick-peer-records
-    fn-own-feed-article fn-own-feed-reply fn-own-feed-reply-records
+    fn-own-feed-article fn-own-retain-find-id-unguarded
+    fn-own-feed-intent-reconcile-kind
+    fn-own-feed-intent-reconcile-record
+    fn-own-feed-reply fn-own-feed-reply-records
     fn-own-feed-connect fn-own-feed-lost fn-own-feed-lost-records
     fn-own-feed-recover))
 

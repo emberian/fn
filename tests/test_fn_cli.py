@@ -13,9 +13,11 @@ refusal cases spawn their own short-lived ones.
 import os
 import select
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -104,6 +106,70 @@ class Service:
             raise AssertionError("fn run exited {} (expected {}): {!r}".format(
                 code, expected, self.errors))
         return code
+
+    def kill(self):
+        """A process-death cut: no owner shutdown or feed flush runs."""
+        if self.proc is None:
+            return
+        self.proc.kill()
+        self.proc.wait(timeout=10)
+        self.errors = self.proc.stderr.read()
+        self.proc.stdout.close()
+        self.proc.stderr.close()
+        self.proc = None
+
+
+class FeedPeer:
+    """One bounded IHAVE receiver used to observe the owner's real feed."""
+
+    def __init__(self, port):
+        self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.listener.bind(("127.0.0.1", port))
+        self.listener.listen(1)
+        self.port = self.listener.getsockname()[1]
+        self.article = None
+        self.line = None
+        self.error = None
+        self.done = threading.Event()
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+
+    def _run(self):
+        try:
+            self.listener.settimeout(120)
+            conn, _ = self.listener.accept()
+            with conn:
+                conn.settimeout(30)
+                conn.sendall(b"200 test peer ready\r\n")
+                data = b""
+                while b"\r\n" not in data:
+                    data += conn.recv(4096)
+                self.line, data = data.split(b"\r\n", 1)
+                if not self.line.startswith(b"IHAVE "):
+                    raise AssertionError("unexpected feed command {!r}".format(self.line))
+                conn.sendall(b"335 send article\r\n")
+                while b"\r\n.\r\n" not in data:
+                    chunk = conn.recv(4096)
+                    if not chunk:
+                        raise AssertionError("feed closed before article terminator")
+                    data += chunk
+                block, unused = data.split(b"\r\n.\r\n", 1)
+                if unused:
+                    raise AssertionError("unexpected bytes after article")
+                self.article = block + b"\r\n"
+                conn.sendall(b"235 article accepted\r\n")
+        except BaseException as error:  # noqa: BLE001 - returned to test thread
+            self.error = error
+        finally:
+            self.done.set()
+            self.listener.close()
+
+    def wait(self):
+        if not self.done.wait(120):
+            raise AssertionError("owner feed did not reach peer")
+        if self.error is not None:
+            raise self.error
 
 
 class FnCliTests(unittest.TestCase):
@@ -238,6 +304,63 @@ class FnCliTests(unittest.TestCase):
         self.assertIn(b"anchor=none", recovered.stdout)
         created = self.fn("group", "create", "fn.announce")
         self.assertIn(b"group created name=fn.announce generation=2", created.stdout)
+
+    def test_running_cli_post_survives_restart_until_its_peer_is_available(self):
+        """Control POST uses the owner intent/commit path and its real feed.
+
+        The peer is down at acceptance, the owner is killed, the owner
+        restarts while the peer is still down, and only then does the peer
+        appear.  Delivery proves that the obligation came from the durable
+        journal rather than the dead process's in-memory queue.
+        """
+        self.fn_init()
+        reservation = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        reservation.bind(("127.0.0.1", 0))
+        peer_port = reservation.getsockname()[1]
+        reservation.close()
+        added = self.fn(
+            "peer", "add", "sink", "--path-identity", "sink.example.invalid",
+            "--nntp", "127.0.0.1:{}".format(peer_port),
+            "--outbound-groups", "fn.*", "--source-address", "127.0.0.2")
+        self.assertIn(b"peer added name=sink", added.stdout)
+
+        self.start_service()
+
+        def control(line):
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+                sock.settimeout(30)
+                sock.connect(self.service.control)
+                sock.sendall(line + b"\n")
+                reply = b""
+                while not reply.endswith(b"\n"):
+                    chunk = sock.recv(4096)
+                    if not chunk:
+                        break
+                    reply += chunk
+                return reply.strip()
+
+        before = control(b"CONNECTIONS")
+        posted = self.fn("post", "--message-id", "<first@example.invalid>",
+                         "--payload", self.payload, "--group", "fn.letters")
+        self.assertIn(b"committed sequence=0", posted.stdout)
+        self.assertIn(b"path=control", posted.stderr)
+        self.assertEqual(control(b"CONNECTIONS"), before)
+
+        duplicate = self.fn("post", "--message-id", "<first@example.invalid>",
+                            "--payload", self.payload, "--group", "fn.letters")
+        self.assertIn(b"duplicate", duplicate.stdout)
+        self.assertEqual(control(b"CONNECTIONS"), before)
+
+        journal = self.store / "feed" / "sink.fnfd"
+        self.assertTrue(journal.is_file())
+        self.assertGreater(journal.stat().st_size, 0)
+
+        self.service.kill()
+        self.service = Service(self.config).start()
+        peer = FeedPeer(peer_port)
+        peer.wait()
+        self.assertEqual(peer.line, b"IHAVE <first@example.invalid>")
+        self.assertEqual(peer.article, ARTICLE)
         after = self.fn("status")
         self.assertIn(b"owner=absent generation=2 transactions=1 articles=1", after.stdout)
         self.assertIn(b"anchor=none", after.stdout)

@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-invariants")
 (include-book "../../books/owner-fault")
+(include-book "../../books/crypto-attach")
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit: the served port and the connection events are total in
@@ -737,21 +738,21 @@
   (fn-own-take-submission *own-control-fed-queued*))
 (defconst *own-control-evidence*
   (fn-nntp-string-octets "own-release:<control@example.invalid>"))
-(defconst *own-control-intents*
+(defun own-control-intents ()
   (fn-own-submission-intent-records *own-control-fed-taken*
                                     *own-control-evidence* 1 3))
 (assert-event (equal (fn-own-submission-intent-result
                       *own-control-fed-taken* *own-control-evidence* 1 3)
                      :ready))
-(assert-event (equal (len *own-control-intents*) 1))
-(assert-event (equal (fn-feed-journal-kind (car *own-control-intents*))
+(assert-event (equal (len (own-control-intents)) 1))
+(assert-event (equal (fn-feed-journal-kind (car (own-control-intents)))
                      :feed-intent))
 (assert-event (equal (fn-feed-record-peer
-                      (fn-feed-journal-values (car *own-control-intents*)))
+                      (fn-feed-journal-values (car (own-control-intents))))
                      (fn-record-string-octets "out")))
 (assert-event (equal (fn-frame-item 2
                                     (fn-feed-journal-values
-                                     (car *own-control-intents*)))
+                                     (car (own-control-intents))))
                      (fn-own-feed-intent-id *own-control-msgid*
                                             *own-control-source*)))
 (assert-event (equal (fn-inj-decision-octets
@@ -765,42 +766,42 @@
 (defconst *own-control-fed-done*
   (fn-own-run *own-control-fed-taken*
               (own-post-events (own-record 3 3 "<control@example.invalid>"))))
-(defconst *own-control-commits*
+(defun own-control-commits ()
   (fn-own-submission-resolution-records *own-control-fed-done* :durable
                                         *own-control-evidence* 1 3))
-(defconst *own-control-aborts*
+(defun own-control-aborts ()
   (fn-own-submission-resolution-records *own-control-fed-taken* :duplicate
                                         *own-control-evidence* 1 3))
-(assert-event (equal (fn-feed-journal-kind (car *own-control-commits*))
+(assert-event (equal (fn-feed-journal-kind (car (own-control-commits)))
                      :feed-commit))
-(assert-event (equal (fn-feed-journal-kind (car *own-control-aborts*))
+(assert-event (equal (fn-feed-journal-kind (car (own-control-aborts)))
                      :feed-abort))
-(assert-event (equal (fn-feed-journal-values (car *own-control-commits*))
-                     (fn-feed-journal-values (car *own-control-intents*))))
-(assert-event (equal (fn-feed-journal-values (car *own-control-aborts*))
-                     (fn-feed-journal-values (car *own-control-intents*))))
+(assert-event (equal (fn-feed-journal-values (car (own-control-commits)))
+                     (fn-feed-journal-values (car (own-control-intents)))))
+(assert-event (equal (fn-feed-journal-values (car (own-control-aborts)))
+                     (fn-feed-journal-values (car (own-control-intents)))))
 (assert-event (null (fn-own-submission-resolution-records
                      *own-control-fed-taken* :uncertain
                      *own-control-evidence* 1 3)))
 
 ; Isolation tooth: changing only the transaction id makes another retry.
 ; Resolving this attempt cannot consume that earlier key.
-(defconst *own-control-old-values*
+(defun own-control-old-values ()
   (fn-own-feed-intent-values "out" *own-control-msgid*
                              (fn-own-feed-intent-id *own-control-msgid*
                                                     *own-control-source*)
                              *own-control-evidence* 1 2 0))
-(defconst *own-control-new-values*
+(defun own-control-new-values ()
   (fn-own-feed-intent-values "out" *own-control-msgid*
                              (fn-own-feed-intent-id *own-control-msgid*
                                                     *own-control-source*)
                              *own-control-evidence* 1 3 0))
 (assert-event
- (member-equal (fn-own-feed-intent-key *own-control-old-values*)
+ (member-equal (fn-own-feed-intent-key (own-control-old-values))
                (fn-own-feed-intent-apply
-                (list (fn-own-feed-intent-key *own-control-old-values*)
-                      (fn-own-feed-intent-key *own-control-new-values*))
-                :feed-abort *own-control-new-values*)))
+                (list (fn-own-feed-intent-key (own-control-old-values))
+                      (fn-own-feed-intent-key (own-control-new-values)))
+                :feed-abort (own-control-new-values))))
 
 ; Capacity is decided before store mutation.  Once the only slot is occupied,
 ; a different Message-ID is refused at the intent boundary.
