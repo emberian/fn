@@ -618,6 +618,16 @@ def python_acl2_forms(root: Path):
                 except Exception:
                     yield relative, node.lineno, None
                     continue
+                # A string that IS ACL2, not a sentence that mentions some.
+                # `"... posting is the principal's allowance (fn-auth-postingp,
+                # RFC 3977 section 6.3.1.1). The feed was never reached."`
+                # parses, and its top level is mostly bare words; a form does
+                # not have bare words at its top level.  Two findings on
+                # `tools/v0_matrix.py` were exactly that sentence.
+                if not forms or not all(isinstance(form, list) and form
+                                        for form, _line in forms):
+                    yield relative, node.lineno, None
+                    continue
                 for form, _line in forms:
                     yield relative, node.lineno, form
 

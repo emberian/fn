@@ -103,6 +103,36 @@ Every keystone in `books/anchor-invariants.lisp` is conditional on:
   unforgeability is *not* available.
 - **The pinned keys themselves.** Taken from the published Roughtime ecosystem
   list. Replacing that file replaces the trust.
+- **The Merkle fold, which is Python's alone, and the one-nonce model.**
+  `tools/roughtime.py:124,128,132` (`_leaf`, `_node`, `merkle_root`) is the
+  only thing in this tree that decides whether a response covers *this
+  client's nonce*. `books/anchor.lisp` has no node digest, no path fold and
+  no `fn-anchor-in-treep`; `fn-anchor-leaf-digest` is a constrained function
+  whose only constraints are "64 octets", and no book attaches a realiser to
+  it (the sole `defattach` is a toy in `tests/acl2/anchor-teeth-tests.lisp`).
+  The tree holds **no SHA-512 at all**: `books/sha256.lisp` is the only hash
+  in logic, and Roughtime's fold is SHA-512. So the tag order, the sibling
+  order, the index bit order, the path depth bound and the `INDX`-fits-`PATH`
+  check are all unowned host decisions, and a fold that walked the tree the
+  wrong way would be refused by nothing.
+- **And the model is one-nonce, while the host is not.** `fn-anchor-root`
+  (`books/anchor.lisp:259`) *is* `(fn-anchor-leaf-digest (fn-anchor-nonce a))`,
+  so every keystone about the signed octets --
+  `fn-anchor-signed-octets-determine-the-root` above all -- describes a
+  response with an empty `PATH` and `INDX` 0. The host does not restrict
+  itself that way: `tools/roughtime.py:137` admits a `PATH` up to 32 nodes
+  deep, and `anchor_verdict` (`tools/run_store.py:1964`) verifies the
+  signature over `fn-anchor-signed-from-root` applied to the root **from the
+  wire**, not to `fn-anchor-root`. The nine fields the durable record carries
+  (`Anchor.fields`, `tools/roughtime.py:211`) do not include the root at all.
+  For a single-nonce response -- which every captured vector in
+  `tests/vectors/` is -- the two coincide and the keystones apply. For a
+  batched response they do not, and the record ACL2 admits then describes a
+  different signed message from the one that was verified. Closing this is
+  either a SHA-512 book with the fold above it, or a root field on the
+  record with `fn-anchor-in-treep` as a hypothesis of
+  `fn-anchor-verifiedp`; it is written up in
+  `planning/lanes/HANDOFF-w11-one-owner.md`.
 
 ## Three outcomes
 

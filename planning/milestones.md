@@ -33,6 +33,22 @@ the WIRE, not the model: no host line calls any `fn-ocfg-` function, so the
 served port still answers LIST ACTIVE from the allocation domain and every
 PRF-028 owner-side event carries a `pending_subject`.
 
+**The checkpoint validator refused nothing about its prefix.** The one root
+of the 2026-09-21 persvati gate of `dev` `e4fb8bc` (272 of 275) that no lane
+owned, `tests/acl2/checkpoint-codec-tests`, failed a true assertion:
+`fn-cpc-validp` accepted a record prefix whose recorded generation is not its
+transaction id, which `fn-checkpoint-capture` refuses as `:history`.
+`fn-replay` never compares those two fields, so the replay of the corrupt
+prefix is EQUAL to the replay of the sound one and a validator comparing only
+replay results could not see it. The recognizer carries the journal-interval
+clause now and the refusal is PRF-037, with teeth
+([handoff](lanes/HANDOFF-w11-checkpoint-validator.md),
+[evidence](evidence/checkpoint-validator-2026-09-21.md)). The four roots that
+transitively include `books/checkpoint-codec` all certify. The other two
+failures of that gate are `books/bp-node` and its test book, owned by
+`w11/bp-node`. Still open at that seam: no host line calls `fn-cpc-validp`,
+so its keystones carry a `pending_subject` and cover no served path.
+
 **A connection posts repeatedly.** The one-durable-post-per-connection defect
 was fixed by `w5/clock-seam` (merge `7d8eff8`, the per-submission injection
 clock) and the board line was never closed; measured live on persvati at
@@ -74,6 +90,22 @@ dependency order, each ending with an evidence record:
 | v0.5 reconfiguration and storage | Live reconfiguration as an owner event; the byte-level crash model ([K1 to K11](lanes/DESIGN-crash-model-v2-summary.md)); persisted checkpoints; index adoption | Every crash point in the cut table is a transition the model expresses |
 | v0.6 convergence and release | Identity and authority (D01, OBJ-003, OBJ-007), the include-hygiene backlog, one gate over every root on one machine | Every requirement either `implemented`/`validated` with keystones, or `deferred` with a reason |
 
+**The gate over all six waves is one executable matrix.** `tools/v0_matrix.py`
+stands up two peered fn nodes on a farm box, drives every feature between them,
+and writes [`planning/v0-matrix.json`](v0-matrix.json) plus an evidence record
+under `planning/evidence/`. It carries one row per feature observation with five
+verdicts that are never collapsed into pass/fail: `accepted`, `refused` and
+`uncertain` are D13's three outcomes and each is a real observation, so a
+refusal row that draws its refusal is the feature working; `not-exercised` names
+what blocked the row, and `not-built` names the lane that owns the missing
+feature. Whether a row did what it was designed to do is the separate `agrees`
+bit. Every row names its exact invocation, the revision, its log and what it
+does not show, and the counts come from the tool, never from typing:
+`make check` recomputes the rows' digest and refuses a hand-edited verdict.
+`python3 tools/v0_matrix.py --list` prints the inventory and runs nothing. v0 is
+reached when every row reads one of the three outcomes and agrees with its
+expectation; the wave gates below say what each wave contributes to that.
+
 The v0.4 wave has two halves that share a name. The convergence layer is
 TCPCLv4 (C1 to C4). The statement layer is
 [substrate transport](../specs/substrate-transport.md), whose packets run in
@@ -113,14 +145,14 @@ the whole-tree run behind these statuses is
 | Item | Status | Evidence |
 | --- | --- | --- |
 | K1 transit refines acceptance | **done** | `fn-peer-transfer-is-the-post-path`, `fn-peer-transfer-stages-only-scope-groups` ([BOARD](deputies/BOARD.md), w6/peering-inbound) |
-| K2 loop freedom | **partial** | `fn-peer-loop-is-refused` (inbound); outbound and RFC 5537 3.6 step 2 open for want of a certified RFC 5322 date reader |
+| K2 loop freedom | **partial, and inert in any deployment until now** | `fn-peer-loop-is-refused` (inbound) reads `fn-peer-local-identity`, the `path-identity` policy slot, and NOTHING on this tree could write that slot, so it read the empty string and the check could never fire: both nodes in gate `bbd1f47` accepted an article whose Path named them. `fn policy set path-identity` writes it now. Outbound and RFC 5537 3.6 step 2 remain open. |
 | K3 duplicate suppression | **done** | `fn-peer-history-is-refused-at-offer`/`-at-transfer`, `fn-peer-history-grows-under-transfer` |
-| K4 restart | **open** | recorded open in `specs/peering.md` status |
+| K4 restart | **the lost-reply half is witnessed live; the kill half is blocked on a named defect** | The tap cut a transfer after the article block and before the status line: node B served the article afterwards, byte-identical, and node A observed ZERO accepted transfers ([twonode-a5c6792](evidence/twonode-a5c6792-2026-09-21.md), `owner feed cut | CUT-TAKEN`). The `kill -9` half does not deliver because a lost connection never requeues the in-flight entry: `feed_drop` tells ACL2 only that the connection is gone and nothing applies `fn-feed-lost`, so the entry waits for the next `fn-own-reopen`, and separately node B answers every connection with an immediate close for the 90 s after that restart with no fault in its log -- **not exercised, both blockers named in the evidence**. The packet is in [HANDOFF-w11-twonode-feed](lanes/HANDOFF-w11-twonode-feed.md). The general statement is recorded open in `specs/peering.md` status. |
 | Peer records are configuration | **done** | `:set-peer` (9) and `:remove-peer` (10) in `books/config.lisp`; `books/peer-config.lisp` |
-| Two nodes exchange both ways | **done (one host)** | [twonode-dfd8758](evidence/twonode-dfd8758-2026-09-20.md), 63 steps, 0 failed |
+| Two nodes exchange both ways | **done (one host), by each node's own feed** | Both directions by the feed of `books/owner-feed.lisp`, by IHAVE and by RFC 4644 CHECK/TAKETHIS, with the offer commands on a wire tap and the receiver's octets IDENTICAL to the sender's; the second offer draws 435/438/439 each way ([twonode-feed-w11](evidence/twonode-feed-w11-2026-09-20.md), run 5 = [twonode-a5c6792](evidence/twonode-a5c6792-2026-09-21.md)). The row this replaces cited a 63-step green in which the feed steps were NOT EXERCISED and every transit offer drew `502`. |
 | Two nodes exchange across boxes | **blocked** | `fn run` refuses a non-loopback listener, so the live peer records name addresses neither node can reach ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
 | Real INN on the other end | **done** | INN 2.7.4, [inn-lab-f4e8272](evidence/inn-lab-f4e8272-2026-09-20.md), 75 steps, 0 failed |
-| The owner carries the transit port | **open** | exact forms are the PROPOSAL in the w6/peering-inbound board entry |
+| The owner carries the transit port | **done** | `tools/run_owner.py` resolves the source address through `fn-owner-peer-for-address` and opens with `fn-own-open-peer`; a configured peer draws `335` from `IHAVE` where a reader draws `502`. Unit evidence: `tests/test_owner.py::TransitPortTests`. `CAPABILITIES` still renders the reader block on a transit connection, which is open. |
 
 ### v0.3 DTN -- fiber record: [fiber-dtn](evidence/fiber-dtn-2026-09-20.md)
 
