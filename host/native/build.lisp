@@ -25,6 +25,7 @@
 (include-book "books/nntp-effects")
 (include-book "books/native-config")
 (include-book "books/feed-filename")
+(include-book "books/native-operator")
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-workflow-records")
 (include-book "books/journal-publish")
@@ -60,6 +61,7 @@
 (ld "host/owner-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 (ld "host/feed-filename-host.lisp" :ld-error-action :error)
+(ld "host/native-operator-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
 (ld "host/workflow-host.lisp" :ld-error-action :error)
@@ -97,6 +99,9 @@
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner.lisp")
+        ; Public operator grammar follows the owner so its normalized run
+        ; callback is present; the DTN image deliberately omits this module.
+        (load "host/native/operator.lisp")
         (load "host/native/immutable-publish.lisp")
         (load "host/native/checkpoint.lisp")
         (load "host/native/workflow.lisp")
