@@ -168,9 +168,12 @@
 (defun fn-bpn-evidence-operation-successor (operation) (nth 6 operation))
 
 (defthm fn-bpn-evidence-recovery-produces-state-or-fault
-  (or (fn-bpn-evidence-statep
-       (fn-bpn-evidence-recover-sorted entries sequence))
-      (equal (car (fn-bpn-evidence-recover-sorted entries sequence)) :fault)))
+  (implies
+   (and (natp sequence)
+        (<= sequence *fn-bpn-evidence-max-records*))
+   (or (fn-bpn-evidence-statep
+        (fn-bpn-evidence-recover-sorted entries sequence))
+       (equal (car (fn-bpn-evidence-recover-sorted entries sequence)) :fault))))
 
 (defthm fn-bpn-evidence-authorize-produces-operation
   (implies (equal (car (fn-bpn-evidence-authorize
