@@ -1,0 +1,197 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/cbor": 0,
+    "books/defrecord": 0,
+    "books/native-config": 0,
+    "books/records": 0,
+    "host/native-config-host": 0,
+    "tests/acl2/native-config-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w22-native-loopback-endpoint/build/acl2/certify-20260921T101141Z-78762",
+  "book_failures": {},
+  "book_results": {
+    "books/cbor": "passed",
+    "books/defrecord": "passed",
+    "books/native-config": "passed",
+    "books/records": "passed",
+    "host/native-config-host": "passed",
+    "tests/acl2/native-config-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/cbor": 0.285,
+    "books/defrecord": 0.17,
+    "books/native-config": 0.34,
+    "books/records": 5.044,
+    "host/native-config-host": 0.213,
+    "tests/acl2/native-config-tests": 0.267
+  },
+  "cert_cache": {
+    "already_cached": 6,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": true,
+        "book": "books/defrecord",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "books/cbor",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "books/records",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "books/native-config",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "host/native-config-host",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "tests/acl2/native-config-tests",
+        "published": false,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/cbor": "fb69a102da1df89854341014e11db1022e9b9e5c89497f595f403f64f28b3440",
+    "books/defrecord": "079a395162a32207307048f9c11b1a756506b7b4641f2bcea108cd15ad0c9978",
+    "books/native-config": "e555abbb6f3e0f23939851a25145dc3bbffd9b872cbaafbe86b2cb2827573218",
+    "books/records": "34d4550c9fc0fa441dbe14ce8c3c48f4f37338da1f7117af3ae6af00595ec5b0",
+    "host/native-config-host": "76046955713652d1a57b5725351dd878eb2d628f773329612f7daecb301c2d72",
+    "tests/acl2/native-config-tests": "6d8446efd2a215ae05455792acaf094a12543429a1e7ed5fa6dbf043363e8079"
+  },
+  "certify_wall_seconds": 6.54,
+  "closure": true,
+  "command": [
+    "/opt/homebrew/bin/acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/cbor": "41ace4bd17681edbb35bd2c823f254cb2ac19850ff6143809dbe4466360fc431",
+    "books/defrecord": "bf4558935ca2a57d0e330d5b453f2fce4c64aca721739ff39800aa467248ec3b",
+    "books/native-config": "cabc0688de6199c659918f12304f719275dc5fac183724a6d68acf7cb4cdf097",
+    "books/records": "ccabf5f34af2cf52aca0a0750f1553fcc5634ac55c0f5085662a7db483aef02d",
+    "host/native-config-host": "3b860cc15e440e2fc891b644e8724971eedb5f698305b7fb539998d5251ab8a7",
+    "tests/acl2/native-config-tests": "12cae08ae934cabb911d5fe51f7acda3933df9d58623f76a46eb45fdf7204493"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 d45992d8befd",
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 ef7877596d92",
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 f96a2a7c3ad9",
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 dbce3aa6c9d6"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T10:11:53+00:00",
+  "git_branch": "w22/native-loopback-endpoint",
+  "git_dirty": false,
+  "git_revision": "ce33820a3c8882a6c83e529e0f9b3ed3cba2c49d",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 d45992d8befd",
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 ef7877596d92",
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 f96a2a7c3ad9",
+    "FN_CERTIFY_SUCCESS 379eb78cfbd2f85f18bfe129ea8b8785 dbce3aa6c9d6"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "books/native-config",
+    "tests/acl2/native-config-tests"
+  ],
+  "requested_books": [
+    "books/defrecord",
+    "books/cbor",
+    "books/records",
+    "books/native-config",
+    "host/native-config-host",
+    "tests/acl2/native-config-tests"
+  ],
+  "run_id": "certify-20260921T101141Z-78762",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/cbor": 0.0,
+    "books/defrecord": 0.0,
+    "books/native-config": 0.0,
+    "books/records": 0.0,
+    "host/native-config-host": 0.0,
+    "tests/acl2/native-config-tests": 0.0,
+    "version-probe": 4.369
+  },
+  "source_digests_sha256": {
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/native-config.lisp": "103d88aab7b2799a484f30a75ba06aa8d9ab9d9c41ba34fc5b7839103e449ce8",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "host/native-config-host.lisp": "7e1600b832667532c28f52589fe65192b4b2f90c4253eae4aaa0bb46094ce9d4",
+    "tests/acl2/native-config-tests.lisp": "ad33946c2ca27d0503d926e4ac377c7c3bdf45b48da25eb6c90fdee465557e08"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/native-config.lisp": "103d88aab7b2799a484f30a75ba06aa8d9ab9d9c41ba34fc5b7839103e449ce8",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "host/native-config-host.lisp": "7e1600b832667532c28f52589fe65192b4b2f90c4253eae4aaa0bb46094ce9d4",
+    "tests/acl2/native-config-tests.lisp": "ad33946c2ca27d0503d926e4ac377c7c3bdf45b48da25eb6c90fdee465557e08"
+  },
+  "start_order": [
+    "books/defrecord",
+    "books/cbor",
+    "books/records",
+    "books/native-config",
+    "host/native-config-host",
+    "tests/acl2/native-config-tests"
+  ],
+  "started_utc": "2026-09-21T10:11:41+00:00",
+  "status": "passed",
+  "timeout_seconds": 120,
+  "tree": "/Users/ember/dev/fn/build/lanes/w22-native-loopback-endpoint"
+}
