@@ -1130,7 +1130,7 @@
     (if (equal peer :bad)
         (value :invalid)
       (if (equal (car result) :next)
-          (let* ((entry (caddr result))
+          (let* ((entry (nth 2 result))
                  (state (fn-owner-step
                          (list :feed-replay peer (list entry)) state))
                  (state (f-put-global
@@ -1141,7 +1141,7 @@
                           (fn-feed-journal-values entry))
                          state))
                  (state (f-put-global 'fn-owner-feed-safe-offset
-                                      (cadr result) state)))
+                                      (nth 1 result) state)))
             (value :next))
         (value (car result))))))
 
