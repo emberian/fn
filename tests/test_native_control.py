@@ -133,11 +133,6 @@ class NativeControlTests(unittest.TestCase):
             payload = self.article(message_id)
             accepted = self.post(message_id, payload)
             self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
-            observed = self.inspect(message_id)
-            self.assertEqual(observed.returncode, 0, observed.stderr.decode())
-            self.assertEqual(observed.stdout, payload)
-            absent = self.inspect_store(second_store, message_id)
-            self.assertNotEqual(absent.returncode, 0)
         finally:
             if second.poll() is None:
                 second.kill()
@@ -149,6 +144,12 @@ class NativeControlTests(unittest.TestCase):
                              owner.stderr.read().decode("utf-8", "replace"))
             owner.stdout.close()
             owner.stderr.close()
+
+        observed = self.inspect(message_id)
+        self.assertEqual(observed.returncode, 0, observed.stderr.decode())
+        self.assertEqual(observed.stdout, payload)
+        absent = self.inspect_store(second_store, message_id)
+        self.assertNotEqual(absent.returncode, 0)
 
     def test_two_clients_sigterm_cleanup_and_restart(self):
         owner = self.start_owner({"FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP": "1"})
@@ -171,11 +172,6 @@ class NativeControlTests(unittest.TestCase):
                 stdout, stderr = client.communicate(timeout=60)
                 self.assertEqual(client.returncode, 0, stderr.decode())
                 self.assertEqual(stdout, b"")
-            for message_id, payload in zip(ids, payloads):
-                observed = self.inspect(message_id)
-                self.assertEqual(observed.returncode, 0, observed.stderr.decode())
-                self.assertEqual(observed.stdout, payload)
-
             # Keep one served client active while SIGTERM asks the main owner
             # thread to take its ordinary stop/join/close path.
             active = socket.create_connection(("127.0.0.1", self.port), timeout=30)
@@ -201,6 +197,11 @@ class NativeControlTests(unittest.TestCase):
                 owner.wait(timeout=10)
             owner.stdout.close()
             owner.stderr.close()
+
+        for message_id, payload in zip(ids, payloads):
+            observed = self.inspect(message_id)
+            self.assertEqual(observed.returncode, 0, observed.stderr.decode())
+            self.assertEqual(observed.stdout, payload)
 
         restarted = self.start_owner()
         try:

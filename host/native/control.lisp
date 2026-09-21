@@ -67,6 +67,11 @@
         (progn
           (sb-bsd-sockets:socket-bind listener path)
           (sb-bsd-sockets:socket-listen listener 16)
+          ;; The accept owner polls a nonblocking listener with a one-second
+          ;; ceiling.  Stop remains shutdown-only, yet close can join accept
+          ;; even on platforms where shutdown does not wake a listening
+          ;; accept immediately.
+          (fnn-set-nonblocking (fnn-socket-fd listener))
           (fnn-chmod path #o600)
           listener)
       (error (condition)
@@ -181,19 +186,20 @@
       (when (fnn-with-control (control)
               (fnn-control-state-stopping control))
         (return))
-      (handler-case
-          (fnn-control-launch-client
-           control (sb-bsd-sockets:socket-accept listener))
-        (sb-bsd-sockets:socket-error (condition)
-          (unless (fnn-with-control (control)
-                    (fnn-control-state-stopping control))
+      (when (funcall *fnn-fd-waiter* (fnn-socket-fd listener) :input 1)
+        (handler-case
+            (fnn-control-launch-client
+             control (sb-bsd-sockets:socket-accept listener))
+          (sb-bsd-sockets:socket-error (condition)
+            (unless (fnn-with-control (control)
+                      (fnn-control-state-stopping control))
+              (fnn-owner-fault-service
+               (fnn-control-state-service control) nil condition))
+            (return))
+          (error (condition)
             (fnn-owner-fault-service
-             (fnn-control-state-service control) nil condition))
-          (return))
-        (error (condition)
-          (fnn-owner-fault-service
-           (fnn-control-state-service control) nil condition)
-          (return))))))
+             (fnn-control-state-service control) nil condition)
+            (return)))))))
 
 (defun fnn-control-start (control service posting-enabledp)
   (let ((configured
