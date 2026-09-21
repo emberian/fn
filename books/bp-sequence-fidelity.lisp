@@ -26,15 +26,26 @@
   (declare (xargs :guard (fn-bpn-sf-validp x)))
   (cadr x))
 
+(defthm fn-bpn-sf-valid-recordp
+  (implies (fn-bpn-sf-validp observation)
+           (fn-bpn-sequence-recordp
+            (fn-bpn-sequence-record (fn-bpn-sf-observed-frontier observation))))
+  :hints (("Goal" :in-theory (enable fn-bpn-sf-validp
+                                      fn-bpn-sf-observed-frontier
+                                      fn-bpn-sequence-record
+                                      fn-bpn-sequence-recordp))))
+
 ; The model delegates the recover decision to the same ACL2 function the host
 ; calls.  Valid observations are framed by ACL2; malformed is one invalid byte.
 (defun fn-bpn-sf-host-recover (observation freshp)
-  ;; The concrete frame function's octet-list guard correspondence is not yet
-  ;; exported by bp-node-records.  Keep this boundary executable and pin it
-  ;; with ground tests; W14 must export that bridge before claiming a fully
-  ;; guard-verified correspondence.
   (declare (xargs :guard (fn-bpn-sf-observationp observation)
-                  :verify-guards nil))
+                  :guard-hints
+                  (("Goal" :use
+                    ((:instance fn-bpn-sequence-record-frame-octet-listp
+                                (record (fn-bpn-sequence-record
+                                         (fn-bpn-sf-observed-frontier
+                                          observation))))
+                     (:instance fn-bpn-sf-valid-recordp))))))
   (cond ((equal observation :absent)
          (fn-bpn-sequence-recover nil nil freshp))
         ((equal observation :malformed)
