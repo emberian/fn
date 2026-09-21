@@ -3,9 +3,9 @@
 ;;; This raw module transports only bounded ASCII argv/configuration octets to
 ;;; host/native-operator-host.lisp.  ACL2 chooses command grammar, defaults,
 ;;; profile availability, the result tag, and the exit-code projection.  Only
-;;; the ACL2-designated status/recover actions execute here; run/post remain
-;;; owner callbacks and are explicitly reported unavailable rather than routed
-;;; to a direct store shortcut.  build integration is owned by the native owner.
+;;; ACL2-designated help/status/recover actions execute here, and an accepted
+;;; run plan reaches the one normalized owner callback.  Post remains explicit
+;;; usage until shared submission exists; no direct store shortcut is present.
 
 (in-package "ACL2")
 
@@ -127,19 +127,13 @@ configuration usage result."
   (let* ((max-arguments (fnn-core 'fn-native-operator-host-argv-max-arguments))
          (max-octets (fnn-core 'fn-native-operator-host-argv-max-octets))
          (argv-octets (fnn-operator-argv-octets argv max-arguments max-octets))
-         ; An out-of-domain octet asks ACL2 for the configuration-needed tag without
-         ; treating an empty file as a syntactically valid but invalid profile.
-         (preflight (fnn-core 'fn-native-operator-host-run '(256) argv-octets))
-         (status (fnn-core 'fn-native-operator-host-result-status preflight))
-         (reason (fnn-core 'fn-native-operator-host-result-reason preflight))
-         (action (fnn-core 'fn-native-operator-host-result-native-action preflight)))
-    (cond ((eq action :help) (fnn-operator-dispatch-plan preflight))
-          ((and (eq status :usage) (eq reason :configuration-bounds))
-           (let* ((config-bound (fnn-core 'fn-native-config-host-max-octets))
-                  (config-octets (fnn-operator-read-config config-path config-bound)))
-             (fnn-operator-dispatch-plan
-              (fnn-core 'fn-native-operator-host-run config-octets argv-octets))))
-          (t (fnn-operator-dispatch-plan preflight)))))
+         (preflight (fnn-core 'fn-native-operator-host-preflight argv-octets)))
+    (if (fnn-core 'fn-native-operator-host-preflight-needs-config-p preflight)
+        (let* ((config-bound (fnn-core 'fn-native-config-host-max-octets))
+               (config-octets (fnn-operator-read-config config-path config-bound)))
+          (fnn-operator-dispatch-plan
+           (fnn-core 'fn-native-operator-host-run config-octets argv-octets)))
+      (fnn-operator-dispatch-plan preflight))))
 
 (fnn-register-verb "operator"
                    (lambda (config-path argv)

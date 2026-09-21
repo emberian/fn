@@ -6,6 +6,14 @@
 (in-package "ACL2")
 (include-book "../books/native-operator")
 
+(defun fn-native-operator-host-preflight (argv-octets)
+  (declare (xargs :mode :program))
+  (fn-native-operator-command-preflight argv-octets))
+
+(defun fn-native-operator-host-preflight-needs-config-p (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-preflight-needs-config-p result))
+
 (defun fn-native-operator-host-run (config-octets argv-octets)
   (declare (xargs :mode :program))
   (fn-native-operator-run config-octets argv-octets))

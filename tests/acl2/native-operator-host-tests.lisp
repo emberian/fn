@@ -35,3 +35,12 @@
 (assert-event (equal (fn-native-operator-host-result-run-listener-port *fn-nop-host-run-result*) 1119))
 (assert-event (equal (fn-native-operator-host-result-run-oncep *fn-nop-host-run-result*) t))
 (assert-event (equal (fn-native-operator-host-result-run-max-connections *fn-nop-host-run-result*) 32))
+
+(defconst *fn-nop-host-preflight-help*
+  (fn-native-operator-host-preflight
+   (list (fn-record-string-octets "help") (fn-record-string-octets "run"))))
+(assert-event (equal (fn-native-operator-host-result-status *fn-nop-host-preflight-help*)
+                     :accepted))
+(assert-event (fn-native-operator-host-preflight-needs-config-p
+               (fn-native-operator-host-preflight
+                (list (fn-record-string-octets "recover")))))

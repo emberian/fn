@@ -108,3 +108,19 @@
                       (fn-native-operator-run '(999)
                                               (fn-nop-test-argv '("status"))))
                      :usage))
+
+; Preflight is the sole config-read decision: help stays config-free, while
+; valid non-help commands request configuration and malformed argv wins first.
+(assert-event (equal (fn-native-operator-command-preflight
+                      (fn-nop-test-argv '("help" "status")))
+                     '(:accepted :plan "help" nil
+                       (:help "status" "usage: fn operator CONFIG status"))))
+(assert-event (fn-native-operator-preflight-needs-config-p
+               (fn-native-operator-command-preflight
+                (fn-nop-test-argv '("status")))))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-command-preflight '(999)))
+                     :argv-bounds))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-run '(999) '(999)))
+                     :argv-bounds))
