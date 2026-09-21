@@ -10,20 +10,20 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 276 |
-| Certification roots in the Makefile | 275 |
-| Books inside the root closure | 275 |
-| `defthm` and `defthmd` events | 5564 |
-| `defun` events | 3930 |
-| Functions with verified guards | 1461 |
+| Books read | 278 |
+| Certification roots in the Makefile | 277 |
+| Books inside the root closure | 277 |
+| `defthm` and `defthmd` events | 5571 |
+| `defun` events | 3931 |
+| Functions with verified guards | 1462 |
 | Functions declared `:verify-guards nil` and never verified | 190 |
 | Functions left at the default with an explicit guard | 1790 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 5459 |
+| `assert-event` checks | 5484 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 46 |
-| Export-hygiene warnings | 72 |
+| Export-hygiene warnings | 73 |
 | Enabled-projection warnings | 26 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 87 |
@@ -158,6 +158,7 @@ that `make certify` requests.
 | `books/frame-invariants.lisp` | root | 80 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/frame-journal.lisp` | root | 2 | 10 | 7/0/3/0 | 0 | 0 | 0 |
 | `books/frame-octets.lisp` | root | 27 | 7 | 2/0/4/1 | 0 | 0 | 0 |
+| `books/frame-trailer.lisp` | root | 7 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/frame.lisp` | root | 0 | 5 | 5/0/0/0 | 0 | 0 | 0 |
 | `books/ideal.lisp` | root | 9 | 16 | 0/2/14/0 | 0 | 0 | 0 |
 | `books/identity-invariants.lisp` | root | 39 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -303,6 +304,7 @@ that `make certify` requests.
 | `tests/acl2/defrecord-tests.lisp` | root | 37 | 19 | 9/0/10/0 | 37 | 0 | 2 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
 | `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 48 | 0 | 0 |
+| `tests/acl2/frame-trailer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/injection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 35 | 0 | 0 |

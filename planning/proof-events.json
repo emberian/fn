@@ -1016,6 +1016,27 @@
           "kind": "theorem"
         }
       ]
+    },
+    {
+      "id": "PRF-035",
+      "events": [
+        {
+          "name": "fn-frame-protected-plus-trailer-is-seal",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-frame-decode-of-host-framing",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-frame-store-protected-plus-trailer-is-seal",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-frame-store-decode-of-host-framing",
+          "kind": "theorem"
+        }
+      ]
     }
   ]
 }

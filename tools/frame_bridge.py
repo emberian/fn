@@ -6,20 +6,22 @@ policy and the content-identity derivation.  This module marshals octets to
 and from a live ACL2 session .  Content identity is no longer among the
 things it computes: `books/crypto-attach.lisp` attaches an executable SHA-256
 to `fn-frame-digest`, so `subject_id` and `obligation_id` below are bridge
-calls, not hashes.  The SHA-256 that remains here is the FRAME INTEGRITY
-TRAILER, which is still split (ACL2 owns the protected prefix, the host
-digests it); that is the last twin in this module and is recorded in
-`planning/lanes/HANDOFF-w9-digest.md`.
+calls, not hashes.  The frame integrity trailer -- the last twin this module
+held, recorded in `planning/lanes/HANDOFF-w9-digest.md` -- went the same way
+with `w11/one-owner`: `books/frame-trailer.lisp`.
 
 Every session-level constant Python still holds for slicing (`run_store.MAGIC`,
 `TRAILER_BYTES`, the journal record caps) is checked against the ACL2
 constants when a session opens, so a divergence is a startup failure rather
 than a silent second grammar.
+
+This module no longer hashes at all.  `books/frame-trailer.lisp` owns the
+trailer as `fn-frame-trailer`, and `seal` and `digest_of` below are bridge
+calls like everything else here.
 """
 
 from __future__ import annotations
 
-import hashlib
 import re
 import threading
 
@@ -148,16 +150,34 @@ class FrameSession:
 
     # -- framing ------------------------------------------------------------
 
+    def trailer(self, prefix: bytes) -> bytes:
+        """The integrity trailer over a protected prefix, computed by ACL2.
+
+        `fn-frame-trailer` (books/frame-trailer.lisp) is `fn-frame-digest`,
+        realised by `fn-sha256` through `books/crypto-attach.lisp`.  Before
+        it, this line ran `hashlib.sha256` and so did `host/native/io.lisp`
+        and `tools/run_owner.py`: three owners of one decision, each checking
+        its trailer only against its own.
+        """
+        value = self.call("(fn-frame-trailer " + _octets(prefix) + ")")
+        if isinstance(value, Keyword):
+            raise BridgeError("ACL2 refused to trail a prefix: {}".format(value))
+        return _as_bytes(value)
+
     def seal(self, prefix: bytes) -> bytes:
         """Append the integrity trailer over the prefix ACL2 produced."""
-        return prefix + hashlib.sha256(prefix).digest()
+        return prefix + self.trailer(prefix)
 
     def digest_of(self, framed: bytes) -> bytes:
-        """The digest a decoder must be given for these stored octets."""
+        """The digest a decoder must be given for these stored octets.
+
+        The slice is at `trailer`, which `_check_host_constants` already
+        holds equal to the model's; the digest over it is the model's too.
+        """
         trailer = self.constants["trailer"]
         if len(framed) < trailer:
             return b""
-        return hashlib.sha256(framed[:-trailer]).digest()
+        return self.trailer(framed[:-trailer])
 
     def _prefix(self, form: str) -> bytes:
         value = self.call(form)
