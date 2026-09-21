@@ -169,14 +169,18 @@ A transaction file is one frame of the grammar in
 [`books/frame.lisp`](../books/frame.lisp), shared with both journals:
 magic `FNST`, version, record kind, a four-octet big-endian payload length,
 the encoded record, and a 32-octet integrity trailer. Store format
-`fn-store-experiment-5` is the current one, and it is owned by
+`fn-store-experiment-6` is the current one, and it is owned by
 [`books/store-config.lisp`](../books/store-config.lisp)
 (`*fn-store-format-id*`) rather than by a Python constant: the host reads it
 from the bridge and refuses a store whose configuration names another format.
-A store written under the previous Python framing, under the configuration
-that still carried the record bound, or under format `fn-store-experiment-4`
-and so holding pre-v1 `"sha256:"`/`"archive:"` content identities, is refused
-by its configuration version rather than misread. The
+A format-6 `config.json` is an ACL2-sealed `FNSM` metadata frame containing
+the exact bounded profile fields; `allocation-frontier.json` is a separate
+`FNSM` frame whose payload is the deterministic CBOR uint frontier. The
+allocator's accepted domain is CBOR uint32: the maximum value is readable but
+has no successor, so ACL2 refuses another reservation before any replacement
+is staged. A format-5 JSON metadata store is retained in place and refused for
+normal open pending an explicit offline migration; the adapter never rewrites
+it while opening. The
 decoder keeps its refusals distinct: a file whose header declares more payload
 than the octets hold is `:truncated`, a declared length past the caller's cap
 is `:limit`, and `:length` is only octets past the frame the header

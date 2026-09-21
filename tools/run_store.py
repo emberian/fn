@@ -12,7 +12,6 @@ import base64
 import errno
 import fcntl
 import hashlib
-import json
 import os
 from pathlib import Path
 import re
@@ -34,7 +33,6 @@ PROMPT = b"ACL2 !>"
 MAX_ACL2_OUTPUT = 4 * 1024 * 1024
 MAX_TRANSACTION_COUNT = 128
 MAX_RECOVERY_RECORD_BYTES = MAX_TRANSACTION_COUNT * 65538
-UINT32_MAX = (1 << 32) - 1
 DEFAULT_CONFIG = {
     # Format 5 is the first written under the v1 content identity profile of
     # `books/identity`; a store holding pre-v1 `"sha256:"`/`"archive:"`
@@ -46,32 +44,29 @@ DEFAULT_CONFIG = {
     # The encoded-record bound left with it: `books/frame` owns
     # `*fn-frame-max-store-payload*`, the host reads it from the bridge, and a
     # configuration that could disagree with the model is not written at all.
-    "format": "fn-store-experiment-5",
+    "format": "fn-store-experiment-6",
     "capacity": 1048576,
     "max_payload_bytes": 32768,
     "max_recovery_record_bytes": MAX_RECOVERY_RECORD_BYTES,
     "max_transactions": MAX_TRANSACTION_COUNT,
-    "allocation_frontier_format": "fn-store-allocation-frontier-1",
+    "allocation_frontier_format": "fn-store-allocation-frontier-2",
 }
-# A second *named* profile, not a raised default.  `max_transactions` and the
+# A second named profile, not a raised default.  `max_transactions` and the
 # aggregate replay input it derives are the two bounds this host owns; every
 # bound the model owns (`*fn-frame-max-store-payload*`, `*fn-article-max-octets*`,
 # the configured group table, `fn-af-message-idp`, `fn-charge-for-payload`) is
-# unchanged here and cannot be raised from configuration at all.  A store
-# carries its profile name in its checksummed configuration, so a dev store and
-# a scale store are distinguishable on disk and neither is read under the
-# other's bounds.  `planning/scale-profile.md` holds the measurements that
+# unchanged here and cannot be raised from configuration at all.  The FNSM
+# frame carries all profile values, so a dev store and a scale store are
+# distinguishable on disk and neither is read under the other's bounds.
+# `planning/scale-profile.md` holds the measurements that
 # justify the number and the reopen cost it implies.
 SCALE_TRANSACTION_COUNT = 4096
 SCALE_CONFIG = dict(
     DEFAULT_CONFIG,
-    profile="fn-store-profile-scale-1",
     max_transactions=SCALE_TRANSACTION_COUNT,
     max_recovery_record_bytes=SCALE_TRANSACTION_COUNT * 65538,
 )
-# The development profile keeps its exact configuration bytes: it gains no
-# `profile` key, so every store written before this profile existed still
-# checksums and still opens.
+# The development profile is the ACL2 frame's fixed development record.
 SUPPORTED_PROFILES = (DEFAULT_CONFIG, SCALE_CONFIG)
 # The CLI's default `init --group` list: the two experimental groups every
 # existing test posts into.  A default argument for an operator command, not
@@ -198,17 +193,6 @@ class ScriptedFaults(FaultPoints):
         if self.exit_code is not None:
             os._exit(self.exit_code)
         raise self.error
-
-
-def canonical_json(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
-
-
-def config_with_checksum(config):
-    body = dict(config)
-    body.pop("checksum", None)
-    body["checksum"] = hashlib.sha256(canonical_json(body)).hexdigest()
-    return body
 
 
 def check_regular(path):
@@ -925,12 +909,6 @@ class Store:
                        if entry.name.endswith(".cfg"))
         return tuple(self.config_dir / name for name in names)
 
-    @staticmethod
-    def _frontier_with_checksum(next_txid):
-        body = {"format": "fn-store-allocation-frontier-1", "next_txid": next_txid}
-        body["checksum"] = hashlib.sha256(canonical_json(body)).hexdigest()
-        return body
-
     def _open_lock(self, exclusive, create):
         flags = os.O_RDWR if exclusive else os.O_RDONLY
         if create:
@@ -1011,11 +989,13 @@ class Store:
             self._safe_directory(self.staging, create=True)
             self.faults.at("init-staging-created")
             self._safe_directory(self.config_dir, create=True)
-            config = config_with_checksum(self.profile)
-            if self._publish_initial_file(self.config_path, canonical_json(config) + b"\n"):
-                self.config = config
+            session = frame_bridge.session(bridge)
+            profile = "scale" if self.profile.get("max_transactions") == SCALE_TRANSACTION_COUNT else "development"
+            config = session.metadata_config_frame(profile)
+            if self._publish_initial_file(self.config_path, config):
+                self.config = self._config_from_metadata(session.metadata_config_decode(config))
             else:
-                self._load_config()
+                self._load_config(session)
             # A missing allocator alongside committed history would permit
             # reuse of an aborted ID.  It is a fault, never an implicit 0.
             if not self.config_record_files():
@@ -1027,11 +1007,11 @@ class Store:
                 fsync_dir(self.config_dir)
             if not check_regular(self.frontier_path) and self.transaction_files():
                 raise StoreFault("refusing missing allocator frontier with committed history")
-            frontier = canonical_json(self._frontier_with_checksum(0)) + b"\n"
+            frontier = session.metadata_frontier_frame(0)
             if self._publish_initial_file(self.frontier_path, frontier):
                 self.frontier = 0
             else:
-                self._load_frontier()
+                self._load_frontier(session)
             fsync_regular(self.config_path)
             self.faults.at("init-barrier")
             for path in self.config_record_files():
@@ -1048,34 +1028,44 @@ class Store:
             fcntl.flock(lock_fd, fcntl.LOCK_UN)
             os.close(lock_fd)
 
-    def _load_config(self):
+    @staticmethod
+    def _config_from_metadata(values):
+        format_id, capacity, max_payload, max_recovery, max_transactions, frontier_format = values
+        return {"format": format_id.decode("ascii"), "capacity": capacity,
+                "max_payload_bytes": max_payload,
+                "max_recovery_record_bytes": max_recovery,
+                "max_transactions": max_transactions,
+                "allocation_frontier_format": frontier_format.decode("ascii")}
+
+    def _load_config(self, bridge=None):
         check_regular(self.config_path)
         try:
             raw = read_regular_bounded(self.config_path, 16384)
-            config = json.loads(raw)
-        except (OSError, ValueError, UnicodeDecodeError) as error:
+        except OSError as error:
             raise StoreFault("invalid durable config: {}".format(error)) from error
-        if not isinstance(config, dict) or config_with_checksum(config) != config:
-            raise StoreFault("config checksum mismatch")
-        if not any(config == config_with_checksum(supported)
-                   for supported in SUPPORTED_PROFILES):
-            raise StoreFault("unsupported store configuration")
+        if raw.startswith(b"{"):
+            raise StoreFault("legacy JSON metadata is retained in place; explicit offline migration is required")
+        try:
+            config = self._config_from_metadata(
+                frame_bridge.session(bridge).metadata_config_decode(raw))
+        except frame_bridge.BridgeError as error:
+            raise StoreFault("invalid durable config frame") from error
+        if config not in SUPPORTED_PROFILES:
+            raise StoreFault("unsupported store configuration frame")
         self.config = config
 
-    def _load_frontier(self):
+    def _load_frontier(self, bridge=None):
         check_regular(self.frontier_path)
         try:
             raw = read_regular_bounded(self.frontier_path, 4096)
-            frontier = json.loads(raw)
-        except (OSError, ValueError, UnicodeDecodeError) as error:
+        except OSError as error:
             raise StoreFault("invalid durable allocation frontier: {}".format(error)) from error
-        if not isinstance(frontier, dict):
-            raise StoreFault("allocation frontier must be an object")
-        next_txid = frontier.get("next_txid")
-        if (frontier != self._frontier_with_checksum(next_txid)
-                or not isinstance(next_txid, int) or isinstance(next_txid, bool)
-                or not 0 <= next_txid <= UINT32_MAX):
-            raise StoreFault("allocation frontier checksum or range mismatch")
+        if raw.startswith(b"{"):
+            raise StoreFault("legacy JSON allocator is retained in place; explicit offline migration is required")
+        try:
+            next_txid = frame_bridge.session(bridge).metadata_frontier_decode(raw)
+        except frame_bridge.BridgeError as error:
+            raise StoreFault("invalid durable allocation frontier frame") from error
         self.frontier = next_txid
 
     def acquire(self):
@@ -1238,7 +1228,7 @@ class Store:
             # A replacement may have become visible before its directory
             # barrier failed. Recover the observed frontier under the held
             # store lock, never a cached pre-error allocation value.
-            self._load_frontier()
+            self._load_frontier(acl2)
             config_records = self.config_records()
             records = self.durable_records(acl2)
             self.orphans = self.staging_orphans()
@@ -1319,10 +1309,14 @@ class Store:
         if current_txid != self.frontier:
             self.fenced = True
             raise StoreFault("ACL2 allocator and durable frontier disagree")
-        if not isinstance(current_txid, int) or current_txid < 0 or current_txid >= UINT32_MAX:
-            raise StoreError("finite transaction-ID domain exhausted")
-        next_frontier = current_txid + 1
-        contents = canonical_json(self._frontier_with_checksum(next_frontier)) + b"\n"
+        try:
+            metadata = frame_bridge.session(acl2)
+            next_frontier = metadata.metadata_frontier_next(current_txid)
+            if next_frontier is None:
+                raise StoreError("ACL2 refused exhausted transaction-ID domain")
+            contents = metadata.metadata_frontier_frame(next_frontier)
+        except frame_bridge.BridgeError as error:
+            raise StoreFault("ACL2 refused allocation frontier") from error
         stage = self.staging / (".allocation-{}-{}".format(os.getpid(), os.urandom(12).hex()))
         publication_attempted = False
         try:
@@ -1943,7 +1937,7 @@ def orphan_report(store):
 # -----------------------------------------------------------------------------
 # The external freshness anchor (books/anchor.lisp, specs/anchor.md)
 #
-# FLR-003: a checksummed store image cannot show it is not an old snapshot.
+# FLR-003: a valid store image cannot show it is not an old snapshot.
 # A Roughtime response bound to a nonce this node chose can.  Python obtains
 # and parses it and runs Ed25519; ACL2 owns the statement, the octets the
 # signatures cover, the ordering and the monotone rule.
