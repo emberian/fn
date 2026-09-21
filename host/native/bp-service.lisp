@@ -72,7 +72,12 @@
     (if (null prior)
         (if has-records :fault :ready)
       (progn
-        (fnn-safe-directory dir nil)
+        (handler-case
+            (progn (fnn-safe-directory dir nil)
+                   (fnn-fsync-dir (fnn-parent dir)))
+          (fnn-os-error (e)
+            (fnn-indeterminate
+             "bp-service: sequence namespace publication failed: ~a" e)))
         (let* ((frontier (fnn-join dir "frontier.fnb"))
                (present (fnn-check-regular frontier))
                (raw (if present
@@ -210,7 +215,15 @@
          (tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
                                    :journal root))
          (service nil))
-    (fnn-safe-directory life t)
+    (handler-case
+        (progn
+          (fnn-safe-directory life t)
+          ;; Repeat the namespace-publication barrier on every recovery: an
+          ;; earlier mkdir may have returned before its parent barrier failed.
+          (fnn-fsync-dir (fnn-parent life)))
+      (fnn-os-error (e)
+        (fnn-indeterminate
+         "bp-service: lifecycle namespace publication failed: ~a" e)))
     (setq service
           (make-fnn-bps
            :root root :lifecycle life :tally tally :lock-fd (fnn-bps-lock root)
