@@ -81,5 +81,52 @@
          (fn-own-feed-port-peer peer tbl (list :restart)))
   :hints (("Goal" :in-theory (enable fn-own-feed-port-restart-peer))))
 
+; Restart is an all-or-nothing port transaction across the configured peers.
+; The original table is carried separately so a late refusal cannot expose an
+; earlier peer's restart or journal records to the host.
+(defun fn-own-feed-port-restart-fold (names current original)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let ((one (fn-own-feed-port-restart-peer (car names) current)))
+        (if (not (equal (fn-own-feed-port-status one) :accepted))
+            (fn-own-feed-port-result :refused original nil nil)
+          (let ((rest (fn-own-feed-port-restart-fold
+                       (cdr names) (fn-own-feed-port-table one) original)))
+            (if (not (equal (fn-own-feed-port-status rest) :accepted))
+                (fn-own-feed-port-result :refused original nil nil)
+              (fn-own-feed-port-result
+               :accepted
+               (fn-own-feed-port-table rest)
+               (append (fn-own-feed-port-records one)
+                       (fn-own-feed-port-records rest))
+               nil)))))
+    (fn-own-feed-port-result :accepted current nil nil)))
+
+(defthm fn-own-feed-port-restart-fold-refusal-preserves-original
+  (implies (equal (fn-own-feed-port-status
+                   (fn-own-feed-port-restart-fold names current original))
+                  :refused)
+           (equal (fn-own-feed-port-restart-fold names current original)
+                  (fn-own-feed-port-result :refused original nil nil)))
+  :hints (("Goal" :induct (fn-own-feed-port-restart-fold
+                            names current original)
+           :in-theory (enable fn-own-feed-port-restart-fold
+                              fn-own-feed-port-status))))
+
+(defthm fn-own-feed-port-restart-fold-accepted-cons-unfolds
+  (let* ((one (fn-own-feed-port-restart-peer (car names) current))
+         (rest (fn-own-feed-port-restart-fold
+                (cdr names) (fn-own-feed-port-table one) original)))
+    (implies (and (consp names)
+                  (equal (fn-own-feed-port-status one) :accepted)
+                  (equal (fn-own-feed-port-status rest) :accepted))
+             (equal (fn-own-feed-port-restart-fold names current original)
+                    (fn-own-feed-port-result
+                     :accepted (fn-own-feed-port-table rest)
+                     (append (fn-own-feed-port-records one)
+                             (fn-own-feed-port-records rest)) nil))))
+  :hints (("Goal" :in-theory (enable fn-own-feed-port-restart-fold))))
+
 (in-theory (disable fn-own-feed-port-peer-refusal-preserves-table
-                    fn-own-feed-port-peer-ready-is-live-port-step))
+                    fn-own-feed-port-peer-ready-is-live-port-step
+                    fn-own-feed-port-restart-fold-refusal-preserves-original))
