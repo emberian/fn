@@ -77,6 +77,19 @@ class StoreTests(unittest.TestCase):
         inspected = self.invoke("inspect", "--message-id", "<literal@example.invalid>")
         self.assertEqual(inspected.stdout, payload)
 
+    def test_acl2_transaction_names_continue_after_nonempty_recovery(self):
+        """The second final name comes from ACL2 after replaying real history."""
+        self.post("<name-zero@example.invalid>", b"zero")
+        self.invoke("recover")
+        self.post("<name-one@example.invalid>", b"one")
+        names = sorted(path.name for path in (self.path / "transactions").iterdir())
+        self.assertEqual(names, ["00000000000000000000.txn",
+                                 "00000000000000000001.txn"])
+        with self.recovered_bridge() as bridge:
+            self.assertEqual(bridge.transaction_name(0), names[0])
+            self.assertEqual(bridge.transaction_name(1), names[1])
+            self.assertEqual(bridge.article_count(), 2)
+
     def test_empty_payload_is_present_and_orphan_staging_is_ignored(self):
         self.post("<empty@example.invalid>", b"")
         (self.path / "staging" / ".orphan").write_bytes(b"not a transaction")
