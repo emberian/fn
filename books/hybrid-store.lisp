@@ -4,6 +4,30 @@
 (include-book "hybrid-signature")
 (include-book "stx-accept-records")
 (include-book "injection")
+(include-book "identity")
+
+(defun fn-hsig-octet-fields-to-strings (fields)
+  (declare (xargs :guard t))
+  (if (consp fields)
+      (cons (fn-record-octets-string (car fields))
+            (fn-hsig-octet-fields-to-strings (cdr fields)))
+    nil))
+
+(defun fn-hsig-authored-source-fields (source)
+  "Return the supplied Message-ID and Newsgroups parsed from the exact source."
+  (declare (xargs :guard t))
+  (let ((parsed (fn-article-parse source)))
+    (if (not (fn-article-result-okp parsed)) nil
+      (let ((article (fn-article-result-article parsed)))
+        (if (not (fn-article-syntax-p article)) nil
+          (let ((check (fn-af-proto-article-check article)))
+            (if (or (fn-inj-proto-reason check)
+                    (fn-inj-mandatory-reason article)
+                    (not (fn-inj-nth 1 check))
+                    (not (consp (fn-inj-nth 2 check)))) nil
+              (list (fn-record-octets-string (fn-inj-nth 1 check))
+                    (fn-hsig-octet-fields-to-strings
+                     (fn-inj-nth 2 check))))))))))
 
 ; A keyring snapshot is deliberately narrow: one principal and the exact
 ; ordered public-key set used by the signed-preimage function.  Custody and
@@ -200,6 +224,7 @@
                              *fn-hsig-ml-dsa-65-signature-octets*)))))))))
 
 (in-theory (disable (:d fn-hsig-keyring-snapshot)
+                    (:d fn-hsig-octet-fields-to-strings)
                     (:d fn-hsig-authored-source-fields)
                     (:d fn-hsig-keyring-event)
                     (:d fn-hsig-keyring-snapshot-value)
@@ -207,16 +232,3 @@
                     (:d fn-hsig-authorized-article-event)
                     (:d fn-hsig-authorized-submission-event)
                     (:d fn-hsig-article-event-snapshot-bindsp)))
-(defun fn-hsig-authored-source-fields (source)
-  "Return the exact supplied Message-ID and Newsgroups for an admissible source."
-  (declare (xargs :guard t))
-  (let ((parsed (fn-article-parse source)))
-    (if (not (fn-article-result-okp parsed)) nil
-      (let ((article (fn-article-result-article parsed)))
-        (if (not (fn-article-syntax-p article)) nil
-          (let ((check (fn-af-proto-article-check article)))
-            (if (or (fn-inj-proto-reason check)
-                    (fn-inj-mandatory-reason article)
-                    (not (fn-inj-nth 1 check))
-                    (not (consp (fn-inj-nth 2 check)))) nil
-              (list (fn-inj-nth 1 check) (fn-inj-nth 2 check)))))))))

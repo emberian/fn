@@ -785,7 +785,8 @@ the current connection."
                             (eq word :uncertain))))))))))))
 
 (defun fnn-owner-complete-bound-submission
-    (service submit-callback msgid payload groups evidence generation txid)
+    (service submit-callback msgid payload groups evidence generation txid
+     &optional commit-callback)
   "Complete one ACL2-admitted control submission while the owner mutex is held.
 
 The interface callback is the sole admission event.  Local control and BP
@@ -815,7 +816,9 @@ and control-outcome sequence."
               (fnn-fault "owner bound intent refusal changed outcome"))
             (return-from fnn-owner-complete-bound-submission result)))
         (fnn-owner-feed-flush service)
-        (let ((word (fnn-owner-attempt service msgid payload groups evidence)))
+        (let ((word (if commit-callback
+                        (funcall commit-callback)
+                      (fnn-owner-attempt service msgid payload groups evidence))))
           (fnn-owner-action 'fn-owner-submission-resolution
                             word (fnn-octet-list evidence) generation txid)
           (fnn-owner-feed-flush service)

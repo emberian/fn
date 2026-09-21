@@ -31,8 +31,9 @@
          (unless (and snapshot enrollment) (return-from fnn-hybrid-control-author :refused))
          (let* ((fields (fnn-core 'fn-hsig-host-authored-source-fields source)))
            (unless fields (return-from fnn-hybrid-control-author :refused))
-           (let* ((msgid (fnn-octets (first fields)))
-                (groups (mapcar #'fnn-octets (second fields)))
+           (let* ((msgid (fnn-octets (fnn-string-octets (first fields))))
+                (groups (mapcar (lambda (g) (fnn-octets (fnn-string-octets g)))
+                                (second fields)))
                 (principal (first enrollment))
                 (keys (second enrollment))
                 (signatures
@@ -56,26 +57,22 @@
                   principal keys signatures (fn-record-octets-string ml-path))))
            (if event
                (let* ((evidence (fnn-octets (fnn-owner-core 'fn-owner-prov-post)))
-                      (generation (third coordinates))
-                      (txid (second coordinates))
-                      (submitted (fnn-owner-action
-                                  'fn-owner-control-submit (fnn-octet-list msgid)
-                                  (mapcar #'fnn-octet-list groups) source)))
-                 (unless (eq submitted :submitted)
-                   (return-from fnn-hybrid-control-author submitted))
-                 (unless (eq (fnn-owner-action 'fn-owner-take) :taken-control)
-                   (fnn-fault "hybrid owner take lost admitted submission"))
-                 (unless (eq (fnn-owner-action 'fn-owner-submission-intent
-                                                (fnn-octet-list evidence)
-                                                generation txid) :ready)
-                   (fnn-owner-action 'fn-owner-control-outcome :refused)
-                   (return-from fnn-hybrid-control-author :refused))
-                 (fnn-owner-feed-flush service)
-                 (let ((word (fnn-owner-identity-commit service event)))
-                   (fnn-owner-action 'fn-owner-submission-resolution
-                                     word (fnn-octet-list evidence) generation txid)
-                   (fnn-owner-feed-flush service)
-                   (fnn-owner-action 'fn-owner-control-outcome word)))
+                      (generation
+                       (fnn-nat (fnn-owner-core 'fn-owner-config-generation)))
+                      (txid (second coordinates)))
+                 (fnn-owner-complete-bound-submission
+                  service
+                  (lambda ()
+                    (fnn-owner-action 'fn-owner-control-submit
+                                      (fnn-octet-list msgid)
+                                      (mapcar #'fnn-octet-list groups) source))
+                  msgid (fnn-octets source) groups evidence generation txid
+                  (lambda ()
+                    (handler-case (fnn-owner-identity-commit service event)
+                      (fnn-store-indeterminate () :uncertain)
+                      (fnn-store-fault (e) (error e))
+                      (fnn-store-error () :refused)
+                      (fnn-os-error () :refused)))))
              :refused))))))))
 
 (defun fnn-hybrid-control-handle (service frame)
