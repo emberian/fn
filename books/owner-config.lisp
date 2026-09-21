@@ -274,7 +274,7 @@
      (fn-state-next-txid (fn-node-acceptance node))
      (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
      deltas
-     (fn-ocfg-config-stamp (fn-own-clock o))))
+     (fn-ocfg-config-stamp (fn-own-clock o)))))
 
 (defun fn-ocfg-delta-names-group (d name)
   (declare (xargs :guard t))
