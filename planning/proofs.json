@@ -241,7 +241,10 @@
         "fn-served-reply-stream-is-partition-independent",
         "fn-served-feed-of-append",
         "fn-served-run-is-the-concatenated-step",
-        "fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items"
+        "fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items",
+        "fn-wire-feed-proper-of-rendered-block-lines",
+        "fn-wire-drive-of-successful-render-block-preserves-source",
+        "fn-wire-drive-of-host-rendered-article-preserves-source"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -251,9 +254,13 @@
         "books/wildmat-matcher-invariants.lisp",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/wire-outbound-invariants.lisp",
+        "tests/acl2/wire-outbound-tests.lisp",
+        "planning/lanes/HANDOFF-w14-wire-roundtrip.md",
+        "planning/evidence/manifests/certify-20260921T090841Z-1914841.json"
       ],
-      "progress_note": "Fixed-mode framing composition, production event-yield preservation and exact consumed-prefix/suffix accounting are certified. Wildmat DP matches independent anchored semantics. Session-sensitive mode changes and complete protocol/effect refinement remain open. The served path is now the subject: books/served states partition independence of fn-served-step and of the whole reply stream, which is the function tools/run_reader.py calls once per socket read, so the wire pending_subject note is closed for framing. The owner book now certifies in the merged feed/transit batch recorded by planning/evidence/manifests/certify-20260921T051833Z-3941584.json. This does not extend these framing theorems to an unproved owner composition or to Python outbound article rendering; W12 wire-block owns that running-path extension."
+      "progress_note": "Fixed-mode framing composition, production event-yield preservation and exact consumed-prefix/suffix accounting are certified. Wildmat DP matches independent anchored semantics. Session-sensitive mode changes and complete protocol/effect refinement remain open. The served path is now the subject: books/served states partition independence of fn-served-step and of the whole reply stream, which is the function tools/run_reader.py calls once per socket read, so the wire pending_subject note is closed for framing. The owner book now certifies in the merged feed/transit batch recorded by planning/evidence/manifests/certify-20260921T051833Z-3941584.json. This does not extend these framing theorems to an unproved owner composition or to Python outbound article rendering; W12 wire-block owns that running-path extension. The W14 cumulative byte-feeder induction now proves successful outbound block source preservation through fn-wire-drive and the actual fn-wire-render-feed-command article arm under the exact served article-start profile. Its hypotheses require positive command profile, the nonempty article arm excluding CHECK/IHAVE/TAKETHIS command prefixes, renderer success, and the article limit no greater than receiver body limit; tests separate each premise. This is not a new proof of later authentication/injection dispatch or durable acceptance."
     },
     {
       "id": "PRF-007",
@@ -1463,10 +1470,18 @@
         "tests/acl2/bp-sequence-persistence-tests.lisp",
         "host/native/bp.lisp",
         "planning/evidence/bp-convergence-native-2026-09-21.md",
-        "planning/lanes/HANDOFF-w12-bp-sequence.md"
+        "planning/lanes/HANDOFF-w12-bp-sequence.md",
+        "books/bp-sequence-fidelity.lisp",
+        "tests/acl2/bp-sequence-fidelity-tests.lisp",
+        "planning/evidence/bp-sequence-fidelity-2026-09-21.md",
+        "planning/evidence/manifests/certify-20260921T091031Z-26507.json"
       ],
-      "pending_subject": "The certified fn-bpn-sp-step trace model remembers phases that a restarted host cannot observe. It does not discharge this target. The observed-file transition, returned-allocation invariant and host correspondence are active successor work.",
-      "progress_note": "The native host obtains sequence/frame values from ACL2 and completes the file/namespace barriers before returning the allocation; tested failures and restart are evidence about those exact sources, not universal physical non-reuse. No events are registered for this pending target."
+      "pending_subject": "The observed-file trace now calls the same sequence recover/reserve core functions through named bridges and models actual return values; raw I/O observation classification, syscall order and barrier-to-confirmed-frontier correspondence remain assumptions rather than a proved host refinement.",
+      "progress_note": "The certified keystone fn-bpn-sf-step-preserves-nonreuse and finite-trace safety induction establish fn-bpn-sf-admissible-trace-returned-sequences-unique from the initial state under fn-bpn-sf-trace-admissiblep: every continuing recovery returns a frontier no lower than the barrier-confirmed ghost frontier. That physical premise is explicit and a regressed-valid-final counterexample demonstrates why it is necessary. Restart retains no hidden rename phase bit. Native SIGKILL after allocation return followed by a fresh process observed the next sequence. This is conditional model non-reuse plus one actual post-return cut, not hardware power-loss qualification or completed raw-host correspondence.",
+      "events": [
+        "fn-bpn-sf-step-preserves-nonreuse",
+        "fn-bpn-sf-trace-preserves-safety"
+      ]
     },
     {
       "id": "PRF-046",

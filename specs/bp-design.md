@@ -1038,3 +1038,20 @@ checkout remains a lab dependency in the same sense ION is: a peer.
   network.
 - ION's actual TCPCL behaviour and RFC 9758 `ipn` details: to be measured in
   lab I3, not assumed here.
+
+
+### Observed-file allocation assurance checkpoint
+
+`fn-bpn-sf-step-preserves-nonreuse` and its finite-trace safety induction in
+`books/bp-sequence-fidelity.lisp` establish pairwise distinct returned sequences
+from the initial state under `fn-bpn-sf-trace-admissiblep`. A continuing recovery
+must expose a frontier at least as large as the last barrier-confirmed ghost
+frontier; this is a physical admissibility premise, not a device theorem.
+Named equations bind recovery/reservation to the core functions called by the
+native allocator. The final public corollary is
+`fn-bpn-sf-admissible-trace-returned-sequences-unique`; the registry cites the
+preservation lemmas doing the work. A regressed but valid final record breaks
+uniqueness when admissibility is dropped. Raw I/O classification and ordering
+remain the open part of PRF-045. The
+[recorded native post-return SIGKILL test](../planning/evidence/bp-sequence-fidelity-2026-09-21.md)
+is separate, scoped integration evidence.

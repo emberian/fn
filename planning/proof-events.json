@@ -298,6 +298,18 @@
         {
           "kind": "theorem",
           "name": "fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-feed-proper-of-rendered-block-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-drive-of-successful-render-block-preserves-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-drive-of-host-rendered-article-preserves-source"
         }
       ]
     },
@@ -1321,7 +1333,18 @@
     },
     {
       "id": "PRF-045",
-      "events": []
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-sf-step-preserves-nonreuse",
+          "pending_subject": "Observed-file trace model calls the native core recover/reserve subjects through named equations; raw syscall observations, ordering and the confirmed-frontier durability premise still require host/platform correspondence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-sf-trace-preserves-safety",
+          "pending_subject": "Observed-file trace model calls the native core recover/reserve subjects through named equations; raw syscall observations, ordering and the confirmed-frontier durability premise still require host/platform correspondence."
+        }
+      ]
     },
     {
       "id": "PRF-046",
