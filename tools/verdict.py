@@ -138,6 +138,8 @@ class Fiber:
         self.steps = 0
         self.failed = 0
         self.skipped = 0
+        self.violated = 0
+        self.inconclusive = 0
         self.evidence = ""
         self.summary = ""
         self.failures: list[str] = []
@@ -145,10 +147,18 @@ class Fiber:
 
     @property
     def state(self) -> str:
+        """Four states, because three outcomes stay distinct all the way out.
+
+        A harness exits 3 when nothing it stated was violated but something
+        it meant to decide it could not (tools/deploy_gate.py's `Finding`).
+        Collapsing that into `fail` loses the distinction the gates were just
+        taught to keep, and collapsing it into `pass` is what F1 was."""
         if self.rc is None:
             return "not run"
         if self.rc == 0:
             return "pass"
+        if self.rc == 3:
+            return "inconclusive"
         return "fail"
 
 
@@ -519,7 +529,8 @@ def harvest(fiber: Fiber, gate: str, repo: Path) -> dict:
 # fibers 2..5: the harnesses, each run as its own process
 
 
-SUMMARY = re.compile(r"^steps=(\d+) failed=(\d+) not-exercised=(\d+)", re.M)
+SUMMARY = re.compile(r"^steps=(\d+) failed=(\d+) not-exercised=(\d+)"
+                     r"(?: violated=(\d+) inconclusive=(\d+))?", re.M)
 EVIDENCE = re.compile(r"^evidence: (.+)$", re.M)
 
 
@@ -533,6 +544,8 @@ def harness(fiber: Fiber, command: list[str], repo: Path, timeout: int) -> None:
         fiber.steps = int(found.group(1))
         fiber.failed = int(found.group(2))
         fiber.skipped = int(found.group(3))
+        fiber.violated = int(found.group(4) or 0)
+        fiber.inconclusive = int(found.group(5) or 0)
     where = EVIDENCE.search(output)
     if where:
         path = Path(where.group(1).strip())
@@ -541,11 +554,13 @@ def harness(fiber: Fiber, command: list[str], repo: Path, timeout: int) -> None:
         except ValueError:
             fiber.evidence = str(path)
     fiber.failures = [line.strip() for line in output.splitlines()
-                      if line.strip().startswith("FAILED")][:12]
+                      if line.strip().startswith(("FAILED", "INCONCLUSIVE"))][:12]
     tail = [line for line in output.strip().splitlines() if line.strip()]
-    fiber.summary = ("steps {} ok, {} failed, {} not exercised".format(
-        fiber.steps - fiber.failed - fiber.skipped, fiber.failed, fiber.skipped)
-        if found else (tail[-1][:200] if tail else "no output"))
+    fiber.summary = ("steps {} ok, {} failed, {} not exercised; assertions "
+                     "{} violated, {} inconclusive".format(
+                         fiber.steps - fiber.failed - fiber.skipped, fiber.failed,
+                         fiber.skipped, fiber.violated, fiber.inconclusive)
+                     if found else (tail[-1][:200] if tail else "no output"))
 
 
 # --------------------------------------------------------------------------
@@ -562,6 +577,7 @@ def claim(fibers: list[Fiber], gate_facts: dict) -> str:
     by_name = {f.name: f for f in fibers}
     passed = [f.name for f in fibers if f.state == "pass"]
     failed = [f.name for f in fibers if f.state == "fail"]
+    unsure = [f.name for f in fibers if f.state == "inconclusive"]
     absent = [f.name for f in fibers if f.state == "not run"]
     gate = by_name.get("gate")
     roots = gate_facts.get("roots") or 0
@@ -592,6 +608,10 @@ def claim(fibers: list[Fiber], gate_facts: dict) -> str:
     if failed:
         limits.append("the steps the {} harness{} reported failing".format(
             ", ".join(failed), "es" if len(failed) > 1 else ""))
+    if unsure:
+        limits.append("everything the {} harness{} could not decide: those runs "
+                      "violated nothing and established nothing either".format(
+                          ", ".join(unsure), "es" if len(unsure) > 1 else ""))
     if absent:
         limits.append("anything {} would have shown, which did not run".format(
             " or ".join(absent)))
@@ -824,10 +844,17 @@ def main(argv=None) -> int:
     print("evidence: {}".format(target))
     print(sentence)
     bad = [f for f in plan if f.state == "fail"]
+    unsure = [f for f in plan if f.state == "inconclusive"]
     absent = [f for f in plan if f.state == "not run"]
-    print("fibers={} pass={} fail={} not-run={}".format(
-        len(plan), len(plan) - len(bad) - len(absent), len(bad), len(absent)))
-    return 1 if bad else 0
+    print("fibers={} pass={} fail={} inconclusive={} not-run={}".format(
+        len(plan), len(plan) - len(bad) - len(unsure) - len(absent),
+        len(bad), len(unsure), len(absent)))
+    # An inconclusive fiber establishes nothing, so it is not a pass; it
+    # violated nothing either, so it is not a failure.  3 is D13's uncertain
+    # and is the same code the harnesses themselves use.
+    if bad:
+        return 1
+    return 3 if unsure else 0
 
 
 if __name__ == "__main__":
