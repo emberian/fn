@@ -34,6 +34,15 @@ submission intents, native BP and stronger correspondence proofs continue
 independently. All release and whole-system assurance claims remain gated by
 their actual covered contracts.
 
+The storage metadata and scoped relation checkpoint landed at `1501492`.
+The `storage-initializer` Terra lane now owns the missing fresh-host syscall
+transcription and its conditional establishment proof; `feed-correspondence`
+continues with Terra from checkpoint `0386ccc`. These replace the completed
+Astra proof lanes. Luna's frozen-source evidence synchronization landed and its
+next bounded task registers the scoped storage roots and PRF-044 evidence.
+The combined runtime lane is investigating a transfer-probe stall; no passing
+matrix or release status follows from its component certification.
+
 ## W12: repair complete operational paths
 
 Each lane owns implementation, its executable contract, meaningful proof/tests,
