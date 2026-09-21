@@ -659,6 +659,46 @@
                              fn-sn-open-observed-succeeds-on-recoverable-image
                              fn-sn-open-observed-success-exact-history)))))
 
+; The PLATFORM twin of the reopen guarantee (D14-b, D14-c).  The host's reopen
+; entry succeeds on EVERY image the platform may leave, including both
+; rollbacks, and not only on the images a consumer may rely on.  This is the
+; half of specs/crash-model-v2.md K4 that the wider predicate makes new.
+;
+; The acknowledged-record half is deliberately NOT restated over the wider
+; predicate: on both rollback arms the arm's own (null (fn-sf-successes s))
+; and this theorem's member-equal hypothesis are contradictory, so the
+; restatement would be fn-sn-acknowledged-record-survives-observed-reopen
+; with two vacuous arms, which is not a theorem worth citing.  What carries
+; the acknowledged record across the wider predicate is
+; fn-sf-recovery-admissible-image-facts (books/store-files-invariants.lisp),
+; which says it over every arm without a vacuous one.
+(defthm fn-sn-recovery-admissible-image-reopens
+  (implies (and (fn-snt-relation s)
+                (fn-sf-recovery-crash-imagep (fn-sn-files s) frontier records))
+           (fn-sn-open-okp
+            (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
+                                 frontier records)))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-observed-configuration
+                 fn-snt-recovery-admissible-crash-image-is-recoverable
+                 (:instance fn-sf-recovery-admissible-image-facts
+                            (s (fn-sn-files s)))
+                 (:instance fn-sn-open-observed-succeeds-on-recoverable-image
+                            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))))
+           :in-theory (e/d (fn-sn-observed-historyp)
+                           (fn-snt-relation fn-sn-statep fn-sf-statep fn-node-statep
+                            fn-sn-observed-configurationp
+                            fn-snt-relation-implies-observed-configuration
+                            fn-snt-relation-implies-structural-state
+                            fn-sf-crash-imagep fn-sf-recovery-crash-imagep
+                            fn-sn-open-observed fn-sn-open-okp
+                            fn-sf-history-recoverablep
+                            fn-sf-replay-node fn-sf-record-has-pairp
+                            fn-sf-record-listp
+                            fn-snt-recovery-admissible-crash-image-is-recoverable
+                            fn-sf-recovery-admissible-image-facts
+                            fn-sn-open-observed-succeeds-on-recoverable-image)))))
+
 ; -----------------------------------------------------------------------------
 ; The trace theorems re-rooted at the process entry.
 

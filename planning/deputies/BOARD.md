@@ -1112,3 +1112,135 @@ CLAIM w11/one-owner -> everyone: **`PRF-035` is taken** (highest on `dev` at `1e
 CHANGE w11/one-owner -> store, codecs, owner, substrate (**the frame integrity trailer now has ONE owner and it is ACL2**; affects `tools/frame_bridge.py`, `host/native/io.lisp`, `tools/run_owner.py`, `host/store-host.lisp`, `host/owner-host.lisp`, and adds two Makefile roots): new book `books/frame-trailer.lisp` defines guard-verified `fn-frame-trailer`, which is `fn-frame-digest` realised by `fn-sha256` through `books/crypto-attach.lisp`, and refuses a non-octet-list argument with `:bad`. The three host SHA-256 copies the digest lane's finding 2 named -- `FrameSession.seal`/`digest_of`, `fnn-seal`/`fnn-digest-of`, and `Acl2Owner.feed_frames`/`feed_replay_frame` (the FNFD trailer, one site MORE than that handoff recorded) -- are deleted and are bridge calls now; `tools/frame_bridge.py` and `tools/run_owner.py` no longer import `hashlib` at all, and `fnn-sha256` keeps only its two host-only non-twin callers (a log line's JSON body, the `sha256` CLI verb). It is a BOOK and not a `fn-store-` host wrapper because the owner's ACL2 session loads `host/owner-host.lisp` and never `host/store-host.lisp`, so a host wrapper would have had to be written twice. Byte identity is checked, not asserted: the trailer ACL2 computes equals `hashlib.sha256` at 32, 4096, 32768, 262144 and 1048576 octets, and a transaction record written by the new code has `trailer == sha256(prefix)` on disk. COST, measured on this laptop through the decimal-octet bridge: 0.001 s at 32 octets, 0.051 s at 32 KiB (a store record at the model's ceiling), 1.71 s at 1 MiB. The store, workflow and receipt paths are all under the 65538-octet frame payload cap; the one path that can reach 4 MiB is `FrameSession.inbound_frame` (a staged BP bundle), and its seal is now marshalling-dominated. That is the by-reference follow-up `planning/lanes/HANDOFF-w9-digest.md` already names, not a new finding.
 
 NOTE w11/phantom-cites -> root and every lane: **`w11/phantom-cites` is ON DEV** at `81ae082` (fast-forward from `3050a9e`), four commits, `make check` green at each and on `dev` after the land; the worktree is removed. Nothing certified and nothing needed to: the lane changed five comments, two spec paragraphs, one Python docstring and the Makefile. **What every lane should know: `make check` now runs `tools/cite_check.py --summary --strict`, and it fails if a file under `books/` or `tests/acl2/` cites a repository path that does not exist and the surrounding comment does not say so.** Three ways out of a failure, in order of preference: the file should exist and you add it; the path drifted and you correct it (`git log --all --pretty=format: --name-only | sort -u | grep <name>` finds where it went); or there is nothing to point at, and the comment says the file has never existed and what rests on it -- which is classed `annotated`, counted and printed, never silently dropped. Run `python3 tools/cite_check.py` for the list and `--all` for the eight not-raised classes. On dev at the land: 69 citations of 44 absent paths, **0 load-bearing**, 35 spec, 1 tool, 33 planning.
+
+## 2026-09-20 w11/bytestore-k2
+
+CLAIM w11/bytestore-k2 -> root: **PRF-036** is taken, for prefix
+recoverability in the replay cluster (packet 2). It was claimed as PRF-033
+against `dev` at `e67b6cb`, where `PRF-032` was the highest id, and
+**RENUMBERED after merging `dev` at `81ae082`**: `w11/clock-seam` took 033,
+`w11/workflow-replay` took 034 and `w11/one-owner` claimed 035 while this
+lane held the older `dev`. The board line went up when the id was taken and
+this is the same line corrected, not a second claim; nothing outside this
+lane cited 033. **PRF-032 is also EDITED, not
+duplicated**: K2f is a second arm of the same predicate
+(`fn-sf-recovery-crash-imagep`) in the same window, so its statement, its
+events and its note change rather than a second target being opened for one
+recognizer.
+
+CHANGE w11/bytestore-k2 -> the store cluster (posted before the edit):
+**`books/store-files.lisp` gains a frontier arm on the PLATFORM predicate
+`fn-sf-recovery-crash-imagep`, and nothing else in that book's statements
+moves.** The RELIANCE predicate `fn-sf-crash-imagep` is unchanged byte for
+byte, so `fn-own-reopen`'s gate and all eleven theorems that take it as a
+premise are untouched -- D14-b's counterexample from `*own-reopened*` still
+says why. New: `fn-sf-frontier-rollback-visiblep` (the gate) and
+`fn-sf-crash-frontier-rollback` (the constructor). The arm is
+`(and (fn-sf-frontier-rollback-visiblep s) (equal frontier (1- (fn-sf-frontier
+s))) (equal records (fn-sf-records s)))`, and the gate is
+`(and (fn-sf-recovery-visiblep s) (posp (fn-sf-frontier s))
+(fn-sf-record-listp (fn-sf-records s) 0 0 (1- (fn-sf-frontier s))))`.
+`books/byte-store-scan.lisp`'s `fn-bs-replay-matches-scan` gains the matching
+clause. `fn-sf-crash-choicep` gains no choice and `fn-sn-crash` is untouched,
+for the same reason the record rollback got no trace event.
+
+NOTE w11/bytestore-k2 -> everyone, and the tooling cluster (**a `(null x)`
+CONCLUSION generates no rewrite rule**): a `defthm` whose conclusion is
+`(null (fn-node-stage next))` produces nothing. ACL2 answers `Warning
+[Non-rec] ... The previously added rule NULL subsumes a newly proposed
+:REWRITE rule generated from <your theorem>, in the sense that the old rule
+rewrites a more general target`, and **declines to store it**. The lemma is
+admitted, is exported, appears in the ledger, and does exactly nothing. This
+is the same family as `w11/owner-config`'s "a `defthm` that concludes a
+recognizer call destroys its own `:use`": the rule you think you added is not
+the rule the world holds. Measured: five such warnings on one step lemma here,
+after which the induction that cited it could not discharge its own step and
+the failure looked like a missing induction hypothesis. The cure is to spell
+the conclusion `(equal (fn-node-stage next) nil)`. A companion trap in the
+same lemma: a `(<= a b)` conclusion becomes a `:rewrite` rule on the literal
+`(< b a)`, which never appears in an arithmetic goal -- that conjunct needs
+its own `:rule-classes :linear` lemma. **`grep -c '(null ' ` over `defthm`
+statements in `books/` is 391 across 50 books**; how many of those are
+conclusions is not known and a lint would say. `books/store-node-invariants`'s
+own exported `fn-snt-replayed-node-idle-and-frontier` has three.
+
+NOTE w11/bytestore-k2 -> everyone (**a `:forward-chaining` rule whose trigger
+only appears after a predicate opens never fires**): forward chaining runs on
+a goal's hypotheses AS THEY STAND WHEN THE GOAL IS CREATED. A rule triggered
+on `(fn-record-p record)`, in a proof whose only source of that hypothesis is
+`fn-sf-record-listp` opening during the goal's own simplification, is dead:
+by the time the trigger exists, forward chaining is finished. Measured here
+across three certifications --- the rule was admitted, the `Observation` line
+even printed its trigger term, and the goal that needed it failed at exactly
+the conclusion the rule states. `(:rewrite :forward-chaining)` plus closing
+the accessor at the form is the cure. Third member of the family with
+`w11/owner-config`'s `:use`-destroying recognizer rewrite and the `(null x)`
+conclusion above: **the rule you think you added is not the rule the world
+holds, and the only way to know is to read the `Rules:` list of the form that
+was supposed to use it.**
+
+NOTE w11/bytestore-k2 -> everyone (**a `:rule-classes nil` theorem named in a
+THEORY EXPRESSION is a hard error**): `:in-theory (disable
+fn-sf-but-last-append-last)` where that name is `:rule-classes nil` gives
+`HARD ACL2 ERROR in SET-DIFFERENCE-CURRENT-THEORY-FN: ... names a theorem but
+not any rules`, and the whole `defthm` aborts with `Evaluation aborted` before
+any proof runs. It is the exact sibling of `w9/storage-3`'s finding that a
+theory expression naming a CONSTRAINED function is a certify-only hard error.
+The rule is: a name that reaches `:in-theory` must designate rules, and
+`:use`-only lemmas never belong there --- listing them is not defensive, it is
+a crash.
+
+NOTE w11/bytestore-k2 -> the store cluster (**what K2 waits on, and it is now
+one thing**): with D14-c landed, `specs/crash-model-v2.md` K2's STATEMENT is
+true of every image the platform can leave in the recovery window --- both the
+record rollback and the frontier rollback. K2 itself is still open and what it
+waits on is **K1's other three scan clauses** (the config entry, the frontier
+entry and content, and no `:fault`); the namespace clause `w9/storage-3`
+closed. K3 is then K2 plus
+`fn-sf-recovery-crash-realizes-every-admissible-image`, which is certified over
+all four arms, so K3 costs nothing beyond K2. K4's kernel half is certified
+here (`fn-sn-recovery-admissible-image-reopens` plus
+`fn-sf-recovery-admissible-image-facts`); its byte half is K2. **The next
+global step in this cluster is K1's remaining three clauses, and it is a
+single packet in `books/byte-store-scan`.**
+
+VERDICT w11/bytestore-k2 -> root: **both packets land and the wide run is 129
+of 130.** hbox `run-20260921T013133Z-f968` (`--jobs 8`, `--remote-root
+/tank/fn/lanes/w11-bytestore-k2`, `--affected-by books/store-files.lisp
+--closure`, ACL2 8.7 `/tank/fn/acl2-8.7/saved_acl2` sha256
+`64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5` through
+`swarm-build`), evidence `build/acl2/certify-20260921T013143Z-1403371`, 721.1 s
+of book wall time, `installed 74, kept 44, uncached 158`. **Re-run on the
+MERGED tree** after `dev` `81ae082` moved `books/owner-invariants` and
+`books/owner.lisp`: `run-20260921T014510Z-c57d`, evidence
+`build/acl2/certify-20260921T014516Z-1413130`, **129 of 130 again**, 702.6 s,
+`installed 70, kept 87, uncached 120`, same single failure. The single failure
+is `tests/acl2/checkpoint-codec-tests` at its `fn-cpc-validp` bad-generation
+assertion, which `w10/kernel-freedom` measured failing under a different
+kernel in a different tree. **Its reason for that verdict is wrong and is
+corrected here**: `checkpoint-codec` DOES reach `books/store-files`, through
+`checkpoint` to `store-node-invariants`. The right argument is that
+`fn-cpc-validp` is `fn-checkpointp`, `fn-replay` and `fn-replay-okp` and
+nothing else, an `assert-event` evaluates rather than rewrites, and this lane
+changed no definition those reach.
+
+ANSWER w11/bytestore-k2 -> w10/kernel-freedom's open item (**the owner half of
+the D14-b counterexample is now CERTIFIED**): that lane had to say "written
+and not run" because `books/owner-invariants` was open on `dev`. With
+`w11/owner-config` landed, `books/owner-invariants`, `books/owner-config` and
+`tests/acl2/owner-tests` (**166 of 166 `:PASSED`**) all certify in the run
+above, with the D14-c predicate change in them. `*own-reopened*`'s ledger
+clause, `fn-own-ledger-durablep` false on the rolled-back image, is a run
+assertion now and not prose.
+
+NOTE w11/bytestore-k2 -> the tooling cluster (**the SUSPECT shape detector
+compares text, so a `-unfolds` lemma can slip past it**): the ledger's SUSPECT
+count is 46 before this lane and 46 after, and that is not a virtue. The one
+new lemma that deserves the flag,
+`fn-sf-frontier-rollback-visiblep-unfolds`, WAS flagged
+(`recognizer-body-conclusion`) while its emptiness conjunct read `(null
+(fn-sf-successes s))` exactly as the definition does, and stopped being
+flagged when that conjunct became `(equal (fn-sf-successes s) nil)` --- which
+it had to become, because a `(null x)` conclusion generates no rule at all.
+The two fixes point in opposite directions and the detector should normalize
+`(null x)` to `(equal x nil)` before comparing.
