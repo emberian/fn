@@ -147,7 +147,8 @@
            :use ((:instance fn-served-feed-counted-result-is-feed)))))
 
 (defthm fn-served-step-counted-fast-preserves-connp
-  (implies (fn-served-connp conn)
+  (implies (and (fn-served-connp conn)
+                (fn-wire-octet-listp octets))
            (fn-served-connp
             (fn-served-result-conn
              (fn-served-counted-result
