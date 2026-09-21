@@ -16,27 +16,29 @@ Private group cryptography remains deferred, with privacy boundaries preserved.
 
 ## Current staffing and integration checkpoint
 
-D07 selects a Python-free production runtime. The integrated native storage
-adapter now consumes ACL2 metadata, frontier, filename and provenance definitions.
-The bounded native configuration profile is integrated through `c322da5`, with
-its default-path repair; its operator/owner consumer still needs integration.
-The packaged operator service remains Python-based development infrastructure.
-No component test closes the full native service or v0 contract.
+D07 selects a Python-free production runtime. Frozen integration source
+`67f45a3` combines native owner/operator, safe feed filenames, application
+journals, BP receive evidence, checkpoint and anchor persistence. Sol owns its
+combined farm gate. The earlier `76901c1` closure/build succeeded; runtime testing
+required a listener-shutdown repair now integrated. Source-pinned runtime
+archives remain separate from the later combined image's pending results.
+The packaged Python entry remains development infrastructure until native
+operator coverage and the selected two-peer release gate are complete.
 
 | Active lane / worker | Next complete result |
 | --- | --- |
-| `owner-convergence` / Sol | Native multiplexed owner, control, live configuration and physical feed replay/append; shared submission preserves feed intent and uncertain persistence fences the service. Unify configured article bounds and measure the frozen service. |
-| `submission-path` / Sol | Carrier repair landed; preserve distinct core faults, stop mutation after journal uncertainty, and prevent cross-session evidence overwrite through durable ACL2-owned identity. |
-| `bp-fidelity-convergence` / Sol | BP sequence recovery/reservation on observed files, with returned-allocation non-reuse across admissible physical crash traces. |
-| `artifact-set` / Sol | Native workflow/receipt journals over the same store state, with a shared ACL2-owned persistence operation and raw I/O interpreter. |
-| `native-storage-codec` / Sol | Native checkpoint capture, selection and recovery adoption; coordinate the shared persistence operation and retain explicit checkpoint/corruption authority. Codec adoption and artifact handoff are landed. |
-| `native-config-impl` / Terra | ACL2-owned safe FNFD peer filenames and explicit legacy handling, adopted by both native and development callers. Config parsing/default normalization is landed. |
-| `storage-codecs` / Terra | I/O outcome and nonblocking progress packets landed; now measure actual saved-image store costs and identify growing-history walks without disabling invariant obligations. |
-| `storage-initializer` / Terra | Actual native initialization failure/death/restart tests and cut fidelity; propagate enumeration errors and investigate staging recovery differences. |
-| `feed-correspondence-terra` / Terra | Adopt the certified total feed output boundary in the actual owner, preserving durable intent when encoding is refused. |
-| `wire-composition-sol` / Sol | Finish actual wire-driver composition from the certified reconstruction and rendered-bound helper packet. |
-| `recover-user-direction` / Sol | Native freshness-anchor wire parsing/acquisition over ACL2-owned subjects and isolated cryptographic primitives; preserve D22's unsupported-tree outcome. |
-| `integrated-runtime` / Terra | Native operator grammar/status/recover component landed; install the common entry, standalone help and shared owner callbacks with one result contract. |
+| `owner-convergence` / Sol | Frozen `67f45a3` default/DTN build and actual combined native suites; retained persvati feed-port closure; shared-owner runtime composition defects. |
+| `submission-path` / Sol | Native BP inbound request intent, actual owner acceptance, durable receipt decision and lost-receipt/restart idempotence. |
+| `bp-fidelity-convergence` / Sol | Native local control/submission channel using the same serialized owner acceptance path; bounded framing and explicit ambiguous reply outcome. Allocation proofs and anchor source review are handed off. |
+| `artifact-set` / Sol | ACL2-owned BP lifecycle filename/recovery plan and admission frontier; remove per-append retained-history enumeration. |
+| `native-storage-codec` / Sol | Checkpoint namespace codec/bounds, mutation fencing and unconditional reporting of differential mismatch. Initial native checkpoint adoption is integrated. |
+| `native-config-impl` / Terra | Total FNFD traversal observation budget across sibling subtrees; retained retired-peer journals count without being reaped. Safe codec/caller is integrated. |
+| `storage-codecs` / Terra | Native outbound NNTP feed socket/timer interpreter over ACL2 effects, with durable FNFD records before transmission and actual two-node tests. |
+| `storage-initializer` / Terra | Actual initializer EEXIST/retry semantics and syscall-cut correspondence; recovery cleanup packet is integrated. |
+| `store-prepare-correspondence-sol` / Sol | Incremental prepare equivalent under maintained relation, actual host adoption and saved-image scale measurement; no whole-history runtime recognizer. |
+| `wire-composition-sol` / Sol | Actual BP lifecycle step invariant, fenced-state behavior and application obligation confinement. Wire composition proof is integrated. |
+| `recover-user-direction` / Sol | Native authentication/configuration vertical slice over existing ACL2 policy; protected transport stays a real prerequisite, not a forged host observation. |
+| `integrated-runtime` / Terra | Explicit ACL2 operator preflight API replacing the malformed-config sentinel; help/config precedence tests. Native operator run/help/status/recover join is integrated. |
 
 Terra and Luna handle bounded implementation/mechanical work; Sol handles
 substantial implementation, proof debugging and integration. Root Astra reviews

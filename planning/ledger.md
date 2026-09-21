@@ -13,21 +13,21 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 334 |
 | Certification roots in the Makefile | 333 |
 | Books inside the root closure | 333 |
-| `defthm` and `defthmd` events | 6151 |
-| `defun` events | 4559 |
+| `defthm` and `defthmd` events | 6153 |
+| `defun` events | 4567 |
 | Functions with verified guards | 1562 |
 | Functions declared `:verify-guards nil` and never verified | 228 |
-| Functions left at the default with an explicit guard | 2183 |
+| Functions left at the default with an explicit guard | 2191 |
 | Functions left at the default with no guard | 586 |
-| `assert-event` checks | 6345 |
-| `must-fail` checks | 124 |
+| `assert-event` checks | 6363 |
+| `must-fail` checks | 125 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 56 |
 | Export-hygiene warnings | 76 |
 | Enabled-projection warnings | 24 |
 | Teeth-form warnings | 4 |
 | Include-hygiene warnings | 114 |
-| Host-names warnings | 341 |
+| Host-names warnings | 348 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -195,7 +195,7 @@ that `make certify` requests.
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
 | `books/native-config.lisp` | root | 1 | 57 | 0/0/57/0 | 0 | 0 | 0 |
-| `books/native-operator.lisp` | root | 0 | 16 | 0/0/16/0 | 0 | 0 | 0 |
+| `books/native-operator.lisp` | root | 0 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-auth.lisp` | root | 68 | 50 | 33/3/14/0 | 0 | 0 | 2 |
 | `books/nntp-effects.lisp` | root | 139 | 12 | 0/0/0/12 | 0 | 0 | 1 |
@@ -215,7 +215,7 @@ that `make certify` requests.
 | `books/node.lisp` | root | 37 | 33 | 27/0/6/0 | 0 | 0 | 2 |
 | `books/owner-config.lisp` | root | 22 | 40 | 0/4/36/0 | 0 | 0 | 1 |
 | `books/owner-fault.lisp` | root | 11 | 2 | 2/0/0/0 | 0 | 0 | 0 |
-| `books/owner-feed-port.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 4 |
+| `books/owner-feed-port.lisp` | root | 8 | 1 | 0/0/1/0 | 0 | 0 | 4 |
 | `books/owner-feed.lisp` | root | 84 | 77 | 0/0/77/0 | 0 | 0 | 0 |
 | `books/owner-invariants.lisp` | root | 127 | 8 | 0/0/6/2 | 0 | 0 | 1 |
 | `books/owner.lisp` | root | 46 | 118 | 0/3/115/0 | 0 | 0 | 0 |
@@ -361,8 +361,8 @@ that `make certify` requests.
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/native-config-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 27 | 0 | 0 |
-| `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
-| `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 16 | 0 | 0 |
+| `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
+| `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 21 | 0 | 0 |
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 133 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
 | `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 92 | 0 | 0 |
@@ -372,7 +372,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 167 | 0 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
 | `tests/acl2/owner-config-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 75 | 0 | 0 |
-| `tests/acl2/owner-feed-port-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 1 | 0 |
+| `tests/acl2/owner-feed-port-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 2 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 119 | 0 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 15 | 0/0/1/14 | 292 | 0 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |

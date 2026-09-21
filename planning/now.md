@@ -14,6 +14,16 @@ incremental store preparation from the maintained relation. Native BP applicatio
 acceptance/receipt composition is still implementation work, not carrier evidence.
 
 
+W22 frozen batch: `67f45a3` adds the actual listener wakeup repair, logical
+feed restart/caller projection, and native operator join to the previous
+consolidation batch. Hbox is assigned combined certification, both image builds
+and native runtime suites; no result from an older image is relabeled for it.
+Native outbound feed I/O, local control submission and authentication adoption
+now have concrete parallel lanes, while BP application receipts and performance
+correspondence continue. These are remaining selected v0 behaviors, not a
+redefinition of v0 around currently implemented commands.
+
+
 Priority correction (2026-09-21): the user reaffirmed D07, **no Python in a
 running/deployed fn node or its operator CLI**. Sol's owner-convergence checkpoint is integrated in the native Lisp service;
 the frozen combined build and actual service evidence remain pending. Sol's native-storage lane supplies shared I/O and
