@@ -1,0 +1,16 @@
+; Program bridge for the immutable journal publication phase machine.
+(in-package "ACL2")
+(include-book "../books/journal-publish")
+
+(defun fn-jpub-host-initial (authorityp)
+  (fn-jpub-initial authorityp))
+(defun fn-jpub-host-step (publication event)
+  (fn-jpub-step publication event))
+(defun fn-jpub-host-action (publication)
+  (fn-jpub-next-action publication))
+(defun fn-jpub-host-outcome (publication)
+  (fn-jpub-outcome publication))
+(defun fn-jpub-host-terminalp (publication)
+  (if (fn-jpub-terminalp publication) t nil))
+(defun fn-jpub-host-crash-outcome (publication)
+  (fn-jpub-crash-outcome publication))
