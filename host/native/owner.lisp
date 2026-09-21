@@ -330,9 +330,9 @@ Historical journals remain open until owner shutdown because replayed
 obligations may still name a peer removed from the current configuration."
   (let* ((current (fnn-owner-service-feeds service))
          (known (mapcar #'car current))
-         (missing (remove-if (lambda (peer)
-                               (member peer known :test #'string=))
-                             configured))
+         (missing (loop for peer in configured
+                        unless (member peer known :test #'string=)
+                        collect peer))
          (opened nil))
     (handler-case
         (progn

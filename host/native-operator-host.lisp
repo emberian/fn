@@ -127,3 +127,12 @@
   "Exact accepted ACL2 native-admin plan; raw Lisp may only deliver it."
   (declare (xargs :mode :program))
   (fn-native-operator-result-admin-plan result))
+(defun fn-native-operator-host-result-admin-argv (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-admin-argv result))
+(defun fn-native-operator-host-result-admin-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (if (fn-native-operator-result-admin-planp result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
