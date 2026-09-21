@@ -40,3 +40,25 @@
                 (cons :eio :not-issued))
     (declare (ignore result))
     (not (fn-bs-dir-quietp bs :transactions)))))
+
+; Reachable allocator witness after rename: both the :root replacement and
+; staging deletion are pending, while fencing :root drains exactly the former.
+(assert-event
+ (let* ((pair (nth 8 *fn-bsfk-frontier-run*))
+        (bs (car pair))
+        (ks (cdr pair)))
+   (and (equal (fn-sf-phase ks) :frontier-data-durable)
+        (not (fn-bs-dir-quietp bs :root))
+        (fn-sf-fencedp (fn-sf-frontier-replace-result ks :error))
+        (fn-bs-dir-quietp (fn-bs-fence-dir bs :root) :root)
+        (not (fn-bs-dir-quietp (fn-bs-fence-dir bs :root) :staging)))))
+
+; A failure reported before rename was issued leaves :root quiet.
+(must-fail
+ (assert-event
+  (mv-let (result bs)
+    (fn-bs-rename (car (nth 7 *fn-bsfk-frontier-run*))
+                  :staging ".allocation-1" :root
+                  *fn-bs-frontier-name* (cons :eio :not-issued))
+    (declare (ignore result))
+    (not (fn-bs-dir-quietp bs :root)))))
