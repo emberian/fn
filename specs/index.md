@@ -65,3 +65,31 @@ cache cannot be handed to them without widening `fn-nntp-make-session` and
 `fn-nntp-step`, which this wave's nntp.lisp owner holds. The equality theorems
 above are exactly what makes that a call-site substitution when the session
 carries the index.
+
+## Persistent Message-ID lookup (W30)
+
+`books/msgid-index.lisp` provides a separate index for exact Message-ID lookup.
+It is a persistent trie over the source string's characters, with a distinct
+keyword slot for the article at the end of a key. Character edges and terminal
+slots cannot alias. Extending the trie copies the modified path and preserves
+older roots, so connection pins can retain their original committed view.
+The trie is derived state; it never assigns identities, changes local article
+numbers, or supplies recovery authority.
+
+`fn-midx-lookup-of-build-is-find-article` states equality with the existing
+`fn-find-article` scan for a string query and an ordered list of articles whose
+Message-IDs are strings. The builder preserves the scan's first-match behavior
+even for synthetic duplicate lists. `fn-midx-build-has-unique-branches` states
+recursive branch uniqueness for those builder inputs. These events and their
+witnesses have source-evaluation evidence; fresh focused certification and
+complete hypothesis teeth remain open. Their presence does not establish a
+performance bound for arbitrary malformed tries.
+
+The live-owner integration is in progress. Recovery will build from the
+recovered article projection, durable acceptance will extend the committed root,
+and readers will pin the matching archive and root together. Served commands
+must call the indexed function under a maintained correspondence; they must not
+rebuild the trie or recheck correspondence across the whole archive per command.
+The currently integrated primitive alone changes no served lookup path. Group
+and local-number indexing above has a different key and query contract and is
+not replaced by the Message-ID trie.
