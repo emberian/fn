@@ -190,7 +190,7 @@ class Acl2Owner(Acl2Store):
         if kind is None:
             raise StoreError("unknown group reconfiguration action")
         literal = self.literal(name.encode("utf-8", "strict"))
-        status = self._symbol("(fn-owner-reconfigure {} {} '{} state)".format(
+        status = self._symbol_any("(fn-owner-reconfigure {} {} '{} state)".format(
             int(cid), kind, literal))
         if status == "staged":
             record = bytes(acl2_octet_list(self.call(
@@ -203,7 +203,7 @@ class Acl2Owner(Acl2Store):
         raise StoreFault("unexpected owner reconfiguration outcome: {}".format(status))
 
     def complete_reconfigure(self, generation):
-        outcome = self._symbol("(fn-owner-reconfigure-complete {} state)".format(
+        outcome = self._symbol_any("(fn-owner-reconfigure-complete {} state)".format(
             int(generation)))
         if outcome != "durable":
             raise StoreFault("owner refused durable configuration completion")
