@@ -366,7 +366,7 @@
     "enabled_projection_warnings": 24,
     "teeth_form_warnings": 4,
     "include_hygiene_warnings": 118,
-    "host_names_warnings": 414,
+    "host_names_warnings": 413,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -11559,203 +11559,196 @@
       {
         "host": "host/bp-node-machine-host.lisp",
         "line": 10,
-        "name": "fn-bpn-machine-statep",
-        "source": "books/bp-node-machine.lisp",
-        "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 13,
         "name": "fn-bpn-answer-state",
         "source": "books/bp-node-machine.lisp",
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 16,
+        "line": 13,
         "name": "fn-bpn-answer-effects",
         "source": "books/bp-node-machine.lisp",
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 19,
+        "line": 16,
+        "name": "fn-bpn-machine-statep",
+        "source": "books/bp-node-machine.lisp",
+        "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/bp-node-machine-host.lisp",
+        "line": 16,
         "name": "fn-bpn-ready-peers",
         "source": "books/bp-node-machine.lisp",
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 19,
+        "line": 16,
         "name": "fn-bpn-machine-state-jobs",
         "source": "books/bp-node-machine.lisp",
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 24,
+        "line": 21,
         "name": "fn-bpn-existing-sequence",
         "source": "books/bp-node-machine.lisp",
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 27,
+        "line": 24,
         "name": "fn-bpn-existing-sequencep",
         "source": "books/bp-node-machine.lisp",
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 33,
+        "line": 30,
         "name": "fn-bpn-lifecycle-recordp",
         "source": "books/bp-node-machine.lisp",
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 33,
+        "line": 30,
         "name": "fn-bpn-lifecycle-record-frame",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 38,
+        "line": 35,
         "name": "fn-cbor-octet-listp",
         "source": "books/cbor.lisp",
         "reason": "defined in books/cbor.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 38,
+        "line": 35,
         "name": "fn-bpn-lifecycle-record-unframe",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 43,
+        "line": 40,
         "name": "fn-bpn-lifecycle-frame-limit",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 46,
+        "line": 43,
         "name": "fn-bpn-lifecycle-record-name",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 49,
+        "line": 46,
         "name": "fn-bpn-lifecycle-max-namespace-entries",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 52,
+        "line": 49,
         "name": "fn-bpn-lifecycle-namespace-plan",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 55,
+        "line": 52,
         "name": "fn-bpn-lifecycle-namespace-planp",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 58,
+        "line": 55,
         "name": "fn-bpn-lifecycle-plan-record-names",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 62,
+        "line": 59,
         "name": "fn-bpn-lifecycle-recovery",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 68,
+        "line": 65,
         "name": "fn-bpn-lifecycle-recovery-records",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 71,
+        "line": 68,
         "name": "fn-bpn-lifecycle-recovery-stages",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 74,
+        "line": 71,
         "name": "fn-bpn-lifecycle-recovery-agrees-with-statep",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 77,
+        "line": 74,
         "name": "fn-bpn-lifecycle-publication-authorize",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 82,
+        "line": 79,
         "name": "fn-bpn-lifecycle-publication-operationp",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 85,
+        "line": 82,
         "name": "fn-bpn-lifecycle-publication-operation-token",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 88,
+        "line": 85,
         "name": "fn-bpn-lifecycle-publication-operation-record",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 91,
+        "line": 88,
         "name": "fn-bpn-lifecycle-publication-operation-publication",
         "source": "books/bp-node-machine-codec.lisp",
         "reason": "defined in books/bp-node-machine-codec.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 94,
+        "line": 91,
         "name": "*fn-bpn-machine-max-jobs*",
         "source": "books/bp-node-machine.lisp",
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/bp-node-machine-host.lisp",
-        "line": 95,
+        "line": 92,
         "name": "*fn-bpn-machine-max-octets*",
-        "source": "books/bp-node-machine.lisp",
-        "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/bp-node-machine-host.lisp",
-        "line": 96,
-        "name": "*fn-bpn-machine-max-records*",
         "source": "books/bp-node-machine.lisp",
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
