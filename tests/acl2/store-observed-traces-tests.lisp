@@ -226,7 +226,8 @@
 (defconst *fn-so-unrelated*
   (fn-sn-make *fn-so-live-groups* 10
               (fn-sf-make :ready 1 nil (list *fn-so-alien*) nil nil '((0 . 0)) 5)
-              (fn-node-initial-state *fn-so-live-groups* 10)))
+              (fn-node-initial-state *fn-so-live-groups* 10)
+              nil (fn-stx-index-empty)))
 (assert-event (fn-sn-statep *fn-so-unrelated*))
 (assert-event (not (fn-snt-relation *fn-so-unrelated*)))
 (assert-event (fn-sf-crash-imagep (fn-sn-files *fn-so-unrelated*) 1 (list *fn-so-alien*)))
