@@ -61,14 +61,15 @@
       "milestone": "M1",
       "status": "specified",
       "proof_targets": [
-        "PRF-013"
+        "PRF-013",
+        "PRF-048"
       ],
       "verification": [
         "proof",
         "scenario"
       ],
       "evidence": [],
-      "implementation_note": "D01 selected: native signatures bind exact authored source bytes; mutable Path/Xref and gateway injection records live in separate projections. Unknown allowed headers and MIME/body bytes are preserved. Concrete native grammar and legacy-variant comparison/quarantine policy remain open; no new implementation evidence.",
+      "implementation_note": "The selected native preimage binds exact authored source octets, principal and ordered enrolled hybrid keys. Mutable Path/Xref and gateway injection records remain outside that source. Durable article/verdict composition and legacy-variant comparison/quarantine remain open.",
       "note": "No book states a source-variant or provenance property. D01 selected the source boundary; the native grammar and the legacy-variant comparison/quarantine policy are unwritten, and PRF-013 has no events."
     },
     {
@@ -150,7 +151,8 @@
       "proof_targets": [
         "PRF-013",
         "PRF-031",
-        "PRF-039"
+        "PRF-039",
+        "PRF-048"
       ],
       "verification": [
         "proof",
@@ -163,7 +165,7 @@
         "tests/test_auth.py",
         "planning/evidence/auth-w10-2026-09-20.md"
       ],
-      "implementation_note": "D02 requires native author signatures plus explicit legacy gateway provenance. D01 now fixes exact authored source bytes as the signed source and keeps mutable trace/injection projections separate. D09 suites, principal/key lifecycle and real verification/authority remain open.",
+      "implementation_note": "D09 requires both Ed25519 and ML-DSA-65 over ACL2's exact authored-source preimage. The native primitives and ACL2 conjunction fail closed for absent, invalid or unsupported components. Durable article/verdict composition and key custody/recovery authority remain open.",
       "note": "PRF-013 has no events. books/crypto-seam and books/statement certify, but they are an abstract seam: nothing there is a real signature, and AGENTS.md forbids reading an abstract model as a signature claim."
     },
     {
@@ -244,15 +246,20 @@
       "status": "specified",
       "proof_targets": [
         "PRF-005",
-        "PRF-035"
+        "PRF-035",
+        "PRF-048"
       ],
       "verification": [
         "proof",
         "scenario"
       ],
-      "evidence": [],
-      "implementation_note": "D01 fixes the exact authored-byte signing subject and separate mutable projections. Neither candidate preimage encoding, native envelope, CBOR/COSE nor any hash/signature suite is selected by this decision; D08/D09 and implementation/proofs remain open.",
-      "note": "No versioned domain-separated preimage exists yet. The A-CRYPTO trailer in books/frame-octets.lisp is a placeholder position, not a preimage definition."
+      "evidence": [
+        "books/hybrid-signature.lisp",
+        "tests/acl2/hybrid-signature-tests.lisp",
+        "tests/native_hybrid_signatures.lisp"
+      ],
+      "implementation_note": "The version-1 hybrid preimage is domain separated and length delimits exact authored source after fixed-width principal and ordered algorithm-tagged enrolled keys. Both standard pure signatures cover these bytes directly.",
+      "note": "This is the native authored-source signature context; other formats retain separately scoped preimages."
     },
     {
       "id": "ENC-004",
