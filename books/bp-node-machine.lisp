@@ -470,23 +470,26 @@
 
 (defun fn-bpn-contact-step (st peer openp)
   (declare (xargs :guard t))
-  (if (not (fn-bpp-eidp peer))
+  (if (or (fn-bpn-machine-state-fenced st)
+          (fn-bpn-machine-state-pending st))
       (fn-bpn-answer st nil)
-    (if openp
-        (let ((opened (fn-bpn-state-with st (fn-bpn-machine-state-jobs st)
-                                         (fn-bpn-open-contact peer
-                                                              (fn-bpn-machine-state-contacts st))
-                                         (fn-bpn-machine-state-pending st)
-                                         (fn-bpn-machine-state-fenced st)
-                                         (fn-bpn-machine-state-next-token st))))
-          (fn-bpn-start-one opened peer))
-      (fn-bpn-answer
-       (fn-bpn-state-with st (fn-bpn-machine-state-jobs st)
-                          (fn-bpn-close-contact peer (fn-bpn-machine-state-contacts st))
-                          (fn-bpn-machine-state-pending st)
-                          (fn-bpn-machine-state-fenced st)
-                          (fn-bpn-machine-state-next-token st))
-       nil))))
+    (if (not (fn-bpp-eidp peer))
+      (fn-bpn-answer st nil)
+      (if openp
+          (let ((opened (fn-bpn-state-with st (fn-bpn-machine-state-jobs st)
+                                           (fn-bpn-open-contact peer
+                                                                (fn-bpn-machine-state-contacts st))
+                                           (fn-bpn-machine-state-pending st)
+                                           (fn-bpn-machine-state-fenced st)
+                                           (fn-bpn-machine-state-next-token st))))
+            (fn-bpn-start-one opened peer))
+        (fn-bpn-answer
+         (fn-bpn-state-with st (fn-bpn-machine-state-jobs st)
+                            (fn-bpn-close-contact peer (fn-bpn-machine-state-contacts st))
+                            (fn-bpn-machine-state-pending st)
+                            (fn-bpn-machine-state-fenced st)
+                            (fn-bpn-machine-state-next-token st))
+         nil)))))
 
 (defun fn-bpn-persist-result-step (st token outcome)
   (declare (xargs :guard t))
