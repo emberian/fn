@@ -50,6 +50,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/frame \
 	books/frame-invariants \
 	tests/acl2/frame-tests \
+	books/frame-trailer \
+	tests/acl2/frame-trailer-tests \
 	books/identity \
 	books/identity-invariants \
 	tests/acl2/identity-tests \
