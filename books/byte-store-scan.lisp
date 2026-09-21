@@ -367,6 +367,8 @@
         :invalid)
     (if (null names) nil :invalid)))
 
+(verify-guards fn-bs-txn-observation-pairs)
+
 (defun fn-bs-read-records (s n count)
   (declare (xargs :guard t :verify-guards nil :measure (nfix (- (nfix count) (nfix n)))))
   (if (or (not (natp n)) (not (natp count)) (>= n count))
