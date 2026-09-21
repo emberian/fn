@@ -99,9 +99,13 @@
       (cons (car xs) (fn-ff-butlast (cdr xs)))
     nil))
 
+(defun fn-ff-append (left right)
+  (declare (xargs :guard t))
+  (if (consp left) (cons (car left) (fn-ff-append (cdr left) right)) right))
+
 (defun fn-ff-append-components (xs)
   (declare (xargs :guard t))
-  (if (consp xs) (append (car xs) (fn-ff-append-components (cdr xs))) nil))
+  (if (consp xs) (fn-ff-append (car xs) (fn-ff-append-components (cdr xs))) nil))
 
 (defun fn-ff-legacy-candidate (components)
   (declare (xargs :guard t))
