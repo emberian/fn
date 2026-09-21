@@ -665,6 +665,9 @@ class TwoNodeGate(deploy_gate.DeployGate):
         "k5-journal": (
             "node A recorded the decision to offer on disk before the kill "
             "(<store>/feed/*.fnfd)", ("",)),
+        "k5-journal-names": (
+            "node A's on-disk feed journal names the queued article before the "
+            "kill, so there is an entry to replay", ("",)),
         "k5-restart": ("node A came back after the SIGKILL", ("",)),
         "k5-arrival": (
             "node B served the outstanding article after node A restarted (K5)",
@@ -672,6 +675,9 @@ class TwoNodeGate(deploy_gate.DeployGate):
         "k5-exactly-one": (
             "the wire in front of node B carried exactly one accepted transfer "
             "across the kill", ("",)),
+        "k5-single-block": (
+            "the wire in front of node B carried at most one article block "
+            "across the kill, so no peer paid for a duplicate transfer", ("",)),
         "k5-offer-recorded": (
             "the wire in front of node B carried an offer naming the article "
             "after the restart", ("",)),
@@ -1526,8 +1532,9 @@ else echo NONE; fi
         own history absorbs the one retransmission a lost reply can cause.
         What this asserts is that B ends with exactly ONE copy.
         """
-        K5 = ("k5-post", "k5-journal", "k5-restart", "k5-arrival",
-              "k5-exactly-one", "k5-offer-recorded")
+        K5 = ("k5-post", "k5-journal", "k5-journal-names", "k5-restart",
+              "k5-arrival", "k5-exactly-one", "k5-single-block",
+              "k5-offer-recorded")
         if not self.a.post_enabled:
             blocker = "node A does not serve POST on this commit"
             self.skip("owner feed: restart by offer (K5)",
@@ -1544,6 +1551,14 @@ else echo NONE; fi
             return
         msgid = "<fed-restart@example.invalid>"
         mark = self.tap_mark(self.b)
+        # B's OWN STORE, before and after: "exactly one copy" is a count in
+        # the receiver, not a status line in the sender. A reread cannot
+        # tell one copy from two -- the store would refuse the second and
+        # the reread would look identical either way.
+        before = self.feed("presence", "--port {} --groups {}".format(
+            self.b.port, GROUPS[0]),
+            name="owner feed: node B group count before the kill", expect=None)
+        start_count = self.group_count(self.payload(before), GROUPS[0])
         self.stop_node(self.b)
         posted = self.feed("post", "--port {} --msgid '{}' --group {}".format(
             self.a.port, msgid, GROUPS[0]),
@@ -1557,12 +1572,18 @@ else echo NONE; fi
             observed=str(self.payload(posted).get("result", "nothing")))
         if not accepted_post:
             blocker = "node A never accepted the article the restart is about"
-            for key in ("k5-journal", "k5-restart", "k5-arrival", "k5-exactly-one",
+            for key in ("k5-journal", "k5-journal-names", "k5-restart",
+                        "k5-arrival", "k5-exactly-one", "k5-single-block",
                         "k5-offer-recorded"):
                 self.inconclusive(key, "K5: {} -- {}.".format(
                     self.ASSERTIONS[key][0], blocker), blocker)
             self.start_node(self.b, tag="restart")
             return
+        # Node A accepted this article by POST and holds it. Without this the
+        # later "node A is unchanged by node B's death" step counts it as an
+        # article only B ever accepted and asserts A does NOT hold it, which
+        # is false the moment the feed starts working.
+        self.a.accepted.append(msgid)
         journal = self.sh(
             "owner feed: A's FNFD journal for B",
             "ls -l {}/feed/ 2>/dev/null | tail -5 || echo NO-FEED-JOURNAL".format(
@@ -1575,6 +1596,27 @@ else echo NONE; fi
             "was outstanding, so nothing on disk records the decision to offer "
             "and the restart below resolves from memory that did not survive.",
             observed=self.facts.get("feed journal", "none"))
+        # The decision to feed THIS article, on disk, before the kill. An
+        # FNFD record carries the Message-ID as text, so the file itself
+        # answers it. Without this the scenario cannot tell "the restart
+        # replayed the entry and re-offered it" from "the entry was never
+        # durable and there was nothing to replay" -- which is exactly what
+        # gate 15ac399 could not tell: node A replayed eight records, none
+        # of them an enqueue, and never offered the article again.
+        named = self.sh(
+            "owner feed: A's journal names {} before the kill".format(msgid),
+            "grep -a -c -- '{}' {}/feed/*.fnfd 2>/dev/null || echo 0".format(
+                msgid, self.a.store), expect=None)
+        hits = named.output.strip().splitlines()[-1] if named.output.strip() else "0"
+        self.facts["feed journal names the queued article"] = hits
+        self.check(
+            "k5-journal-names", hits.strip() not in ("", "0"),
+            "owner feed: node A's FNFD journal does not name {} while it is "
+            "queued and undeliverable, so the decision to feed it is in memory "
+            "and nowhere else. specs/peering.md 3.3 writes (:feed-enqueue peer "
+            "msgid tick) BEFORE the entry is :queued, and the `kill -9` below "
+            "will lose it.".format(msgid),
+            observed="journal records naming the article: {}".format(hits))
         self.sh("owner feed: kill -9 node A", "kill -9 {} || true".format(self.a.pid),
                 expect=None)
         self.start_node(self.b, tag="restart")
@@ -1584,7 +1626,8 @@ else echo NONE; fi
                    "restart-by-offer was never reached.")
         if not restarted:
             blocker = "node A did not restart after the kill"
-            for key in ("k5-arrival", "k5-exactly-one", "k5-offer-recorded"):
+            for key in ("k5-arrival", "k5-exactly-one", "k5-single-block",
+                        "k5-offer-recorded"):
                 self.inconclusive(key, "K5: {} -- {}.".format(
                     self.ASSERTIONS[key][0], blocker), blocker)
             return
@@ -1613,7 +1656,8 @@ else echo NONE; fi
             self.read_tap(self.b, "owner feed: what crossed after A's restart",
                           since=mark, expect=None)
             blocker = "the article never reached node B after the restart"
-            for key in ("k5-exactly-one", "k5-offer-recorded"):
+            for key in ("k5-exactly-one", "k5-single-block",
+                        "k5-offer-recorded"):
                 self.inconclusive(key, "K5: {} -- {}.".format(
                     self.ASSERTIONS[key][0], blocker), blocker)
             return
@@ -1623,7 +1667,21 @@ else echo NONE; fi
                 self.b.port, GROUPS[0], msgid),
             name="owner feed: B serves {} after the restart".format(msgid),
             expect=None)
-        self.facts["owner feed restart copies"] = str(self.payload(counted))
+        end_count = self.group_count(self.payload(counted), GROUPS[0])
+        self.facts["owner feed restart copies"] = (
+            "node B {} held {} articles before the kill and holds {} after"
+            .format(GROUPS[0], start_count, end_count))
+        if start_count is None or end_count is None:
+            self.gaps.append(
+                "owner feed: node B's GROUP line did not carry a count either side "
+                "of node A's kill, so 'exactly one copy' rests on the reread alone, "
+                "which cannot tell one copy from two.")
+        elif end_count != start_count + 1:
+            self.gaps.append(
+                "owner feed: node B's {} went from {} articles to {} across node A's "
+                "kill and restart. One article crossed, so exactly one is the right "
+                "difference: K5 forbids the restart resolving by a second transfer."
+                .format(GROUPS[0], start_count, end_count))
         # K5's teeth, and the only place this gate can grow them: the tap in
         # front of B saw every octet A's feed sent across the kill. A re-offer
         # is an IHAVE or a CHECK; a duplicate TRANSFER would be a second
@@ -1639,14 +1697,22 @@ else echo NONE; fi
         accepted = [one for one in lines if one.startswith(("S< 235", "S< 239"))]
         refused = [one for one in lines if one.startswith(("S< 435", "S< 438",
                                                            "S< 439"))]
+        # One article block per TAKETHIS (RFC 4644 2.5: the article always
+        # follows) and one per IHAVE go-ahead (RFC 3977 6.3.2: 335 is the
+        # send). A `238` is the CHECK answer -- permission, not a send --
+        # and counting it made one correct transfer read as two.
+        transfers = [one for one in lines
+                     if one.startswith(("C> TAKETHIS", "S< 335"))]
         self.facts["owner feed restart wire"] = (
-            "offers={} accepted={} refused-as-duplicate={} | {}".format(
-                len(offers), len(accepted), len(refused),
+            "offers={} article-blocks={} accepted={} "
+            "refused-as-duplicate={} | {}".format(
+                len(offers), len(transfers), len(accepted), len(refused),
                 "; ".join(one[3:] for one in lines
                           if one.startswith("C> "))[:400] or "nothing recorded"))
         if not self.b.tap_port:
             # No instrument: the count is not zero, it is unobserved.
-            for key in ("k5-exactly-one", "k5-offer-recorded"):
+            for key in ("k5-exactly-one", "k5-single-block",
+                        "k5-offer-recorded"):
                 self.inconclusive(key, "K5: {} -- there is no tap in front of node "
                                   "B, so nothing recorded what crossed.".format(
                                       self.ASSERTIONS[key][0]),
@@ -1661,6 +1727,21 @@ else echo NONE; fi
                     len(accepted), msgid,
                     "; ".join(one for one in lines)[:400] or "none"),
                 observed="accepted={} offers={}".format(len(accepted), len(offers)))
+            # The negative K5 actually claims, and it is about BYTES, not
+            # about the status line `k5-exactly-one' counts. One go-ahead
+            # means the article block crossed once; a second is a duplicate
+            # TRANSFER, which is the thing the restart-by-offer discipline
+            # exists to prevent, and the peer pays for it.
+            self.check(
+                "k5-single-block", len(transfers) <= 1,
+                "owner feed: the tap in front of node B recorded {} article blocks "
+                "for {} across node A's kill. K5 says a restart resolves by "
+                "RE-OFFER and the peer's own history absorbs the one "
+                "retransmission a lost reply can cause; more than one article "
+                "block on the wire is the duplicate transfer it forbids. "
+                "Recorded: {}".format(
+                    len(transfers), msgid, "; ".join(transfers)[:300]),
+                observed="article-blocks={}".format(len(transfers)))
             if offers:
                 self.check("k5-offer-recorded", True, "",
                            observed=offers[0][:200])

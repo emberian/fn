@@ -454,12 +454,49 @@
 ; The transit reply.  `kind' and `reason' are the decision this image just
 ; made; `word' is the store's observed outcome (:durable, :refused,
 ; :uncertain), ignored unless the decision was :want.
+; The frames the host has to make durable, and the bytes they authorize.
+; `fn-owner-feed-frames' is a list of encoded FNFD frames, each sealed with
+; the constrained trailer (A-CRYPTO); the host writes them length-prefixed.
+; `fn-feed-encode' takes the trailer as an argument, so these frames carry a
+; ZERO trailer: tools/run_owner.py hashes the protected prefix and appends the
+; real one (A-CRYPTO).  The header, the
+; field encoding and every bound stay ACL2's; the host slices at a constant it
+; did not choose.
+(defconst *fn-owner-feed-zero-trailer*
+  '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+
+(defun fn-owner-feed-encode-records (records)
+  (declare (xargs :mode :program))
+  (if (consp records)
+      (cons (fn-feed-encode (fn-feed-journal-kind (car records))
+                            (fn-feed-journal-values (car records))
+                            *fn-owner-feed-zero-trailer*)
+            (fn-owner-feed-encode-records (cdr records)))
+    nil))
+
+(defun fn-owner-feed-install-feed (records effects state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((state (f-put-global 'fn-owner-feed-records records state))
+         (state (f-put-global 'fn-owner-feed-frames
+                              (fn-owner-feed-encode-records records) state))
+         (state (f-put-global 'fn-owner-feed-command
+                              (fn-own-feed-effect-octets effects) state))
+         (state (f-put-global 'fn-owner-feed-peer
+                              (fn-own-feed-effect-peer effects) state)))
+    state))
+
+; A transit transfer that became durable owes the feed journal the same
+; `(:feed-enqueue ...)` records a POST does: a relayed article is fed
+; onward (RFC 5537 sec. 3.6) and the entry must survive the process that
+; accepted it.  Read before the outcome moves the owner, as for POST.
 (defun fn-owner-transit-outcome (id kind reason word state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((result (fn-own-transit-outcome (f-get-global 'fn-owner state)
-                                         id kind reason word))
+  (let* ((owner (f-get-global 'fn-owner state))
+         (records (fn-own-transit-outcome-records owner id kind word))
+         (result (fn-own-transit-outcome owner id kind reason word))
          (state (f-put-global 'fn-owner (cdr result) state))
-         (state (fn-owner-install-effects (car result) state)))
+         (state (fn-owner-install-effects (car result) state))
+         (state (fn-owner-feed-install-feed records nil state)))
     (value :fed)))
 
 (defun fn-owner-transit-kind (state)
@@ -479,11 +516,20 @@
 ; fn-own-outcome renders the reply (240 only when a completion was consumed
 ; after the take, fn-own-durable-reply-names-a-durable-record) for that
 ; connection and installs it in fn-owner-output.
+; The FNFD records a durable acceptance owes the feed journal are read off
+; the owner BEFORE the outcome moves it and installed where the bridge
+; reads them, exactly as a tick and a reply do.  Without this the
+; `(:feed-enqueue peer msgid tick)' of specs/peering.md sec. 3.3 was never
+; written in any deployment, and an article accepted while a peer was
+; unreachable did not survive the process that accepted it.
 (defun fn-owner-outcome (id word state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((result (fn-own-outcome (f-get-global 'fn-owner state) id word))
+  (let* ((owner (f-get-global 'fn-owner state))
+         (records (fn-own-outcome-records owner id word))
+         (result (fn-own-outcome owner id word))
          (state (f-put-global 'fn-owner (cdr result) state))
-         (state (fn-owner-install-effects (car result) state)))
+         (state (fn-owner-install-effects (car result) state))
+         (state (fn-owner-feed-install-feed records nil state)))
     (value :fed)))
 
 ; The allocation domain the owner's live node carries (every name ever
@@ -767,37 +813,6 @@
       (let ((state (fn-owner-step (list :feed-conn peer conn) state)))
         (value :ok)))))
 
-; The frames the host has to make durable, and the bytes they authorize.
-; `fn-owner-feed-frames' is a list of encoded FNFD frames, each sealed with
-; the constrained trailer (A-CRYPTO); the host writes them length-prefixed.
-; `fn-feed-encode' takes the trailer as an argument, so these frames carry a
-; ZERO trailer: tools/run_owner.py hashes the protected prefix and appends the
-; real one (A-CRYPTO).  The header, the
-; field encoding and every bound stay ACL2's; the host slices at a constant it
-; did not choose.
-(defconst *fn-owner-feed-zero-trailer*
-  '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-
-(defun fn-owner-feed-encode-records (records)
-  (declare (xargs :mode :program))
-  (if (consp records)
-      (cons (fn-feed-encode (fn-feed-journal-kind (car records))
-                            (fn-feed-journal-values (car records))
-                            *fn-owner-feed-zero-trailer*)
-            (fn-owner-feed-encode-records (cdr records)))
-    nil))
-
-(defun fn-owner-feed-install-feed (records effects state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-owner-feed-records records state))
-         (state (f-put-global 'fn-owner-feed-frames
-                              (fn-owner-feed-encode-records records) state))
-         (state (f-put-global 'fn-owner-feed-command
-                              (fn-own-feed-effect-octets effects) state))
-         (state (f-put-global 'fn-owner-feed-peer
-                              (fn-own-feed-effect-peer effects) state)))
-    state))
-
 ; One tick for one peer: the records first, then the bytes.
 (defun fn-owner-feed-tick (peer-octets monotonic state)
   (declare (xargs :stobjs state :mode :program))
@@ -825,6 +840,31 @@
              (state (f-put-global 'fn-owner (cdr result) state))
              (state (fn-owner-feed-install-feed records (car result) state)))
         (value (if (car result) :send :quiet))))))
+
+; The connection to ONE peer is gone.  The host reports the event and the
+; time it happened; ACL2 decides what it means.  `fn-own-feed-lost-records'
+; is read off the state BEFORE it moves and `fn-own-feed-lost' moves it, so
+; the frame the host then appends is the one the transition authorized.
+; There are no bytes: a lost connection emits no command, which is why the
+; effects argument is nil.
+;
+; Before this entry point existed the host told the owner only
+; `(:feed-conn peer nil)' and the in-flight entry stayed :sent until the
+; PROCESS restarted -- the blocker in front of K5's restart-by-offer
+; (planning/lanes/HANDOFF-w11-twonode-feed.md).  The requeue decision is
+; `fn-feed-lost''s; the host decides only when to hand the model the event.
+(defun fn-owner-feed-lost (peer-octets monotonic state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        (value nil)
+      (let* ((owner (f-get-global 'fn-owner state))
+             (obs (fn-clock-observation monotonic 0 0 nil))
+             (records (fn-own-feed-lost-records owner peer))
+             (state (f-put-global 'fn-owner (fn-own-feed-lost owner peer obs)
+                                  state))
+             (state (fn-owner-feed-install-feed records nil state)))
+        (value :ok)))))
 
 ; Which peer's journal each pending frame belongs in, in the same order as
 ; the frames: the record's own field 0, read by ACL2.

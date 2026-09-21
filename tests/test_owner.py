@@ -560,6 +560,54 @@ class OwnerSurvivesAFaultTests(OwnerFixture):
         self.owner = None
         self.assertIn("FAULT drain cid=", recorded)
 
+
+class ConnectionReleaseTests(OwnerFixture):
+    """A connection the BOOK said closes must leave the owner's table.
+
+    `fn-served-closingp` is true of the effects after QUIT's 205. The host
+    used to set `conn.closing`, arm the socket for write and never drop it,
+    so the socket stayed open and the entry stayed in `fn-own-conns` for
+    the lifetime of the process. N QUITs cost N permanent slots; at
+    `--max-connections` `fn-own-open` answers NIL and every later accept
+    was closed with no greeting and no log line. That is what made a node
+    refuse every connection for the 90 s of a gate deadline while `kill -0`
+    said it was alive.
+    """
+
+    def test_a_quit_releases_the_owners_connection_slot(self):
+        owner = self.start_owner(max_connections=2)
+        # Three times the bound. Before the fix the third connect answered
+        # with an immediate close and the table never shrank.
+        for attempt in range(6):
+            sock = owner.connect()
+            sock.sendall(b"QUIT\r\n")
+            self.assertTrue(read_line(sock).startswith("205"),
+                            "QUIT {} was not answered 205".format(attempt))
+            sock.close()
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                if owner.control_line(b"CONNECTIONS") == b"connections":
+                    break
+                time.sleep(0.1)
+            self.assertEqual(
+                owner.control_line(b"CONNECTIONS"), b"connections",
+                "the owner still held a connection after QUIT {}".format(attempt))
+
+    def test_a_socket_closed_without_quit_also_releases_the_slot(self):
+        """The control that isolates the defect to the `closing` path."""
+        owner = self.start_owner(max_connections=2)
+        for attempt in range(6):
+            sock = owner.connect()
+            sock.close()
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                if owner.control_line(b"CONNECTIONS") == b"connections":
+                    break
+                time.sleep(0.1)
+            self.assertEqual(
+                owner.control_line(b"CONNECTIONS"), b"connections",
+                "the owner still held a connection after close {}".format(attempt))
+
 class TransitPortTests(OwnerFixture):
     """The role of an inbound connection is the peer table's, not the client's.
 

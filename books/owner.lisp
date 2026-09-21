@@ -1206,9 +1206,14 @@
            code))))))
 
 ; The connection one peer's feed writes to.  The host opens the socket and
-; reports its identifier here; a close reports nil, which returns every
-; in-flight entry to :queued through fn-feed-lost at the next observation
-; and stops selection at once (fn-feed-selection wants a natp conn).
+; reports its identifier here; nil stops selection at once
+; (fn-feed-selection wants a natp conn).  It does NOT resolve the entry that
+; was in flight: this comment used to say the next observation would, and
+; there is no next observation once the socket is gone, so the entry sat at
+; :sent until the process restarted (measured on gate a5c6792: node A
+; reconnected every 5 s and offered nothing, seven times over).
+; `fn-own-feed-lost' below is the transition for a lost connection and is
+; what the host calls now.
 (defun fn-own-feed-connect (o peer conn)
   (declare (xargs :guard t))
   (let ((e (fn-own-feed-entry-of peer (fn-own-feeds o))))
@@ -1218,6 +1223,25 @@
        o (fn-own-feed-put peer (fn-own-feed-entry-record e)
                           (fn-feed-with-conn (fn-own-feed-entry-feed e) conn)
                           (fn-own-feeds o))))))
+
+; The connection to one peer is gone.  The host reports the EVENT -- the
+; socket closed, the read returned nothing, a write failed -- and the model
+; decides what it means: `fn-feed-lost' returns that peer's in-flight entry
+; to :queued with one more attempt and a backoff and forgets the connection,
+; so the next command for it is an offer (K5's restart-by-offer, and the
+; reason the entry no longer waits for `fn-own-reopen').  PER PEER: settling
+; another peer's genuinely in-flight entry would be the second transfer K5
+; forbids, which is why this is not `fn-own-feed-restart-all'.
+(defun fn-own-feed-lost (o peer obs)
+  (declare (xargs :guard t))
+  (fn-own-with-feeds o (fn-own-feed-lost-one peer (fn-own-feeds o) obs)))
+
+; The FNFD record that authorizes it, read off the state BEFORE it moves:
+; `(:feed-outcome peer msgid attempt 400)' for the entry in flight, and
+; nothing at all when none is.
+(defun fn-own-feed-lost-records (o peer)
+  (declare (xargs :guard t))
+  (fn-own-feed-lost-records-of peer (fn-own-feeds o)))
 
 ; Replay: the peer's FNFD journal, folded through the feed machine, before
 ; any command may be emitted.  The host reads the file and decodes each frame
@@ -1388,6 +1412,37 @@
                   next)))
       (cons nil o))))
 
+; THE RECORDS THE OUTCOME OWES THE JOURNAL, read off the owner BEFORE the
+; outcome moves it.  specs/peering.md sec. 3.3: `(:feed-enqueue peer msgid
+; tick)' is written BEFORE the entry is :queued.  Nothing wrote it.
+; `fn-own-outcome' and `fn-own-transit-outcome' both fold
+; `fn-own-feed-durable' into the new owner and the host installed only the
+; served effects, so a queued entry existed in memory and NOWHERE ELSE
+; until its first offer -- and an article accepted while a peer was
+; unreachable did not survive the process (measured: gate 15ac399, node A
+; posts <fed-restart@example.invalid> with node B down, is killed with -9,
+; restarts, replays EIGHT records, and never offers it; node B answers 430
+; to 179 polls over 90 s).  The condition is the same one the transition
+; itself uses, stated once here so the host does not restate it.
+(defun fn-own-outcome-records (o id word)
+  (declare (xargs :guard t))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
+        (sub (fn-own-inflight o)))
+    (if (and conn sub (equal (fn-own-sub-id sub) id)
+             (equal (fn-own-outcome-completion o word) :durable))
+        (fn-own-feed-durable-records o sub)
+      nil)))
+
+(defun fn-own-transit-outcome-records (o id kind word)
+  (declare (xargs :guard t))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
+        (sub (fn-own-inflight o)))
+    (if (and conn sub (equal (fn-own-sub-id sub) id) (fn-own-transit-subp sub)
+             (equal kind :want)
+             (equal (fn-own-outcome-completion o word) :durable))
+        (fn-own-feed-durable-records o sub)
+      nil)))
+
 ; -----------------------------------------------------------------------------
 ; The owner event machine.  (:octets id octets) is the served port; (:read id
 ; event) is its per-event law; (:take) is the writer step; (:outcome id word)
@@ -1418,6 +1473,7 @@
                                                    (car (cddddr event)))))
     (:feeds (fn-own-feeds-reconfigure o (cadr event)))
     (:feed-conn (fn-own-feed-connect o (cadr event) (caddr event)))
+    (:feed-lost (fn-own-feed-lost o (cadr event) (caddr event)))
     (:feed-replay (fn-own-feed-recover o (cadr event) (caddr event)))
     (:tick (cdr (fn-own-tick o (cadr event))))
     (:tick-peer (cdr (fn-own-tick-peer o (cadr event) (caddr event))))
@@ -1469,9 +1525,11 @@
     fn-own-transit-outcome
     fn-own-with-feeds fn-own-sub-origin fn-own-sub-msgid fn-own-sub-octets
     fn-own-feed-stamp fn-own-feed-durable fn-own-feed-durable-records
+    fn-own-outcome-records fn-own-transit-outcome-records
     fn-own-feeds-reconfigure fn-own-tick fn-own-tick-records
     fn-own-tick-peer fn-own-tick-peer-records
     fn-own-feed-article fn-own-feed-reply fn-own-feed-reply-records
-    fn-own-feed-connect fn-own-feed-recover))
+    fn-own-feed-connect fn-own-feed-lost fn-own-feed-lost-records
+    fn-own-feed-recover))
 
 (in-theory (disable fn-own-vocabulary))
