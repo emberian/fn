@@ -91,6 +91,17 @@ data, corrupt-unselected isolation, distinct refused and uncertain exits,
 and six deterministic SIGKILL cuts after ACL2-observed candidate and marker
 file, namespace/replace, and directory-barrier phases.
 
+The existing Python checkpoint regression was also run against the corrected
+state-threaded host wrapper:
+
+```
+FN_ACL2=/opt/homebrew/bin/acl2 \
+python3 -m unittest -v tests.test_checkpoint
+```
+
+All 6/6 tests passed in 303.355 seconds, including its 128-record suffix
+replay case and existing process-death cut matrix.
+
 This evidence does not claim suffix-only fast recovery: native recovery still
 performs full authoritative replay.  The host still recognizes canonical
 `generation-N.fncp` names at the filesystem boundary; an ACL2-owned decoder
