@@ -29,7 +29,12 @@
 ; The model delegates the recover decision to the same ACL2 function the host
 ; calls.  Valid observations are framed by ACL2; malformed is one invalid byte.
 (defun fn-bpn-sf-host-recover (observation freshp)
-  (declare (xargs :guard (fn-bpn-sf-observationp observation)))
+  ;; The concrete frame function's octet-list guard correspondence is not yet
+  ;; exported by bp-node-records.  Keep this boundary executable and pin it
+  ;; with ground tests; W14 must export that bridge before claiming a fully
+  ;; guard-verified correspondence.
+  (declare (xargs :guard (fn-bpn-sf-observationp observation)
+                  :verify-guards nil))
   (cond ((equal observation :absent)
          (fn-bpn-sequence-recover nil nil freshp))
         ((equal observation :malformed)
