@@ -23,6 +23,11 @@
 ; writes a reply octet.
 (in-package "ACL2")
 (include-book "../books/owner")
+; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
+; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
+; ACL2 session does not load `host/store-host.lisp', so the one owner has to
+; be a book both sessions include.  See books/frame-trailer.lisp.
+(include-book "../books/frame-trailer")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
