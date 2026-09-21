@@ -1,0 +1,132 @@
+{
+  "acl2_executable": "/home/ember/fn-tools/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "c8a7a804d9cc80e2025a8ab0e1d9325f2a0c4a027a5dcdcb2c1093e9cd5c8163",
+  "acl2_exit_codes": {
+    "tests/acl2/nntp-teeth-tests": 0,
+    "tests/acl2/nntp-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-lanes/w6-nntp-effects-b/build/acl2/certify-20260920T175936Z-1448176",
+  "book_wall_seconds": {
+    "tests/acl2/nntp-teeth-tests": 1.345,
+    "tests/acl2/nntp-tests": 1.554
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "published": 1
+  },
+  "certificate_digests_sha256": {
+    "tests/acl2/nntp-teeth-tests": "bffaba0468f0430914a335f20509841922ad3db6c327beac1b34cdf6451a1a97",
+    "tests/acl2/nntp-tests": "48685fcf2d8cdc1aeb2fc67698b1f300c3ea8247b4fda0ba7f9adfd8ad50a3de"
+  },
+  "certify_wall_seconds": 1.558,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-tools/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "tests/acl2/nntp-teeth-tests": "fc60bbc5d13197fc616ed5701ee5e5a7aad2e9451aa4fb700c52c16bb9ec7c49",
+    "tests/acl2/nntp-tests": "f6ed728e47b1d79b3cf36b780797c5b09b36fdd4a4578aef7311a81c6914834e"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 45c5f5e64afe8d9fa7455353375327c7 c416c01101dd",
+    "FN_CERTIFY_SUCCESS 45c5f5e64afe8d9fa7455353375327c7 77e8fb31008d"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 45c5f5e64afe8d9fa7455353375327c7 c416c01101dd",
+    "FN_CERTIFY_SUCCESS 45c5f5e64afe8d9fa7455353375327c7 77e8fb31008d"
+  ],
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "3794af1e0ec92f4c9571ed34daa01b06705fce8a0f3d27c800746d3666741fff",
+  "requested_before_filter": [
+    "tests/acl2/nntp-tests",
+    "tests/acl2/nntp-teeth-tests"
+  ],
+  "requested_books": [
+    "tests/acl2/nntp-tests",
+    "tests/acl2/nntp-teeth-tests"
+  ],
+  "run_id": "certify-20260920T175936Z-1448176",
+  "runner_sha256": "4210828c097d8ec7691aeefa93a2f66e739fae0fa1acfd59521574144b3b0c7e",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "tests/acl2/nntp-teeth-tests": 0.0,
+    "tests/acl2/nntp-tests": 0.001,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance.lisp": "db062af997f850f6dad43ae00967db557cca5117108f43d5464ced55be5f286a",
+    "books/article-fields.lisp": "14dfa236bcac52e0b4dea86d105c701f3e74fcb554b912964f6b08d4cd430f85",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/nntp-effects.lisp": "df1653ebb3a6b82294785c6babf6baef6ace31ec19d672d00a43294e6a364196",
+    "books/nntp-invariants.lisp": "721a866685e5f2a9fae71dff39af7a5689c6fa5e5fed1ebc6f62c4f4ce6405fa",
+    "books/nntp-legacy.lisp": "bfbfb439455406c8232ed9732e54c0d9e0ccc50df3607605d0a54b1758cb18ad",
+    "books/nntp-overview.lisp": "e7e672279e01656c79d79383ee28170c1c402e9eba50f12a946362fe97f756c6",
+    "books/nntp-projection.lisp": "0709955607510e4e8c4f4404a15af737cf8db91be21352a92403b1260861eb0b",
+    "books/nntp-responses.lisp": "91a1ffdd0871945cece0f80468e07bb5226254d85cbafc3410f7442fdfe26267",
+    "books/nntp-session.lisp": "ed364496944b77118cdd826272802fafb961911fcc6ed85961d8b2f940c4ca51",
+    "books/nntp-syntax.lisp": "86abc0d9e4be8068cbdee6822fe316c75b5cb1907febd1a11bcb3d4d61864f95",
+    "books/nntp.lisp": "f8aa83f144349214390d2feb64db4b94a8ea6b21d7ff09fd6308aebb32360f71",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9",
+    "books/wire.lisp": "1e2e7492a82bcd6c0f5bf2864b96fd45aa1241164e65dd574034e83c66f84dfa",
+    "tests/acl2/nntp-teeth-tests.lisp": "58083d1e8b0e500dbd8765cef990376bcbced9e14df5b7084de4c0a589ca726f",
+    "tests/acl2/nntp-tests.lisp": "bb16cb3fab3ab956f1ac68fa03f98046413bf6890bcdd71cd1672293bdc1620e"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance.lisp": "db062af997f850f6dad43ae00967db557cca5117108f43d5464ced55be5f286a",
+    "books/article-fields.lisp": "14dfa236bcac52e0b4dea86d105c701f3e74fcb554b912964f6b08d4cd430f85",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/nntp-effects.lisp": "df1653ebb3a6b82294785c6babf6baef6ace31ec19d672d00a43294e6a364196",
+    "books/nntp-invariants.lisp": "721a866685e5f2a9fae71dff39af7a5689c6fa5e5fed1ebc6f62c4f4ce6405fa",
+    "books/nntp-legacy.lisp": "bfbfb439455406c8232ed9732e54c0d9e0ccc50df3607605d0a54b1758cb18ad",
+    "books/nntp-overview.lisp": "e7e672279e01656c79d79383ee28170c1c402e9eba50f12a946362fe97f756c6",
+    "books/nntp-projection.lisp": "0709955607510e4e8c4f4404a15af737cf8db91be21352a92403b1260861eb0b",
+    "books/nntp-responses.lisp": "91a1ffdd0871945cece0f80468e07bb5226254d85cbafc3410f7442fdfe26267",
+    "books/nntp-session.lisp": "ed364496944b77118cdd826272802fafb961911fcc6ed85961d8b2f940c4ca51",
+    "books/nntp-syntax.lisp": "86abc0d9e4be8068cbdee6822fe316c75b5cb1907febd1a11bcb3d4d61864f95",
+    "books/nntp.lisp": "f8aa83f144349214390d2feb64db4b94a8ea6b21d7ff09fd6308aebb32360f71",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9",
+    "books/wire.lisp": "1e2e7492a82bcd6c0f5bf2864b96fd45aa1241164e65dd574034e83c66f84dfa",
+    "tests/acl2/nntp-teeth-tests.lisp": "58083d1e8b0e500dbd8765cef990376bcbced9e14df5b7084de4c0a589ca726f",
+    "tests/acl2/nntp-tests.lisp": "bb16cb3fab3ab956f1ac68fa03f98046413bf6890bcdd71cd1672293bdc1620e"
+  },
+  "start_order": [
+    "tests/acl2/nntp-teeth-tests",
+    "tests/acl2/nntp-tests"
+  ],
+  "status": "passed",
+  "timeout_seconds": 3600
+}

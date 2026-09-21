@@ -1,0 +1,130 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/peer-feed-invariants": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T211815Z-98758",
+  "book_failures": {},
+  "book_results": {
+    "books/peer-feed-invariants": "passed"
+  },
+  "book_wall_seconds": {
+    "books/peer-feed-invariants": 31.892
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "published": 1
+  },
+  "certificate_digests_sha256": {
+    "books/peer-feed-invariants": "80454505533ef8b586cadd4f2e94a7466cc3bba777cb3619901c233f64c9de8f"
+  },
+  "certify_wall_seconds": 31.897,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/peer-feed-invariants": "d82816a8a353378e6b944e29ee7faf73ff0936ed0e0b6e107a91155453f43948"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS e9b4218bbedd91398281392a6c75ce29 a8f884664e26"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS e9b4218bbedd91398281392a6c75ce29 a8f884664e26"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "3ba18702ea2977cc68d87daeb7830fbd3e3cd6082b90eb0c176d37e8f6e32f12",
+  "requested_before_filter": [
+    "books/peer-feed-invariants"
+  ],
+  "requested_books": [
+    "books/peer-feed-invariants"
+  ],
+  "run_id": "certify-20260920T211815Z-98758",
+  "runner_sha256": "3607dc4b15cbe771eda434bc1911f7106b4b81f98aded95f9ea5e4cda6546ce5",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/peer-feed-invariants": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/defrecord.lisp": "30a413f131d0a4bfcaffc46bd05b08b21a977a68c81426d3ccf565a5fa2558b8",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "fa0e368bdbbb99aba595fb5fbbb962f525011499ba81d35861f3e857f54792cd",
+    "books/peer-feed-invariants.lisp": "f992572efc7da7b88c29bfe6a9562377d5d93dcae63390410ecbe7f5868dd8a8",
+    "books/peer-feed.lisp": "257517ccb03e39a67b74584dfb4190f4a93f277431f2cdb4534af1827895a817",
+    "books/provenance.lisp": "0efbd4e54ba81fb3eeca8522c66e5956ce53d8ec2d19ca02369c7f5d4332dd76",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/scheduler.lisp": "5abbb9a30a5a898badc8cac23df3a6385889e8ff671dabb0838bf75b79adf890",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/defrecord.lisp": "30a413f131d0a4bfcaffc46bd05b08b21a977a68c81426d3ccf565a5fa2558b8",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "fa0e368bdbbb99aba595fb5fbbb962f525011499ba81d35861f3e857f54792cd",
+    "books/peer-feed-invariants.lisp": "f992572efc7da7b88c29bfe6a9562377d5d93dcae63390410ecbe7f5868dd8a8",
+    "books/peer-feed.lisp": "257517ccb03e39a67b74584dfb4190f4a93f277431f2cdb4534af1827895a817",
+    "books/provenance.lisp": "0efbd4e54ba81fb3eeca8522c66e5956ce53d8ec2d19ca02369c7f5d4332dd76",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/scheduler.lisp": "5abbb9a30a5a898badc8cac23df3a6385889e8ff671dabb0838bf75b79adf890",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9"
+  },
+  "start_order": [
+    "books/peer-feed-invariants"
+  ],
+  "status": "passed",
+  "timeout_seconds": 1800
+}

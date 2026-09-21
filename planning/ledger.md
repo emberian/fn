@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 277 |
 | Certification roots in the Makefile | 276 |
 | Books inside the root closure | 276 |
-| `defthm` and `defthmd` events | 5617 |
-| `defun` events | 3946 |
-| Functions with verified guards | 1475 |
-| Functions declared `:verify-guards nil` and never verified | 191 |
+| `defthm` and `defthmd` events | 5638 |
+| `defun` events | 3949 |
+| Functions with verified guards | 1477 |
+| Functions declared `:verify-guards nil` and never verified | 192 |
 | Functions left at the default with an explicit guard | 1791 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 5598 |
+| `assert-event` checks | 5634 |
 | `must-fail` checks | 63 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 46 |
@@ -222,15 +222,15 @@ that `make certify` requests.
 | `books/statement-invariants.lisp` | root | 59 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 30 | 65 | 0/0/65/0 | 0 | 0 | 0 |
 | `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/store-files-invariants.lisp` | root | 58 | 4 | 0/1/0/3 | 0 | 0 | 1 |
+| `books/store-files-invariants.lisp` | root | 62 | 4 | 0/1/0/3 | 0 | 0 | 1 |
 | `books/store-files-traces.lisp` | root | 51 | 12 | 0/0/0/12 | 0 | 0 | 0 |
-| `books/store-files.lisp` | root | 30 | 55 | 52/0/3/0 | 0 | 0 | 0 |
-| `books/store-node-invariants.lisp` | root | 44 | 1 | 0/0/0/1 | 0 | 0 | 1 |
+| `books/store-files.lisp` | root | 30 | 57 | 54/0/3/0 | 0 | 0 | 0 |
+| `books/store-node-invariants.lisp` | root | 59 | 2 | 0/1/0/1 | 0 | 0 | 1 |
 | `books/store-node-resolution.lisp` | root | 30 | 8 | 6/0/0/2 | 0 | 0 | 2 |
-| `books/store-node-traces.lisp` | root | 52 | 5 | 2/0/1/2 | 0 | 0 | 0 |
+| `books/store-node-traces.lisp` | root | 53 | 5 | 2/0/1/2 | 0 | 0 | 0 |
 | `books/store-node.lisp` | root | 9 | 23 | 21/0/2/0 | 0 | 0 | 0 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/store-observed.lisp` | root | 36 | 13 | 12/0/1/0 | 0 | 0 | 1 |
+| `books/store-observed.lisp` | root | 37 | 13 | 12/0/1/0 | 0 | 0 | 1 |
 | `books/store-sweep.lisp` | root | 7 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/stx-authority.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/stx-carrier.lisp` | root | 49 | 26 | 1/0/25/0 | 0 | 0 | 0 |
@@ -347,7 +347,7 @@ that `make certify` requests.
 | `tests/acl2/store-node-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 37 | 0 | 0 |
 | `tests/acl2/store-node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
-| `tests/acl2/store-observed-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 101 | 0 | 0 |
+| `tests/acl2/store-observed-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 137 | 0 | 0 |
 | `tests/acl2/store-sweep-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/stx-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 42 | 0 | 0 |
 | `tests/acl2/stx-transit-tests.lisp` | root | 0 | 7 | 0/0/7/0 | 84 | 0 | 0 |

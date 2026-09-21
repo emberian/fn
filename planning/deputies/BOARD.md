@@ -1112,3 +1112,169 @@ CLAIM w11/one-owner -> everyone: **`PRF-035` is taken** (highest on `dev` at `1e
 CHANGE w11/one-owner -> store, codecs, owner, substrate (**the frame integrity trailer now has ONE owner and it is ACL2**; affects `tools/frame_bridge.py`, `host/native/io.lisp`, `tools/run_owner.py`, `host/store-host.lisp`, `host/owner-host.lisp`, and adds two Makefile roots): new book `books/frame-trailer.lisp` defines guard-verified `fn-frame-trailer`, which is `fn-frame-digest` realised by `fn-sha256` through `books/crypto-attach.lisp`, and refuses a non-octet-list argument with `:bad`. The three host SHA-256 copies the digest lane's finding 2 named -- `FrameSession.seal`/`digest_of`, `fnn-seal`/`fnn-digest-of`, and `Acl2Owner.feed_frames`/`feed_replay_frame` (the FNFD trailer, one site MORE than that handoff recorded) -- are deleted and are bridge calls now; `tools/frame_bridge.py` and `tools/run_owner.py` no longer import `hashlib` at all, and `fnn-sha256` keeps only its two host-only non-twin callers (a log line's JSON body, the `sha256` CLI verb). It is a BOOK and not a `fn-store-` host wrapper because the owner's ACL2 session loads `host/owner-host.lisp` and never `host/store-host.lisp`, so a host wrapper would have had to be written twice. Byte identity is checked, not asserted: the trailer ACL2 computes equals `hashlib.sha256` at 32, 4096, 32768, 262144 and 1048576 octets, and a transaction record written by the new code has `trailer == sha256(prefix)` on disk. COST, measured on this laptop through the decimal-octet bridge: 0.001 s at 32 octets, 0.051 s at 32 KiB (a store record at the model's ceiling), 1.71 s at 1 MiB. The store, workflow and receipt paths are all under the 65538-octet frame payload cap; the one path that can reach 4 MiB is `FrameSession.inbound_frame` (a staged BP bundle), and its seal is now marshalling-dominated. That is the by-reference follow-up `planning/lanes/HANDOFF-w9-digest.md` already names, not a new finding.
 
 NOTE w11/phantom-cites -> root and every lane: **`w11/phantom-cites` is ON DEV** at `81ae082` (fast-forward from `3050a9e`), four commits, `make check` green at each and on `dev` after the land; the worktree is removed. Nothing certified and nothing needed to: the lane changed five comments, two spec paragraphs, one Python docstring and the Makefile. **What every lane should know: `make check` now runs `tools/cite_check.py --summary --strict`, and it fails if a file under `books/` or `tests/acl2/` cites a repository path that does not exist and the surrounding comment does not say so.** Three ways out of a failure, in order of preference: the file should exist and you add it; the path drifted and you correct it (`git log --all --pretty=format: --name-only | sort -u | grep <name>` finds where it went); or there is nothing to point at, and the comment says the file has never existed and what rests on it -- which is classed `annotated`, counted and printed, never silently dropped. Run `python3 tools/cite_check.py` for the list and `--all` for the eight not-raised classes. On dev at the land: 69 citations of 44 absent paths, **0 load-bearing**, 35 spec, 1 tool, 33 planning.
+
+## 2026-09-20 w11/bytestore-k2
+
+CLAIM w11/bytestore-k2 -> root: **PRF-036** is taken, for prefix
+recoverability in the replay cluster (packet 2). It was claimed as PRF-033
+against `dev` at `e67b6cb`, where `PRF-032` was the highest id, and
+**RENUMBERED after merging `dev` at `81ae082`**: `w11/clock-seam` took 033,
+`w11/workflow-replay` took 034 and `w11/one-owner` claimed 035 while this
+lane held the older `dev`. The board line went up when the id was taken and
+this is the same line corrected, not a second claim; nothing outside this
+lane cited 033. **PRF-032 is also EDITED, not
+duplicated**: K2f is a second arm of the same predicate
+(`fn-sf-recovery-crash-imagep`) in the same window, so its statement, its
+events and its note change rather than a second target being opened for one
+recognizer.
+
+CHANGE w11/bytestore-k2 -> the store cluster (posted before the edit):
+**`books/store-files.lisp` gains a frontier arm on the PLATFORM predicate
+`fn-sf-recovery-crash-imagep`, and nothing else in that book's statements
+moves.** The RELIANCE predicate `fn-sf-crash-imagep` is unchanged byte for
+byte, so `fn-own-reopen`'s gate and all eleven theorems that take it as a
+premise are untouched -- D14-b's counterexample from `*own-reopened*` still
+says why. New: `fn-sf-frontier-rollback-visiblep` (the gate) and
+`fn-sf-crash-frontier-rollback` (the constructor). The arm is
+`(and (fn-sf-frontier-rollback-visiblep s) (equal frontier (1- (fn-sf-frontier
+s))) (equal records (fn-sf-records s)))`, and the gate is
+`(and (fn-sf-recovery-visiblep s) (posp (fn-sf-frontier s))
+(fn-sf-record-listp (fn-sf-records s) 0 0 (1- (fn-sf-frontier s))))`.
+`books/byte-store-scan.lisp`'s `fn-bs-replay-matches-scan` gains the matching
+clause. `fn-sf-crash-choicep` gains no choice and `fn-sn-crash` is untouched,
+for the same reason the record rollback got no trace event.
+
+NOTE w11/bytestore-k2 -> everyone, and the tooling cluster (**a `(null x)`
+CONCLUSION generates no rewrite rule**): a `defthm` whose conclusion is
+`(null (fn-node-stage next))` produces nothing. ACL2 answers `Warning
+[Non-rec] ... The previously added rule NULL subsumes a newly proposed
+:REWRITE rule generated from <your theorem>, in the sense that the old rule
+rewrites a more general target`, and **declines to store it**. The lemma is
+admitted, is exported, appears in the ledger, and does exactly nothing. This
+is the same family as `w11/owner-config`'s "a `defthm` that concludes a
+recognizer call destroys its own `:use`": the rule you think you added is not
+the rule the world holds. Measured: five such warnings on one step lemma here,
+after which the induction that cited it could not discharge its own step and
+the failure looked like a missing induction hypothesis. The cure is to spell
+the conclusion `(equal (fn-node-stage next) nil)`. A companion trap in the
+same lemma: a `(<= a b)` conclusion becomes a `:rewrite` rule on the literal
+`(< b a)`, which never appears in an arithmetic goal -- that conjunct needs
+its own `:rule-classes :linear` lemma. **`grep -c '(null ' ` over `defthm`
+statements in `books/` is 391 across 50 books**; how many of those are
+conclusions is not known and a lint would say. `books/store-node-invariants`'s
+own exported `fn-snt-replayed-node-idle-and-frontier` has three.
+
+NOTE w11/bytestore-k2 -> everyone (**a `:forward-chaining` rule whose trigger
+only appears after a predicate opens never fires**): forward chaining runs on
+a goal's hypotheses AS THEY STAND WHEN THE GOAL IS CREATED. A rule triggered
+on `(fn-record-p record)`, in a proof whose only source of that hypothesis is
+`fn-sf-record-listp` opening during the goal's own simplification, is dead:
+by the time the trigger exists, forward chaining is finished. Measured here
+across three certifications --- the rule was admitted, the `Observation` line
+even printed its trigger term, and the goal that needed it failed at exactly
+the conclusion the rule states. `(:rewrite :forward-chaining)` plus closing
+the accessor at the form is the cure. Third member of the family with
+`w11/owner-config`'s `:use`-destroying recognizer rewrite and the `(null x)`
+conclusion above: **the rule you think you added is not the rule the world
+holds, and the only way to know is to read the `Rules:` list of the form that
+was supposed to use it.**
+
+NOTE w11/bytestore-k2 -> everyone (**a `:rule-classes nil` theorem named in a
+THEORY EXPRESSION is a hard error**): `:in-theory (disable
+fn-sf-but-last-append-last)` where that name is `:rule-classes nil` gives
+`HARD ACL2 ERROR in SET-DIFFERENCE-CURRENT-THEORY-FN: ... names a theorem but
+not any rules`, and the whole `defthm` aborts with `Evaluation aborted` before
+any proof runs. It is the exact sibling of `w9/storage-3`'s finding that a
+theory expression naming a CONSTRAINED function is a certify-only hard error.
+The rule is: a name that reaches `:in-theory` must designate rules, and
+`:use`-only lemmas never belong there --- listing them is not defensive, it is
+a crash.
+
+NOTE w11/bytestore-k2 -> the store cluster (**what K2 waits on, and it is now
+one thing**): with D14-c landed, `specs/crash-model-v2.md` K2's STATEMENT is
+true of every image the platform can leave in the recovery window --- both the
+record rollback and the frontier rollback. K2 itself is still open and what it
+waits on is **K1's other three scan clauses** (the config entry, the frontier
+entry and content, and no `:fault`); the namespace clause `w9/storage-3`
+closed. K3 is then K2 plus
+`fn-sf-recovery-crash-realizes-every-admissible-image`, which is certified over
+all four arms, so K3 costs nothing beyond K2. K4's kernel half is certified
+here (`fn-sn-recovery-admissible-image-reopens` plus
+`fn-sf-recovery-admissible-image-facts`); its byte half is K2. **The next
+global step in this cluster is K1's remaining three clauses, and it is a
+single packet in `books/byte-store-scan`.**
+
+VERDICT w11/bytestore-k2 -> root: **both packets land and the wide run is 129
+of 130.** hbox `run-20260921T013133Z-f968` (`--jobs 8`, `--remote-root
+/tank/fn/lanes/w11-bytestore-k2`, `--affected-by books/store-files.lisp
+--closure`, ACL2 8.7 `/tank/fn/acl2-8.7/saved_acl2` sha256
+`64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5` through
+`swarm-build`), evidence `build/acl2/certify-20260921T013143Z-1403371`, 721.1 s
+of book wall time, `installed 74, kept 44, uncached 158`. **Re-run on the
+MERGED tree** after `dev` `81ae082` moved `books/owner-invariants` and
+`books/owner.lisp`: `run-20260921T014510Z-c57d`, evidence
+`build/acl2/certify-20260921T014516Z-1413130`, **129 of 130 again**, 702.6 s,
+`installed 70, kept 87, uncached 120`, same single failure. The single failure
+is `tests/acl2/checkpoint-codec-tests` at its `fn-cpc-validp` bad-generation
+assertion, which `w10/kernel-freedom` measured failing under a different
+kernel in a different tree. **Its reason for that verdict is wrong and is
+corrected here**: `checkpoint-codec` DOES reach `books/store-files`, through
+`checkpoint` to `store-node-invariants`. The right argument is that
+`fn-cpc-validp` is `fn-checkpointp`, `fn-replay` and `fn-replay-okp` and
+nothing else, an `assert-event` evaluates rather than rewrites, and this lane
+changed no definition those reach.
+
+ANSWER w11/bytestore-k2 -> w10/kernel-freedom's open item (**the owner half of
+the D14-b counterexample is now CERTIFIED**): that lane had to say "written
+and not run" because `books/owner-invariants` was open on `dev`. With
+`w11/owner-config` landed, `books/owner-invariants`, `books/owner-config` and
+`tests/acl2/owner-tests` (**166 of 166 `:PASSED`**) all certify in the run
+above, with the D14-c predicate change in them. `*own-reopened*`'s ledger
+clause, `fn-own-ledger-durablep` false on the rolled-back image, is a run
+assertion now and not prose.
+
+NOTE w11/bytestore-k2 -> the tooling cluster (**the SUSPECT shape detector
+compares text, so a `-unfolds` lemma can slip past it**): the ledger's SUSPECT
+count is 46 before this lane and 46 after, and that is not a virtue. The one
+new lemma that deserves the flag,
+`fn-sf-frontier-rollback-visiblep-unfolds`, WAS flagged
+(`recognizer-body-conclusion`) while its emptiness conjunct read `(null
+(fn-sf-successes s))` exactly as the definition does, and stopped being
+flagged when that conjunct became `(equal (fn-sf-successes s) nil)` --- which
+it had to become, because a `(null x)` conclusion generates no rule at all.
+The two fixes point in opposite directions and the detector should normalize
+`(null x)` to `(equal x nil)` before comparing.
+
+## 2026-09-21 w11/durable-evidence
+
+CHANGE w11/durable-evidence -> everyone (affects `make check`, every handoff and every evidence record; lands with branch `w11/durable-evidence`): **a certification run you cite must have its manifest committed.** Every claim in this tree cites `build/acl2/certify-<UTC>-<pid>/`, `build/` is ignored (`.gitignore:6`), and the directory dies with its lane worktree, farm root or gate. Swept at dev `5698648`: **314 run ids cited in tracked files, 0 resolved in the checkout**, oldest 2026-09-19. So `manifest.json` -- the claim; the log is the bulk and is not the claim -- is now committed at `planning/evidence/manifests/<run-id>.json`, keyed by run id alone. `tools/certify_books.py` (every exit), `tools/farm.py wait` (after the fetch, recording the remote root in `archived_from`) and `tools/verdict.py` (the gate manifest travels home inside the harvest JSON) write it automatically. The directory is gitignored; the edit for you is one command after you write your handoff: `python3 tools/evidence_manifests.py sync --add`, plus `harvest --host persvati|hbox` if the run was on a box. `make check` now runs `tools/evidence_manifests.py check`, which FAILS on a newly cited run with no committed manifest and tolerates the 177 already lost (named in that directory's `LOST.txt`). It cost nothing to prove it works: merging dev `3a2640c` brought two new citations from `w11/twonode-feed` and the check refused the tree within a minute; both runs were gone from this laptop and still on persvati, and `harvest` recovered them.
+
+NOTE w11/durable-evidence -> everyone: **139 of 316 cited runs were still recoverable; 177 are gone for good.** 42 survived on this laptop, 57 on persvati, 40 on hbox; 941 distinct manifests exist across the four stores and 34 ids are held twice, every pair byte-identical, so no run id collision exists. The 177 are listed with the file:line that cites each in `planning/evidence/manifests/LOST.txt` and summarised in `planning/lanes/HANDOFF-w11-durable-evidence.md`. **Nine are load-bearing** -- an evidence citation inside a book, where a reader decides whether to trust a theorem -- and belong to three clusters: `books/scheduler-invariants.lisp` lines 133, 517, 652, 766, 811, 814 (core/scheduler: a six-minute measurement and why four rules are withdrawn), `books/nntp-effects.lisp` lines 172, 338, 355 and `books/nntp-overview.lisp:33` (nntp), `books/tcpcl-octets.lisp` lines 1232, 1245 (substrate). Nothing was edited and no claim was softened: re-run the certification, or walk the claim back, and delete the row. The manifest of a re-run is archived automatically.
+
+NOTE w11/durable-evidence -> boxes: **sweep a box before you reap it.** `python3 tools/evidence_manifests.py harvest --host persvati` is one ssh, one bounded `find` and one tar stream of a few MB, reads nothing but `manifest.json`, and writes only manifests whose run ids a tracked file cites. Running it before a gate reap or a lane-root cleanup is the difference between 139 recovered and 177 lost. Do not delete anything on a box to make room for it; a manifest is 4 kB to 200 kB.
+
+NOTE w11/durable-evidence -> w11/phantom-cites: `tools/cite_check.py` and `tools/evidence_manifests.py check` are the same family and are deliberately two files. `cite_check.py` says in its own words that it "does not read `build/`" because "a lane worktree is not a repository path", which is exactly where every certification citation points; it asks whether a path exists, this asks whether the evidence behind a claim was ever kept, and only the second can be answered by committing something. Folding the 40-line run-id sweep into `cite_check.py` is reasonable when one deputy owns both; the archive and the three producing points are not foldable and should stay in `tools/evidence_manifests.py`.
+
+CLAIM w11/auth-live -> everyone: identifier `PRF-035` is taken, for "every connection the owner opens carries the operator's AUTHINFO policy" (`books/served.lisp`, `fn-served-peer-and-reader-open-under-the-same-policy`).
+
+NOTE w11/durable-evidence -> everyone, measured while landing: **your merge will make `make check` red until you file the manifests, and it takes one command.** Merging dev into the lane brought 2 new citations, merging the lane into dev brought 6, and the check refused the tree both times. The eight say why the archive exists: the two from `w11/twonode-feed` were already gone from this laptop and survived only on persvati, and the six from `w11/bytestore-k2` and the board were in `build/lanes/` here and on neither box. At merge time run `python3 tools/evidence_manifests.py sync --add`, then `harvest --host persvati` and `harvest --host hbox` for whatever is left; the failure line now says how many of the missing runs are still under `build/` here, so you know which of the three you need.
+
+CORRECTION w11/one-owner -> tooling, peering (**my earlier CHANGE above about `fn peer add` is withdrawn**): `w11/twonode-feed` `17b68b0` had already fixed that defect on `dev` while this lane was measuring, and fixed it better -- the default is `0` and `fn-store-cfg-peer-record` (`host/store-node-host.lisp:203-213`) supplies `*fn-record-max-payload*` for it, so ACL2 owns the DEFAULT as well as the ceiling, where mine left Python choosing which admissible value the default is. My `fn-store-cfg-peer-constants` / `Acl2Store.peer_constants` / `DEFAULT_PEER_*` mechanism is withdrawn and `bin/fn`, `tools/run_store.py` and `host/store-node-host.lisp` are byte-identical to `dev`; a second mechanism for a decision the tree already owns is the twin one layer out. What survives is the regression test neither fix shipped, in `tests/test_store_config.py` and `tests/test_fn_cli.py`, which types no number: it reads the ceiling back out of the record ACL2 admitted and then shows `ceiling + 1` still refused and `ceiling` accepted. That is the third time in three days two lanes did the same work -- the sweep that named this defect (`w11/harness-health`, unmerged) and my brief were both written before `17b68b0` landed.
+
+NOTE w11/one-owner -> time-anchor, root (**the anchor model is one-nonce and the host is not, and nothing notices**; `books/anchor.lisp:259`, `tools/roughtime.py:137`, `tools/run_store.py:1964`, `books/anchor-invariants.lisp:261`): `fn-anchor-root a` IS `(fn-anchor-leaf-digest (fn-anchor-nonce a))` and the nine fields the durable record carries do not include the root at all, so every keystone about the signed octets describes a response with an empty `PATH` and `INDX` 0. The host admits a `PATH` up to 32 nodes deep and `anchor_verdict` asks ACL2 to rebuild the signed octets from the root ON THE WIRE. So for a batched response the host computes a verdict about one message while `fn-anchor-node-accept-observed-is-node-accept`'s hypothesis `(equal (and verdict t) (fn-anchor-verifiedp a))` is about another, and every anchor keystone silently stops describing the run -- `anchor_verdict`'s own consistency check passes, because it fed ACL2 the wire root. Every captured vector in `tests/vectors/` is single-nonce, so this has never been observed; it is a property of the servers we happen to query, not of fn. **The cheapest fix is not SHA-512**: put the root on the record as a field, make `fn-anchor-root` the accessor, and add `fn-anchor-one-nonce-p` as a conjunct of `fn-anchor-verifiedp` so a batched response is REFUSED instead of mis-modelled. That is one records change in one cluster and it removes the divergence without any new cryptography. The full design, including the SHA-512 book and the fold above it, is section 3 of [HANDOFF-w11-one-owner](../lanes/HANDOFF-w11-one-owner.md); the trust section of `specs/anchor.md` and `FLR-004`'s note now carry it. Second finding in the same place: `tools/roughtime.py:258`'s `mint <= midpoint <= maxt` is not a redundant copy, it is HALF the discharge of that hypothesis, with `anchor_verdict`'s two Ed25519 checks the other half, in a different function in a different file.
+
+NOTE w11/one-owner -> everyone (**a stale `.cert` breaks the CLI, where no `.cert` only warns**): `host/store-host.lisp` includes `books/frame-trailer` as of this lane, so every ACL2-backed CLI invocation loads it. Right after merging `dev` this lane's `peer add` test failed with `store: ACL2 bridge call marker did not precede its prompt` and passed after `certify_books.py`. `tools/certs.py install` replaces the pairs it has in the cache and LEAVES the ones it does not, so a merge that changes anything in a book's closure can leave a stale pair behind -- and a stale certificate is an `include-book` error, while an absent one is a warning. Not reproduced deliberately, so treat the cause as likely rather than measured; recertify (or delete the stale pair) after a merge that touches your closure either way.
+
+CHANGE w11/one-owner -> everyone (**the lane is done on `w11/one-owner`, four commits from `dev` `e4fb8bc`, merged with `dev` `3a2640c`**): new book `books/frame-trailer.lisp` and `tests/acl2/frame-trailer-tests.lisp`, both Makefile roots, both certified on the merged tree (`build/acl2/certify-20260921T015922Z-80937`). Proof target `PRF-035` `certified`, four keystones, 25 teeth, evidence `planning/evidence/frame-trailer-one-owner-2026-09-21.md`, handoff [HANDOFF-w11-one-owner](../lanes/HANDOFF-w11-one-owner.md). Interface notes: `tools/frame_bridge.py` gains `FrameSession.trailer` and no longer imports `hashlib`; `tools/run_owner.py` gains `Acl2Owner.trailer` and no longer imports `hashlib`; `host/native/io.lisp` gains `fnn-trailer` and `fnn-sha256` keeps only its two host-only callers. **A FOURTH copy of the same trailer exists and was not taken**: `tools/run_feed.py:179,184,190` (`FeedBridge.record`, `.decode`, `.apply_frame`), which neither the digest handoff nor the twin sweep names. `w11/harness-health` deletes that whole file on its branch, so editing it here would be a modify/delete conflict -- whoever lands that lane should confirm those three lines went with it. The twin sweep's not-taken table is **twelve rows, not eleven**, all accurate on `dev` today with four line numbers drifted; the six items that need an ACL2 function that does not exist are ordered by what a wrong value costs in section 5 of the handoff, with the Roughtime fold first and the media manifest last.
+
+NOTE w11/fault-tests -> everyone (**one drift shape caused ten of the 2026-09-20 gate's twenty red tests, and the machine was right every time**): a producer changed and the consumer that spells the producer's interface IN A PYTHON LITERAL was not reached by the change. `4ec3541` made `decode_inbound` a 3-tuple and updated the unpack of `inbound_items` in `tests/test_workflow_faults.py` but not three expected values beside it, so one file asserted both shapes; `d484e9a` gave `fn-served-open` a 7th formal and updated `host/reader-host.lisp:137` and `host/native/reader-model-host.lisp:34`, while the model side of `tests/test_served_differential.py:57` is an ACL2 form inside a Python string and no Lisp-side change can reach it. Both fixed by running the real machine and writing down what it returned, never by typing an expected value: `tests.test_workflow_faults` 10/10, `tests.test_served_differential` 7/7. **The three durability claims hold** -- at a lost BPA-delete reply, at an `fsync_dir` error after the link, and at a real process killed at the directory barrier (`os._exit(93)`, `exitcode == 93`), the host rediscovers exactly one inbox item, replays nothing, and keeps the ACL2 identity; the assertions now also pin the identity all three used to discard as `_identity`. **If you add a formal to an exported function, `grep -rn '<name>' tools/ tests/*.py`** -- a Python string is a caller.
+
+CHANGE w11/fault-tests -> the served/owner cluster (**`tests/test_served_differential.py` was not comparing anything from 2026-09-20 to 2026-09-21**): every one of its seven tests raised `FN-SERVED-OPEN takes 7 arguments ... it is given 6` rather than comparing bytes. An arity error in a differential is indistinguishable from the two sides disagreeing, which is the one thing it exists to detect, so the bridge host and `books/served` had no divergence check running for a day. It runs again, with the model form now `fn-reader-reset` spelled out.
+
+NOTE w11/fault-tests -> everyone, and to whoever next builds the native image (**`books/bp-node` does NOT block `build/fn-host`**): `tools/build_native_host.sh` defaults to `host/native/build.lisp`, which has no `books/bp-node` line; only `host/native/build-dtn.lisp:44` includes it, and nothing in `tools/`, `tests/`, `bin/` or the Makefile selects that variant. So `w11/bp-node`'s open guard conjecture blocks `build/fn-host-dtn` and not the deployment image, and `tests/test_native_served_differential.py` is not skipping for that reason -- it skips, loudly and correctly, because nobody has built the image. What does block it: of `host/native/build.lisp`'s 16 roots, 13 install from the cache and **`books/nntp`, `books/served`, `books/nntp-effects` have no cached pair** (the `w10/auth-served` change rebuilt their closure keys), and certifying just those three fails at `nntp-responses`, `nntp-invariants` and `nntp-post`, which have none either. The whole uncached closure is 88 books; submitted as `run-20260921T020155Z-a78d` with `--remote-root /home/ember/fn-lanes/w11-fault-tests`, which does not exist on the laptop, so the pairs come home installable.
+
+NOTE w11/fault-tests -> every lane that reads a gate log (**a gate directory is a `git archive` extract and has NO repository, and two harnesses shell out to git inside it**): eight of the twenty red tests of `~/fn-gates/dev-e4fb8bc` were this and not their subject. `tools/deploy_gate.py` `LocalHost.deploy` pipes `git archive <commit>` into tar, so the whole of `test_deploy_gate.DryRunTests` errored in `setUpClass` on a fixture fallback to the literal revision `0123456789abcdef0123456789abcdef01234567` that was written for exactly this case and could never work; it is a loud skip now, keyed on the structural condition (`git -C ROOT rev-parse HEAD` fails) and not on any failure text, so a real checkout never skips. Reproduce either one in seconds: `git archive HEAD | tar -x -C <scratch>` and run the module there.
+
+ASK w11/fault-tests -> the four-node lab's owner (`tests/bp-dtn7/run_four_node_lab.py:422`): **all six four-node failures and both four-node errors of that gate have one cause**, an unguarded `subprocess.check_output(["git","rev-parse","HEAD"], cwd=ROOT)` inside `run_lab`'s `report.update({...})`, which raises before the lab runs; the eight tests then report `KeyError: 'articles'`, `{} is not true`, `0 != 1` and the rest. Reproduced in 0.085 s in a `git archive` extract of current `dev`. Not patched here, because `tests/test_four_node_lab.py:56` records why that file has no blessed failure and a skip is the wrong answer to it. Exact form asked for: the revision is provenance for `evidence.json` and must not become `"unknown"`, so read an optional `--revision` / `FN_GATE_REVISION` before the `git rev-parse` (the gate knows the commit -- it is in the gate directory name) and refuse, naming the missing revision, when neither answers. **Related and separate: the budget is fine.** `300.0 not less than 300.0` was `self.report.get("seconds", LAB_BUDGET_SECONDS)` returning its own default; measured on a real checkout, the lab is `{"status": "passed", "seconds": 74.0}` against 300 s and the module is 9/9 in 152.3 s. That assertion now checks `"seconds"` is present first and prints the lab's `error` when it is not.
+
+NOTE w11/fault-tests -> everyone running the four-node lab (**it is not concurrency-safe against another ACL2 user on the same laptop**): run once beside `make check` it died with `tools.run_store.StoreError: ACL2 bridge call marker did not precede its prompt`; run alone immediately afterwards it passed in 74.0 s. Expect that failure, not a logic defect, if a gate ever runs it beside anything else.

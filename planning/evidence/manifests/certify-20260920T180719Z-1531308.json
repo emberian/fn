@@ -1,0 +1,136 @@
+{
+  "acl2_executable": "/home/ember/fn-tools/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "c8a7a804d9cc80e2025a8ab0e1d9325f2a0c4a027a5dcdcb2c1093e9cd5c8163",
+  "acl2_exit_codes": {
+    "books/scheduler-peers": 0,
+    "tests/acl2/scheduler-peers-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-lanes/w9-peering-e2e/build/acl2/certify-20260920T180719Z-1531308",
+  "book_wall_seconds": {
+    "books/scheduler-peers": 1.402,
+    "tests/acl2/scheduler-peers-tests": 1.935
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "published": 2
+  },
+  "certificate_digests_sha256": {
+    "books/scheduler-peers": "303f17d9b14c32077d384bc922dc15d6b1def74265fa3c816ee62d0bce79a064",
+    "tests/acl2/scheduler-peers-tests": "4d524729a55bbf9062fe1559c157826adeda56d7dceca6e9f0f98c985e676a48"
+  },
+  "certify_wall_seconds": 3.343,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-tools/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/scheduler-peers": "8de73ae5ceb04f89337248c34f2687ab02f52dff532820f0d8b968206d3332d3",
+    "tests/acl2/scheduler-peers-tests": "b6ed5d7fa3b32d2f8822d7cdc59dfde55a667ce30cc91d3ac3ab0d3c46c1db25"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 0f1fd50a5e2d2bf057b5ffc93164c2f5 8b5be43311f2",
+    "FN_CERTIFY_SUCCESS 0f1fd50a5e2d2bf057b5ffc93164c2f5 ae579ece6f4d"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 4,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 0f1fd50a5e2d2bf057b5ffc93164c2f5 8b5be43311f2",
+    "FN_CERTIFY_SUCCESS 0f1fd50a5e2d2bf057b5ffc93164c2f5 ae579ece6f4d"
+  ],
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "3794af1e0ec92f4c9571ed34daa01b06705fce8a0f3d27c800746d3666741fff",
+  "requested_before_filter": [
+    "books/scheduler-peers",
+    "tests/acl2/scheduler-peers-tests"
+  ],
+  "requested_books": [
+    "books/scheduler-peers",
+    "tests/acl2/scheduler-peers-tests"
+  ],
+  "run_id": "certify-20260920T180719Z-1531308",
+  "runner_sha256": "4210828c097d8ec7691aeefa93a2f66e739fae0fa1acfd59521574144b3b0c7e",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/scheduler-peers": 0.0,
+    "tests/acl2/scheduler-peers-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "db062af997f850f6dad43ae00967db557cca5117108f43d5464ced55be5f286a",
+    "books/assumptions.lisp": "ba3240ac1892124a6b158f2bcb9b5f8e8c8bb659e9302e4232a271d09949bb3e",
+    "books/bp-workflow-invariants.lisp": "27d1c8352e45c059f6d1036e8bb501e2cbb24f2b45e682481c739de68298ff42",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "59c886706bafd7e34574716b1b620a5e2c95e32d47de4a4901580805c02a4a4d",
+    "books/retention.lisp": "b9e366de6fdc55602e28c7d2e2f519ed437597c789a85b9845bf9e39485f3291",
+    "books/scheduler-invariants.lisp": "88a305963e4a10ec03f127acaec97a7fa6adc4d9f1ad921cd884104ca5f4b120",
+    "books/scheduler-peers.lisp": "a82d3b866a948591c6979326c695705ce319233b36716856d93991cc59dbddfe",
+    "books/scheduler.lisp": "a716e69c1bc2ea704268859355ce48a4899c681875cee5cd64bea1b7004784be",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9",
+    "tests/acl2/scheduler-peers-tests.lisp": "b0e25540ceb6cd67936e5301e8e26609982a5bf955d2a279e7a884bfc5b7be52"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "db062af997f850f6dad43ae00967db557cca5117108f43d5464ced55be5f286a",
+    "books/assumptions.lisp": "ba3240ac1892124a6b158f2bcb9b5f8e8c8bb659e9302e4232a271d09949bb3e",
+    "books/bp-workflow-invariants.lisp": "27d1c8352e45c059f6d1036e8bb501e2cbb24f2b45e682481c739de68298ff42",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "59c886706bafd7e34574716b1b620a5e2c95e32d47de4a4901580805c02a4a4d",
+    "books/retention.lisp": "b9e366de6fdc55602e28c7d2e2f519ed437597c789a85b9845bf9e39485f3291",
+    "books/scheduler-invariants.lisp": "88a305963e4a10ec03f127acaec97a7fa6adc4d9f1ad921cd884104ca5f4b120",
+    "books/scheduler-peers.lisp": "a82d3b866a948591c6979326c695705ce319233b36716856d93991cc59dbddfe",
+    "books/scheduler.lisp": "a716e69c1bc2ea704268859355ce48a4899c681875cee5cd64bea1b7004784be",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9",
+    "tests/acl2/scheduler-peers-tests.lisp": "b0e25540ceb6cd67936e5301e8e26609982a5bf955d2a279e7a884bfc5b7be52"
+  },
+  "start_order": [
+    "books/scheduler-peers",
+    "tests/acl2/scheduler-peers-tests"
+  ],
+  "status": "passed",
+  "timeout_seconds": 1800
+}

@@ -1,0 +1,146 @@
+{
+  "acl2_executable": "/tank/fn/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5",
+  "acl2_exit_codes": {
+    "books/byte-store": 0,
+    "books/byte-store-invariants": 0,
+    "books/byte-store-programs": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/tank/fn/lanes/w9-storage/build/acl2/certify-20260920T182231Z-1039695",
+  "book_wall_seconds": {
+    "books/byte-store": 0.503,
+    "books/byte-store-invariants": 3.8,
+    "books/byte-store-programs": 1.441
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "published": 3
+  },
+  "certificate_digests_sha256": {
+    "books/byte-store": "0034a53d3372c726468a2068565a6821746994a91c0c6d4dacaa0cb70f70e26f",
+    "books/byte-store-invariants": "fbf34f15b64074ea6c587fd6a2d0513d28799a72f41c93a2a6a9b27c8b84a19e",
+    "books/byte-store-programs": "78ccc6a27724eb771f529572ccd97c0d56ae128c5e0f172bf01ab1fa63fae2bb"
+  },
+  "certify_wall_seconds": 4.318,
+  "closure": false,
+  "command": [
+    "/tank/fn/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/byte-store": "cce46e3bf01b4049f4ffa93957d8c78d478e446b5ded9b9bc469e21b1d258e81",
+    "books/byte-store-invariants": "92f8316fed7d3f4c6623ff1db2e6e7706d8779922c87036e424a8b9300b92274",
+    "books/byte-store-programs": "223761012ab52dd5c001003af56c3f9c86693bd596cc485e0182a592221d99f8"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 726c0f8e0b91452bf21218d8f3ca4e86 6da4e34a7e0e",
+    "FN_CERTIFY_SUCCESS 726c0f8e0b91452bf21218d8f3ca4e86 42e5d5a6d4cd",
+    "FN_CERTIFY_SUCCESS 726c0f8e0b91452bf21218d8f3ca4e86 0a785a1af063"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 3,
+  "jobs_effective": 3,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 726c0f8e0b91452bf21218d8f3ca4e86 6da4e34a7e0e",
+    "FN_CERTIFY_SUCCESS 726c0f8e0b91452bf21218d8f3ca4e86 42e5d5a6d4cd",
+    "FN_CERTIFY_SUCCESS 726c0f8e0b91452bf21218d8f3ca4e86 0a785a1af063"
+  ],
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "3794af1e0ec92f4c9571ed34daa01b06705fce8a0f3d27c800746d3666741fff",
+  "requested_before_filter": [
+    "books/byte-store",
+    "books/byte-store-invariants",
+    "books/byte-store-programs"
+  ],
+  "requested_books": [
+    "books/byte-store",
+    "books/byte-store-invariants",
+    "books/byte-store-programs"
+  ],
+  "run_id": "certify-20260920T182231Z-1039695",
+  "runner_sha256": "4210828c097d8ec7691aeefa93a2f66e739fae0fa1acfd59521574144b3b0c7e",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/byte-store": 0.0,
+    "books/byte-store-invariants": 0.0,
+    "books/byte-store-programs": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "db062af997f850f6dad43ae00967db557cca5117108f43d5464ced55be5f286a",
+    "books/byte-store-invariants.lisp": "ba94f9dba982b4d4de6d066f4abb79b0c68417e79cbc78b8955b4e39f752a04c",
+    "books/byte-store-programs.lisp": "4b2369aca46acaf189648180479c4664457f4cf2ebb7a2cbb3d96d0842c786c0",
+    "books/byte-store.lisp": "9c9864e72118155c5e1a4bd2c6dfee88c93d9d1f93f123197d77281f75d94432",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "59c886706bafd7e34574716b1b620a5e2c95e32d47de4a4901580805c02a4a4d",
+    "books/records.lisp": "02c34455e55acbd5492613e3c0cfc2790121e9ed09b900e63319c6f771ba281a",
+    "books/replay.lisp": "9e3310d1bebd408a513b6447a5653afe1aaa945becba82dfc898f55f6480c868",
+    "books/retention.lisp": "b9e366de6fdc55602e28c7d2e2f519ed437597c789a85b9845bf9e39485f3291",
+    "books/store-files-invariants.lisp": "d87aa3ae8edba6f7e0db907318869cc8eb39209892a3bd1da1a6d0c5b444d0ff",
+    "books/store-files-traces.lisp": "5511c743a25d9adb8357f4e2b13aa397b7722fd41f9055fe38aeb7e88b20689c",
+    "books/store-files.lisp": "c4a5cb1d26871acd9adc2ff96bab33ecdaf0ef4ee47ce9cd1117ff72bcc8111b",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "db062af997f850f6dad43ae00967db557cca5117108f43d5464ced55be5f286a",
+    "books/byte-store-invariants.lisp": "ba94f9dba982b4d4de6d066f4abb79b0c68417e79cbc78b8955b4e39f752a04c",
+    "books/byte-store-programs.lisp": "4b2369aca46acaf189648180479c4664457f4cf2ebb7a2cbb3d96d0842c786c0",
+    "books/byte-store.lisp": "9c9864e72118155c5e1a4bd2c6dfee88c93d9d1f93f123197d77281f75d94432",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "59c886706bafd7e34574716b1b620a5e2c95e32d47de4a4901580805c02a4a4d",
+    "books/records.lisp": "02c34455e55acbd5492613e3c0cfc2790121e9ed09b900e63319c6f771ba281a",
+    "books/replay.lisp": "9e3310d1bebd408a513b6447a5653afe1aaa945becba82dfc898f55f6480c868",
+    "books/retention.lisp": "b9e366de6fdc55602e28c7d2e2f519ed437597c789a85b9845bf9e39485f3291",
+    "books/store-files-invariants.lisp": "d87aa3ae8edba6f7e0db907318869cc8eb39209892a3bd1da1a6d0c5b444d0ff",
+    "books/store-files-traces.lisp": "5511c743a25d9adb8357f4e2b13aa397b7722fd41f9055fe38aeb7e88b20689c",
+    "books/store-files.lisp": "c4a5cb1d26871acd9adc2ff96bab33ecdaf0ef4ee47ce9cd1117ff72bcc8111b",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9"
+  },
+  "start_order": [
+    "books/byte-store",
+    "books/byte-store-invariants",
+    "books/byte-store-programs"
+  ],
+  "status": "passed",
+  "timeout_seconds": 1800
+}
