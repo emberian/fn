@@ -9,7 +9,7 @@
   "acl2_version": "ACL2 Version 8.7",
   "acl2_version_probe_exit_code": 0,
   "affected_by": [],
-  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w11-bp-node/build/acl2/certify-20260921T021134Z-1437596",
+  "archived_from": "hbox:/tank/fn/lanes/w11-bp-node/build/acl2/certify-20260921T021134Z-1437596",
   "book_failures": {},
   "book_results": {
     "books/bp-node": "passed",
