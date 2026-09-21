@@ -326,7 +326,9 @@ def report_text(result):
              "- Owner scope: development-oracle evidence only: `bin/fn post` through the live `bin/fn run` control socket; each accepted post reports `path=control`. This Python bridge path is not a production endpoint.",
              "- Native scope: direct `tools/run_store.py` / `tools/run_reader.py`; it does not measure served owner/control behavior.", "",
              "## Owner results", ""]
-    for point in owner["points"]:
+    if owner.get("not_measured"):
+        lines.append("- Owner path: {}.".format(owner["not_measured"]))
+    for point in owner.get("points", []):
         if "not_measured" in point:
             lines.append("- {} articles: {}.".format(point["target_articles"], point["not_measured"]))
             continue
@@ -362,6 +364,7 @@ def main(argv=None):
     parser.add_argument("--harness-revision", default="")
     parser.add_argument("--json", default=None)
     parser.add_argument("--report", default=None)
+    parser.add_argument("--skip-owner", action="store_true")
     parser.add_argument("--owner-source-revision", default="")
     args = parser.parse_args(argv)
     counts = [int(one) for one in args.counts.split(",") if one]
@@ -377,8 +380,9 @@ def main(argv=None):
               "host": host_facts(),
               "tool_versions": {"python": sys.version, "acl2_path": args.acl2 or "default"},
               "loadavg_at_start": os.getloadavg(),
-              "owner_control": current_owner(work, counts, args.payload,
-                                               args.folded_bytes, args.seed, args.acl2),
+              "owner_control": ({"not_measured": "skipped by --skip-owner; no owner/control claim"}
+                                if args.skip_owner else current_owner(work, counts, args.payload,
+                                                                       args.folded_bytes, args.seed, args.acl2)),
               "native_direct": native_direct(work, args.payload, args.seed, args.native_image,
                                                args.native_source_revision, args.native_image_digest)}
     result["finished_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -388,7 +392,7 @@ def main(argv=None):
     if args.report:
         Path(args.report).write_text(report_text(result))
     print("CURRENT-PATH " + text)
-    return 0 if result["owner_control"].get("recover", {}).get("returncode") == 0 else 1
+    return 0 if args.skip_owner or result["owner_control"].get("recover", {}).get("returncode") == 0 else 1
 
 
 if __name__ == "__main__":
