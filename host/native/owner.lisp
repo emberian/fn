@@ -844,8 +844,8 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                 (unless channel
                                   (fnn-owner-connection-call
                                    service :graceful-close
-                                   (lambda () (fnn-graceful-close fd)))))
-                                (return))))))))
+                                   (lambda () (fnn-graceful-close fd))))
+                                (return)))))))))
            (fnn-store-indeterminate (e)
              ;; The shared boundary has already stopped mutation; prevent the
              ;; unwind cleanup from attempting a later close transition.
