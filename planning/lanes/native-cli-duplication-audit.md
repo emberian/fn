@@ -92,9 +92,9 @@ its module synopsis previously listed only eight.  This was a low-risk,
 operator-visible documentation defect, so this packet updates the synopsis to
 list `statement`, `principal`, `policy`, and `peer` too.  `docs/operator.md`
 correctly describes the current command as Python/ACL2 at
-[docs/operator.md:21](../../docs/operator.md#L21), while the raw native
+[docs/operator.md:21](../../docs/operator.md), while the raw native
 dispatcher protocol is separately recorded in
-[planning/lanes/native-cli-migration.md:20](native-cli-migration.md#L20).
+[planning/lanes/native-cli-migration.md:20](native-cli-migration.md#boundary-and-completed-scaffold).
 
 This is **documentation duplication**, not a semantic authority conflict.
 The pleasant full-parity CLI needs one generated command reference from the
@@ -159,7 +159,7 @@ not hidden, downgraded to raw `--fn`, or replaced with a read-only subset.
 `fn --help` and command help come from the same grammar and identify the
 active implementation as either `development-python` or `native-image`.  The
 configuration profile is the full table in
-[native-cli-migration.md](native-cli-migration.md#fn.toml-native-profile),
+[native-cli-migration.md](native-cli-migration.md#fntoml-native-profile),
 including its availability/refusal status.  The existing service templates
 remain on the development CLI until this contract, owner lifecycle, storage
 migration, TLS/auth, anchor, and signing rows have direct-native evidence.
