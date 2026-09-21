@@ -26,6 +26,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-cpp-` | `checkpoint-publish` | Checkpoint generation machine: stage, barriers, link, marker selection, crash images with old/new and absent/present choices, recovery with distinct none/ok/corrupt/missing outcomes |
 | `fn-cc-` | `checkpoint-compaction` | Lossless canonical Store-event prefix packs, overlap validation, and prefix-plus-suffix reconstruction |
 | `fn-index-` | `index` | Derived group/number index and range queries |
+| `fn-midx-` | `msgid-index` | Persistent Message-ID trie and canonical lookup correspondence |
 | `fn-journal-` | `journal` | Historical isolated-slot journal experiment; not the adapter model |
 | `fn-exchange-` | `exchange`, `exchange-invariants` | Bounded atomic fact-set admission and merge |
 | `fn-transfer-` | `transfer`, `transfer-invariants`, `transfer-assembly-invariants`, `transfer-work`, `transfer-public-work`, `transfer-public-bound` | Fragment reservation, assembly, missing ranges, costed shadows and bounds |

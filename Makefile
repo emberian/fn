@@ -184,6 +184,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-signature-invariants-tests \
 	books/index \
 	tests/acl2/index-tests \
+	books/msgid-index \
+	tests/acl2/msgid-index-tests \
 	books/bp-ingress \
 	tests/acl2/bp-ingress-tests \
 	tests/acl2/bp-ingress-guards-tests \
