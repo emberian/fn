@@ -188,6 +188,17 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertIn("BP queue recovered jobs=1", resumed.stdout)
         self.assertTrue(stage.exists(), "recovery must retain hidden stage evidence")
 
+    def test_namespace_bound_is_applied_during_directory_enumeration(self):
+        lifecycle = self.journal / "lifecycle"
+        lifecycle.mkdir(parents=True)
+        for number in range(4096 + 16 + 1):
+            (lifecycle / f".stage-{number:04d}").touch()
+
+        resumed = self.resume()
+        self.assertEqual(resumed.returncode, 3, resumed.stderr)
+        self.assertIn("lifecycle namespace exceeds its bound", resumed.stderr)
+        self.assertNotIn("BP queue recovered", resumed.stdout)
+
     def test_transport_uncertain_dominates_refused_article(self):
         malformed = self.tmp / "malformed.bundle"
         malformed.write_bytes(b"not a BPv7 bundle")
