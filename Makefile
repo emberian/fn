@@ -158,6 +158,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-machine \
 	books/bp-node-machine-codec \
 	tests/acl2/bp-node-machine-tests \
+	books/bp-sequence-fidelity \
+	tests/acl2/bp-sequence-fidelity-tests \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
 	tests/acl2/bp-fragment-tests \
