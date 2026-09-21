@@ -304,6 +304,21 @@ class FnCliTests(unittest.TestCase):
         self.assertIn(b"anchor=none", recovered.stdout)
         created = self.fn("group", "create", "fn.announce")
         self.assertIn(b"group created name=fn.announce generation=2", created.stdout)
+        after = self.fn("status")
+        self.assertIn(b"owner=absent generation=2 transactions=1 articles=1", after.stdout)
+        self.assertIn(b"anchor=none", after.stdout)
+
+        # The service log carries one outcome-first line per post and per
+        # reader connection.
+        log = self.log.read_text().splitlines()
+        self.assertTrue(any(line.startswith("accepted post path=control "
+                                            "message-id=<first@example.invalid>")
+                            for line in log), log)
+        self.assertTrue(any(line.startswith("accepted shutdown reason=sigterm") for line in log),
+                        log)
+        if os.path.exists(PY312):
+            self.assertTrue(any(line.startswith("accepted reader connection=") for line in log),
+                            log)
 
     def test_running_cli_post_survives_restart_until_its_peer_is_available(self):
         """Control POST uses the owner intent/commit path and its real feed.
@@ -321,7 +336,8 @@ class FnCliTests(unittest.TestCase):
         added = self.fn(
             "peer", "add", "sink", "--path-identity", "sink.example.invalid",
             "--nntp", "127.0.0.1:{}".format(peer_port),
-            "--outbound-groups", "fn.*", "--source-address", "127.0.0.2")
+            "--inbound-groups", "fn.*",
+            "--outbound-groups", "fn.*", "--source-address", "127.0.0.1")
         self.assertIn(b"peer added name=sink", added.stdout)
 
         self.start_service()
@@ -361,21 +377,52 @@ class FnCliTests(unittest.TestCase):
         peer.wait()
         self.assertEqual(peer.line, b"IHAVE <first@example.invalid>")
         self.assertEqual(peer.article, ARTICLE)
-        after = self.fn("status")
-        self.assertIn(b"owner=absent generation=2 transactions=1 articles=1", after.stdout)
-        self.assertIn(b"anchor=none", after.stdout)
 
-        # The service log carries one outcome-first line per post and per
-        # reader connection.
-        log = self.log.read_text().splitlines()
-        self.assertTrue(any(line.startswith("accepted post path=control "
-                                            "message-id=<first@example.invalid>")
-                            for line in log), log)
-        self.assertTrue(any(line.startswith("accepted shutdown reason=sigterm") for line in log),
-                        log)
-        if os.path.exists(PY312):
-            self.assertTrue(any(line.startswith("accepted reader connection=") for line in log),
-                            log)
+        # The same live owner accepts one real transit article.  Its exact
+        # ACL2 peer evidence reaches durable_post; after reopen it must remain
+        # distinct from the local control post's provenance.
+        transit_id = b"<transit@example.invalid>"
+        transit_article = (
+            b"Path: sink.example.invalid!not-for-mail\r\n"
+            b"From: upstream@example.invalid\r\nSubject: relayed\r\n"
+            b"Newsgroups: fn.letters\r\nDate: Mon, 21 Sep 2026 12:00:00 +0000\r\n"
+            b"Message-ID: " + transit_id + b"\r\n\r\nRelayed.\r\n")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as upstream:
+            upstream.settimeout(30)
+            upstream.connect(("127.0.0.1", self.service.port))
+
+            def line():
+                reply = b""
+                while not reply.endswith(b"\r\n"):
+                    reply += upstream.recv(1)
+                return reply
+
+            self.assertTrue(line().startswith(b"200 "))
+            upstream.sendall(b"IHAVE " + transit_id + b"\r\n")
+            self.assertTrue(line().startswith(b"335 "))
+            upstream.sendall(transit_article + b".\r\n")
+            self.assertTrue(line().startswith(b"235 "))
+
+        self.assertEqual(self.service.terminate(expected=EXIT_OK), EXIT_OK)
+        self.service = None
+        after = self.fn("status")
+        self.assertIn(b"owner=absent generation=2 transactions=2 articles=2", after.stdout)
+        self.assertIn(b"anchor=none", after.stdout)
+        local_prov = subprocess.run(
+            [sys.executable, str(ROOT / "tools" / "run_store.py"),
+             "--store", str(self.store), "inspect", "--message-id",
+             "<first@example.invalid>", "--provenance"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=120, check=True).stdout
+        transit_prov = subprocess.run(
+            [sys.executable, str(ROOT / "tools" / "run_store.py"),
+             "--store", str(self.store), "inspect", "--message-id",
+             transit_id.decode("ascii"), "--provenance"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=120, check=True).stdout
+        self.assertIn(b"post principal=", local_prov)
+        self.assertIn(b"legacy peer-transit:sink", transit_prov)
+        self.assertNotEqual(local_prov, transit_prov)
 
     # -- the three outcomes on three codes --------------------------------
     def test_a_refused_post_and_a_missing_store_are_distinct_codes(self):

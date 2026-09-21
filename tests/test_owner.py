@@ -374,6 +374,71 @@ def self_signed(directory):
     return cert, key
 
 
+class SubmissionCrashCutTests(OwnerFixture):
+    """The intent protocol's five named process-death cuts use the real host."""
+
+    def setUp(self):
+        super().setUp()
+        self.payload.write_bytes(
+            b"From: seed@example.invalid\r\nSubject: seed\r\n"
+            b"Newsgroups: fn.letters\r\nMessage-ID: <seed@example.invalid>\r\n"
+            b"\r\nSeed.\r\n")
+        self.store_command("post", "--message-id", "<seed@example.invalid>",
+                           "--payload", str(self.payload), "--group", "fn.letters")
+        reservation = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        reservation.bind(("127.0.0.1", 0))
+        peer_port = reservation.getsockname()[1]
+        reservation.close()
+        self.store_command(
+            "peer", "add", "cut-peer", "--path-identity",
+            "cut-peer.example.invalid", "--nntp",
+            "127.0.0.1:{}".format(peer_port), "--outbound-groups", "fn.*",
+            "--source-address", "192.0.2.40")
+
+    @staticmethod
+    def article(msgid):
+        return (b"From: cut@example.invalid\r\nSubject: cut\r\n"
+                b"Newsgroups: fn.letters\r\nMessage-ID: " + msgid.encode() +
+                b"\r\n\r\nCut.\r\n")
+
+    def cut(self, point, code, msgid, payload=None):
+        owner = self.start_owner(inject_fault=point)
+        reply = owner.post(msgid, payload if payload is not None else self.article(msgid))
+        self.assertEqual(reply, b"")
+        self.assertEqual(owner.proc.wait(timeout=30), code)
+        owner.stop()
+        self.owner = None
+
+    def recovered_version(self, expected):
+        owner = self.start_owner()
+        self.assertEqual(owner.control_line(b"VERSION"),
+                         "version {}".format(expected).encode())
+        owner.stop()
+        self.owner = None
+
+    def test_precommit_resolution_and_response_cuts_recover_without_loss(self):
+        self.cut("preintent-cut", 90, "<preintent@example.invalid>")
+        self.recovered_version(1)
+
+        self.cut("intent-barrier-cut", 91, "<intent@example.invalid>")
+        self.recovered_version(1)
+        journal = self.store / "feed" / "cut-peer.fnfd"
+        self.assertTrue(journal.is_file())
+        self.assertGreater(journal.stat().st_size, 0)
+
+        # Seed predates the peer, so this duplicate has a new target and
+        # reaches a real durable abort record rather than the empty-target
+        # duplicate fast path.
+        self.cut("abort-barrier-cut", 93, "<seed@example.invalid>",
+                 self.payload.read_bytes())
+        self.recovered_version(1)
+
+        self.cut("commit-barrier-cut", 92, "<commit@example.invalid>")
+        self.recovered_version(2)
+
+        self.cut("response-cut", 94, "<response@example.invalid>")
+        self.recovered_version(3)
+
 class OwnerTlsTests(unittest.TestCase):
     """RFC 4642 section 2.3's security layer is a HOST facility.
 
