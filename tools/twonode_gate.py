@@ -854,11 +854,19 @@ class TwoNodeGate(deploy_gate.DeployGate):
             else:
                 self.commands[node.name] = self.server_command(node.store, node.dir)
         self.selected, command = self.commands[node.name]
+        first = node.kind == "none"     # only the FIRST start is the assertion
         pinned = port or node.port
         if pinned:
             command = command.replace("--port 0", "--port {}".format(pinned))
         started = self.start_server("node {} ({})".format(node.upper, self.selected),
                                     command, "{}-{}".format(node.name, tag), run=node.dir)
+        if started and first:
+            # A start that works is the assertion HOLDING, and it has to be
+            # recorded: without this the end-of-run sweep emits "the run ended
+            # without reaching this assertion" for an entry point that reached
+            # LISTENING on the first try, which is a false record.
+            self.check("entry-point-listening", True, "", instance=node.name,
+                       observed="{} started".format(self.selected))
         if not started and self.selected != "reader" and not self.server_template:
             # The deploy gate's fallback, per node: an entry point that does not
             # start is a probe the gate fell back from, never a pass.
@@ -1237,6 +1245,8 @@ else echo NONE; fi
                       "feed.py relay (RFC 5537 3.5 loop suppression)",
                       "peering: not available on this tree")
             return
+        self.check("transit-surface", True, "",
+                   observed="IHAVE -> {}".format(result.get("offer")))
         self.facts["feed"] = ("offer={offer} transfer={transfer} duplicate={duplicate} "
                               "check={check} takethis={takethis} "
                               "loop={loop} reread={reread} identical={identical}".format(
