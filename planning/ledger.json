@@ -292,13 +292,13 @@
     "books": 285,
     "books_in_root_closure": 285,
     "roots": 285,
-    "theorems": 5826,
-    "functions": 3994,
-    "assert_events": 5950,
+    "theorems": 5827,
+    "functions": 4010,
+    "assert_events": 5965,
     "must_fails": 65,
     "encapsulates": 19,
     "guards": {
-      "verified": 1497,
+      "verified": 1513,
       "declared-off": 192,
       "default-guarded": 1807,
       "default-unguarded": 498
@@ -5155,7 +5155,7 @@
       "book": "books/wire-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 40,
+      "theorems": 41,
       "functions": 2,
       "guards": {
         "verified": 1,
@@ -5181,17 +5181,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 44,
-      "functions": 49,
+      "functions": 65,
       "guards": {
-        "verified": 31,
+        "verified": 47,
         "declared-off": 0,
         "default-guarded": 18,
         "default-unguarded": 0
       },
-      "verify_guards_events": 31,
+      "verify_guards_events": 47,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 0,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
@@ -7778,9 +7778,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 49,
+      "assert_events": 64,
       "must_fails": 0,
-      "defconsts": 30,
+      "defconsts": 33,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -8177,7 +8177,7 @@
     {
       "theorem": "fn-wire-feed-closed-noop",
       "book": "books/wire.lisp",
-      "line": 778,
+      "line": 956,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value"
       ]
@@ -9710,14 +9710,14 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 903,
+        "line": 921,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 903,
+        "line": 921,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
