@@ -25,11 +25,13 @@ The shared raw executor is:
 
 `publication` must be an ACL2-authorized `(fn-jpub-initial t)` issued by the
 caller's allocation machine after it observes its exclusive lock and absence
-of ACL2's exact selected name.  The executor checks that state and cannot mint
-authority.  Its result is exactly `:durable`, `:refused`, or `:uncertain`.
+of ACL2's exact selected name.  These are trusted caller observations rather
+than an unforgeable capability against hostile raw Lisp.  The executor checks
+the state but does not establish the premise itself.  Its result is exactly
+`:durable`, `:refused`, or `:uncertain`.
 The optional callback receives `(point publication)` after `:file-barrier`,
 `:link-result`, and successful `:directory-barrier` observations.  The app
-caller obtains its capability from `fn-aj-authorize`; checkpoint and BP
+caller obtains its authorized operation from `fn-aj-authorize`; checkpoint and BP
 evidence callers must retain their own ACL2 allocation/frontier contract.
 
 `fnn-app-open` takes an already-open `fnn-store`; it neither opens a second
@@ -48,22 +50,21 @@ reader image:
 ```sh
 FN_NATIVE_BUILD=host/native/build-dtn.lisp \
 FN_NATIVE_IMAGE=build/fn-host-dtn \
-FN_NATIVE_LOG=build/native-workflow-build-v3.log \
+FN_NATIVE_LOG=build/native-workflow-build-v6.log \
 sh tools/build_native_host.sh
 ```
 
-It built a 283 MiB core.  Against that image:
+It built a 284 MiB core.  Against that image:
 
 ```sh
 python3 -m unittest -v tests.test_native_app_journal
 ```
 
-passed four tests.  The witnesses cover Store-bound enqueue and outstanding
+passed six tests.  The witnesses cover Store-bound enqueue and outstanding
 status after process restart; pre-link stage `EIO` reported as refused with no
 intent; final-directory barrier `EIO` reported as uncertain with a visible
 intent, no outcome, a fenced retry, and no equal-byte durability shortcut; and
-native persistence of request context, receipt intent, committed decision,
-then identical nonempty receipt regeneration in two fresh processes.
+a held-but-fenced Store rejected before any journal mutation; callbacks observing file, link and directory barriers saw the already-reported ACL2 phase; and native persistence of request context, receipt intent, committed decision, then identical nonempty receipt regeneration in two fresh processes.
 
 Existing adapters remained green when run in their isolated supported test
 processes:
@@ -89,12 +90,12 @@ python3 tools/farm.py submit persvati --jobs 2 \
   books/app-journal tests/acl2/journal-publish-tests
 ```
 
-Farm runs `run-20260921T084920Z-5fa0` and
-`run-20260921T084920Z-abea` finished with exit code 0.  Their archived manifests
-are `planning/evidence/manifests/certify-20260921T084924Z-1881095.json` (hbox)
-and `planning/evidence/manifests/certify-20260921T084923Z-1749638.json`
+Farm runs `run-20260921T085650Z-4cb1` and
+`run-20260921T085650Z-053d` finished with exit code 0.  Their archived manifests
+are `planning/evidence/manifests/certify-20260921T085653Z-1894310.json` (hbox)
+and `planning/evidence/manifests/certify-20260921T085654Z-1818350.json`
 (persvati).  Both pin `books/app-journal.lisp` digest
-`08459e316b8fd548f6317d99ecd9b8166e9ecdf4f6bd233a397be4b0e8f921f0`
+`fe29679d0884a266d106110a59fef21f8259daf831dca0344ef99a11f0fe39e5`
 and test digest
 `64d14dfebca71b129fa7a942205c539c7bdb43ce114264b2a0bf7e5794bcad9f`.
 

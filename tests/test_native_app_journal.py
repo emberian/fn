@@ -107,6 +107,33 @@ class NativeApplicationJournalTests(unittest.TestCase):
         self.assertEqual(reopened.returncode, 0, reopened.stderr)
         self.assertIn("status=absent", reopened.stdout)
 
+    def test_locked_but_fenced_store_cannot_publish(self):
+        journal = self.tmp / "store-fenced"
+        self.initialize_workflow(journal)
+        injected = dict(self.env)
+        injected["FN_APP_JOURNAL_TEST_FENCE_STORE"] = "before-publish"
+        cut = self.enqueue(journal, env=injected)
+        self.assertEqual(cut.returncode, 3, cut.stderr)
+        self.assertIn("Store is fenced", cut.stderr)
+        self.assertEqual(
+            len(self.records(journal)), 1,
+            "the held Store lock must not authorize publication while fenced",
+        )
+
+        reopened = self.status(journal)
+        self.assertEqual(reopened.returncode, 0, reopened.stderr)
+        self.assertIn("status=absent", reopened.stdout)
+
+    def test_publication_observer_sees_reported_acl2_state(self):
+        journal = self.tmp / "observer-order"
+        self.initialize_workflow(journal)
+        injected = dict(self.env)
+        injected["FN_APP_JOURNAL_TEST_OBSERVER"] = "assert-reported"
+        accepted = self.enqueue(journal, env=injected)
+        self.assertEqual(accepted.returncode, 0, accepted.stderr)
+        self.assertIn("status=outstanding", accepted.stdout)
+        self.assertEqual(len(self.records(journal)), 3)
+
     def test_namespace_eio_is_uncertain_despite_visible_final(self):
         journal = self.tmp / "namespace-eio"
         self.initialize_workflow(journal)

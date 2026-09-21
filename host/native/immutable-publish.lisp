@@ -17,8 +17,9 @@
   (publication stage final final-directory octets &key cleanup-directory observer)
   "Execute an ACL2-authorized immutable publication state.  PUBLICATION must
 come from the caller's ACL2 allocation/admission machine after it establishes
-exclusive authority and absence of that machine's exact final name.  This raw
-executor cannot mint authority.  It returns fn-jpub's classification."
+exclusive authority and absence of that machine's exact final name.  Those are
+trusted caller observations rather than protection from hostile raw Lisp.  The
+executor does not assert the premise itself and returns fn-jpub's classification."
   (unless (and (eq (fnn-core 'fn-jpub-host-authorized-initialp publication) t)
                (eq (fnn-core 'fn-jpub-host-action publication) :stage))
     (fnn-fault "immutable publication lacks ACL2 authorization"))
@@ -32,14 +33,17 @@ executor cannot mint authority.  It returns fn-jpub's classification."
                ; The callback observes the already-reported ACL2 state and
                ; cannot alter the publication classification.
                (when observer (funcall observer point publication)))
-             (observe (ok-event error-event thunk)
-               (handler-case (progn (funcall thunk) (advance ok-event))
-                 (fnn-os-error () (advance error-event)))))
+             (observe (ok-event error-event point thunk)
+               (let ((ok
+                       (handler-case (progn (funcall thunk) t)
+                         (fnn-os-error () nil))))
+                 (advance (if ok ok-event error-event))
+                 (when (and ok point) (observed point)))))
       (unwind-protect
            (loop until (eq (fnn-core 'fn-jpub-host-terminalp publication) t) do
              (case (fnn-core 'fn-jpub-host-action publication)
                (:stage
-                (observe '(:stage-result :ok) '(:stage-result :error)
+                (observe '(:stage-result :ok) '(:stage-result :error) nil
                          (lambda ()
                            (fnn-immutable-test-fault "stage" stage)
                            (setq fd (fnn-open stage
@@ -51,6 +55,7 @@ executor cannot mint authority.  It returns fn-jpub's classification."
                (:file-barrier
                 (observe '(:file-barrier-result :ok)
                          '(:file-barrier-result :error)
+                         :file-barrier
                          (lambda ()
                            (fnn-immutable-test-fault "file-barrier" stage)
                            (fnn-fsync-file fd)
@@ -58,27 +63,27 @@ executor cannot mint authority.  It returns fn-jpub's classification."
                            ; failing close may already have released it.
                            (let ((handle fd))
                              (setq fd nil)
-                             (fnn-close handle))
-                           (observed :file-barrier))))
+                             (fnn-close handle)))))
                (:begin-link (advance '(:link-begin)))
                (:link
-                (handler-case
-                    (progn (fnn-immutable-test-fault "link" final)
-                           (fnn-link stage final)
-                           (advance '(:link-result :ok))
-                           (observed :link-result))
-                  (fnn-os-error (e)
-                    (advance (if (= (fnn-os-errno e) sb-posix:eexist)
-                                 '(:link-result :exists)
-                               '(:link-result :error)))
-                    (observed :link-result))))
+                (let ((event
+                        (handler-case
+                            (progn (fnn-immutable-test-fault "link" final)
+                                   (fnn-link stage final)
+                                   '(:link-result :ok))
+                          (fnn-os-error (e)
+                            (if (= (fnn-os-errno e) sb-posix:eexist)
+                                '(:link-result :exists)
+                              '(:link-result :error))))))
+                  (advance event)
+                  (observed :link-result)))
                (:directory-barrier
                 (observe '(:directory-barrier-result :ok)
                          '(:directory-barrier-result :error)
+                         :directory-barrier
                          (lambda ()
                            (fnn-immutable-test-fault "namespace" final)
-                           (fnn-fsync-dir final-directory)
-                           (observed :directory-barrier))))
+                           (fnn-fsync-dir final-directory))))
                (otherwise
                 (fnn-fault "ACL2 returned no immutable publication action"))))
         (when fd (ignore-errors (fnn-close fd)))

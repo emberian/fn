@@ -45,6 +45,15 @@
           (fnn-fault "application journal lock failed: ~a" e))))
     fd))
 
+(defun fnn-app-require-live-store (store)
+  ; The Store lock establishes ownership, but a fenced Store has no authority
+  ; to derive or publish new application facts until recovery clears it.
+  (unless (and (typep store 'fnn-store) (fnn-store-lock-fd store))
+    (fnn-fault "application journal requires the live Store owner"))
+  (when (fnn-store-fenced store)
+    (fnn-indeterminate "application journal Store is fenced pending recovery"))
+  t)
+
 (defun fnn-app-record-names (journal)
   ; Ordering is an observation only.  fn-aj-host-recover decides whether each
   ; spelling is ACL2's exact next name and whether the frontier may advance.
@@ -105,8 +114,7 @@
 
 (defun fnn-app-open (store root domain)
   "Open a journal beside an already-open Store; never replace its ACL2 image."
-  (unless (and (typep store 'fnn-store) (fnn-store-lock-fd store))
-    (fnn-fault "application journal requires the live Store owner"))
+  (fnn-app-require-live-store store)
   (unless (member domain '(:workflow :receipt))
     (fnn-fault "unknown application journal domain"))
   (let* ((absolute (fnn-absolute root))
@@ -168,7 +176,7 @@
       :ready)))
 
 (defun fnn-app-authorized-publish (journal kind frame reserve-resolution)
-  "Ask ACL2 to allocate/admit one exact final name, then execute its capability."
+  "Ask ACL2 to allocate/admit one exact final name, then execute that operation."
   (let* ((frontier (fnn-app-journal-frontier journal))
          (candidate (fnn-core 'fn-aj-host-next-name frontier))
          (final (fnn-join (fnn-app-journal-records journal) candidate))
@@ -189,11 +197,24 @@
     (let* ((stage (fnn-join (fnn-app-journal-staging journal)
                             (format nil "~d.~a.tmp" (sb-posix:getpid)
                                     (fnn-random-hex 16))))
+           (observer
+             (when (string= (or (sb-ext:posix-getenv
+                                 "FN_APP_JOURNAL_TEST_OBSERVER") "")
+                            "assert-reported")
+               (lambda (point publication)
+                 (let ((phase (fnn-core 'fn-jpub-host-phase publication))
+                       (expected (case point
+                                   (:file-barrier :link-ready)
+                                   (:link-result :directory-barrier)
+                                   (:directory-barrier :durable))))
+                   (unless (eq phase expected)
+                     (fnn-fault "publication observer preceded ACL2 report"))))))
            (outcome
              (fnn-immutable-publish-effect
               (fnn-core 'fn-aj-host-operation-publication operation)
               stage final (fnn-app-journal-records journal) frame
-              :cleanup-directory (fnn-app-journal-staging journal))))
+              :cleanup-directory (fnn-app-journal-staging journal)
+              :observer observer)))
       (cond ((eq outcome :durable)
              (setf (fnn-app-journal-frontier journal)
                    (fnn-core 'fn-aj-host-operation-successor operation)))
@@ -203,6 +224,13 @@
 
 (defun fnn-app-publish (journal record &key reserve-resolution)
   "Preflight, durably publish, then apply one record through its ACL2 owner."
+  ; Test injection models the owner fencing its Store between journal open and
+  ; this operation.  The production guard below is the path under test.
+  (when (string= (or (sb-ext:posix-getenv
+                      "FN_APP_JOURNAL_TEST_FENCE_STORE") "")
+                 "before-publish")
+    (setf (fnn-store-fenced (fnn-app-journal-store journal)) t))
+  (fnn-app-require-live-store (fnn-app-journal-store journal))
   (when (fnn-app-journal-fenced journal)
     (fnn-indeterminate "application journal is fenced"))
   (unless (fnn-app-preflight journal record)

@@ -102,10 +102,11 @@
       (fn-aj-advance s frame-length)
     :fault))
 
-; (:ok final-name publication successor) is a capability issued only after
-; the caller reports ownership of the journal lock and absence of ACL2's exact
-; next name.  The raw executor receives the embedded publication state and
-; cannot create authority on its own.
+; (:ok final-name publication successor) is an authorized operation issued
+; after the caller reports ownership of the journal lock and absence of ACL2's
+; exact next name.  These are trusted host observations, not an unforgeable
+; capability against hostile raw Lisp.  The executor receives the embedded
+; publication state and does not independently assert the premise.
 (defun fn-aj-authorize (s kind frame-length reserve-resolutionp
                               lock-ownedp next-absentp)
   (if (and (fn-aj-statep s)
