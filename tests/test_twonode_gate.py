@@ -130,6 +130,14 @@ class DryRun:
     def failures(self):
         return [line for line in self.text.splitlines() if " FAIL " in line]
 
+    def findings(self):
+        """The machine-readable half the gate writes beside its evidence."""
+        return json.loads(self.evidence.with_suffix(".findings.json").read_text())
+
+    def keys_with(self, verdict):
+        return {row["key"] for row in self.findings()["rows"]
+                if row["verdict"] == verdict}
+
 
 class NoTransitTests(DryRun, unittest.TestCase):
     """The tree as it is today: two nodes that cannot reach each other."""
@@ -138,9 +146,36 @@ class NoTransitTests(DryRun, unittest.TestCase):
     def setUpClass(cls):
         cls.run_gate()
 
-    def test_the_gate_is_green_without_a_transit_surface(self):
-        self.assertEqual(self.code, 0, "\n".join(self.failures()) or self.text[-3000:])
+    def test_the_only_violation_is_the_fake_acl2_the_owner_needs(self):
+        """Honest rather than green, and this pins exactly how honest.
+
+        The deployed tree carries the real `tools/run_owner.py`, so the gate
+        selects it; this fixture's ACL2 is a shell script that echoes a
+        version, so it cannot start, the gate falls back to the reader and
+        `entry-point-listening` is violated for both nodes. That is a true
+        statement about this fixture and the exit is 1.
+
+        What matters is that it is the ONLY violation. A tree with no transit
+        surface must not fail a single scenario assertion: every one of them
+        is `not-built` with a blocker, which is the review's "an unavailable
+        feature may legitimately be unexercised". Before the finding
+        vocabulary this test asserted exit 0, and exit 0 was also what the
+        gate returned when a scenario assertion it DID exercise came out
+        false."""
+        self.assertEqual(self.keys_with("violated"), {"entry-point-listening"},
+                         "\n".join(self.failures()) or self.text[-3000:])
+        self.assertEqual(self.code, 1)
         self.assertNotIn("gate error", self.text)
+
+    def test_no_scenario_assertion_fails_against_a_tree_without_the_feature(self):
+        for key in ("duplicate-435", "check-438", "takethis-439", "loop-refused",
+                    "feed-arrival", "k5-arrival", "cut-arrival"):
+            rows = [row for row in self.findings()["rows"] if row["key"] == key]
+            self.assertTrue(rows, key)
+            for row in rows:
+                self.assertIn(row["verdict"], ("not-built", "not-exercised"),
+                              "{}: {}".format(row["id"], row["detail"]))
+                self.assertTrue(row["blocker"], row["id"])
 
     def test_two_nodes_on_two_ports_with_two_stores(self):
         rows = self.named("| node a |") + self.named("| node b |")

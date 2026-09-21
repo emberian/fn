@@ -1,8 +1,8 @@
 # Handoff: lane `w11/k1-scan` (K1, K2, K3, K4)
 
 Branch `w11/k1-scan` in `build/lanes/w11-k1-scan`, from `dev` at `186ed0b`,
-merged `dev` at `0eedafc`. Registry id **PRF-040**, claimed on the board
-after merging `dev` and running `tools/next_id.py` (it printed `PRF-040`
+merged `dev` at `0eedafc`. Registry id **PRF-041**, claimed on the board
+after merging `dev` and running `tools/next_id.py` (it printed `PRF-041`
 after the merge and `PRF-037` before it, which is exactly why the tool is
 run after the merge and not before).
 
@@ -80,7 +80,7 @@ acknowledged pair, and **its recovery-window instances are vacuous** --
 `fn-bs-replay-matches-scan` carries `(equal (fn-sf-successes ks) nil)` and
 K4's fourth hypothesis is a member of that list -- so it is a statement
 about the publish window, which is live and non-degenerate. That is said
-at the form, in `specs/crash-model-v2.md` §3.3, and in the PRF-040 note.
+at the form, in `specs/crash-model-v2.md` §3.3, and in the PRF-041 note.
 **The kernel lane's judgement is not reopened**: the acknowledged half is
 still NOT restated over `fn-sf-recovery-crash-imagep` at the kernel, where
 both arms would be vacuous and nothing would be left.

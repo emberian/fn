@@ -17,15 +17,20 @@ GREETING = b"200 fn-nntp experimental server ready\r\n"
 
 
 class OwnerProcess:
-    def __init__(self, store, control, max_connections=4, tls=None):
+    def __init__(self, store, control, max_connections=4, tls=None, inject_fault=None):
         self.store = store
         self.control = control
         self.max_connections = max_connections
         self.tls = tls
+        # TEST ONLY (tools/run_owner.py OWNER_FAULTS): one unexpected
+        # exception at a named point in the serve loop, once.
+        self.inject_fault = inject_fault
         self.proc = None
 
     def start(self):
         extra = []
+        if self.inject_fault is not None:
+            extra += ["--inject-fault", self.inject_fault]
         if self.tls is not None:
             # `--implicit-tls` is what these two tests mean by "the TLS
             # listener": NNTPS, the handshake before the greeting.  A
@@ -80,6 +85,28 @@ class OwnerProcess:
         proc.stdout.close()
         proc.stderr.close()
         raise RuntimeError("owner did not start: " + error)
+
+    def stop_reading_stderr(self):
+        """Stop the owner and answer what it wrote to stderr.
+
+        `stop' closes the pipes, and reading them while the process is live
+        blocks, so a test that needs to see how a fault was RECORDED -- as
+        opposed to how it was answered on the wire -- ends the owner here.
+        """
+        if self.proc is None:
+            return ""
+        if self.proc.poll() is None:
+            self.proc.terminate()
+        try:
+            self.proc.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+            self.proc.wait(timeout=5)
+        text = self.proc.stderr.read().decode("utf-8", "replace")
+        self.proc.stdout.close()
+        self.proc.stderr.close()
+        self.proc = None
+        return text
 
     def stderr(self):
         try:
@@ -417,6 +444,121 @@ class OwnerTlsTests(unittest.TestCase):
             finally:
                 owner.stop()
 
+
+# The reply books/owner-fault.lisp renders for a host fault.  It is asserted
+# as octets, not parsed: nothing in tools/ writes a status line.
+FAULT_LINE = (b"403 internal fault; this connection is closed "
+              b"and the server continues\r\n")
+
+
+class OwnerSurvivesAFaultTests(OwnerFixture):
+    """One connection's host fault must not end the service (w11/owner-survival).
+
+    Until 2026-09-21 an exception raised anywhere under `Owner.serve' unwound
+    out of `main' and the owner process EXITED, so one peer's input ended the
+    service for every connection.  tools/v0_matrix.py measured the cost of
+    that on persvati: node B died inside `Owner.drain' on the first IHAVE,
+    and 22 transit rows, 4 feed rows, 6 crash rows and 1 concurrency row of
+    the 190-row matrix read `not-built' behind that single death.
+
+    These two tests are the thing that had never been tested: a fault is
+    injected on ONE connection and the OTHER connection is asserted to still
+    be served.  The reply the faulted connection gets is ACL2's
+    (`fn-own-fault', books/owner-fault.lisp), and it is the fourth outcome --
+    distinct from 240, from both 441s and from the served 403 -- so it can
+    never be read as an acceptance or as a refusal.
+    """
+
+    ARTICLE = (b"From: poster@example.invalid\r\nSubject: hello\r\n"
+               b"Newsgroups: fn.letters\r\n\r\nHello, news.\r\n.\r\n")
+
+    def setUp(self):
+        # OwnerFixture's store, plus one article so a read-back has something
+        # to be read back against.
+        super().setUp()
+        self.payload.write_bytes(b"Message-ID: <seed@example.invalid>\r\n"
+                                 b"Subject: seed\r\n\r\nSeed body\r\n")
+        self.store_command("post", "--message-id", "<seed@example.invalid>",
+                           "--payload", str(self.payload), "--group", "fn.letters")
+
+    @staticmethod
+    def read_until_eof(sock):
+        received = b""
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                return received
+            received += chunk
+
+    def test_a_fault_in_a_served_read_costs_that_connection_and_nothing_else(self):
+        owner = self.start_owner(inject_fault="served-read")
+        faulting = owner.connect()
+        self.addCleanup(faulting.close)
+        surviving = owner.connect()
+        self.addCleanup(surviving.close)
+        # The first read raises; the connection is answered with ACL2's
+        # fault line and closed, and the server does NOT exit.
+        faulting.sendall(b"DATE\r\n")
+        self.assertEqual(self.read_until_eof(faulting), FAULT_LINE)
+        # THE POINT OF THE LANE: the other connection, open across the
+        # fault, is served normally afterwards -- and it is served at the
+        # pin it already had, so the fault did not disturb its state either.
+        surviving.sendall(b"DATE\r\n")
+        assert_bytes(surviving, b"111 ")
+        surviving.recv(64)
+        surviving.sendall(b"GROUP fn.letters\r\n")
+        assert_bytes(surviving, b"211 1 1 1 fn.letters\r\n")
+        # A connection opened AFTER the fault is served too.
+        later = owner.connect()
+        self.addCleanup(later.close)
+        later.sendall(b"GROUP fn.letters\r\n")
+        assert_bytes(later, b"211 1 1 1 fn.letters\r\n")
+        # The control channel still answers, so the process is the same one.
+        self.assertEqual(owner.control_line(b"VERSION"), b"version 1")
+        # The fault is RECORDED distinctly: FAULT, naming the site, the
+        # connection and the exception type -- never `refused', never
+        # `uncertain', which are answers about an article.
+        recorded = owner.stop_reading_stderr()
+        self.owner = None
+        self.assertIn("FAULT served-read cid=", recorded)
+        self.assertIn("RuntimeError", recorded)
+
+    def test_a_fault_carrying_a_submission_leaves_the_post_path_open(self):
+        owner = self.start_owner(inject_fault="drain")
+        poster = owner.connect()
+        self.addCleanup(poster.close)
+        reader = owner.connect()
+        self.addCleanup(reader.close)
+        # The poster's article reaches the writer step and the host faults
+        # while carrying it: this is the exact shape of the crash the v0
+        # matrix found, where `Owner.drain' raised and the process died.
+        poster.sendall(b"POST\r\n")
+        assert_bytes(poster, b"340 send article to be posted\r\n")
+        poster.sendall(self.ARTICLE)
+        self.assertEqual(self.read_until_eof(poster), FAULT_LINE)
+        # The reader that was open across it is untouched.
+        reader.sendall(b"GROUP fn.letters\r\n")
+        assert_bytes(reader, b"211 1 1 1 fn.letters\r\n")
+        # THE WRITER IS NOT WEDGED.  `fn-own-take-submission' moves a
+        # submission into the durable path only when nothing is in flight,
+        # so a fault that left the faulted submission in flight would cost
+        # EVERY connection the post path.  A second connection posts and
+        # reaches 240 (fn-own-fault-clears-the-faulted-submission).
+        second = owner.connect()
+        self.addCleanup(second.close)
+        second.sendall(b"POST\r\n")
+        assert_bytes(second, b"340 send article to be posted\r\n")
+        second.sendall(self.ARTICLE)
+        assert_bytes(second, b"240 article received OK\r\n")
+        # And the faulted article was NOT committed: the group holds the
+        # seed and the second poster's article, and nothing else
+        # (fn-own-fault-is-not-a-store-event).
+        self.assertEqual(owner.control_line(b"VERSION"), b"version 2")
+        second.sendall(b"GROUP fn.letters\r\n")
+        assert_bytes(second, b"211 2 1 2 fn.letters\r\n")
+        recorded = owner.stop_reading_stderr()
+        self.owner = None
+        self.assertIn("FAULT drain cid=", recorded)
 
 class TransitPortTests(OwnerFixture):
     """The role of an inbound connection is the peer table's, not the client's.

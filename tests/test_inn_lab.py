@@ -180,6 +180,15 @@ class DryRun:
     def failures(self):
         return [line for line in self.text.splitlines() if " FAIL " in line]
 
+    def findings(self, evidence=None):
+        """The machine-readable half the harness writes beside its evidence."""
+        path = (evidence or self.evidence).with_suffix(".findings.json")
+        return json.loads(path.read_text())
+
+    def keys_with(self, verdict, evidence=None):
+        return {row["key"] for row in self.findings(evidence)["rows"]
+                if row["verdict"] == verdict}
+
     def inn_spool(self):
         return json.loads((self.inn / "db/spool.json").read_text())
 
@@ -195,9 +204,28 @@ class LabTests(DryRun, unittest.TestCase):
             self.assertIn("abc1234-20260920T000000Z", one)
         self.assertIn("<inn-lab-fed-", self.text)
 
-    def test_the_lab_is_green_against_a_tree_with_no_transit_surface(self):
-        self.assertEqual(self.code, 0, "\n".join(self.failures()) or self.text[-4000:])
+    def test_the_only_violation_is_the_fake_acl2_the_owner_needs(self):
+        """Honest rather than green: this fixture cannot start the owner.
+
+        The deployed tree carries the real `tools/run_owner.py` and this
+        fixture's ACL2 is a shell script, so the owner does not reach
+        LISTENING, the lab falls back to the reader and
+        `entry-point-listening` is violated. It is the ONLY violation: INN's
+        replies all hold, and the fn side's absent transit surface is
+        `not-built` with the 500 that made it one. This assertion was
+        `code == 0` until the finding vocabulary landed, and exit 0 was also
+        what the lab returned when an assertion it DID exercise came out
+        false (planning/review-2026-09-20-astra-followup.md F1)."""
+        self.assertEqual(self.keys_with("violated"), {"entry-point-listening"},
+                         "\n".join(self.failures()) or self.text[-4000:])
+        self.assertEqual(self.code, 1)
         self.assertNotIn("lab error", self.text)
+
+    def test_inns_own_replies_all_hold(self):
+        held = self.keys_with("held")
+        for key in ("inn-duplicate-435", "inn-loop-437", "innd-up", "innd-died",
+                    "innd-restarted", "innd-survived-fn-kill"):
+            self.assertIn(key, held)
 
     def test_the_configuration_on_disk_is_the_configuration_in_the_tool(self):
         for name in inn_lab.CONFIG_FILES:

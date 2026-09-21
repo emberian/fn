@@ -17,6 +17,15 @@ The three outcomes stay distinct in the recorded exit codes (D13): an accepted
 post exits 0, a refused lookup exits 1, an uncertain publication exits 3.  The
 gate asserts that distinctness rather than assuming it.
 
+The GATE's own exit is a separate scale with the same discipline.  0 means
+every assertion this run stated was decided and held; 1 means one was decided
+and violated, or a command exited other than it was expected to; 3 means
+nothing was violated but something the run meant to decide it could not, so
+the run establishes no release claim; 2 means the gate stopped early.  Before
+2026-09-20 the exit read only `Step.failed`, and a scenario could watch its
+promised behaviour fail, write the sentence into `gaps`, and exit 0; see
+`Finding` below and planning/review-2026-09-20-astra-followup.md F1.
+
 Certificates come from the host's own last gate of the tree
 (``~/fn-gates/<tree>-<rev>/books``) when one is there, because a certificate
 is content-keyed (``ACL2_BOOK_HASH_ALISTP=NIL``, see docs/proofs.md); when it
@@ -37,6 +46,7 @@ from __future__ import annotations
 import argparse
 import base64
 import datetime as dt
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -181,6 +191,14 @@ class Step:
         return self.rc is not None
 
 
+FINDINGS_SCHEMA = 1
+
+
+def slug(name: str) -> str:
+    """A stable ad-hoc key for a non-claim, from the step name that raised it."""
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:80] or "unnamed"
+
+
 def compact(script: str) -> str:
     """One readable line for a step's whole script, preamble dropped."""
     lines = [line.strip() for line in script.strip().splitlines()
@@ -214,6 +232,104 @@ def did_not_complete(name, command, reason) -> Step:
     exit code says so.
     """
     return Step(name, command, 1, reason, 0.0, reason, expect=0)
+
+
+# --------------------------------------------------------------------------
+# findings: what a scenario CONCLUDED, which is not what its commands exited
+#
+# A step's `expect` covers one command's exit code.  A scenario assertion --
+# "node B holds the article exactly once", "the second offer draws 435" -- is
+# not a command's exit code, and until 2026-09-20 every one of them appended a
+# sentence to `gaps` and changed nothing: a gate's exit read only `Step.failed`,
+# and a probe declared `expect=None` can never be failed.  The two-node gate
+# could therefore watch its promised behaviour fail and still exit 0
+# (planning/review-2026-09-20-astra-followup.md, F1).
+#
+# The vocabulary is `tools/v0_matrix.py`'s, which already keeps five verdicts
+# apart over 190 rows: a fixed set of words never collapsed into pass/fail; a
+# declared inventory, so a silently skipped item is impossible; one emitter
+# that refuses an undeclared CLAIM or an undecided verdict with no blocker;
+# and a sha256 over the records, so a verdict cannot be typed in afterwards.
+# `violated` is deliberately outside the inventory rule: see `record`.
+#
+# Where this diverges from that file, and why.  A v0_matrix row is an
+# OBSERVATION of a feature, and `accepted`, `refused` and `uncertain` are D13's
+# three outcomes, all three of which can be the feature working.  A gate
+# finding is a CONCLUSION about an assertion, so its two deciding words are
+# `held` and `violated`, and D13's outcomes stay where they already are, in the
+# steps' expected exit codes.  The three words that cannot decide are kept
+# apart on purpose, because they answer different questions:
+#
+#   inconclusive   the scenario meant to decide this and could not on this run
+#                  -- the instrument was absent, the cut never fired, the count
+#                  was not in the reply.  It establishes nothing, so it is not
+#                  a pass: exit 3, which is D13's own uncertain code.
+#   not-exercised  the assertion was not reached on this run.
+#   not-built      the feature it is about is not on this tree yet.
+#   limitation     a scope boundary that no run of this gate can cross: a
+#                  postpublish fault is indeterminate by construction, the
+#                  certificates were copied rather than re-established.  These
+#                  are the majority of the old `gaps` list, they are honest,
+#                  and failing a gate on them would be the indiscriminate fix
+#                  the review rules out.
+#
+# `limitation` is the line between "this run could not tell" and "no run of
+# this harness can tell": the first is a defect in the run and must not
+# establish a claim, the second is a property of the harness and is reported
+# once.  A limitation therefore never changes the exit code and an
+# inconclusive always does.
+
+HELD, VIOLATED, INCONCLUSIVE = "held", "violated", "inconclusive"
+NOT_EXERCISED, NOT_BUILT, LIMITATION = "not-exercised", "not-built", "limitation"
+FINDINGS = (HELD, VIOLATED, INCONCLUSIVE, NOT_EXERCISED, NOT_BUILT, LIMITATION)
+# The two that decide the assertion, and the three that decide nothing.
+DECIDED = (HELD, VIOLATED)
+UNDECIDED = (INCONCLUSIVE, NOT_EXERCISED, NOT_BUILT)
+
+# The gate process's own exit codes.  0 and 1 are what they were; 3 is new and
+# is D13's uncertain, so that an inconclusive run cannot be read as a pass by
+# anything that only looks at "did it exit zero".
+GATE_OK, GATE_VIOLATED, GATE_ERROR, GATE_INCONCLUSIVE = 0, 1, 2, 3
+
+
+class Finding:
+    """One stated assertion of a scenario, and what this run concluded about it.
+
+    `detail` is the sentence a reader gets: the property, what was seen, and
+    what it costs.  `blocker` says why an undecided finding could not be
+    decided, and one is required -- an `inconclusive` with no reason is how a
+    gap list becomes noise.
+    """
+
+    __slots__ = ("key", "instance", "title", "verdict", "detail", "observed",
+                 "blocker", "owner", "planned")
+
+    def __init__(self, key, instance, title, verdict, detail, observed="",
+                 blocker="", owner="", planned=True):
+        self.key = key
+        self.instance = instance or ""
+        self.title = title
+        self.verdict = verdict
+        self.detail = detail
+        self.observed = observed
+        self.blocker = blocker
+        self.owner = owner
+        self.planned = planned
+
+    @property
+    def id(self) -> str:
+        return "{}[{}]".format(self.key, self.instance) if self.instance else self.key
+
+    def as_json(self) -> dict:
+        return {"id": self.id, "key": self.key, "instance": self.instance,
+                "title": self.title, "verdict": self.verdict,
+                "detail": self.detail, "observed": self.observed,
+                "blocker": self.blocker, "owner": self.owner,
+                "planned": self.planned}
+
+
+class FindingError(RuntimeError):
+    """The gate emitted a finding its own inventory does not allow."""
 
 
 # --------------------------------------------------------------------------
@@ -470,13 +586,41 @@ class DeployGate:
 
     TITLE = "Deploy gate"
     TOOL = "tools/deploy_gate.py"
+    # Whether `evidence()` writes the `<evidence>.findings.json` sidecar.
+    # `tools/v0_matrix.py` already publishes a richer machine-readable result
+    # of its own (`planning/v0-matrix.json`, with its own digest), so it turns
+    # this off rather than shipping two files a reader must reconcile.
+    FINDINGS_SIDECAR = True
     PREAMBLE = (
         "One commit, unpacked on a farm box, served to real clients, SIGKILLed",
         "mid-session and reopened through the real recovery path. This records what",
         "ran; it establishes nothing about the books beyond the fact that the",
         "certificates named below were the ones ACL2 read.")
     FACT_KEYS = ("os", "kernel", "python3", "acl2version", "certificates", "server",
-                 "three outcomes")
+                 "three outcomes", "verdict")
+    # Every assertion this gate can DECIDE, declared before the run.  A key
+    # that is never recorded is emitted `not-exercised` at the end rather than
+    # vanishing, which is `tools/v0_matrix.py`'s PLAN discipline: a silently
+    # skipped assertion is impossible.  The value is (one-line property, the
+    # instances it is stated over; ("",) when there is only one).
+    #
+    # Only the DECIDING keys are declared.  A `skip` and a `limitation` are
+    # non-claims -- they say what this run does not show -- so they carry an
+    # ad-hoc key and are recorded `planned: false`; a claim must be declared
+    # here before it can be made.
+    ASSERTIONS: dict[str, tuple[str, tuple[str, ...]]] = {
+        "outcomes-distinct": (
+            "accepted, refused and uncertain stay distinct in the exit codes (D13)",
+            ("",)),
+        "post-capability": (
+            "CAPABILITIES lists POST exactly when posting is permitted "
+            "(RFC 3977 5.2.2)", ("",)),
+        "certificates-match": (
+            "every certificate pair installed hashes to this revision's source",
+            ("",)),
+        "entry-point-listening": (
+            "the server entry point this gate selected reached LISTENING", ("",)),
+    }
     STANDING_GAPS = (
         "A SIGKILL of the server process is not a power loss: unflushed page cache\n"
         "  is not modeled here, and nothing in this run qualifies storage hardware.",
@@ -502,7 +646,7 @@ class DeployGate:
         self.acl2 = acl2
         self.steps: list[Step] = []
         self.facts: dict[str, str] = {}
-        self.gaps: list[str] = []
+        self.found: list[Finding] = []
         self.deploy = "{}/{}".format(DEPLOY_ROOT, rev)
         self.run = "{}/gate-run".format(self.deploy)
         self.store = "{}/store".format(self.run)
@@ -533,15 +677,154 @@ class DeployGate:
         self.steps.append(step)
         return step
 
-    def skip(self, name, command, reason):
-        """This step needs something that is not here.  See `not_exercised`."""
-        self.steps.append(not_exercised(name, command, reason))
-        self.gaps.append("{}: {}".format(name, reason))
+    def skip(self, name, command, reason, *, key=None, verdict=NOT_EXERCISED,
+             owner=""):
+        """A step that did not run, with the reason, as a step AND a finding.
 
-    def broke(self, name, command, reason):
-        """This step's subject failed.  See `did_not_complete`: a FAILED row."""
+        The default verdict is `not-exercised`: this run did not reach it.
+        Pass `verdict=NOT_BUILT` when the feature is not on the tree at all --
+        the review's "an unavailable feature may legitimately be unexercised"
+        is that case, and it is reported, not failed."""
+        self.steps.append(not_exercised(name, command, reason))
+        self.record(key or slug(name), verdict, "{}: {}".format(name, reason),
+                    blocker=reason, owner=owner, planned=False, title=name)
+        return self.found[-1]
+
+    # -- findings ---------------------------------------------------------
+    def record(self, key, verdict, detail, *, instance="", observed="",
+               blocker="", owner="", planned=None, title="") -> Finding:
+        """The ONLY way a finding is created.  It refuses what it cannot check.
+
+        `held` is the CLAIM, so its key must be in `ASSERTIONS` with this
+        instance declared; an undecided verdict must name its blocker; an
+        unknown verdict stops the gate.  Each of those is a defect in the
+        gate, not in the tree, and a gate that records a verdict it cannot
+        justify is the thing this whole file exists to stop."""
+        if verdict not in FINDINGS:
+            raise FindingError("{}: verdict {!r} is not one of {}".format(
+                key, verdict, FINDINGS))
+        declared = self.ASSERTIONS.get(key)
+        if planned is None:
+            planned = declared is not None
+        if planned:
+            if declared is None:
+                raise FindingError(
+                    "{}: a planned finding must be declared in ASSERTIONS".format(key))
+            if instance not in declared[1]:
+                raise FindingError("{}: instance {!r} is not one of {}".format(
+                    key, instance, declared[1]))
+            title = title or declared[0]
+        if verdict == HELD and not planned:
+            raise FindingError(
+                "{}: held is a CLAIM, so it must be declared in ASSERTIONS".format(key))
+        # `violated` is deliberately allowed without a declaration.  The
+        # inventory exists to stop a gate claiming success for something it
+        # never planned to check; refusing to RECORD a failure because
+        # nobody declared it would be that rule pointed the wrong way, and a
+        # violation can only ever make the verdict worse.
+        if verdict in UNDECIDED and not blocker:
+            raise FindingError("{}: a {} finding must name its blocker".format(
+                key, verdict))
+        found = Finding(key, instance, title or key, verdict, detail,
+                        observed=observed, blocker=blocker, owner=owner,
+                        planned=planned)
+        self.found.append(found)
+        return found
+
+    def check(self, key, ok: bool, detail, *, instance="", observed="",
+              held_detail="") -> Finding:
+        """Decide one declared assertion.  `ok` is the observation, not a wish.
+
+        `detail` is what the record says when it does NOT hold, which is the
+        sentence the old `gaps.append` carried; `held_detail` is the one-line
+        confirmation when it does."""
+        if ok:
+            return self.record(key, HELD, held_detail or self.ASSERTIONS[key][0],
+                               instance=instance, observed=observed)
+        return self.record(key, VIOLATED, detail, instance=instance,
+                           observed=observed)
+
+    def inconclusive(self, key, detail, blocker, *, instance="",
+                     observed="") -> Finding:
+        """This run could not decide a declared assertion.  Exit 3, never 0."""
+        return self.record(key, INCONCLUSIVE, detail, instance=instance,
+                           observed=observed, blocker=blocker)
+
+    def not_built(self, key, detail, blocker, *, instance="", owner="") -> Finding:
+        return self.record(key, NOT_BUILT, detail, instance=instance,
+                           blocker=blocker, owner=owner)
+
+    def limitation(self, key, detail) -> Finding:
+        """A scope boundary of the harness itself.  Reported, never failed.
+
+        `key` may be None, in which case it is taken from the text: a
+        limitation is not a claim, so its identifier is a handle for the
+        record rather than a promise anything else cites."""
+        key = key or slug(detail)
+        return self.record(key, LIMITATION, detail, planned=False, title=key)
+
+    def finalize_findings(self):
+        """Every declared assertion the run never reached, said out loud."""
+        seen = {(one.key, one.instance) for one in self.found}
+        for key in self.ASSERTIONS:
+            title, instances = self.ASSERTIONS[key]
+            for instance in instances:
+                if (key, instance) in seen:
+                    continue
+                self.record(key, NOT_EXERCISED,
+                            "{}{}: the run ended without reaching this assertion, "
+                            "so nothing here establishes it.".format(
+                                title, " ({})".format(instance) if instance else ""),
+                            instance=instance,
+                            blocker="the run ended before this assertion was reached")
+
+    @property
+    def gaps(self) -> list[str]:
+        """Everything this run does NOT establish, in the order it was found.
+
+        The old list of the same name, now derived: a finding that held is not
+        a gap, and everything else is."""
+        return [one.detail for one in self.found if one.verdict != HELD]
+
+    def counts(self) -> dict:
+        return {verdict: sum(1 for one in self.found if one.verdict == verdict)
+                for verdict in FINDINGS}
+
+    def verdict(self) -> str:
+        """One word for the whole run, from the findings alone."""
+        tally = self.counts()
+        if tally[VIOLATED] or any(step.failed for step in self.steps):
+            return VIOLATED
+        if tally[INCONCLUSIVE]:
+            return INCONCLUSIVE
+        return HELD
+
+    def exit_code(self, failure=None) -> int:
+        if failure:
+            return GATE_ERROR
+        return {VIOLATED: GATE_VIOLATED, INCONCLUSIVE: GATE_INCONCLUSIVE,
+                HELD: GATE_OK}[self.verdict()]
+
+    def findings_document(self, rev: str, tool: str) -> dict:
+        """The machine-readable result, with the digest that refuses a typed one."""
+        rows = [one.as_json() for one in self.found]
+        digest = hashlib.sha256(json.dumps(
+            rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        return {"schema": FINDINGS_SCHEMA, "tool": tool, "revision": rev,
+                "verdicts": list(FINDINGS), "counts": self.counts(),
+                "verdict": self.verdict(), "rows": rows, "rows_digest": digest}
+
+    def broke(self, name, command, reason, *, key=None):
+        """This step's subject failed.  A FAILED row AND a violated finding.
+
+        The distinction this keeps from `skip`: a build script that ran and
+        returned non-zero is a BROKEN subject, not an absent one, and a lab
+        that ran and said nothing about a scenario it owns is a silence, not
+        an absence.  See `did_not_complete`."""
         self.steps.append(did_not_complete(name, command, reason))
-        self.gaps.append("{}: {}".format(name, reason))
+        self.record(key or slug(name), VIOLATED, "{}: {}".format(name, reason),
+                    planned=False, title=name)
+        return self.found[-1]
 
     def cd(self, script: str) -> str:
         return "cd {} || exit 9\n".format(self.deploy) + script
@@ -639,7 +922,8 @@ fi
                                       "whose book content matches this revision were copied"))
             self.facts["certificates"] = "{} {} -> {}".format(
                 kind.lower(), gate, step.first_line)
-            self.gaps.append(
+            self.limitation(
+                "certificates-copied",
                 "certificates were copied from {}, a live origin root on the same host. "
                 "tools/certs.py calls that foreign-local and refuses it for a worktree "
                 "that will itself certify, because the pairs' post-alists name that "
@@ -647,10 +931,24 @@ fi
                 "reads them. Nothing in this gate re-establishes any certificate, and a "
                 "book whose pair did not come across is included uncertified."
                 .format(gate))
-            if "mismatched=0" not in step.output:
-                self.gaps.append(
-                    "some books in the gate did not hash to this revision's sources, so "
-                    "their pairs were not copied: {}".format(step.first_line))
+            if "mismatched=0" in step.output:
+                self.check("certificates-match", True, "",
+                           observed=step.first_line)
+            else:
+                # This gate never claims the books are PROVED -- only that the
+                # certificates named here are the ones ACL2 read.  A pair that
+                # did not come across therefore does not falsify an assertion;
+                # it means the tree that served is not the certified tree, and
+                # the run cannot stand behind a claim that says it is.
+                self.inconclusive(
+                    "certificates-match",
+                    "some books in the gate did not hash to this revision's sources, "
+                    "so their pairs were not copied and ACL2 read them uncertified: "
+                    "{}. Nothing in this run is evidence about those books, and no "
+                    "claim of the form \"this certified commit serves\" follows from "
+                    "it.".format(step.first_line),
+                    "a certificate pair did not match this revision's source",
+                    observed=step.first_line)
             self.certificates_ok = step.rc == 0
             return step
         step = self.sh("certify on host",
@@ -691,10 +989,10 @@ fi
         expected = (EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN)
         self.facts["three outcomes"] = "accepted={} refused={} uncertain={} (expected {})".format(
             *observed, expected)
-        if observed != expected:
-            self.gaps.append(
-                "the three outcomes did not stay distinct in the exit codes: "
-                "observed {}, expected {} (D13)".format(observed, expected))
+        self.check("outcomes-distinct", observed == expected,
+                   "the three outcomes did not stay distinct in the exit codes: "
+                   "observed {}, expected {} (D13)".format(observed, expected),
+                   observed="accepted={} refused={} uncertain={}".format(*observed))
         self.sh("recover after the uncertain publication",
                 self.cd(self.fn("--store {} recover".format(self.store))), timeout=900)
 
@@ -717,7 +1015,8 @@ else echo reader; fi
             return kind, "./bin/fn run --store {} --port 0 --control {}/control.sock".format(
                 store, run)
         if kind == "fn-config":
-            self.gaps.append(
+            self.limitation(
+                "bin-fn-config-driven",
                 "bin/fn is in this tree but its `run` is configuration-file driven and "
                 "takes no --store, and this gate does not author a configuration for it. "
                 "The gate drove tools/run_owner.py, the entry point bin/fn wraps, so the "
@@ -885,28 +1184,41 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
         self.three_outcomes()
         self.nntplib_probe()
         kind, command = self.server_command()
-        if not self.start_server(kind, command, "main"):
+        started = self.start_server(kind, command, "main")
+        self.check("entry-point-listening", started,
+                   "the {} entry point did not reach LISTENING on this commit; the gate "
+                   "fell back to tools/run_reader.py --post. The served-read evidence "
+                   "below is the reader's, not the {}'s -- a service that will not start "
+                   "is a failure of this gate, not a narrower scope for it."
+                   .format(kind, kind),
+                   observed="selected={} started={}".format(kind, started))
+        if not started:
             fallback = "python3 tools/run_reader.py --store {} --port 0 --post".format(self.store)
-            self.gaps.append(
-                "the {} entry point did not reach LISTENING on this commit; the gate fell "
-                "back to tools/run_reader.py --post. The served-read evidence below is the "
-                "reader's, not the {}'s.".format(kind, kind))
             if kind == "reader" or not self.start_server("reader", fallback, "main"):
                 raise GateError("no server entry point reached LISTENING")
         transcript = self.drive("transcript", "--group {}".format(GROUPS[0]))
-        if self.post_enabled and '"post_offered": false' in transcript.output:
-            self.gaps.append(
-                "the server was started with POST enabled and answers POST with 340 (see "
-                "the kill cut below), but its CAPABILITIES block does not list POST. RFC "
-                "3977 section 5.2.2 requires the POST capability exactly when posting is "
-                "permitted, so an independent client that reads capabilities before "
-                "posting will not offer posting at all.")
+        if self.post_enabled:
+            self.check("post-capability",
+                       '"post_offered": false' not in transcript.output,
+                       "the server was started with POST enabled and answers POST with "
+                       "340 (see the kill cut below), but its CAPABILITIES block does "
+                       "not list POST. RFC 3977 section 5.2.2 requires the POST "
+                       "capability exactly when posting is permitted, so an independent "
+                       "client that reads capabilities before posting will not offer "
+                       "posting at all.",
+                       observed=transcript.first_line)
+        else:
+            self.record("post-capability", NOT_EXERCISED,
+                        "posting was not enabled on this server, so RFC 3977 5.2.2's "
+                        "capability rule has nothing to be true or false about here.",
+                        blocker="the server was not started with POST enabled")
         concurrent = self.drive("concurrent", "--group {} --msgid '{}'".format(
             GROUPS[0], POSTED_ID))
         if concurrent.rc == 0:
             self.posted.append(POSTED_ID)
         else:
-            self.gaps.append(
+            self.limitation(
+                "concurrent-reader",
                 "a second reader live across another connection's POST was NOT exercised: "
                 "tools/run_reader.py serves one connection at a time (its accept loop "
                 "calls serve_client to completion before accepting again, and it listens "
@@ -993,6 +1305,33 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
                 index, step.name, step.command.replace("`", "'")))
             if step.note:
                 lines.append("   - {}".format(step.note))
+        tally = self.counts()
+        lines += [
+            "",
+            "## Findings",
+            "",
+            "One row per stated assertion. `held` and `violated` are the two that",
+            "DECIDE it; `inconclusive` means this run could not decide it and so",
+            "establishes nothing; `not-exercised` and `not-built` mean it was not",
+            "reached and why; `limitation` is a scope boundary no run of this",
+            "harness crosses.",
+            "",
+            "The process exit is {} for a violation, {} for an inconclusive run "
+            "with no violation, {} when the gate stopped early, {} otherwise.".format(
+                GATE_VIOLATED, GATE_INCONCLUSIVE, GATE_ERROR, GATE_OK),
+            "",
+            "Verdict of this run: **{}** ({}).".format(
+                self.verdict(),
+                ", ".join("{} {}".format(tally[v], v) for v in FINDINGS if tally[v])
+                or "no findings"),
+            "",
+            "| assertion | verdict | what it says |",
+            "| --- | --- | --- |",
+        ]
+        for one in self.found:
+            lines.append("| {} | {} | {} |".format(
+                one.id.replace("|", "\\|"), one.verdict,
+                one.detail.replace("|", "\\|").replace("\n", " ")))
         lines += ["", "## What was NOT exercised", ""]
         if not self.gaps:
             lines.append("Nothing was skipped in this run.")
@@ -1016,6 +1355,13 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
         lines += ["```", ""]
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("\n".join(lines))
+        # The machine-readable half, beside the prose one.  The digest is what
+        # a hand-typed verdict cannot survive: change a word in a row and it
+        # no longer matches, exactly as `tools/v0_matrix.py` does it.
+        if self.FINDINGS_SIDECAR:
+            findings = path.with_suffix(".findings.json")
+            findings.write_text(json.dumps(
+                self.findings_document(self.rev, self.TOOL), indent=2) + "\n")
         return path
 
 
@@ -1105,6 +1451,31 @@ def resolve(repo: Path, commit: str) -> tuple[str, str]:
     return full, full[:7]
 
 
+def report(gate) -> None:
+    """The last lines of stdout: the contract `tools/verdict.py` reads.
+
+    `steps=/failed=/not-exercised=` is unchanged so that reader keeps working;
+    `violated=` and `inconclusive=` are appended because a step count was
+    never the verdict -- an assertion violated inside a probe declared
+    `expect=None` moved neither of the first two numbers."""
+    bad = [s for s in gate.steps if s.failed]
+    tally = gate.counts()
+    print("steps={} failed={} not-exercised={} violated={} inconclusive={}".format(
+        len(gate.steps), len(bad), sum(1 for s in gate.steps if s.rc is None),
+        tally[VIOLATED], tally[INCONCLUSIVE]))
+    print("verdict={} findings={}".format(
+        gate.verdict(),
+        " ".join("{}={}".format(v, tally[v]) for v in FINDINGS if tally[v]) or "none"))
+    for step in bad:
+        print("  FAILED rc={} {}: {}".format(step.rc, step.name, step.first_line))
+    for one in gate.found:
+        if one.verdict == VIOLATED:
+            print("  FAILED assertion {}: {}".format(one.id, one.detail[:300]))
+    for one in gate.found:
+        if one.verdict == INCONCLUSIVE:
+            print("  INCONCLUSIVE {}: {}".format(one.id, one.detail[:300]))
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1151,22 +1522,19 @@ def main(argv=None) -> int:
         gate.execute()
     except GateError as error:
         failure = str(error)
-        gate.gaps.append("the gate stopped early: {}".format(error))
+        gate.limitation("gate-stopped-early",
+                        "the gate stopped early: {}".format(error))
     elapsed = time.monotonic() - clock
+    gate.finalize_findings()
     date = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
     target = evidence_path(args.evidence, repo,
                            "deploy-{}-{}.md".format(rev, date))
     gate.evidence(target, started, elapsed)
     print("evidence: {}".format(target))
-    bad = [s for s in gate.steps if s.failed]
-    print("steps={} failed={} not-exercised={}".format(
-        len(gate.steps), len(bad), sum(1 for s in gate.steps if s.rc is None)))
-    for step in bad:
-        print("  FAILED rc={} {}: {}".format(step.rc, step.name, step.first_line))
+    report(gate)
     if failure:
         print("gate error: {}".format(failure))
-        return 2
-    return 1 if bad else 0
+    return gate.exit_code(failure)
 
 
 if __name__ == "__main__":

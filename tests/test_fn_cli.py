@@ -53,16 +53,30 @@ class Service:
             [sys.executable, str(FN), "--config", str(self.config), "run"],
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         deadline = time.monotonic() + 300
+        # Read the RAW descriptor, exactly as tests/test_owner.py does and
+        # for the same reason.  `run_owner.main` prints LISTENING and CONTROL
+        # on adjacent lines, so they reach the pipe together; a
+        # BufferedReader.readline() after select then takes BOTH into its
+        # buffer, returns the first, and the next select never fires because
+        # the pipe itself is empty -- the service is up and this loop waits
+        # 300 s for a line it is already holding.  Measured on 2026-09-21:
+        # one os.read returned
+        # `b"LISTENING 61627\nCONTROL /tmp/.../control.sock\n"`.
+        fd = self.proc.stdout.fileno()
+        pending = b""
         while time.monotonic() < deadline and not (self.port and self.control):
-            ready, _, _ = select.select([self.proc.stdout], [], [], 0.5)
+            ready, _, _ = select.select([fd], [], [], 0.5)
             if ready:
-                line = self.proc.stdout.readline()
-                if not line:
+                chunk = os.read(fd, 4096)
+                if not chunk:
                     break
-                if line.startswith(b"LISTENING "):
-                    self.port = int(line.split()[1])
-                elif line.startswith(b"CONTROL "):
-                    self.control = line.split(None, 1)[1].strip().decode()
+                pending += chunk
+                while b"\n" in pending:
+                    line, pending = pending.split(b"\n", 1)
+                    if line.startswith(b"LISTENING "):
+                        self.port = int(line.split()[1])
+                    elif line.startswith(b"CONTROL "):
+                        self.control = line.split(None, 1)[1].strip().decode()
             if self.proc.poll() is not None:
                 break
         if not (self.port and self.control):
