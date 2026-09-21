@@ -65,8 +65,9 @@
 
 (defun fnn-tls-library-candidates ()
   (let ((configured (fnn-tls-configured-library-pair)))
-    (append (and configured (list configured))
-            (cond
+    (if configured
+        (list configured)
+      (cond
               ((member :darwin *features*)
                '(("/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib"
         "/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib")
@@ -75,7 +76,7 @@
        ("libcrypto.3.dylib" "libssl.3.dylib")))
               ((member :linux *features*)
                '(("libcrypto.so.3" "libssl.so.3")))
-              (t nil)))))
+        (t nil)))))
 
 (sb-alien:define-alien-routine ("OpenSSL_version_num" fnn-%openssl-version-num)
     sb-alien:unsigned-long)
