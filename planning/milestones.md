@@ -33,6 +33,25 @@ the WIRE, not the model: no host line calls any `fn-ocfg-` function, so the
 served port still answers LIST ACTIVE from the allocation domain and every
 PRF-028 owner-side event carries a `pending_subject`.
 
+**AUTHINFO works on a running server** as of 2026-09-21 (w11/auth-live). It
+did not, and the model was never the reason: `fn-served-open-peer` pinned the
+empty AUTHINFO profile where `fn-served-open` pinned the operator's, and the
+owner resolves a connection to a peer by source address alone, so on a box
+where a configured peer answers on loopback every client was opened with no
+credential --- which is every two-node harness fn has. `AUTHINFO PASS`
+answered 481 with the secret the CLI had just written, no AUTHINFO label was
+advertised and POST was never gated (v0 matrix `c3b99f8`, eight F-AUTH rows).
+The before-and-after measurement is
+[auth-live](evidence/auth-live-2026-09-21.md), PRF-035 is the pair of
+theorems, and the boundary test that would have caught it --- `bin/fn run`
+over an `fn.toml`, with a peer record, logging in with a credential written
+in the same test --- is `tests/test_auth.py ServedCredentialTests`. `fn init`
+gains `--auth-required`, so the policy is reachable from the operator surface
+for the first time; `fn principal list` now reads the one registry the server
+reads. **Open and on the board**: `[auth] required = true` also gates a
+transit peer's `IHAVE`, so a node cannot yet both require a reader login and
+take a feed.
+
 **A connection posts repeatedly.** The one-durable-post-per-connection defect
 was fixed by `w5/clock-seam` (merge `7d8eff8`, the per-submission injection
 clock) and the board line was never closed; measured live on persvati at

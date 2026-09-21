@@ -742,3 +742,42 @@
 (assert-event (not (member-equal (fn-nntp-string-octets "STARTTLS")
                                  (fn-auth-capability-lines (fn-auth-open-config)
                                                            nil nil t))))
+
+; RFC 3977 section 5.1.2, on the same two connections.  The policy requires
+; a login, so an unauthenticated connection may not POST and the greeting is
+; 201 -- the code the section's MUST names -- while the connection opened
+; with no policy greets 200 and means it.  Before this lane the greeting read
+; the injection configuration alone and both greeted 200, so the greeting
+; promised what the POST label withheld.
+(assert-event (equal (fn-served-reply-octets
+                      (fn-served-result-effects
+                       (fn-served-open-peer
+                        *fn-t-served-archive* 510 8192 *fn-t-served-config*
+                        *fn-t-served-observation* *fn-t-served-observation*
+                        "innA" nil nil *fn-t-served-policy*)))
+                     *fn-served-greeting*))
+(assert-event (equal (fn-served-reply-octets
+                      (fn-served-result-effects
+                       (fn-served-open-peer
+                        *fn-t-served-archive* 510 8192 *fn-t-served-config*
+                        *fn-t-served-observation* *fn-t-served-observation*
+                        "innA" nil nil (fn-auth-open-config))))
+                     *fn-served-greeting-posting*))
+; And the greeting agrees with the label it would then send, both ways.
+(assert-event (not (member-equal
+                    (fn-nntp-string-octets "POST")
+                    (fn-auth-capability-lines *fn-t-served-policy* nil nil
+                                              (and (fn-inj-config-allow
+                                                    *fn-t-served-config*)
+                                                   (fn-auth-postingp
+                                                    (fn-served-conn-session
+                                                     *fn-t-served-peer*)))))))
+(assert-event (member-equal
+               (fn-nntp-string-octets "POST")
+               (fn-auth-capability-lines
+                *fn-t-served-policy* nil nil
+                (and (fn-inj-config-allow *fn-t-served-config*)
+                     (fn-auth-postingp
+                      (fn-served-conn-session
+                       (fn-served-result-conn
+                        (fn-t-served-login *fn-t-served-peer*))))))))

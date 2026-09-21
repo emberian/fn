@@ -234,8 +234,9 @@ What the policy does, and every decision below is ACL2's
   and that login passes the gate and still gets `440` for POST, and the
   `POST` capability label is not offered to it.
 - `[auth] protected_only = true` answers `483` to AUTHINFO until TLS is
-  active. Set `[listener] tls_cert`/`tls_key` and the node advertises
-  `STARTTLS` (RFC 4642 §2.1). USER/PASS crosses in the clear otherwise.
+  active. Set `[listener] tls_cert`/`tls_key` — `fn init --tls-cert --tls-key`
+  writes them — and the node advertises `STARTTLS` (RFC 4642 §2.1) and drops
+  the label once the layer is up. USER/PASS crosses in the clear otherwise.
 
 The policy reaches every connection the owner opens, including one it
 resolved to a peer record. A peer does not run AUTHINFO, so on a node with
