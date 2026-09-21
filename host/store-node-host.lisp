@@ -636,6 +636,19 @@
           (car (fn-sn-sweep-staging (f-get-global 'fn-store-sn state)
                                     observed held)))))
 
+; Native recovery consumes the structured result directly.  Unlike the older
+; LF-joined adapter for Python, it cannot confuse an observed filename that
+; contains LF with two distinct names.  The policy subject remains exactly
+; fn-sn-sweep-staging.
+(defun fn-store-sn-sweep-staging-list (observed held state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (car (fn-sn-sweep-staging (f-get-global 'fn-store-sn state)
+                                   observed held))))
+
+(defun fn-store-sn-staging-observation-limit (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sn-staging-observation-limit)))
+
 ; -----------------------------------------------------------------------------
 ; Provenance (books/provenance, books/provenance-codec)
 ;

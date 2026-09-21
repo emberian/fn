@@ -25,6 +25,12 @@
 (assert-event (fn-sn-final-namespace-namep *ss-final*))
 (assert-event (not (fn-sn-final-namespace-namep *ss-stage-a*)))
 
+; The host takes this bound from the ACL2 sweep interface before it enumerates
+; a staging directory.  It is positive, so the boundary never silently turns
+; every existing stage namespace into an empty observation.
+(assert-event (equal (fn-sn-staging-observation-limit) 64))
+(assert-event (< 0 (fn-sn-staging-observation-limit)))
+
 ; A store with nothing in flight: the phase fn-own-take-submission also
 ; requires before it lets a submission into the durable path.
 (defconst *ss-ready* (fn-sn-initial nil 0))

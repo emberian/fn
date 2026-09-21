@@ -435,6 +435,27 @@ receive an OS error for every failed read."
       (fnn-posix (path) (sb-posix:closedir dir)))
     (nreverse names)))
 
+(defun fnn-list-directory-bounded (path limit)
+  "Entry names of PATH, or a fault before an unbounded list is retained.
+
+The caller gets the positive LIMIT from an ACL2 policy wrapper.  We read at
+most LIMIT plus one directory entry, so a hostile staging namespace cannot
+turn recovery into an unbounded allocation or a partial cleanup."
+  (unless (and (integerp limit) (> limit 0))
+    (fnn-fault "invalid staging observation limit"))
+  (let ((dir (fnn-posix (path) (sb-posix:opendir path))) (names nil))
+    (unwind-protect
+         (loop
+           (let ((entry (fnn-posix (path) (sb-posix:readdir dir))))
+             (when (sb-alien:null-alien entry) (return))
+             (let ((name (sb-posix:dirent-name entry)))
+               (unless (or (string= name ".") (string= name ".."))
+                 (when (>= (length names) limit)
+                   (fnn-fault "staging namespace exceeds ACL2 observation bound"))
+                 (push name names)))))
+      (fnn-posix (path) (sb-posix:closedir dir)))
+    (nreverse names)))
+
 (defun fnn-link (old new) (fnn-posix (new) (sb-posix:link old new)))
 (defun fnn-replace (old new) (fnn-posix (new) (sb-posix:rename old new)))
 (defun fnn-unlink (path) (fnn-posix (path) (sb-posix:unlink path)))
@@ -631,6 +652,30 @@ here.  The host supplies octets and decides nothing about them."
   (fnn-action (fnn-core-state 'fn-store-sn-recover
                               (mapcar #'fnn-octet-list records) frontier
                               (mapcar #'fnn-octet-list config-records))))
+(defun fnn-bridge-staging-observation-limit ()
+  "The ACL2-owned maximum number of staging names recovery may observe."
+  (let ((value (fnn-core-state 'fn-store-sn-staging-observation-limit)))
+    (unless (and (integerp value) (> value 0))
+      (fnn-fault "ACL2 returned a non-positive staging observation limit"))
+    value))
+
+(defun fnn-bridge-sweep-staging (observed)
+  "Ask the recovery model which observed staging names may be unlinked.
+
+OBSERVED came from one bounded directory enumeration.  The native adapter
+marshals that observation and verifies the returned representation; it does
+not repeat the staging-prefix, held-name, or phase policy."
+  (let ((value (fnn-core-state 'fn-store-sn-sweep-staging-list
+                               (mapcar (lambda (name)
+                                         (fnn-octet-list (fnn-string-octets name)))
+                                       observed)
+                               nil)))
+    (unless (and (listp value) (every #'fnn-octet-list-p value))
+      (fnn-fault "ACL2 returned malformed staging sweep names"))
+    (mapcar (lambda (octets)
+              (handler-case (fnn-octets-string (fnn-octets octets))
+                (error () (fnn-fault "ACL2 returned a non-UTF-8 staging name"))))
+            value)))
 (defun fnn-bridge-io (operation result)
   (fnn-action (fnn-core-state 'fn-store-sn-io operation result)))
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)
@@ -793,7 +838,6 @@ resolves the names against `domain' and the host carries that list verbatim."
 ;;; ---------------------------------------------------------------------------
 ;;; The store: tools/run_store.py's Store, decision for decision.
 
-(defconstant +fnn-max-staging-report+ 64)
 (defconstant +fnn-config-record-bytes+ 65538)
 ;; tools/run_store.py's `init --group` default, an operator default and not a
 ;; group table: what a store serves is what the core admits and replays.
@@ -974,16 +1018,42 @@ The core decides whether the records replay."
       (unless (= sequence expected) (fnn-fault "transaction sequence gap")))
     files))
 
+(defun fnn-staging-observation (store)
+  "The bounded physical observation supplied to the ACL2 staging policy."
+  (let ((limit (fnn-bridge-staging-observation-limit)))
+    (handler-case
+        (sort (fnn-list-directory-bounded (fnn-staging store) limit) #'string<)
+      (fnn-os-error () (fnn-fault "cannot enumerate staging")))))
+
 (defun fnn-staging-orphans (store)
-  (let ((names (handler-case (fnn-list-directory (fnn-staging store))
-                 (fnn-os-error () (fnn-fault "cannot enumerate staging"))))
-        (report nil))
-    (dolist (name names)
-      (when (>= (length report) +fnn-max-staging-report+)
-        (push "..." report)
-        (return))
-      (push name report))
-    (sort report #'string<)))
+  "The bounded report after a recovery policy decision or a read-only open."
+  (fnn-staging-observation store))
+
+(defun fnn-sweep-staging (store)
+  "Apply the ACL2-owned recovery policy to one bounded staging observation.
+
+The core's result must be an observed name.  That check is representation
+validation at the host boundary, not a second staging policy.  ENOENT means a
+concurrent external removal won the race; any other unlink error is uncertain
+because the name may or may not still be present after the syscall."
+  (let* ((observed (fnn-staging-observation store))
+         (removals (fnn-bridge-sweep-staging observed)))
+    (dolist (name removals)
+      (unless (member name observed :test #'string=)
+        (fnn-fault "ACL2 returned a staging removal outside the observation"))
+      (handler-case
+          (progn
+            (fnn-unlink (fnn-join (fnn-staging store) name))
+            ;; Developer-only source-pinned recovery seam.  It runs after the
+            ;; real unlink, so EIO here is a post-success observation and
+            ;; SIGKILL is process death before the next directory observation.
+            (fnn-at store :recovery-stage-unlinked))
+        (fnn-os-error (e)
+          (if (= (fnn-os-errno e) sb-posix:enoent)
+              nil
+              (fnn-indeterminate "cannot collect staging orphan ~a: ~a" name e)))))
+    (setf (fnn-store-orphans store) (fnn-staging-observation store))
+    removals))
 
 (defun fnn-load-config (store)
   (fnn-check-regular (fnn-config-path store))
@@ -1106,7 +1176,6 @@ The core decides whether the records replay."
           (fnn-load-frontier store)
           (let ((config-records (fnn-config-records store)))
             (setq records (fnn-durable-records store))
-            (setf (fnn-store-orphans store) (fnn-staging-orphans store))
             (unless (eq (fnn-bridge-recover records (fnn-store-frontier store) config-records)
                         :recovering)
               (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
@@ -1140,6 +1209,17 @@ The core decides whether the records replay."
       (fnn-os-error ()
         (setf (fnn-store-fenced store) t)
         (fnn-indeterminate "cannot establish recovered namespace frontier")))
+    ;; The model's sweep transition is enabled only after the fifth recovery
+    ;; observation reached :ready.  A shared-lock reader may report its
+    ;; bounded observation, but it does not mutate a namespace it does not
+    ;; exclusively own.
+    (handler-case
+        (if (fnn-store-writable store)
+            (fnn-sweep-staging store)
+            (setf (fnn-store-orphans store) (fnn-staging-orphans store)))
+      ((or fnn-store-fault fnn-store-indeterminate) (e)
+        (setf (fnn-store-fenced store) t)
+        (error e)))
     (setf (fnn-store-fenced store) nil)
     records))
 
@@ -1369,6 +1449,29 @@ a source-pinned post-syscall cut."
                       (t (fnn-fault "invalid FN_NATIVE_INIT_FAULT action: ~a" action)))
                 "developer-only native initializer fault"))))))
 
+(defparameter +fnn-recovery-model-cuts+
+  '("recovery-stage-unlinked"))
+
+(defun fnn-recovery-test-fault ()
+  "Developer-only FN_NATIVE_RECOVERY_FAULT=MODEL-CUT:eio|kill selector.
+
+This is not an operator option.  It exists solely to make a recovery cleanup
+cut explicit: the selected outcome is raised after the real unlink, and a
+subsequent command is a fresh process rather than an in-process retry."
+  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_RECOVERY_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw :from-end t)))
+        (unless colon
+          (fnn-fault "invalid FN_NATIVE_RECOVERY_FAULT (expected MODEL-CUT:eio|kill)"))
+        (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
+          (unless (member label +fnn-recovery-model-cuts+ :test #'string=)
+            (fnn-fault "unknown FN_NATIVE_RECOVERY_FAULT cut: ~a" label))
+          (list (intern (string-upcase label) :keyword)
+                (cond ((string= action "eio") 'fnn-os-error)
+                      ((string= action "kill") :fnn-test-kill)
+                      (t (fnn-fault "invalid FN_NATIVE_RECOVERY_FAULT action: ~a" action)))
+                "developer-only native recovery fault"))))))
+
 (defun fnn-command-init (root groups)
   (let ((store (make-fnn-store root :writable t :fault (fnn-init-test-fault))))
     (unwind-protect
@@ -1449,7 +1552,7 @@ this reads only whether there is one."
       (values "anchor=none" +fnn-exit-ok+)))
 
 (defun fnn-command-recover (root)
-  (multiple-value-bind (store records) (fnn-open-live-store root t)
+  (multiple-value-bind (store records) (fnn-open-live-store root t (fnn-recovery-test-fault))
     (unwind-protect
          (multiple-value-bind (report code) (fnn-anchor-report store)
            (fnn-out "recovered transactions=~d articles=~d ~a ~a"

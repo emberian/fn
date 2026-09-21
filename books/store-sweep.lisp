@@ -38,6 +38,20 @@
 
 (defconst *fn-sn-staging-prefix* '(46 115 116 97 103 101 45))
 
+; The host's recovery observation is deliberately bounded before it builds an
+; ACL2 input list.  This is a storage policy value, rather than a second
+; adapter-specific resource choice.  A directory with more names faults at
+; the boundary; it is never partially swept or silently truncated.
+(defconst *fn-sn-max-staging-observation* 64)
+
+(defun fn-sn-staging-observation-limit ()
+  (declare (xargs :guard t))
+  *fn-sn-max-staging-observation*)
+
+(defthm fn-sn-staging-observation-limit-is-positive
+  (< 0 (fn-sn-staging-observation-limit))
+  :rule-classes :linear)
+
 (defun fn-sn-octet-prefixp (prefix name)
   (declare (xargs :guard t))
   (if (consp prefix)
