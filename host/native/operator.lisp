@@ -119,8 +119,9 @@
   (let* ((max-arguments (fnn-core 'fn-native-operator-host-argv-max-arguments))
          (max-octets (fnn-core 'fn-native-operator-host-argv-max-octets))
          (argv-octets (fnn-operator-argv-octets argv max-arguments max-octets))
-         ; Asking ACL2 first makes config-free HELP its own normalized action.
-         (preflight (fnn-core 'fn-native-operator-host-run nil argv-octets))
+         ; An out-of-domain octet asks ACL2 for the configuration-needed tag without
+         ; treating an empty file as a syntactically valid but invalid profile.
+         (preflight (fnn-core 'fn-native-operator-host-run '(256) argv-octets))
          (status (fnn-core 'fn-native-operator-host-result-status preflight))
          (reason (fnn-core 'fn-native-operator-host-result-reason preflight))
          (action (fnn-core 'fn-native-operator-host-result-native-action preflight)))
