@@ -62,6 +62,57 @@ costs a quarter of an hour and the loop needed four.
 The octet comparison is the whole ARTICLE block as each server rendered it,
 compared by the driver, not a digest and not a status code.
 
+## Certification of the change
+
+`python3 tools/farm.py submit persvati --jobs 6 --timeout-seconds 3600
+--remote-root /home/ember/fn-lanes/w11-twonode-feed --affected-by
+books/article-fields.lisp --closure`, run `run-20260920T235641Z-3179`, then
+`wait`. Evidence
+`build/acl2/certify-20260920T235649Z-727455/manifest.json`.
+
+| fact | value |
+| --- | --- |
+| host | persvati, Linux 6.17.0-40-generic x86_64, Python 3.13.7, SBCL 2.6.8 |
+| ACL2 | 8.7, `/home/ember/fn-tools/acl2-8.7/saved_acl2`, sha256 `c8a7a804d9cc80e2025a8ab0e1d9325f2a0c4a027a5dcdcb2c1093e9cd5c8163` |
+| environment | `ACL2_BOOK_HASH_ALISTP=NIL`, `ACL2_CUSTOMIZATION=NONE` |
+| roots | **123 requested, 122 certified, 1 failed**, 282.8 s wall at `--jobs 6` |
+| the one failure | `books/owner-config` at `( DEFUN FN-OCFG-STATEP ...)`, `books--owner-config.certify.log:969`. **Pre-existing and not this lane's**: `w10/owner-relation` recorded it on the board ("`books/owner-config` has never been admitted") with both its defects, and it is open in `HANDOFF-w10-owner-relation.md` §3. Nothing in this lane touches that book or `fn-own-relation`. |
+| published | 122 pairs to persvati's `/home/ember/fn-certcache` |
+
+The roots this lane's change is about, each certified, with its wall time:
+
+| root | s |
+| --- | --- |
+| `books/article-fields` | 0.88 |
+| `tests/acl2/article-fields-tests` | 0.59 |
+| `books/peer-inbound` | 82.47 |
+| `books/peer-inbound-invariants` | 1.15 |
+| `tests/acl2/peer-inbound-tests` | 1.13 |
+| `books/owner-feed` | 2.31 |
+| `tests/acl2/owner-feed-tests` | 0.98 |
+| `books/owner` | 2.08 |
+| `books/owner-invariants` | 10.25 |
+| `tests/acl2/owner-tests` | 1.50 |
+| `books/served` | 1.88 |
+| `tests/acl2/served-tests` | 1.23 |
+| `books/nntp-post` | 6.77 |
+| `books/bp-ingress` | 1.06 |
+| `books/injection-invariants` | 1.19 |
+
+`books/nntp-post` and `books/bp-ingress` are the injecting agents and are in
+the table on purpose: they keep `fn-af-proto-article-check` and keep
+refusing a proto-article that carries `Injection-Info`. That they certify
+unchanged is what says the split was additive.
+
+**What this certification does and does not establish.** It establishes that
+every root in the closure of `books/article-fields` admits, verifies its
+guards and proves its theorems with the new function present, and that the
+five assertions separating the two checks evaluate as stated. It does NOT
+establish that the relaying check is the right reading of RFC 5537 §3.6
+step 1 -- that is a reading of a document, argued in
+`specs/peering.md`'s wave-11 status section, and no theorem in this tree
+says it.
+
 ## Limits of this record
 
 - **Run 1 is not the gate.** It is a scratch driver on the laptop with a
