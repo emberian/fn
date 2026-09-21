@@ -38,7 +38,7 @@
 ; encodings.  The length theorem also catches a lost or added hex half.
 (assert-event (equal (fn-feed-filename-components '(255)) :bad))
 (assert-event (equal (fn-feed-filename-from-components
-                      '((118 49) (50 101) (106 111 117 114 110 97 108 46 102 110 102 100)))
+                      '((118 49) (50) (106 111 117 114 110 97 108 46 102 110 102 100)))
                      :bad))
 (defun ff-repeat (n octet)
   (if (zp n) nil (cons octet (ff-repeat (1- n) octet))))
