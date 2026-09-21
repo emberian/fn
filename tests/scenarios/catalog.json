@@ -88,14 +88,16 @@
         "Allow unsynced writes to tear/reorder within the selected model.",
         "Recover and retry.",
         "Exercise the fresh initializer with configuration history and repeated fresh staging names, and separate a removed configuration-directory fence from the root/transactions relation.",
-        "At native transaction recovery, supply a malformed final filename, a canonical filename hard-linked to a differently sequenced record, and a namespace exceeding its physical observation budget."
+        "At native transaction recovery, supply a malformed final filename, a canonical filename hard-linked to a differently sequenced record, and a namespace exceeding its physical observation budget.",
+        "At native configuration recovery, supply a decoded-generation/basename mismatch, a canonical-looking symlink, a duplicate or gap, malformed bytes, and an entry beyond the physical observation budget."
       ],
       "expected": [
         "Modeled acknowledged commits survive; complete unacknowledged commits may survive.",
         "No partial transaction is published.",
         "Uncertainty fences mutations; platform assumptions are recorded.",
         "Fresh successful initialization reaches the full image including durable configuration history; a weaker relation alone is not evidence of that publication. Transaction names come from the attached ACL2 renderer and remain distinct for distinct natural sequences.",
-        "Bound enumeration before retaining excess names; ACL2 owns canonical names and contiguous sequence pairs, and each decoded record must match its issued sequence before replay."
+        "Bound enumeration before retaining excess names; ACL2 owns canonical names and contiguous sequence pairs, and each decoded record must match its issued sequence before replay.",
+        "The configuration observer retains every bounded physical entry until ACL2 has decoded it and bound its generation to the canonical name. A conflicting, malformed, gapped, duplicate, excess, unreadable, or non-regular entry faults recovery rather than being filtered into a shorter history."
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",

@@ -92,6 +92,8 @@
     "books/journal-publish",
     "books/native-admin",
     "tests/acl2/native-admin-tests",
+    "books/native-config-observation",
+    "tests/acl2/native-config-observation-tests",
     "books/native-operator",
     "host/native-operator-host",
     "tests/acl2/native-operator-tests",
@@ -362,26 +364,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 357,
-    "books_in_root_closure": 356,
-    "roots": 358,
+    "books": 359,
+    "books_in_root_closure": 358,
+    "roots": 360,
     "theorems": 6231,
-    "functions": 4839,
-    "assert_events": 6649,
+    "functions": 4854,
+    "assert_events": 6655,
     "must_fails": 138,
     "encapsulates": 19,
     "guards": {
       "verified": 1620,
       "declared-off": 235,
-      "default-guarded": 2391,
+      "default-guarded": 2406,
       "default-unguarded": 593
     },
     "suspect_theorems": 58,
     "export_hygiene_warnings": 79,
     "enabled_projection_warnings": 24,
     "teeth_form_warnings": 4,
-    "include_hygiene_warnings": 127,
-    "host_names_warnings": 515,
+    "include_hygiene_warnings": 129,
+    "host_names_warnings": 516,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -3566,6 +3568,31 @@
         "identity",
         "native-config",
         "nntp-auth"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/native-config-observation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 15,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 15,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "native-admin"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8259,6 +8286,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/native-config-observation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/native-config-observation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/native-config-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -11323,6 +11375,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/native-config-observation.lisp",
+        "line": 9,
+        "include": "native-admin",
+        "included": "books/native-admin.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/nntp-responses.lisp",
         "line": 7,
         "include": "article-fields",
@@ -11782,6 +11841,13 @@
         "line": 3,
         "include": "../../books/native-auth-profile",
         "included": "books/native-auth-profile.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-config-observation-tests.lisp",
+        "line": 3,
+        "include": "../../books/native-config-observation",
+        "included": "books/native-config-observation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -12370,14 +12436,14 @@
       {
         "host": "host/native/admin.lisp",
         "line": 113,
-        "name": "fnn-config-record-names",
+        "name": "fnn-config-record-observation",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
         "line": 113,
-        "name": "fnn-config-records-from-names",
+        "name": "fnn-config-records-from-observation",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
@@ -15486,6 +15552,13 @@
         "host": "host/owner-host.lisp",
         "line": 673,
         "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 53,
+        "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       }
