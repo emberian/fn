@@ -39,6 +39,7 @@
 ;; host prints (HANDOFF-w3-native-host.md, "the differential's four findings").
 (ld "host/anchor-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
+(ld "host/owner-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
 (ld "host/workflow-host.lisp" :ld-error-action :error)
@@ -55,6 +56,9 @@
   (prog2$ (cw "fn-native: raw entry not installed~%") (value :missing)))
 (progn! (set-raw-mode t)
         (load "host/native/io.lisp")
+        ; The writable NNTP owner.  It registers the `owner' verb and calls
+        ; only host/owner-host.lisp wrappers for protocol and state decisions.
+        (load "host/native/owner.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
