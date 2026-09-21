@@ -160,6 +160,12 @@
     (handler-case
         (unwind-protect
              (progn
+               ; Test-only exact core/adapter fault.  It is inside the same
+               ; handler as real send-path failures so the regression proves
+               ; that a fault is never collapsed into transport uncertainty.
+               (when (string= (or (sb-ext:posix-getenv
+                                   "FN_BP_SERVICE_TEST_SEND_FAULT") "") "1")
+                 (fnn-fault "bp-service: injected send core fault"))
                (setq socket (fnn-tcl-connect (fnn-bps-route-host route)
                                              (fnn-bps-route-port route)))
                (let ((conn (fnn-tcl-session
@@ -173,6 +179,7 @@
                             :bundle wire :expect 0)))
                  (setq outcome (or (fnn-tclc-outcome conn) :uncertain))))
           (when socket (fnn-socket-shut socket)))
+      (fnn-store-fault (e) (error e))
       ((or fnn-os-error sb-bsd-sockets:socket-error fnn-store-error) ()
         (setq outcome :uncertain)))
     (when (eq outcome :uncertain) (setf (fnn-bps-outcome service) :uncertain))

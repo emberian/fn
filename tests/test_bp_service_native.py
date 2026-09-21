@@ -128,6 +128,18 @@ class NativeBpServiceTests(unittest.TestCase):
                 self.assertIn("BP queue recovered jobs=1", recovered.stdout)
                 self.assertNotIn("restart fenced", recovered.stderr)
 
+    def test_send_core_fault_remains_exit_four(self):
+        fault_env = dict(self.env)
+        fault_env["FN_BP_SERVICE_TEST_SEND_FAULT"] = "1"
+        result = self.run_outage(env=fault_env)
+        self.assertEqual(result.returncode, 4, result.stderr)
+        self.assertIn("injected send core fault", result.stderr)
+        self.assertNotIn("BP forwarding retained reason=uncertain", result.stdout)
+        self.assertEqual(
+            len(self.records()), 2,
+            "a core fault must stop before a requeued transport record",
+        )
+
     def test_transport_uncertain_dominates_refused_article(self):
         malformed = self.tmp / "malformed.bundle"
         malformed.write_bytes(b"not a BPv7 bundle")
