@@ -110,6 +110,7 @@
 (defun fn-aj-authorize (s kind frame-length reserve-resolutionp
                               lock-ownedp next-absentp)
   (if (and (fn-aj-statep s)
+           (keywordp kind)
            (fn-aj-kind-allowedp s kind)
            (fn-aj-fits-p s frame-length reserve-resolutionp)
            (equal lock-ownedp t)
