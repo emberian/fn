@@ -13,6 +13,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -298,6 +299,29 @@ class CacheTests(unittest.TestCase):
                               "toolchain_identity": "toolchain-123",
                               "installed": 31, "kept": 2,
                               "missing": 0, "removed": 0})
+
+    def test_acl2_override_is_quoted_for_preflight_and_runner_and_recorded(self):
+        fake = Fake([], certs=INSTALLED)
+        override = "/tank/fn/task wrappers/acl2'; touch /tmp/not-run; '"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                code = farm.main([
+                    "submit", "hbox", "books/alpha", "--jobs", "2",
+                    "--timeout-seconds", "60", "--root", str(root),
+                    "--remote-root", "/tank/fn/tree", "--acl2", override])
+            self.assertEqual(code, 0)
+            install = next(s for s in fake.scripts() if "tools/certs.py" in s)
+            runner = fake.runner_script()
+            quoted = shlex.quote(override)
+            self.assertIn("acl2=" + quoted, install)
+            runner_words = shlex.split(runner)
+            inner = runner_words[runner_words.index("-c") + 1]
+            self.assertIn("FN_ACL2=" + quoted, inner)
+            self.assertNotIn("FN_ACL2=" + override, inner)
+            identifier = next((root / "build" / "farm").glob("*.json")).stem
+            record = json.loads(farm.record_path(root, identifier).read_text())
+            self.assertEqual(record["acl2"], override)
 
     def test_an_install_that_did_not_run_refuses_before_acl2(self):
         fake = Fake([], certs="Traceback: no such cache\n",

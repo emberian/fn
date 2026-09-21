@@ -94,8 +94,9 @@ class FarmError(Exception):
     """A farm run that did not start, reported instead of returned as a run id."""
 
 
-def host_settings(host: str, cache: str | None = None) -> dict:
-    """What this host needs, with `cache` overriding the box's default cache.
+def host_settings(host: str, cache: str | None = None,
+                  acl2: str | None = None) -> dict:
+    """What this host needs, with explicit cache and ACL2 overrides.
 
     An override is how a measurement isolates itself from the shared cache:
     the pairs a probe run publishes must not be mixed into what the next
@@ -106,7 +107,16 @@ def host_settings(host: str, cache: str | None = None) -> dict:
                                      "wrap": ""}))
     if cache:
         settings["cache"] = cache
+    if acl2:
+        settings["acl2"] = acl2
     return settings
+
+
+def acl2_shell_word(host: str, acl2: str | None = None) -> str:
+    """The configured default expression, or one quoted literal override."""
+    if acl2 is not None:
+        return remote_quote(acl2)
+    return str(host_settings(host)["acl2"])
 
 
 def run(command: list[str], check: bool = True) -> subprocess.CompletedProcess:
@@ -201,7 +211,8 @@ def selection_words(books: list[str], affected_by: list[str],
 
 def cache_preflight_script(host: str, remote: Path, books: list[str],
                            affected_by: list[str], closure: bool,
-                           cache: str | None = None) -> str:
+                           cache: str | None = None,
+                           acl2: str | None = None) -> str:
     """Select and install one exact-origin dependency set before ACL2 starts.
 
     Incremental certification extends certificates at ``remote``.  It may
@@ -210,7 +221,7 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
     is valid for loading a native image, but extending it would create a parent
     at ``remote`` whose children retain the other origin's full-book-names.
     """
-    settings = host_settings(host, cache)
+    settings = host_settings(host, cache, acl2)
     select = " ".join(shlex.quote(word) for word in
                       selection_words(books, affected_by, closure))
     mode = "--purge-on-miss " if closure else "--dependencies-only "
@@ -220,7 +231,7 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
         f"if [ -z \"$roots\" ]; then "
         "echo 'artifact-set EMPTY origin NONE source NONE toolchain NONE; "
         "installed 0, kept 0, missing 0, removed 0'; exit 0; fi; "
-        f"acl2={settings['acl2']}; "
+        f"acl2={acl2_shell_word(host, acl2)}; "
         "toolchain=$(python3 tools/acl2_toolchain.py identity \"$acl2\") "
         "|| exit 14; "
         f"python3 tools/certs.py --cache {remote_quote(settings['cache'])} "
@@ -230,10 +241,11 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
 
 def install_from_cache(host: str, remote: Path, books: list[str],
                        affected_by: list[str], closure: bool,
-                       cache: str | None = None) -> dict[str, object]:
+                       cache: str | None = None,
+                       acl2: str | None = None) -> dict[str, object]:
     """Install one coherent input set, or require explicit closure recertification."""
     answer = ssh(host, cache_preflight_script(
-        host, remote, books, affected_by, closure, cache), check=False)
+        host, remote, books, affected_by, closure, cache, acl2), check=False)
     counts = parse_installed(answer.stdout)
     if counts and answer.returncode == 0:
         return counts
@@ -303,7 +315,8 @@ def push(host: str, root: Path, remote: Path) -> None:
 
 def remote_script(host: str, root: Path, identifier: str, books: list[str],
                   jobs: int, timeout_seconds: int, affected_by: list[str],
-                  closure: bool = False, cache: str | None = None) -> str:
+                  closure: bool = False, cache: str | None = None,
+                  acl2: str | None = None) -> str:
     """The submit script: every step that can fail exits with its own code.
 
     `cd X && ... &` backgrounds the whole list, so ssh returned 0 whatever
@@ -311,7 +324,7 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
     that died on its first line -- and `submit` printed a run id for a run
     that did not exist.  Each guard here is a distinct non-zero exit.
     """
-    settings = host_settings(host, cache)
+    settings = host_settings(host, cache, acl2)
     runner = ["python3", "tools/certify_books.py", "--jobs", str(jobs)]
     for path in affected_by:
         runner.extend(["--affected-by", path])
@@ -323,7 +336,7 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
     log = f"build/farm/{identifier}.log"
     status_file = f"build/farm/{identifier}.status"
     inner = (
-        f"FN_ACL2={settings['acl2']} "
+        f"FN_ACL2={acl2_shell_word(host, acl2)} "
         f"FN_ACL2_TIMEOUT_SECONDS={timeout_seconds} "
         f"FN_CERT_CACHE={settings['cache']} "
         # The runner publishes into the box's cache after each root.  This
@@ -353,17 +366,18 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
 def submit(host: str, root: Path, books: list[str], jobs: int,
            timeout_seconds: int, affected_by: list[str],
            remote: Path | None = None, closure: bool = False,
-           cache: str | None = None) -> str:
+           cache: str | None = None, acl2: str | None = None) -> str:
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
     push(host, root, remote)
-    cached = install_from_cache(host, remote, books, affected_by, closure, cache)
+    cached = install_from_cache(
+        host, remote, books, affected_by, closure, cache, acl2)
     print(f"{identifier}: from {host}'s cache, "
           + ", ".join(f"{name} {value}" for name, value in cached.items()),
           file=sys.stderr)
     started = ssh(host, remote_script(host, remote, identifier, books, jobs,
                                       timeout_seconds, affected_by, closure,
-                                      cache),
+                                      cache, acl2),
                   check=False)
     if started.returncode != 0:
         raise FarmError(f"{host}: {identifier} did not start under {remote}: "
@@ -380,6 +394,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
         # What the box's cache already held: the run certifies the rest.
         "cache_install": cached,
         "cache": host_settings(host, cache)["cache"],
+        "acl2": acl2 or host_settings(host)["acl2"],
         "jobs": jobs,
         "timeout_seconds": timeout_seconds,
         "submitted_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -551,6 +566,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="the certificate cache to use ON THE HOST "
                              "(default: the box's own; `submit` records it "
                              "and `wait` reuses what was recorded)")
+    parser.add_argument("--acl2", default=None,
+                        help="exact ACL2 executable path ON THE HOST for submit "
+                             "(default: the host's configured executable)")
     parser.add_argument("--root", default=str(ROOT))
     parser.add_argument("--remote-root", default=None,
                         help="the path to use on the host (default: --root); a "
@@ -565,7 +583,8 @@ def main(argv: list[str] | None = None) -> int:
                                 list(arguments.affected_by),
                                 Path(arguments.remote_root) if arguments.remote_root
                                 else None,
-                                arguments.closure, arguments.cache)
+                                arguments.closure, arguments.cache,
+                                arguments.acl2)
             print(identifier)
             return 0
         if arguments.action == "wait":
