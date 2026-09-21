@@ -204,6 +204,26 @@
                      (list '(119 111 114 107 58 97)
                            '(114 99 112 116 45 49) :committed))))
 
+; Append-only native application ingress kinds.  Their numeric kind codes are
+; after every deployed FNRJ record, and both new result fields round-trip.
+(assert-event
+ (equal (fn-frame-result-payload
+         (fn-frame-receipt-decode
+          (fn-frame-receipt-encode
+           :request-intent
+           (list '(98) '(1 2 3) 7 9 :accepted) *fn-frame-test-digest*)
+          *fn-frame-test-digest*))
+        (list '(98) '(1 2 3) 7 9 :accepted)))
+(assert-event
+ (equal (fn-frame-result-payload
+         (fn-frame-receipt-decode
+          (fn-frame-receipt-encode
+           :request-context-v2
+           (list '(98) '(1 2 3) '(4 5) 7 9 9 :authorized :duplicate)
+           *fn-frame-test-digest*)
+          *fn-frame-test-digest*))
+        (list '(98) '(1 2 3) '(4 5) 7 9 9 :authorized :duplicate)))
+
 ; An outcome whose phase and result do not belong together is refused by the
 ; encoder, so a journal cannot contain one.
 (assert-event

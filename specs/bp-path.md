@@ -131,14 +131,19 @@ never reads a raw epoch in place of the owner's configuration generation.
 
 The durable order for a new request is:
 
-1. Publish `(:request-intent inbound-id exact-request-adu)` to FNRJ.
+1. Publish `(:request-intent inbound-id exact-request-adu owner-generation
+   owner-next-txid planned-result)` to FNRJ. `planned-result` is `:accepted`
+   only after authoritative Store lookup observes no candidate; it is
+   `:duplicate` only after that lookup observes one exact committed candidate.
 2. Ask the owner for the exact Message-ID, groups, article, BP provenance,
    configuration generation and transaction id, then publish its existing feed
    submission intent.
 3. Execute the owner's Store attempt, publish its feed commit or abort, and
    apply the control completion.
-4. Publish FNRJ `:request-context` with the exact committed Store record chosen
-   by ACL2, then publish receipt intent and committed decision.
+4. Publish FNRJ `:request-context-v2` with the original inbound identity,
+   exact request, exact committed Store record, pinned owner generation,
+   record transaction/generation and application result chosen by ACL2, then
+   publish receipt intent and committed decision.
 5. Regenerate the receipt ADU from the committed FNRJ state, author its BP
    bundle through the BP node machine, and only then offer that bundle to TCPCL.
 
@@ -150,9 +155,11 @@ substituted for another.
 `request-intent` is appended to the version-1 FNRJ kind table, so existing kind
 codes and record bytes retain their meaning.  Replay accepts a legacy
 context-first prefix until the first request intent.  From that point the
-journal is strict: every request context consumes one byte-identical pending
-intent with the same inbound identity, and a conflicting retry or unmatched
-context faults recovery.  An intent by itself proves no Store acceptance.
+journal is strict: every request context binds one byte-identical pending
+intent with the same inbound identity and preserves that binding for replay;
+a conflicting retry or unmatched context faults recovery.  An intent by itself
+proves no Store acceptance.  A retry may arrive in another transport bundle,
+but it cannot replace the original inbound identity or planned result.
 
 Recovery obtains a Store record only from the recovered live owner's history.
 The ACL2 lookup compares the parsed Message-ID, exact article, immutable subject,
