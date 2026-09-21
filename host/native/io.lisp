@@ -4,9 +4,9 @@
 ;;; the ACL2 world under the trust tag :fn-native-host by host/native/build.lisp
 ;;; (progn! (set-raw-mode t) (load "host/native/io.lisp")).  Nothing here is
 ;;; proved.  This file is the whole raw surface of the native host: SBCL's
-;;; sb-posix, sb-unix, sb-alien and sb-bsd-sockets contribs, the SHA-256 below
-;;; (A-CRYPTO), the JSON of the two host-owned metadata files, and the socket
-;;; loop.  specs/host.md lists the surface function by function.
+;;; sb-posix, sb-unix, sb-alien and sb-bsd-sockets contribs, the diagnostic
+;;; SHA-256 CLI below, and the socket loop.  specs/host.md lists the surface
+;;; function by function.
 ;;;
 ;;; Calls into the certified core go through `fnn-call`, which applies the
 ;;; executable counterpart (the ACL2_*1*_ACL2 function) of the named host
@@ -39,9 +39,9 @@
 ;;;
 ;;; The host's decisions are the Python host's decisions, in the same order,
 ;;; with the same messages, so that the two can be compared byte for byte.
-;;; Where Python holds a decision ACL2 does not (the config and frontier
-;;; checksums, the bounded directory grammar, errno classes), this file holds
-;;; the same one; it adds none.
+;;; The bounded directory grammar and errno classes remain host boundary
+;;; checks.  ACL2 owns metadata framing, profile values, frontier decoding and
+;;; successor selection; this file only moves those octets.
 
 (in-package "ACL2")
 
@@ -415,185 +415,6 @@ power-loss qualification."
   (sb-ext:exit :code code :abort t))
 
 ;;; ---------------------------------------------------------------------------
-;;; JSON, for config.json and allocation-frontier.json only.  Values: strings,
-;;; integers, (:float . text), :true, :false, :null, (:array . items) and
-;;; (:object . alist).  The canonical writer is Python's
-;;; json.dumps(sort_keys=True, separators=(",", ":")).  Parsing never touches
-;;; the Lisp reader; input is bounded by the caller's read bound.
-
-(define-condition fnn-json-error (error)
-  ((message :initarg :message :reader fnn-message))
-  (:report (lambda (c s) (write-string (fnn-message c) s))))
-
-(defun fnn-json-fail (control &rest args)
-  (error 'fnn-json-error :message (apply #'format nil control args)))
-
-(defun fnn-json-object-p (v) (and (consp v) (eq (car v) :object)))
-
-(defun fnn-json-get (object key)
-  "The value under KEY, or :absent."
-  (let ((cell (assoc key (cdr object) :test #'string=)))
-    (if cell (cdr cell) :absent)))
-
-(defun fnn-json-escape (string out)
-  (write-char #\" out)
-  (loop for ch across string do
-    (let ((code (char-code ch)))
-      (cond ((char= ch #\") (write-string "\\\"" out))
-            ((char= ch #\\) (write-string "\\\\" out))
-            ((char= ch #\Newline) (write-string "\\n" out))
-            ((char= ch #\Return) (write-string "\\r" out))
-            ((char= ch #\Tab) (write-string "\\t" out))
-            ((= code 8) (write-string "\\b" out))
-            ((= code 12) (write-string "\\f" out))
-            ((or (< code 32) (> code 126))
-             (if (> code #xffff)
-                 (let ((v (- code #x10000)))
-                   (format out "\\u~(~4,'0x~)\\u~(~4,'0x~)"
-                           (+ #xd800 (ash v -10)) (+ #xdc00 (logand v #x3ff))))
-                 (format out "\\u~(~4,'0x~)" code)))
-            (t (write-char ch out)))))
-  (write-char #\" out))
-
-(defun fnn-json-write (value out)
-  (cond ((stringp value) (fnn-json-escape value out))
-        ((integerp value) (format out "~d" value))
-        ((eq value :true) (write-string "true" out))
-        ((eq value :false) (write-string "false" out))
-        ((eq value :null) (write-string "null" out))
-        ((and (consp value) (eq (car value) :float)) (write-string (cdr value) out))
-        ((and (consp value) (eq (car value) :array))
-         (write-char #\[ out)
-         (loop for (item . more) on (cdr value) do
-           (fnn-json-write item out)
-           (when more (write-char #\, out)))
-         (write-char #\] out))
-        ((fnn-json-object-p value)
-         (write-char #\{ out)
-         (loop for ((key . item) . more) on (sort (copy-list (cdr value)) #'string< :key #'car) do
-           (fnn-json-escape key out)
-           (write-char #\: out)
-           (fnn-json-write item out)
-           (when more (write-char #\, out)))
-         (write-char #\} out))
-        (t (fnn-json-fail "unserializable value"))))
-
-(defun fnn-json-canonical (value)
-  (with-output-to-string (out) (fnn-json-write value out)))
-
-(defun fnn-json-parse (octets)
-  "Parse one JSON document from OCTETS (UTF-8), the way json.loads reads it."
-  (let* ((text (handler-case (fnn-octets-string octets)
-                 (error () (fnn-json-fail "invalid UTF-8"))))
-         (pos 0) (len (length text)))
-    (labels ((peek () (if (< pos len) (char text pos) nil))
-             (next () (prog1 (peek) (incf pos)))
-             (skip-space ()
-               (loop while (and (< pos len) (member (char text pos) '(#\Space #\Tab #\Newline #\Return)))
-                     do (incf pos)))
-             (expect (ch)
-               (unless (eql (next) ch) (fnn-json-fail "expected ~a at ~d" ch pos)))
-             (parse-value (depth)
-               (when (> depth 32) (fnn-json-fail "nesting too deep"))
-               (skip-space)
-               (let ((ch (peek)))
-                 (cond ((null ch) (fnn-json-fail "unexpected end of document"))
-                       ((char= ch #\{) (parse-object depth))
-                       ((char= ch #\[) (parse-array depth))
-                       ((char= ch #\") (parse-string))
-                       ((or (digit-char-p ch) (char= ch #\-)) (parse-number))
-                       ((literal "true") :true)
-                       ((literal "false") :false)
-                       ((literal "null") :null)
-                       (t (fnn-json-fail "unexpected character at ~d" pos)))))
-             (literal (word)
-               (when (and (<= (+ pos (length word)) len)
-                          (string= word text :start2 pos :end2 (+ pos (length word))))
-                 (incf pos (length word))
-                 t))
-             (parse-object (depth)
-               (expect #\{)
-               (let ((pairs nil))
-                 (skip-space)
-                 (if (eql (peek) #\})
-                     (next)
-                     (loop
-                       (skip-space)
-                       (unless (eql (peek) #\") (fnn-json-fail "expected object key at ~d" pos))
-                       (let ((key (parse-string)))
-                         (skip-space)
-                         (expect #\:)
-                         (let ((value (parse-value (1+ depth))))
-                           ;; json.loads keeps the last of duplicate keys.
-                           (setf pairs (remove key pairs :key #'car :test #'string=))
-                           (setf pairs (append pairs (list (cons key value))))))
-                       (skip-space)
-                       (case (next)
-                         (#\, nil)
-                         (#\} (return))
-                         (t (fnn-json-fail "expected , or } at ~d" pos)))))
-                 (cons :object pairs)))
-             (parse-array (depth)
-               (expect #\[)
-               (let ((items nil))
-                 (skip-space)
-                 (if (eql (peek) #\])
-                     (next)
-                     (loop
-                       (push (parse-value (1+ depth)) items)
-                       (skip-space)
-                       (case (next)
-                         (#\, nil)
-                         (#\] (return))
-                         (t (fnn-json-fail "expected , or ] at ~d" pos)))))
-                 (cons :array (nreverse items))))
-             (parse-string ()
-               (expect #\")
-               (with-output-to-string (out)
-                 (loop
-                   (let ((ch (next)))
-                     (cond ((null ch) (fnn-json-fail "unterminated string"))
-                           ((char= ch #\") (return))
-                           ((char= ch #\\)
-                            (let ((esc (next)))
-                              (case esc
-                                (#\" (write-char #\" out)) (#\\ (write-char #\\ out))
-                                (#\/ (write-char #\/ out)) (#\b (write-char (code-char 8) out))
-                                (#\f (write-char (code-char 12) out)) (#\n (write-char #\Newline out))
-                                (#\r (write-char #\Return out)) (#\t (write-char #\Tab out))
-                                (#\u (write-char (code-char (parse-hex4)) out))
-                                (t (fnn-json-fail "bad escape")))))
-                           ((< (char-code ch) 32) (fnn-json-fail "control character in string"))
-                           (t (write-char ch out)))))))
-             (parse-hex4 ()
-               (when (> (+ pos 4) len) (fnn-json-fail "bad unicode escape"))
-               (multiple-value-bind (value end)
-                   (parse-integer text :start pos :end (+ pos 4) :radix 16 :junk-allowed t)
-                 (unless (and value (= end (+ pos 4))) (fnn-json-fail "bad unicode escape"))
-                 (incf pos 4)
-                 value))
-             (parse-number ()
-               (let ((start pos) (float nil))
-                 (when (eql (peek) #\-) (next))
-                 (unless (and (peek) (digit-char-p (peek))) (fnn-json-fail "bad number"))
-                 (loop while (and (peek) (digit-char-p (peek))) do (next))
-                 (when (eql (peek) #\.)
-                   (setq float t) (next)
-                   (unless (and (peek) (digit-char-p (peek))) (fnn-json-fail "bad number"))
-                   (loop while (and (peek) (digit-char-p (peek))) do (next)))
-                 (when (member (peek) '(#\e #\E))
-                   (setq float t) (next)
-                   (when (member (peek) '(#\+ #\-)) (next))
-                   (unless (and (peek) (digit-char-p (peek))) (fnn-json-fail "bad number"))
-                   (loop while (and (peek) (digit-char-p (peek))) do (next)))
-                 (let ((token (subseq text start pos)))
-                   (if float (cons :float token) (parse-integer token))))))
-      (let ((value (parse-value 0)))
-        (skip-space)
-        (when (< pos len) (fnn-json-fail "trailing data at ~d" pos))
-        value))))
-
-;;; ---------------------------------------------------------------------------
 ;;; Calls into the certified core: the executable counterpart of each host
 ;;; wrapper, exactly as the interpreted bridge evaluates it.
 
@@ -657,6 +478,46 @@ power-loss qualification."
   (unless (fnn-octet-list-p value)
     (fnn-refuse "ACL2 returned a non-octet list"))
   (fnn-octets value))
+
+;;; Durable metadata is one certified interface.  These functions deliberately
+;;; mirror tools/frame_bridge.py's wrappers: the raw host neither frames nor
+;;; parses a field, and it does not restate the frontier domain or successor.
+
+(defun fnn-metadata-config-frame (profile)
+  (let ((value (fnn-core 'fn-store-metadata-config-frame profile)))
+    (when (or (null value) (not (fnn-octet-list-p value)))
+      (fnn-refuse "ACL2 refused metadata profile"))
+    (fnn-octets value)))
+
+(defun fnn-metadata-config-decode (octets)
+  (let ((value (fnn-core 'fn-store-metadata-config-decode
+                         (fnn-octet-list octets))))
+    (unless (and (listp value) (= (length value) 6)
+                 (fnn-octet-list-p (first value))
+                 (every (lambda (n) (and (integerp n) (>= n 0)))
+                        (subseq value 1 5))
+                 (fnn-octet-list-p (sixth value)))
+      (fnn-fault "ACL2 rejected durable configuration frame"))
+    value))
+
+(defun fnn-metadata-frontier-frame (frontier)
+  (let ((value (fnn-core 'fn-store-metadata-frontier-frame frontier)))
+    (when (or (null value) (not (fnn-octet-list-p value)))
+      (fnn-fault "ACL2 refused allocation frontier"))
+    (fnn-octets value)))
+
+(defun fnn-metadata-frontier-decode (octets)
+  (let ((value (fnn-core 'fn-store-metadata-frontier-decode
+                         (fnn-octet-list octets))))
+    (unless (and (integerp value) (>= value 0))
+      (fnn-fault "ACL2 rejected durable allocation frontier frame"))
+    value))
+
+(defun fnn-metadata-frontier-next (frontier)
+  (let ((value (fnn-core 'fn-store-metadata-frontier-next frontier)))
+    (unless (or (null value) (and (integerp value) (>= value 0)))
+      (fnn-fault "ACL2 returned malformed allocation frontier successor"))
+    value))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The store bridge: fixed calls into host/store-node-host.lisp.
@@ -769,8 +630,7 @@ realised by `fn-sha256' through `books/crypto-attach.lisp'.  This host used
 to run `fnn-sha256' here, which made three separate SHA-256s the owners of
 one decision -- the other two being `tools/frame_bridge.py' and
 `tools/run_owner.py' -- and that is what AGENTS.md's one-owner rule forbids.
-`fnn-sha256' stays for the two host-only digests that are not twins (a log
-line's JSON body and the `sha256' CLI verb)."
+`fnn-sha256' stays only for the diagnostic `sha256' CLI verb."
   (let ((value (fnn-core 'fn-frame-trailer (fnn-octet-list prefix))))
     (when (eq value :bad)
       (fnn-fault "ACL2 refused to trail a protected prefix"))
@@ -839,43 +699,11 @@ resolves the names against `domain' and the host carries that list verbatim."
 ;;; ---------------------------------------------------------------------------
 ;;; The store: tools/run_store.py's Store, decision for decision.
 
-(defconstant +fnn-max-transactions+ 128)
-(defconstant +fnn-max-recovery-record-bytes+ (* 128 65538))
-(defconstant +fnn-max-payload-bytes+ 32768)
-(defconstant +fnn-uint32-max+ (1- (ash 1 32)))
 (defconstant +fnn-max-staging-report+ 64)
 (defconstant +fnn-config-record-bytes+ 65538)
-;; Format 5 is the first written under the v1 content identity profile of
-;; books/identity.  The group table is not in this file at all: a store's
-;; served groups are its configuration-record history under config/, replayed
-;; by the core at every open.
-(defparameter +fnn-store-format+ "fn-store-experiment-5")
-(defparameter +fnn-frontier-format+ "fn-store-allocation-frontier-1")
 ;; tools/run_store.py's `init --group` default, an operator default and not a
 ;; group table: what a store serves is what the core admits and replays.
 (defparameter +fnn-default-groups+ (list "fn.letters" "fn.test"))
-
-(defun fnn-default-config ()
-  (list :object
-        (cons "format" +fnn-store-format+)
-        (cons "capacity" 1048576)
-        (cons "max_payload_bytes" +fnn-max-payload-bytes+)
-        (cons "max_recovery_record_bytes" +fnn-max-recovery-record-bytes+)
-        (cons "max_transactions" +fnn-max-transactions+)
-        (cons "allocation_frontier_format" +fnn-frontier-format+)))
-
-(defun fnn-with-checksum (object)
-  "OBJECT with a checksum field over its canonical form without one."
-  (let* ((body (cons :object (remove "checksum" (cdr object) :key #'car :test #'string=)))
-         (digest (fnn-hex (fnn-sha256 (fnn-string-octets (fnn-json-canonical body))))))
-    (cons :object (append (cdr body) (list (cons "checksum" digest))))))
-
-(defun fnn-frontier-with-checksum (next-txid)
-  (fnn-with-checksum (list :object (cons "format" +fnn-frontier-format+)
-                           (cons "next_txid" next-txid))))
-
-(defun fnn-canonical-line (object)
-  (fnn-string-octets (fnn-concat (fnn-json-canonical object) (string #\Newline))))
 
 (defun fnn-seq-name-p (name)
   (and (= (length name) 24)
@@ -889,6 +717,11 @@ resolves the names against `domain' and the host carries that list verbatim."
   (config-generation nil) (config-served nil) (config-domain nil)
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
   (fault-point nil) (fault-class nil) (fault-message nil))
+
+(defun fnn-config-capacity (store) (second (fnn-store-config store)))
+(defun fnn-config-max-payload (store) (third (fnn-store-config store)))
+(defun fnn-config-max-recovery (store) (fourth (fnn-store-config store)))
+(defun fnn-config-max-transactions (store) (fifth (fnn-store-config store)))
 
 (defun make-fnn-store (root &key writable fault)
   (let ((store (%make-fnn-store :root (fnn-absolute root) :writable writable)))
@@ -992,7 +825,7 @@ The core decides whether the records replay."
         (names (handler-case (fnn-list-directory (fnn-transactions store))
                  (fnn-os-error () (fnn-fault "cannot enumerate transactions")))))
     (dolist (name names)
-      (when (>= (length files) +fnn-max-transactions+)
+      (when (>= (length files) (fnn-config-max-transactions store))
         (fnn-fault "transaction count exceeds configured bound"))
       (unless (fnn-seq-name-p name)
         (fnn-fault "unexpected final-namespace entry: ~a" name))
@@ -1019,33 +852,24 @@ The core decides whether the records replay."
 
 (defun fnn-load-config (store)
   (fnn-check-regular (fnn-config-path store))
-  (let ((config (handler-case (fnn-json-parse (fnn-read-regular-bounded (fnn-config-path store) 16384))
-                  ((or fnn-os-error fnn-json-error) (e)
-                    (fnn-fault "invalid durable config: ~a" e)))))
-    (unless (and (fnn-json-object-p config)
-                 (string= (fnn-json-canonical (fnn-with-checksum config))
-                          (fnn-json-canonical config)))
-      (fnn-fault "config checksum mismatch"))
-    (unless (string= (fnn-json-canonical config)
-                     (fnn-json-canonical (fnn-with-checksum (fnn-default-config))))
-      (fnn-fault "unsupported store configuration"))
-    (setf (fnn-store-config store) config)))
+  (let ((raw (handler-case
+                 (fnn-read-regular-bounded (fnn-config-path store) 16384)
+               (fnn-os-error (e) (fnn-fault "invalid durable config: ~a" e)))))
+    ;; Format 5 is deliberately retained.  Opening never rewrites it into a
+    ;; format-6 FNSM frame; migration is a separate offline operation.
+    (when (and (> (length raw) 0) (= (aref raw 0) (char-code #\{)))
+      (fnn-fault "legacy JSON metadata is retained in place; explicit offline migration is required"))
+    (setf (fnn-store-config store) (fnn-metadata-config-decode raw))))
 
 (defun fnn-load-frontier (store)
   (fnn-check-regular (fnn-frontier-path store))
-  (let ((frontier (handler-case (fnn-json-parse (fnn-read-regular-bounded (fnn-frontier-path store) 4096))
-                    ((or fnn-os-error fnn-json-error) (e)
-                      (fnn-fault "invalid durable allocation frontier: ~a" e)))))
-    (unless (fnn-json-object-p frontier)
-      (fnn-fault "allocation frontier must be an object"))
-    (let ((next (fnn-json-get frontier "next_txid")))
-      (unless (and (integerp next) (<= 0 next +fnn-uint32-max+)
-                   (string= (fnn-json-canonical frontier)
-                            (fnn-json-canonical (fnn-frontier-with-checksum next))))
-        (fnn-fault "allocation frontier checksum or range mismatch"))
-      (setf (fnn-store-frontier store) next))))
+  (let ((raw (handler-case
+                 (fnn-read-regular-bounded (fnn-frontier-path store) 4096)
+               (fnn-os-error (e)
+                 (fnn-fault "invalid durable allocation frontier: ~a" e)))))
+    (setf (fnn-store-frontier store) (fnn-metadata-frontier-decode raw))))
 
-(defun fnn-initialize (store &optional (groups +fnn-default-groups+))
+(defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
   ;; the core from the operator's group names.
   (fnn-safe-directory (fnn-store-root store) t)
@@ -1055,9 +879,9 @@ The core decides whether the records replay."
            (fnn-safe-directory (fnn-transactions store) t)
            (fnn-safe-directory (fnn-staging store) t)
            (fnn-safe-directory (fnn-config-dir store) t)
-           (let ((config (fnn-with-checksum (fnn-default-config))))
-             (if (fnn-publish-initial-file store (fnn-config-path store) (fnn-canonical-line config))
-                 (setf (fnn-store-config store) config)
+           (let ((config (fnn-metadata-config-frame profile)))
+             (if (fnn-publish-initial-file store (fnn-config-path store) config)
+                 (setf (fnn-store-config store) (fnn-metadata-config-decode config))
                  (fnn-load-config store)))
            (when (null (fnn-config-record-names store))
              (fnn-publish-initial-file store (fnn-config-record-path store 1)
@@ -1069,7 +893,7 @@ The core decides whether the records replay."
                       (fnn-transaction-files store))
              (fnn-fault "refusing missing allocator frontier with committed history"))
            (if (fnn-publish-initial-file store (fnn-frontier-path store)
-                                         (fnn-canonical-line (fnn-frontier-with-checksum 0)))
+                                         (fnn-metadata-frontier-frame 0))
                (setf (fnn-store-frontier store) 0)
                (fnn-load-frontier store))
            (fnn-fsync-regular (fnn-config-path store))
@@ -1109,7 +933,7 @@ The core decides whether the records replay."
       (fnn-check-regular path)
       (let ((record (fnn-unframe (fnn-read-regular-bounded path bound))))
         (incf aggregate (length record))
-        (when (> aggregate +fnn-max-recovery-record-bytes+)
+        (when (> aggregate (fnn-config-max-recovery store))
           (fnn-fault "transaction recovery input exceeds configured bound"))
         (unless (= (fnn-bridge-record-sequence record) sequence)
           (fnn-fault "record sequence does not match immutable filename"))
@@ -1184,13 +1008,13 @@ The core decides whether the records replay."
   (unless (eql current-txid (fnn-store-frontier store))
     (setf (fnn-store-fenced store) t)
     (fnn-fault "ACL2 allocator and durable frontier disagree"))
-  (when (or (< current-txid 0) (>= current-txid +fnn-uint32-max+))
-    (fnn-refuse "finite transaction-ID domain exhausted"))
-  (let* ((next (1+ current-txid))
-         (contents (fnn-canonical-line (fnn-frontier-with-checksum next)))
+  (let* ((next (fnn-metadata-frontier-next current-txid))
+         (contents (and next (fnn-metadata-frontier-frame next)))
          (stage (fnn-join (fnn-staging store)
                           (format nil ".allocation-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
          (attempted nil))
+    (when (null next)
+      (fnn-refuse "finite transaction-ID domain exhausted"))
     (handler-case
         (progn
           (unless (eq (fnn-observe store :start-frontier) :frontier-staged)
@@ -1304,13 +1128,11 @@ provenance the model only compares."
             (fnn-string-octets "unsigned-legacy-v0"))))
 
 (defun fnn-group-codes-for (store groups)
-  (unless (equal +fnn-store-format+ (fnn-json-get (fnn-store-config store) "format"))
-    (fnn-fault "store was written under a different store format"))
   (when (null groups) (fnn-refuse "provide one or more distinct configured groups"))
   (fnn-group-codes groups (fnn-store-config-domain store)))
 
-(defun fnn-validate-post-boundary (msgid payload groups charge)
-  (when (> +fnn-max-payload-bytes+ (fnn-constant :max-store))
+(defun fnn-validate-post-boundary (store msgid payload groups charge)
+  (when (> (fnn-config-max-payload store) (fnn-constant :max-store))
     (fnn-fault "configured payload bound disagrees with the model"))
   (let ((verdict (fnn-post-boundary msgid (length payload) (length groups) charge)))
     (case verdict
@@ -1355,21 +1177,22 @@ provenance the model only compares."
 
 (defun fnn-command-post (root message-id payload-path charge-text inject groups)
   (let* ((msgid (fnn-octets (fnn-ascii-octet-list message-id)))
-         (payload (fnn-read-regular-bounded payload-path +fnn-max-payload-bytes+))
          (fault (and inject (cdr (assoc inject +fnn-cli-faults+ :test #'string=)))))
     (when (and inject (null fault)) (error 'fnn-usage-error :message "unknown fault point"))
     (multiple-value-bind (store records) (fnn-open-live-store root t fault)
       (unwind-protect
-           (let* ((codes (fnn-group-codes-for store groups))
+           (let* ((payload (fnn-read-regular-bounded payload-path
+                                                     (fnn-config-max-payload store)))
+                  (codes (fnn-group-codes-for store groups))
                   (charge (if charge-text (parse-integer charge-text) (fnn-charge (length payload)))))
-             (fnn-validate-post-boundary msgid payload codes charge)
+             (fnn-validate-post-boundary store msgid payload codes charge)
              (let ((existing (fnn-bridge-existing-action msgid payload codes)))
                (when (eq existing :duplicate)
                  (fnn-out "duplicate")
                  (return-from fnn-command-post +fnn-exit-ok+))
                (when (eq existing :conflict)
                  (fnn-refuse "conflicting immutable Message-ID")))
-             (when (>= (length records) +fnn-max-transactions+)
+             (when (>= (length records) (fnn-config-max-transactions store))
                (fnn-refuse "transaction count has reached configured bound"))
              (fnn-advance-frontier store (fnn-bridge-next-txid))
              (multiple-value-bind (obligation subject evidence) (fnn-metadata msgid payload)
@@ -1463,13 +1286,15 @@ this reads only whether there is one."
   "tests/store_capacity_probe.py's sequence in-process: commit COUNT maximum
 payloads, close, reopen, and report both timings as JSON on stdout."
   (let* ((started (get-internal-real-time))
-         (payload (make-array +fnn-max-payload-bytes+ :element-type '(unsigned-byte 8)
-                                                        :initial-element (char-code #\x)))
-         (store (make-fnn-store root :writable t)))
+         (store (make-fnn-store root :writable t))
+         (payload nil))
     (fnn-initialize store)
     (fnn-acquire store)
     (fnn-bridge-reset)
     (fnn-recover store)
+    (setq payload (make-array (fnn-config-max-payload store)
+                              :element-type '(unsigned-byte 8)
+                              :initial-element (char-code #\x)))
     (let ((codes (fnn-group-codes-for store +fnn-default-groups+)))
       (dotimes (sequence count)
         (let ((msgid (fnn-octets (fnn-ascii-octet-list
@@ -1503,7 +1328,8 @@ payloads, close, reopen, and report both timings as JSON on stdout."
                      (fnn-fault "probe reopen state mismatch"))
                    (fnn-out "{\"host\":\"native\",\"transactions\":~d,\"payload_bytes\":~d,~
                              \"commit_seconds\":~,4f,\"reopen_seconds\":~,4f,\"status\":\"passed\"}"
-                            count +fnn-max-payload-bytes+ commit-seconds reopen-seconds))
+                            count (fnn-config-max-payload reopened)
+                            commit-seconds reopen-seconds))
               (fnn-store-close reopened)))))
       +fnn-exit-ok+)))
 
