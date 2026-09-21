@@ -50,7 +50,9 @@ gains `--auth-required`, so the policy is reachable from the operator surface
 for the first time; `fn principal list` now reads the one registry the server
 reads. **Open and on the board**: `[auth] required = true` also gates a
 transit peer's `IHAVE`, so a node cannot yet both require a reader login and
-take a feed.
+take a feed. The v0 matrix at `6fb30ca` records six of the eight F-AUTH
+rows moving (F-AUTH 15 accepted / 2 refused / 2 disagreements, from 9 / 8 /
+8), and `nntplib 3.12.13` --- not fn's client --- logged in to both nodes.
 
 **The checkpoint validator refused nothing about its prefix.** The one root
 of the 2026-09-21 persvati gate of `dev` `e4fb8bc` (272 of 275) that no lane
