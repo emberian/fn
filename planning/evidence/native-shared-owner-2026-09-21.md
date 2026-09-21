@@ -1,9 +1,14 @@
 # Frozen native shared-owner cost profile — 2026-09-21
 
-This bounded run measured the existing production saved image at source revision
-`8c231978`, `/home/ember/fn-gates/freeze-f7190d69/build/fn-host` on `persvati`.
-The image SHA-256 was
+This bounded run measured the production launcher
+`/home/ember/fn-gates/freeze-f7190d69/build/fn-host` on `persvati`.  The JSON's
+`source_revision` value `8c231978` was supplied from the earlier freeze record,
+but the worktree's Git metadata was broken when checked and the core had been
+rebuilt at 2026-09-21 14:06 local time.  Therefore this run is pinned to bytes,
+not asserted to be the earlier byte-identical 8c core.  The launcher SHA-256 was
 `4fe51b69b65530868a168b38454c1929f90e82d987eabbe3614ea6b86b35837e`.
+The invoked `fn-host.core` SHA-256 was
+`4efcb8a3f758be9c7838617cde2f67696985c5b0758d26e47b25e40426dbaa3b`.
 Its qualification and build provenance are recorded in
 `planning/evidence/native-freeze-gate-2026-09-21.md`.  The harness SHA-256 was
 `5a42d67bd8db7ea9c486086acefb3f97191d9f913308824c7c6ea4839c85857d`.
@@ -44,6 +49,10 @@ post component.  The owner recovery code also decodes and replays the retained
 record sequence at startup; the one reopen observation only shows its cost at
 this 128-article profile.
 
-The adjacent JSON is the complete machine-readable result.  This evidence is
-scoped to this byte-identical frozen image, host, input profile, and one run; it
+The adjacent JSON is the complete original machine-readable result.  The
+original harness did not explicitly close its `socket.makefile()` wrapper or
+consume the QUIT response; the socket context still closed each connection,
+and all 20 reads at every point completed, but the corrected harness now does
+both.  This evidence is scoped to the launcher/core digests above, host, input
+profile, and one run; it
 does not prove scalability or predict larger histories.
