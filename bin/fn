@@ -252,8 +252,15 @@ def install_logging_owner(run_owner, log, agent):
             return super().outcome(cid, word)
 
     class LoggedOwner(run_owner.Owner):
-        def __init__(self, *arguments):
-            super().__init__(*arguments)
+        # `*arguments, **keywords`, not a mirrored signature.  This subclass
+        # spelled the base's positional arguments and nothing else, so the
+        # day `Owner.__init__` gained a keyword the SERVER died at start-up
+        # -- after printing LISTENING, which is why it read as a healthy
+        # start (`fn` reached LISTENING) in the v0 matrix while every socket
+        # row behind it was not-exercised.  A logging wrapper has no business
+        # knowing what its base takes.
+        def __init__(self, *arguments, **keywords):
+            super().__init__(*arguments, **keywords)
             self.command = b""
 
         # -- reader connections -------------------------------------------

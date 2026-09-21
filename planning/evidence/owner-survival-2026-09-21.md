@@ -145,14 +145,52 @@ The two real crashes are fixed, so provoking one needs a defect; a regression
 that drives the transit path from a peer is `tools/v0_matrix.py`'s transit
 rows, in section 5.
 
-## 5. The matrix re-run
+## 5. Three defects the re-run found before it could measure anything
 
-See `planning/v0-matrix.json` and its evidence record. The before state is
-the recorded run at `c3b99f8`: 190 rows, 111 accepted, 25 refused, 2
-uncertain, 29 not exercised, 23 not built, 10 disagreements, and 33 of those
-blocked rows named node B's death in `drain` as their blocker.
+The first attempt at the re-run (`abbb2ff` on persvati, 273 s) measured
+nothing, and what stopped it is worth more than the run would have been.
 
-## 6. What is still open after this lane
+**(a) `bin/fn`'s logging wrapper mirrored a signature, and the server died at
+start-up.** `install_logging_owner.LoggedOwner.__init__(self, *arguments)`
+took positional arguments only, so the moment `Owner.__init__` gained
+`faults=` the node raised `TypeError` — *after* printing `LISTENING`, which
+is why `V0-NODE-START-A` and `-B` both read **accepted** while every socket
+row behind them read not-exercised. Fixed by `*arguments, **keywords`: a
+logging wrapper has no business knowing what its base takes. This is the
+lane's own regression, caught by its own re-run, and it is the reason the
+first attempt is reported here rather than quietly repeated.
+
+**(b) `tools/v0_matrix.py` could abort the whole gate over a missing
+blocker.** The paired-phase `else` branch built its blocker only from nodes
+with no port, so a node that STARTED and then DIED gave an empty string,
+`emit` refused the row (rightly — a not-exercised row must say why), and the
+`GateError` ended the run. A gate that had forty outcomes in hand wrote 148
+not-exercised rows instead. Now both reasons are named and the fallback is
+never empty.
+
+**(c) `tests/test_fn_cli.py` had been losing the `CONTROL` line for so long
+that a stale assertion behind it had stopped being checked.** `Service.start`
+read the service's stdout with `BufferedReader.readline()` after `select`;
+`run_owner.main` prints `LISTENING` and `CONTROL` on adjacent lines, so one
+`os.read` returns both, `readline()` buffers the second, and the next
+`select` on the empty pipe never fires — the service is up and the harness
+waits 300 s for a line it is holding. Measured: one raw read returned
+`b"LISTENING 61627\nCONTROL /tmp/.../control.sock\n"`. Fixed with the
+raw-descriptor pattern `tests/test_owner.py` already documents. Behind it,
+`tests/interop_fn_cli_nntplib.py` asserted the greeting was `201` (posting
+prohibited) against `fn run`, which is the OWNER and answers `200`; that
+expectation dates from when `fn run` started the read-only reader.
+`python3 -m unittest tests.test_fn_cli` now runs 5 tests in 156 s, OK,
+against 337 s and one error before.
+
+## 6. The matrix re-run
+
+The before state is the recorded run at `c3b99f8`: 190 rows, 111 accepted,
+25 refused, 2 uncertain, 29 not exercised, 23 not built, 10 disagreements,
+and 33 of those blocked rows named node B's death in `drain` as their
+blocker.
+
+## 7. What is still open after this lane
 
 * `tools/run_reader.py` has no fault boundary at all. The reader host serves
   no writer and holds no store, so a fault there costs less, but the process
@@ -160,6 +198,15 @@ blocked rows named node B's death in `drain` as their blocker.
 * Nothing states that the host calls `fn-own-fault` at every point where it
   can fault. The boundary's coverage is a property of the code, checked by
   reading `Owner.run` and `Owner.drain`, not a theorem.
+* The fault reply is proved distinct from every POSTING outcome
+  (`fn-nntp-post-outcome`, which is what the served path renders for a POST
+  and what the fourth-outcome precedent is about). It is NOT proved distinct
+  from the TRANSIT reply table (`fn-peer-transit-outcome-effects`), whose
+  lines carry a free reason string and a free Message-ID, so the separation
+  there needs a prefix lemma about `fn-nntp-string-octets` of a
+  `string-append` rather than ground evaluation. Every code in that table
+  has `3` as its middle digit and the fault has `0`, so the statement is
+  available; the lemma is not written.
 * `Owner.accept_control` catches `StoreError` and `OSError` around one
   command; the outer per-event boundary now covers the rest, but a control
   command that faults leaves its caller with no reply line for the fault.

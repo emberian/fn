@@ -118,6 +118,12 @@ not-exercised / 23 not-built, 10 disagreements.
   `fn-own-find-conn-of-remove-conn-other` lives in `books/owner-invariants`
   and that book did not need this half before. It moves there the next time
   that book is opened, rather than becoming a second exported copy.
+* The fault reply is proved distinct from `fn-nntp-post-outcome`'s three
+  lines and its own 403, not from the transit reply table
+  (`fn-peer-transit-outcome-effects`), whose lines carry a free reason and a
+  free Message-ID. Every code there has `3` as its middle digit and the
+  fault has `0`, so the statement is available; it needs a prefix lemma
+  about `fn-nntp-string-octets` of a `string-append` and is not written.
 * `fn-peer-transit-outcome` still never tests `fn-peer-sessionp`, so a
   wrong-level session gets a correct-looking transit reply — the offer
   `w10/session-depth` left on the board. The 403 vocabulary this lane adds is
