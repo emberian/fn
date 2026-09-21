@@ -84,6 +84,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import sys
 import tempfile
@@ -3358,22 +3359,40 @@ exit "$rc"
                          "transit/feed and requeue/restart observations ({})"
                          .format(observed), invocation=step.command)
             return
-        identities = []
-        for witness in (transit, restart):
-            identities.extend(witness.get("identity", {}).values())
-        if (not identities or not all(
-                one.get("status") == "observed"
-                and one.get("runtime_sha256") == expected.get("runtime")
-                and one.get("core_sha256") == expected.get("core")
-                for one in identities)):
+        digest = re.compile(r"[0-9A-Fa-f]{64}\Z")
+        expected_runtime, expected_core = expected.get("runtime"), expected.get("core")
+        required_identities = ((transit, ("a", "b")),
+                               (restart, ("restart-a", "restart-b")))
+        identities_valid = (isinstance(expected_runtime, str)
+                            and isinstance(expected_core, str)
+                            and digest.fullmatch(expected_runtime) is not None
+                            and digest.fullmatch(expected_core) is not None)
+        if identities_valid:
+            for witness, roles in required_identities:
+                identities = witness.get("identity")
+                if not isinstance(identities, dict):
+                    identities_valid = False
+                    break
+                for role in roles:
+                    identity = identities.get(role)
+                    if not (isinstance(identity, dict)
+                            and identity.get("status") == "observed"
+                            and identity.get("runtime_sha256") == expected_runtime
+                            and identity.get("core_sha256") == expected_core):
+                        identities_valid = False
+                        break
+                if not identities_valid:
+                    break
+        if not identities_valid:
             self.blocked(self.TRANSIT_KEYS + self.FEED_KEYS,
-                         "the native witness did not confirm every live owner runtime/core "
-                         "against the expected digests ({})".format(observed),
+                         "the native witness did not confirm each required live owner "
+                         "runtime/core against nonempty SHA-256 expected digests ({})"
+                         .format(observed),
                          invocation=step.command)
             return
         self.image_identity = (
             "{}; live owners observed via /proc runtime sha256={} and core sha256={}"
-            .format(self.image_identity, expected["runtime"], expected["core"]))
+            .format(self.image_identity, expected_runtime, expected_core))
         for way in ("ab", "ba"):
             fact = transit.get("transit", {}).get(way, {})
             if not (fact.get("offer") == "335" and fact.get("transfer") == "235"
