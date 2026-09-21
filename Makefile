@@ -380,10 +380,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-authority \
 	books/stx-evidence-records \
 	books/stx-keyring-records \
+	books/stx-accept-records \
 	tests/acl2/stx-tests \
 	tests/acl2/stx-transit-tests \
 	tests/acl2/stx-evidence-records-tests \
 	tests/acl2/stx-keyring-records-tests \
+	tests/acl2/stx-accept-records-tests \
 	tests/acl2/store-node-index-tests \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
