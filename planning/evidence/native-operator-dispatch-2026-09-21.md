@@ -1,6 +1,6 @@
 # Native operator status/recover dispatch increment
 
-Source: `w15/native-operator` commit `b9ed8e5` for the raw module, with the corrected ACL2 grammar at `550c7b4`; isolated hbox source copy
+Source: `w15/native-operator` commit `b9ed8e5` for the raw module, with the corrected ACL2 grammar at `c56e8a1`; isolated hbox source copy
 `/tank/fn/gates/w15-native-operator`, without `.git`. The source digest for
 `books/native-operator.lisp` is recorded by the manifest.
 
@@ -31,4 +31,4 @@ python3 tools/certify_books.py --jobs 1 --closure \
 
 ACL2 8.7 / SBCL 2.6.8 passed in the source-pinned manifest. The host wrapper
 test verifies it calls the exact result subject and its status/action/exit
-projections. The corrected grammar and wrapper closure is [certified here](manifests/certify-20260921T084953Z-1881932.json); the prior raw-dispatch witness is retained [here](manifests/certify-20260921T084415Z-1876240.json).
+projections. The corrected grammar and wrapper closure is [certified here](manifests/certify-20260921T085200Z-1886133.json); the prior raw-dispatch witness is retained [here](manifests/certify-20260921T084415Z-1876240.json).

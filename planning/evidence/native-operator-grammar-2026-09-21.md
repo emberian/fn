@@ -1,6 +1,6 @@
 # Native operator grammar packet
 
-Source: `w15/native-operator` commit `550c7b462ba4355c8d17b0d653e7f69d1f4c55bd`; the hbox tree was an isolated
+Source: `w15/native-operator` commit `c56e8a11ba2f3c27932410186efd880322863690`; the hbox tree was an isolated
 `rsync --exclude .git` copy at
 `/tank/fn/gates/w15-native-operator`. The manifest carries the source digests;
 `books/native-operator.lisp` is SHA-256
@@ -34,8 +34,8 @@ python3 tools/certify_books.py --jobs 1 --closure \
   tests/acl2/native-operator-host-tests
 ```
 
-The corrected closure passed in 4.780 seconds. The tests exercise normalized
+The corrected closure passed in 4.794 seconds. The tests exercise normalized
 run/status/recover plans, explicit post unavailability, quoted nonnumeric port
 and ACL2-slot types, out-of-range port, repeated configuration keys, repeated/
 conflicting command options, and explicit unsupported-profile/verb outcomes.
-The corrected source digest and per-book result are in [the manifest](manifests/certify-20260921T084953Z-1881932.json).
+The corrected source digest and per-book result are in [the manifest](manifests/certify-20260921T085200Z-1886133.json).
