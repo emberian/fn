@@ -28,6 +28,12 @@ sys.modules["farm"] = farm
 SPEC.loader.exec_module(farm)
 
 
+COHERENT = ("install-set: 3 books, cache /home/ember/fn-certcache\n"
+            "  artifact-set set-a origin /home/ember/fn-lanes/w5 "
+            "source source-a toolchain tool-a; installed 2, kept 1, "
+            "missing 0, removed 0\n")
+
+
 class Fake:
     """Records every command and answers the ones the tool reads.
 
@@ -38,14 +44,14 @@ class Fake:
 
     def __init__(self, statuses: list[str], log: str = "",
                  home: str = "/home/ember", codes: dict[str, int] | None = None,
-                 certs: str = "") -> None:
+                 certs: str | None = None) -> None:
         self.commands: list[list[str]] = []
         self.statuses = list(statuses)
         self.log = log
         self.home = home
         self.codes = dict(codes or {})
         # What `tools/certs.py` on the box prints: submit reads its counts.
-        self.certs = certs
+        self.certs = COHERENT if certs is None else certs
 
     def code_for(self, command) -> int:
         joined = " ".join(command)
@@ -77,7 +83,8 @@ class Fake:
         return [command[-1] for command in self.commands if command[0] == "ssh"]
 
     def runner_script(self) -> str:
-        started = [s for s in self.scripts() if "certify_books.py" in s]
+        started = [s for s in self.scripts()
+                   if "certify_books.py" in s and "nohup sh -c" in s]
         assert len(started) == 1, started
         return started[0]
 
@@ -184,7 +191,7 @@ class FailureTests(unittest.TestCase):
     """submit reports what did not happen; it never prints a run id for it."""
 
     def test_a_runner_that_did_not_start_fails_the_submit(self):
-        fake = Fake([], codes={"certify_books.py": 9})
+        fake = Fake([], codes={"nohup sh -c": 9})
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             with driving(fake, root / "cache"):
@@ -206,7 +213,7 @@ class FailureTests(unittest.TestCase):
             self.assertNotIn("certify_books.py", " ".join(fake.scripts()))
 
     def test_main_exits_non_zero_and_says_so(self):
-        fake = Fake([], codes={"certify_books.py": 9})
+        fake = Fake([], codes={"nohup sh -c": 9})
         errors = io.StringIO()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -247,9 +254,10 @@ class ClosureTests(unittest.TestCase):
             self.assertTrue(record["closure"])
 
 
-INSTALLED = ("install: 220 books, cache /home/ember/fn-certcache\n"
-             "  installed 31, kept identical local 2, no cached pair 4, "
-             "foreign-local 0, removed foreign 0\n")
+INSTALLED = ("install-set: 220 books, cache /home/ember/fn-certcache\n"
+             "  artifact-set set-123 origin /home/ember/fn-lanes/w5 "
+             "source source-123 toolchain toolchain-123; installed 31, kept 2, "
+             "missing 0, removed 0\n")
 
 
 class CacheTests(unittest.TestCase):
@@ -270,30 +278,59 @@ class CacheTests(unittest.TestCase):
                                          remote=Path("/home/ember/fn-lanes/w5"))
             scripts = fake.scripts()
             install = next(i for i, s in enumerate(scripts) if "tools/certs.py" in s)
-            runner = next(i for i, s in enumerate(scripts) if "certify_books.py" in s)
+            runner = next(i for i, s in enumerate(scripts) if "nohup sh -c" in s)
             self.assertLess(install, runner)  # certify only what is not cached
-            self.assertIn('--cache "$HOME"/fn-certcache install', scripts[install])
+            self.assertIn('--cache "$HOME"/fn-certcache', scripts[install])
+            self.assertIn("--require-origin /home/ember/fn-lanes/w5", scripts[install])
+            self.assertIn("--dependencies-only", scripts[install])
+            self.assertIn("install-set $roots", scripts[install])
+            self.assertIn("--toolchain-sha256 \"$acl2_sha\"", scripts[install])
             self.assertIn("cd /home/ember/fn-lanes/w5 ||", scripts[install])
             # The mirror overwrites the tree, so the install follows it.
             self.assertEqual(fake.commands[fake.commands.index(
                 next(c for c in fake.commands if c[0] == "rsync")) + 1][0], "ssh")
             record = json.loads(farm.record_path(root, identifier).read_text())
             self.assertEqual(record["cache_install"],
-                             {"installed": 31, "kept": 2, "uncached": 4,
-                              "foreign_local": 0})
+                             {"artifact_set": "set-123",
+                              "origin": "/home/ember/fn-lanes/w5",
+                              "source_identity": "source-123",
+                              "toolchain_identity": "toolchain-123",
+                              "installed": 31, "kept": 2,
+                              "missing": 0, "removed": 0})
 
-    def test_an_install_that_did_not_run_is_recorded_not_raised(self):
+    def test_an_install_that_did_not_run_refuses_before_acl2(self):
         fake = Fake([], certs="Traceback: no such cache\n",
                     codes={"tools/certs.py": 1})
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             with driving(fake, root / "cache"):
-                identifier = farm.submit("hbox", root, [], jobs=4,
+                with self.assertRaises(farm.FarmError) as refused:
+                    farm.submit("hbox", root, [], jobs=4,
+                                timeout_seconds=60, affected_by=[],
+                                remote=Path("/tank/fn/tree"))
+            self.assertIn("ACL2 was not started", str(refused.exception))
+            self.assertIn("no such cache", str(refused.exception))
+            self.assertFalse(any("nohup sh -c" in script
+                                 for script in fake.scripts()))
+
+    def test_closure_is_the_explicit_recertification_plan_on_a_set_miss(self):
+        missing = ("install-set: 3 books, cache /tank/fn/certcache\n"
+                   "  artifact-set NONE origin NONE source NONE toolchain NONE; "
+                   "installed 0, kept 0, missing 3, removed 4\n")
+        fake = Fake([], certs=missing, codes={"tools/certs.py": 1})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("hbox", root, ["books/alpha"], jobs=4,
                                          timeout_seconds=60, affected_by=[],
-                                         remote=Path("/tank/fn/tree"))
-            self.assertIn("certify_books.py", " ".join(fake.scripts()))
+                                         remote=Path("/tank/fn/tree"), closure=True)
+            install = next(s for s in fake.scripts() if "tools/certs.py" in s)
+            self.assertIn("--purge-on-miss", install)
+            self.assertIn("--closure", install)
+            self.assertIn("--closure", fake.runner_script())
             record = json.loads(farm.record_path(root, identifier).read_text())
-            self.assertIn("no such cache", record["cache_install"]["error"])
+            self.assertTrue(record["cache_install"]["recertify_closure"])
+            self.assertEqual(record["cache_install"]["removed"], 4)
 
     def test_the_runner_publishes_its_pairs_as_a_snapshot_of_this_run(self):
         # A finished run root is not a live worktree, and the pairs say so, so
@@ -304,7 +341,7 @@ class CacheTests(unittest.TestCase):
         self.assertIn("FN_CERT_ORIGIN_KIND=run", script)
 
     def test_wait_publishes_the_new_pairs_into_the_boxs_cache_too(self):
-        fake = Fake(["0"], log=WaitTests.LOG, certs="publish: 3 books\n")
+        fake = Fake(["0"], log=WaitTests.LOG)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             (root / "books").mkdir()
@@ -436,9 +473,10 @@ class WaitTests(unittest.TestCase):
 
     def test_the_host_cache_override_reaches_install_publish_and_the_runner(self):
         fake = Fake(["0"], log=self.LOG,
-                    certs="install: 2 books, cache /scratch/cache\n"
-                          "  installed 1, kept identical local 0, "
-                          "no cached pair 1, foreign-local 0\n")
+                    certs="install-set: 2 books, cache /scratch/cache\n"
+                          "  artifact-set set-s origin /tank/fn/tree "
+                          "source source-s toolchain tool-s; installed 1, "
+                          "kept 1, missing 0, removed 0\n")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             (root / "books").mkdir()
@@ -447,7 +485,7 @@ class WaitTests(unittest.TestCase):
                                          timeout_seconds=60, affected_by=[],
                                          cache="/scratch/cache")
             installs = [s for s in fake.scripts()
-                        if "tools/certs.py" in s and s.endswith("install")]
+                        if "tools/certs.py" in s and "install-set $roots" in s]
             self.assertEqual(len(installs), 1)
             self.assertIn("--cache /scratch/cache", installs[0])
             self.assertIn("FN_CERT_CACHE=/scratch/cache", fake.runner_script())

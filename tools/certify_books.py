@@ -182,7 +182,8 @@ def book_result(book: str, output: str, exit_code: int | str, nonce: str,
 
 def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
                  recorded_sources: dict[str, str], output: str,
-                 exit_code: int | str) -> dict[str, Any]:
+                 exit_code: int | str,
+                 toolchain_manifest: dict[str, Any]) -> dict[str, Any]:
     """Cache this book's pair the moment it certifies, not at the end of the run.
 
     Why here and not once at the end: a wide run on this tree exits non-zero
@@ -220,6 +221,13 @@ def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
             f"{book}.lisp": digest(book_source(book))},
         "certificate_digests_sha256": {book: digest(certificate)},
         "evidence": str(run_dir),
+        # A killed run has no final sweep.  Its already-passing books still
+        # need the exact toolchain identity now required by set installation;
+        # otherwise the per-book publication promised above is present in the
+        # cache but unusable by every coherent selector.
+        **{field: toolchain_manifest.get(field) for field in (
+            "acl2_version", "acl2_executable_sha256", "environment",
+            "runner_sha256", "reader_sha256")},
     }
     try:
         report = certs.publish(ROOT, certs.cache_directory(), [partial], [book],
@@ -816,7 +824,8 @@ def main() -> int:
                                  (ROOT / f"{book}.cert").is_file())
         with publish_lock:
             cache_events.append(publish_pair(book, verdict, run_dir, nonce,
-                                             source_digests, output, code))
+                                             source_digests, output, code,
+                                             manifest))
 
     certify_started = time.monotonic()
     run_schedule(args.books, schedule, effective_jobs, certify)
