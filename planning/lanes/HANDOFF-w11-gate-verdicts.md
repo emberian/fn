@@ -167,6 +167,17 @@ Inconclusive, and each one is a claim this run does NOT support:
 - `cut-copies` -- node B's GROUP line carried no count before the cut, so
   "exactly one copy" across the lost reply rests on the reread alone.
 
+**One defect in that committed record, found by reading it and fixed after
+it was written.** `entry-point-listening[a]`, `[b]` and `transit-surface`
+read `not-exercised` there -- "the run ended without reaching this
+assertion" -- and all three in fact HELD: both owners reached LISTENING
+(`node a`, `node b` in the facts) and node B answered `IHAVE` with `335`
+(`transit`). The recorder only wrote those findings on their failing
+branches, so the end-of-run sweep filled in a false sentence. Both now
+record the holding case, which moves the tally to 43 held and 7
+not-exercised; the committed evidence file is left as the run produced it,
+because a record edited after the fact is not a record.
+
 Held, and worth naming because they are what the run DOES establish: the cut
 was taken, node B served the article after the lost reply, node A observed
 zero accepted transfers across it, the owner feed delivered in both directions
