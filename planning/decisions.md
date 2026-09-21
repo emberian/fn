@@ -381,6 +381,145 @@ recovery barriers, while the cuts are `recover-replayed` at `:1207` and
 minus one, and a matching frontier arm here; that is the next packet, not this
 one.
 
+### 2026-09-20: D19 — the header-value wildmat profile, and what fn's 501 was
+
+**The question.** RFC 2980 §2.9's XPAT matches a pattern against a *header
+value*. RFC 3977 §4.1's `<wildmat-exact>` excludes SP, and §2.9 says "If there
+are additional arguments the are joined together separated by a single space
+to form one complete pattern", so every multi-token XPAT pattern carries an
+SP. fn joined correctly (`fn-nntp-xpat-join`) and then parsed the join with
+the §4.1 grammar, so it answered `501` to every one of them and could not
+phrase-search a header, which is XPAT's ordinary use. Where does the grammar
+for a header-value pattern live?
+
+**Which of the three the 501 was.** Not an RFC requirement, and not a stronger
+fn guarantee. §2.9.1's response list is `221 / 430 / 502` and contains no 501
+at all; §4.1's grammar governs `newsgroup-name = 1*wildmat-exact` (§9.8), and
+§4.1's own note gives its reason — "This should not be a problem, since these
+characters cannot occur in newsgroup names, which is the only current use of
+wildmats" — which is exactly the assumption XPAT breaks. So the 501 was **a
+local policy choice, and an unintended one**: the consequence of reusing the
+newsgroup-name grammar in a position the RFC did not put it in. It is not
+justified by the RFC and it is not a guarantee anyone wanted, so it is
+withdrawn rather than defended. A pattern that parses and does not match is
+§2.9's 221 with an empty list, which is also what INN 2.7.4 answers for the
+same command (`planning/evidence/inn-xpat-2026-09-20.md`).
+
+**Selected: a second character profile over ONE parser.** The three candidates
+were a second recognizer beside `fn-wildmat-exactp`, a profile parameter
+threaded through the existing scanner, and a separate parser. The costs
+decided it.
+
+- *A separate parser* duplicates the scanner, `fn-wildmat-parse-one` and the
+  whole result-shape induction — including `fn-wm-parse-one-success-pattern-listp`,
+  whose proof carries twelve subgoal hints. Two copies of that is the most
+  expensive of the three and the one that rots.
+- *A profile parameter* on `fn-wildmat-scan-pattern` and
+  `fn-wildmat-parse-one` changes their arity, which restates every theorem in
+  `books/wildmat-parser-invariants` and `books/wildmat-utf8-invariants` and
+  moves the subgoal names those twelve hints are attached to.
+- *Selected:* the scanner scans the **wider** set, and the newsgroup-name
+  entry point `fn-wildmat-parse` recovers §4.1 with a **precheck** on the
+  decoded code points (`fn-wildmat-rfc3977-codepointsp`) before scanning.
+  Arities do not change, no statement in the matcher book changes, and the
+  twelve subgoal hints did not move. The measured cost was a predicate rename
+  in two books and one new induction; all five wildmat roots certified on the
+  first attempt after it.
+
+**The profile, in one rule.** A pattern is a fragment of a command line, so
+every printable US-ASCII character, SP, and every UTF-8 non-ASCII character is
+a literal, less the four wildmat metacharacters `!` `*` `,` `?`. Controls and
+DEL stay out, as they are out of §4.1. Against `<wildmat-exact>` that is
+exactly four more code points — `%x20 SP`, `%x5B [`, `%x5C \`, `%x5D ]` —
+and `fn-wildmat-text-exactp-adds-exactly-four-code-points` says the difference
+is no larger.
+
+**What licenses it.** §4.3: "An NNTP server or extension MAY extend the syntax
+or semantics of wildmats provided that all wildmats that meet the requirements
+of Section 4.1 have the meaning ascribed to them by Section 4.2." fn discharges
+that proviso rather than asserting it: `fn-wildmat-parse` accepts and refuses
+exactly the octet lists it did before, with the same reason keyword, because
+the precheck runs first; and
+`fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items` states that the
+widened matcher test is the pre-D19 body, verbatim, on every §4.1 item.
+
+**The cost, named.** §4.1 omitted `[`, `\` and `]` because "A future extension
+to this specification may provide semantics for these characters" — brackets
+for sets, backslash for quoting. Reading them as literals in the *header*
+profile spends that reserved syntax there, and adopting a future §4.3
+bracket-set extension for header patterns would then be a behaviour change for
+fn. It is spent knowingly: `[PATCH]` in a Subject is the ordinary case and
+refusing it is the same defect as refusing SP. §4.1 conformance is untouched
+either way, since no §4.1 wildmat can contain those characters. The
+newsgroup-name profile keeps all three reserved.
+
+**Not changed, and confirmed unaffected.** fn reads `,` in an XPAT pattern as
+wildmat alternation where INN's `uwildmat_simple` reads it as a literal; §2.9's
+"At least one pattern in wildmat must be specified" is on fn's side. 44 is an
+exact item in neither profile, so D19 does not touch it, and the assertion that
+pins it is unchanged.
+
+Affects NNT requirements for XPAT, `specs/wildmat.md`, `specs/nntp-audit.md`
+§2.9, `books/wildmat.lisp` and the three wildmat invariants books. Closes
+OB-XPAT-SPACE. Supersedes nothing.
+
+
+### 2026-09-20: D20 — the outbound guard is cured by a total take and drop, not by a carried length
+
+The send-side half of the served-path guard cost that
+`planning/lanes/HANDOFF-w9-dtn-e2e.md` §7 opened and `w11/tcpcl-theory` closed
+on the receive side. `specs/tcpcl.md` §6 named two candidate cures and left the
+choice open; this entry takes one and says why the other is worse.
+
+**The question.** The native host reaches the session machine through the ACL2
+executable counterpart of `fnn-call` (`host/native/io.lisp`), which checks the
+callee's guard on every call. `fn-tcl-session-cheapp` is that guard, and it
+carries `(fn-tcl-outboundp (fn-tcl-session-outbound s))` whole. Two of
+`fn-tcl-outboundp`'s conjuncts measure the unsent suffix —
+`(fn-cbor-octet-listp remaining)` and
+`(equal (+ sent-len (len remaining)) total)` — so a send of n octets re-walked
+the suffix once per socket chunk: O(n²/chunk) in guard checking alone. The two
+conjuncts could not simply be dropped, because the length equation was the only
+fact that discharged `fn-tcl-pump`'s `(fn-tcl-take k remaining)` and
+`(fn-tcl-drop k remaining)`, whose guard was `(fn-tcl-has octets k)`.
+
+**Selected:** make `fn-tcl-take` and `fn-tcl-drop` guard-total — guard
+`(natp n)`, the `fn-wire-ag-car` `mbe` pattern of `books/wire.lisp`, logical
+definitions unchanged — and split `fn-tcl-outbound-cheapp` off
+`fn-tcl-outboundp` exactly as `fn-tcl-inbound-cheapp` was split off
+`fn-tcl-inboundp`, with `fn-tcl-outboundp-is-cheap` as the only link. The
+ordering `(<= sent-len total)` that the length equation used to imply is carried
+explicitly, because `fn-tcl-pump` needs it to know its chunk is a natural. Every
+keystone still speaks of `fn-tcl-sessionp`, which still carries both dropped
+conjuncts and is still proved preserved.
+
+**Rejected: a `remaining`-length scalar carried in the outbound record.** It
+does not discharge the obligation. `(fn-tcl-has remaining k)` is a statement
+about the list, not about a scalar, so a carried `rem-len` relieves it only
+through the agreement `(equal rem-len (len remaining))` — and that agreement
+costs a walk of the suffix to check, so it cannot live in the cheap recognizer
+either. The carried length would therefore have to be combined with guard-total
+take and drop anyway; on its own it renames the equation rather than removing
+it from the served path. It is also strictly more change for that: the outbound
+record widens from seven fields to eight, every `fn-tcl-make-outbound` call site
+and the records book move with it, and the new field is state that can disagree
+with reality, so the agreement becomes one more conjunct of `fn-tcl-sessionp` to
+prove preserved by every transition. The third shape considered and rejected
+with it — letting `fn-tcl-pump` test `(fn-tcl-has remaining k)` itself, which is
+only O(chunk) — buys the guard at the price of a branch the composed machine
+cannot reach, which the assurance rules forbid as evidence.
+
+**What the relaxed guard gives up, and what still holds.** The old guard proved
+at each call site that a take is a genuine prefix. The decoders of
+`books/tcpcl-octets.lisp` still ask `fn-tcl-has` before every take — it is their
+own branch test, returning `(fn-tcl-parse-need)` when it fails — and an
+over-take pads with `nil`, which is not `fn-cbor-octet-listp`, so
+`fn-tcl-decode-message-yields-message` and the round trip would both fail if one
+ever happened. The property moves from a guard obligation to the codec
+keystones; it is not dropped.
+
+Affects `specs/tcpcl.md` §3 and §6, `books/tcpcl-octets.lisp`,
+`books/tcpcl-session.lisp`, `tests/acl2/tcpcl-tests.lisp`. Supersedes nothing.
 ### 2026-09-21: D10-a — a clock the host contradicts is a clock the owner drops
 
 **Question.** A connection pins one clock observation at accept so that time

@@ -78,19 +78,6 @@ SUPPORTED_PROFILES = (DEFAULT_CONFIG, SCALE_CONFIG)
 # a group table; the table a store serves is decided by the configuration
 # records ACL2 admits and replays.
 DEFAULT_GROUPS = ("fn.letters", "fn.test")
-# The three peer defaults that are operator policy rather than a bound: how
-# many inbound transfers may be in flight, how deep the outbound queue is and
-# how long a failed peer waits.  The fourth, `--inbound-max-octets`, is NOT
-# here, because it is a bound `fn-cfg-peer-inboundp` compares against: it is
-# resolved from `Acl2Store.peer_constants` at run time.  These three are
-# checked against the model's uint32 ceiling when that vector is read.
-DEFAULT_PEER_INFLIGHT = 16
-DEFAULT_PEER_MAX_QUEUE = 1024
-DEFAULT_PEER_BACKOFF_MS = 1000
-# What `--help` says in place of a number nothing here is allowed to type.
-PEER_INBOUND_MAX_HELP = ("the largest inbound article this peer may offer, in octets "
-                         "(default: the model's own ceiling, *fn-record-max-payload*, "
-                         "read from ACL2 at run time and shown by `peer list`)")
 CONFIG_RECORD_BYTES = 65538
 # `books/frame` owns the grammar.  These two are the slice arithmetic that
 # `durable_records` and the corruption tests still do over a file they never
@@ -438,7 +425,6 @@ class Acl2Store:
         # A bridge whose correlation is lost cannot be repaired by reading
         # further: a new ACL2 process is the only recovery.
         self.poisoned = False
-        self._peer_constants = None
         try:
             self.proc = subprocess.Popen([env.get("FN_ACL2", "acl2")], cwd=ROOT,
                                          stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -704,6 +690,22 @@ class Acl2Store:
             raise StoreFault("unexpected peer outcome: {}".format(status))
         return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
 
+    def set_policy(self, slot, value, monotonic, wall):
+        """One `policy set': the delta, its admissibility and the octets are
+        ACL2's (`fn-store-cfg-set-policy'). Nothing here decides a slot."""
+        form = "(fn-store-cfg-set-policy '{} '{} {} {} state)".format(
+            self.literal(slot), self.literal(value), int(monotonic), int(wall))
+        status = acl2_keyword(self.call(form))
+        if status == "ok":
+            return status, acl2_octets(self.call("(fn-store-cfg-last-octets state)"))
+        if status != "refused":
+            raise StoreFault("unexpected policy outcome: {}".format(status))
+        return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
+
+    def policy(self, slot):
+        return acl2_octets(self.call("(fn-store-cfg-policy '{} state)".format(
+            self.literal(slot))))
+
     def remove_peer(self, name, monotonic, wall):
         """One `peer remove': `:no-such-peer' is ACL2's refusal, not a lookup here."""
         form = "(fn-store-cfg-remove-peer '{} {} {} state)".format(
@@ -718,34 +720,6 @@ class Acl2Store:
     def peer_names(self):
         names = acl2_octets(self.call("(fn-store-cfg-peer-names state)"))
         return [line for line in names.decode("utf-8", "strict").split("\n") if line]
-
-    def peer_constants(self):
-        """The peer bounds, read from the model rather than typed here.
-
-        `fn-cfg-peer-inboundp' (books/peer-config.lisp:143) caps the inbound
-        octet count at `*fn-record-max-payload*' and holds the inflight
-        count, the queue and the backoff to `fn-record-uint32p'.  A host
-        that types either number is a second owner of a bound ACL2 compares,
-        and the one it typed -- 1048576 -- was thirty-two times the ceiling,
-        so `peer add' with the documented default was refused.
-        """
-        if self._peer_constants is None:
-            body = acl2_result(self.call("(fn-store-cfg-peer-constants)"))
-            values = decimal_list(body)
-            if values is None or len(values) != 2:
-                raise StoreFault("ACL2 returned an unexpected peer constant vector")
-            self._peer_constants = dict(zip(("inbound_max_octets", "uint32_max"), values))
-            # The operator-surface defaults that are not resolved from the
-            # model still have to fit the bounds that are: a divergence is a
-            # refusal at the first `peer add', so it is caught here instead.
-            for name, value in (("inbound-max-inflight", DEFAULT_PEER_INFLIGHT),
-                                ("max-queue", DEFAULT_PEER_MAX_QUEUE),
-                                ("backoff-ms", DEFAULT_PEER_BACKOFF_MS)):
-                if not 0 < value <= self._peer_constants["uint32_max"]:
-                    raise StoreFault(
-                        "the default --{} is {} but the model bounds it at {}".format(
-                            name, value, self._peer_constants["uint32_max"]))
-        return self._peer_constants
 
     def prov_post(self):
         """The provenance of a locally posted article, DECIDED IN ACL2.
@@ -1682,8 +1656,7 @@ def command_peer(args):
                 print(line)
             return EXIT_OK
         if args.action == "add":
-            status, payload = bridge.set_peer(
-                peer_arguments(args, bridge.peer_constants()), time.monotonic(), time.time())
+            status, payload = bridge.set_peer(peer_arguments(args), time.monotonic(), time.time())
         else:
             status, payload = bridge.remove_peer(
                 args.name.encode("utf-8"), time.monotonic(), time.time())
@@ -1715,26 +1688,16 @@ def _candidate_history_opens(store, config_records):
     finally:
         probe.close()
 
-def peer_arguments(args, constants):
-    """The operator's words, typed but not interpreted: ACL2 decides the record.
-
-    `constants` is `Acl2Store.peer_constants()`.  An unnamed
-    `--inbound-max-octets` resolves to the model's own ceiling from it; a
-    number named on the command line is carried through unexamined, so the
-    refusal of a value above the ceiling stays ACL2's word and not a second
-    bound check here.
-    """
+def peer_arguments(args):
+    """The operator's words, typed but not interpreted: ACL2 decides the record."""
     host, _, port = (args.nntp or "").rpartition(":")
-    inbound_max = args.inbound_max_octets
-    if inbound_max is None:
-        inbound_max = constants["inbound_max_octets"]
     return {
         "name": args.name.encode("utf-8"),
         "path_identity": (args.path_identity or args.name).encode("utf-8"),
         "endpoint": (host or args.bp or "").encode("utf-8"),
         "port": int(port) if port.isdigit() else 0,
         "inbound_groups": (args.inbound_groups or "").encode("utf-8"),
-        "inbound_max_octets": inbound_max,
+        "inbound_max_octets": args.inbound_max_octets,
         "inbound_max_inflight": args.inbound_max_inflight,
         "outbound_groups": (args.outbound_groups or "").encode("utf-8"),
         "streaming": bool(args.streaming),
@@ -1743,6 +1706,38 @@ def peer_arguments(args, constants):
         "auth_kind": "principal" if args.principal else "source-address",
         "auth_value": (args.principal or args.source_address or "").encode("utf-8"),
     }
+
+
+def command_policy(args):
+    """`policy set|get <slot> [value]': the node's own configuration slots.
+
+    `path-identity` is the one peering needs: `fn-peer-local-identity` reads
+    it and RFC 5537 section 3.5 loop suppression cannot fire while it is
+    unset. Three outcomes stay distinct exactly as `peer` keeps them.
+    """
+    import time
+    writable = args.action == "set"
+    store, bridge, unused_records = open_live_store(args.store, writable=writable)
+    try:
+        if args.action == "get":
+            print("{}={}".format(
+                args.slot, bridge.policy(args.slot.encode("utf-8")).decode(
+                    "utf-8", "replace")))
+            return EXIT_OK
+        status, payload = bridge.set_policy(
+            args.slot.encode("utf-8"), (args.value or "").encode("utf-8"),
+            time.monotonic(), time.time())
+        if status != "ok":
+            print("store: refused policy set: {}".format(payload), file=sys.stderr)
+            return EXIT_REFUSED
+        generation = store.config_generation + 1
+        store.write_config_record(generation, payload)
+        print("policy set {}={} generation={}".format(
+            args.slot, args.value, generation))
+        return EXIT_OK
+    finally:
+        bridge.close()
+        store.close()
 
 
 def command_config(args):
@@ -2104,15 +2099,23 @@ def main(argv=None):
     peer.add_argument("--nntp", help="HOST:PORT of the peer's NNTP listener")
     peer.add_argument("--bp", help="the peer's BP endpoint id (instead of --nntp)")
     peer.add_argument("--inbound-groups", help="wildmat this peer may feed us")
-    peer.add_argument("--inbound-max-octets", type=int, default=None,
-                      help=PEER_INBOUND_MAX_HELP)
-    peer.add_argument("--inbound-max-inflight", type=int, default=DEFAULT_PEER_INFLIGHT)
+    peer.add_argument("--inbound-max-octets", type=int, default=0,
+                      help="the largest article this peer may send; 0, the "
+                           "default, is the record layer's own ceiling, which "
+                           "ACL2 supplies (fn-store-cfg-peer-record)")
+    peer.add_argument("--inbound-max-inflight", type=int, default=16)
     peer.add_argument("--outbound-groups", help="wildmat we feed this peer")
     peer.add_argument("--streaming", action="store_true")
-    peer.add_argument("--max-queue", type=int, default=DEFAULT_PEER_MAX_QUEUE)
-    peer.add_argument("--backoff-ms", type=int, default=DEFAULT_PEER_BACKOFF_MS)
+    peer.add_argument("--max-queue", type=int, default=1024)
+    peer.add_argument("--backoff-ms", type=int, default=1000)
     peer.add_argument("--source-address")
     peer.add_argument("--principal")
+    policy = sub.add_parser("policy")
+    policy.add_argument("action", choices=("set", "get"))
+    policy.add_argument("slot",
+                        help="a configuration policy slot; `path-identity` is "
+                             "the node's own RFC 5537 <path-identity>")
+    policy.add_argument("value", nargs="?")
     sub.add_parser("config")
     post = sub.add_parser("post")
     post.add_argument("--message-id", required=True)
@@ -2150,6 +2153,7 @@ def main(argv=None):
                 "capacity": command_capacity,
 
                 "peer": command_peer,
+                "policy": command_policy,
                 "config": command_config}[args.command](args)
     except (StoreError, OSError, UnicodeError) as error:
         print("store: {}".format(error), file=sys.stderr)

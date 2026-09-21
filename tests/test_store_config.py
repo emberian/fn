@@ -1,4 +1,5 @@
 """Configuration records through the CLI: create, retire, revive, capacity, refuse."""
+import re
 import sys
 from pathlib import Path
 import subprocess
@@ -171,31 +172,35 @@ class StoreConfigTests(unittest.TestCase):
     def test_peer_add_with_no_size_options_is_accepted(self):
         """The default `--inbound-max-octets` is inside the model's ceiling.
 
-        `bin/fn:804` and `tools/run_store.py:2054` both typed 1048576, while
+        `bin/fn` and `tools/run_store.py` both typed 1048576, while
         `fn-cfg-peer-inboundp` (books/peer-config.lisp) caps the inbound
-        octet count at `*fn-record-max-payload*` = 32768, so the operator's
-        first `peer add` was refused `:peer-record` with exit 1.  The number
-        is resolved from `(fn-store-cfg-peer-constants)` now, so this test
-        reads the ceiling from ACL2 rather than typing it: a test that typed
-        32768 would be the same twin one layer out.
+        octet count at `*fn-record-max-payload*`, so the operator's first
+        `peer add` was refused `:peer-record` with exit 1 and no harness
+        ever had a peer table. `w11/twonode-feed` made the default 0 and
+        `fn-store-cfg-peer-record` resolve it, which is the one-owner fix;
+        this case is the regression test that arrived a lane later.
+
+        The ceiling is never typed here. It is read back out of the record
+        ACL2 admitted, which is the only place in this test that knows it,
+        and the second half then shows the bound still bites one octet
+        above whatever it is.
         """
-        bridge = Acl2Store()
-        try:
-            ceiling = bridge.peer_constants()["inbound_max_octets"]
-        finally:
-            bridge.close()
         self.invoke("peer", "add", "upstream", "--nntp", "news.example.invalid:119",
                     "--inbound-groups", "fn.*", "--source-address", "192.0.2.1")
         listing = self.invoke("peer", "list").stdout.decode("ascii").strip()
         self.assertIn("name=upstream ", listing + " ")
-        self.assertIn("max-octets={} ".format(ceiling), listing)
-        # And the ceiling still bites: the fix resolved a default, it did not
-        # widen what the record admits.  ACL2 names the refusal.
+        ceiling = int(re.search(r"max-octets=([0-9]+)", listing).group(1))
+        self.assertGreater(ceiling, 0)
         refused = self.invoke("peer", "add", "toobig", "--nntp", "news.example.invalid:119",
                               "--inbound-groups", "fn.*", "--source-address", "192.0.2.2",
                               "--inbound-max-octets", ceiling + 1,
                               expected=run_store.EXIT_REFUSED)
         self.assertIn(b"peer-record", refused.stderr)
+        # And it is the bound that refused, not the rest of the record: the
+        # same peer at the ceiling itself is accepted.
+        self.invoke("peer", "add", "atceiling", "--nntp", "news.example.invalid:119",
+                    "--inbound-groups", "fn.*", "--source-address", "192.0.2.3",
+                    "--inbound-max-octets", ceiling)
 
 
 if __name__ == "__main__":

@@ -277,10 +277,11 @@ class FnCliTests(unittest.TestCase):
         `--inbound-max-octets` defaulted to 1048576 here and in
         `tools/run_store.py`; `fn-cfg-peer-inboundp` (books/peer-config.lisp)
         caps it at `*fn-record-max-payload*`, so the documented default was
-        exit 1 with `peer-record`.  The default is `None` now and the number
-        comes from `(fn-store-cfg-peer-constants)`.  This case asserts the
-        outcome, not the number: `tests/test_store_config.py` reads the
-        ceiling out of ACL2 and checks the stored record against it.
+        exit 1 with `peer-record`.  The default is 0 now and
+        `fn-store-cfg-peer-record` resolves it to the model's own ceiling.
+        This case asserts the outcome at the `bin/fn` surface, not the
+        number: `tests/test_store_config.py` reads the ceiling back out of
+        the admitted record and shows the bound still bites above it.
         """
         self.fn_init()
         added = self.fn("peer", "add", "upstream", "--nntp", "news.example.invalid:119",

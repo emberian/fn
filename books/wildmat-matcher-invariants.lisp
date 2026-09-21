@@ -17,7 +17,7 @@
                    (fn-wm-reference reverse-items (cdr reverse-target))))
         (and (consp reverse-target)
              (or (equal (car reverse-items) 63)
-                 (and (fn-wildmat-exactp (car reverse-items))
+                 (and (fn-wildmat-text-exactp (car reverse-items))
                       (equal (car reverse-items) (car reverse-target))))
              (fn-wm-reference (cdr reverse-items) (cdr reverse-target))))
     (not (consp reverse-target))))
@@ -56,7 +56,7 @@
                    target (fn-wm-reference-row items target prefix) item)
                   (cdr (fn-wm-reference-row (cons item items) target prefix))))
   :hints (("Goal" :induct (fn-wm-reference-row items target prefix)
-           :in-theory (disable fn-wildmat-exactp))))
+           :in-theory (disable fn-wildmat-text-exactp))))
 
 (defthm fn-wm-character-correspondence
   (implies (not (equal item 42))
