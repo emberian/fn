@@ -496,7 +496,7 @@ power-loss qualification."
                  (fnn-octet-list-p (first value))
                  (every (lambda (n) (and (integerp n) (>= n 0)))
                         (subseq value 1 5))
-                 (fnn-octet-list-p (sixth value)))
+                 (fnn-octet-list-p (nth 5 value)))
       (fnn-fault "ACL2 rejected durable configuration frame"))
     value))
 
@@ -522,7 +522,7 @@ power-loss qualification."
 (defun fnn-transaction-name (sequence)
   (let ((value (fnn-core 'fn-store-txn-name sequence)))
     (unless (and (stringp value) (> (length value) 0)
-                 (null (find #\/ value)))
+                 (null (position #\/ value)))
       (fnn-fault "ACL2 refused transaction filename"))
     value))
 
@@ -728,7 +728,7 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defun fnn-config-capacity (store) (second (fnn-store-config store)))
 (defun fnn-config-max-payload (store) (third (fnn-store-config store)))
 (defun fnn-config-max-recovery (store) (fourth (fnn-store-config store)))
-(defun fnn-config-max-transactions (store) (fifth (fnn-store-config store)))
+(defun fnn-config-max-transactions (store) (nth 4 (fnn-store-config store)))
 
 (defun make-fnn-store (root &key writable fault)
   (let ((store (%make-fnn-store :root (fnn-absolute root) :writable writable)))
@@ -874,6 +874,8 @@ The core decides whether the records replay."
                  (fnn-read-regular-bounded (fnn-frontier-path store) 4096)
                (fnn-os-error (e)
                  (fnn-fault "invalid durable allocation frontier: ~a" e)))))
+    (when (and (> (length raw) 0) (= (aref raw 0) (char-code #\{)))
+      (fnn-fault "legacy JSON allocator is retained in place; explicit offline migration is required"))
     (setf (fnn-store-frontier store) (fnn-metadata-frontier-decode raw))))
 
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
