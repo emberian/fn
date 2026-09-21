@@ -14,10 +14,21 @@
 (defvar *fnn-owner-stop-hooks* nil)
 (defvar *fnn-owner-close-hooks* nil)
 
+(define-condition fnn-owner-connection-fault (error)
+  ((operation :initarg :operation :reader fnn-owner-connection-fault-operation)
+   (cause :initarg :cause :reader fnn-owner-connection-fault-cause))
+  (:report (lambda (condition stream)
+             (format stream "~(~a~): ~a"
+                     (fnn-owner-connection-fault-operation condition)
+                     (fnn-owner-connection-fault-cause condition)))))
+
 (defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
   store records lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
   (workers nil) (clients nil) tls-context
-  (start-hooks nil) (stop-hooks nil) (close-hooks nil))
+  (start-hooks nil) (stop-hooks nil) (close-hooks nil)
+  ;; Private executable-test injection.  Production instances leave this NIL;
+  ;; the value names a real connection envelope, not a second fault decision.
+  (connection-fault-operation nil))
 
 (defstruct (fnn-owner-feed-journal (:constructor %make-fnn-owner-feed-journal))
   peer path fd phase (replayed 0))
@@ -450,19 +461,88 @@ directories because one encoded label can be a prefix of a longer label.
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)))
   (fnn-err "owner core/store fault; process stopped: ~a" condition))
 
+(defun fnn-owner-shared-action-locked (service cid thunk)
+  "Run THUNK while the caller holds the owner mutex.
+
+Only a known semantic refusal may leave this boundary without first fencing.
+An indeterminate observation is exit 3.  A core/store fault, an unclassified
+OS failure, or any other serious condition is exit 4.  The fence is installed
+before the mutex can be released, so no queued client can mutate afterward."
+  (handler-case (funcall thunk)
+    (fnn-store-indeterminate (condition)
+      (fnn-owner-stop-service-locked service +fnn-exit-uncertain+)
+      (error condition))
+    (fnn-store-fault (condition)
+      (when cid (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
+      (fnn-owner-stop-service-locked service +fnn-exit-fault+)
+      (error condition))
+    ;; FNN-STORE-ERROR is the existing known semantic-refusal class.  It has
+    ;; made no ambiguous persistence observation and remains connection scoped.
+    (fnn-store-error (condition) (error condition))
+    ;; An OS or arbitrary failure inside a semantic/persistence action has no
+    ;; safe connection-only attribution.  Preserve the shared state by stopping.
+    ((or fnn-os-error serious-condition) (condition)
+      (when cid (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
+      (fnn-owner-stop-service-locked service +fnn-exit-fault+)
+      (error condition))))
+
 (defun fnn-owner-serialized (service cid thunk)
   "Run one semantic action, fencing before its mutex can be released."
   (fnn-with-owner (service)
     (when (fnn-owner-service-stopping service)
       (fnn-refuse "owner service is stopping"))
-    (handler-case (funcall thunk)
-      (fnn-store-indeterminate (e)
-        (fnn-owner-stop-service-locked service +fnn-exit-uncertain+)
-        (error e))
-      (fnn-store-fault (e)
-        (when cid (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
-        (fnn-owner-stop-service-locked service +fnn-exit-fault+)
-        (error e)))))
+    (fnn-owner-shared-action-locked service cid thunk)))
+
+(defun fnn-owner-consume-connection-fault (service operation)
+  "Consume the private injection under the owner mutex, without a core step."
+  (fnn-with-owner (service)
+    (when (and (not (fnn-owner-service-stopping service))
+               (eq operation
+                   (fnn-owner-service-connection-fault-operation service)))
+      (setf (fnn-owner-service-connection-fault-operation service) nil)
+      t)))
+
+(defun fnn-owner-connection-call (service operation thunk)
+  "Run bounded socket/handler work that cannot mutate owner or Store state.
+
+This is the production emitter of FNN-OWNER-CONNECTION-FAULT.  Store/core
+conditions and process resource exhaustion retain their global meaning.  Only
+an unexpected failure inside this named non-semantic scope is attributable to
+the current connection."
+  (handler-case
+      (progn
+        ;; A plain ERROR exercises this same production classifier; tests do
+        ;; not signal FNN-OWNER-CONNECTION-FAULT directly.
+        (when (fnn-owner-consume-connection-fault service operation)
+          (error "injected connection handler failure"))
+        (funcall thunk))
+    ((or fnn-store-indeterminate fnn-store-fault fnn-store-error
+         storage-condition fnn-owner-connection-fault) (condition)
+      (error condition))
+    (serious-condition (condition)
+      (error 'fnn-owner-connection-fault
+             :operation operation :cause condition))))
+
+(defun fnn-owner-abandon-connection (service cid condition)
+  "Apply the ACL2 connection-fault transition unless a global stop won first."
+  (let ((reply (fnn-make-octets 0)))
+    (fnn-with-owner (service)
+      (unless (fnn-owner-service-stopping service)
+        (fnn-owner-shared-action-locked
+         service cid
+         (lambda ()
+           ;; A refusal from this exact transition is a core fault, never a
+           ;; connection refusal.  Convert it inside the shared boundary.
+           (handler-case
+               (let ((result (fnn-owner-action 'fn-owner-fault cid)))
+                 (unless (member result '(:faulted :unknown))
+                   (fnn-fault "owner fault transition returned ~a" result))
+                 (when (eq result :faulted)
+                   (setq reply (fnn-owner-octets-global 'fn-owner-output))))
+             (fnn-store-error (nested)
+               (fnn-fault "owner fault transition refused: ~a" nested)))))))
+    (fnn-err "owner connection-local fault; service continues: ~a" condition)
+    reply))
 
 (defun fnn-owner-submit-groups ()
   (let ((groups (fnn-global 'fn-owner-submit-groups)))
@@ -681,9 +761,19 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                    (return-from fnn-owner-serve-client nil))
                  (setq cid opened)
                  (when (> (length greeting) 0)
-                   (fnn-owner-send fd channel greeting 10)))
+                   (fnn-owner-connection-call
+                    service :send-greeting
+                    (lambda () (fnn-owner-send fd channel greeting 10)))))
                (loop
-                 (let ((incoming (fnn-owner-receive service fd channel 10)))
+                 (let ((incoming
+                         (fnn-owner-connection-call
+                          service :receive
+                          (lambda ()
+                            (let ((value (fnn-owner-receive service fd channel 10)))
+                              (unless (or (eq value :timeout)
+                                          (typep value 'fnn-octets))
+                                (error "malformed connection receive result"))
+                              value)))))
                    (cond ((eq incoming :timeout) nil)
                          ((zerop (length incoming)) (return))
                          (t (multiple-value-bind (reply closing starttls consumed)
@@ -703,7 +793,10 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                 ((/= consumed (length incoming))
                                  (fnn-fault "plaintext owner read left a suffix without TLS")))
                               (when (> (length reply) 0)
-                                (fnn-owner-send fd channel reply 10))
+                                (fnn-owner-connection-call
+                                 service :send-reply
+                                 (lambda ()
+                                   (fnn-owner-send fd channel reply 10))))
                               (when starttls
                                 (when channel
                                   (fnn-fault "owner requested STARTTLS on a protected channel"))
@@ -724,13 +817,41 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                                :ok)
                                      (fnn-fault "owner rejected established TLS")))))
                               (when closing
-                                (unless channel (fnn-graceful-close fd))
+                                (unless channel
+                                  (fnn-owner-connection-call
+                                   service :graceful-close
+                                   (lambda () (fnn-graceful-close fd)))))
                                 (return))))))))
            (fnn-store-indeterminate (e)
+             ;; The shared boundary has already stopped mutation; prevent the
+             ;; unwind cleanup from attempting a later close transition.
+             (setq cid nil)
              (fnn-owner-fence-service service)
              (fnn-err "owner uncertain; recovery required: ~a" e))
            (fnn-store-fault (e)
-             (fnn-owner-fault-service service cid e))
+             (let ((faulted-cid cid))
+               (setq cid nil)
+               (fnn-owner-fault-service service faulted-cid e)))
+           (fnn-owner-connection-fault (e)
+             ;; Clear CID before any secondary send failure.  Exactly one ACL2
+             ;; fault transition owns semantic cleanup for this connection.
+             (let ((faulted-cid cid))
+               (setq cid nil)
+               (handler-case
+                   (let ((reply (and faulted-cid
+                                     (fnn-owner-abandon-connection
+                                      service faulted-cid e))))
+                     (when (and reply (> (length reply) 0))
+                       (ignore-errors (fnn-owner-send fd channel reply 10))))
+                 ;; A failure of the core fault transition is shared.  Its
+                 ;; serialized boundary already fenced before unlocking; this
+                 ;; nested handler keeps the worker available to join cleanly.
+                 (fnn-store-indeterminate (nested)
+                   (fnn-owner-fence-service service)
+                   (fnn-err "owner uncertain while abandoning connection: ~a"
+                            nested))
+                 (serious-condition (nested)
+                   (fnn-owner-fault-service service nil nested)))))
            ((or fnn-store-error fnn-os-error sb-bsd-sockets:socket-error) (e)
              (fnn-err "owner connection: ~a" e))
            (fnn-tls-error (e)
@@ -739,7 +860,9 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
              ;; listener and shared TLS context remain live.
              (fnn-err "owner TLS connection: ~a" e))
            (serious-condition (e)
-             (fnn-owner-fault-service service cid e)))
+             (let ((faulted-cid cid))
+               (setq cid nil)
+               (fnn-owner-fault-service service faulted-cid e))))
       (when cid
         (ignore-errors
           (fnn-owner-serialized
@@ -804,7 +927,8 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
           (error condition))))))
 
 (defun fnn-owner-run (root port once max-connections
-                      &optional fault address (family :inet) tls-context)
+                      &optional fault address (family :inet) tls-context
+                        connection-fault-operation)
   "Run one service from already-normalized boundary values."
   (let ((service nil) (listener nil)
         (old-active *fnn-sigterm-owner-active*)
@@ -818,7 +942,9 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
            (unwind-protect
                 (progn
                   (setq service (fnn-owner-install root max-connections fault))
-                  (setf (fnn-owner-service-tls-context service) tls-context)
+                  (setf (fnn-owner-service-tls-context service) tls-context
+                        (fnn-owner-service-connection-fault-operation service)
+                        connection-fault-operation)
                   (fnn-owner-run-startup-hooks service)
                   ;; Deterministic native witness for the signal window in
                   ;; which recovery is complete but no listener fd or module
@@ -913,12 +1039,14 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
     (error 'fnn-usage-error
            :message "owner run ROOT PORT ONCE MAX-CONNECTIONS"))
   (let* ((inject (fifth args))
+         (connection-fault-operation
+           (and inject (string= inject "connectionhandler") :receive))
          (fault (and inject
                      (cdr (assoc inject +fnn-cli-faults+ :test #'string=)))))
-    (when (and inject (null fault))
+    (when (and inject (null fault) (null connection-fault-operation))
       (error 'fnn-usage-error :message "unknown owner fault point"))
     (fnn-owner-run (first args) (parse-integer (second args))
                    (string= (third args) "1") (parse-integer (fourth args))
-                   fault nil)))
+                   fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)

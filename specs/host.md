@@ -79,6 +79,23 @@ attribute to a connection or a peer abandons nothing, so it is counted and
 bounded; and a lost core image is not a fault the host survives, because the
 core is where every decision is made.
 
+The native boundary makes attribution structural. Bounded receive, send and
+graceful-close calls execute outside `fnn-owner-serialized` and cannot mutate
+the owner, a Store or a journal; `fnn-owner-connection-call` may therefore map
+an unexpected failure in exactly those scopes to the connection-local
+condition. Its handler calls the host-called `fn-owner-fault` while holding the
+owner mutex, copies the ACL2-produced 403/close effects and abandons only that
+socket. EOF remains an ordinary close. Store/core conditions and process
+resource exhaustion are never remapped by that envelope.
+
+Conversely, anything unexpected during `fnn-owner-serialized` has crossed the
+shared semantic boundary. Indeterminate persistence installs the exit-3 fence;
+a core/store fault, an unclassified OS failure or any other serious condition
+installs the exit-4 fence before releasing the mutex. Only the existing known
+semantic-refusal class may escape without a global fence. Once either fence is
+set, connection unwind performs no later owner close transition; service
+cleanup wakes and joins all workers before closing journals or the Store.
+
 HST-004: I/O, clocks, cryptographic primitives, and authentication are explicit
 trust-boundary entries. The production integration must not contaminate book
 certification with arbitrary raw-mode changes or hide trusted code inside a
