@@ -99,6 +99,49 @@ class FingerprintTests(unittest.TestCase):
                 found = acl2_toolchain.fingerprint(launcher)
                 self.assertFalse(found.qualified)
 
+    def test_dynamic_assignments_paths_and_arguments_are_unqualified(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = root / "sbcl"
+            runtime.write_bytes(b"runtime")
+            core = root / "core"
+            core.write_bytes(b"core")
+            commands = (
+                'export X=$(printf hidden)\nexec "{}" --core "{}" "$@"'.format(
+                    runtime, core),
+                'exec "{}" --core "/absolute/$CORE" "$@"'.format(runtime),
+                'exec "{}" --core "{}" "$(printf hidden)" "$@"'.format(
+                    runtime, core),
+                'exec "{}" --core "{}" --core "{}" "$@"'.format(
+                    runtime, core, core),
+                'exec "{}" --core "{}" --load /absolute/extra.lisp "$@"'.format(
+                    runtime, core),
+                'exec "{}" --core "{}" --eval "(load /absolute/extra)" "$@"'.format(
+                    runtime, core),
+            )
+            for command in commands:
+                launcher = root / "acl2"
+                launcher.write_text("#!/bin/sh\n" + command + "\n")
+                found = acl2_toolchain.fingerprint(launcher)
+                self.assertFalse(found.qualified, command)
+
+    def test_literal_launcher_override_is_bound_as_effective_proof_environment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            launcher = self.fixture(root)
+            original = launcher.read_text()
+            launcher.write_text(
+                "#!/bin/sh\nexport ACL2_SYSTEM_BOOKS=/literal/books\n" +
+                "\n".join(original.splitlines()[1:]) + "\n")
+            found = acl2_toolchain.fingerprint(launcher)
+            self.assertTrue(found.qualified, found.reason)
+            self.assertEqual(
+                found.compatibility["proof_environment"]["ACL2_SYSTEM_BOOKS"],
+                "/literal/books")
+            self.assertEqual(
+                found.compatibility["launcher_environment"][0]
+                ["ACL2_SYSTEM_BOOKS"], "/literal/books")
+
 
 if __name__ == "__main__":
     unittest.main()
