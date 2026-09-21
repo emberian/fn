@@ -55,7 +55,8 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import certs  # noqa: E402
+import certs
+import evidence_manifests
 
 HOSTS = {
     "persvati": {
@@ -404,10 +405,22 @@ def fetch(host: str, identifier: str, root: Path,
               check=False).stdout
     (root / "build" / "farm").mkdir(parents=True, exist_ok=True)
     (root / "build" / "farm" / f"{identifier}.log").write_text(log, encoding="utf-8")
+    archived: dict[str, int] = {}
     for directory in sorted(set(EVIDENCE.findall(log))):
         local = root / directory
         local.mkdir(parents=True, exist_ok=True)
         run(["rsync", "-a", f"{host}:{remote}/{directory}/", f"{local}/"], check=False)
+        # The fetched copy lands under `build/`, which is ignored and which a
+        # worktree removal takes with it, so the manifest is also filed under
+        # `planning/evidence/manifests/`.  Its `archived_from` names the box
+        # and the remote directory, because that is where the log stayed.
+        outcome = evidence_manifests.archive_run(
+            local, root, f"{host}:{remote}/{directory}")
+        archived[outcome] = archived.get(outcome, 0) + 1
+    if archived:
+        print("manifests archived under {}: {}".format(
+            evidence_manifests.ARCHIVE_REL,
+            ", ".join(f"{key} {value}" for key, value in sorted(archived.items()))))
     for directory in certs.BOOK_DIRECTORIES:
         run(["rsync", "-a", "--update", "--include=*/", "--include=*.cert",
              "--include=*.port", "--exclude=*",
