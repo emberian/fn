@@ -23,13 +23,14 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((records (fn-store-decode-records octet-records)))
     (if (equal records :bad)
-        :bad
+        (value :bad)
       (let ((captured (fn-checkpoint-capture (fn-store-sn-domain state)
                                              *fn-store-capacity*
                                              records frontier)))
         (if (not (equal (car captured) :ok))
-            captured
-          (fn-cpc-frame-protected (fn-checkpoint-capture-value captured)))))))
+            (value captured)
+          (value (fn-cpc-frame-protected
+                  (fn-checkpoint-capture-value captured))))))))
 
 (defun fn-store-checkpoint-selection-protected (generation)
   (declare (xargs :mode :program))
