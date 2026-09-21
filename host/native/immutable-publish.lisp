@@ -14,10 +14,15 @@
     (when (string= chosen point) (fnn-os-fail sb-posix:eio path))))
 
 (defun fnn-immutable-publish-effect
-  (stage final final-directory octets &key cleanup-directory)
-  "Create STAGE, barrier it, link FINAL without replacement, and barrier its
-directory.  Return the outcome classified by fn-jpub, never by raw Lisp."
-  (let ((publication (fnn-core 'fn-jpub-host-initial t))
+  (publication stage final final-directory octets &key cleanup-directory)
+  "Execute an ACL2-authorized immutable publication state.  PUBLICATION must
+come from the caller's ACL2 allocation/admission machine after it establishes
+exclusive authority and absence of that machine's exact final name.  This raw
+executor cannot mint authority.  It returns fn-jpub's classification."
+  (unless (and (eq (fnn-core 'fn-jpub-host-authorized-initialp publication) t)
+               (eq (fnn-core 'fn-jpub-host-action publication) :stage))
+    (fnn-fault "immutable publication lacks ACL2 authorization"))
+  (let ((publication publication)
         (fd nil))
     (labels ((advance (event)
                (setq publication

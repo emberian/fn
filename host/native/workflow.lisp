@@ -7,12 +7,8 @@
 ;;; upgrades visible bytes after an error to :durable.
 (in-package "ACL2")
 
-(defconstant +fnn-app-max-records+ 4096)
-(defconstant +fnn-workflow-max-aggregate+ (* 16 1024 1024))
-(defconstant +fnn-receipt-max-aggregate+ (* 64 1024 1024))
-
 (defstruct fnn-app-journal
-  root records staging lock-fd store domain suffix max-record max-aggregate
+  root records staging lock-fd store domain frontier
   (records-image nil) (fenced t))
 
 (defun fnn-app-journal-close (journal)
@@ -49,27 +45,10 @@
           (fnn-fault "application journal lock failed: ~a" e))))
     fd))
 
-(defun fnn-app-record-name (journal sequence)
-  (format nil "~16,'0x~a" sequence (fnn-app-journal-suffix journal)))
-
-(defun fnn-app-record-name-p (journal name)
-  (let ((suffix (fnn-app-journal-suffix journal)))
-    (and (= (length name) (+ 16 (length suffix)))
-         (string= suffix (subseq name 16))
-         (every (lambda (c) (digit-char-p c 16)) (subseq name 0 16)))))
-
 (defun fnn-app-record-names (journal)
-  (let ((names (fnn-list-directory (fnn-app-journal-records journal))))
-    (when (> (length names) +fnn-app-max-records+)
-      (fnn-fault "application journal record count exceeds bound"))
-    (dolist (name names)
-      (unless (fnn-app-record-name-p journal name)
-        (fnn-fault "unknown application journal entry ~a" name)))
-    (setq names (sort names #'string<))
-    (loop for name in names for sequence from 0 do
-      (unless (string= name (fnn-app-record-name journal sequence))
-        (fnn-fault "application journal sequence gap")))
-    names))
+  ; Ordering is an observation only.  fn-aj-host-recover decides whether each
+  ; spelling is ACL2's exact next name and whether the frontier may advance.
+  (sort (fnn-list-directory (fnn-app-journal-records journal)) #'string<))
 
 (defun fnn-app-frame (journal record)
   (let* ((wrapper (if (eq (fnn-app-journal-domain journal) :workflow)
@@ -92,21 +71,33 @@
     (cons (second answer) (third answer))))
 
 (defun fnn-app-read-records (journal names)
-  (let ((records nil) (aggregate 0))
-    (dolist (name names (nreverse records))
+  (let ((records nil)
+        (frontier (fnn-core 'fn-aj-host-initial
+                            (fnn-app-journal-domain journal)))
+        (maximum (fnn-core 'fn-aj-host-max-record-length
+                           (fnn-app-journal-domain journal))))
+    (dolist (name names)
       (let* ((path (fnn-join (fnn-app-journal-records journal) name))
-             (raw (fnn-read-regular-bounded
-                   path (fnn-app-journal-max-record journal))))
-        (incf aggregate (length raw))
-        (when (> aggregate (fnn-app-journal-max-aggregate journal))
-          (fnn-fault "application journal aggregate exceeds bound"))
-        (push (fnn-app-unframe journal raw) records)))))
+             (raw (fnn-read-regular-bounded path maximum))
+             (record (fnn-app-unframe journal raw))
+             (next (fnn-core 'fn-aj-host-recover frontier name (length raw)
+                             (first record))))
+        (when (eq next :fault)
+          (fnn-fault "ACL2 rejected application journal namespace/frontier"))
+        (setq frontier next)
+        (push record records)))
+    (setf (fnn-app-journal-frontier journal) frontier)
+    (nreverse records)))
 
 (defun fnn-app-install (journal records)
   (let ((answer
-          (if (eq (fnn-app-journal-domain journal) :workflow)
-              (fnn-core-state 'fn-workflow-install-replay records)
-            (fnn-core-state 'fn-bprj-install records))))
+          (if records
+              (if (eq (fnn-app-journal-domain journal) :workflow)
+                  (fnn-core-state 'fn-workflow-install-replay records)
+                (fnn-core-state 'fn-bprj-install records))
+            (if (eq (fnn-app-journal-domain journal) :workflow)
+                (fnn-core-state 'fn-workflow-reset)
+              (fnn-core-state 'fn-bprj-reset)))))
     (unless (eq answer :ready)
       (fnn-fault "ACL2 rejected application journal replay"))
     (setf (fnn-app-journal-records-image journal) records)
@@ -135,15 +126,12 @@
           (setq journal
                 (make-fnn-app-journal
                  :root absolute :records records :staging staging :store store
-                 :domain domain :suffix (if (eq domain :workflow) ".wf" ".rj")
-                 :max-record (if (eq domain :workflow) 16384 270000)
-                 :max-aggregate (if (eq domain :workflow)
-                                    +fnn-workflow-max-aggregate+
-                                  +fnn-receipt-max-aggregate+)
+                 :domain domain
+                 :frontier (fnn-core 'fn-aj-host-initial domain)
                  :lock-fd (fnn-app-journal-lock absolute domain)))
           (let* ((names (fnn-app-record-names journal))
                  (records-image (fnn-app-read-records journal names)))
-            (when records-image (fnn-app-install journal records-image))
+            (fnn-app-install journal records-image)
             (setf (fnn-app-journal-records-image journal) records-image
                   (fnn-app-journal-fenced journal) nil)
             journal))
@@ -179,19 +167,38 @@
             (append (fnn-app-journal-records-image journal) (list record)))
       :ready)))
 
-(defun fnn-app-publish-effect (journal sequence frame)
-  "Bind a journal sequence to the shared immutable publication effect."
-  (let* ((stage (fnn-join (fnn-app-journal-staging journal)
-                          (format nil "~16,'0x.~d.~a.tmp" sequence
-                                  (sb-posix:getpid) (fnn-random-hex 8))))
-         (final (fnn-join (fnn-app-journal-records journal)
-                          (fnn-app-record-name journal sequence))))
-    (let ((outcome
-            (fnn-immutable-publish-effect
-             stage final (fnn-app-journal-records journal) frame
-             :cleanup-directory (fnn-app-journal-staging journal))))
-      (when (eq outcome :uncertain)
-        (setf (fnn-app-journal-fenced journal) t))
+(defun fnn-app-authorized-publish (journal kind frame reserve-resolution)
+  "Ask ACL2 to allocate/admit one exact final name, then execute its capability."
+  (let* ((frontier (fnn-app-journal-frontier journal))
+         (candidate (fnn-core 'fn-aj-host-next-name frontier))
+         (final (fnn-join (fnn-app-journal-records journal) candidate))
+         ; The held lock and exact-name absence are observations.  ACL2 decides
+         ; whether they authorize this record and reserves its outcome room.
+         (operation
+           (fnn-core 'fn-aj-host-authorize frontier kind (length frame)
+                     (if reserve-resolution t nil)
+                     (if (fnn-app-journal-lock-fd journal) t nil)
+                     (if (fnn-lstat final) nil t))))
+    (unless (eq (first operation) :ok)
+      (fnn-refuse "ACL2 refused application journal admission"))
+    (unless (eq (fnn-core 'fn-aj-host-operationp operation) t)
+      (fnn-fault "ACL2 returned malformed application journal operation"))
+    (unless (string= candidate
+                     (fnn-core 'fn-aj-host-operation-name operation))
+      (fnn-fault "ACL2 application journal allocation changed"))
+    (let* ((stage (fnn-join (fnn-app-journal-staging journal)
+                            (format nil "~d.~a.tmp" (sb-posix:getpid)
+                                    (fnn-random-hex 16))))
+           (outcome
+             (fnn-immutable-publish-effect
+              (fnn-core 'fn-aj-host-operation-publication operation)
+              stage final (fnn-app-journal-records journal) frame
+              :cleanup-directory (fnn-app-journal-staging journal))))
+      (cond ((eq outcome :durable)
+             (setf (fnn-app-journal-frontier journal)
+                   (fnn-core 'fn-aj-host-operation-successor operation)))
+            ((eq outcome :uncertain)
+             (setf (fnn-app-journal-fenced journal) t)))
       outcome)))
 
 (defun fnn-app-publish (journal record &key reserve-resolution)
@@ -201,25 +208,9 @@
   (unless (fnn-app-preflight journal record)
     (fnn-refuse "ACL2 rejected application journal ~(~a~) before publication"
                 (first record)))
-  (let* ((names (fnn-app-record-names journal))
-         (sequence (length names))
-         (frame (fnn-app-frame journal record))
-         (aggregate (loop for name in names sum
-                      (sb-posix:stat-size
-                       (fnn-lstat (fnn-join (fnn-app-journal-records journal)
-                                           name)))))
-         (slots (if reserve-resolution 2 1))
-         (reserve (if reserve-resolution (fnn-app-journal-max-record journal) 0)))
-    (when (or (> (+ sequence slots) +fnn-app-max-records+)
-              (> (+ aggregate (length frame) reserve)
-                 (fnn-app-journal-max-aggregate journal)))
-      (fnn-refuse "application journal lacks resolution headroom"))
-    ; The exact-name scan under this journal's exclusive lock establishes the
-    ; authority premise supplied to fn-jpub-host-initial.
-    (when (fnn-lstat (fnn-join (fnn-app-journal-records journal)
-                               (fnn-app-record-name journal sequence)))
-      (fnn-fault "application journal next name is already occupied"))
-    (case (fnn-app-publish-effect journal sequence frame)
+  (let ((frame (fnn-app-frame journal record)))
+    (case (fnn-app-authorized-publish journal (first record) frame
+                                      reserve-resolution)
       (:durable
        (handler-case (fnn-app-apply journal record)
          (error (e)
