@@ -380,3 +380,60 @@ recovery barriers, while the cuts are `recover-replayed` at `:1207` and
 `fn-bs-replay-matches-scan` saying the durable frontier is the scanned one
 minus one, and a matching frontier arm here; that is the next packet, not this
 one.
+
+### 2026-09-20: D19 — the outbound guard is cured by a total take and drop, not by a carried length
+
+The send-side half of the served-path guard cost that
+`planning/lanes/HANDOFF-w9-dtn-e2e.md` §7 opened and `w11/tcpcl-theory` closed
+on the receive side. `specs/tcpcl.md` §6 named two candidate cures and left the
+choice open; this entry takes one and says why the other is worse.
+
+**The question.** The native host reaches the session machine through the ACL2
+executable counterpart of `fnn-call` (`host/native/io.lisp`), which checks the
+callee's guard on every call. `fn-tcl-session-cheapp` is that guard, and it
+carries `(fn-tcl-outboundp (fn-tcl-session-outbound s))` whole. Two of
+`fn-tcl-outboundp`'s conjuncts measure the unsent suffix —
+`(fn-cbor-octet-listp remaining)` and
+`(equal (+ sent-len (len remaining)) total)` — so a send of n octets re-walked
+the suffix once per socket chunk: O(n²/chunk) in guard checking alone. The two
+conjuncts could not simply be dropped, because the length equation was the only
+fact that discharged `fn-tcl-pump`'s `(fn-tcl-take k remaining)` and
+`(fn-tcl-drop k remaining)`, whose guard was `(fn-tcl-has octets k)`.
+
+**Selected:** make `fn-tcl-take` and `fn-tcl-drop` guard-total — guard
+`(natp n)`, the `fn-wire-ag-car` `mbe` pattern of `books/wire.lisp`, logical
+definitions unchanged — and split `fn-tcl-outbound-cheapp` off
+`fn-tcl-outboundp` exactly as `fn-tcl-inbound-cheapp` was split off
+`fn-tcl-inboundp`, with `fn-tcl-outboundp-is-cheap` as the only link. The
+ordering `(<= sent-len total)` that the length equation used to imply is carried
+explicitly, because `fn-tcl-pump` needs it to know its chunk is a natural. Every
+keystone still speaks of `fn-tcl-sessionp`, which still carries both dropped
+conjuncts and is still proved preserved.
+
+**Rejected: a `remaining`-length scalar carried in the outbound record.** It
+does not discharge the obligation. `(fn-tcl-has remaining k)` is a statement
+about the list, not about a scalar, so a carried `rem-len` relieves it only
+through the agreement `(equal rem-len (len remaining))` — and that agreement
+costs a walk of the suffix to check, so it cannot live in the cheap recognizer
+either. The carried length would therefore have to be combined with guard-total
+take and drop anyway; on its own it renames the equation rather than removing
+it from the served path. It is also strictly more change for that: the outbound
+record widens from seven fields to eight, every `fn-tcl-make-outbound` call site
+and the records book move with it, and the new field is state that can disagree
+with reality, so the agreement becomes one more conjunct of `fn-tcl-sessionp` to
+prove preserved by every transition. The third shape considered and rejected
+with it — letting `fn-tcl-pump` test `(fn-tcl-has remaining k)` itself, which is
+only O(chunk) — buys the guard at the price of a branch the composed machine
+cannot reach, which the assurance rules forbid as evidence.
+
+**What the relaxed guard gives up, and what still holds.** The old guard proved
+at each call site that a take is a genuine prefix. The decoders of
+`books/tcpcl-octets.lisp` still ask `fn-tcl-has` before every take — it is their
+own branch test, returning `(fn-tcl-parse-need)` when it fails — and an
+over-take pads with `nil`, which is not `fn-cbor-octet-listp`, so
+`fn-tcl-decode-message-yields-message` and the round trip would both fail if one
+ever happened. The property moves from a guard obligation to the codec
+keystones; it is not dropped.
+
+Affects `specs/tcpcl.md` §3 and §6, `books/tcpcl-octets.lisp`,
+`books/tcpcl-session.lisp`, `tests/acl2/tcpcl-tests.lisp`. Supersedes nothing.

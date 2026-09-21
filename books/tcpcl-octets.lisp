@@ -87,8 +87,25 @@
 (defconst *fn-tcl-magic* '(100 116 110 33))   ; "dtn!"
 
 ; -----------------------------------------------------------------------------
-; Bounded list vocabulary.  fn-tcl-has walks at most n cells; fn-tcl-take and
-; fn-tcl-drop are guarded by it, so no take ever runs past the buffer.
+; Bounded list vocabulary.  fn-tcl-has walks at most n cells and is the
+; decoders' own test: every decoder below asks it before it takes, and
+; returns (fn-tcl-parse-need) when it fails, so no decode ever runs past its
+; buffer.
+;
+; fn-tcl-take and fn-tcl-drop are GUARD-TOTAL (guard (natp n), the
+; fn-wire-ag-car pattern of books/wire.lisp): their logical definitions are
+; unchanged -- (car x) and (cdr x) of an atom are nil, so the two functions
+; already had a value past the end of the list -- and the mbe below only
+; gives the raw-Lisp code a definition there.  The guard was (fn-tcl-has
+; octets n) until w11/tcpcl-outbound, and that is why fn-tcl-outboundp had to
+; carry (equal (+ sent-len (len remaining)) total): it was the only fact that
+; discharged fn-tcl-pump's take and drop, and checking it cost a walk of the
+; unsent suffix on every guarded call into the session machine.  See
+; planning/decisions.md D19 and specs/tcpcl.md section 6.  What the old guard
+; proved at each call site -- that the take is a genuine prefix -- the
+; decoders' keystones still prove: an over-take pads with nil, which is not
+; fn-cbor-octet-listp, so fn-tcl-decode-message-yields-message and the round
+; trip would both fail.
 
 (defun fn-tcl-has (octets n)
   (declare (xargs :guard (natp n)))
@@ -97,16 +114,20 @@
     (and (consp octets) (fn-tcl-has (cdr octets) (1- n)))))
 
 (defun fn-tcl-take (n octets)
-  (declare (xargs :guard (and (natp n) (fn-tcl-has octets n))))
+  (declare (xargs :guard (natp n)))
   (if (zp n)
       nil
-    (cons (car octets) (fn-tcl-take (1- n) (cdr octets)))))
+    (mbe :logic (cons (car octets) (fn-tcl-take (1- n) (cdr octets)))
+         :exec (if (consp octets)
+                   (cons (car octets) (fn-tcl-take (1- n) (cdr octets)))
+                 (cons nil (fn-tcl-take (1- n) nil))))))
 
 (defun fn-tcl-drop (n octets)
-  (declare (xargs :guard (and (natp n) (fn-tcl-has octets n))))
+  (declare (xargs :guard (natp n)))
   (if (zp n)
       octets
-    (fn-tcl-drop (1- n) (cdr octets))))
+    (fn-tcl-drop (1- n) (mbe :logic (cdr octets)
+                             :exec (if (consp octets) (cdr octets) nil)))))
 
 (defthm fn-tcl-has-is-len-bound
   (equal (fn-tcl-has octets n) (<= (nfix n) (len octets))))

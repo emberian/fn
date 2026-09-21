@@ -434,3 +434,82 @@
 (assert-event (fn-tcl-session-cheapp (fn-tcl-result-session *t-b3*)))
 (assert-event (fn-tcl-session-cheapp (fn-tcl-result-session *t-b-cut*)))
 (assert-event (fn-tcl-session-cheapp *t-a*))
+
+; -----------------------------------------------------------------------------
+; The same separation on the SENDING side (w11/tcpcl-outbound, D19).  The
+; cheap guard also drops the two conjuncts of `fn-tcl-outboundp' that measure
+; the unsent suffix, so `fn-tcl-outboundp-is-cheap' needs the same teeth:
+; without them it could be an identity between two spellings and a send of n
+; octets would still walk the suffix once per socket chunk (specs/tcpcl.md
+; section 6).  Each witness is the mid-transfer session of *t-a4* -- A has
+; sent the first 3 of 5 octets and holds `(40 50)' unsent -- with its
+; outbound record rebuilt through `fn-tcl-next' to violate exactly one
+; conjunct, and each assertion is accompanied by the check that the OTHER
+; conjunct still holds.
+
+(defconst *t-a-mid* (fn-tcl-result-session *t-a4*))
+(assert-event (fn-tcl-sessionp *t-a-mid*))
+(assert-event (fn-tcl-session-cheapp *t-a-mid*))
+(assert-event (fn-tcl-session-outbound *t-a-mid*))
+(assert-event (equal (fn-tcl-outbound-remaining (fn-tcl-session-outbound *t-a-mid*)) '(40 50)))
+(assert-event (equal (fn-tcl-outbound-sent-len (fn-tcl-session-outbound *t-a-mid*)) 3))
+(assert-event (equal (fn-tcl-outbound-total (fn-tcl-session-outbound *t-a-mid*)) 5))
+
+; (c) an unsent suffix that is not octets.  It still has two cells, so
+; 3 + 2 = 5 and the length equation agrees; `fn-cbor-octet-listp' is the only
+; conjunct that separates the two recognizers here.
+(defconst *t-a-nonoctet*
+  (fn-tcl-next *t-a-mid* (fn-tcl-session-phase *t-a-mid*)
+               (fn-tcl-session-inbound *t-a-mid*)
+               (fn-tcl-make-outbound
+                (fn-tcl-outbound-xfer-id (fn-tcl-session-outbound *t-a-mid*))
+                (fn-tcl-outbound-ref (fn-tcl-session-outbound *t-a-mid*))
+                '(300 400) 5 3 0)
+               (fn-tcl-session-term *t-a-mid*)
+               (fn-tcl-session-last-tx *t-a-mid*)))
+(assert-event
+ (equal (+ (fn-tcl-outbound-sent-len (fn-tcl-session-outbound *t-a-nonoctet*))
+           (len (fn-tcl-outbound-remaining (fn-tcl-session-outbound *t-a-nonoctet*))))
+        (fn-tcl-outbound-total (fn-tcl-session-outbound *t-a-nonoctet*))))
+(assert-event (fn-tcl-session-cheapp *t-a-nonoctet*))
+(assert-event (not (fn-tcl-sessionp *t-a-nonoctet*)))
+
+; (d) an unsent suffix whose length is not (- total sent).  Its one cell is
+; an octet, so `fn-cbor-octet-listp' holds and the length equation is the
+; only conjunct that separates them.
+(defconst *t-a-wrong-len*
+  (fn-tcl-next *t-a-mid* (fn-tcl-session-phase *t-a-mid*)
+               (fn-tcl-session-inbound *t-a-mid*)
+               (fn-tcl-make-outbound
+                (fn-tcl-outbound-xfer-id (fn-tcl-session-outbound *t-a-mid*))
+                (fn-tcl-outbound-ref (fn-tcl-session-outbound *t-a-mid*))
+                '(40) 5 3 0)
+               (fn-tcl-session-term *t-a-mid*)
+               (fn-tcl-session-last-tx *t-a-mid*)))
+(assert-event
+ (fn-cbor-octet-listp (fn-tcl-outbound-remaining (fn-tcl-session-outbound *t-a-wrong-len*))))
+(assert-event
+ (not (equal (+ (fn-tcl-outbound-sent-len (fn-tcl-session-outbound *t-a-wrong-len*))
+                (len (fn-tcl-outbound-remaining (fn-tcl-session-outbound *t-a-wrong-len*))))
+             (fn-tcl-outbound-total (fn-tcl-session-outbound *t-a-wrong-len*)))))
+(assert-event (fn-tcl-session-cheapp *t-a-wrong-len*))
+(assert-event (not (fn-tcl-sessionp *t-a-wrong-len*)))
+
+; The cheap outbound recognizer is reached on the real sending sessions of
+; the golden exchange, not only on the two witnesses above.
+(assert-event (fn-tcl-outbound-cheapp (fn-tcl-session-outbound *t-a-mid*)))
+(assert-event (fn-tcl-outbound-cheapp
+               (fn-tcl-session-outbound (fn-tcl-result-session *t-a5*))))
+(assert-event (fn-tcl-outbound-cheapp
+               (fn-tcl-session-outbound (fn-tcl-result-session *t-b4*))))
+(assert-event (fn-tcl-session-cheapp (fn-tcl-result-session *t-a5*)))
+(assert-event (fn-tcl-session-cheapp (fn-tcl-result-session *t-b4*)))
+
+; And fn-tcl-take/fn-tcl-drop are guard-total now (D19): both answer on a
+; count past the end of the list, with the SAME value the logical definition
+; always had, so relaxing the guard changed no behaviour.  Without this the
+; length equation could not have left the cheap recognizer.
+(assert-event (equal (fn-tcl-take 3 '(1 2)) '(1 2 nil)))
+(assert-event (equal (fn-tcl-drop 3 '(1 2)) nil))
+(assert-event (equal (fn-tcl-take 2 '(1 2 3)) '(1 2)))
+(assert-event (equal (fn-tcl-drop 2 '(1 2 3)) '(3)))
