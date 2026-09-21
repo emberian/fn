@@ -129,16 +129,59 @@ Measured after the change: `fn-wildmat-parse-text '(42 84 44 42 116 42)`
 (`*T,*t*`) is two positive constituents, and it matches `"Test"`. The assertion
 that pins it is unchanged.
 
+## Certification
+
+Two hbox runs, `--jobs 8`, `--affected-by books/wildmat.lisp --closure`, ACL2
+`/tank/fn/acl2-8.7/saved_acl2` sha256
+`64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5`, SBCL 2.6.8.
+
+| run | tree | result |
+| --- | --- | --- |
+| `run-20260921T010319Z-767e`, evidence `build/acl2/certify-20260921T010328Z-1370337` | lane before the dev merge | **151 attempted, 150 certified, 1 failed**, 405.8 s |
+| `run-20260921T011150Z-688d`, evidence `build/acl2/certify-20260921T011159Z-1380025` | after merging dev `e4fb8bc` | **151 attempted, 150 certified, 1 failed**, 402.4 s |
+
+The second run exists because dev changed `books/owner.lisp`,
+`books/owner-invariants.lisp`, `books/nntp-post.lisp` and two test books
+between the submit and the merge. Both runs' only failure is the same foreign
+root.
+
+Per book, second run: `books/wildmat` 3.0 s, `-utf8-invariants` 6.7 s,
+`-parser-invariants` 1.4 s, `-matcher-invariants` 0.4 s, `-work` 1.6 s,
+`books/nntp-responses` 1.2 s, `books/nntp-effects` 91.9 s,
+`books/peer-inbound` 62.3 s, `books/owner-invariants` 9.2 s.
+`tests/acl2/nntp-legacy-tests` **92 of 92 `:PASSED`**,
+`tests/acl2/owner-tests` **210 of 210**. `tools/teeth_check.py --evaluate`
+over the three wildmat test books: 108 assert-events, 108 witnesses,
+**0 findings**.
+
+Certified on the laptop afterwards, over sources committed after the second
+submit: `tests/acl2/wildmat-tests` (`certify-20260921T011346Z-7541`, the last
+INN comparison row), `books/wildmat-parser-invariants`
+(`...011743Z-14492`, `fn-wildmat-successful-parse-text-parsedp`), and its two
+includers `tests/acl2/wildmat-parser-invariants-tests` and
+`tests/acl2/wildmat-teeth-tests` (`...011753Z-14645`).
+
+## The one failure, and it is foreign
+
+`tests/acl2/checkpoint-codec-tests` fails in both runs. It includes only
+`books/checkpoint-codec`, whose include closure is `checkpoint`,
+`records-canonicality`, `frame-invariants` and `arithmetic/top` — no wildmat
+anywhere — and this lane's diff touches none of those files. The failure is an
+`assert-event` that is false: `(NOT (FN-CPC-VALIDP *CPC-VALUE* *CPC-GROUPS* 10
+(LIST *CPC-R0-BAD-GENERATION*)))` at
+`tests--acl2--checkpoint-codec-tests.certify.log:522`. The validator ACCEPTS
+the bad-generation witness, so either the witness stopped being bad or the
+validator stopped rejecting it. Named on the board for its owner.
+
 ## Open
 
-- **The wide certification of the merged tree.** The hbox run below was
-  submitted from the lane tree before dev `e4fb8bc` was merged in; dev changed
-  `books/owner.lisp`, `books/owner-invariants.lisp`, `books/nntp-post.lisp`
-  and two test books in the meantime. The wildmat and XPAT results stand on
-  their own sources, and the merged tree needs one more narrow run over the
-  same roots with hbox's now-warm cache.
 - No socket witness of a matching multi-token XPAT. `tests/test_reader.py`'s
   seed article has no header value containing an SP, and changing it moves the
   byte counts of six other transcripts. The matching case is end-to-end in
   `tests/acl2/nntp-legacy-tests.lisp` over a second one-article archive whose
   Subject is a phrase, through the same acceptance definitions.
+- `books/wildmat.lisp` is 820 lines, over the 800-line split guidance. Its
+  seams are marked with the existing `---` dividers; splitting it is a
+  separate packet.
+- `tests/acl2/checkpoint-codec-tests`, above: foreign, unowned, red in both
+  runs.
