@@ -14,9 +14,17 @@ at least 1024 octets, no outer framing header, a SHA-512 Merkle tree with
 64-octet nodes, and the two NUL-terminated signature context strings.
 
 What this module does NOT do: decide anything.  It parses octets, checks the
-two signatures and the Merkle path through `tools/crypto_host`, and hands five
+two signatures and the Merkle path through `tools/crypto_host`, and hands ten
 fields to ACL2, which owns the anchor statement, what the signature covers,
 the ordering and the restore rule (`books/anchor.lisp`).
+
+The tenth field is ROOT, off the wire.  ACL2 rebuilds the signed octets from
+it rather than recomputing it from the nonce, so the message the model reasons
+about is the message the host verified, for a batch of any size; and
+`fn-anchor-one-nonce-p` then reports the batches the model cannot fold as
+uncertain rather than accepting them.  `Anchor.one_nonce` below is the host's
+half of that: PATH empty and INDX zero, which is exactly when `merkle_root`
+returned `_leaf(nonce)`.
 """
 
 from __future__ import annotations
@@ -155,14 +163,15 @@ def _uint(value, width, name):
 
 
 class Anchor:
-    """The five fields ACL2 takes, plus the octets they were carried in."""
+    """The ten fields ACL2 takes, plus the octets they were carried in."""
 
     __slots__ = ("key_id", "delegate", "mint", "maxt", "delegation_signature",
                  "midpoint", "radius", "nonce", "signature", "srep", "dele",
-                 "root", "server")
+                 "root", "path", "index", "server")
 
     def __init__(self, key_id, delegate, mint, maxt, delegation_signature,
-                 midpoint, radius, nonce, signature, srep, dele, root, server):
+                 midpoint, radius, nonce, signature, srep, dele, root,
+                 path, index, server):
         self.key_id = key_id
         self.delegate = delegate
         self.mint = mint
@@ -175,7 +184,33 @@ class Anchor:
         self.signature = signature
         self.srep = srep
         self.root = root
+        self.path = path
+        self.index = index
         self.server = server
+
+    @property
+    def one_nonce(self):
+        """Does this response cover one nonce, and is it ours?
+
+        `parse_response` has already checked `merkle_root(nonce, path, index)
+        == root`, and `merkle_root` with an empty PATH and INDX 0 is exactly
+        `_leaf(nonce)`.  So an empty path and a zero index say `root ==
+        _leaf(nonce)` -- which is `fn-anchor-one-nonce-p` of the record ACL2
+        admits, under the same A-CRYPTO reading that makes this module's
+        Ed25519 the constrained `fn-anchor-sig-verify`: that `_leaf` realises
+        `fn-anchor-leaf-digest`.  That reading is named in specs/anchor.md's
+        trust section; nothing here proves it.
+
+        A non-empty PATH makes this False, and `run_store` hands ACL2 a False
+        `one_nonce` alongside its Ed25519 verdict; the model then answers
+        `:uncertain :unmodelled-tree`.  Uncertain and not refused: every
+        signature in such a response is good and fn simply cannot tell
+        whether it covers this node's nonce.
+        `tests/vectors/roughtime-int08h-2026-09-19-later2.json` is a real
+        int08h capture of exactly this shape, so batching is what the servers
+        fn queries actually do, not a hypothetical.
+        """
+        return len(self.path) == 0 and self.index == 0
 
     def as_json(self):
         return {
@@ -192,6 +227,8 @@ class Anchor:
             "nonce_hex": self.nonce.hex(),
             "signature_hex": self.signature.hex(),
             "root_hex": self.root.hex(),
+            "path_hex": self.path.hex(),
+            "index": self.index,
             "srep_hex": self.srep.hex(),
         }
 
@@ -206,13 +243,15 @@ class Anchor:
                    bytes.fromhex(value["signature_hex"]),
                    bytes.fromhex(value["srep_hex"]),
                    bytes.fromhex(value["dele_hex"]),
-                   bytes.fromhex(value["root_hex"]), value["server"])
+                   bytes.fromhex(value["root_hex"]),
+                   bytes.fromhex(value["path_hex"]), value["index"],
+                   value["server"])
 
     def fields(self):
-        """The nine fields `books/anchor.lisp` takes, in its own order."""
+        """The ten fields `books/anchor.lisp` takes, in its own order."""
         return (self.key_id, self.delegate, self.mint, self.maxt,
                 self.delegation_signature, self.midpoint, self.radius,
-                self.nonce, self.signature)
+                self.nonce, self.signature, self.root)
 
 
 def parse_response(packet, nonce, long_term_key, server="unknown"):
@@ -255,6 +294,13 @@ def parse_response(packet, nonce, long_term_key, server="unknown"):
     radius = _uint(srep[b"RADI"], 4, "RADI")
     mint = _uint(dele[b"MINT"], 8, "MINT")
     maxt = _uint(dele[b"MAXT"], 8, "MAXT")
+    # A preflight, and no longer half of anything.  `books/anchor.lisp`
+    # applies this window itself, inside `fn-anchor-verifiedp-observed` --
+    # the entry `tools/run_store.py` calls -- so the discharge of
+    # `fn-anchor-node-accept-observed-is-node-accept`'s hypothesis no longer
+    # depends on this line agreeing with books/anchor.lisp.  It stays because
+    # `parse_response` is also the capture tool's only check; it goes when
+    # the ordering item of HANDOFF-w11-one-owner s 3 step 4 lands.
     if not mint <= midpoint <= maxt:
         raise RoughtimeError("midpoint outside the delegation validity window")
     root = srep[b"ROOT"]
@@ -267,7 +313,7 @@ def parse_response(packet, nonce, long_term_key, server="unknown"):
         raise RoughtimeError("SIG is not 64 octets")
     return Anchor(long_term_key, dele[b"PUBK"], mint, maxt, cert[b"SIG\x00"],
                   midpoint, radius, nonce, top[b"SIG\x00"], srep_octets,
-                  cert[b"DELE"], root, server)
+                  cert[b"DELE"], root, top[b"PATH"], index, server)
 
 
 def load_servers(path=SERVERS_PATH):

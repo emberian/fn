@@ -788,3 +788,66 @@ Registry: PRF-023. Keystone `fn-sn-statement-lookup-is-the-lace-lookup`
 (`books/store-node-invariants.lisp`), with `fn-sn-initial-is-indexed` and the
 five `fn-sn-*-preserves-indexedp` theorems as the reachability chain that
 discharges its hypothesis.
+
+### 2026-09-20: D22 — the freshness anchor carries its root, and fn reports a Roughtime response it cannot describe as uncertain
+
+**The question.** `fn-anchor-root` was not an accessor: it was
+`(fn-anchor-leaf-digest (fn-anchor-nonce a))`, and the nine fields the durable
+record carried did not include the root. So every keystone about the signed
+octets — `fn-anchor-signed-octets-determine-the-root` above all — described a
+one-nonce tree, empty `PATH` and `INDX` 0, while `tools/roughtime.py` admitted
+a `PATH` up to 32 nodes deep and `anchor_verdict` ran Ed25519 over the root
+**from the wire**. For a batched response the host held a verdict about one
+message and `fn-anchor-node-accept-observed-is-node-accept`'s hypothesis was
+about another, and nothing anywhere noticed: `anchor_verdict`'s own
+consistency check passed, because it had fed ACL2 the wire root. Every
+captured vector is single-nonce, so this was never observed; it was a property
+of the servers fn happens to query.
+
+**Taken.** The root is a tenth field on `fn-anchor` and on both FNAN kinds, so
+`fn-anchor-signed-octets` is the octets that were verified for a batch of any
+size; and `fn-anchor-one-nonce-p` — `(equal (fn-anchor-root a)
+(fn-anchor-leaf-digest (fn-anchor-nonce a)))` — is a conjunct of
+`fn-anchor-verifiedp`, so a response whose tree the model cannot fold is
+refused with `:unverified` rather than admitted under a description that does
+not fit it. **fn therefore refuses a Roughtime server that batches.** Every
+pinned server answers one nonce per response today, so this refuses nothing fn
+has seen; against a batching server `fn anchor` reports `anchor refused:
+unverified` and the node keeps the anchor it had. Refusing honestly beats
+describing wrongly, and the refusal is loud.
+
+**And the verdict the host owes is now one value in one place.** The host
+supplies `fn-anchor-seam-verdict`: the two constrained Ed25519 checks and
+`fn-anchor-one-nonce-p`, which are the three things that run through A-CRYPTO.
+The delegation window is arithmetic on fields the record carries, so ACL2 owns
+it — `fn-anchor-verifiedp-observed` applies `fn-anchor-window-okp` inside the
+entry the host calls. Until now `mint <= midpoint <= maxt` was *half* the
+discharge of that hypothesis, copied at `tools/roughtime.py:258`, with
+`anchor_verdict` supplying the other half from a different file; if the copy
+and `books/anchor.lisp` had ever disagreed, every anchor keystone would have
+stopped describing the run with no test failing.
+
+**Rejected: a stated hypothesis instead of a refusal.** Carrying
+`fn-anchor-one-nonce-p` as a hypothesis of the keystones rather than a
+conjunct of `fn-anchor-verifiedp` leaves the host free to record a batched
+anchor durably, with the keystones silently not applying to it. That is the
+defect, restated as a caveat.
+
+**Rejected: an `A-*` assumption covering the fold.** There is no fold in the
+logic to hypothesise about, so no theorem could take the assumption — it would
+be the prose assumption AGENTS.md forbids. The fold is recorded as a trusted
+facility in `specs/anchor.md` instead, with its file, its lines and what it
+decides named.
+
+**Rejected: `books/sha512.lisp` and the fold in this packet.** Stating the
+fold over a constrained digest without attaching a realiser would leave Python
+deciding while looking proved. The design is
+`planning/lanes/HANDOFF-w11-one-owner.md` §3 steps 1 to 3; it is a packet of
+its own and admitting batched responses is what it buys.
+
+Registry: FLR-004, OBJ-006. Keystones
+`fn-anchor-signed-octets-determine-the-root` (`books/anchor.lisp`, now over
+the field and so covering any batch size) and
+`fn-anchor-verifiedp-observed-is-verifiedp` (`books/anchor-invariants.lisp`,
+the seam hypothesis discharged once for all three host entries). Teeth in
+`tests/acl2/anchor-teeth-tests.lisp` and `tests/test_anchor.py`.
