@@ -105,7 +105,7 @@
                                bundle-identity state)))
 
 ; Sole ACL2 application admission event.  The request intent must already be
-; durable: fn-bpaj-dispatch is called over the same bound owner Store, and
+; durable: fn-bpaj-dispatch-fast is called over the same bound owner Store, and
 ; only its :submit action reaches the ordinary control submission transition.
 (defun fn-owner-app-submit (state)
   (declare (xargs :stobjs state :mode :program))

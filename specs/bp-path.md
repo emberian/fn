@@ -190,9 +190,9 @@ ACL2 fast projections proved equal to the checked receiver transitions under
 that invariant and the canonical owner's maintained Store invariant.  These
 projections still validate the current external request or journal record, but
 they do not re-decode every retained request or revalidate the whole Store on
-each served action.  Message-ID candidate lookup and retained-context lookup
-remain linear semantic searches; replacing those searches with maintained
-indexes is separate performance work.  The evolving joined replay-to-owner
+each served action.  Message-ID candidate lookup and retained intent/context
+lookup remain linear semantic searches; replacing those searches with
+maintained indexes is separate performance work.  The evolving joined replay-to-owner
 Store relation and its full trace correspondence remain open as stated above.
 
 Run a later A–relay–B contact plan with non-overlapping contact windows, and
