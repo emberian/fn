@@ -100,6 +100,24 @@ the others. The immediate U01 repair must not wait for this broader factoring.
 
 ## Pleasantness criteria for the native migration
 
+### U05: a stale owner article bound disagrees with the posting configuration
+
+`books/owner.lisp` still uses the prototype `*fn-own-body-limit*` value 8192
+for ordinary session framing and control submission, while
+`host/owner-host.lisp` supplies the store's 32768-byte maximum in the injection
+configuration. Owner convergence confirmed this is stale, not an intentional
+separate policy. A valid 9 KiB article can therefore encounter different limits
+depending on its entry path; the live same-node witness is being added.
+
+Repair: derive the ordinary framing/control limit from the same ACL2 injection
+configuration. Preserve an explicitly configured peer inbound override, and
+keep any pre-configuration fallback out of the configured served path. The
+wire line-capacity repair alone does not fix this separate total-article bound.
+Owner convergence owns the projection and called-path tests; this remains open
+until its packet and evidence land.
+
+## Operator and implementation criteria
+
 - One documented operator CLI and configuration contract. The positional native
   test interface may remain internal; it must not become a competing operator UI.
 - Startup diagnostics distinguish unavailable facilities, invalid configuration,
