@@ -380,8 +380,10 @@
 (local (defthm fn-stx-bytes-item-is-a-cbor-value
          (implies (fn-sig-signature-p signature)
                   (fn-cbor-valuep (cons :bytes signature)))
-         :hints (("Goal" :in-theory (enable (:d fn-sig-signature-p)
-                                            fn-cbor-valuep)))))
+         :hints (("Goal" :do-not-induct t
+                  :in-theory (enable (:d fn-sig-signature-p)
+                                     fn-cbor-valuep
+                                     fn-cbor-valuep-bounded)))))
 
 (defun fn-stx-detached-encode-parts (header signature)
   (declare (xargs :guard t))
