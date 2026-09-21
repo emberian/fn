@@ -45,18 +45,33 @@ Configuration namespace recovery now preserves all observed entries during
 sorting. The joined source awaits a fresh native image and runtime matrix;
 these integrations are not a claim that the combined service passes.
 
-The next parallel batch extends the single ordered Store history with retention
-and identity events, durable key snapshots, checkpoint-based compaction and
-physical crash correspondence. These changes remain in capability lanes until
-their ordinary publication/recovery paths and obligations are composed.
+The current main includes the first authoritative Store-event integration:
+article transactions and BP undertaking/release events share the allocator,
+publication barriers and ordered recovery. Acceptance-verdict, keyring-snapshot
+and atomic article-plus-verdict codecs have also landed. The shared identity
+writer/replay join remains in progress; component codecs do not establish that
+historical trust is durably recovered. Physical checkpoint packing/reclamation
+and the mandatory hybrid-signature implementation remain in capability lanes.
 
-The next frozen combined source is `f7190d69`, with persvati job
-`run-20260921T161741Z-6d04` at `/home/ember/fn-gates/freeze-f7190d69`.
-The gate uses a task-local literal ACL2 launcher, fingerprints its actual core
-and runtime, and recertifies the default/DTN include closure with the joined
-component test roots before image builds. It is pending; no result from it is
-claimed here. Live administration and ordered Store-event work continue in
-separate capability lanes while that snapshot remains immutable.
+The first frozen combined source `f7190d69` failed certification because native
+administration omitted its peer-config dependency. Repair `55e6d00a` then
+exposed an insufficient proper-list guard. Focused repair `8071a825` passed the
+five affected roots under persvati job `run-20260921T165123Z-ea6a`, reusing
+qualified unchanged dependencies. Production image construction exposed an
+ACL2-reader/raw-Lisp boundary error in profile selection; `09612ff7` repairs
+that boundary. Image builds and runtime qualification are continuing, with no
+new combined image success yet claimed. See the [gate record](evidence/wide-native-gate-2026-09-21.md).
+The remote origin is `/home/ember/fn-gates/freeze-f7190d69`; exact source
+revisions and manifest digests, rather than that directory name, identify each
+input. Later main integrations are outside this frozen gate.
+
+Outbound authenticated TLS and live administration are now integrated in main.
+Focused raw transport tests pass, including handshake rejection and retry
+cleanup; their scope is not a two-node service qualification. The next peering
+vertical binds inbound transit roles to authenticated configured principals,
+while retaining the explicit legacy source-address profile. The developer-only
+native process-death cuts and K7 supporting facts are integrated; their native
+fault campaign awaits the next combined image.
 
 The previous qualified combined source is `03eb3ba3`, with retained persvati job
 `run-20260921T095031Z-5cf4`. Certification, both same-origin image builds, scoped runtime suites and the
@@ -108,7 +123,9 @@ complete operator/identity workflows, long-lived retention/release/restore,
 full two-peer feature coverage and broader v1 work remain open. Preserve native
 author signatures, exact source bytes with separate projections, indefinite
 retention until authorized release, NNTP/CLI before web, and deferred private
-group cryptography. D09/D11 proposals are not silently selected requirements.
+group cryptography. D09 selects mandatory Ed25519 plus ML-DSA-65 over the
+framed exact authored bytes. Custody/recovery authority and D11 remain open;
+choosing a signature suite does not choose those policies.
 
 Historical progress is retained in source-pinned evidence and
 [milestone landing notes](milestones.md#earlier-landing-notes), not repeated here
