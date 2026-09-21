@@ -25,6 +25,10 @@
 (defconst *fn-bpn-lifecycle-max-stage-name-chars* 128)
 (defconst *fn-bpn-lifecycle-name-suffix* '(#\. #\f #\n #\b))
 
+(defun fn-bpn-lifecycle-max-namespace-entries ()
+  (declare (xargs :guard t))
+  (+ *fn-bpn-machine-max-records* *fn-bpn-lifecycle-max-hidden-stages*))
+
 ; Reuse the Store transaction codec's proved decimal digit renderer.  Only the
 ; namespace suffix differs; there is no second natural-number printer here.
 (defun fn-bpn-lifecycle-record-name-chars (token)
@@ -57,11 +61,15 @@
               (equal (car chars) #\.)
               (<= (len chars) *fn-bpn-lifecycle-max-stage-name-chars*)))))
 
+(defun fn-bpn-lifecycle-reverse-onto (xs acc)
+  (declare (xargs :guard t :measure (acl2-count xs)))
+  (if (consp xs)
+      (fn-bpn-lifecycle-reverse-onto (cdr xs) (cons (car xs) acc))
+    acc))
+
 (defun fn-bpn-lifecycle-reverse (xs)
   (declare (xargs :guard t))
-  (if (consp xs)
-      (append (fn-bpn-lifecycle-reverse (cdr xs)) (list (car xs)))
-    nil))
+  (fn-bpn-lifecycle-reverse-onto xs nil))
 
 ; This is a recovery plan, not an admission machine.  Raw Lisp supplies the
 ; sorted directory observations.  ACL2 classifies hidden stages, compares each
@@ -91,9 +99,7 @@
 (defun fn-bpn-lifecycle-namespace-plan (names)
   (declare (xargs :guard t))
   (if (and (true-listp names)
-           (<= (len names)
-               (+ *fn-bpn-machine-max-records*
-                  *fn-bpn-lifecycle-max-hidden-stages*)))
+           (<= (len names) (fn-bpn-lifecycle-max-namespace-entries)))
       (fn-bpn-lifecycle-namespace-plan-aux names 0 nil nil)
     (list :fault :namespace-entry-bound)))
 
