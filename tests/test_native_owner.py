@@ -3,9 +3,11 @@ import os
 from pathlib import Path
 import select
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -55,6 +57,35 @@ class NativeOwnerTests(unittest.TestCase):
                 line, process.stderr.read().decode("utf-8", "replace")))
         return process, int(line.split()[1])
 
+    def connect_owner(self, port):
+        client = socket.create_connection(("127.0.0.1", port), timeout=30)
+        self.addCleanup(client.close)
+        stream = client.makefile("rwb", buffering=0)
+        self.addCleanup(stream.close)
+        self.assertTrue(stream.readline().startswith(b"200 "))
+        return client, stream
+
+    def assert_live_writer_and_reader(self, writer, reader, message_id):
+        article = self.article(message_id, b"surviving native owner body\r\n")
+        writer.write(b"POST\r\n")
+        self.assertTrue(writer.readline().startswith(b"340 "))
+        writer.write(article + b".\r\n")
+        self.assertTrue(writer.readline().startswith(b"240 "))
+
+        reader.write(b"GROUP fn.test\r\n")
+        self.assertTrue(reader.readline().startswith(b"211 "))
+        reader.write(b"ARTICLE " + message_id + b"\r\n")
+        self.assertTrue(reader.readline().startswith(b"220 "))
+        received = bytearray()
+        while True:
+            line = reader.readline()
+            self.assertNotEqual(line, b"", "owner closed the surviving reader")
+            if line == b".\r\n":
+                break
+            received.extend(line)
+        self.assertIn(b"Message-ID: " + message_id + b"\r\n", received)
+        self.assertIn(b"surviving native owner body\r\n", received)
+
     @staticmethod
     def article(message_id, body=b"native owner body\r\n"):
         return (b"From: sender@example.invalid\r\n"
@@ -74,6 +105,49 @@ class NativeOwnerTests(unittest.TestCase):
                 stream.write(b"QUIT\r\n")
                 self.assertTrue(stream.readline().startswith(b"205 "))
             self.assertIsNone(process.poll(), "owner stopped after an ordinary disconnect")
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
+
+    def test_reset_peer_does_not_stop_concurrent_writer_or_reader(self):
+        process, port = self.start_owner(once=False)
+        resetter, reset_stream = self.connect_owner(port)
+        _, reader = self.connect_owner(port)
+        _, writer = self.connect_owner(port)
+        try:
+            # Force an attributable transport reset.  The peer owns this
+            # socket and no shared owner transition is in progress.
+            resetter.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+                                struct.pack("ii", 1, 0))
+            reset_stream.close()
+            resetter.close()
+            time.sleep(0.1)
+            self.assert_live_writer_and_reader(
+                writer, reader, b"<after-native-reset@example.invalid>")
+            self.assertIsNone(process.poll(), "peer reset stopped the owner")
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
+
+    def test_local_handler_fault_uses_core_fault_and_preserves_other_clients(self):
+        process, port = self.start_owner(once=False, fault="connectionhandler")
+        _, faulted = self.connect_owner(port)
+        _, reader = self.connect_owner(port)
+        _, writer = self.connect_owner(port)
+        try:
+            faulted.write(b"CAPABILITIES\r\n")
+            self.assertEqual(
+                faulted.readline(),
+                b"403 internal fault; this connection is closed and the server continues\r\n")
+            self.assert_live_writer_and_reader(
+                writer, reader, b"<after-native-handler-fault@example.invalid>")
+            self.assertIsNone(process.poll(), "local handler fault stopped the owner")
         finally:
             if process.poll() is None:
                 process.terminate()
