@@ -88,14 +88,14 @@ the whole-tree run behind these statuses is
 | Item | Status | Evidence |
 | --- | --- | --- |
 | K1 transit refines acceptance | **done** | `fn-peer-transfer-is-the-post-path`, `fn-peer-transfer-stages-only-scope-groups` ([BOARD](deputies/BOARD.md), w6/peering-inbound) |
-| K2 loop freedom | **partial** | `fn-peer-loop-is-refused` (inbound); outbound and RFC 5537 3.6 step 2 open for want of a certified RFC 5322 date reader |
+| K2 loop freedom | **partial, and inert in any deployment until now** | `fn-peer-loop-is-refused` (inbound) reads `fn-peer-local-identity`, the `path-identity` policy slot, and NOTHING on this tree could write that slot, so it read the empty string and the check could never fire: both nodes in gate `bbd1f47` accepted an article whose Path named them. `fn policy set path-identity` writes it now. Outbound and RFC 5537 3.6 step 2 remain open. |
 | K3 duplicate suppression | **done** | `fn-peer-history-is-refused-at-offer`/`-at-transfer`, `fn-peer-history-grows-under-transfer` |
-| K4 restart | **open** | recorded open in `specs/peering.md` status |
+| K4 restart | **the lost-reply half is witnessed live; the kill half is not yet** | The tap cut a transfer after the article block and before the status line: node B served the article afterwards and node A observed ZERO accepted transfers ([twonode-ea76826](evidence/twonode-ea76826-2026-09-21.md), `owner feed cut | CUT-TAKEN`). The `kill -9` run in the same gate was lost to node B's connection bound, not to the feed. The general statement is recorded open in `specs/peering.md` status. |
 | Peer records are configuration | **done** | `:set-peer` (9) and `:remove-peer` (10) in `books/config.lisp`; `books/peer-config.lisp` |
-| Two nodes exchange both ways | **done (one host)** | [twonode-dfd8758](evidence/twonode-dfd8758-2026-09-20.md), 63 steps, 0 failed |
+| Two nodes exchange both ways | **A to B by fn's own feed, twice over; B to A not yet re-measured** | An article crosses by fn's OWN feed, by IHAVE and by RFC 4644 CHECK/TAKETHIS, with the offer commands recorded on a wire tap ([twonode-feed-w11](evidence/twonode-feed-w11-2026-09-20.md), [twonode-ea76826](evidence/twonode-ea76826-2026-09-21.md)). The B-to-A direction was lost to node B's connection bound in that run and is not claimed. The row this replaces cited a 63-step green in which the feed steps were NOT EXERCISED and every transit offer drew `502`. |
 | Two nodes exchange across boxes | **blocked** | `fn run` refuses a non-loopback listener, so the live peer records name addresses neither node can reach ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
 | Real INN on the other end | **done** | INN 2.7.4, [inn-lab-f4e8272](evidence/inn-lab-f4e8272-2026-09-20.md), 75 steps, 0 failed |
-| The owner carries the transit port | **open** | exact forms are the PROPOSAL in the w6/peering-inbound board entry |
+| The owner carries the transit port | **done** | `tools/run_owner.py` resolves the source address through `fn-owner-peer-for-address` and opens with `fn-own-open-peer`; a configured peer draws `335` from `IHAVE` where a reader draws `502`. Unit evidence: `tests/test_owner.py::TransitPortTests`. `CAPABILITIES` still renders the reader block on a transit connection, which is open. |
 
 ### v0.3 DTN -- fiber record: [fiber-dtn](evidence/fiber-dtn-2026-09-20.md)
 
