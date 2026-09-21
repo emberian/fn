@@ -66,10 +66,12 @@ together as "596.12 s across six forms"; this is the exact split.)
 
 Every one of those `Time:` lines has `prove` ≈ total and `other` ≈ 0, so by
 §9.1 this was the rewriter, and the cure was still a theory change: the
-recognizer was **open**, and each of the six carried its eleven
+recognizer was **open** for the first five, each of which carried its eleven
 sub-recognizers into its clause — the same fan `books/deftransition.lisp`
-exists for and that C2 measured as 1082 subgoals. What the six need about a
-field arrives by forward chaining instead;
+exists for and that C2 measured as 1082 subgoals. (The last two rows are the
+transitions, not the recognizer: they sit above that line and pay for
+`fn-tcl-step` being open.) What the five need about a field arrives by
+forward chaining instead;
 `fn-tcl-retained-transfer-is-bounded-by-definition` now closes on
 `FN-TCL-SESSIONP-FORWARD-INBOUND` and `FN-TCL-INBOUNDP-FORWARD-FIELDS` in 233
 prover steps.
