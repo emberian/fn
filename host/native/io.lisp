@@ -671,13 +671,11 @@ binding.  It performs no filename parser, decimal conversion, or gap policy."
     (mapcar (lambda (pair)
               (unless (and (true-listp pair) (= (length pair) 2)
                            (integerp (first pair)) (>= (first pair) 0)
-                           (fnn-octet-list-p (second pair)))
+                           (stringp (second pair)))
                 (fnn-fault "ACL2 returned malformed transaction namespace pair"))
-              (cons (first pair)
-                    (handler-case
-                        (fnn-octets-string (fnn-octets (second pair)))
-                      (error ()
-                        (fnn-fault "ACL2 returned a non-UTF-8 transaction filename")))))
+              ;; fn-store-txn-observation has already decoded the observed
+              ;; UTF-8 octets and compared this string to fn-bs-txn-name.
+              (cons (first pair) (second pair)))
             value)))
 
 (defun fnn-bridge-staging-observation-limit ()
