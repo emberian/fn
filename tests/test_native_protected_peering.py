@@ -6,6 +6,8 @@ certificates and configuration, starts the processes, and observes public NNTP.
 import os
 from pathlib import Path
 import re
+import socket
+import ssl
 import subprocess
 import tempfile
 import time
@@ -29,7 +31,6 @@ class NativeProtectedPeeringTests(unittest.TestCase):
     stop_all = peer.NativePeeringTests.stop_all
     article = staticmethod(peer.NativePeeringTests.article)
     post = peer.NativePeeringTests.post
-    article_from = peer.NativePeeringTests.article_from
     await_article = peer.NativePeeringTests.await_article
     duplicate_offer = peer.NativePeeringTests.duplicate_offer
     capabilities = peer.NativePeeringTests.capabilities
@@ -111,6 +112,45 @@ class NativeProtectedPeeringTests(unittest.TestCase):
             self.assertIsNone(self.article_from(node, message_id))
             time.sleep(0.1)
 
+    def article_from(self, node, message_id):
+        """Observe through a fully protected reader; only 430 means absent."""
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=15) as raw:
+            def recvline(sock):
+                line = bytearray()
+                while not line.endswith(b"\n"):
+                    chunk = sock.recv(1)
+                    if not chunk:
+                        break
+                    line.extend(chunk)
+                return bytes(line)
+
+            greeting = recvline(raw)
+            self.assertTrue(greeting.startswith((b"200 ", b"201 ")), greeting)
+            raw.sendall(b"STARTTLS\r\n")
+            response = recvline(raw)
+            self.assertTrue(response.startswith(b"382 "), response)
+            context = ssl.create_default_context(cafile=str(node["certificate"]))
+            with context.wrap_socket(raw, server_hostname="localhost") as tls:
+                with tls.makefile("rwb", buffering=0) as stream:
+                    stream.write(b"AUTHINFO USER " + node["login"].encode() + b"\r\n")
+                    response = stream.readline()
+                    self.assertTrue(response.startswith(b"381 "), response)
+                    stream.write(b"AUTHINFO PASS " + node["password"].encode() + b"\r\n")
+                    response = stream.readline()
+                    self.assertTrue(response.startswith(b"281 "), response)
+                    stream.write(b"ARTICLE " + message_id.encode() + b"\r\n")
+                    response = stream.readline()
+                    if response.startswith(b"430 "):
+                        return None
+                    self.assertTrue(response.startswith(b"220 "), response)
+                    article = bytearray()
+                    while True:
+                        line = stream.readline()
+                        self.assertNotEqual(line, b"", "protected observer article EOF")
+                        if line == b".\r\n":
+                            return bytes(article)
+                        article.extend(line[1:] if line.startswith(b"..") else line)
+
     def test_reciprocal_starttls_authinfo_transfer_and_reconnect(self):
         a = self.initialize("protected-a", free_port(), "b-at-a", "b-secret")
         b = self.initialize("protected-b", free_port(), "a-at-b", "a-secret")
@@ -137,7 +177,7 @@ class NativeProtectedPeeringTests(unittest.TestCase):
             self.assertEqual(self.await_article(target, message_id),
                              self.await_article(source, message_id))
 
-    def test_bad_outbound_password_never_falls_back_to_cleartext(self):
+    def test_bad_outbound_password_yields_authenticated_430_observation(self):
         a = self.initialize("bad-auth-a", free_port(), "b-at-a", "b-secret")
         b = self.initialize("bad-auth-b", free_port(), "a-at-b", "a-secret")
         self.configure_peer(a, b, self.profile(a, b, password="wrong"))
@@ -150,7 +190,7 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         self.assertIsNone(a["process"].poll())
         self.assertIsNone(b["process"].poll())
 
-    def test_untrusted_certificate_keeps_durable_feed_pending(self):
+    def test_untrusted_certificate_yields_430_and_feed_journal_evidence(self):
         a = self.initialize("bad-cert-a", free_port(), "b-at-a", "b-secret")
         b = self.initialize("bad-cert-b", free_port(), "a-at-b", "a-secret")
         unrelated, _ = self.make_certificate(a["root"], "unrelated-anchor")
@@ -162,7 +202,7 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         self.post(a, message_id, "bad-certificate")
         self.assert_not_received(b, message_id)
         journal = a["store"] / "feed" / (b["name"] + ".fnfd")
-        self.assertTrue(journal.is_file(), "TLS refusal lost the durable feed intent")
+        self.assertTrue(journal.is_file(), "accepted post produced no feed journal evidence")
         self.assertIsNone(a["process"].poll())
         self.assertIsNone(b["process"].poll())
 
