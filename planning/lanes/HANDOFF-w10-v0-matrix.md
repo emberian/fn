@@ -137,3 +137,68 @@ It computes no decision ACL2 owns: no identity derivation, no group table, no
 charge, no framing, no bound. Where it needed one it asked the node. The
 charge in the capacity row is the one ACL2 returned; the ports are the
 kernel's; the peer record's admissibility is `fn-cfg-peerp`'s.
+
+## What the runs found
+
+Eleven runs on persvati between `d469e99` and the head of this lane. Each one
+fixed what the disagreements showed was wrong with the matrix and then found
+the next thing wrong with the tree; the fixes are one commit each and the
+commit messages carry the measurement. The tree moved under the lane twice
+(`w10/auth-served` landed AUTHINFO and a certificate for `books/served`;
+`w10/owner-feed` and `w9/dtn-2` landed `books/owner-feed` and
+`books/bp-node`), so the runs are not a single sequence of one variable.
+
+Findings about the tree, in the order they stopped being hidden:
+
+1. **No fn server of any kind started** at first. `host/reader-host.lisp:4`
+   includes `../books/served`, so the read-only entry point is behind the same
+   certificate as the owner, and `books/peer-inbound` had no certificate on
+   any gate persvati has ever held.
+2. **`fn peer add` cannot succeed with the CLI's own default.**
+   `--inbound-max-octets` defaults to 1048576 in both `tools/run_store.py` and
+   `bin/fn`; `fn-cfg-peer-inboundp` (`books/peer-config.lisp:144`) requires at
+   most `*fn-record-max-payload*` (`books/records.lisp:43`), which is 32768.
+   No harness had ever written a peer record, so every "peering: not available
+   on this tree" line in `tools/twonode_gate.py` and `tools/inn_lab.py` was
+   measuring an unconfigured connection.
+3. **A peer record written before the listener names port 0**, which
+   `fn-store-cfg-peer-record` reads as a BP endpoint.
+4. **The owner died on the first `IHAVE`** --
+   `tools/run_owner.py:270` encoded octets that were already octets. Fixed on
+   this branch; the fix is one line and the evidence is the run that found it.
+5. **The owner dies again, further in**: with that fixed, a transfer reaches
+   `drain` and raises `RuntimeError: unexpected ACL2 octet-list result` at
+   `(fn-inj-nth <i> (@ fn-owner-submit-groups))`. Not this lane's seam; it is
+   an ASK on the board. Both crashes are the same shape -- an exception inside
+   `Owner.drain` is not caught there, so **a peer that offers an article can
+   end the service**.
+6. **An article with no `Date` is refused in transit** (`437`, RFC 5536
+   section 3.1.1) and `tools/twonode_gate.py`'s builder writes none. The local
+   store CLI accepts such an article, so the omission is invisible until one
+   crosses -- and it made the duplicate and CHECK rows read as ACCEPTANCES,
+   because nothing had crossed for them to be duplicates of.
+7. **A plaintext command after a `382` wedges the connection** and every later
+   phase with it.
+8. **A POST through the served path commits the article and never answers the
+   poster.** 340, the article, the dot, then no byte for 300 s, while the
+   group's count rose by one and the owner answered fresh connections
+   immediately. D13's three outcomes do not reach the wire at all.
+9. **`fn principal list` does not show what `fn principal set-password`
+   wrote**: `<store>/auth.toml` and `<store>/principals/*.principal` are two
+   registries.
+10. **The reverse half of NNT-001 is live**: the node dispatches `IHAVE` and
+    `MODE STREAM` on a connection it resolved as a peer and advertises
+    neither. The forward half passes -- everything advertised is dispatched.
+
+## The next global step
+
+One theorem, then one harness. **`books/peer-inbound` is the frontier**: every
+book it includes has a certificate, and above it sit `books/served` (now
+certified by `w10/auth-served`), `books/owner`, `books/owner-feed` and
+`host/reader-host.lisp`. Below that, the two owner crashes and the POST hang
+are what stand between this matrix and a run in which the transit, feed, POST
+and crash rows are outcomes rather than blockers: roughly 60 of the 188 rows
+move on those three alone, and none of them is a proof problem.
+
+Nothing in the matrix needs to change for that to happen. The rows are already
+written, the probes already flip, and the blockers already name the lane.
