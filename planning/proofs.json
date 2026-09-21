@@ -935,21 +935,7 @@
       "status": "planned",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
-      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, and the S4-1 witnesses were VACUOUS until it did: the hostile batch's delta was empty because the policy statement's carrier article had a prose body where `fn-stx-payload-for` projects base64. Both carriers are repaired and the deltas are now pinned by their own assertions.",
-      "events": [
-        "fn-peer-loop-is-refused",
-        "fn-peer-history-is-refused-at-offer",
-        "fn-peer-history-is-have-at-offer",
-        "fn-peer-history-is-refused-at-transfer",
-        "fn-peer-history-grows-under-transfer",
-        "fn-peer-transfer-stages-only-scope-groups",
-        "fn-peer-scope-groups-are-live",
-        "fn-peer-refused-transfer-leaves-the-node",
-        "fn-peer-not-now-is-a-retry-code",
-        "fn-peer-ihave-of-a-held-message-id-is-435-and-no-article",
-        "fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding",
-        "fn-own-read-offers-against-the-live-node"
-      ]
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, and the S4-1 witnesses were VACUOUS until it did: the hostile batch's delta was empty because the policy statement's carrier article had a prose body where `fn-stx-payload-for` projects base64. Both carriers are repaired and the deltas are now pinned by their own assertions."
     },
     {
       "id": "PRF-025",
@@ -1170,6 +1156,35 @@
       ]
     },
     {
+      "id": "PRF-035",
+      "title": "The frame integrity trailer has one owner, and the host's framing is the model's",
+      "statement": "fn-frame-trailer (books/frame-trailer.lisp) is the only definition of the 32-octet frame integrity trailer in the tree: it is fn-frame-digest, realised by fn-sha256 through books/crypto-attach.lisp, and it answers :bad rather than a digest for an argument that is not an octet list. For any magic, version, kind and payload in fn-frame-inputp, the byte string a host builds by asking ACL2 for the protected prefix, asking ACL2 for the trailer over it and concatenating the two is fn-frame-seal of those fields; and handing that byte string back to fn-frame-decode with the trailer re-derived over the frame's own fn-frame-protected-prefix answers fn-frame-ok of the fields that went in. The same two statements hold for the store instance the bridge executes, over fn-frame-store-protected and fn-frame-store-decode. Collision and preimage resistance are A-CRYPTO and are not claimed: the attachment introduces no axiom and the seam's constraints are shape only.",
+      "milestone": "M2",
+      "requirements": [
+        "ENC-003",
+        "STO-008",
+        "HST-004"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "certified",
+      "note": "Lane w11/one-owner. Keystones fn-frame-protected-plus-trailer-is-seal, fn-frame-decode-of-host-framing and their store instances fn-frame-store-protected-plus-trailer-is-seal and fn-frame-store-decode-of-host-framing, all in books/frame-trailer.lisp. Subject-to-host: the host lines that call fn-frame-trailer are tools/frame_bridge.py FrameSession.trailer (called by seal and digest_of), host/native/io.lisp fnn-trailer (called by fnn-seal and fnn-digest-of) and tools/run_owner.py Acl2Owner.trailer (called by feed_frames and feed_replay_frame); each replaced a separate SHA-256 in that host. Teeth in tests/acl2/frame-trailer-tests.lisp: 25 assert-events, including two FIPS 180-4 vectors, the exact store prefix and trailer octets, the :bad boundary arm, and one violating value per clause (a magic whose third octet is 300 for the shape clause keystone 1 needs, a max-payload of 2 for the bound clause keystone 2 needs, and a non-octet record for the store instance). Byte identity with the deleted host copies was cross-checked outside ACL2 against CPython hashlib.sha256 at 32, 4096, 32768, 262144 and 1048576 octets. NOT closed by this target: fn-frame-digest's collision resistance, and the marshalling cost of sealing a 4 MiB staged inbound bundle through the decimal-octet bridge.",
+      "events": [
+        "fn-frame-protected-plus-trailer-is-seal",
+        "fn-frame-decode-of-host-framing",
+        "fn-frame-store-protected-plus-trailer-is-seal",
+        "fn-frame-store-decode-of-host-framing"
+      ],
+      "evidence": [
+        "books/frame-trailer.lisp",
+        "tests/acl2/frame-trailer-tests.lisp",
+        "planning/evidence/frame-trailer-one-owner-2026-09-21.md"
+      ],
+      "progress_note": "Both books certified with tools/certify_books.py on the laptop (ACL2 8.7, SBCL 2.6.8), evidence dirs above. The four keystones and the 25 assert-events all pass. What the target does NOT establish: collision or preimage resistance of SHA-256 (A-CRYPTO, unchanged by the attachment); and one host trailer copy survives outside the three this lane closed -- tools/run_feed.py:179,184,190, the FNFD client half, which w11/harness-health deletes on its branch, so it was reported rather than edited into a merge conflict."
+    },
+    {
       "id": "PRF-036",
       "title": "Prefix and lower-frontier recoverability of a replayed history",
       "statement": "A history that replays successfully leaves an IDLE node whose next txid only moves forward, so dropping its last record leaves a history recoverable at the same frontier, and a history whose txids are all below a bound is recoverable AT that bound. Those are the two facts fn-sf-history-recoverablep needs beyond a successful replay -- together they are fn-replay-advance-okp -- and on them every image the platform may leave in the recovery window is replayable at its own frontier and the host's reopen entry succeeds on it.",
@@ -1200,35 +1215,6 @@
         "fn-snt-recovery-admissible-crash-image-is-recoverable",
         "fn-sn-recovery-admissible-image-reopens"
       ]
-    },
-    {
-      "id": "PRF-035",
-      "title": "The frame integrity trailer has one owner, and the host's framing is the model's",
-      "statement": "fn-frame-trailer (books/frame-trailer.lisp) is the only definition of the 32-octet frame integrity trailer in the tree: it is fn-frame-digest, realised by fn-sha256 through books/crypto-attach.lisp, and it answers :bad rather than a digest for an argument that is not an octet list. For any magic, version, kind and payload in fn-frame-inputp, the byte string a host builds by asking ACL2 for the protected prefix, asking ACL2 for the trailer over it and concatenating the two is fn-frame-seal of those fields; and handing that byte string back to fn-frame-decode with the trailer re-derived over the frame's own fn-frame-protected-prefix answers fn-frame-ok of the fields that went in. The same two statements hold for the store instance the bridge executes, over fn-frame-store-protected and fn-frame-store-decode. Collision and preimage resistance are A-CRYPTO and are not claimed: the attachment introduces no axiom and the seam's constraints are shape only.",
-      "milestone": "M2",
-      "requirements": [
-        "ENC-003",
-        "STO-008",
-        "HST-004"
-      ],
-      "depends_on": [],
-      "assumptions": [
-        "A-CRYPTO"
-      ],
-      "status": "certified",
-      "note": "Lane w11/one-owner. Keystones fn-frame-protected-plus-trailer-is-seal, fn-frame-decode-of-host-framing and their store instances fn-frame-store-protected-plus-trailer-is-seal and fn-frame-store-decode-of-host-framing, all in books/frame-trailer.lisp. Subject-to-host: the host lines that call fn-frame-trailer are tools/frame_bridge.py FrameSession.trailer (called by seal and digest_of), host/native/io.lisp fnn-trailer (called by fnn-seal and fnn-digest-of) and tools/run_owner.py Acl2Owner.trailer (called by feed_frames and feed_replay_frame); each replaced a separate SHA-256 in that host. Teeth in tests/acl2/frame-trailer-tests.lisp: 25 assert-events, including two FIPS 180-4 vectors, the exact store prefix and trailer octets, the :bad boundary arm, and one violating value per clause (a magic whose third octet is 300 for the shape clause keystone 1 needs, a max-payload of 2 for the bound clause keystone 2 needs, and a non-octet record for the store instance). Byte identity with the deleted host copies was cross-checked outside ACL2 against CPython hashlib.sha256 at 32, 4096, 32768, 262144 and 1048576 octets. NOT closed by this target: fn-frame-digest's collision resistance, and the marshalling cost of sealing a 4 MiB staged inbound bundle through the decimal-octet bridge.",
-      "events": [
-        "fn-frame-protected-plus-trailer-is-seal",
-        "fn-frame-decode-of-host-framing",
-        "fn-frame-store-protected-plus-trailer-is-seal",
-        "fn-frame-store-decode-of-host-framing"
-      ],
-      "evidence": [
-        "books/frame-trailer.lisp",
-        "tests/acl2/frame-trailer-tests.lisp",
-        "planning/evidence/frame-trailer-one-owner-2026-09-21.md"
-      ],
-      "progress_note": "Both books certified with tools/certify_books.py on the laptop (ACL2 8.7, SBCL 2.6.8), evidence dirs above. The four keystones and the 25 assert-events all pass. What the target does NOT establish: collision or preimage resistance of SHA-256 (A-CRYPTO, unchanged by the attachment); and one host trailer copy survives outside the three this lane closed -- tools/run_feed.py:179,184,190, the FNFD client half, which w11/harness-health deletes on its branch, so it was reported rather than edited into a merge conflict."
     },
     {
       "id": "PRF-037",
@@ -1291,6 +1277,37 @@
         "fn-served-peer-and-reader-open-under-the-same-policy",
         "fn-served-open-peer-pins-the-configuration",
         "fn-served-open-greets-200-exactly-when-the-connection-may-post"
+      ]
+    },
+    {
+      "id": "PRF-040",
+      "title": "The inbound transit decision the served path reaches is the model's, over the node the owner holds now (K2 loop, K3 duplicate)",
+      "statement": "fn-peer-loop-is-refused: an article whose Path already names this node's path-identity is never accepted through transit, and fn-peer-transfer leaves the node. fn-peer-history-is-have-at-offer and fn-peer-history-is-refused-at-transfer: a Message-ID in the history is :have :history at the offer and is never accepted at the transfer. The subject rule (AGENTS.md rule 1) is closed in two halves: fn-peer-ihave-of-a-held-message-id-is-435-and-no-article and fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding say the reply octets fn-peer-command emits ARE that decision and that the connection does not enter article mode, and fn-own-read-offers-against-the-live-node says the node the served path supplies is fn-sn-node of the owner's own store. The host line is host/owner-host.lisp fn-owner-chunk -> books/owner.lisp fn-own-read for the offer, and host/owner-host.lisp fn-owner-transit-decide -> fn-peer-decide-transfer for the transfer. Covered scope: one connection's offer and one article's transfer against one node and one pinned peer record; the hypotheses are the connection facts the decision needs before it reaches its history arm. NOT covered: the peer record is still the one the connection opened with, so a (:set-peer ...) delta reaches the transfer decision and not the offer decision; and fn-peer-decide-transfer emits no :date-future or :no-clock, because the tree has no certified RFC 5322 date-time reader.",
+      "milestone": "M2",
+      "requirements": [
+        "REP-001",
+        "REP-002"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [],
+      "progress_note": "Certified on persvati (farm run-20260921T033252Z-6ba2, 0 failures over 87 books: books/peer-inbound, books/peer-inbound-invariants, books/owner, books/owner-invariants, books/served, tests/acl2/peer-inbound-tests, tests/acl2/served-tests). Until w11/transit-correct the offer half was unreachable on a live connection: fn-peer-open-session pinned the node at :open and nothing replaced it, so the wire answered 335 and 238 for an article the connection had itself delivered (V0-TRANSIT-DUPLICATE, V0-TRANSIT-CHECK-DUP at 6fb30ca). The loop half was never inert in the model and was inert in the v0 matrix's deployment, which set no path-identity on either node.",
+      "events": [
+        "fn-peer-loop-is-refused",
+        "fn-peer-history-is-refused-at-offer",
+        "fn-peer-history-is-have-at-offer",
+        "fn-peer-history-is-refused-at-transfer",
+        "fn-peer-history-grows-under-transfer",
+        "fn-peer-transfer-stages-only-scope-groups",
+        "fn-peer-scope-groups-are-live",
+        "fn-peer-not-now-is-a-retry-code",
+        "fn-peer-ihave-of-a-held-message-id-is-435-and-no-article",
+        "fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding",
+        "fn-own-read-offers-against-the-live-node",
+        "fn-own-live-session-boundedp"
       ]
     }
   ]
