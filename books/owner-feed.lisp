@@ -1189,20 +1189,37 @@
   :hints (("Goal" :induct (fn-own-feed-intent-remove
                             (fn-own-feed-intent-key values) intents))))
 
+(local
+ (defthm fn-own-feed-subject-of-payload-shape
+   (and (fn-cbor-octet-listp (fn-id-subject-of-payload octets))
+        (equal (len (fn-id-subject-of-payload octets))
+               *fn-id-subject-octets*))
+   :hints (("Goal"
+            :use ((:instance fn-id-subject-shape
+                             (digest (fn-frame-digest
+                                      (fn-id-subject-preimage octets)))))
+            :in-theory (enable fn-id-subject-of-payload fn-id-digestp)))))
+
+(local
+ (defthm fn-own-feed-obligation-of-shape
+   (and (fn-cbor-octet-listp (fn-id-obligation-of msgid subject))
+        (equal (len (fn-id-obligation-of msgid subject))
+               *fn-id-obligation-octets*))
+   :hints (("Goal"
+            :use ((:instance fn-id-obligation-shape
+                             (digest (fn-frame-digest
+                                      (fn-id-obligation-preimage
+                                       msgid subject)))))
+            :in-theory (enable fn-id-obligation-of fn-id-digestp)))))
+
 (defun fn-own-feed-intent-id (msgid octets)
   (declare
    (xargs
     :guard t
     :guard-hints
-    (("Goal"
-      :use ((:instance fn-id-subject-shape
-                       (digest (fn-frame-digest
-                                (fn-id-subject-preimage octets))))
-            (:instance fn-id-obligation-shape
-                       (digest (fn-frame-digest
-                                (fn-id-obligation-preimage
-                                 msgid (fn-id-subject-of-payload octets))))))
-      :in-theory (enable fn-id-digestp)))))
+    (("Goal" :use ((:instance fn-own-feed-subject-of-payload-shape)
+                    (:instance fn-own-feed-obligation-of-shape
+                               (subject (fn-id-subject-of-payload octets))))))))
   (if (and (fn-cbor-octet-listp msgid)
            (<= (len msgid) *fn-cbor-max-uint*)
            (fn-cbor-octet-listp octets)
@@ -1244,7 +1261,7 @@
       (let ((f (fn-own-feed-find (car names) tbl)))
         (and (or (consp (fn-feed-find msgid (fn-feed-queue f)))
                  (< (len (fn-feed-queue f))
-                    (fn-feed-max-queue (fn-feed-limits-of f))))
+                    (nfix (fn-feed-max-queue (fn-feed-limits-of f)))))
              (fn-own-feed-target-capacityp (cdr names) tbl msgid)))
     t))
 

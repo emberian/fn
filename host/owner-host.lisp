@@ -163,7 +163,12 @@
                                  (fn-own-start (fn-sn-open-state opened) max-conns)
                                  (fn-owner-post-config cfg))
                                 cfg nil nil)
-                               state)))
+                               state))
+                       ; Rebuilt exclusively by successful FNFD scans after
+                       ; authoritative store recovery.  It is a carried
+                       ; incremental fold, never a whole-journal rescan on a
+                       ; served event.
+                       (state (f-put-global 'fn-owner-feed-intents nil state)))
                   (value :recovering))
               (value :fault))))))))
 
@@ -395,7 +400,7 @@
 ; submission record fn-own-take-submission consumes for served POST.
 (defun fn-owner-control-submit (msgid-octets group-octets payload state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (f-get-global 'fn-owner state))
+  (let* ((owner (fn-owner-core state))
          (result (fn-own-control-submit-result owner msgid-octets
                                                 group-octets payload))
          (state (fn-owner-step (list :control-submit msgid-octets
@@ -623,7 +628,7 @@
 ; per-peer journals.
 (defun fn-owner-submission-intent (evidence generation txid state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (f-get-global 'fn-owner state))
+  (let* ((owner (fn-owner-core state))
          (result (fn-own-submission-intent-result owner evidence generation txid))
          (records (fn-own-submission-intent-records owner evidence generation txid))
          (state (fn-owner-feed-install-feed records nil state)))
@@ -635,7 +640,7 @@
 ; of the obligation journal.  Uncertain produces no resolution record.
 (defun fn-owner-submission-resolution (word evidence generation txid state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (f-get-global 'fn-owner state))
+  (let* ((owner (fn-owner-core state))
          (records (fn-own-submission-resolution-records
                    owner word evidence generation txid))
          (state (fn-owner-feed-install-feed records nil state)))
@@ -654,13 +659,36 @@
   (let ((values (car (f-get-global 'fn-owner-feed-intents state))))
     (if (null values)
         (value :done)
-      (let* ((owner (f-get-global 'fn-owner state))
+      (let* ((owner (fn-owner-core state))
              (record (fn-own-feed-intent-reconcile-record
                       (fn-sn-node (fn-own-store owner)) values)))
         (if (null record)
             (value :uncertain)
           (let ((state (fn-owner-feed-install-feed (list record) nil state)))
             (value (fn-feed-journal-kind record))))))))
+
+(defun fn-owner-feed-reconcile-apply (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((record (car (f-get-global 'fn-owner-feed-records state))))
+    (if (or (null record)
+            (not (member-equal (fn-feed-journal-kind record)
+                               '(:feed-commit :feed-abort))))
+        (value :invalid)
+      (let* ((peer (fn-record-octets-string
+                    (fn-feed-record-peer (fn-feed-journal-values record))))
+             (state (fn-owner-step (list :feed-replay peer (list record)) state))
+             (state (f-put-global
+                     'fn-owner-feed-intents
+                     (fn-own-feed-intent-apply
+                      (f-get-global 'fn-owner-feed-intents state)
+                      (fn-feed-journal-kind record)
+                      (fn-feed-journal-values record))
+                     state)))
+        (value :ok)))))
+
+(defun fn-owner-feed-journal-peer-validp (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (if (fn-feed-namep peer-octets) t nil)))
 
 ; A transit transfer that became durable owes the feed journal the same
 ; `(:feed-enqueue ...)` records a POST does: a relayed article is fed
@@ -1102,8 +1130,16 @@
     (if (equal peer :bad)
         (value :invalid)
       (if (equal (car result) :next)
-          (let* ((state (fn-owner-step
-                         (list :feed-replay peer (list (caddr result))) state))
+          (let* ((entry (caddr result))
+                 (state (fn-owner-step
+                         (list :feed-replay peer (list entry)) state))
+                 (state (f-put-global
+                         'fn-owner-feed-intents
+                         (fn-own-feed-intent-apply
+                          (f-get-global 'fn-owner-feed-intents state)
+                          (fn-feed-journal-kind entry)
+                          (fn-feed-journal-values entry))
+                         state))
                  (state (f-put-global 'fn-owner-feed-safe-offset
                                       (cadr result) state)))
             (value :next))

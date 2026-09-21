@@ -525,6 +525,14 @@ class Acl2Owner(Acl2Store):
         """Resolve one recovered intent from the authoritative owner node."""
         return self._symbol_any("(fn-owner-feed-reconcile-next state)")
 
+    def feed_reconcile_apply(self):
+        return self._symbol_any("(fn-owner-feed-reconcile-apply state)")
+
+    def feed_journal_peer_valid(self, peer):
+        return acl2_boolean(self.call(
+            "(fn-owner-feed-journal-peer-validp '{} state)".format(
+                self.literal(peer.encode("utf-8")))))
+
     def _symbol_any(self, form):
         body = acl2_result(self.call(form))
         text = body.decode("ascii", "replace").strip().lower()
@@ -730,6 +738,8 @@ class Owner:
         # published speculatively; this process stops and recovers the actual
         # durable prefix instead.
         self.config_uncertain = False
+        self.store_uncertain = False
+        self.uncertain_reply_cid = None
         self.stopping = False
 
     # -- NNTP connections -------------------------------------------------
@@ -829,6 +839,8 @@ class Owner:
     def serve(self, conn, mask):
         if self.feed_uncertain:
             return
+        if self.store_uncertain and conn.cid != self.uncertain_reply_cid:
+            return
         if mask & selectors.EVENT_READ and conn.reading and not conn.closing:
             try:
                 incoming = conn.sock.recv(MAX_READ)
@@ -885,9 +897,25 @@ class Owner:
             except (BlockingIOError, InterruptedError):
                 sent = 0
             except OSError:
-                self.drop(conn)
+                if (self.store_uncertain and
+                        conn.cid == self.uncertain_reply_cid):
+                    self.discard(conn, closed_by_model=True)
+                    self.stopping = True
+                    self.exit_code = EXIT_UNCERTAIN
+                else:
+                    self.drop(conn)
                 return
             conn.outbuf = conn.outbuf[sent:]
+        if (self.store_uncertain and
+                conn.cid == self.uncertain_reply_cid and
+                not conn.outbuf):
+            # The uncertain outcome is the last logical owner mutation in
+            # this image.  Close only the socket, then require recovery in a
+            # fresh process instead of sending another event to ACL2.
+            self.discard(conn, closed_by_model=True)
+            self.stopping = True
+            self.exit_code = EXIT_UNCERTAIN
+            return
         if conn.handshaking and not conn.outbuf and not conn.closing:
             if not self.upgrade(conn):
                 return
@@ -1173,8 +1201,17 @@ class Owner:
             for conn in self.connections.values():
                 if conn.cid == cid:
                     conn.outbuf += reply
+                    if self.store_uncertain:
+                        conn.reading = False
+                        conn.closing = True
+                        self.uncertain_reply_cid = cid
                     self.rearm(conn)
                     break
+            else:
+                if self.store_uncertain:
+                    self.stopping = True
+            if self.store_uncertain:
+                return
 
     def submission_intent(self, evidence):
         """Make the exact acceptance intent durable before store mutation.
@@ -1201,6 +1238,10 @@ class Owner:
         kind = self.bridge.submission_resolution(word, evidence, generation, txid)
         if kind not in ("feed-commit", "feed-abort", "uncertain", "none"):
             raise StoreFault("unexpected feed intent resolution: {}".format(kind))
+        if kind == "uncertain":
+            # The durable intent deliberately remains unresolved. Recovery
+            # compares it with the authoritative store before any new work.
+            return kind
         self.feed_flush()
         self.faults.at("owner:{}-barrier".format(
             "commit" if kind == "feed-commit" else "abort"))
@@ -1234,6 +1275,8 @@ class Owner:
             return "durable"
         except StoreIndeterminate as error:
             print("owner: uncertain post: {}".format(error), file=sys.stderr)
+            self.store_uncertain = True
+            self.exit_code = EXIT_UNCERTAIN
             return "uncertain"
         except UnicodeDecodeError:
             return "refused"
@@ -1301,11 +1344,52 @@ class Owner:
         """
         peers = self.bridge.feed_configure()
         try:
-            for peer in peers:
+            # Journal files are durable obligations, including for a peer
+            # removed or disabled after acceptance.  Discover those files in
+            # addition to current configuration; ACL2 validates each name and
+            # every decoded record binds itself to that peer.  A dormant peer
+            # remains journal-only until configuration supplies an endpoint
+            # again, at which point the same file replays into its feed.
+            journal_peers = list(peers)
+            feed_dir = os.path.join(self.store.root, "feed")
+            if os.path.isdir(feed_dir):
+                for filename in sorted(os.listdir(feed_dir)):
+                    if not filename.endswith(".fnfd"):
+                        continue
+                    peer = filename[:-len(".fnfd")]
+                    try:
+                        valid = self.bridge.feed_journal_peer_valid(peer)
+                    except UnicodeEncodeError as error:
+                        raise StoreFault("invalid FNFD peer filename: " + filename) from error
+                    if not valid:
+                        raise StoreFault("invalid FNFD peer filename: " + filename)
+                    if peer not in journal_peers:
+                        journal_peers.append(peer)
+            for peer in journal_peers:
                 journal = Journal(self.store.root, peer.encode("utf-8"),
                                   self.bridge, faults=self.faults)
                 self.feeds[peer] = Feed(peer, journal)
-                print("FEED {} replayed {}".format(peer, journal.replayed), flush=True)
+                state = "configured" if peer in peers else "dormant"
+                print("FEED {} replayed {} {}".format(
+                    peer, journal.replayed, state), flush=True)
+
+            # The store was completely and authoritatively recovered before
+            # feed_start.  Resolve every unmatched pre-commit intent against
+            # its exact binding and retention evidence, append that resolution
+            # durably to the original peer journal, then apply the same record
+            # to the live feed fold.  Partial store evidence fences startup.
+            while True:
+                resolution = self.bridge.feed_reconcile_next()
+                if resolution == "done":
+                    break
+                if resolution == "uncertain":
+                    raise StoreIndeterminate(
+                        "feed intent cannot be resolved from recovered store")
+                if resolution not in ("feed-commit", "feed-abort"):
+                    raise StoreFault("unexpected feed reconciliation: " + resolution)
+                self.feed_flush()
+                if self.bridge.feed_reconcile_apply() != "ok":
+                    raise StoreFault("ACL2 refused recovered feed resolution")
             if peers:
                 self.bridge.feed_restart()
                 self.feed_flush()
@@ -1499,6 +1583,9 @@ class Owner:
                 sock.sendall(reply + b"\n")
             except OSError:
                 pass
+        if self.store_uncertain:
+            self.stopping = True
+            self.exit_code = EXIT_UNCERTAIN
 
     @staticmethod
     def outcome_word(error):
@@ -1532,6 +1619,8 @@ class Owner:
             raise StoreIndeterminate("FNFD journal requires owner restart")
         if self.config_uncertain:
             raise StoreIndeterminate("configuration journal requires owner restart")
+        if self.store_uncertain:
+            raise StoreIndeterminate("store outcome requires owner restart")
         words = self.read_line(sock).split()
         if not words:
             raise StoreError("empty control line")
@@ -1631,6 +1720,10 @@ class Owner:
         self.feed_start()
         while not self.stopping:
             for key, mask in self.selector.select(timeout=0.2):
+                if self.store_uncertain:
+                    conn = key.data if isinstance(key.data, Connection) else None
+                    if conn is None or conn.cid != self.uncertain_reply_cid:
+                        continue
                 # Every branch below is one event under the host-fault
                 # boundary, named by what a fault in it costs.
                 if key.data == "nntp":
@@ -1660,7 +1753,7 @@ class Owner:
                             pass
                 if self.stopping:
                     break
-            if not self.stopping:
+            if not self.stopping and not self.store_uncertain:
                 self.guard("feed-poll", self.feed_poll)
         for feed in list(self.feeds.values()):
             feed.close()

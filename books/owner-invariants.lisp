@@ -962,6 +962,30 @@
 ; store began.  Thus the acceptance-time targets, object identity,
 ; provenance, configuration generation, transaction id and tick cross both
 ; crash cuts without Python reconstructing any field.
+(local
+ (defthm fn-own-feed-resolution-first-matches-intent-first
+   (implies (consp names)
+            (and (consp (fn-own-feed-resolution-records
+                         :feed-commit names msgid identity evidence
+                         generation txid tick))
+                 (equal
+                  (fn-feed-journal-kind
+                   (car (fn-own-feed-resolution-records
+                         :feed-commit names msgid identity evidence
+                         generation txid tick)))
+                  :feed-commit)
+                 (equal
+                  (fn-feed-journal-values
+                   (car (fn-own-feed-resolution-records
+                         :feed-commit names msgid identity evidence
+                         generation txid tick)))
+                  (fn-feed-journal-values
+                   (car (fn-own-feed-intent-records
+                         names msgid identity evidence generation txid
+                         tick))))))
+   :hints (("Goal" :in-theory (enable fn-own-feed-resolution-records
+                                      fn-own-feed-intent-records)))))
+
 (defthm fn-own-control-accepted-resolves-the-exact-intent
   (implies (and (equal (fn-own-outcome-completion o word) :durable)
                 (equal (fn-own-submission-intent-result
@@ -976,11 +1000,19 @@
                   (equal (fn-feed-journal-values (car resolution))
                          (fn-feed-journal-values (car intent))))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-own-submission-intent-result
-                                     fn-own-submission-intent-records
-                                     fn-own-submission-resolution-records
-                                     fn-own-feed-resolution-records
-                                     fn-own-feed-intent-records))))
+  :hints (("Goal"
+           :use ((:instance
+                  fn-own-feed-resolution-first-matches-intent-first
+                  (names (fn-own-submission-targets o))
+                  (msgid (fn-own-sub-msgid (fn-own-inflight o)))
+                  (identity
+                   (fn-own-feed-intent-id
+                    (fn-own-sub-msgid (fn-own-inflight o))
+                    (fn-own-sub-octets (fn-own-inflight o))))
+                  (tick (fn-own-feed-stamp o))))
+           :in-theory (enable fn-own-submission-intent-result
+                              fn-own-submission-intent-records
+                              fn-own-submission-resolution-records))))
 
 (defthm fn-own-outcome-preserves-relation
   (implies (fn-own-relation o)
