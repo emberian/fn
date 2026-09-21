@@ -350,16 +350,23 @@ def cmd_check(args: argparse.Namespace) -> int:
           f"cited and resolvable: {len(resolved)}; cited and unresolvable: "
           f"{len(missing)}, of which {len(missing) - len(fresh)} are the "
           f"recorded backlog in {LOST_REL}")
+    # Say which of them are still recoverable here.  A lane worktree under
+    # `build/lanes/` usually still holds its own runs when its handoff lands,
+    # and then the repair is one command rather than a question.
+    here = set(local_candidates(ROOT, [])) & set(fresh) if fresh else set()
     for run_id in (fresh if not args.list_missing else missing):
-        print(f"  no committed manifest: {run_id}  ({cites[run_id][0]})")
+        state = "on this laptop" if run_id in here else "not on this laptop"
+        print(f"  no committed manifest: {run_id}  ({cites[run_id][0]}) "
+              f"[{state}]")
     if fresh and not args.report_only:
         print(f"{len(fresh)} newly cited certification run(s) have no committed "
-              f"manifest, so a reader cannot check the claim. Run "
-              f"`python3 tools/evidence_manifests.py sync --add` (and "
-              f"`harvest --host persvati|hbox` if the run was on a box); if "
-              f"the evidence is genuinely gone, record it in {LOST_REL} with "
-              f"`sync --record-lost` and say so where you cite it.",
-              file=sys.stderr)
+              f"manifest, so a reader cannot check the claim. {len(here)} of "
+              f"them are still under build/ here: `python3 "
+              f"tools/evidence_manifests.py sync --add` files those. For the "
+              f"rest try `harvest --host persvati` and `harvest --host hbox`; "
+              f"if the evidence is gone from all three, record it in "
+              f"{LOST_REL} with `sync --record-lost` and say so where you "
+              f"cite it.", file=sys.stderr)
         return 1
     if missing and args.strict:
         print(f"{len(missing)} cited certification runs have no committed "
