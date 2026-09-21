@@ -269,6 +269,38 @@
       (fn-store-cfg-peer-delta-record (list (fn-cfg-set-peer-delta p))
                                       monotonic wall state))))
 
+; The node's own policy slots (`fn policy set|get`).  The one peering needs
+; is "path-identity": `fn-peer-local-identity` (books/peer-inbound.lisp)
+; reads exactly this slot, and RFC 5537 section 3.5 loop suppression is
+; INERT while it is unset -- an unset slot reads as the empty string, and
+; `fn-path-names-p` never matches the empty identity, so a node cannot
+; recognise its own name in a Path.  Measured on the two-node gate,
+; 2026-09-20: both nodes accepted an article whose Path named them, because
+; nothing on this tree could ever write the slot.  `fn-store-prov-post`
+; reads the same slot and substituted "local" for it.
+;
+; The delta, its admissibility and the record octets are `books/config`'s,
+; through the same `fn-cnode-record-acceptablep` `peer add` and
+; `group create` use.
+(defun fn-store-cfg-set-policy (slot-octets id-octets monotonic wall state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((slot (fn-store-octets->string slot-octets))
+        (id (fn-store-octets->string id-octets)))
+    (if (or (equal slot :bad) (equal id :bad) (equal slot ""))
+        (let ((state (f-put-global 'fn-store-cfg-last-reason :policy-slot state)))
+          (value :refused))
+      (fn-store-cfg-peer-delta-record (list (fn-cfg-set-policy slot id))
+                                      monotonic wall state))))
+
+(defun fn-store-cfg-policy (slot-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((slot (fn-store-octets->string slot-octets)))
+    (if (equal slot :bad)
+        (value nil)
+      (value (fn-record-string-octets
+              (fn-cfg-policy (fn-cfg-value (f-get-global 'fn-store-cfg state))
+                             slot))))))
+
 (defun fn-store-cfg-remove-peer (name-octets monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
   (let ((name (fn-store-octets->string name-octets)))

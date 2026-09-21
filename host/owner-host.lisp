@@ -46,9 +46,24 @@
 ; The posting configuration: the groups served at the live configuration
 ; generation (books/node-config, fn-cnode-served-of), the store's payload
 ; bound.  Derived from the replayed configuration by ACL2.
+; The node's own <path-identity>, from the ONE slot that holds it: the
+; configuration policy `path-identity`, which `fn-peer-local-identity`
+; (books/peer-inbound.lisp) and `fn-store-prov-post` also read.
+; `*fn-owner-agent*` was a second copy of a node's identity, and that is how
+; two fn nodes on one gate came to write the SAME Path -- so neither could
+; recognise itself in the other's articles and RFC 5537 section 3.5 loop
+; suppression had nothing to compare. The constant is now only the fallback
+; for a store whose slot is unset.
+(defun fn-owner-agent-of (cfg)
+  (declare (xargs :mode :program))
+  (let ((identity (fn-cfg-policy (fn-cfg-value cfg) "path-identity")))
+    (if (and (stringp identity) (not (equal identity "")))
+        (fn-record-string-octets identity)
+      *fn-owner-agent*)))
+
 (defun fn-owner-post-config (cfg)
   (declare (xargs :mode :program))
-  (fn-inj-make-config t *fn-owner-agent*
+  (fn-inj-make-config t (fn-owner-agent-of cfg)
                       (fn-owner-group-octets (fn-cnode-served-of cfg))
                       *fn-store-max-payload*))
 
@@ -636,6 +651,23 @@
   (value (if (fn-cfg-peer-streamingp (fn-owner-feed-record peer-octets state))
              t
            nil)))
+
+; How long the host must wait between dial attempts for this peer: the peer
+; record's own outbound backoff.  Read here so the NUMBER stays ACL2's; the
+; host only measures the interval with the clock it already owns.
+;
+; Without it the host dialled on queue length alone, and the feed machine's
+; backoff does not gate a dial (it gates `fn-feed-selection`, which needs a
+; connection first).  A peer that was down therefore drew a fresh TCP
+; connection about five times a second for as long as one entry stayed
+; queued: 9,479 refused connections in one two-node gate run, all of them in
+; the window where one node was restarting.
+(defun fn-owner-feed-backoff-ms (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((record (fn-owner-feed-record peer-octets state)))
+    (value (if (and record (natp (fn-cfg-peer-backoff record)))
+               (fn-cfg-peer-backoff record)
+             0))))
 
 (defun fn-owner-feed-queue-length (peer-octets state)
   (declare (xargs :stobjs state :mode :program))

@@ -198,7 +198,13 @@ def post(args):
         out["ok"] = False
         return out
     send_block(conn, body.decode("ascii", "replace").split("\r\n"))
-    out["result"] = conn.read_line()
+    # `Conn.line`, not `read_line`: deploy_gate's driver has no `read_line`,
+    # so every owner-feed POST raised AttributeError AFTER putting the
+    # article on the wire. The article became durable, the feed offered it
+    # and the peer took it -- and the gate recorded "POST answered
+    # 'nothing'" and skipped the wait. The crossing happened and the harness
+    # said it had not.
+    out["result"] = conn.line()
     conn.close()
     out["ok"] = out["result"].startswith("240")
     return out
@@ -600,6 +606,25 @@ class TwoNodeGate(deploy_gate.DeployGate):
                 node.upper, step.output[:400]))
         self.sh("node {} config".format(node.upper),
                 self.cd(self.fn("--store {} config".format(node.store))), timeout=900)
+        # The node's OWN RFC 5537 <path-identity>. `fn-peer-local-identity`
+        # reads this policy slot, and an unset slot reads as the empty
+        # string, which `fn-path-names-p` never matches -- so until this
+        # runs, a node cannot recognise its own name in a Path and RFC 5537
+        # 3.5 loop suppression is inert. Measured on gate run bbd1f47: both
+        # nodes accepted an article whose Path named them.
+        identity = self.sh(
+            "node {} path-identity".format(node.upper),
+            self.cd(self.fn("--store {} policy set path-identity {}".format(
+                node.store, node.path_identity))), timeout=900, expect=None)
+        if identity.rc != 0:
+            self.gaps.append(
+                "node {} has no <path-identity> of its own ({}): "
+                "`fn-peer-local-identity` reads the empty string, so this node "
+                "cannot refuse an article whose Path already names it and every "
+                "loop row below is about a check that cannot fire."
+                .format(node.upper,
+                        identity.output.strip().splitlines()[-1]
+                        if identity.output.strip() else "no output"))
 
     def three_outcomes_node(self, node: NodeSpec, msgid: str, subject: str):
         """Accepted 0, refused 1, uncertain 3, on this node's own store (D13)."""
