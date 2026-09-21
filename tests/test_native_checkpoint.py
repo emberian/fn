@@ -322,6 +322,28 @@ class NativeCheckpointTests(unittest.TestCase):
         self.assertEqual(sorted((store / "transactions").glob("*.txn")),
                          [store / "transactions" / "00000000000000000002.txn"])
 
+    def test_arbitrary_covered_deletion_image_recovers_and_resumes(self):
+        store = self.initialized("pack-subset")
+        for number in range(1, 4):
+            self.native("store", store, "post",
+                        f"<prefix-{number}@example.invalid>",
+                        self.payload, "-", "-", "fn.letters")
+        self.native("checkpoint", "pack", store, "select")
+        self.native("store", store, "post", "<suffix-4@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
+
+        # A process-death image may contain any subset of already-issued
+        # covered unlinks.  Keep covered 1 and 3, remove covered 0 and 2, and
+        # retain the complete suffix at 4.
+        for sequence in (0, 2):
+            (store / "transactions" /
+             f"{sequence:020d}.txn").unlink()
+        recovered = self.native("store", store, "recover")
+        self.assertIn("transactions=5 articles=5", recovered.stdout)
+        self.native("checkpoint", "pack-reclaim", store)
+        self.assertEqual([p.name for p in (store / "transactions").iterdir()],
+                         ["00000000000000000004.txn"])
+
         selection_expectations = {
             "selection-file": "checkpoint=none",
             "selection-replace": "checkpoint=ok generation=0",
