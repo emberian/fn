@@ -253,7 +253,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "progress_note": "Fixed-mode framing composition, production event-yield preservation and exact consumed-prefix/suffix accounting are certified. Wildmat DP matches independent anchored semantics. Session-sensitive mode changes and complete protocol/effect refinement remain open. The served path is now the subject: books/served states partition independence of fn-served-step and of the whole reply stream, which is the function tools/run_reader.py calls once per socket read, so the wire pending_subject note is closed for framing. The concurrent server (books/owner) still does not certify."
+      "progress_note": "Fixed-mode framing composition, production event-yield preservation and exact consumed-prefix/suffix accounting are certified. Wildmat DP matches independent anchored semantics. Session-sensitive mode changes and complete protocol/effect refinement remain open. The served path is now the subject: books/served states partition independence of fn-served-step and of the whole reply stream, which is the function tools/run_reader.py calls once per socket read, so the wire pending_subject note is closed for framing. The owner book now certifies in the merged feed/transit batch recorded by planning/evidence/manifests/certify-20260921T051833Z-3941584.json. This does not extend these framing theorems to an unproved owner composition or to Python outbound article rendering; W12 wire-block owns that running-path extension."
     },
     {
       "id": "PRF-007",
@@ -1182,7 +1182,7 @@
         "tests/acl2/frame-trailer-tests.lisp",
         "planning/evidence/frame-trailer-one-owner-2026-09-21.md"
       ],
-      "progress_note": "Both books certified with tools/certify_books.py on the laptop (ACL2 8.7, SBCL 2.6.8), evidence dirs above. The four keystones and the 25 assert-events all pass. What the target does NOT establish: collision or preimage resistance of SHA-256 (A-CRYPTO, unchanged by the attachment); and one host trailer copy survives outside the three this lane closed -- tools/run_feed.py:179,184,190, the FNFD client half, which w11/harness-health deletes on its branch, so it was reported rather than edited into a merge conflict."
+      "progress_note": "Both books certified with tools/certify_books.py on the laptop (ACL2 8.7, SBCL 2.6.8), evidence dirs above. The four keystones and the 25 assert-events all pass. What the target does NOT establish: collision or preimage resistance of SHA-256 (A-CRYPTO, unchanged by the attachment); and the old tools/run_feed.py driver has since been deleted. W12 feed-durability owns the remaining FNFD envelope/recovery decisions in tools/feed_wire.py and their host adoption; that extension is separate from these trailer theorems."
     },
     {
       "id": "PRF-036",
