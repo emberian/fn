@@ -191,14 +191,21 @@ history of what was not.
 
 ## 5. The phantom deliverables in `specs/bp-design.md` §5
 
-`w11/phantom-cites` named three for this cluster. The answer is that none of
-them was ever written and none of them should be: `specs/bp-bundle.md` and
-`specs/bp-node.md` are §1.4 and §1.5 of `specs/bp-design.md` itself, which
-is where the frame and the machine are designed and where their status
-sections live; `books/bp-node-records` is packet 1, which has not been
-started, so it is an unbuilt deliverable rather than a misnamed one. §5 now
-says so in the table's own preamble rather than leaving three names that
-resolve to nothing.
+`w11/phantom-cites` named three for this cluster, and none of them exists.
+
+`specs/bp-bundle.md` **does not exist** and should not: §1.4 of
+`specs/bp-design.md` is the bundle frame, and §1.4.1 and §1.4.2 are its
+status.
+
+`specs/bp-node.md` **does not exist** and should not either: §1.5 of the
+same document is the processing machine, and §1.5.1 is its status.
+
+`books/bp-node-records` **does not exist** because packet 1 has not been
+started; it is an unbuilt deliverable rather than a misnamed one, and the
+FNBS record family it names is item 2 of §6 below.
+
+§5 of the spec now says all three in the table's own preamble, rather than
+leaving names that resolve to nothing.
 
 ## 6. What the next lane should take
 
