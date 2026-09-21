@@ -157,6 +157,13 @@ DNS resolution remains outside a whole-path deadline; send and receive
 readiness each receive the selected timeout.  Readiness can race nonblocking
 I/O and remains network uncertainty.
 
+Exact-revision certification, three-host component runs and the common-image
+live acceptance/restart observation are archived in
+[`tests/evidence/2026-09-21-native-anchor-runtime.md`](../../tests/evidence/2026-09-21-native-anchor-runtime.md).
+The image-build tool retained an explicit failure because this lane did not
+recertify the unrelated served closure; root's frozen integrated batch remains
+the clean common-image gate.
+
 ## TLS composition contract for the owner lane
 
 The host performs only the TLS record/handshake facility.  The ACL2 owner has

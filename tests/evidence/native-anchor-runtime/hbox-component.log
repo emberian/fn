@@ -1,0 +1,6 @@
+hbox
+SBCL 2.2.9.debian
+4ee2a19a83d825ecbed8b0f70518411ae4c7597547318e3b8c8d653a3bf83192  host/native/crypto.lisp
+46fe3f0d20071439b94a1bc0ec80da832e2cdc6868da7cb8313f8f2f0392a41e  host/native/anchor.lisp
+2d234bcdb95348b6f4e54a6fc892131ba32b2d296ca4e54d6c4657e2d344f7d9  tests/native_anchor_acquisition.lisp
+FN_NATIVE_ANCHOR_ACQUISITION_TEST passed library="libsodium.so.23" version="1.0.18"
