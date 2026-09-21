@@ -65,6 +65,32 @@
 
 (in-theory (disable (:d fn-stx-parse)))
 
+; Total acceptance-boundary verdict.  Stored octets that are not even an
+; article cannot call the guarded article verdict; they retain a distinct
+; malformed observation instead of being mistaken for an absent field.
+(defun fn-stx-verdict-of-octets (octets keyring generation)
+  (declare (xargs :guard (fn-prin-keyringp keyring)))
+  (let ((article (fn-stx-parse octets)))
+    (if article
+        (fn-stx-verdict article keyring generation)
+      (fn-stx-make-verdict :unverified :malformed generation))))
+
+(defthm fn-stx-verdict-of-octets-generation
+  (equal (fn-stx-verdict-generation
+          (fn-stx-verdict-of-octets octets keyring generation))
+         generation)
+  :hints (("Goal" :in-theory (enable fn-stx-verdict-of-octets
+                                      (:d fn-stx-verdict)))))
+
+(defthm fn-stx-verdict-of-octets-token
+  (member-equal (fn-stx-verdict-token
+                 (fn-stx-verdict-of-octets octets keyring generation))
+                *fn-stx-verdicts*)
+  :hints (("Goal" :in-theory (enable fn-stx-verdict-of-octets
+                                      (:d fn-stx-verdict)))))
+
+(in-theory (disable (:d fn-stx-verdict-of-octets)))
+
 ; -----------------------------------------------------------------------------
 ; The verified predicate, and its equation with the recorded verdict
 
