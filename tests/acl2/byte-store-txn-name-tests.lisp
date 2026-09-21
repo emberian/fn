@@ -10,6 +10,8 @@
 (assert-event
  (equal (fn-bs-txn-name-impl 17) "00000000000000000017.txn"))
 (assert-event
+ (equal (fn-bs-txn-name 17) "00000000000000000017.txn"))
+(assert-event
  (equal (fn-bs-txn-name-impl 100000000000000000000)
         "100000000000000000000.txn"))
 (assert-event
