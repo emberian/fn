@@ -1,40 +1,31 @@
-# Current work: executable components and integration
+# Current work: W12 operational repair and composition
 
-See the [evidence index](evidence-index.md) for the full batch history and
-[implementation status](../docs/implementation.md) for per-component scope.
-This page is current status only; it carries no counts and no narrative
-history (both drift — see planning/ledger.md and the evidence index instead).
+Development has resumed from `8b474e2`. Both outbound feed and transit repair
+branches are merged. Their [combined book certification](evidence/manifests/certify-20260921T051833Z-3941584.json)
+does not establish the behavior of the merged packaged service; the selected
+matrix predates that combination.
 
-## What runs
+The [active cycles](swarm-cycles.md) assign isolated implementation lanes for
+reader/transit authorization, coherent proof artifacts, feed journal durability,
+physical storage correspondence, concrete storage codecs, durable native BP
+sequence allocation, shared CLI/NNTP submission, and ACL2 outbound framing.
+Both hbox and persvati are used for owned certification and integration work.
+Root integrates coherent batches and updates the registries from their evidence.
 
-- `make check` validates documents/registries; `make certify` certifies the
-  listed ACL2 books; `python3 tools/run_simulator.py` runs a three-step
-  acceptance smoke run in real ACL2; `make test` runs all three plus the
-  Python suite. None substitutes for another.
-- A loopback NNTP reader serves a seeded article or a replayed local store
-  through the actual ACL2 core (`tools/run_reader.py`); a pinned dtn7-rs BPA
-  carries fn work between two local nodes (`specs/bp-path.md`); the local CLI
-  persists articles/archive obligations.
+The principal composition obligations are explicit: durable article acceptance
+must preserve feed intent; uncertain persistence must fence all mutations;
+storage proofs need the actual host-generated program inputs and concrete
+codec realization; native BP needs persistent allocation before its larger
+lifecycle can claim non-reuse. A proof of an uncalled sibling does not close a
+running path.
 
-## What is proved, with scope
+v0 retains the [full two-peer release scope](milestones.md#release-shape-v0-and-v1).
+v1 reaches M6 and beyond. Next cycles compose native BP, live configuration,
+checkpoints, statement authority and provenance, then broaden recovery,
+long-lived retention and the integrated feature matrix. These are planned
+outcomes, not declarations that the current implementation already provides them.
 
-The [assurance-closure matrix](assurance-closure.md) is authoritative per row.
-Acceptance/node one-step and finite-trace invariants hold over the actual
-event type. The file-publication kernel's crash/recovery traces are proved for
-finite histories under the stated crash constructor, not every crash point the
-host can hit (D4/D5 in the independent review). NNTP session/cursor
-preservation is proved; effect typing is not yet bounded. The derived index
-and the checkpoint's frontier rejection are proved against authoritative
-memberships and the consumed frontier, respectively. BP sender/receiver
-invariants hold over a **fixed** Store. Every "Certified" cell names its own
-hypothesis stack; none closes a requirement end to end.
-
-## Next
-
-The [three-cycle plan](swarm-cycles.md) sequences C1 substrate-first per the
-[independent review](review-2026-09-18-independent.md) §8: repair (C1-00),
-identity/causality substrate (C1-11), byte codecs into ACL2 (C1-13),
-crash-model fidelity (C1-14), assumptions as encapsulates (C1-15), a teeth
-ledger (C1-16), then the renumbered original C1 packets, keeping the existing
-[requirement](requirements.json) and [proof-target](proofs.json) IDs. One
-writer owns each area; certify only your own roots; a commit is not evidence.
+The [evidence index](evidence-index.md), [assurance matrix](assurance-closure.md)
+and [implementation status](../docs/implementation.md) retain scoped historical
+evidence. A passing scaffold check is not certification; certification is not a
+running-system, RFC-conformance or mission-qualification claim.

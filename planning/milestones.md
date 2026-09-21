@@ -1,5 +1,15 @@
 # Development milestones
 
+Current task (2026-09-21): integrate the [W12 operational repair lanes](swarm-cycles.md)
+from `8b474e2`, then compose the remaining v0 services and expand assurance toward
+v1/M6. Feed and transit are merged; their combined certification does not
+replace a merged live-service measurement. See [current work](now.md).
+
+The following dated landing notes preserve their original evidence and gaps;
+their phrases “current task” and “nearest gaps” refer to those earlier batches.
+
+## Earlier landing notes
+
 Current stage: the proof-style realignment and the four server waves have
 landed (`0bd0b5c`..`c8886ee`); twenty-one of the fifty requirements are
 `implemented` against named keystones certified on the farm gates of `dev`
