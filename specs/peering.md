@@ -1196,17 +1196,21 @@ Open, recorded rather than weakened:
   [the lane handoff](../planning/lanes/HANDOFF-w6-peering-feed.md) and on the
   board. Until it lands, a feed's contact is a `fn-sched-contactp` the owner
   supplies and the scheduler does not know the feed exists.
-- `fn-feed-parse-response`: the RFC 3977 §3.2 status framing of a peer's reply
-  is read in `tools/run_feed.py`, not in ACL2. The decision the code carries is
-  ACL2's (`fn-feed-observe`); the three-digit split is not. An ACL2-side reader
-  closes it.
+- `fn-feed-parse-response`: **closed in w10/owner-feed.** The RFC 3977 §3.2
+  status framing of a peer's reply is `fn-own-feed-response-code` /
+  `fn-own-feed-parse-response` (`books/owner-feed.lisp`); the Python split
+  this paragraph recorded as open was deleted with its driver (see the row
+  below and `tools/feed_wire.py`).
 - The feed is not yet a field of F_node's state, so K6's cost term
   (`fn-cfg-max-queue-total`) and the `:feed-octets`/`:tick` event kinds are
   untouched by this lane.
-- No INN and no second fn node has been fed by `tools/run_feed.py`; the only
-  peer it has driven is the two-node harness's fake
-  (`tests/twonode_gate_fake/tools/run_peer.py`), whose replies are that file's
-  and not ACL2's.
+- No INN and no second fn node had been fed by `tools/run_feed.py`, whose
+  only peer was the two-node harness's fake
+  (`tests/twonode_gate_fake/tools/run_peer.py`), replies that file's and not
+  ACL2's. That driver was retired on 2026-09-21 (`w11/harness-health`): the
+  feed is the owner's, and the outbound evidence is
+  `tools/twonode_gate.py`'s `scenario_owner_feed` and `scenario_feed_restart`
+  against a real fn node.
 
 ## Status (wave 9, `w9/peering-e2e`, the CLI, the scheduler and the owner's port)
 
@@ -1293,7 +1297,7 @@ open.
 | §3.2 `fn-feed-offerablep` | `fn-own-feed-offerablep record origin groups path` (`books/owner-feed.lisp`) | Same three refusals in the same order: the peer's outbound wildmat over the article's own Newsgroups names, `fn-path-names-p` against the peer's path-identity, and the origin peer. It takes the article's *octets*' readings rather than a parsed article, because the owner has octets. |
 | §3.1 "`:tick` is the scheduler's tick for that peer" | `fn-own-feed-tick-peer`, one `fn-feed-tick-step` per peer under that peer's own `fn-sched-contactp` | **Difference, recorded.** The owner's feed tick does NOT route through `fn-sched-table-tick`. `fn-sched-tick-step` selects an `fn-sched-item` work and drives a BP attempt; its effects are `fn-bp-result-effects` and its queue is not the feed queue, so routing the feed through it would add a table that decides nothing about the feed and would make `fn-sched-table-tick-is-the-peer-tick` a decoration. What the feed does take from the scheduler is the contact model: `fn-feed-selection` gates on `fn-sched-contact-holdsp` of the feed's own contact, whose peer the table binds to the key. |
 | §3.3 "(:feed-restart peer) on open, before any offer" | `fn-own-reopen` restarts every feed; `fn-owner-feed-restart` writes one record per peer | The restart is in the owner's crash-recovery transition itself, so it cannot be forgotten by the host. |
-| "an ACL2-side `fn-feed-parse-response`" (w6 status, open) | `fn-own-feed-response-code` and `fn-own-feed-parse-response` | **Closed.** RFC 3977 §3.2's three-digit split is ACL2's; `tools/run_feed.py`'s `status()` is deleted and `Acl2Feed.response_code` calls the book. The Message-ID a CHECK or TAKETHIS reply echoes is not read back at all: at most one entry is in flight per peer (`fn-feedp`), so the owner's own in-flight Message-ID is the unambiguous subject. |
+| "an ACL2-side `fn-feed-parse-response`" (w6 status, open) | `fn-own-feed-response-code` and `fn-own-feed-parse-response` | **Closed.** RFC 3977 §3.2's three-digit split is ACL2's; `tools/run_feed.py`'s `status()` was deleted for it and the driver itself is gone (`w11/harness-health`, 2026-09-21), so the owner's bridge is the only reader. The Message-ID a CHECK or TAKETHIS reply echoes is not read back at all: at most one entry is in flight per peer (`fn-feedp`), so the owner's own in-flight Message-ID is the unambiguous subject. |
 | "the peer enumeration" (host `:program` twin) | `fn-own-feed-peer-names` | **Closed.** `host/store-node-host.lisp`'s `fn-store-cfg-peer-name-list` was a `:program`-mode copy; the fold is in the book now. |
 
 The keystones, each stated over the function the owner calls:
@@ -1327,5 +1331,71 @@ Open at the end of this lane, with the obligation each needs:
 | The owner's feed keystones stated over `fn-own-step` | open | `books/owner-invariants.lisp` needs `fn-own-feed-durable-is-the-target-enqueue` (the subject rule for the `(:outcome id :durable)` arm) and the preservation of `fn-own-relation` by the five new arms. Not written: a theorem that cannot be admitted is not a theorem. |
 | `fn-own-feed-group-matchp` vs `fn-peer-wildmat-matchp` | a named twin | One `:rule-classes nil` equality in `books/owner-invariants.lisp`, where both are visible. `books/owner-feed` cannot include `books/peer-inbound` without inheriting the served chain's blocker. |
 | fn does not prepend its own path-identity to a transit article's Path (RFC 5537 §3.2.1) | open, inbound lane's | `fn-peer-injection-arguments` stages the peer's octets verbatim. The outbound loop check still refuses a target already in Path and refuses the origin outright, but on the return leg loop suppression rests on the peer's history answer (435/438) rather than on Path. |
-| RFC 3977 §3.1.1 dot stuffing of an outgoing article block | host | `tools/run_feed.py`'s `Session.send_block`, reused by `tools/run_owner.py`. `books/wire.lisp` has the stuffer; wiring the owner's feed through it is one packet. |
+| RFC 3977 §3.1.1 dot stuffing of an outgoing article block | host | `tools/feed_wire.py`'s `Session.send_block`, called by `tools/run_owner.py` (it was `tools/run_feed.py`'s until that driver was retired on 2026-09-21). `books/wire.lisp` has the stuffer; wiring the owner's feed through it is one packet. `tests/test_feed.py::SessionTests` pins the host behaviour meanwhile: a leading dot doubled, a lone dot terminating, no bare LF. |
 | The two-node outbound evidence | **harness written, not run** | `tools/twonode_gate.py` gains `scenario_owner_feed` (A posts, A's own feed offers it to B, then B to A, with the byte-identity check and the 435/438 second offer) and `scenario_feed_restart` (B down, A posts, `kill -9` A, both restart, B ends with exactly one copy: K5). `tests/test_twonode_gate.py` is green (19 tests) against the fake; no run on persvati in this lane. |
+
+## Status (wave 11, `w11/twonode-feed`, the first crossing)
+
+An article has crossed between two fn nodes. Node A accepted a POST, the
+feed table of `books/owner-feed.lisp` enqueued it for peer `b`, the owner
+offered it over a real NNTP connection, node B accepted it through the same
+durable path a POST takes, and a reader on B fetched octets identical to the
+ones A serves. Evidence:
+[`twonode-feed-w11-2026-09-20`](../planning/evidence/twonode-feed-w11-2026-09-20.md).
+
+### The reason it had never happened, and the correction
+
+§2.2's decision table and §3.2's scope decision both read an article through
+`fn-af-proto-article-check`, which is **RFC 5537 §3.4.1: the INJECTING
+agent's check on a PROTO-ARTICLE**. Its first refusal is a present
+`Injection-Info`, and that refusal is right — adding the field is the
+injecting agent's own job (§3.2.3). But a transit article has already been
+injected, and every article fn posts carries the field, so:
+
+- `fn-peer-decide-transfer` answered `:refuse :proto-article` to every offer
+  of an article any fn node had posted. **No fn node could accept an article
+  from another fn node.**
+- `fn-own-feed-groups-of` answered `NIL`, so `fn-own-feed-offerablep`'s
+  wildmat had nothing to match, `fn-own-feed-targets` was empty, and no peer
+  was ever a feed target. **The outbound feed enqueued nothing.**
+
+The correction is a second function, not a weakened one.
+**`fn-af-relayed-article-check`** (`books/article-fields.lisp`) is RFC 5537
+§3.6 step 1 — §3.4.1's check without the two refusals that belong to the
+injecting agent alone (`Injection-Info`, and `Xref`, which RFC 5536 §3.2.13
+gives to a serving agent). `fn-af-proto-article-check` is now that check
+behind those two tests, in the same order, so **its value on every input is
+unchanged and no theorem about it moves**. Both transit sites and
+`fn-peer-injection-arguments`' memberships call the relaying check.
+`tests/acl2/article-fields-tests.lisp` carries the separation: the two
+articles the checks disagree on, and three that say they agree everywhere
+else.
+
+This changes what §2.2 decides. The reason `:proto-article` now means "not a
+well-formed article", not "an article that has been injected".
+
+### The accept path and the peer record
+
+Two more things had to be true before the first offer could be a transit
+offer at all, and neither was an ACL2 decision.
+
+- **`peer add` could never make a record.** `fn-cfg-peer-inboundp` caps the
+  inbound bound at `*fn-record-max-payload*` (32768) and the CLI's default
+  was 1048576, so every invocation made with the defaults was refused
+  `:peer-record`. The default is now 0 and `fn-store-cfg-peer-record`
+  supplies the ceiling, so the number has one owner again.
+- **The accept path of §1.1 was already correct.** `tools/run_owner.py`
+  resolves the source address through `fn-owner-peer-for-address` and opens
+  with `fn-own-open-peer`; with a record in place a loopback connection
+  draws `335` from `IHAVE`, not `502`. `tests/test_owner.py`'s
+  `TransitPortTests` is the unit evidence: the reader control, the peer
+  connection, and the tooth that a record for another address does not open
+  transit.
+
+### Open, and recorded rather than claimed
+
+| Item | State |
+| --- | --- |
+| `CAPABILITIES` on a transit connection | **defect, open.** The book renders the reader block on a peer session, so a peer that probes before it offers is told there is no transit surface (RFC 3977 §5.2.2 wants the capability exactly when the command is available). `tests/test_owner.py` asserts the current behaviour so the day it changes is visible. This is the reverse half of NNT-001, which `w10/v0-matrix` also reported. |
+| fn does not prepend its own path-identity to a transit article's Path (§3.2.1) | unchanged from wave 10: `fn-peer-injection-arguments` stages the peer's octets verbatim, so on the return leg loop suppression rests on the peer's history answer rather than on Path. |
+| A feed fault ending the service | **contained, and the design question is now answered.** `tools/run_owner.py`'s feed loop no longer lets an unexpected error unwind through `run`; a fault prints `FEED-FAULT <peer>` with its traceback and drops that feed, and three such faults were live on this path and are fixed by name. Whether a host fault should reach the wire as the `403` fourth outcome on a SERVED connection -- the question `w11/twonode-feed` recorded here as undecided -- is decided: it should, and `fn-own-fault` (`books/owner-fault.lisp`, lane `w11/owner-survival`) is the transition. A served read or a drained submission that faults answers RFC 3977 section 3.2.1's `403`, closes that connection, clears the submission it had in flight, and leaves every other connection equal to what it was, all proved; the reply octets are proved distinct from every `fn-nntp-post-outcome` line, so the fault cannot be read as a verdict on an article. An OUTBOUND feed fault still has no wire answer, because there is no connection of ours to answer on: the peer is the server there and dropping the session is the whole of it. |

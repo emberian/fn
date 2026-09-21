@@ -311,9 +311,10 @@
 ;
 ; The retry bound is NOT a slot of the peer record (books/peer-config.lisp's
 ; outbound half is groups, streaming, max-queue, backoff).  It is a local
-; policy constant, the same default tools/run_feed.py used; making it
-; configurable is a peer-record change, which is an open item and not a host
-; argument.
+; policy constant, the same default tools/run_feed.py used before that file
+; was retired on 2026-09-21 (w11/harness-health, once the owner drove the
+; feed); the value is kept, the driver is not.  Making it configurable is a
+; peer-record change, which is an open item and not a host argument.
 
 (defconst *fn-own-feed-horizon* *fn-clock-max*)
 (defconst *fn-own-feed-retry-bound* 3)
@@ -660,7 +661,7 @@
            (fn-article-syntax-p (fn-own-feed-article-of octets))))
 
 ; Guard verified, so the owner's own guard-verified path may call it: the
-; obligation is `fn-af-proto-article-check''s, and
+; obligation is `fn-af-relayed-article-check''s, and
 ; `fn-own-feed-article-of-is-syntax' discharges it.
 (defun fn-own-feed-groups-of (octets)
   (declare (xargs :guard t
@@ -672,7 +673,14 @@
   (let ((a (fn-own-feed-article-of octets)))
     (if (null a)
         nil
-      (let ((check (fn-af-proto-article-check a)))
+      ; The RELAYING agent's check (RFC 5537 section 3.6 step 1). The
+      ; article this reads is one this node has already accepted and
+      ; injected, so it carries Injection-Info, and the injecting agent's
+      ; check of section 3.4.1 answered `(:error :injection-info)` for it --
+      ; making this function answer NIL for every article, so
+      ; `fn-own-feed-offerablep`'s wildmat had nothing to match and NO PEER
+      ; WAS EVER A TARGET.
+      (let ((check (fn-af-relayed-article-check a)))
         (if (equal (fn-af-status-kind check) :ok)
             (fn-frame-item 2 check)
           nil)))))
@@ -688,7 +696,7 @@
     (if (null a) nil (fn-af-path-field-value a))))
 
 ; The parser stays SHUT below this line.  Opened, one goal about the feed
-; table pays for `fn-article-parse', `fn-af-proto-article-check' and the
+; table pays for `fn-article-parse', `fn-af-relayed-article-check' and the
 ; whole newsgroups grammar: the accept keystone went over two million steps
 ; before this (docs/proof-style.md sec. 9).
 (local (in-theory (disable fn-own-feed-article-of fn-own-feed-groups-of
@@ -1165,7 +1173,9 @@
 ; The reply reader (RFC 3977 sec. 3.2), in ACL2
 ;
 ; tools/run_feed.py split the three-digit status in Python and the w6 handoff
-; recorded that as an open twin.  It is here now: the host hands the owner one
+; recorded that as an open twin.  That file was retired on 2026-09-21
+; (w11/harness-health) precisely because this reader replaced it, so the
+; citation is history and not a pointer.  It is here now: the host hands the owner one
 ; reply LINE and ACL2 reads the code.  The Message-ID a CHECK or TAKETHIS
 ; reply echoes is not read back from the wire -- at most one entry is in
 ; flight per peer (`fn-feedp'), so the in-flight Message-ID the owner already

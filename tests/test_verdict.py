@@ -193,14 +193,43 @@ class ReuseGateTests(unittest.TestCase):
 class PerRootVerdictTests(unittest.TestCase):
     """The row counts failing ROOTS, and an exit code is not a verdict."""
 
-    def harvest_of(self, manifest: dict) -> tuple[verdict.Fiber, dict]:
+    def harvest_of(self, manifest: dict,
+                   repo: Path | None = None) -> tuple[verdict.Fiber, dict]:
         payload = dict(self.PAYLOAD, **manifest)
         # The harvester runs on the box and prints one JSON line; here the
         # real reader runs over a real manifest and the ssh is the stub.
         box = Box({"VERDICT_HARVEST": (0, json.dumps(payload))})
         fiber = verdict.Fiber("gate", "persvati", "make certify")
         with mock.patch.object(verdict, "ssh", box):
-            return fiber, verdict.harvest(fiber, "$HOME/fn-gates/dev-x")
+            return fiber, verdict.harvest(fiber, "$HOME/fn-gates/dev-x",
+                                          repo or Path("."))
+
+    def test_the_gate_manifest_is_filed_where_a_reader_can_see_it(self):
+        """A gate directory is reaped; the claim it carries must not be.
+
+        A gate reaper deletes stale gates and `build/` is ignored, so
+        a verdict record citing `build/acl2/certify-.../manifest.json` inside
+        a gate cited nothing a reader could open. The harvest now brings the
+        manifest home under `planning/evidence/manifests/<run-id>.json`.
+        """
+        run_id = "certify-20260921T024500Z-4242"
+        body = {"status": "passed", "requested_books": ["books/a"]}
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            _, facts = self.harvest_of(
+                {"roots": 1, "bad": [], "manifest_json": body,
+                 "manifest_dir": "/home/ember/fn-gates/dev-x/build/acl2/" + run_id},
+                repo=repo)
+            filed = repo / "planning" / "evidence" / "manifests" / (run_id + ".json")
+            self.assertTrue(filed.is_file())
+            kept = json.loads(filed.read_text())
+        self.assertEqual(kept["run_id"], run_id)
+        self.assertEqual(kept["status"], "passed")
+        # It records where the logs stayed, which is the box, not this tree.
+        self.assertEqual(kept["archived_from"],
+                         "persvati:/home/ember/fn-gates/dev-x/build/acl2/" + run_id)
+        # The whole manifest must not leak into the rendered evidence table.
+        self.assertNotIn("manifest_json", facts)
 
     PAYLOAD = {"status": "passed", "certify": "exit=0\n",
                "pytests": "Ran 9 tests in 1.0s\nOK\n", "publish": "exit=0\n"}
