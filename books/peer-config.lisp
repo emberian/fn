@@ -235,7 +235,9 @@
   (declare (xargs :guard t))
   (let ((outbound (fn-cfg-peer-outbound p)))
     (if (and (true-listp outbound) (equal (len outbound) 5))
-        (car (cddddr outbound)) nil)))
+        (fn-cfg-ag-car
+         (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr
+                                         (fn-cfg-ag-cdr outbound))))) nil)))
 
 ; -----------------------------------------------------------------------------
 ; The row codec
@@ -251,17 +253,28 @@
      (list (fn-cfg-row-make name "path-identity" (fn-cfg-peer-path-identity p) 0))
      (if (equal (fn-cfg-ag-car transport) :nntp)
          (if (equal (len transport) 5)
-             (let ((security (car (cddddr transport))))
+             (let ((security (fn-cfg-ag-car
+                              (fn-cfg-ag-cdr (fn-cfg-ag-cdr
+                               (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport)))))))
                (append
-                (list (fn-cfg-row-make name "transport-nntp" (caddr transport)
-                                       (cadddr transport))
+                (list (fn-cfg-row-make name "transport-nntp"
+                                       (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                                       (fn-cfg-ag-cdr transport)))
+                                       (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                        (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport)))))
                       (fn-cfg-row-make name "transport-security"
                                        (cond ((equal security '(:clear)) "clear")
-                                             ((equal (cadr security) :implicit) "implicit")
+                                             ((equal (fn-cfg-ag-car
+                                                      (fn-cfg-ag-cdr security))
+                                                     :implicit) "implicit")
                                              (t "starttls")) 1))
                 (if (equal security '(:clear)) nil
-                  (list (fn-cfg-row-make name "transport-server-name" (caddr security) 0)
-                        (fn-cfg-row-make name "transport-trust-anchor" (cadddr security) 0)))))
+                  (list (fn-cfg-row-make name "transport-server-name"
+                                         (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                          (fn-cfg-ag-cdr security))) 0)
+                        (fn-cfg-row-make name "transport-trust-anchor"
+                                         (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                          (fn-cfg-ag-cdr (fn-cfg-ag-cdr security)))) 0)))))
            (list (fn-cfg-row-make name "transport-nntp"
                                   (fn-cfg-ag-car (fn-cfg-ag-cdr transport))
                                   (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport))))))
@@ -284,8 +297,11 @@
                                                                 (fn-cfg-ag-cdr outbound))))))
           (let ((policy (fn-cfg-peer-outbound-auth p)))
             (if policy
-                (list (fn-cfg-row-make name "outbound-auth-profile" (cadr policy)
-                                       (if (caddr policy) 1 0)))
+                (list (fn-cfg-row-make
+                       name "outbound-auth-profile"
+                       (fn-cfg-ag-car (fn-cfg-ag-cdr policy))
+                       (if (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                           (fn-cfg-ag-cdr policy))) 1 0)))
               nil)))
        nil)
      (if (equal (fn-cfg-ag-car auth) :source-address)
