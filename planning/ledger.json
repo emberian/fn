@@ -11,6 +11,8 @@
     "tests/acl2/acceptance-tests",
     "books/wire",
     "books/wire-invariants",
+    "books/wire-outbound-invariants",
+    "tests/acl2/wire-outbound-tests",
     "tests/acl2/wire-tests",
     "books/cbor",
     "books/cbor-invariants",
@@ -155,6 +157,8 @@
     "books/bp-node-machine",
     "books/bp-node-machine-codec",
     "tests/acl2/bp-node-machine-tests",
+    "books/bp-sequence-fidelity",
+    "tests/acl2/bp-sequence-fidelity-tests",
     "books/bp-fragment",
     "books/bp-fragment-invariants",
     "tests/acl2/bp-fragment-tests",
@@ -325,25 +329,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 322,
-    "books_in_root_closure": 321,
-    "roots": 321,
-    "theorems": 6031,
-    "functions": 4453,
-    "assert_events": 6255,
-    "must_fails": 108,
+    "books": 326,
+    "books_in_root_closure": 325,
+    "roots": 325,
+    "theorems": 6131,
+    "functions": 4493,
+    "assert_events": 6297,
+    "must_fails": 121,
     "encapsulates": 19,
     "guards": {
-      "verified": 1560,
-      "declared-off": 218,
-      "default-guarded": 2110,
-      "default-unguarded": 565
+      "verified": 1562,
+      "declared-off": 221,
+      "default-guarded": 2144,
+      "default-unguarded": 566
     },
-    "suspect_theorems": 53,
-    "export_hygiene_warnings": 74,
-    "enabled_projection_warnings": 22,
-    "teeth_form_warnings": 3,
-    "include_hygiene_warnings": 110,
+    "suspect_theorems": 56,
+    "export_hygiene_warnings": 76,
+    "enabled_projection_warnings": 24,
+    "teeth_form_warnings": 4,
+    "include_hygiene_warnings": 111,
     "host_names_warnings": 258,
     "hand_written_record_warnings": 18
   },
@@ -1103,7 +1107,7 @@
       "book": "books/bp-node-records.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
+      "theorems": 4,
       "functions": 13,
       "guards": {
         "verified": 12,
@@ -1119,6 +1123,7 @@
       "encapsulates": 0,
       "includes": [
         "bp-primary",
+        "frame-invariants",
         "frame-trailer"
       ],
       "system_includes": [],
@@ -1618,6 +1623,37 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-sequence-fidelity.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 22,
+      "functions": 31,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 29,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-node-records"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-bpn-sf-crash-preserves-nonreuse",
+        "fn-bpn-sf-host-recover-is-core-recover",
+        "fn-bpn-sf-host-reserve-is-core-reserve"
+      ],
       "read_error": null
     },
     {
@@ -5692,13 +5728,13 @@
       "book": "books/wire-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 41,
-      "functions": 2,
+      "theorems": 53,
+      "functions": 5,
       "guards": {
         "verified": 1,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 1
+        "declared-off": 1,
+        "default-guarded": 1,
+        "default-unguarded": 2
       },
       "verify_guards_events": 1,
       "assert_events": 0,
@@ -5708,6 +5744,31 @@
       "encapsulates": 0,
       "includes": [
         "wire"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/wire-outbound-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 64,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "wire-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -6451,6 +6512,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/bp-release-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-sequence-fidelity-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 28,
+      "must_fails": 1,
+      "defconsts": 8,
+      "defmacros": 8,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-sequence-fidelity"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -8780,6 +8868,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/wire-outbound-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 12,
+      "defconsts": 4,
+      "defmacros": 2,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/wire-outbound-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/wire-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8792,9 +8907,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 67,
+      "assert_events": 70,
       "must_fails": 0,
-      "defconsts": 34,
+      "defconsts": 35,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -8893,6 +9008,32 @@
       "line": 390,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpf-reassemble and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-bpn-sf-crash-preserves-nonreuse",
+      "book": "books/bp-sequence-fidelity.lisp",
+      "line": 343,
+      "reasons": [
+        "preserves-no-subject-call: the statement never calls fn-bpn-sf-crash or a fn-bpn-sf-crash- transition"
+      ]
+    },
+    {
+      "theorem": "fn-bpn-sf-host-recover-is-core-recover",
+      "book": "books/bp-sequence-fidelity.lisp",
+      "line": 299,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-bpn-sf-host-recover",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-bpn-sf-host-reserve-is-core-reserve",
+      "book": "books/bp-sequence-fidelity.lisp",
+      "line": 278,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-bpn-sf-host-reserve",
+        "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
     {
@@ -9394,6 +9535,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-bpn-sf-host-reserve-is-core-reserve",
+        "book": "books/bp-sequence-fidelity.lisp",
+        "line": 278,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-bp-recover-event-effects-actionable",
         "book": "books/bp-workflow-records-invariants.lisp",
         "line": 455,
@@ -9686,6 +9833,12 @@
         "book": "books/wildmat-work.lisp",
         "line": 369,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-wire-served-article-profile-is-outbound-receiver-start",
+        "book": "books/wire-outbound-invariants.lisp",
+        "line": 791,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       }
     ],
     "enabled_projection": [
@@ -9835,6 +9988,24 @@
         "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
+        "function": "fn-bpn-sequence-reservation-sequence",
+        "book": "books/bp-node-records.lisp",
+        "line": 61,
+        "stated_in": [
+          "books/bp-sequence-fidelity.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpn-sequence-reservation-record",
+        "book": "books/bp-node-records.lisp",
+        "line": 65,
+        "stated_in": [
+          "books/bp-sequence-fidelity.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
         "function": "fn-cbor-ag-car",
         "book": "books/cbor.lisp",
         "line": 72,
@@ -9910,6 +10081,12 @@
       }
     ],
     "teeth_form": [
+      {
+        "check": "bsft-admissibility-hypothesis-has-teeth",
+        "book": "tests/acl2/bp-sequence-fidelity-tests.lisp",
+        "line": 182,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
       {
         "check": "fn-bs-txn-name-injective-without-left-natp",
         "book": "tests/acl2/byte-store-txn-name-tests.lisp",
@@ -10698,6 +10875,13 @@
         "line": 95,
         "include": "../../books/wildmat-parser-invariants",
         "included": "books/wildmat-parser-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/wire-outbound-tests.lisp",
+        "line": 5,
+        "include": "../../books/wire-outbound-invariants",
+        "included": "books/wire-outbound-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       }
     ],

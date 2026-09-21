@@ -14,6 +14,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/acceptance-tests \
 	books/wire \
 	books/wire-invariants \
+	books/wire-outbound-invariants \
+	tests/acl2/wire-outbound-tests \
 	tests/acl2/wire-tests \
 	books/cbor \
 	books/cbor-invariants \

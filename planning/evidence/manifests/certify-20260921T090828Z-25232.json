@@ -1,0 +1,112 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "tests/acl2/wire-outbound-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w14-wire-roundtrip/build/acl2/certify-20260921T090828Z-25232",
+  "book_failures": {},
+  "book_results": {
+    "tests/acl2/wire-outbound-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "tests/acl2/wire-outbound-tests": 0.59
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "tests/acl2/wire-outbound-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "tests/acl2/wire-outbound-tests": "3762e19fe51017e59a539973b4fbdc05f035ad3f171da758a948ebf9d28f7ff5"
+  },
+  "certify_wall_seconds": 0.639,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "tests/acl2/wire-outbound-tests": "3989fd26bc5911f292dbf84f69fd04a449361a06ddfd36df1f2dd7540861d05c"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 7a1f5153bb38be4146b04f2256ca7c0a bef31d23432e"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T09:08:29+00:00",
+  "git_branch": "w14/wire-roundtrip",
+  "git_dirty": false,
+  "git_revision": "09927b2b8182894b72bc2d061f6d370b85ea18de",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 7a1f5153bb38be4146b04f2256ca7c0a bef31d23432e"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "tests/acl2/wire-outbound-tests"
+  ],
+  "requested_books": [
+    "tests/acl2/wire-outbound-tests"
+  ],
+  "run_id": "certify-20260921T090828Z-25232",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "tests/acl2/wire-outbound-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/wire-invariants.lisp": "f80efbfba1d072d73036348ceab355e35376ef0310430eb5af0b99aa69013aba",
+    "books/wire-outbound-invariants.lisp": "1f3f8bdb5140a97020adaa9bb0fd6be159d8d2030168f96a7744f8d428152f46",
+    "books/wire.lisp": "69faa44d2125fbf005a2e8bb0287fc779cd14d5b5ef4881fc2b78fb11ae23ef2",
+    "tests/acl2/wire-outbound-tests.lisp": "77a9639f4d0ea606d76c678d4553d5976c5f12b08a33e52e671c54f05853e088"
+  },
+  "source_digests_sha256_after": {
+    "books/wire-invariants.lisp": "f80efbfba1d072d73036348ceab355e35376ef0310430eb5af0b99aa69013aba",
+    "books/wire-outbound-invariants.lisp": "1f3f8bdb5140a97020adaa9bb0fd6be159d8d2030168f96a7744f8d428152f46",
+    "books/wire.lisp": "69faa44d2125fbf005a2e8bb0287fc779cd14d5b5ef4881fc2b78fb11ae23ef2",
+    "tests/acl2/wire-outbound-tests.lisp": "77a9639f4d0ea606d76c678d4553d5976c5f12b08a33e52e671c54f05853e088"
+  },
+  "start_order": [
+    "tests/acl2/wire-outbound-tests"
+  ],
+  "started_utc": "2026-09-21T09:08:28+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/w14-wire-roundtrip"
+}

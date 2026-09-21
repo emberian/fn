@@ -1,0 +1,160 @@
+{
+  "acl2_executable": "/tank/fn/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5",
+  "acl2_exit_codes": {
+    "books/wire": 0,
+    "books/wire-invariants": 0,
+    "books/wire-outbound-invariants": 0,
+    "tests/acl2/wire-outbound-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/tank/fn/lanes/w14-wire-roundtrip/build/acl2/certify-20260921T090841Z-1914841",
+  "book_failures": {},
+  "book_results": {
+    "books/wire": "passed",
+    "books/wire-invariants": "passed",
+    "books/wire-outbound-invariants": "passed",
+    "tests/acl2/wire-outbound-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/wire": 1.634,
+    "books/wire-invariants": 1.824,
+    "books/wire-outbound-invariants": 36.021,
+    "tests/acl2/wire-outbound-tests": 0.443
+  },
+  "cert_cache": {
+    "already_cached": 4,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": true,
+        "book": "books/wire",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "books/wire-invariants",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/wire-outbound-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/wire-outbound-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 2,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/wire": "8fa2ec33916598cc052f9009fbe50288e79fbb69c958d8d08f7d1be34470edc9",
+    "books/wire-invariants": "4ace80b586f3e32c1ef73adf507b628d1f3bc59d2bb2715914c02b942ac10567",
+    "books/wire-outbound-invariants": "9bf782e7b1de774def7d9100fcb62b0dcf65864f7c7123eb73b3d30d761d849e",
+    "tests/acl2/wire-outbound-tests": "c5d3216fad3d951182028c6c2d29d594c424935b9f4a5743a934776fd095f4d8"
+  },
+  "certify_wall_seconds": 39.967,
+  "closure": true,
+  "command": [
+    "/tank/fn/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/wire": "b5dc0ee9c6052d2e13896e9daac8abad1735ac98a0dfb3cd99f8c19cea98d00b",
+    "books/wire-invariants": "6c777ce6cd9ab4d2a767e9f44fdf0692d8ed338d413d5cb16f6c12e5b5d2b04f",
+    "books/wire-outbound-invariants": "2586d987b90256f7de2e05aec5fbba8e90f690efcf1c01ddd4e06cf91ca454d9",
+    "tests/acl2/wire-outbound-tests": "888572199feeb2efdde3594599dbda5c5f95f357848974daef7807713832eb83"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS d8de7c2c231301960ade1deef371673a ce91d7ad78a7",
+    "FN_CERTIFY_SUCCESS d8de7c2c231301960ade1deef371673a aa6f31c2bde3",
+    "FN_CERTIFY_SUCCESS d8de7c2c231301960ade1deef371673a c6d812ac019e",
+    "FN_CERTIFY_SUCCESS d8de7c2c231301960ade1deef371673a bef31d23432e"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T09:09:21+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "jobs": 4,
+  "jobs_effective": 4,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS d8de7c2c231301960ade1deef371673a ce91d7ad78a7",
+    "FN_CERTIFY_SUCCESS d8de7c2c231301960ade1deef371673a aa6f31c2bde3",
+    "FN_CERTIFY_SUCCESS d8de7c2c231301960ade1deef371673a c6d812ac019e",
+    "FN_CERTIFY_SUCCESS d8de7c2c231301960ade1deef371673a bef31d23432e"
+  ],
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "tests/acl2/wire-outbound-tests"
+  ],
+  "requested_books": [
+    "books/wire",
+    "books/wire-invariants",
+    "books/wire-outbound-invariants",
+    "tests/acl2/wire-outbound-tests"
+  ],
+  "run_id": "certify-20260921T090841Z-1914841",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/wire": 0.0,
+    "books/wire-invariants": 0.0,
+    "books/wire-outbound-invariants": 0.0,
+    "tests/acl2/wire-outbound-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/wire-invariants.lisp": "f80efbfba1d072d73036348ceab355e35376ef0310430eb5af0b99aa69013aba",
+    "books/wire-outbound-invariants.lisp": "1f3f8bdb5140a97020adaa9bb0fd6be159d8d2030168f96a7744f8d428152f46",
+    "books/wire.lisp": "69faa44d2125fbf005a2e8bb0287fc779cd14d5b5ef4881fc2b78fb11ae23ef2",
+    "tests/acl2/wire-outbound-tests.lisp": "77a9639f4d0ea606d76c678d4553d5976c5f12b08a33e52e671c54f05853e088"
+  },
+  "source_digests_sha256_after": {
+    "books/wire-invariants.lisp": "f80efbfba1d072d73036348ceab355e35376ef0310430eb5af0b99aa69013aba",
+    "books/wire-outbound-invariants.lisp": "1f3f8bdb5140a97020adaa9bb0fd6be159d8d2030168f96a7744f8d428152f46",
+    "books/wire.lisp": "69faa44d2125fbf005a2e8bb0287fc779cd14d5b5ef4881fc2b78fb11ae23ef2",
+    "tests/acl2/wire-outbound-tests.lisp": "77a9639f4d0ea606d76c678d4553d5976c5f12b08a33e52e671c54f05853e088"
+  },
+  "start_order": [
+    "books/wire",
+    "books/wire-invariants",
+    "books/wire-outbound-invariants",
+    "tests/acl2/wire-outbound-tests"
+  ],
+  "started_utc": "2026-09-21T09:08:41+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/tank/fn/lanes/w14-wire-roundtrip"
+}

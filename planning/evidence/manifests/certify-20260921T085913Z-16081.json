@@ -1,0 +1,110 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/wire-outbound-invariants": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w14-wire-roundtrip/build/acl2/certify-20260921T085913Z-16081",
+  "book_failures": {},
+  "book_results": {
+    "books/wire-outbound-invariants": "passed"
+  },
+  "book_wall_seconds": {
+    "books/wire-outbound-invariants": 40.947
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/wire-outbound-invariants",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/wire-outbound-invariants": "16ead33fefafbfc20cc2e9f45bc02e1e1bb6ffe03d5cc9cdde5e576813ef04b0"
+  },
+  "certify_wall_seconds": 41.017,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/wire-outbound-invariants": "e5e9ff87615d8da1c933669613fe04e496c18744b42a612979737d777586b8b0"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 354ea13d2b09229c21cd98e86a0d0a1c c6d812ac019e"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T08:59:54+00:00",
+  "git_branch": "w14/wire-roundtrip",
+  "git_dirty": true,
+  "git_revision": "842901cc93979cc5b3ab1a7b890ec257f918271d",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 354ea13d2b09229c21cd98e86a0d0a1c c6d812ac019e"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "books/wire-outbound-invariants"
+  ],
+  "requested_books": [
+    "books/wire-outbound-invariants"
+  ],
+  "run_id": "certify-20260921T085913Z-16081",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/wire-outbound-invariants": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/wire-invariants.lisp": "f80efbfba1d072d73036348ceab355e35376ef0310430eb5af0b99aa69013aba",
+    "books/wire-outbound-invariants.lisp": "1139d5dadf0fe494a989d2e6058b274631495c1f297dbdb97c18e896de068ea7",
+    "books/wire.lisp": "69faa44d2125fbf005a2e8bb0287fc779cd14d5b5ef4881fc2b78fb11ae23ef2"
+  },
+  "source_digests_sha256_after": {
+    "books/wire-invariants.lisp": "f80efbfba1d072d73036348ceab355e35376ef0310430eb5af0b99aa69013aba",
+    "books/wire-outbound-invariants.lisp": "1139d5dadf0fe494a989d2e6058b274631495c1f297dbdb97c18e896de068ea7",
+    "books/wire.lisp": "69faa44d2125fbf005a2e8bb0287fc779cd14d5b5ef4881fc2b78fb11ae23ef2"
+  },
+  "start_order": [
+    "books/wire-outbound-invariants"
+  ],
+  "started_utc": "2026-09-21T08:59:13+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/w14-wire-roundtrip"
+}
