@@ -17,6 +17,19 @@
 (defconst *fn-native-auth-max-lines* 1024)
 (defconst *fn-native-auth-max-credentials* 128)
 
+(defun fn-native-auth-line-count (xs)
+  ; Count conventional text lines: every LF ends one line, and nonempty bytes
+  ; after the final LF form one more.  fn-ncfg-lines deliberately retains a
+  ; terminal empty segment for parsing; that segment is not a 1,025th line in
+  ; a file containing exactly 1,024 newline-terminated lines.
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (if (consp (cdr xs))
+          (+ (if (equal (car xs) 10) 1 0)
+             (fn-native-auth-line-count (cdr xs)))
+        1)
+    0))
+
 (defun fn-native-auth-prefixp (prefix xs)
   (declare (xargs :guard t))
   (if (consp prefix)
@@ -42,6 +55,16 @@
       (cons (car xs) (fn-native-auth-butlast-two (cdr xs)))
     nil))
 
+(defun fn-native-auth-login-namep (name)
+  ; The canonical writer emits NAME through bin/fn's toml_quote: an NNTP
+  ; printable token with neither TOML quote nor backslash.  Reusing both
+  ; predicates keeps the file grammar and the served USER token identical.
+  (declare (xargs :guard t))
+  (and (consp name) (true-listp name)
+       (<= (len name) *fn-auth-max-name-octets*)
+       (fn-nntp-printable-tokenp name)
+       (fn-ncfg-printablep name)))
+
 (defun fn-native-auth-table-name (line)
   ; Exact canonical table syntax: [login."printable-token"].
   (declare (xargs :guard t))
@@ -51,9 +74,7 @@
              (fn-native-auth-last-two-p trimmed 34 93))
         (let ((name (fn-native-auth-butlast-two
                      (fn-native-auth-drop (len prefix) trimmed))))
-          (if (and (consp name) (true-listp name)
-                   (<= (len name) *fn-auth-max-name-octets*)
-                   (fn-nntp-printable-tokenp name))
+          (if (fn-native-auth-login-namep name)
               name
             :bad))
       :bad)))
@@ -198,7 +219,8 @@
              (< *fn-native-auth-max-octets* (len octets)))
          (list :refused :bounds-or-encoding))
         (t (let ((lines (fn-ncfg-lines octets)))
-             (if (< *fn-native-auth-max-lines* (len lines))
+             (if (< *fn-native-auth-max-lines*
+                    (fn-native-auth-line-count octets))
                  (list :refused :bounds-or-encoding)
                (let ((parsed (fn-native-auth-parse-lines lines nil nil nil)))
                  (if (not (equal (fn-ncfg-first parsed) :accepted)) parsed
@@ -237,10 +259,10 @@
             (fn-native-auth-result-config
              (fn-native-auth-load octets presentp requiredp protected tls)))))
 
-; Keystone for the startup boundary: when the parser accepts, the config the
-; host installs carries the caller's three normalized policy observations
-; exactly.  Raw Lisp cannot silently drop REQUIRED, enable TLS, or weaken
-; PROTECTED-ONLY while transporting the credential file.
+; Local projection fact: when the parser accepts, its model result carries the
+; caller's three normalized policy observations exactly.  Host installation
+; correspondence is a separate boundary and this theorem is not a registry
+; event.
 (defthm fn-native-auth-load-accepted-pins-policy
   (implies
    (equal (fn-native-auth-result-status

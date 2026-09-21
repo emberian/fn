@@ -20,11 +20,12 @@ test as operator-side credential enrollment and process orchestration.
 `host/native/auth.lisp` calls `fn-native-auth-host-load`, whose body is exactly
 `fn-native-auth-load`.  On an accepted result it passes the exact ACL2-built
 config to `fn-owner-set-auth-config`; the raw host does not reconstruct a
-credential row or policy bit.  `fn-native-auth-load-accepted-pins-policy` is
-the keystone for this startup boundary: under the accepted-status hypothesis,
-the installed config carries the three normalized policy observations exactly.
-Its test book has an accepted required-profile witness and a refusal witness
-where removing the hypothesis makes the conclusion false.
+credential row or policy bit.  `fn-native-auth-load-accepted-pins-policy` is a
+local projection lemma: under the accepted-status hypothesis, the model result
+carries the three normalized policy observations exactly.  It is not a
+registry keystone or a theorem about the raw host installation call.  Its test
+book has an accepted required-profile witness and a refusal witness where
+removing the hypothesis makes the conclusion false.
 
 The accepted credential syntax is the bounded canonical writer output:
 comments and blank lines plus `[login."NAME"]` tables containing exactly one
