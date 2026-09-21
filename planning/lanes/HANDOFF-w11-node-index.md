@@ -33,6 +33,14 @@ reported `installed 59, kept 36, uncached 181` over the whole tree before the
 run. Baseline before any edit, laptop, the same six-book chain:
 `build/acl2/certify-20260921T004453Z-66002`, exit 0.
 
+**The control, stated separately from the green.** `dev` was merged twice
+after the hbox run (`e67b6cb`, then `bdf40d0`, `w11/clock-seam`), and the
+run's own `source_digests_sha256` was re-checked against the working tree
+afterwards: **31 of 31 certified sources byte-identical, 0 changed.** So the
+certification is a claim about the tree as it stands, not about an older one.
+`w11/clock-seam` brought `books/owner`, `books/owner-invariants` and
+`books/nntp-post`; none is in this closure.
+
 Ledger, before to after: `defthm`/`defthmd` events 5559 to 5560,
 `assert-event` checks 5400 to 5422, `books/stx-lace.lisp` theorems 19 to 20,
 `tests/acl2/stx-transit-tests.lisp` witnesses 62 to 84. The new theorem is not
