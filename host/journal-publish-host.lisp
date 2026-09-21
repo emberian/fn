@@ -38,6 +38,8 @@
   (if (fn-aj-operationp operation) t nil))
 (defun fn-aj-host-operation-name (operation)
   (fn-aj-operation-name operation))
+(defun fn-aj-host-operation-label (operation)
+  (fn-aj-operation-label operation))
 (defun fn-aj-host-operation-publication (operation)
   (fn-aj-operation-publication operation))
 (defun fn-aj-host-operation-successor (operation)

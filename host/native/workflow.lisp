@@ -205,12 +205,25 @@
                                    (:directory-barrier :durable))))
                    (unless (eq phase expected)
                      (fnn-fault "publication observer preceded ACL2 report"))))))
+           (fault-observer
+             (when (string= (or (sb-ext:posix-getenv
+                                 "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE")
+                                "")
+                            "1")
+               (lambda (label point publication path)
+                 (declare (ignore publication))
+                 (when (and (eq label :receipt-decision)
+                            (eq point :directory-barrier))
+                   (fnn-os-fail sb-posix:eio path)))))
            (outcome
              (fnn-immutable-publish-effect
               (fnn-core 'fn-aj-host-operation-publication operation)
               stage final (fnn-app-journal-records journal) frame
               :cleanup-directory (fnn-app-journal-staging journal)
-              :observer observer)))
+              :observer observer
+              :operation-label
+              (fnn-core 'fn-aj-host-operation-label operation)
+              :fault-observer fault-observer)))
       (cond ((eq outcome :durable)
              (setf (fnn-app-journal-frontier journal)
                    (fnn-core 'fn-aj-host-operation-successor operation)))

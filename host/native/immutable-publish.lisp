@@ -14,7 +14,8 @@
     (when (string= chosen point) (fnn-os-fail sb-posix:eio path))))
 
 (defun fnn-immutable-publish-effect
-  (publication stage final final-directory octets &key cleanup-directory observer)
+  (publication stage final final-directory octets
+               &key cleanup-directory observer operation-label fault-observer)
   "Execute an ACL2-authorized immutable publication state.  PUBLICATION must
 come from the caller's ACL2 allocation/admission machine after it establishes
 exclusive authority and absence of that machine's exact final name.  Those are
@@ -33,6 +34,20 @@ executor does not assert the premise itself and returns fn-jpub's classification
                ; The callback observes the already-reported ACL2 state and
                ; cannot alter the publication classification.
                (when observer (funcall observer point publication)))
+             (fault-observed (point path)
+               ; A test observer runs before the same syscall and inside the
+               ; same fnn-os-error handler as a real failure.  OPERATION-LABEL
+               ; is issued by the caller's ACL2 authorization operation.
+               (when fault-observer
+                 (funcall fault-observer operation-label point publication
+                          path))
+               (fnn-immutable-test-fault
+                (case point
+                  (:file-barrier "file-barrier")
+                  (:begin-link "link")
+                  (:directory-barrier "namespace")
+                  (otherwise "stage"))
+                path))
              (observe (ok-event error-event point thunk)
                (let ((ok
                        (handler-case (progn (funcall thunk) t)
@@ -45,7 +60,7 @@ executor does not assert the premise itself and returns fn-jpub's classification
                (:stage
                 (observe '(:stage-result :ok) '(:stage-result :error) nil
                          (lambda ()
-                           (fnn-immutable-test-fault "stage" stage)
+                           (fault-observed :stage stage)
                            (setq fd (fnn-open stage
                                               (logior sb-posix:o-wronly
                                                       sb-posix:o-creat
@@ -57,7 +72,7 @@ executor does not assert the premise itself and returns fn-jpub's classification
                          '(:file-barrier-result :error)
                          :file-barrier
                          (lambda ()
-                           (fnn-immutable-test-fault "file-barrier" stage)
+                           (fault-observed :file-barrier stage)
                            (fnn-fsync-file fd)
                            ; Retire the descriptor number before close: a
                            ; failing close may already have released it.
@@ -68,7 +83,7 @@ executor does not assert the premise itself and returns fn-jpub's classification
                (:link
                 (let ((event
                         (handler-case
-                            (progn (fnn-immutable-test-fault "link" final)
+                            (progn (fault-observed :begin-link final)
                                    (fnn-link stage final)
                                    '(:link-result :ok))
                           (fnn-os-error (e)
@@ -82,7 +97,7 @@ executor does not assert the premise itself and returns fn-jpub's classification
                          '(:directory-barrier-result :error)
                          :directory-barrier
                          (lambda ()
-                           (fnn-immutable-test-fault "namespace" final)
+                           (fault-observed :directory-barrier final)
                            (fnn-fsync-dir final-directory))))
                (otherwise
                 (fnn-fault "ACL2 returned no immutable publication action"))))

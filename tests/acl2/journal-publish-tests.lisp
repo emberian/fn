@@ -55,6 +55,8 @@
  (equal (fn-aj-operation-name *fn-t-aj-config-op*)
         "00000000000000000000.wf"))
 (assert-event
+ (equal (fn-aj-operation-label *fn-t-aj-config-op*) :config))
+(assert-event
  (equal (fn-aj-next (fn-aj-operation-successor *fn-t-aj-config-op*)) 1))
 (assert-event
  (equal (fn-aj-recover-record *fn-t-aj-empty*
