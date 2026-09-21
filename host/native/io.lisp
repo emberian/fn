@@ -656,6 +656,30 @@ here.  The host supplies octets and decides nothing about them."
   (fnn-action (fnn-core-state 'fn-store-sn-recover
                               (mapcar #'fnn-octet-list records) frontier
                               (mapcar #'fnn-octet-list config-records))))
+(defun fnn-bridge-transaction-observation (observed limit)
+  "Return ACL2-issued (sequence . filename) pairs for one bounded scan.
+
+The host passes observed names as octets and receives their canonical sequence
+binding.  It performs no filename parser, decimal conversion, or gap policy."
+  (let ((value (fnn-core 'fn-store-txn-observation
+                         (mapcar (lambda (name)
+                                   (fnn-octet-list (fnn-string-octets name)))
+                                 observed)
+                         limit)))
+    (unless (listp value)
+      (fnn-fault "ACL2 refused transaction namespace observation"))
+    (mapcar (lambda (pair)
+              (unless (and (true-listp pair) (= (length pair) 2)
+                           (integerp (first pair)) (>= (first pair) 0)
+                           (fnn-octet-list-p (second pair)))
+                (fnn-fault "ACL2 returned malformed transaction namespace pair"))
+              (cons (first pair)
+                    (handler-case
+                        (fnn-octets-string (fnn-octets (second pair)))
+                      (error ()
+                        (fnn-fault "ACL2 returned a non-UTF-8 transaction filename")))))
+            value)))
+
 (defun fnn-bridge-staging-observation-limit ()
   "The ACL2-owned maximum number of staging names recovery may observe."
   (let ((value (fnn-core-state 'fn-store-sn-staging-observation-limit)))
@@ -852,11 +876,6 @@ resolves the names against `domain' and the host carries that list verbatim."
 ;; group table: what a store serves is what the core admits and replays.
 (defparameter +fnn-default-groups+ (list "fn.letters" "fn.test"))
 
-(defun fnn-seq-name-p (name)
-  (and (= (length name) 24)
-       (every (lambda (c) (char<= #\0 c #\9)) (subseq name 0 20))
-       (string= (subseq name 20) ".txn")))
-
 (defstruct (fnn-store (:constructor %make-fnn-store))
   root writable lock-fd config frontier fenced (orphans nil) (completion-pending nil)
   ;; The checkpoint layer runs only after authoritative full replay.  It keeps
@@ -1033,28 +1052,29 @@ kernel may have issued the namespace operation even when it reports failure."
       (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "stage-unlinked"))))))
 
 (defun fnn-transaction-files (store)
-  "Sorted (sequence . path) pairs of the final namespace, gap-free or a fault."
-  (let ((files nil) (count 0)
-        (names (handler-case (fnn-list-directory (fnn-transactions store))
-                 (fnn-os-error () (fnn-fault "cannot enumerate transactions")))))
-    (dolist (name names)
-      ;; The configured count bound is a physical enumeration boundary.  Keep
-      ;; it as carried scalar progress instead of recounting the accumulated
-      ;; list for every directory entry.
-      (when (>= count (fnn-config-max-transactions store))
-        (fnn-fault "transaction count exceeds configured bound"))
-      (unless (fnn-seq-name-p name)
-        (fnn-fault "unexpected final-namespace entry: ~a" name))
-      (let* ((path (fnn-join (fnn-transactions store) name))
-             (st (fnn-lstat path)))
-        (when (or (null st) (fnn-symlink-p st) (not (fnn-regular-p st)))
-          (fnn-fault "refusing transaction symlink or non-file"))
-        (push (cons (parse-integer name :end 20) path) files)
-        (incf count)))
-    (setq files (sort files #'< :key #'car))
-    (loop for (sequence . nil) in files for expected from 0 do
-      (unless (= sequence expected) (fnn-fault "transaction sequence gap")))
-    files))
+  "ACL2-bound final namespace pairs, each path verified regular by the host."
+  (let* ((limit (fnn-config-max-transactions store))
+         ;; This is the physical resource boundary: readdir stops before an
+         ;; unbounded name list is retained.  Sorting only stabilizes the
+         ;; observed representation; ACL2 owns filename grammar and sequence.
+         (observed (handler-case
+                       (sort (fnn-list-directory-bounded (fnn-transactions store)
+                                                         limit "transaction namespace")
+                             #'string<)
+                     (fnn-os-error () (fnn-fault "cannot enumerate transactions"))))
+         (pairs (fnn-bridge-transaction-observation observed limit)))
+    (mapcar (lambda (pair)
+              (let* ((sequence (car pair))
+                     (name (cdr pair))
+                     (path (fnn-join (fnn-transactions store) name))
+                     (st (fnn-lstat path)))
+                (when (or (null st) (fnn-symlink-p st) (not (fnn-regular-p st)))
+                  (fnn-fault "refusing transaction symlink or non-file"))
+                ;; SEQUENCE came from fn-store-txn-observation, whose exact
+                ;; filename comparison is the byte-store codec.  Durable
+                ;; record decoding below binds this value again before replay.
+                (cons sequence path)))
+            pairs)))
 
 (defun fnn-staging-observation (store)
   "The bounded physical observation supplied to the ACL2 staging policy."

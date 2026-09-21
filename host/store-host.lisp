@@ -58,6 +58,28 @@
 (defun fn-store-txn-name-octets (sequence)
   (fn-record-string-octets (fn-store-txn-name sequence)))
 
+; A final namespace observation is not parsed by the native adapter.  The
+; bounded host enumeration is sorted only to make its representation stable.
+; This conversion only validates octets before the scan policy compares names.
+(defun fn-store-octet-lists->strings (xs)
+  (if (consp xs)
+      (if (not (fn-cbor-octet-listp (car xs)))
+          :bad
+        (let ((rest (fn-store-octet-lists->strings (cdr xs))))
+          (if (equal rest :bad)
+              :bad
+            (cons (fn-store-octets->string (car xs)) rest))))
+    (if (null xs) nil :bad)))
+
+(defun fn-store-txn-observation (observed maximum)
+  (declare (xargs :mode :program))
+  (let ((names (fn-store-octet-lists->strings observed)))
+    (if (and (natp maximum) (true-listp observed)
+             (not (equal names :bad)) (<= (len names) maximum))
+        ;; The byte-store scan owns exact names and contiguous sequences.
+        (fn-bs-txn-observation-pairs names 0)
+      :invalid)))
+
 (defun fn-store-decode-records (octet-records)
   (declare (xargs :mode :program))
   (if (consp octet-records)
@@ -354,16 +376,6 @@
 (defun fn-store-metadata-frontier-next (n)
   (fn-bs-frontier-next n))
 
-
-(defun fn-store-octet-lists->strings (xs)
-  (if (consp xs)
-      (if (not (fn-cbor-octet-listp (car xs)))
-          :bad
-        (let ((rest (fn-store-octet-lists->strings (cdr xs))))
-          (if (equal rest :bad)
-              :bad
-            (cons (fn-store-octets->string (car xs)) rest))))
-    (if (null xs) nil :bad)))
 
 (defun fn-store-group-codes (name-octets domain-octets)
   ; Distinct group names, as octet lists, become their codes in the replayed
