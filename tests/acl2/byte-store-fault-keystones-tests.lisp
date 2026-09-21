@@ -62,3 +62,26 @@
                   *fn-bs-frontier-name* (cons :eio :not-issued))
     (declare (ignore result))
     (not (fn-bs-dir-quietp bs :root)))))
+
+; The reachable record-attempted state has one unresolved transaction entry.
+; Any error result resolves that physical choice and fences the kernel.
+(assert-event
+ (let* ((pair (nth 10 *fn-bsfk-record-run*))
+        (bs (car pair))
+        (ks (cdr pair)))
+   (mv-let (result bs1)
+     (fn-bs-fsync-dir bs :transactions (cons :eio '(:drop)))
+     (and (equal result :eio)
+          (equal (fn-sf-phase ks) :record-attempted)
+          (fn-bs-dir-quietp bs1 :transactions)
+          (fn-sf-fencedp (fn-sf-record-dir-result ks :error))))))
+
+; Fencing the unrelated staging directory cannot resolve the authority choice.
+(must-fail
+ (assert-event
+  (let* ((pair (nth 10 *fn-bsfk-record-run*))
+         (bs (car pair)))
+    (mv-let (result bs1)
+      (fn-bs-fsync-dir bs :staging (cons :eio '(:drop)))
+      (declare (ignore result))
+      (fn-bs-dir-quietp bs1 :transactions)))))

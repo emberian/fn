@@ -74,3 +74,34 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sn-statep fn-sn-io fn-sn-file-step fn-sn-update
                                      fn-sf-frontier-replace-result fn-sf-fencedp))))
+
+; An error return from the transaction-directory barrier resolves some
+; physical outcome but cannot report commitment.  The byte syscall drains
+; that directory's pending choice either way; the kernel enters the recovery
+; fence and therefore cannot continue publication.
+(defthm fn-bs-record-directory-error-resolves-choice-and-fences
+  (implies (and (fn-bs-store-relation bs ks)
+                (equal (fn-sf-phase ks) :record-attempted)
+                (consp outcome))
+           (mv-let (result bs1)
+             (fn-bs-fsync-dir bs :transactions outcome)
+             (and (equal result (car outcome))
+                  (fn-bs-dir-quietp bs1 :transactions)
+                  (fn-sf-fencedp (fn-sf-record-dir-result ks :error)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 (:instance fn-bs-ops-for-dir-of-ops-not-for-dir
+                            (ops (fn-bs-pending bs)) (dir :transactions)))
+           :in-theory (enable fn-bs-fsync-dir fn-bs-dir-quietp
+                              fn-bs-ops-for-dir fn-bs-ops-not-for-dir
+                              fn-sf-record-dir-result fn-sf-fencedp))))
+
+(defthm fn-bs-native-record-directory-error-fences-composed-subject
+  (implies (and (fn-sn-statep s)
+                (equal (fn-sf-phase (fn-sn-files s)) :record-attempted))
+           (fn-sf-fencedp
+            (fn-sn-files (fn-sn-io s :record-directory :error))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-sn-statep fn-sn-io fn-sn-file-step fn-sn-update
+                                     fn-sf-record-dir-result fn-sf-fencedp))))
