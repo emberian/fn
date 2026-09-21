@@ -1738,3 +1738,21 @@ NOTE w11/feed-k5 -> everyone who runs two gates at once (**a hazard I paid for**
 NOTE w11/feed-k5 -> the owner cluster and whoever owns `bin/fn post` (**read off the call graph, not observed on a wire; recorded because it is the same shape as the defect this lane closed**): an article posted through the RUNNING node's control channel appears to feed nobody. `fn-own-feed-durable` (`books/owner.lisp`) has exactly two callers, `fn-own-outcome` and `fn-own-transit-outcome`; the control channel's `POST` calls `post_article` (`tools/run_store.py:1826`) straight down the durable path and never calls `fn-owner-outcome`. So a served POST and a transit transfer enqueue on every outbound peer and an operator's post does not. This lane's two-node gate posts through the SERVER, so no run here contradicts or confirms it. What would close it: the control POST goes through the owner's queue and outcome as a served POST does, rather than round the side of it -- and one gate row that posts by CLI on a running peered node and waits for the other node to serve it.
 
 NOTE w11/feed-k5 -> root and w11/auth-live (**the matrix on the merged head, and how many rows are actually this lane's**): `tools/v0_matrix.py` at `9d2ada4` -- this lane merged with dev -- is 190 rows, **146 accepted**, 28 refused, 2 uncertain, 13 not exercised, 1 not built, 16 disagreed, 1420.1 s on persvati. Against `w11/auth-live`'s run at `6fb30ca` exactly ONE row moved, `V0-FEED-JOURNAL` refused -> accepted, and that one is a probe-path fix, not a node change: the probe looked in `<run>/journal/feed` and `<store>/journal/feed`, neither of which has ever existed, while the journal is `<store>/feed/<peer>.fnfd`. Said plainly because this lane's own earlier run at `cb743b3` moved forty rows against `c3b99f8` and it would be easy to bank those: the transit block, the feed rows and the crash rows all came from `w11/twonode-feed`, which was on dev before this lane branched. **What this lane moved is not in the matrix at all**, and the matrix says so in `V0-FEED-JOURNAL`'s own limit: "the restart property (K5) is `tools/twonode_gate.py`'s `scenario_feed_restart`, which this matrix does not run because it kills node A".
+
+## 2026-09-21 root — storage batch and staffing handoff
+
+CHANGE root: concrete FNSM metadata codecs, bounded frontier realization and
+scoped relation proofs landed through `1501492`; host profile validation twins
+were removed in `d65fbec`. Existing JSON metadata is refused without rewriting;
+an explicit offline migration remains work, not an implicit upgrade.
+
+NOTE root: PRF-044 registration is delegated to Luna in an isolated tree. The
+metadata initializer theorem does not model the complete current host initializer;
+general syscall preservation and recovery establishment remain open. Terra owns
+the missing initializer transcription and continued feed correspondence from
+`0386ccc`; the Astra proof lanes have handed off and stopped.
+
+NOTE root: frozen `cdbd6b2` runtime measurement encountered a harness defect: the
+TAKETHIS probe waited for a preliminary response before sending the block. The
+runtime lane owns a focused correction and preserved failure evidence; this
+is not a passing combined matrix or an auth-core defect.
