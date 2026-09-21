@@ -62,7 +62,65 @@ costs a quarter of an hour and the loop needed four.
 The octet comparison is the whole ARTICLE block as each server rendered it,
 compared by the driver, not a digest and not a status code.
 
-## Certification of the change
+## Certification of the change, on the merged tree
+
+`fn-own-relation` gained the conjunct `fn-own-ids-below-next-p` on dev while
+this lane ran, which invalidates by content every certificate pair at or
+above `books/owner-invariants`. The lane merged dev, re-installed pairs
+(`installed 70, kept identical local 97, no cached pair 109`) and certified
+again; the run that stands is this one, and the earlier one is kept below
+for what it measured.
+
+`python3 tools/farm.py submit persvati --jobs 6 --timeout-seconds 3600
+--remote-root /home/ember/fn-lanes/w11-twonode-feed --affected-by
+books/article-fields.lisp --closure`, run `run-20260921T003410Z-028c`, then
+`wait`. Evidence
+`build/acl2/certify-20260921T003414Z-1100802/manifest.json`.
+
+| fact | value |
+| --- | --- |
+| host | persvati, Linux 6.17.0-40-generic x86_64, Python 3.13.7, SBCL 2.6.8 |
+| ACL2 | 8.7, `/home/ember/fn-tools/acl2-8.7/saved_acl2`, sha256 `c8a7a804d9cc80e2025a8ab0e1d9325f2a0c4a027a5dcdcb2c1093e9cd5c8163` |
+| environment | `ACL2_BOOK_HASH_ALISTP=NIL`, `ACL2_CUSTOMIZATION=NONE` |
+| roots | **124 requested, 124 certified, 0 failed**, 240.2 s wall at `--jobs 6` |
+| `book_failures` | `{}` |
+
+Per root, the ones this lane's change is about:
+
+| root | s |
+| --- | --- |
+| `books/article-fields` | 0.55 |
+| `tests/acl2/article-fields-tests` | 0.37 |
+| `books/peer-inbound` | 62.11 |
+| `books/peer-inbound-invariants` | 0.76 |
+| `tests/acl2/peer-inbound-tests` | 0.88 |
+| `books/owner-feed` | 1.80 |
+| `tests/acl2/owner-feed-tests` | 0.83 |
+| `books/owner` | 1.42 |
+| `books/owner-invariants` | 8.39 |
+| `tests/acl2/owner-tests` | 1.17 |
+| `books/owner-config` | 1.03 |
+| `tests/acl2/owner-config-tests` | 1.03 |
+| `books/served` | 1.55 |
+| `tests/acl2/served-tests` | 0.96 |
+| `books/nntp-post` | 5.83 |
+| `books/bp-ingress` | 0.98 |
+
+`books/nntp-post` and `books/bp-ingress` are in the table on purpose: they
+are the injecting agents, they keep `fn-af-proto-article-check`, and their
+certifying unchanged is what says the split was additive rather than a
+weakening.
+
+**What this certification does and does not establish.** It establishes that
+every root in the closure of `books/article-fields` admits, verifies its
+guards and proves its theorems with the new function present, and that the
+five assertions separating the two checks evaluate as stated. It does NOT
+establish that the relaying check is the right reading of RFC 5537 section
+3.6 step 1 -- that is a reading of a document, argued in
+`specs/peering.md`'s wave-11 status section, and no theorem in this tree
+says it.
+
+## The first certification, before the merge
 
 `python3 tools/farm.py submit persvati --jobs 6 --timeout-seconds 3600
 --remote-root /home/ember/fn-lanes/w11-twonode-feed --affected-by
@@ -99,19 +157,7 @@ The roots this lane's change is about, each certified, with its wall time:
 | `books/bp-ingress` | 1.06 |
 | `books/injection-invariants` | 1.19 |
 
-`books/nntp-post` and `books/bp-ingress` are the injecting agents and are in
-the table on purpose: they keep `fn-af-proto-article-check` and keep
-refusing a proto-article that carries `Injection-Info`. That they certify
-unchanged is what says the split was additive.
-
-**What this certification does and does not establish.** It establishes that
-every root in the closure of `books/article-fields` admits, verifies its
-guards and proves its theorems with the new function present, and that the
-five assertions separating the two checks evaluate as stated. It does NOT
-establish that the relaying check is the right reading of RFC 5537 §3.6
-step 1 -- that is a reading of a document, argued in
-`specs/peering.md`'s wave-11 status section, and no theorem in this tree
-says it.
+Its one failure, `books/owner-config` at `( DEFUN FN-OCFG-STATEP ...)`, was a defect `w10/owner-relation` had already recorded open; lane `w11/owner-config` closed it on dev the same night, which is why the run above has none.
 
 ## Run 2 and run 3: the two-node gate on persvati
 
