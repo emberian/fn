@@ -43,6 +43,34 @@
 (defun fn-bpn-host-lifecycle-frame-limit ()
   (fn-bpn-lifecycle-frame-limit))
 
+(defun fn-bpn-host-lifecycle-record-name (token)
+  (fn-bpn-lifecycle-record-name token))
+
+(defun fn-bpn-host-lifecycle-namespace-plan (names)
+  (fn-bpn-lifecycle-namespace-plan names))
+
+(defun fn-bpn-host-lifecycle-plan-ready-p (plan)
+  (and (fn-bpn-lifecycle-namespace-planp plan) t))
+
+(defun fn-bpn-host-lifecycle-plan-record-names (plan)
+  (if (fn-bpn-lifecycle-namespace-planp plan)
+      (fn-bpn-lifecycle-plan-record-names plan) nil))
+
+(defun fn-bpn-host-lifecycle-recovery (names records)
+  (fn-bpn-lifecycle-recovery names records))
+
+(defun fn-bpn-host-lifecycle-recovery-ready-p (answer)
+  (and (equal (car answer) :ready) t))
+
+(defun fn-bpn-host-lifecycle-recovery-records (answer)
+  (fn-bpn-lifecycle-recovery-records answer))
+
+(defun fn-bpn-host-lifecycle-recovery-stages (answer)
+  (fn-bpn-lifecycle-recovery-stages answer))
+
+(defun fn-bpn-host-lifecycle-recovery-agrees-p (answer st)
+  (and (fn-bpn-lifecycle-recovery-agrees-with-statep answer st) t))
+
 (defun fn-bpn-host-machine-max-jobs () *fn-bpn-machine-max-jobs*)
 (defun fn-bpn-host-machine-max-octets () *fn-bpn-machine-max-octets*)
 (defun fn-bpn-host-machine-max-records () *fn-bpn-machine-max-records*)
