@@ -497,9 +497,10 @@
         "tests/test_native_owner.py",
         "books/store-prepare-correspondence.lisp",
         "tests/acl2/store-prepare-correspondence-tests.lisp",
-        "planning/evidence/store-prepare-correspondence-w18-2026-09-21.md"
+        "planning/evidence/store-prepare-correspondence-w18-2026-09-21.md",
+        "planning/evidence/native-owner-integrated-2026-09-21.md"
       ],
-      "execution_scope": "Existing logical traces and targeted Python/native component tests cover stated subcontracts. The store prepare projection is certified equal to the replaying specification under the maintained live-history relation, with a nonempty-history witness and a stale-node counterexample when the relation is removed. The frozen cdbd6b2 Python service matrix ran with recorded authentication and BP-crash disagreements; the former owner-does-not-certify blocker is historical. Full native service parity, deployment dependency evidence, concurrent backpressure/stale-completion composition, native owner adoption and complete physical adapter correspondence remain open. D07 adds a specified native-only gate, not passing evidence. The native owner fence/worker-lifetime regression is implemented at 76901c1 but its frozen integrated runtime result is pending."
+      "execution_scope": "Partial: frozen03 default/DTN images build from their exact certified closure and pass scoped native owner/operator/recovery/checkpoint and BP journal suites, including public operator listener startup, a native POST/readback and concurrent uncertainty fencing. The separate standalone prepare refinement is equated to its specification under the maintained live-history relation; its shared-owner adoption is later work. Historical Python matrix disagreements remain recorded. Native authentication/control/outbound feed/protected transport/identity parity, orderly signal shutdown, full two-peer dependency validation, stale-completion/backpressure composition and complete physical correspondence remain open."
     },
     {
       "id": "SCN-016",

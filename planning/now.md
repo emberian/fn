@@ -17,8 +17,8 @@ ACL2-owned namespace and carried frontier instead of rescanning retained files.
 The listener's admitted loopback addresses now come from an ACL2 projection.
 
 The frozen combined source is `03eb3ba3`, with retained persvati job
-`run-20260921T095031Z-5cf4`. Certification passed; its owner lane is validating the same-origin artifacts,
-constructing default/DTN images and running the actual native suites. Later main changes
+`run-20260921T095031Z-5cf4`. Certification, both same-origin image builds, scoped runtime suites and the
+public operator loopback witness passed; see the [frozen evidence](evidence/native-owner-integrated-2026-09-21.md). Later main changes
 are not part of that frozen source and must receive their own integration gate.
 The earlier `76901c1` closure/build passed; its live listener wakeup defect was
 repaired in the current frozen batch. Historical Python matrix disagreements
@@ -52,7 +52,8 @@ serial approval gate.
 The [consolidation audit](duplication-audit-2026-09-21.md) records demonstrated
 competing decisions, repeated scans and misleading contracts. Active repairs
 include transaction/configuration namespace parsers and pre-allocation bounds,
-initializer effect classification/error origins, and native lifecycle shutdown.
+native lifecycle shutdown and connection-local fault isolation. Initializer
+expected-link classification and post-link uncertainty repairs are integrated.
 Moving a semantic twin from Python to raw Lisp does not close it. A separate
 logical specification and a proved efficient representation remain intentional.
 

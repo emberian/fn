@@ -1196,9 +1196,10 @@
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/native-owner-integrated-2026-09-21.md"
       ],
-      "implementation_note": "D07 selects a Python-free deployed Lisp node and operator CLI calling the executable ACL2 core directly. Python build/test/differential tools remain permitted. Current bin/fn and service unit still invoke the Python owner; native store/reader/BP components do not yet establish full native service parity. Native owner, configuration/control/CLI, selected feature parity and deployment dependency gate remain open.",
+      "implementation_note": "D07 requires a Python-free deployed Lisp node, operator CLI and helpers calling the executable ACL2 core. The frozen 03eb3ba native default/DTN images build from the recorded certified closure and pass their scoped owner/operator/storage/BP runtime suites, including public operator run and NNTP greeting/QUIT. Python is only an external test driver there. The full installed CLI/service, native authentication/control/outbound feed/protected transport/identity features and Python-free two-peer dependency gate remain open; the development bin/fn still invokes Python.",
       "note": "Owner and served components have since certified and the frozen cdbd6b2 Python service matrix ran with recorded disagreements; the earlier owner-does-not-certify blocker is historical. Neither those results nor native component tests establish HST-001 for the full native production service. Required: exact host-called subjects or named refinements, justified execution guards, and SCN-015 native deployment/dependency evidence; no status advancement follows from choosing D07."
     },
     {
@@ -1218,10 +1219,11 @@
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/native-owner-integrated-2026-09-21.md"
       ],
-      "implementation_note": "Single-owner logical transactions and bounded serial loopback bridge exercised; durable effects/production concurrency open.",
-      "note": "Bounded effects are certified (fn-nntp-step-effects-well-formed, fn-nntp-closed-step-has-no-effects, and the served effect-typing keystones). Serialization is the owner's exclusive writer lock, and the owner does not certify or start, so the serialization half has no evidence."
+      "implementation_note": "Logical single-owner serialization is implemented. The frozen03 native runtime exercises concurrent uncertainty fencing and worker lifetime, with FNFD intent reconciliation after independent restart. Full concurrent backpressure, stale completion and production two-peer lifecycle composition remain open.",
+      "note": "Bounded protocol effects and scoped native mutex/worker runtime evidence are recorded separately. Frozen03 supersedes the historical owner-does-not-certify blocker; it does not establish complete serialization, backpressure or crash correspondence for every later native module."
     },
     {
       "id": "HST-003",
@@ -1293,9 +1295,10 @@
         "scenario"
       ],
       "evidence": [
-        "planning/evidence/owner-survival-2026-09-21.md"
+        "planning/evidence/owner-survival-2026-09-21.md",
+        "planning/evidence/native-owner-integrated-2026-09-21.md"
       ],
-      "implementation_note": "tools/run_owner.py guards each selector event and each drained submission; an unexpected exception abandons the connection that caused it through fn-own-fault and the loop continues. Feeds are abandoned per peer. A fault the host cannot attribute is counted and stops the owner after MAX_UNATTRIBUTED_FAULTS; a lost ACL2 bridge stops it at once, with the fault exit code. Open: the reader host (tools/run_reader.py) has no such boundary, and no boundary exists around the control channel's own loop. Native checkpoint 76901c1 fences shared/core uncertainty under the mutex and drains workers before shared-resource cleanup, with integrated runtime evidence pending. Its unexpected serious-condition handler currently stops the whole service; attributable connection-local fault survival is therefore still a native parity gap, not discharged by the Python scenario or a conservative global stop.",
+      "implementation_note": "The development Python owner has per-connection/per-peer fault boundaries; its reader/control coverage remains limited. Frozen03 native runtime now exercises ordinary disconnect isolation, uncertainty fencing under the shared mutex and worker cleanup. The native unexpected serious-condition handler still stops the whole service; attributable unexpected connection-local fault survival remains an implementation task, not discharged by a conservative global stop. Shared/core/persistence uncertainty must continue to fence the owner. Orderly SIGTERM belongs to a separate lifecycle successor.",
       "note": "The boundary is a model transition, not a Python decision: fn-own-fault (books/owner-fault.lisp) names the 403 line, closes the connection, clears its in-flight submission and its pending transaction, and is proved to leave every other connection equal to what it was. Measured: before it, an exception in Owner.drain ended the process for every connection, which is the single cause behind 33 blocked rows of the 190-row v0 matrix."
     },
     {
