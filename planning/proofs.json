@@ -1358,6 +1358,34 @@
         "fn-own-read-offers-against-the-live-node",
         "fn-own-live-session-boundedp"
       ]
+    },
+    {
+      "id": "PRF-043",
+      "title": "FNFD bounded scanner progress and persistent uncertainty in phase traces",
+      "statement": "Whenever fn-feed-journal-scan returns :next, its safe offset advances strictly and by at most the ACL2 envelope bound; starting in an uncertain journal phase, fn-feed-journal-phase-run remains uncertain after any finite sequence of later observations.",
+      "milestone": "M4",
+      "requirements": [
+        "STO-004",
+        "STO-008",
+        "HST-003"
+      ],
+      "depends_on": [
+        "PRF-035"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-feed-journal-next-is-bounded-progress",
+        "fn-feed-journal-uncertainty-survives-all-later-observations"
+      ],
+      "evidence": [
+        "books/feed-journal.lisp",
+        "tests/acl2/feed-journal-tests.lisp",
+        "planning/evidence/manifests/certify-20260921T062242Z-1643977.json",
+        "planning/evidence/feed-journal-w12-host.json",
+        "planning/lanes/HANDOFF-w12-feed-durability.md"
+      ],
+      "progress_note": "The manifest certifies these book/test inputs. Actual subject calls: host/owner-host.lisp fn-owner-feed-journal-scan calls fn-feed-journal-scan; tools/run_owner.py Acl2Owner.feed_journal_step calls fn-feed-journal-phase-step for Journal._step. The finite phase theorem extends that same step through arbitrary observations. Physical torn-suffix repair, barriers and the global owner fence have scoped live-scanner and host-method tests in tests/test_feed_journal_live.py and tests/test_feed_fence.py; those tests do not run the combined owner/NNTP path. This target does not prove physical byte-image survival, general K5 live/replay correspondence, acceptance/feed atomicity, detection of whole-prefix rollback, bounded total journal growth, or hardware durability."
     }
   ]
 }

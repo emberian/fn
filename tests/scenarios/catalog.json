@@ -711,22 +711,32 @@
         "REP-005",
         "REP-002",
         "RET-003",
-        "STO-003"
+        "STO-003",
+        "STO-004",
+        "STO-008"
       ],
       "steps": [
         "Configure an outbound wildmat on a peer record and accept an article that matches it.",
         "Let the owner open the session and offer the article; drive no socket by hand.",
         "Reread the target after the acknowledgement, and again after the source restarts.",
-        "Interrupt an offer in flight and restart the owner."
+        "Interrupt an offer in flight and restart the owner.",
+        "Cut a following FNFD envelope at each byte boundary, reopen, append and reopen again.",
+        "Offer complete corrupt or wrong-peer FNFD evidence, and inject failed content/directory barriers."
       ],
       "expected": [
         "Each accepted article is offered to each peer whose outbound wildmat matches it, by the owner and not by an operator.",
         "A transfer the target acknowledged is not offered again, and the target holds one copy.",
         "The feed journal distinguishes transmission from retention, and survives the restart.",
-        "An interrupted offer is retried and produces no second copy."
+        "An interrupted offer is retried and produces no second copy.",
+        "Only a torn final envelope is truncated to the ACL2-returned safe offset; a later append remains replayable after another restart.",
+        "Complete invalid evidence remains unchanged; ambiguous I/O exits uncertain and the owner performs no later mutation or success response."
       ],
-      "evidence": [],
-      "execution_scope": "Specified. `books/peer-feed` exists and `tools/run_feed.py` drives one peer by hand; the owner calling that seam is the open work this scenario is about."
+      "evidence": [
+        "planning/evidence/feed-k5-w11-2026-09-21.md",
+        "planning/evidence/feed-journal-w12-host.json",
+        "planning/lanes/HANDOFF-w12-feed-durability.md"
+      ],
+      "execution_scope": "The owner drives outbound feeds; the former standalone tools/run_feed.py is retired. Historical two-node feed evidence is recorded by the W11 gate. W12 tests execute the actual bounded scanner/replay with file and process cuts and exercise owner fence methods with a scripted bridge. The W12 tests do not run the combined owner/NNTP submission path; article-commit/feed-intent atomicity and general K5 correspondence remain active work, so the whole scenario is not marked validated."
     },
     {
       "id": "SCN-025",
