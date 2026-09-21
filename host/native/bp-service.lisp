@@ -241,6 +241,14 @@
       (error (e) (fnn-bps-release service) (error e)))))
 
 (defun fnn-bps-attempt-ready (service)
+  ;; Expiry changes only the BP job's lifecycle status.  The record retains
+  ;; its exact bundle bytes and this layer has no archive-release effect.
+  (let ((obs (fnn-bp-observation (fnn-bp-tally-wall (fnn-bps-tally service))
+                                 (fnn-bp-tally-wall-error
+                                  (fnn-bps-tally service)))))
+    (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+          for effects = (fnn-bps-step service (list :clock obs))
+          while effects do (fnn-bps-drive-effects service effects)))
   (dolist (peer (fnn-core 'fn-bpn-host-ready-peers (fnn-bps-state service)))
     (fnn-bps-drive-effects service (fnn-bps-step service (list :contact peer t))))
   service)

@@ -53,6 +53,32 @@
                :bundle-queue-refused
                (fn-bpn-answer-effects (fn-bpn-step *bpnm-s1* *bpnm-conflict*))))
 
+; An imprecise wall reading cannot expire this retained bundle: expiry follows
+; the monotonic Bundle Age anchor.  A sufficiently later monotonic reading
+; persists :expired while keeping the exact wire bytes in the job record.
+(defconst *bpnm-untrusted-wall* (fn-clock-observation 1001 999999999 999999999 t))
+(assert-event
+ (null (fn-bpn-answer-effects
+        (fn-bpn-step *bpnm-s1* (list :clock *bpnm-untrusted-wall*)))))
+(defconst *bpnm-expired-obs* (fn-clock-observation 4000002 0 0 nil))
+(defconst *bpnm-expiring*
+  (fn-bpn-step *bpnm-s1* (list :clock *bpnm-expired-obs*)))
+(assert-event (equal (car (third (car (fn-bpn-answer-effects *bpnm-expiring*))))
+                     :expired))
+(defconst *bpnm-expired*
+  (fn-bpn-step (fn-bpn-answer-state *bpnm-expiring*)
+               '(:persist-result 1 :durable)))
+(defconst *bpnm-expired-job*
+  (fn-bpn-find-job (list *bpnm-work* *bpnm-attempt* 0)
+                   (fn-bpn-machine-state-jobs
+                    (fn-bpn-answer-state *bpnm-expired*))))
+(assert-event (equal (fn-bpn-job-status *bpnm-expired-job*) :expired))
+(assert-event
+ (equal (fn-bpn-job-wire *bpnm-expired-job*)
+        (fn-bpn-job-wire
+         (fn-bpn-find-job (list *bpnm-work* *bpnm-attempt* 0)
+                          (fn-bpn-machine-state-jobs *bpnm-s1*)))))
+
 ; Contact alone proposes a durable attempting record; only its completed
 ; barrier produces the exact-wire convergence-layer send effect.
 (defconst *bpnm-a2* (fn-bpn-step *bpnm-s1* (list :contact *bpnm-peer* t)))

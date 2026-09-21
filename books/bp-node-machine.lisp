@@ -63,12 +63,13 @@
 
 (fn-defrecord fn-bpn-job
   :tag :fn-bpn-job
-  :constructor (fn-bpn-make-job work-id attempt-id generation sequence peer
+  :constructor (fn-bpn-make-job work-id attempt-id generation sequence age-anchor peer
                                 route bundle wire status last-token)
   :fields ((fn-bpn-job-work-id fn-bpn-machine-textp)
            (fn-bpn-job-attempt-id fn-bpn-machine-textp)
            (fn-bpn-job-generation fn-bpn-machine-u64p)
            (fn-bpn-job-sequence fn-bpp-timep)
+           (fn-bpn-job-age-anchor fn-clock-age-anchorp)
            (fn-bpn-job-peer fn-bpp-eidp)
            (fn-bpn-job-route fn-bpn-routep)
            (fn-bpn-job-bundle fn-bpb-bundlep)
@@ -96,7 +97,7 @@
   (fn-bpn-make-job
    (fn-bpn-job-work-id job) (fn-bpn-job-attempt-id job)
    (fn-bpn-job-generation job) (fn-bpn-job-sequence job)
-   (fn-bpn-job-peer job) (fn-bpn-job-route job)
+   (fn-bpn-job-age-anchor job) (fn-bpn-job-peer job) (fn-bpn-job-route job)
    (fn-bpn-job-bundle job) (fn-bpn-job-wire job)
    status token))
 
@@ -419,7 +420,8 @@
                                      :capacity))))
          (t
           (let* ((token (fn-bpn-machine-state-next-token st))
-                 (job (fn-bpn-make-job work attempt generation sequence peer route
+                 (job (fn-bpn-make-job work attempt generation sequence
+                                       (fn-bpn-anchor-of bundle obs) peer route
                                        bundle wire :queued token))
                  (record (list :queued token job)))
             (fn-bpn-propose
@@ -537,12 +539,23 @@
              (list :bundle-queue-refused work attempt generation :result-persistence-refused)
              (list :bundle-queue-uncertain work attempt generation :result-persistence))))))))
 
+(defun fn-bpn-job-expiry (job obs)
+  (declare (xargs :guard t))
+  (if (and (fn-bpn-jobp job) (fn-clock-observationp obs))
+      (let ((primary (fn-bpb-bundle-primary (fn-bpn-job-bundle job))))
+        (fn-clock-expiry-decision
+         (fn-bpp-creation-time primary)
+         (fn-bpp-lifetime primary)
+         (fn-bpn-job-age-anchor job)
+         obs))
+    :uncertain))
+
 (defun fn-bpn-find-expired (jobs obs)
   (declare (xargs :guard t))
   (if (atom jobs)
       nil
     (if (and (fn-bpn-member (fn-bpn-job-status (car jobs)) '(:queued :attempting))
-             (equal (fn-bpn-expiry (fn-bpn-job-bundle (car jobs)) obs) :expired))
+             (equal (fn-bpn-job-expiry (car jobs) obs) :expired))
         (car jobs)
       (fn-bpn-find-expired (cdr jobs) obs))))
 
@@ -677,15 +690,19 @@
   (and (equal (fn-bpn-job-wire (fn-bpn-job-with-status job :queued token))
               (fn-bpn-job-wire job))
        (equal (fn-bpn-job-peer (fn-bpn-job-with-status job :queued token))
-              (fn-bpn-job-peer job))))
+              (fn-bpn-job-peer job))
+       (equal (fn-bpn-job-age-anchor (fn-bpn-job-with-status job :queued token))
+              (fn-bpn-job-age-anchor job))))
 
 ; KEYSTONE M3.  A clock decision other than :expired is not selected by the
 ; expiry scan.  In particular an uncertain wall observation cannot expire it.
 (defthm fn-bpn-find-expired-requires-expired-decision
   (implies (consp (fn-bpn-find-expired jobs obs))
-           (equal (fn-bpn-expiry
-                   (fn-bpn-job-bundle (fn-bpn-find-expired jobs obs)) obs)
-                  :expired)))
+           (equal (fn-bpn-job-expiry (fn-bpn-find-expired jobs obs) obs)
+                  :expired))
+  :hints (("Goal"
+           :induct (fn-bpn-find-expired jobs obs)
+           :in-theory '(fn-bpn-find-expired))))
 
 (deftheory fn-bpn-machine-vocabulary
   '(fn-bpn-step-emits-no-release
