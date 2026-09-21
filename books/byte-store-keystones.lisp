@@ -3,7 +3,7 @@
 ; specs/crash-model-v2.md section 3.3.  K1 and K2 live in
 ; books/byte-store-scan.lisp, whose include-closure is the byte model and
 ; the file kernel.  K3 needs nothing more, but K4 is a statement about the
-; HOST's reopen entry (fn-sn-open-observed, which host/store-node-host.lisp
+; HOST's reopen entry (fn-sn-open-observed, which host/store-node-host.lisp:70
 ; calls at every process start), so it needs books/store-observed and the
 ; store-node closure under it.  That is the seam this book exists at: no
 ; theorem here reasons about bytes, each is one kernel theorem applied to
