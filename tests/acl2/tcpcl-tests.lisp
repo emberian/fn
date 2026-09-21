@@ -436,7 +436,7 @@
 (assert-event (fn-tcl-session-cheapp *t-a*))
 
 ; -----------------------------------------------------------------------------
-; The same separation on the SENDING side (w11/tcpcl-outbound, D19).  The
+; The same separation on the SENDING side (w11/tcpcl-outbound, D20).  The
 ; cheap guard also drops the two conjuncts of `fn-tcl-outboundp' that measure
 ; the unsent suffix, so `fn-tcl-outboundp-is-cheap' needs the same teeth:
 ; without them it could be an identity between two spellings and a send of n
@@ -505,7 +505,7 @@
 (assert-event (fn-tcl-session-cheapp (fn-tcl-result-session *t-a5*)))
 (assert-event (fn-tcl-session-cheapp (fn-tcl-result-session *t-b4*)))
 
-; And fn-tcl-take/fn-tcl-drop are guard-total now (D19): both answer on a
+; And fn-tcl-take/fn-tcl-drop are guard-total now (D20): both answer on a
 ; count past the end of the list, with the SAME value the logical definition
 ; always had, so relaxing the guard changed no behaviour.  Without this the
 ; length equation could not have left the cheap recognizer.

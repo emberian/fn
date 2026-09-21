@@ -1507,7 +1507,7 @@
 ; chunk in each direction: O(n^2/chunk) in guard checking alone
 ; (planning/lanes/HANDOFF-w8-tcpcl-native.md, "Open"; the served-path rule in
 ; AGENTS.md, D3).  The receive half was cured in w11/tcpcl-theory and the
-; send half here, in w11/tcpcl-outbound (planning/decisions.md D19).
+; send half here, in w11/tcpcl-outbound (planning/decisions.md D20).
 ;
 ; fn-tcl-session-cheapp is that recognizer without those four conjuncts.  Its
 ; cost is the session's own -- its params and the peer's SESS_INIT, both

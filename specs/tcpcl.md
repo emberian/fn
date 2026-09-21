@@ -127,7 +127,7 @@ The outbound half needed one thing besides the split: `fn-tcl-take` and
 `fn-tcl-drop` are guard-total (guard `(natp n)`, the `fn-wire-ag-car` `mbe`
 pattern, logical definitions unchanged), because the length equation was the
 only fact that discharged `fn-tcl-pump`'s take and drop of the next chunk.
-[Decision D19](../planning/decisions.md) records why that, and not a carried
+[Decision D20](../planning/decisions.md) records why that, and not a carried
 `remaining` length, is the cure. The cheap outbound recognizer is separated
 from the specification one by `*t-a-nonoctet*` and `*t-a-wrong-len*` in
 `tests/acl2/tcpcl-tests.lisp`, one per dropped conjunct, each checking that
@@ -271,7 +271,7 @@ transiently beyond it.
   unsent data. The obligation the drop left --- `fn-tcl-pump` takes and drops
   `k = min(mtu, total - sent)` octets of `remaining` --- is discharged by
   making `fn-tcl-take` and `fn-tcl-drop` guard-total rather than by carrying a
-  length: [decision D19](../planning/decisions.md) says why the carried length
+  length: [decision D20](../planning/decisions.md) says why the carried length
   is worse, and §3 says what the relaxed guard gives up.
 
 - The wave-4 checkpoint at `Subgoal 1082.10'` is closed. Its cause was not

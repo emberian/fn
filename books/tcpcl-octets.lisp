@@ -101,7 +101,7 @@
 ; carry (equal (+ sent-len (len remaining)) total): it was the only fact that
 ; discharged fn-tcl-pump's take and drop, and checking it cost a walk of the
 ; unsent suffix on every guarded call into the session machine.  See
-; planning/decisions.md D19 and specs/tcpcl.md section 6.  What the old guard
+; planning/decisions.md D20 and specs/tcpcl.md section 6.  What the old guard
 ; proved at each call site -- that the take is a genuine prefix -- the
 ; decoders' keystones still prove: an over-take pads with nil, which is not
 ; fn-cbor-octet-listp, so fn-tcl-decode-message-yields-message and the round
