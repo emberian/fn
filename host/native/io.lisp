@@ -25,7 +25,9 @@
 ;;; its own:
 ;;;
 ;;;   (fnn-listen port &key family backlog) -> (values socket bound-port)
-;;;   (fnn-connect host port &key family)   -> socket, an active open
+;;;   (fnn-connect host port &key family timeout) -> socket, an active open
+;;;                                            after one nonblocking connect
+;;;                                            deadline (DNS is separate)
 ;;;   (fnn-accept-loop listener handler once) -> one handler call per client
 ;;;   (fnn-socket-fd socket)                -> a nonblocking descriptor the three below take
 ;;;   (fnn-socket-shut socket)              -> close, errors swallowed
@@ -328,8 +330,9 @@ power-loss qualification."
   "Make socket descriptor FD nonblocking, preserving its existing flags.
 
 Every fd exposed by FNN-SOCKET-FD goes through this boundary before the
-deadline-aware recv/send helpers use it.  Connection establishment and DNS
-resolution deliberately remain outside this read/write deadline contract."
+deadline-aware recv/send helpers use it.  FNN-CONNECT also uses it before its
+single connect(2) attempt; DNS resolution remains outside every socket
+deadline contract."
   (fnn-posix ()
     (let ((flags (sb-posix:fcntl fd sb-posix:f-getfl)))
       (sb-posix:fcntl fd sb-posix:f-setfl
@@ -1948,23 +1951,67 @@ by passing one, not this file's default."
             (values listener bound-port)))
       (error (e) (fnn-socket-shut listener) (error e)))))
 
-(defun fnn-connect (host port &key (family :inet))
-  "An active open.  HOST is an address vector, or a name resolved here.
-
-DNS lookup and connect(2) are intentionally outside FNN-RECV/FNN-SEND-ALL's
-read/write deadline contract.  Callers obtain the socket, then FNN-SOCKET-FD
-switches the established descriptor to nonblocking operation."
-  (let ((socket (make-instance (fnn-socket-class family) :type :stream :protocol :tcp)))
+(defvar *fnn-connect-attempt*
+  (lambda (socket address port)
+    "Return :CONNECTED or :PENDING from one nonblocking connect(2) attempt."
     (handler-case
-        (progn
-          (sb-bsd-sockets:socket-connect
-           socket
-           (if (stringp host)
-               (sb-bsd-sockets:host-ent-address (sb-bsd-sockets:get-host-by-name host))
-               host)
-           port)
-          socket)
-      (error (e) (fnn-socket-shut socket) (error e)))))
+        (progn (sb-bsd-sockets:socket-connect socket address port) :connected)
+      (sb-bsd-sockets:operation-in-progress () :pending)))
+  "Raw connect seam.  Tests use :PENDING without inventing a second transport.")
+
+(defvar *fnn-socket-pending-error* #'sb-bsd-sockets:sockopt-error
+  "Raw SO_ERROR seam.  Zero establishes a pending TCP connection.")
+
+(defun fnn-connect-address (host)
+  "Resolve HOST before starting the TCP deadline.
+
+getaddrinfo through SBCL's GET-HOST-BY-NAME is synchronous and can block.
+This intentionally remains a separate availability boundary: no raw thread
+termination is used to pretend that DNS has the TCP deadline."
+  (if (stringp host)
+      (sb-bsd-sockets:host-ent-address (sb-bsd-sockets:get-host-by-name host))
+    host))
+
+(defun fnn-connect-complete (socket fd deadline zero-poll-p)
+  "Wait for one pending nonblocking connect under DEADLINE, then inspect SO_ERROR."
+  (loop
+    (let ((remaining (fnn-seconds-to-deadline deadline)))
+      (when (and (<= remaining 0) (not zero-poll-p))
+        (fnn-os-fail sb-posix:etimedout))
+      (unless (funcall *fnn-fd-waiter* fd :output remaining)
+        (fnn-os-fail sb-posix:etimedout))
+      (setq zero-poll-p nil)
+      (let ((errno (funcall *fnn-socket-pending-error* socket)))
+        (cond ((zerop errno) (return socket))
+              ;; A readiness indication can race a pending state change.
+              ;; Re-enter the same absolute-deadline wait, never connect(2).
+              ((or (= errno sb-posix:einprogress) (= errno sb-posix:ealready)) nil)
+              (t (fnn-os-fail errno)))))))
+
+(defun fnn-connect (host port &key (family :inet) (timeout 10))
+  "An active TCP open with one nonblocking connect deadline.
+
+HOST is an address vector or a name resolved before the TCP attempt.  TIMEOUT
+is a nonnegative host observation in seconds; callers that have a protocol
+policy must obtain it from ACL2.  On success the returned socket is already
+nonblocking and belongs solely to the caller.  A timeout or real SO_ERROR
+closes the private socket before signalling FNN-OS-ERROR.  DNS resolution is
+intentionally not timed by this function."
+  (unless (and (realp timeout) (>= timeout 0))
+    (fnn-fault "invalid TCP connect timeout: ~s" timeout))
+  ;; Resolve first so the TCP deadline says only what it can actually bound.
+  (let* ((address (fnn-connect-address host))
+         (socket (make-instance (fnn-socket-class family) :type :stream :protocol :tcp))
+         (completed nil))
+    (unwind-protect
+         (let* ((fd (fnn-socket-fd socket))
+                (deadline (+ (fnn-now) (* timeout internal-time-units-per-second))))
+           (case (funcall *fnn-connect-attempt* socket address port)
+             (:connected (setq completed t) socket)
+             (:pending (prog1 (fnn-connect-complete socket fd deadline (zerop timeout))
+                         (setq completed t)))
+             (otherwise (fnn-fault "connect boundary returned an invalid status"))))
+      (unless completed (fnn-socket-shut socket)))))
 
 (defun fnn-accept-observe (listener seconds)
   "Return one accepted socket or :TIMEOUT after a bounded readiness wait.

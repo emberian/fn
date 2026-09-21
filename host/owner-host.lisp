@@ -1158,6 +1158,17 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
   (declare (xargs :mode :program))
   *fn-feed-wire-input-max-chunk-octets*)
 
+; The raw socket layer enforces this one TCP completion deadline after DNS has
+; produced an address.  It is deliberately a local ACL2 policy rather than a
+; feed-service literal: a caller cannot silently widen an unavailable peer's
+; attempt window.  DNS remains a separate host availability boundary.
+(defconst *fn-owner-feed-connect-timeout-seconds* 10)
+
+(defun fn-owner-feed-connect-timeout ()
+  "ACL2-owned TCP completion deadline for one outbound peer dial."
+  (declare (xargs :mode :program))
+  *fn-owner-feed-connect-timeout-seconds*)
+
 ; One tick for one peer: the records first, then the bytes.
 (defun fn-owner-feed-tick (peer-octets monotonic state)
   (declare (xargs :stobjs state :mode :program))
