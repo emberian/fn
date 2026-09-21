@@ -8,7 +8,6 @@
 
 (in-package "ACL2")
 (include-book "native-auth-profile")
-(include-book "native-operator")
 (include-book "anchor-replace")
 
 (defconst *fn-native-auth-admin-max-secret-octets* 256)
@@ -58,22 +57,20 @@
   (if (atom words)
       (list :set-options principal-text principal-presentp postingp)
     (cond
-     ((equal (car words) "--principal")
+     ((equal (car words) (fn-record-string-octets "--principal"))
       (if (or principal-presentp (not (consp (cdr words)))
-              (not (equal (len (fn-record-string-octets
-                                (car (cdr words)))) 64))
-              (not (fn-id-hex-listp
-                    (fn-record-string-octets (car (cdr words)))))
+              (not (equal (len (car (cdr words))) 64))
+              (not (fn-id-hex-listp (car (cdr words))))
               )
           :bad
         (fn-native-auth-admin-parse-set-options
-         (cdr (cdr words)) (fn-record-string-octets (car (cdr words)))
+         (cdr (cdr words)) (car (cdr words))
          t postingp posting-seenp)))
-     ((equal (car words) "--posting")
+     ((equal (car words) (fn-record-string-octets "--posting"))
       (if posting-seenp :bad
         (fn-native-auth-admin-parse-set-options
          (cdr words) principal-text principal-presentp t t)))
-     ((equal (car words) "--no-posting")
+     ((equal (car words) (fn-record-string-octets "--no-posting"))
       (if posting-seenp :bad
         (fn-native-auth-admin-parse-set-options
          (cdr words) principal-text principal-presentp nil t)))
@@ -83,19 +80,17 @@
   "Parse argv following the outer `principal' token; never carries a secret."
   (declare (xargs :guard t))
   (if (or (not (true-listp argv))
-          (< *fn-nop-max-arguments* (len argv))
-          (not (fn-nop-argvp argv)))
+          (< 6 (len argv)))
       (fn-native-auth-admin-plan-result :usage :argv-bounds nil)
-    (let ((words (fn-nop-argument-texts argv)))
-      (cond
-       ((and (equal (len words) 1) (equal (car words) "list"))
+    (cond
+       ((and (equal (len argv) 1)
+             (equal (car argv) (fn-record-string-octets "list")))
         (fn-native-auth-admin-plan-result :accepted :plan (list :list)))
-       ((and (<= 2 (len words))
-             (equal (car words) "set-password"))
-        (let* ((name-text (car (cdr words)))
-               (name (fn-record-string-octets name-text))
+       ((and (<= 2 (len argv))
+             (equal (car argv) (fn-record-string-octets "set-password")))
+        (let* ((name (car (cdr argv)))
                (options (fn-native-auth-admin-parse-set-options
-                         (cdr (cdr words)) nil nil t nil)))
+                         (cdr (cdr argv)) nil nil t nil)))
           (cond
            ((not (fn-native-auth-login-namep name))
             (fn-native-auth-admin-plan-result :usage :name nil))
@@ -106,11 +101,12 @@
              :accepted :plan
              (list :set-password name (fn-ncfg-second options)
                    (fn-ncfg-third options) (fn-ncfg-nth 3 options)))))))
-       ((and (consp words) (equal (car words) "set-password"))
+       ((and (consp argv)
+             (equal (car argv) (fn-record-string-octets "set-password")))
         (fn-native-auth-admin-plan-result :usage :missing-name nil))
-       ((null words)
+       ((null argv)
         (fn-native-auth-admin-plan-result :usage :missing-action nil))
-       (t (fn-native-auth-admin-plan-result :usage :unsupported-action nil))))))
+       (t (fn-native-auth-admin-plan-result :usage :unsupported-action nil)))))
 
 (defun fn-native-auth-admin-action-kind (plan-result)
   (declare (xargs :guard t))
