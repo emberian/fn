@@ -42,7 +42,7 @@ credential --- which is every two-node harness fn has. `AUTHINFO PASS`
 answered 481 with the secret the CLI had just written, no AUTHINFO label was
 advertised and POST was never gated (v0 matrix `c3b99f8`, eight F-AUTH rows).
 The before-and-after measurement is
-[auth-live](evidence/auth-live-2026-09-21.md), PRF-038 is the pair of
+[auth-live](evidence/auth-live-2026-09-21.md), PRF-039 is the pair of
 theorems, and the boundary test that would have caught it --- `bin/fn run`
 over an `fn.toml`, with a peer record, logging in with a credential written
 in the same test --- is `tests/test_auth.py ServedCredentialTests`. `fn init`
@@ -182,6 +182,8 @@ the whole-tree run behind these statuses is
 | Durable scheduling with fairness | **done, with a caution** | REP-005 `implemented`; `fn-sched-conditional-progress-under-a-fairness` is conditional on a constrained assumption |
 | The scheduler host writes valid records | **open** | `fn-sched-host-decision-octets` builds a `:bad` record ([BOARD](deputies/BOARD.md), w3-scheduler) |
 | Interrupted contact-plan run | **open** | no evidence file exists; the w9/dtn-e2e lane owns it |
+| fn authors a BPv7 bundle another implementation accepts | **done** | `books/bp-node` certifies; dtn7-rs 0.21.0 decoded and delivered fn's 138-octet bundle, and fn decoded and re-encoded dtn7-rs's 132-octet one byte for byte ([bp-dtn7-w11](evidence/bp-dtn7-w11-2026-09-21.md)) |
+| The node's processing machine (`fn-bpn-step`, T1 to T6) | **open** | `books/bp-node` is the two ends of `specs/bp-design.md` §1.5, not the machine; §1.5.1 lists what is absent and nothing claims T1 to T6 |
 | LTP | **open** | `planning/ltp-feasibility.md` is a study; REP-006 stays `specified` for that half |
 
 ### v0.4 substrate transport -- fiber record: [fiber-substrate-transport](evidence/fiber-substrate-transport-2026-09-20.md)
@@ -431,7 +433,14 @@ loopback and one each way with dtn7-rs 0.21.0 over RFC 9174. That closes v0.4's
 gate, "a two-node transfer over fn's own convergence layer", and nothing more:
 the image is the DTN-only build list, there is no BP node behind the layer, and
 `books/tcpcl-invariants` had no verdict against the new text when this was
-written. It has one now: `w9/dtn-e2e` reverted that guard rather than leave
+written. **There is a BP node behind the layer as of 2026-09-21**:
+`w11/bp-node` gave `books/bp-node` and `tests/acl2/bp-node-tests` their first
+certificates, the DTN image carries the node, `tools/tcpcl_lab.py --scenario
+adu` passes fn to fn with the bundle authored by `fn-bpn-send` at each end,
+and the dtn7-rs exchange now has **one side authoring each way** rather than
+dtn7 authoring both — with the octets kept in `tests/bp-dtn7/golden/` and the
+dtn7-authored one inlined in a certified book
+([the evidence](evidence/bp-dtn7-w11-2026-09-21.md)). It has one now: `w9/dtn-e2e` reverted that guard rather than leave
 the invariants book timing out, and `w11/tcpcl-theory` re-landed it together
 with the theory work the book needed to survive it, all three roots certified
 together (`certify-20260921T000317Z-1324995`, the invariants book 609.69 s to
