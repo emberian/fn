@@ -1,0 +1,19 @@
+usage: fn operator CONFIG run [--once]
+accepted operator help
+usage operator configuration [Errno 2] No such file or directory: '/missing/fn.toml'
+transactions=0 articles=0 staging-orphans=0 unsigned-legacy-experiment
+accepted operator STATUS
+LISTENING 39461
+accepted operator run
+
+loopback client during `run --once`:
+greeting=200 fn-nntp experimental server ready
+quit=205 closing connection
+CLIENT=0 RUN=0
+
+config-boundary unittest:
+test_help_does_not_open_missing_config ... ok
+test_missing_directory_and_oversize_config_are_usage ... ok
+test_unreadable_config_is_fault ... ok
+Ran 3 tests in 0.107s
+OK
