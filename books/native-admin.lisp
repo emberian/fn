@@ -16,7 +16,7 @@
 (include-book "peer-config")
 (include-book "identity")
 
-(defconst *fn-native-admin-max-arguments* 14)
+(defconst *fn-native-admin-max-arguments* 16)
 (defconst *fn-native-admin-max-argument-octets* 512)
 (defconst *fn-native-admin-config-name-width* 8)
 (defconst *fn-native-admin-config-name-limit* 100000000)
@@ -121,13 +121,18 @@ The explicit grammar carries auth-kind/auth-value.  The older grammar is
 decoded as source-address for durable command compatibility."
   (declare (xargs :guard t))
   (let* ((count (len words))
-         (explicitp (member-equal count '(11 14)))
+         (v2p (and (member-equal count '(13 16))
+                   (member-equal (nth 8 words) '("source-address" "principal"))))
+         (explicitp (or v2p (member-equal count '(11 14))))
          (auth-kind (if explicitp (nth 8 words) "source-address"))
          (auth-value (if explicitp (nth 9 words) (nth 8 words)))
-         (streaming (if explicitp (nth 10 words) (nth 9 words)))
-         (security-index (if explicitp 11 10)))
+         (profile (if v2p (nth 10 words) "-"))
+         (allow-clear (if v2p (nth 11 words) "false"))
+         (streaming (if v2p (nth 12 words)
+                      (if explicitp (nth 10 words) (nth 9 words))))
+         (security-index (if v2p 13 (if explicitp 11 10))))
     (if (and (true-listp words)
-             (member-equal count '(10 11 13 14))
+             (member-equal count '(10 11 13 14 16))
              (equal (car words) "peer")
              (equal (cadr words) "add")
              (fn-native-admin-decimalp (nth 5 words))
@@ -142,7 +147,11 @@ decoded as source-address for durable command compatibility."
                (and (equal (len (fn-record-string-octets auth-value)) 64)
                     (fn-id-hex-listp (fn-record-string-octets auth-value))))
              (member-equal streaming '("true" "false"))
-             (or (member-equal count '(10 11))
+             (or (not v2p)
+                 (and (not (equal profile "-"))
+                      (member-equal allow-clear '("true" "false"))))
+             (or (equal count 10) (equal count 11)
+                 (and v2p (equal count 13))
                  (and (member-equal (nth security-index words)
                                     '("clear" "implicit" "starttls"))
                       (if (equal (nth security-index words) "clear")
@@ -153,14 +162,19 @@ decoded as source-address for durable command compatibility."
         (let* ((inbound (if (equal (nth 6 words) "-") nil
                           (list (nth 6 words) *fn-record-max-payload* 16)))
                (outbound (if (equal (nth 7 words) "-") nil
-                           (list (nth 7 words) (equal streaming "true")
-                                 1024 1000)))
+                           (append (list (nth 7 words) (equal streaming "true")
+                                         1024 1000)
+                                   (if v2p
+                                       (list (list :authinfo profile
+                                                   (equal allow-clear "true")))
+                                     nil))))
                (peer (fn-cfg-peer-make
                       (nth 2 words) (nth 3 words)
                       (list :nntp 1 (nth 4 words)
                             (fn-native-admin-decimal-value
                              (coerce (nth 5 words) 'list))
-                            (if (or (member-equal count '(10 11))
+                            (if (or (equal count 10) (equal count 11)
+                                    (and v2p (equal count 13))
                                     (equal (nth security-index words) "clear"))
                                 '(:clear)
                               (list :tls
