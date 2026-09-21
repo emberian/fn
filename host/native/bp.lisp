@@ -78,20 +78,38 @@ zero of RFC 9171 section 4.2.6 rather than a monotonic counter."
   (journal nil) (last-adu nil) (last-reason nil))
 
 (defun fnn-bp-journal-dir (root)
-  ;; FNN-SAFE-DIRECTORY barriers the parent when it creates ROOT.  Without
-  ;; that barrier a successful child frontier replace could survive while the
-  ;; newly-created journal name did not, making a power-loss recovery look like
-  ;; a fresh allocator and reuse zero.
-  (fnn-safe-directory root t)
-  root)
+  ;; FNN-SAFE-DIRECTORY barriers the parent only when it creates ROOT.  The
+  ;; explicit BP barrier below is also required when ROOT already exists: a
+  ;; prior mkdir may have succeeded while its parent fsync failed.  Retrying
+  ;; must re-establish that publication before a child FNBS record can make a
+  ;; later disappearance of ROOT look like a fresh allocator.
+  (handler-case
+      (progn
+        (fnn-safe-directory root t)
+        (if (string= (or (sb-ext:posix-getenv "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER") "")
+                     "1")
+            ;; Test-only fault point for the existing-root recovery cut.  It
+            ;; represents an error from the parent barrier; normal operation
+            ;; always calls FNN-FSYNC-DIR below.
+            (fnn-indeterminate "bp: injected journal root parent barrier failure")
+          (fnn-fsync-dir (fnn-parent root)))
+        root)
+    (fnn-os-error (e)
+      (fnn-indeterminate "bp: journal root parent publication failed: ~a" e))))
 
 (defun fnn-bp-sequence-dir (tally)
   (let* ((dir (fnn-join (fnn-bp-tally-journal tally) "sequence"))
          (prior (fnn-lstat dir)))
-    ;; The creation path fsyncs the journal directory; an already existing
-    ;; namespace must have a frontier and is never silently reinitialised.
-    (fnn-safe-directory dir t)
-    (values dir (null prior))))
+    ;; The creation path fsyncs the journal directory; this explicit barrier
+    ;; repeats it on recovery too.  An already existing namespace must have a
+    ;; frontier and is never silently reinitialised.
+    (handler-case
+        (progn
+          (fnn-safe-directory dir t)
+          (fnn-fsync-dir (fnn-parent dir))
+          (values dir (null prior)))
+      (fnn-os-error (e)
+        (fnn-indeterminate "bp: sequence namespace publication failed: ~a" e)))))
 
 (defun fnn-bp-sequence-lock (dir)
   (let ((fd (fnn-open (fnn-join dir "frontier.lock")

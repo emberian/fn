@@ -1,0 +1,159 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/bp-node-records": 0,
+    "tests/acl2/bp-node-records-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w12-bp-sequence/build/acl2/certify-20260921T063641Z-88877",
+  "book_failures": {},
+  "book_results": {
+    "books/bp-node-records": "passed",
+    "tests/acl2/bp-node-records-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/bp-node-records": 1.294,
+    "tests/acl2/bp-node-records-tests": 1.245
+  },
+  "cert_cache": {
+    "already_cached": 2,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": true,
+        "book": "books/bp-node-records",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/bp-node-records-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/bp-node-records": "5f0f87d0cfec1afd9e86c86206bbaff1d6071b966f31800283bc75d48995829a",
+    "tests/acl2/bp-node-records-tests": "f2a55995bfd6699578fe4b50c6cade347c91e0c1d99f6303a39786de092bf550"
+  },
+  "certify_wall_seconds": 2.625,
+  "closure": false,
+  "command": [
+    "/opt/homebrew/bin/acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/bp-node-records": "eb15dbfdbdd7a88dd2836552857f10aa6a520a8f9974e7b856d12a6bba523bef",
+    "tests/acl2/bp-node-records-tests": "232b46c2194a5b4b60f8a919bf8b0ddcc128ba92e8f0cff0ce6efcf48ebc36a6"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 886772ffa23b02317894a83f5f308822 c871073e142b",
+    "FN_CERTIFY_SUCCESS 886772ffa23b02317894a83f5f308822 99c7371516a7"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T06:36:44+00:00",
+  "git_branch": "w12/bp-sequence",
+  "git_dirty": true,
+  "git_revision": "f3807aeb2ed137da2dbabb9d39feb369d3a74061",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 886772ffa23b02317894a83f5f308822 c871073e142b",
+    "FN_CERTIFY_SUCCESS 886772ffa23b02317894a83f5f308822 99c7371516a7"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "books/bp-node-records",
+    "tests/acl2/bp-node-records-tests"
+  ],
+  "requested_books": [
+    "books/bp-node-records",
+    "tests/acl2/bp-node-records-tests"
+  ],
+  "run_id": "certify-20260921T063641Z-88877",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/bp-node-records": 0.0,
+    "tests/acl2/bp-node-records-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/bp-node-records.lisp": "f4f5f5f0f3493d304c926d6528317fd233a8ed1c5e94c0d6f4390afe7eab1a6e",
+    "books/bp-primary-cbor.lisp": "7b14fd94ddcc80919a128ab7f43f27aed9a47bf14d380a8e8b2f95bef0174a67",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-attach.lisp": "54a655456b13ce20957d519608c284d3f1ec81c3a364d274373dd632547e945e",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "a67624c2c8390faec404253353765075e7a66f707c6ef3341ea8ab4a99a3c1b8",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame-trailer.lisp": "0886078615817c8fb29aa57fae6aa53fb2c8ac5977cfd01ccf87fc587057223f",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-node-records-tests.lisp": "a01cf7d57db8d81d80cb848ea513dbf2c71386142c00866c34769945fe2f5216"
+  },
+  "source_digests_sha256_after": {
+    "books/bp-node-records.lisp": "f4f5f5f0f3493d304c926d6528317fd233a8ed1c5e94c0d6f4390afe7eab1a6e",
+    "books/bp-primary-cbor.lisp": "7b14fd94ddcc80919a128ab7f43f27aed9a47bf14d380a8e8b2f95bef0174a67",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-attach.lisp": "54a655456b13ce20957d519608c284d3f1ec81c3a364d274373dd632547e945e",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "a67624c2c8390faec404253353765075e7a66f707c6ef3341ea8ab4a99a3c1b8",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame-trailer.lisp": "0886078615817c8fb29aa57fae6aa53fb2c8ac5977cfd01ccf87fc587057223f",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-node-records-tests.lisp": "a01cf7d57db8d81d80cb848ea513dbf2c71386142c00866c34769945fe2f5216"
+  },
+  "start_order": [
+    "books/bp-node-records",
+    "tests/acl2/bp-node-records-tests"
+  ],
+  "started_utc": "2026-09-21T06:36:41+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/w12-bp-sequence"
+}
