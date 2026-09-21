@@ -126,7 +126,11 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-sn-make groups capacity
               (fn-sf-make :replaying frontier nil records nil nil nil 0)
-              (fn-node-initial-state groups capacity)))
+              (fn-node-initial-state groups capacity)
+              ; A seed is an image fact, so it carries the empty verification
+              ; context and the empty index (D21); fn-sn-recover recomputes
+              ; the index over the replayed store.
+              nil (fn-stx-index-empty)))
 
 (verify-guards fn-sn-observed-seed)
 
