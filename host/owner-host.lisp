@@ -76,9 +76,16 @@
                       (fn-owner-group-octets (fn-cnode-served-of cfg))
                       *fn-store-max-payload*))
 
-(defun fn-owner-ocfg-state (state)
+(defun fn-owner-ocfg (state)
+  ; Internal, single-valued accessor for host wrappers.
   (declare (xargs :stobjs state :mode :program))
-  (value (f-get-global 'fn-owner state)))
+  (f-get-global 'fn-owner state))
+
+(defun fn-owner-ocfg-state (state)
+  ; External ACL2 bridge accessor.  `value' is intentionally only at this
+  ; boundary; host functions use fn-owner-ocfg above as a single value.
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-owner-ocfg state)))
 
 ; `fn-owner' has one canonical value: the configured owner.  These are the
 ; only host accessors for its raw owner component.  A wrapper that changes
@@ -92,7 +99,7 @@
   ; The one live configuration.  No host global shadows this value: every
   ; caller reads the generation replayed into and published by fn-ocfg.
   (declare (xargs :stobjs state :mode :program))
-  (fn-ocfg-config (fn-owner-ocfg-state state)))
+  (fn-ocfg-config (fn-owner-ocfg state)))
 
 (defun fn-owner-install-ocfg (oc state)
   (declare (xargs :stobjs state :mode :program))
@@ -171,7 +178,7 @@
 (defun fn-owner-step (event state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (fn-owner-install-ocfg
-                (fn-ocfg-step (fn-owner-ocfg-state state) event) state)))
+                (fn-ocfg-step (fn-owner-ocfg state) event) state)))
     state))
 
 ; The live control path is deliberately small for this packet: a configured
@@ -196,18 +203,18 @@
     (if (equal name :bad)
         (let ((state (f-put-global 'fn-owner-config-reason :group-name state)))
           (value :refused))
-      (let* ((oc (fn-owner-ocfg-state state))
+      (let* ((oc (fn-owner-ocfg state))
              (deltas (fn-owner-config-deltas kind name)))
         (if (null deltas)
             (let ((state (f-put-global 'fn-owner-config-reason :delta-kind state)))
               (value :refused))
           (let* ((reason (fn-ocfg-reconfig-refusal oc id deltas))
                  (state (fn-owner-step (list :reconfigure id deltas) state))
-                 (staged (fn-ocfg-staged (fn-owner-ocfg-state state))))
+                 (staged (fn-ocfg-staged (fn-owner-ocfg state))))
             (if staged
-                (let ((state (f-put-global 'fn-owner-config-octets
-                                             (fn-cfg-encode staged) state))
-                      (state (f-put-global 'fn-owner-config-reason nil state)))
+                (let* ((state (f-put-global 'fn-owner-config-octets
+                                              (fn-cfg-encode staged) state))
+                       (state (f-put-global 'fn-owner-config-reason nil state)))
                   (value :staged))
               (let ((state (f-put-global 'fn-owner-config-reason reason state)))
                 (value :refused)))))))))
@@ -227,7 +234,7 @@
   ; refreshes only the injection configuration for future posts, preserving
   ; all connection/session pins already held by fn-ocfg.
   (declare (xargs :stobjs state :mode :program))
-  (let* ((before (fn-owner-ocfg-state state))
+  (let* ((before (fn-owner-ocfg state))
          (record (fn-ocfg-staged before)))
     (if (or (not record)
             (not (equal (fn-cfg-record-generation record) generation)))
@@ -483,7 +490,7 @@
              ; by source address alone (fn-owner-peer-name-for below), so on
              ; a box where a configured peer is on loopback that was every
              ; client: the operator's credential reached nothing.
-             (opened (fn-ocfg-open-peer (fn-owner-ocfg-state state) peer
+             (opened (fn-ocfg-open-peer (fn-owner-ocfg state) peer
                                         (fn-owner-auth state)))
              (state (fn-owner-install-ocfg (cdr opened) state))
              (state (fn-owner-install-effects (car opened) state)))
@@ -777,7 +784,7 @@
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
-      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg-state state)
+      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg state)
                                         id (list :tls-established)))
              (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
@@ -791,7 +798,7 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-core state))
          (id (fn-own-next-id before))
-         (opened (fn-ocfg-open (fn-owner-ocfg-state state)
+         (opened (fn-ocfg-open (fn-owner-ocfg state)
                                (fn-owner-auth state)))
          (state (fn-owner-install-ocfg (cdr opened) state))
          (state (fn-owner-install-effects (car opened) state)))
@@ -808,7 +815,7 @@
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
-      (let* ((result (fn-ocfg-read (fn-owner-ocfg-state state) id octets))
+      (let* ((result (fn-ocfg-read (fn-owner-ocfg state) id octets))
              (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
@@ -836,7 +843,7 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
          (knownp (if (fn-own-find-conn id (fn-own-conns owner)) t nil))
-         (result (fn-ocfg-fault (fn-owner-ocfg-state state) id))
+         (result (fn-ocfg-fault (fn-owner-ocfg state) id))
          (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state)))
     (value (if knownp :faulted :unknown))))
