@@ -1,0 +1,326 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "books/article": 0,
+    "books/cbor": 0,
+    "books/cbor-invariants": 0,
+    "books/crypto-seam": 0,
+    "books/defrecord": 0,
+    "books/records": 0,
+    "books/records-invariants": 0,
+    "books/statement": 0,
+    "books/statement-invariants": 0,
+    "books/stx-carrier": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/Users/ember/dev/fn/build/lanes/w30-stx-carrier-bound-proof/build/acl2/certify-20260921T190349Z-3063692",
+  "book_failures": {},
+  "book_results": {
+    "books/article": "passed",
+    "books/cbor": "passed",
+    "books/cbor-invariants": "passed",
+    "books/crypto-seam": "passed",
+    "books/defrecord": "passed",
+    "books/records": "passed",
+    "books/records-invariants": "passed",
+    "books/statement": "passed",
+    "books/statement-invariants": "passed",
+    "books/stx-carrier": "passed"
+  },
+  "book_wall_seconds": {
+    "books/article": 0.64,
+    "books/cbor": 0.134,
+    "books/cbor-invariants": 0.629,
+    "books/crypto-seam": 0.445,
+    "books/defrecord": 0.086,
+    "books/records": 4.112,
+    "books/records-invariants": 28.278,
+    "books/statement": 5.496,
+    "books/statement-invariants": 25.316,
+    "books/stx-carrier": 0.861
+  },
+  "cert_cache": {
+    "already_cached": 10,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/cbor",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/article",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/cbor-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/defrecord",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/records",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/records-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/crypto-seam",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/statement",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/statement-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/stx-carrier",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 10,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/article": "8d51d36f506dcf3e9355f4d19592e86f2621b1de6bfe72bda32c1d03446e8201",
+    "books/cbor": "f979aef6ea962d4bcec47385e314dfcd245de932fd2d4d0cd9c995aae46992c3",
+    "books/cbor-invariants": "36ac8b2a68ed4993570032ea72bb98cfa2be674432c64c03c0c8d3a55c923c89",
+    "books/crypto-seam": "c4bb6af67f33404c02713b95a347eb858006578109dd4091010239be9f87f413",
+    "books/defrecord": "deb9ae27efe86bc5fc34a3581de92330918ae50237c94212959d4b5e2f6d8aea",
+    "books/records": "b8d85c9f4ec46dae7fa2ad4d5c2d97eee2a35e25976913970f4dc3be63b657db",
+    "books/records-invariants": "3056a593ef28b9e05bce97819d054e79297a6e8e0ff23f30d777caba0e56cfa8",
+    "books/statement": "a31ed8369dbfd4b8b40f84e3bd504797c23f3ed3942fa8218f63767116b1b5ad",
+    "books/statement-invariants": "5b5a0336a576e83d4c113c35af3ab3b9291024f02c6dd371434b58408481e74d",
+    "books/stx-carrier": "f4e949c78af2f69d06a08bc72f63f9b2d08eb87dedd91b563ee65b5b606e41ce"
+  },
+  "certify_wall_seconds": 66.064,
+  "closure": true,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "driver_digests_sha256": {
+    "books/article": "e9f6fce679c9a91bf07b23be1d174f316359f3bb83489f9267cdc924c909d59c",
+    "books/cbor": "1963b27b7dce523224554da6c19445cc3551f34cd77096a1265577fa0b37c896",
+    "books/cbor-invariants": "db8fe78805e74073db2a6625b34b7309d674a587ba3894d8e57756cbb4f93cd0",
+    "books/crypto-seam": "51fb26c0a387c99447e91ca46cb714e7e07b65c78aada3271232b8cf9e16049d",
+    "books/defrecord": "5821eb703166a8b017ba7239df73aa3d344567ef6c6fba2d5d054df7fa201d4c",
+    "books/records": "430f55af845c913058e01122480bf3a9d45e7d4bb2b88e9eb51048ed768cc25c",
+    "books/records-invariants": "de7038441738c25618f2b2f1ec13314b7d52e2384dc13b5539f33ffe05bbb832",
+    "books/statement": "9f1ad4548bc35041fb979f5fb6631593a1e499127167ce1a04590a85b86f619a",
+    "books/statement-invariants": "91e3a7b71b1d5aaad78c5a9d58f6c3df37a0856cfc8e447622c05be7f18d6789",
+    "books/stx-carrier": "710ff1f27626ebb16e67dd252d79e7e2691bb172f43b5321031d295e86b76483"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 855ea5d810a2",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c bf0ee880713d",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c d45992d8befd",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c c995de05ead1",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 593ea745a8c4",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 5cbf30634c44",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 3818b94ef8d7",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 8fbe466a01c4"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T19:04:55+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 855ea5d810a2",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c bf0ee880713d",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c d45992d8befd",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c c995de05ead1",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 593ea745a8c4",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 5cbf30634c44",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 3818b94ef8d7",
+    "FN_CERTIFY_SUCCESS 57dc4b2db12e9ccb0660edc7afbcf94c 8fbe466a01c4"
+  ],
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "662e8ef911ffe2cef222a48b8a279a01f86a4557dcf1fc00bc8002c8d8dfacb4",
+  "requested_before_filter": [
+    "books/stx-carrier"
+  ],
+  "requested_books": [
+    "books/cbor",
+    "books/article",
+    "books/cbor-invariants",
+    "books/defrecord",
+    "books/records",
+    "books/records-invariants",
+    "books/crypto-seam",
+    "books/statement",
+    "books/statement-invariants",
+    "books/stx-carrier"
+  ],
+  "run_id": "certify-20260921T190349Z-3063692",
+  "runner_sha256": "cb79d3bea9e5a531e33e44c882f8f615d4c0258db2c4f7361746ff1e2416c7d6",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/article": 0.0,
+    "books/cbor": 0.0,
+    "books/cbor-invariants": 0.0,
+    "books/crypto-seam": 0.0,
+    "books/defrecord": 0.0,
+    "books/records": 0.0,
+    "books/records-invariants": 0.0,
+    "books/statement": 0.0,
+    "books/statement-invariants": 0.0,
+    "books/stx-carrier": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "999c4e6d08f6cb6ade7ca6b80da1564c4ecd26727a0c5e1c382d7aa7e3a36f64",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/statement-invariants.lisp": "ae9301f03968f83bcfa91f492a616bef7706bd0e7979a50290abdb700dc1c601",
+    "books/statement.lisp": "48887b25bfe62fa7c820a1348a43849152641813fb834f39368c7f6dbe5aac7a",
+    "books/stx-carrier.lisp": "1dd4ad390544ddc2efbd9427cada1bfa41d542c9f2c61e4fde94beb7edbdf343"
+  },
+  "source_digests_sha256_after": {
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "999c4e6d08f6cb6ade7ca6b80da1564c4ecd26727a0c5e1c382d7aa7e3a36f64",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/statement-invariants.lisp": "ae9301f03968f83bcfa91f492a616bef7706bd0e7979a50290abdb700dc1c601",
+    "books/statement.lisp": "48887b25bfe62fa7c820a1348a43849152641813fb834f39368c7f6dbe5aac7a",
+    "books/stx-carrier.lisp": "1dd4ad390544ddc2efbd9427cada1bfa41d542c9f2c61e4fde94beb7edbdf343"
+  },
+  "start_order": [
+    "books/cbor",
+    "books/article",
+    "books/cbor-invariants",
+    "books/defrecord",
+    "books/records",
+    "books/records-invariants",
+    "books/crypto-seam",
+    "books/statement",
+    "books/statement-invariants",
+    "books/stx-carrier"
+  ],
+  "started_utc": "2026-09-21T19:03:49+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/w30-stx-carrier-bound-proof"
+}
