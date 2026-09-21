@@ -9,6 +9,8 @@
   (fn-jpub-step publication event))
 (defun fn-jpub-host-action (publication)
   (fn-jpub-next-action publication))
+(defun fn-jpub-host-phase (publication)
+  (fn-jpub-phase publication))
 (defun fn-jpub-host-outcome (publication)
   (fn-jpub-outcome publication))
 (defun fn-jpub-host-terminalp (publication)

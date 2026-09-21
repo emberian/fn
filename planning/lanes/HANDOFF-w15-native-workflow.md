@@ -25,11 +25,13 @@ The shared raw executor is:
 
 `publication` must be an ACL2-authorized `(fn-jpub-initial t)` issued by the
 caller's allocation machine after it observes its exclusive lock and absence
-of ACL2's exact selected name.  The executor checks that state and cannot mint
-authority.  Its result is exactly `:durable`, `:refused`, or `:uncertain`.
+of ACL2's exact selected name.  These are trusted caller observations rather
+than an unforgeable capability against hostile raw Lisp.  The executor checks
+the state but does not establish the premise itself.  Its result is exactly
+`:durable`, `:refused`, or `:uncertain`.
 The optional callback receives `(point publication)` after `:file-barrier`,
 `:link-result`, and successful `:directory-barrier` observations.  The app
-caller obtains its capability from `fn-aj-authorize`; checkpoint and BP
+caller obtains its authorized operation from `fn-aj-authorize`; checkpoint and BP
 evidence callers must retain their own ACL2 allocation/frontier contract.
 
 `fnn-app-open` takes an already-open `fnn-store`; it neither opens a second
@@ -58,12 +60,11 @@ It built a 283 MiB core.  Against that image:
 python3 -m unittest -v tests.test_native_app_journal
 ```
 
-passed four tests.  The witnesses cover Store-bound enqueue and outstanding
+passed six tests.  The witnesses cover Store-bound enqueue and outstanding
 status after process restart; pre-link stage `EIO` reported as refused with no
 intent; final-directory barrier `EIO` reported as uncertain with a visible
 intent, no outcome, a fenced retry, and no equal-byte durability shortcut; and
-native persistence of request context, receipt intent, committed decision,
-then identical nonempty receipt regeneration in two fresh processes.
+a held-but-fenced Store rejected before any journal mutation; callbacks observing file, link and directory barriers saw the already-reported ACL2 phase; and native persistence of request context, receipt intent, committed decision, then identical nonempty receipt regeneration in two fresh processes.
 
 Existing adapters remained green when run in their isolated supported test
 processes:
