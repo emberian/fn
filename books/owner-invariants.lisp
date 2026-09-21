@@ -940,8 +940,9 @@
 
 ; The host calls fn-owner-control-outcome (host/owner-host.lisp), whose state
 ; transition is this function.  It gates acceptance on the same completion
-; predicate as served fn-own-outcome and creates exactly the same feed state
-; and durable records from the same in-flight submission.
+; predicate as served fn-own-outcome.  The host calls
+; fn-owner-submission-intent before the store and
+; fn-owner-submission-resolution before this state transition.
 (defthm fn-own-control-accepted-uses-owner-completion
   (implies (equal (fn-own-control-outcome-result o word) :accepted)
            (equal (fn-own-outcome-completion o word) :durable))
@@ -951,13 +952,35 @@
 (defthm fn-own-control-durable-feeds-the-owner-targets
   (implies (and (fn-own-control-submissionp (fn-own-inflight o))
                 (equal (fn-own-outcome-completion o word) :durable))
-           (and (equal (fn-own-feeds (fn-own-control-outcome o word))
-                       (fn-own-feed-durable o (fn-own-inflight o)))
-                (equal (fn-own-control-outcome-records o word)
-                       (fn-own-feed-durable-records o (fn-own-inflight o)))))
+           (equal (fn-own-feeds (fn-own-control-outcome o word))
+                  (fn-own-feed-durable o (fn-own-inflight o))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-own-control-outcome
-                                     fn-own-control-outcome-records))))
+  :hints (("Goal" :in-theory (enable fn-own-control-outcome))))
+
+; KEYSTONE.  The durable resolution the actual host wrapper writes is a
+; commit, and it repeats the exact values of the intent written before the
+; store began.  Thus the acceptance-time targets, object identity,
+; provenance, configuration generation, transaction id and tick cross both
+; crash cuts without Python reconstructing any field.
+(defthm fn-own-control-accepted-resolves-the-exact-intent
+  (implies (and (equal (fn-own-outcome-completion o word) :durable)
+                (equal (fn-own-submission-intent-result
+                        o evidence generation txid) :ready)
+                (consp (fn-own-submission-targets o)))
+           (let ((intent (fn-own-submission-intent-records
+                          o evidence generation txid))
+                 (resolution (fn-own-submission-resolution-records
+                              o word evidence generation txid)))
+             (and (consp resolution)
+                  (equal (fn-feed-journal-kind (car resolution)) :feed-commit)
+                  (equal (fn-feed-journal-values (car resolution))
+                         (fn-feed-journal-values (car intent))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-own-submission-intent-result
+                                     fn-own-submission-intent-records
+                                     fn-own-submission-resolution-records
+                                     fn-own-feed-resolution-records
+                                     fn-own-feed-intent-records))))
 
 (defthm fn-own-outcome-preserves-relation
   (implies (fn-own-relation o)

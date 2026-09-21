@@ -712,6 +712,108 @@
                       *own-control-groups* *own-control-source*)
                      :busy))
 
+; The control submission's durable-intent path uses the exact authored bytes
+; and the injection decision's groups.  This legacy-shaped local article has
+; no Injection-Info; it nevertheless targets the configured outbound peer
+; without rewriting one byte of the stored object.
+(defconst *own-out-peer-record*
+  (fn-cfg-peer-make "out" "out.example" '(:nntp "127.0.0.1" 2119)
+                    nil '("fn.*" nil 1 1) '(:source-address "127.0.0.2")))
+(defconst *own-out-cfg*
+  (fn-config-replay 0 510
+                    (list (fn-cfg-record-make
+                           0 0 1
+                           (append *fn-cfg-default-change*
+                                   (list (fn-cfg-set-policy
+                                          "path-identity" "own.example")
+                                         (fn-cfg-set-peer-delta
+                                          *own-out-peer-record*)))
+                           *fn-cfg-default-stamp*))))
+(defconst *own-control-fed-queued*
+  (fn-own-control-submit
+   (fn-own-feeds-reconfigure *own-after-post* *own-out-cfg*)
+   *own-control-msgid* *own-control-groups* *own-control-source*))
+(defconst *own-control-fed-taken*
+  (fn-own-take-submission *own-control-fed-queued*))
+(defconst *own-control-evidence*
+  (fn-nntp-string-octets "own-release:<control@example.invalid>"))
+(defconst *own-control-intents*
+  (fn-own-submission-intent-records *own-control-fed-taken*
+                                    *own-control-evidence* 1 3))
+(assert-event (equal (fn-own-submission-intent-result
+                      *own-control-fed-taken* *own-control-evidence* 1 3)
+                     :ready))
+(assert-event (equal (len *own-control-intents*) 1))
+(assert-event (equal (fn-feed-journal-kind (car *own-control-intents*))
+                     :feed-intent))
+(assert-event (equal (fn-feed-record-peer
+                      (fn-feed-journal-values (car *own-control-intents*)))
+                     (fn-record-string-octets "out")))
+(assert-event (equal (fn-frame-item 2
+                                    (fn-feed-journal-values
+                                     (car *own-control-intents*)))
+                     (fn-own-feed-intent-id *own-control-msgid*
+                                            *own-control-source*)))
+(assert-event (equal (fn-inj-decision-octets
+                      (fn-own-sub-decision
+                       (fn-own-inflight *own-control-fed-taken*)))
+                     *own-control-source*))
+
+; A consumed owner completion projects a matching commit; a known duplicate
+; projects a matching abort; uncertainty retains the intent.  All seven key
+; fields, including transaction id and tick, are identical.
+(defconst *own-control-fed-done*
+  (fn-own-run *own-control-fed-taken*
+              (own-post-events (own-record 3 3 "<control@example.invalid>"))))
+(defconst *own-control-commits*
+  (fn-own-submission-resolution-records *own-control-fed-done* :durable
+                                        *own-control-evidence* 1 3))
+(defconst *own-control-aborts*
+  (fn-own-submission-resolution-records *own-control-fed-taken* :duplicate
+                                        *own-control-evidence* 1 3))
+(assert-event (equal (fn-feed-journal-kind (car *own-control-commits*))
+                     :feed-commit))
+(assert-event (equal (fn-feed-journal-kind (car *own-control-aborts*))
+                     :feed-abort))
+(assert-event (equal (fn-feed-journal-values (car *own-control-commits*))
+                     (fn-feed-journal-values (car *own-control-intents*))))
+(assert-event (equal (fn-feed-journal-values (car *own-control-aborts*))
+                     (fn-feed-journal-values (car *own-control-intents*))))
+(assert-event (null (fn-own-submission-resolution-records
+                     *own-control-fed-taken* :uncertain
+                     *own-control-evidence* 1 3)))
+
+; Isolation tooth: changing only the transaction id makes another retry.
+; Resolving this attempt cannot consume that earlier key.
+(defconst *own-control-old-values*
+  (fn-own-feed-intent-values "out" *own-control-msgid*
+                             (fn-own-feed-intent-id *own-control-msgid*
+                                                    *own-control-source*)
+                             *own-control-evidence* 1 2 0))
+(defconst *own-control-new-values*
+  (fn-own-feed-intent-values "out" *own-control-msgid*
+                             (fn-own-feed-intent-id *own-control-msgid*
+                                                    *own-control-source*)
+                             *own-control-evidence* 1 3 0))
+(assert-event
+ (member-equal (fn-own-feed-intent-key *own-control-old-values*)
+               (fn-own-feed-intent-apply
+                (list (fn-own-feed-intent-key *own-control-old-values*)
+                      (fn-own-feed-intent-key *own-control-new-values*))
+                :feed-abort *own-control-new-values*)))
+
+; Capacity is decided before store mutation.  Once the only slot is occupied,
+; a different Message-ID is refused at the intent boundary.
+(defconst *own-full-feed*
+  (fn-feed-enqueue (fn-own-feed-find "out" (fn-own-feeds *own-control-fed-taken*))
+                   (fn-nntp-string-octets "<already@example.invalid>") 0))
+(assert-event
+ (not (fn-own-feed-target-capacityp
+       '("out")
+       (fn-own-feed-put "out" *own-out-peer-record* *own-full-feed*
+                        (fn-own-feeds *own-control-fed-taken*))
+       *own-control-msgid*)))
+
 ; R, pinned before the post, still sees two articles; a reader opened after
 ; the post sees three; R's pinned prefix is unchanged.
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 3 (fn-own-conns *own-after-post*))) 2))
