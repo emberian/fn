@@ -99,9 +99,6 @@ class NativePeeringTests(unittest.TestCase):
         return {"name": name, "root": root, "store": store,
                 "control": control, "config": config, "port": port}
 
-<<<<<<< ours
-    def configure_peer(self, source, target, outbound="fn.*"):
-=======
     def process_identity(self, process):
         proc = Path("/proc") / str(process.pid)
         if not proc.is_dir():
@@ -126,8 +123,7 @@ class NativePeeringTests(unittest.TestCase):
         node.setdefault("identities", []).append(found)
         return found
 
-    def configure_peer(self, source, target):
->>>>>>> theirs
+    def configure_peer(self, source, target, outbound="fn.*"):
         self.command([
             IMAGE, "--fn", "operator", source["config"], "peer", "add",
             target["name"], "{}.example.invalid".format(target["name"]),
@@ -218,7 +214,6 @@ class NativePeeringTests(unittest.TestCase):
             stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
             return stream.readline()
 
-<<<<<<< ours
     def transfer_then_reset_before_reply(self, node, message_id, marker):
         client = socket.create_connection(("127.0.0.1", node["port"]), timeout=10)
         greeting = bytearray()
@@ -236,7 +231,7 @@ class NativePeeringTests(unittest.TestCase):
         client.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
                           struct.pack("ii", 1, 0))
         client.close()
-=======
+
     def transit(self, node, message_id, source):
         """Drive the public peer port through IHAVE and compare served octets."""
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
@@ -249,7 +244,6 @@ class NativePeeringTests(unittest.TestCase):
                 stream.write(b"." + line if line.startswith(b".") else line)
             stream.write(b".\r\n")
             self.assertTrue(stream.readline().startswith(b"235 "))
->>>>>>> theirs
 
     def capabilities(self, node):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
@@ -279,7 +273,6 @@ class NativePeeringTests(unittest.TestCase):
     def exchange_both_ways(self, live_configuration):
         a = self.initialize("a", free_port())
         b = self.initialize("b", free_port())
-<<<<<<< ours
         if not live_configuration:
             self.configure_peer(a, b)
             self.configure_peer(b, a)
@@ -288,12 +281,6 @@ class NativePeeringTests(unittest.TestCase):
         if live_configuration:
             self.configure_peer(a, b)
             self.configure_peer(b, a)
-=======
-        self.configure_peer(a, b)
-        self.configure_peer(b, a)
-        self.start(a)
-        self.start(b)
->>>>>>> theirs
         self.assertIn(b"IHAVE", self.capabilities(a))
         self.assertIn(b"STREAMING", self.capabilities(a))
         self.assertIn(b"IHAVE", self.capabilities(b))
@@ -348,14 +335,10 @@ class NativePeeringTests(unittest.TestCase):
         a = self.initialize("restart-a", free_port())
         b = self.initialize("restart-b", free_port())
         self.configure_peer(a, b)
-<<<<<<< ours
-        self.configure_peer(b, a, outbound="-")
-=======
         # B starts after A is killed, but its peer record must exist before
         # that listener accepts A's loopback feed connection; otherwise it is
         # a reader connection and IHAVE is correctly refused as unauthorized.
-        self.configure_peer(b, a)
->>>>>>> theirs
+        self.configure_peer(b, a, outbound="-")
         self.start(a)
 
         message_id = "<native-requeue-after-kill@example.invalid>"
@@ -377,8 +360,15 @@ class NativePeeringTests(unittest.TestCase):
         source_article = self.await_article(a, message_id)
         target_article = self.await_article(b, message_id)
         self.assertEqual(target_article, source_article)
-<<<<<<< ours
-        self.assertTrue(self.duplicate_offer(b, message_id).startswith(b"435 "))
+        duplicate = self.duplicate_offer(b, message_id)
+        self.assertTrue(duplicate.startswith(b"435 "))
+        identities = {node["name"]: self.verify_process_identity(node)
+                      for node in (a, b)}
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "requeue-restart", "journal": True, "source_killed": True,
+            "source_restarted": True, "target_identical": target_article == source_article,
+            "duplicate": duplicate[:3].decode(), "identity": identities,
+        }, sort_keys=True))
 
     def test_reset_while_transit_completes_keeps_durable_article_and_owner(self):
         source = self.initialize("reset-source", free_port())
@@ -393,14 +383,3 @@ class NativePeeringTests(unittest.TestCase):
         self.assertIsNone(target["process"].poll(),
                           "connection-local reply failure stopped the owner")
         self.assertIn(b"IHAVE", self.capabilities(target))
-=======
-        duplicate = self.duplicate_offer(b, message_id)
-        self.assertTrue(duplicate.startswith(b"435 "))
-        identities = {node["name"]: self.verify_process_identity(node)
-                      for node in (a, b)}
-        print("NATIVE-PEERING-WITNESS " + json.dumps({
-            "kind": "requeue-restart", "journal": True, "source_killed": True,
-            "source_restarted": True, "target_identical": target_article == source_article,
-            "duplicate": duplicate[:3].decode(), "identity": identities,
-        }, sort_keys=True))
->>>>>>> theirs
