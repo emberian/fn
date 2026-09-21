@@ -20,8 +20,11 @@ initialization and first-frontier results do not establish full current-host
 initialization or general recovery. Terra now owns the feed correspondence
 continuation and a fresh initializer transcription; both Astra proof lanes have
 handed off their checkpoints. Luna is registering the scoped storage evidence.
-The overnight goal remains active, with routine work assigned to Luna/Terra
-and Astra reviewing larger batches.
+The overnight goal remains active. Luna handles bounded mechanical work, Terra
+implementation, and Sol substantial implementation/proof debugging and combined
+owner-service integration. Astra handles periodic cross-project review and
+difficult residual problems. Sol is also taking native metadata codec adoption
+and transaction-name proof completion.
 
 The principal composition obligations are explicit: durable article acceptance
 must preserve feed intent; uncertain persistence must fence all mutations;

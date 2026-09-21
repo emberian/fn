@@ -21,7 +21,11 @@ use Luna/Terra for appropriate work and reserve Astra for larger review and
 convergence steps. Routine implementation, test repair and farm execution now
 default to Terra; bounded mechanical evidence work goes to Luna. Existing Astra
 proof lanes finish their current coherent checkpoints and hand off continuation.
-Sol remains on the already active submission and native BP lifecycle joins.
+Sol owns substantial implementation, proof debugging and cross-lane convergence,
+including the live-config/submission/feed integration batch, native storage
+codec adoption, and transaction-name proof completion. Existing Sol submission
+and BP lifecycle lanes continue. Astra handles periodic cross-project review
+and difficult residual problems; Terra-to-Astra is not the default escalation.
 Root reviews coherent batches rather than each small intermediate change.
 
 At `cdbd6b2`, the integrated tree includes W12 auth, physical feed recovery,
