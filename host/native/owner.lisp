@@ -323,6 +323,38 @@ directories because one encoded label can be a prefix of a longer label.
     (fnn-owner-feed-close (cdr entry)))
   (setf (fnn-owner-service-feeds service) nil))
 
+(defun fnn-owner-feed-open-missing (service configured)
+  "Install journals for newly configured feeds before they can enqueue.
+
+Historical journals remain open until owner shutdown because replayed
+obligations may still name a peer removed from the current configuration."
+  (let* ((current (fnn-owner-service-feeds service))
+         (known (mapcar #'car current))
+         (missing (remove-if (lambda (peer)
+                               (member peer known :test #'string=))
+                             configured))
+         (opened nil))
+    (handler-case
+        (progn
+          (dolist (peer missing)
+            (push (cons peer (fnn-owner-feed-open
+                              (fnn-owner-service-store service) peer)) opened))
+          (setf (fnn-owner-service-feeds service)
+                (append current (nreverse opened))))
+      (error (e)
+        (dolist (entry opened) (fnn-owner-feed-close (cdr entry)))
+        (error e)))))
+
+(defun fnn-owner-feed-refresh-configuration (service)
+  "Apply ACL2's live configuration to feeds and provision its journals.
+
+Call while holding the owner mutex immediately after a durable configuration
+completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
+  (let ((peers (fnn-owner-core 'fn-owner-feed-configure)))
+    (unless (fnn-octet-list-p peers)
+      (fnn-fault "owner returned a malformed refreshed feed table"))
+    (fnn-owner-feed-open-missing service (fnn-owner-name-list peers))))
+
 (defun fnn-owner-feed-flush (service)
   "Persist the exact pending owner frame batch before its authorized effect."
   (let* ((raw-frames (fnn-global 'fn-owner-feed-frames))
