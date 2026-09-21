@@ -907,8 +907,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-stx-index-equivocators-agree",
-          "pending_subject": "No host line calls fn-stx-index-lookup or fn-stx-index-equivocatorp: nothing in host/, bin/ or tools/ calls any fn-stx- query, and no book outside the stx cluster includes books/stx-index. The agreement is proved of the served-path query and the served path does not carry it. w11/node-index measured that a fifth slot on fn-node-statep is a dependency cycle and would not close this; the carrier belongs in fn-sn-statep (books/store-node.lisp). Review section 4, index row; planning/lanes/HANDOFF-w11-node-index.md."
+          "name": "fn-stx-index-equivocators-agree"
         },
         {
           "kind": "theorem",
@@ -917,7 +916,22 @@
         {
           "kind": "theorem",
           "name": "fn-stx-durable-completion-is-an-acceptance",
-          "note": "The subject-equating theorem AGENTS.md rule 1 asks for, for the preservation half of this target: fn-stx-index-invariant-preserved-by-accept hypothesises fn-stx-acceptedp, and this proves fn-stx-acceptedp of the durable branch of fn-node-complete with the accepted article named. The host line is host/store-node-host.lisp:402 fn-store-sn-finish -> fn-sn-finish (books/store-node.lisp:200) -> that call (:204). It does NOT give the QUERY a subject; fn-stx-index-lookup still has no caller."
+          "note": "The subject-equating theorem AGENTS.md rule 1 asks for, for the preservation half of this target: fn-stx-index-invariant-preserved-by-accept hypothesises fn-stx-acceptedp, and this proves fn-stx-acceptedp of the durable branch of fn-node-complete with the accepted article named. The host line is host/store-node-host.lisp fn-store-sn-finish -> fn-sn-finish (books/store-node.lisp) -> that call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-preserves-indexedp",
+          "note": "The carrier obligation, and the one preservation row that does work: the store grows at fn-sn-finish by the one article fn-install-pending conses and the carried index grows by that article's delta, at most one cons. Its keystone is fn-stx-index-invariant-preserved-by-accept and its hypothesis is discharged by fn-stx-durable-completion-is-an-acceptance. 11,118 prover steps. Decision D21."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-statement-lookup-is-the-lace-lookup",
+          "note": "The subject-equating theorem AGENTS.md rule 1 asks for, for the QUERY half. Subject: fn-sn-statement-lookup (books/store-node.lisp), which host/store-node-host.lisp fn-store-sn-statement calls on the 'fn-store-sn global, reachable from outside as run_store.py statement --id. Its hypothesis fn-sn-indexedp holds of that global by a reachability chain: fn-sn-initial-is-indexed and the preservation theorems for prepare, io, finish, crash, recover and set-keyring (books/store-node-invariants), refuse-reservation and known-abort (books/store-node-resolution), open-observed (books/store-observed) and the sweep, which returns the store unchanged. The one site not covered is host/bp-ingress-host.lisp, whose fn-bpi-ingress-prepare has no such theorem; it is recorded open. :rule-classes nil so it cannot rewrite the cheap query back into the linear projection."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-equivocatorp-is-the-lace-equivocator",
+          "note": "The same bridge for the equivocation query. Subject: fn-sn-equivocatorp, called by host/store-node-host.lisp fn-store-sn-equivocator."
         }
       ]
     },

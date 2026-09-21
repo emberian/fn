@@ -71,7 +71,8 @@ def main():
             cwd=str(node2), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         time.sleep(2)
 
-        bpa = IonLtpSender(node1, run, args.send_eid, env, args.recv_eid)
+        bpa = IonLtpSender(node1, run, args.send_eid, env, args.recv_eid,
+                           lifetime_seconds=args.lifetime)
         with Sender(run / "a-store", run / "a-workflow") as sender:
             sender.enqueue()
             local_handle, request = sender.submit(
@@ -84,11 +85,23 @@ def main():
         report["sender_local_handle"] = local_handle
         report["eid_mapping"] = bpa.submits
 
-        inbox = IonStagingInbox(stage)
+        inbox = IonStagingInbox(stage, destination_eid=args.recv_eid,
+                                lifetime_seconds=args.lifetime)
         bid = wait_for_staged(inbox)
         staged_bytes = inbox.download(bid)
         report["staged_bid"] = bid
         report["staged_sha256"] = hashlib.sha256(staged_bytes).hexdigest()
+        # The primary block the receiver is handed, and where each of its
+        # fields came from.  `IonStagingInbox.bundle` says why this is a
+        # reconstruction over ION and what that costs.
+        primary = inbox.bundle(bid)
+        report["primary_block_sha256"] = hashlib.sha256(primary).hexdigest()
+        report["primary_block_octets"] = len(primary)
+        report["primary_block_provenance"] = {
+            "observed_from_ion": ["source EID", "creation time", "creation sequence"],
+            "supplied_by_the_lab": ["destination", "report-to", "flags", "CRC type"],
+            "encoded_by": "ACL2 fn-bpi-host-bundle-prefix (tools/bundle_bridge.encode_primary)",
+        }
         steps["adu_crossed_ltp_link_byte_identical"] = staged_bytes == request
         if staged_bytes != request:
             raise RuntimeError("staged ADU differs from the projected fn request")
@@ -97,7 +110,7 @@ def main():
             store_root=run / "b-store", inbox_root=run / "b-inbox",
             receipt_root=run / "b-receipts", bid=bid, source_eid=args.send_eid,
             inventory=inbox.inventory, download=inbox.download, delete=inbox.delete,
-            local_policy_authorized=True)
+            bundle=inbox.bundle, local_policy_authorized=True)
         report["receiver_outcome"] = result.outcome
         report["receipt_sha256"] = hashlib.sha256(result.receipt_adu).hexdigest()
         steps["fn_acceptance_ran_on_ltp_delivered_adu"] = result.outcome == "accepted"
@@ -121,6 +134,7 @@ def main():
                 out, _ = stager.communicate(timeout=10)
             report["stager_output"] = out.decode("utf-8", "replace")
         report["not_demonstrated"] = [
+            "The primary block fn identified the bundle by is a RECONSTRUCTION, not the block that crossed the link: ION's bp_receive() destroys the bundle before any application runs, so the source EID, creation time and creation sequence come from BpDelivery's report of them and are re-encoded by ACL2. A transport that misreported those three fields would be believed here. Closing this needs the block captured inside fn_ltp_stage.c through the C API.",
             "No receipt was returned over BP: ION gives the sender no transport handle to bind, so the return leg is out of this packet's scope.",
             "Trusted local A_POLICY only; no authenticated peer, author signature or BPSec.",
             "Loopback UDP under LTP; no real space link, delay, asymmetry or contact plan.",

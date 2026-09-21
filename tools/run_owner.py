@@ -33,7 +33,7 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        durable_post, exit_code_for, group_codes, metadata,
                        post_article, validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
-from run_feed import Journal, Session, TRAILER_BYTES  # the FNFD layout and the client half
+from feed_wire import Journal, Session, TRAILER_BYTES  # the FNFD layout and the client half
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_READ = 512

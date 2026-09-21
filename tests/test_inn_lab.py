@@ -85,6 +85,37 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn("patterns:        fn.*", inn_lab.INCOMING_CONF)
 
 
+class PidParseTests(unittest.TestCase):
+    """The pid a start step reports, and the two ways it used to crash.
+
+    `LabTests` errored in `setUpClass` on dev from 2026-09-20: `inn_start`
+    read the pid out of `NNRPD-UP pid=` with
+    `output.split("pid=")[-1].strip().splitlines()[0]`, and an empty pid file
+    makes that list empty.  A harness that raises inside setup reports nothing
+    at all about the box; a harness that records a gap reports what is
+    missing.  Both halves are pinned here: the parse is total, and the fake
+    writes the pid file real INN writes.
+    """
+
+    def test_an_empty_pid_file_is_the_empty_string_and_not_an_exception(self):
+        self.assertEqual(inn_lab.reported_pid("NNRPD-UP pid=\n"), "")
+        self.assertEqual(inn_lab.reported_pid("NNRPD-UP pid="), "")
+        self.assertEqual(inn_lab.reported_pid("NNRPD-TIMEOUT\n"), "")
+
+    def test_a_pid_is_read_and_a_non_numeric_tail_is_not(self):
+        self.assertEqual(inn_lab.reported_pid("INND-UP pid=629111\n"), "629111")
+        self.assertEqual(inn_lab.reported_pid("INND-UP pid=629111 extra\n"), "629111")
+        # `cat: no such file` on stderr must never be taken for a pid to kill.
+        self.assertEqual(inn_lab.reported_pid("INND-UP pid=cat: no such file"), "")
+
+    def test_the_fake_writes_the_pid_file_the_lab_reads(self):
+        source = (ROOT / "tests/inn_lab_fake/bin/_fakeinn.py").read_text()
+        self.assertIn('"nnrpd-{}.pid".format(port)', source)
+        # and the lab reads exactly that name, on the port it started
+        self.assertIn("run/nnrpd-{port}.pid",
+                      (ROOT / "tools/inn_lab.py").read_text())
+
+
 class DryRun:
     """One whole lab run against a fake host and a fake INN in a temporary HOME."""
 
