@@ -263,6 +263,22 @@
          (list :receipt-decision (fn-bpr-context-work-id context)
                (fn-bpa-receipt-id receipt) :absent))))
 
+(defun fn-bpaj-config-status (joined destination policy issuer)
+  (declare (xargs :guard t))
+  (if (not (fn-bpaj-statep joined))
+      :absent
+    (if (equal (fn-bpr-state-config (fn-bpaj-receiver joined))
+               (fn-bpr-make-config destination policy issuer))
+        :match
+      :conflict)))
+
+(defun fn-bpaj-config-status-fast (joined destination policy issuer)
+  (declare (xargs :guard t))
+  (if (equal (fn-bpr-state-config (fn-bpaj-receiver joined))
+             (fn-bpr-make-config destination policy issuer))
+      :match
+    :conflict))
+
 (defun fn-bpaj-record-matches-request-fast (store record request)
   (declare (xargs :guard t))
   (and (fn-record-p record) (fn-bpa-requestp request)
@@ -470,6 +486,15 @@
             '(fn-bpaj-pending-receipt-resolution-fast
               fn-bpaj-pending-receipt-resolution)))))
 
+(defthm fn-bpaj-config-status-fast-is-checked
+  (implies (fn-bpaj-statep joined)
+           (equal (fn-bpaj-config-status-fast
+                   joined destination policy issuer)
+                  (fn-bpaj-config-status
+                   joined destination policy issuer)))
+  :hints (("Goal" :in-theory
+           (enable fn-bpaj-config-status-fast fn-bpaj-config-status))))
+
 (defthm fn-bpaj-record-matches-request-fast-is-checked
   (implies (fn-sn-statep store)
            (equal (fn-bpaj-record-matches-request-fast store record request)
@@ -578,6 +603,8 @@
                     fn-bpaj-apply-record-fast
                     fn-bpaj-request-status-fast
                     fn-bpaj-pending-receipt-resolution-fast
+                    fn-bpaj-config-status
+                    fn-bpaj-config-status-fast
                     fn-bpaj-record-matches-request-fast
                     fn-bpaj-record-lookup-fast
                     fn-bpaj-dispatch-fast
@@ -591,6 +618,7 @@
                     fn-bpaj-apply-record-fast-is-checked
                     fn-bpaj-request-status-fast-is-checked
                     fn-bpaj-pending-resolution-fast-is-checked
+                    fn-bpaj-config-status-fast-is-checked
                     fn-bpaj-record-matches-request-fast-is-checked
                     fn-bpaj-record-lookup-fast-is-checked
                     fn-bpaj-dispatch-fast-is-checked))

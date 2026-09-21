@@ -97,12 +97,8 @@
 
 (defun fn-bprj-config-status (destination policy issuer state)
  (declare (xargs :stobjs state :mode :program))
- (let ((joined (f-get-global 'fn-bpaj-state state)))
-  (value
-   (if (not (fn-bpaj-statep joined)) :absent
-    (let ((config (fn-bpr-state-config (fn-bpaj-receiver joined))))
-     (if (equal config (fn-bpr-make-config destination policy issuer))
-         :match :conflict))))))
+ (value (fn-bpaj-config-status-fast
+         (f-get-global 'fn-bpaj-state state) destination policy issuer)))
 
 (defun fn-bprj-request-intent-record
  (inbound-id request-octets generation txid application-result state)
