@@ -722,8 +722,9 @@
 
 ; The per-byte step of the served path.  Every branch reads carried scalars and
 ; conses at most one octet: it runs no recognizer over the retained line, the
-; retained body, or the body size.  Its guard is fn-wire-statep, established
-; once per chunk by fn-wire-next.
+; retained body, or the body size.  Its guard is the fixed-spine/scalar
+; fn-wire-fast-statep invariant, established at the served entry and preserved
+; by each byte transition.
 (defun fn-wire-feed-byte (wire-state byte)
   (declare (xargs :guard (fn-wire-fast-statep wire-state)
                   :verify-guards nil))

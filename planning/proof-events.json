@@ -310,6 +310,10 @@
         {
           "kind": "theorem",
           "name": "fn-wire-drive-of-host-rendered-article-preserves-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-read-tls-prefix-is-full-read"
         }
       ]
     },
