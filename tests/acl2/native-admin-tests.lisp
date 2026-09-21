@@ -50,6 +50,29 @@
 (assert-event
  (equal (fn-cfg-peer-auth (fn-native-admin-result-peer *fn-na-peer-add*))
         '(:source-address "192.0.2.44")))
+(defconst *fn-na-principal-hex*
+  "0707070707070707070707070707070707070707070707070707070707070707")
+(defconst *fn-na-peer-principal*
+  (fn-native-admin-plan
+   (fn-na-test-argv
+    (list "peer" "add" "principal-peer" "principal.example"
+          "192.0.2.45" "1119" "fn.*" "-" "principal"
+          *fn-na-principal-hex* "false" "implicit" "news.example"
+          "/etc/fn/peer-ca.pem"))))
+(assert-event
+ (equal (fn-native-admin-result-status *fn-na-peer-principal*) :accepted))
+(assert-event
+ (equal (fn-cfg-peer-auth
+         (fn-native-admin-result-peer *fn-na-peer-principal*))
+        (list :principal *fn-na-principal-hex*)))
+; Principal ids are the canonical 32-octet lowercase hex projection.
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan
+          (fn-na-test-argv
+           '("peer" "add" "bad-principal" "bad.example" "192.0.2.45"
+             "1119" "fn.*" "-" "principal" "07" "false"))))
+        :refused))
 (assert-event
  (equal (fn-native-admin-result-status
          (fn-native-admin-plan
