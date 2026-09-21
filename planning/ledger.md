@@ -19,14 +19,14 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 190 |
 | Functions left at the default with an explicit guard | 1789 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 5400 |
-| `must-fail` checks | 59 |
+| `assert-event` checks | 5459 |
+| `must-fail` checks | 63 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 46 |
 | Export-hygiene warnings | 72 |
 | Enabled-projection warnings | 27 |
 | Teeth-form warnings | 0 |
-| Include-hygiene warnings | 87 |
+| Include-hygiene warnings | 88 |
 | Host-names warnings | 33 |
 | Hand-written-record warnings | 18 |
 
@@ -311,7 +311,7 @@ that `make certify` requests.
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 120 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
-| `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 82 | 0 | 0 |
+| `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 92 | 0 | 0 |
 | `tests/acl2/nntp-post-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 47 | 0 | 0 |
 | `tests/acl2/nntp-reader-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 95 | 0 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 2 | 0 |
@@ -354,8 +354,8 @@ that `make certify` requests.
 | `tests/acl2/transfer-journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 59 | 0 | 0 |
 | `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 0 | 0 |
 | `tests/acl2/wildmat-parser-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
-| `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 1 | 0 |
-| `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 35 | 0 | 0 |
+| `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 5 | 0 |
+| `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 57 | 0 | 0 |
 | `tests/acl2/wire-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 49 | 0 | 0 |
 
 ## Theorems flagged SUSPECT by shape

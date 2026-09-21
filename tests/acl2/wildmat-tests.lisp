@@ -89,3 +89,88 @@
 (assert-event (equal (fn-wildmat-parse '(237 160 128)) '(:error :malformed-utf8)))
 (assert-event (equal (fn-wildmat-parse '(244 144 128 128)) '(:error :malformed-utf8)))
 (assert-event (equal (fn-wildmat-match '(42) '(194 32)) '(:error :malformed-utf8)))
+
+; -----------------------------------------------------------------------------
+; The header-value profile (decision D19)
+;
+; Every value below was read out of `fn-wildmat-parse-text' and
+; `fn-wildmat-match-parsed' before it was written here.  RFC 2980 §2.9's join
+; puts an SP in every multi-token XPAT pattern; RFC 3977 §4.1's grammar
+; excludes SP because "these characters cannot occur in newsgroup names, which
+; is the only current use of wildmats"; §4.3 permits the wider profile.
+
+; `*T *t*', the joined two-token pattern of the XPAT measurement in
+; planning/evidence/inn-xpat-2026-09-20.md.  The newsgroup-name entry refuses
+; it and the header entry parses it as ONE pattern carrying a literal SP.
+(defconst *fn-wildmat-joined* '(42 84 32 42 116 42))
+(assert-event (equal (fn-wildmat-parse *fn-wildmat-joined*) '(:error :syntax)))
+(assert-event (equal (fn-wildmat-parse-text *fn-wildmat-joined*)
+                     '(:ok ((:positive (42 84 32 42 116 42))))))
+
+; ... and it matches exactly where INN 2.7.4's uwildmat_simple matches: not
+; "Test", which has no SP, and yes "T st", which does.  Those are the same two
+; answers the foreign client gave for the same pattern.
+(assert-event (equal (fn-wildmat-match-parsed
+                      (fn-wildmat-result-value
+                       (fn-wildmat-parse-text *fn-wildmat-joined*))
+                      '(84 101 115 116))
+                     '(:ok nil)))
+(assert-event (equal (fn-wildmat-match-parsed
+                      (fn-wildmat-result-value
+                       (fn-wildmat-parse-text *fn-wildmat-joined*))
+                      '(84 32 115 116))
+                     '(:ok t)))
+
+; A phrase pattern against a phrase value: "*Hello *world*" over
+; "Hello there world".  This is XPAT's ordinary use and it was unreachable.
+(assert-event (equal (fn-wildmat-match-parsed
+                      (fn-wildmat-result-value
+                       (fn-wildmat-parse-text
+                        '(42 72 101 108 108 111 32 42 119 111 114 108 100 42)))
+                      '(72 101 108 108 111 32 116 104 101 114 101 32 119 111
+                        114 108 100))
+                     '(:ok t)))
+
+; The three other code points the profile adds, and no more.  `[PATCH]' is an
+; ordinary Subject tag; §4.1 reserves the brackets and the backslash, so the
+; newsgroup-name entry still refuses them.
+(assert-event (equal (fn-wildmat-parse-text '(91 80 65 84 67 72 93))
+                     '(:ok ((:positive (91 80 65 84 67 72 93))))))
+(assert-event (equal (fn-wildmat-parse '(91 80 65 84 67 72 93))
+                     '(:error :syntax)))
+(assert-event (equal (fn-wildmat-parse-text '(92)) '(:ok ((:positive (92))))))
+(assert-event (equal (fn-wildmat-parse '(92)) '(:error :syntax)))
+
+; The four metacharacters are metacharacters in BOTH profiles, and a control
+; octet and DEL are literals in neither.  A `!' is still only the post-comma
+; negation marker and is still not an item anywhere.
+(assert-event (equal (fn-wildmat-parse-text '(33 97)) '(:error :syntax)))
+(assert-event (equal (fn-wildmat-parse-text '(9)) '(:error :syntax)))
+(assert-event (equal (fn-wildmat-parse-text '(127)) '(:error :syntax)))
+(assert-event (equal (fn-wildmat-parse-text '(97 44 33 98))
+                     '(:ok ((:positive (97)) (:negative (98))))))
+(assert-event (not (fn-wildmat-text-exactp 33)))
+(assert-event (not (fn-wildmat-text-exactp 42)))
+(assert-event (not (fn-wildmat-text-exactp 44)))
+(assert-event (not (fn-wildmat-text-exactp 63)))
+
+; DIVERGENCE from INN, recorded and deliberately unchanged by D19: `,' is
+; wildmat alternation in fn and a literal in INN's uwildmat_simple.  §2.9's
+; "At least one pattern in wildmat must be specified" is on fn's side.  44 is
+; an exact item in neither profile, so the header profile does not move it.
+(assert-event (equal (fn-wildmat-parse-text '(42 84 44 42 116 42))
+                     '(:ok ((:positive (42 84)) (:positive (42 116 42))))))
+(assert-event (equal (fn-wildmat-match-parsed
+                      (fn-wildmat-result-value
+                       (fn-wildmat-parse-text '(42 84 44 42 116 42)))
+                      '(84 101 115 116))
+                     '(:ok t)))
+
+; The newsgroup-name path is where it was: a group wildmat still matches a
+; group name, and SP alone is still not a wildmat there.
+(assert-event (equal (fn-wildmat-match '(102 110 46 42)
+                                       '(102 110 46 108 101 116 116 101 114
+                                         115))
+                     '(:ok t)))
+(assert-event (equal (fn-wildmat-parse '(32)) '(:error :syntax)))
+(assert-event (equal (fn-wildmat-parse-text '(32)) '(:ok ((:positive (32))))))
