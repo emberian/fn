@@ -233,11 +233,14 @@ may or may not be durable."
 (defun fnn-bp-exit-code (tally conn)
   "Three outcomes, three codes.  Uncertain dominates a refusal, and a refusal
 dominates an acceptance: a run that saw one of each did not succeed."
-  (cond ((plusp (fnn-bp-tally-uncertain tally)) +fnn-exit-uncertain+)
-        ((plusp (fnn-bp-tally-refused tally)) +fnn-exit-refused+)
-        ((and conn (eq (fnn-tclc-outcome conn) :uncertain)) +fnn-exit-uncertain+)
-        ((and conn (eq (fnn-tclc-outcome conn) :refused)) +fnn-exit-refused+)
-        (t +fnn-exit-ok+)))
+  (case (fnn-core 'fn-bpn-host-run-outcome
+                  (fnn-bp-tally-accepted tally)
+                  (fnn-bp-tally-refused tally)
+                  (fnn-bp-tally-uncertain tally)
+                  (and conn (fnn-tclc-outcome conn)))
+    (:accepted +fnn-exit-ok+)
+    (:refused +fnn-exit-refused+)
+    (t +fnn-exit-uncertain+)))
 
 (defun fnn-bp-summary (tally)
   (fnn-out "BP summary accepted=~d refused=~d uncertain=~d"

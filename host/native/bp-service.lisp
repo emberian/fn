@@ -124,20 +124,27 @@
           (fnn-write-staged stage frame)
           ;; Link is no-replace.  Token reuse cannot overwrite contrary bytes.
           (fnn-link stage final)
+          (when (string= (or (sb-ext:posix-getenv
+                              "FN_BP_SERVICE_TEST_FAIL_FIRST_DIR_BARRIER") "")
+                         "1")
+            (fnn-indeterminate
+             "bp-service: injected first lifecycle directory barrier failure"))
           (fnn-fsync-dir dir)
           (fnn-unlink stage)
+          (when (string= (or (sb-ext:posix-getenv
+                              "FN_BP_SERVICE_TEST_FAIL_SECOND_DIR_BARRIER") "")
+                         "1")
+            (fnn-indeterminate
+             "bp-service: injected second lifecycle directory barrier failure"))
           (fnn-fsync-dir dir)
           :durable)
       (fnn-os-error ()
         (ignore-errors (fnn-unlink stage))
-        ;; An existing byte-identical name is the replay of an uncertain
-        ;; completion.  Contrary bytes fence below as :uncertain.
-        (if (and (fnn-check-regular final)
-                 (equalp (fnn-read-regular-bounded
-                          final (fnn-core 'fn-bpn-host-lifecycle-frame-limit))
-                         frame))
-            :durable
-          :uncertain)))))
+        ;; A visible byte-identical final name is still only evidence that the
+        ;; link happened.  It cannot turn a failed publication or cleanup
+        ;; barrier into a durable result.  Recovery repeats the directory
+        ;; barrier before it consumes any visible final records.
+        :uncertain))))
 
 (defun fnn-bps-route-host (route) (fnn-octets-string (fnn-octets (second route))))
 (defun fnn-bps-route-port (route) (third route))
@@ -232,7 +239,11 @@
                 ;; Repeat the namespace-publication barrier on every recovery:
                 ;; an earlier mkdir may have returned before its parent barrier
                 ;; failed.
-                (fnn-fsync-dir (fnn-parent life)))
+                (fnn-fsync-dir (fnn-parent life))
+                ;; A prior record link may be visible even though its directory
+                ;; barrier failed.  Establish that barrier before the restart
+                ;; machine treats any final record as durable evidence.
+                (fnn-fsync-dir life))
             (fnn-os-error (e)
               (fnn-indeterminate
                "bp-service: lifecycle namespace publication failed: ~a" e)))
