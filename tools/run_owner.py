@@ -165,6 +165,14 @@ class Acl2Owner(Acl2Store):
         # bridge's entry reads fn-store-sn, which this image never sets.
         return self._names("(fn-owner-domain state)")
 
+    def config_generation(self):
+        # The canonical configuration is the fn-ocfg value in fn-owner.
+        return self._nat("(fn-owner-config-generation state)")
+
+    def config_served(self):
+        # As with config_domain, the generic store bridge global is absent.
+        return self._names("(fn-owner-served state)")
+
     def reconfigure_group(self, cid, action, name):
         """Stage one ACL2-owned group configuration record for a live client.
 
