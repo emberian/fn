@@ -52,3 +52,46 @@
 (assert-event (equal (fn-fc-phase *fc-lost*) :closed))
 (assert-event (equal (fn-fc-kind (fn-fc-step *fc-lost* nil))
                      :closed))
+
+; AUTHINFO is ordered after authenticated TLS and before MODE STREAM.
+(defconst *fc-auth0*
+  (fn-fc-initial-auth-state t 10 :starttls '(110 111 100 101)
+                            '(115 101 99 114 101 116) nil))
+(defconst *fc-auth-starttls* (fn-fc-step *fc-auth0* '(50 48 48 13 10)))
+(defconst *fc-auth-tls*
+  (fn-fc-step (fn-fc-next-state *fc-auth-starttls*) '(51 56 50 13 10)))
+(defconst *fc-auth-user* (fn-fc-after-tls (fn-fc-next-state *fc-auth-tls*)))
+(assert-event (equal (fn-fc-kind *fc-auth-user*) :auth-user))
+(assert-event
+ (equal (fn-fc-auth-user-command (fn-fc-next-state *fc-auth-user*))
+        '(65 85 84 72 73 78 70 79 32 85 83 69 82 32 110 111 100 101 13 10)))
+(defconst *fc-auth-pass*
+  (fn-fc-step (fn-fc-next-state *fc-auth-user*) '(51 56 49 13 10)))
+(assert-event (equal (fn-fc-kind *fc-auth-pass*) :auth-pass))
+(assert-event
+ (equal (fn-fc-auth-pass-command (fn-fc-next-state *fc-auth-pass*))
+        '(65 85 84 72 73 78 70 79 32 80 65 83 83 32
+          115 101 99 114 101 116 13 10)))
+(defconst *fc-auth-mode*
+  (fn-fc-step (fn-fc-next-state *fc-auth-pass*) '(50 56 49 13 10)))
+(assert-event (equal (fn-fc-kind *fc-auth-mode*) :mode))
+; A failed password and an interrupted exchange never reach ready.
+(assert-event
+ (equal (fn-fc-kind
+         (fn-fc-step (fn-fc-next-state *fc-auth-pass*) '(52 56 49 13 10)))
+        :refused))
+(assert-event
+ (equal (fn-fc-phase (fn-fc-lost (fn-fc-next-state *fc-auth-pass*))) :closed))
+; Cleartext credentials require the explicit local policy bit.
+(assert-event
+ (equal (fn-fc-kind
+         (fn-fc-step
+          (fn-fc-initial-auth-state nil 11 :clear '(117) '(112) nil)
+          '(50 48 48 13 10)))
+        :refused))
+(assert-event
+ (equal (fn-fc-kind
+         (fn-fc-step
+          (fn-fc-initial-auth-state nil 12 :clear '(117) '(112) t)
+          '(50 48 48 13 10)))
+        :auth-user))

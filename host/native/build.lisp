@@ -33,6 +33,7 @@
 (include-book "books/feed-filename")
 ; Outbound feed connection establishment and reply framing remain ACL2-owned.
 (include-book "books/feed-wire-input")
+(include-book "books/feed-auth-profile")
 (include-book "books/feed-connection")
 (include-book "books/feed-connection-invariants")
 (include-book "books/native-operator")

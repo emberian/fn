@@ -127,6 +127,12 @@ fn-native --fn operator /etc/fn/fn.toml peer remove NAME
 64-digit lowercase hexadecimal principal id. The older form with only a source
 address in this position remains accepted as a compatibility decode.
 
+To authenticate the outbound feed, insert `PROFILE ALLOW-CLEAR` between
+`AUTH-VALUE` and the streaming flag. `PROFILE` is the permissioned
+`FNAUTH1` credential file; `ALLOW-CLEAR` is `true` or `false`. Use `false`
+for TLS peers. The profile must be a regular file owned by the service user
+with no group or other permission bits.
+
 ACL2 parses the port and streaming word, supplies the inbound body/inflight
 limits and outbound queue/backoff limits, builds the typed peer record and
 selects the configuration delta. Run these while the owner is stopped; the
