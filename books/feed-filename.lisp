@@ -74,6 +74,67 @@
         (list :legacy (fn-feed-filename-components name))
       (list :v1 (fn-feed-filename-components name)))))
 
+; Recovery accepts a filesystem component vector only by re-encoding its
+; decoded peer and demanding byte-for-byte equality.  This keeps legacy leaf
+; handling, v1 chunk boundaries and the inverse in one ACL2 owner.
+(defun fn-ff-componentsp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (fn-record-ascii-octet-listp (car xs))
+           (consp (car xs))
+           (fn-ff-componentsp (cdr xs)))
+    (null xs)))
+
+(defun fn-ff-last (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (if (consp (cdr xs)) (fn-ff-last (cdr xs)) (car xs))
+    nil))
+
+(defun fn-ff-butlast (xs)
+  (declare (xargs :guard t))
+  (if (and (consp xs) (consp (cdr xs)))
+      (cons (car xs) (fn-ff-butlast (cdr xs)))
+    nil))
+
+(defun fn-ff-append-components (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (append (car xs) (fn-ff-append-components (cdr xs))) nil))
+
+(defun fn-ff-legacy-candidate (components)
+  (declare (xargs :guard t))
+  (let ((leaf (car components)))
+    (if (and (equal (len components) 1)
+             (<= (len *fn-ff-suffix*) (len leaf))
+             (equal (fn-ff-drop (- (len leaf) (len *fn-ff-suffix*)) leaf)
+                    *fn-ff-suffix*))
+        (fn-ff-take (- (len leaf) (len *fn-ff-suffix*)) leaf)
+      :bad)))
+
+(defun fn-ff-v1-candidate (components)
+  (declare (xargs :guard t))
+  (if (and (<= 3 (len components))
+           (equal (car components) *fn-ff-v1*)
+           (equal (fn-ff-last components) *fn-ff-journal*))
+      (let ((hex (fn-ff-append-components (cdr (fn-ff-butlast components)))))
+        (if (and (fn-id-hex-listp hex) (equal (mod (len hex) 2) 0))
+            (fn-id-unhex hex)
+          :bad))
+    :bad))
+
+(defun fn-feed-filename-from-components (components)
+  ; `:bad' means refuse the on-disk entry.  It is never silently skipped:
+  ; native recovery must report it as conflicting evidence.
+  (declare (xargs :guard t))
+  (if (not (fn-ff-componentsp components)) :bad
+    (let ((name (if (equal (len components) 1)
+                    (fn-ff-legacy-candidate components)
+                  (fn-ff-v1-candidate components))))
+      (if (and (fn-ff-namep name)
+               (equal (fn-feed-filename-components name) components))
+          name
+        :bad))))
+
 (defthm fn-feed-filename-hex-length
   (equal (len (fn-feed-filename-hex xs)) (* 2 (len xs)))
   :hints (("Goal" :in-theory (enable fn-feed-filename-hex)
