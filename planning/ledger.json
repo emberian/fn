@@ -283,15 +283,15 @@
     "books": 277,
     "books_in_root_closure": 276,
     "roots": 276,
-    "theorems": 5588,
-    "functions": 3934,
-    "assert_events": 5425,
+    "theorems": 5594,
+    "functions": 3936,
+    "assert_events": 5486,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1460,
+      "verified": 1461,
       "declared-off": 191,
-      "default-guarded": 1794,
+      "default-guarded": 1795,
       "default-unguarded": 489
     },
     "suspect_theorems": 46,
@@ -812,7 +812,7 @@
       "book": "books/bp-bundle-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 32,
+      "theorems": 30,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -951,15 +951,15 @@
       "book": "books/bp-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 18,
+      "theorems": 21,
       "functions": 30,
       "guards": {
-        "verified": 22,
+        "verified": 23,
         "declared-off": 0,
-        "default-guarded": 8,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
-      "verify_guards_events": 22,
+      "verify_guards_events": 23,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -1550,11 +1550,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 15,
+      "functions": 16,
       "guards": {
         "verified": 10,
         "declared-off": 0,
-        "default-guarded": 5,
+        "default-guarded": 6,
         "default-unguarded": 0
       },
       "verify_guards_events": 10,
@@ -2874,7 +2874,7 @@
       "book": "books/nntp-post.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 18,
+      "theorems": 20,
       "functions": 18,
       "guards": {
         "verified": 12,
@@ -3200,7 +3200,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 110,
+      "theorems": 113,
       "functions": 8,
       "guards": {
         "verified": 0,
@@ -3228,11 +3228,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 46,
-      "functions": 95,
+      "functions": 96,
       "guards": {
         "verified": 0,
         "declared-off": 3,
-        "default-guarded": 92,
+        "default-guarded": 93,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -5347,7 +5347,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 50,
+      "assert_events": 52,
       "must_fails": 0,
       "defconsts": 14,
       "defmacros": 0,
@@ -6432,9 +6432,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 47,
+      "assert_events": 62,
       "must_fails": 0,
-      "defconsts": 25,
+      "defconsts": 26,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -6613,9 +6613,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 166,
+      "assert_events": 210,
       "must_fails": 0,
-      "defconsts": 57,
+      "defconsts": 72,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7617,7 +7617,7 @@
     {
       "theorem": "fn-bpb-decode-refuses-overlong-input",
       "book": "books/bp-bundle-invariants.lisp",
-      "line": 472,
+      "line": 530,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpb-decode and the conclusion is that branch's value"
       ]
@@ -7625,7 +7625,7 @@
     {
       "theorem": "fn-bpbi-bpp-encode-unfolds",
       "book": "books/bp-bundle-invariants.lisp",
-      "line": 272,
+      "line": 277,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-bpp-encode"
       ]
@@ -8527,9 +8527,10 @@
         "line": 394,
         "stated_in": [
           "books/bp-fragment-invariants.lisp",
+          "books/bp-node.lisp",
           "books/bp-primary-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-bpp-crc-type",
