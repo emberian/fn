@@ -25,6 +25,7 @@ import ssl
 import tomllib
 import sys
 import time
+import traceback
 
 from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECONDS,
                        Acl2Store, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, Store,
@@ -544,6 +545,27 @@ class Owner:
 
     # -- NNTP connections -------------------------------------------------
     def accept_nntp(self, listener):
+        """One accepted connection, and never the end of the service.
+
+        Everything below can raise: the bridge, the TLS handshake, the
+        peer-table read. Before this wrapper an unexpected error unwound
+        through `run` and the OWNER PROCESS EXITED at accept, which reaches
+        the client as a closed connection and reaches every later client as
+        `ConnectionRefusedError` -- one connection deciding the lifetime of
+        a service that was serving readers. The fault is printed whole, with
+        its traceback, so the diagnosis survives in the server log, and only
+        this connection is lost. `ACCEPT-FAULT` is a defect signal, not an
+        outcome.
+        """
+        try:
+            self.accept_nntp_step(listener)
+        except Exception as error:                       # noqa: BLE001
+            print("ACCEPT-FAULT {}: {}".format(type(error).__name__, error),
+                  file=sys.stderr, flush=True)
+            traceback.print_exc(file=sys.stderr)
+            sys.stderr.flush()
+
+    def accept_nntp_step(self, listener):
         try:
             sock, _ = listener.accept()
         except OSError:

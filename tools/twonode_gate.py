@@ -224,7 +224,14 @@ def wait(args):
         attempts += 1
         try:
             status, lines = fetch(args.port, args.msgid)
-        except OSError:
+        except Exception as error:      # noqa: BLE001
+            # A node mid-restart is not an answer. Before this the driver
+            # raised out of the whole phase on the first refused or closed
+            # connection, so a node that had not finished starting read as
+            # "the article never arrived": gate `0e5a7f8` step 87 aborted
+            # at 16.5 s of a 90 s deadline. The last error is reported
+            # beside the result.
+            out["last_error"] = "{}: {}".format(type(error).__name__, error)
             status, lines = "", []
         if status.startswith("220"):
             out.update(ok=True, status=status, attempts=attempts,
@@ -251,8 +258,17 @@ def wait(args):
 
 
 def presence(args):
-    """Every msgid in --present must be served; every one in --absent must not."""
-    conn = Conn(args.port)
+    """Every msgid in --present must be served; every one in --absent must not.
+
+    A connection this phase cannot open is reported as `ok: false` with the
+    error named, not raised: a node that is down is a finding about the
+    node, and the step that says so should still carry its port.
+    """
+    try:
+        conn = Conn(args.port)
+    except Exception as error:          # noqa: BLE001
+        return {"ok": False, "port": args.port,
+                "error": "{}: {}".format(type(error).__name__, error)}
     out = {"groups": {}, "present": {}, "absent": {}}
     for group in split(args.groups):
         out["groups"][group] = conn.cmd("GROUP " + group)[0]
@@ -763,6 +779,30 @@ echo TAP-TIMEOUT; cat {out}; exit 1
         node.tap_port = int(match.group(1))
         return True
 
+    def require_live(self, node: NodeSpec, where: str) -> bool:
+        """Is this node still the process that reached LISTENING?
+
+        A server that has died must be said ONCE, with its own last lines,
+        so that every row after it is about the death and not about the
+        feature. On gate `0e5a7f8` node B stopped answering after its
+        restart and two steps read `server closed the connection` with no
+        indication that the process was gone.
+        """
+        step = self.sh("node {} is still serving ({})".format(node.upper, where),
+                       "kill -0 {} 2>/dev/null && echo ALIVE || "
+                       "{{ echo DEAD; tail -25 {}/server-{}-*.log 2>/dev/null | "
+                       "tail -25; }}".format(node.pid or 0, node.dir, node.name),
+                       timeout=120, expect=None)
+        if "ALIVE" in step.output:
+            return True
+        self.gaps.append(
+            "node {} was NOT running at {}: its server process is gone, so every "
+            "row after this one that needed that socket is about the death and "
+            "not about the feature. Its last lines: {}".format(
+                node.upper, where,
+                " | ".join(step.output.strip().splitlines()[-6:]) or "none"))
+        return False
+
     def tap_mark(self, node: NodeSpec) -> int:
         """Where the tap log stands now, so the next read is this step alone.
 
@@ -1199,6 +1239,8 @@ else echo NONE; fi
         if not self.start_node(self.a, tag="restart"):
             self.gaps.append("owner feed: node A did not restart after the kill")
             return
+        self.require_live(self.b, "the K5 restart, before the arrival")
+        self.require_live(self.a, "the K5 restart, before the arrival")
         arrival = self.feed(
             "wait", "--port {} --from-port {} --msgid '{}' --seconds 90".format(
                 self.b.port, self.a.port, msgid),
