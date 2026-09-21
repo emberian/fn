@@ -1,6 +1,7 @@
 ; Executable cases and teeth for the bounded native fn.toml profile.
 (in-package "ACL2")
 (include-book "../../books/native-config")
+(include-book "../../host/native-config-host")
 
 (defun fn-ncfg-test-lines (lines)
   (if (consp lines)
@@ -21,6 +22,11 @@
 (assert-event (equal (fn-native-config-auth-path *fn-ncfg-minimal-config*) "/var/lib/fn/store/auth.toml"))
 (assert-event (equal (fn-native-config-control-path *fn-ncfg-minimal-config*) "/var/lib/fn/store/control.sock"))
 (assert-event (fn-native-config-operator-availablep *fn-ncfg-minimal-config*))
+(assert-event
+ (equal (fn-native-config-listener-address
+         (fn-record-string-octets
+          (fn-native-config-listener-host *fn-ncfg-minimal-config*)))
+        '(:inet (127 0 0 1))))
 
 ; A 512-octet store path is legal itself, but its two derived defaults would
 ; exceed the same path bound.  Supplying bounded auth/control paths explicitly
@@ -68,6 +74,34 @@
 (assert-event (equal (fn-native-config-anchor-server *fn-ncfg-full-config*) "int08h"))
 (assert-event (equal (fn-native-config-acl2-slots *fn-ncfg-full-config*) 4))
 (assert-event (not (fn-native-config-operator-availablep *fn-ncfg-full-config*)))
+(assert-event
+ (equal (fn-native-config-listener-address
+         (fn-record-string-octets
+          (fn-native-config-listener-host *fn-ncfg-full-config*)))
+        '(:inet6 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1))))
+
+; `localhost' remains admitted but has the fixed IPv4 loopback projection;
+; no raw resolver selects a different address family at run time.
+(defconst *fn-ncfg-localhost-result*
+  (fn-native-config-load
+   (fn-ncfg-test-lines '("[store]" "path = \"/srv/fn\""
+                         "[listener]" "host = \"localhost\""))))
+(assert-event (equal (car *fn-ncfg-localhost-result*) :accepted))
+(assert-event
+ (equal (fn-native-config-listener-address
+         (fn-record-string-octets
+          (fn-native-config-listener-host
+           (car (cdr *fn-ncfg-localhost-result*)))))
+        '(:inet (127 0 0 1))))
+(assert-event (equal (fn-native-config-listener-address '(127 0 0 2)) :bad))
+(assert-event
+ (equal (fn-native-config-host-listener-address
+         (fn-record-string-octets "127.0.0.1"))
+        '(:inet (127 0 0 1))))
+(assert-event
+ (equal (fn-native-config-host-listener-address
+         (fn-record-string-octets "::1"))
+        '(:inet6 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1))))
 
 ; Syntax teeth: each invalid source removes one accepted-profile premise.
 (assert-event (equal (fn-native-config-load

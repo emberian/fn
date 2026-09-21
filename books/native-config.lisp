@@ -21,6 +21,31 @@
 (defconst *fn-ncfg-default-max-connections* 32)
 (defconst *fn-ncfg-default-clock-error-ms* 1000)
 
+(defconst *fn-ncfg-listener-ipv4-loopback* '(127 0 0 1))
+(defconst *fn-ncfg-listener-ipv6-loopback*
+  '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1))
+
+(defun fn-native-config-listener-hostp (host)
+  "The three deployment-local listener spellings the profile admits."
+  (declare (xargs :guard t))
+  (member-equal host '("127.0.0.1" "::1" "localhost")))
+
+(defun fn-native-config-listener-address (host-octets)
+  "ACL2's complete address projection for an admitted listener host.
+
+The raw owner receives its existing host-octets callback argument, asks this
+subject for the concrete loopback family/address, and never resolves a name.
+`localhost' is deliberately the IPv4 loopback projection, matching the prior
+host resolver's intended deployment behavior.
+"
+  (declare (xargs :guard t))
+  (cond ((or (equal host-octets (fn-record-string-octets "127.0.0.1"))
+             (equal host-octets (fn-record-string-octets "localhost")))
+         (list :inet *fn-ncfg-listener-ipv4-loopback*))
+        ((equal host-octets (fn-record-string-octets "::1"))
+         (list :inet6 *fn-ncfg-listener-ipv6-loopback*))
+        (t :bad)))
+
 (defun fn-ncfg-ws-p (x)
   (declare (xargs :guard t))
   (or (equal x 32) (equal x 9) (equal x 13)))
@@ -341,11 +366,19 @@
             (equal protected :bad) (equal auth-path :bad) (equal enabled :bad)
             (equal agent :bad) (equal anchor :bad) (equal log :bad)
             (equal control :bad) (equal acl2-path :bad) (equal acl2-slots :bad)
-            (not (member-equal host '("127.0.0.1" "::1" "localhost")))
+            (not (fn-native-config-listener-hostp host))
             (equal port 0) (not (iff tls-cert tls-key)))
         :bad
       (fn-native-config-make store host port tls-cert tls-key required protected
                              auth-path enabled agent anchor log control acl2-path acl2-slots))))
+
+(defthm fn-native-config-listener-address-of-admitted-host
+  (implies (fn-native-config-listener-hostp host)
+           (not (equal (fn-native-config-listener-address
+                        (fn-record-string-octets host))
+                       :bad)))
+  :hints (("Goal" :in-theory (enable fn-native-config-listener-hostp
+                                     fn-native-config-listener-address))))
 
 (defun fn-native-config-load (octets)
   ; The public semantic subject called by the native host wrapper.

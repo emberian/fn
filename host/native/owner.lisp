@@ -684,16 +684,18 @@ directories because one encoded label can be a prefix of a longer label.
                (integerp max-connections) (> max-connections 0))
     (fnn-fault "malformed ACL2 owner run plan"))
   (let* ((root (fnn-octets-string store-octets))
-         (host (fnn-octets-string listener-host-octets))
-         (address (if (string= host "::1")
-                      (sb-bsd-sockets:make-inet6-address host)
-                    (sb-bsd-sockets:host-ent-address
-                     (sb-bsd-sockets:get-host-by-name host))))
-         (family (if (= (length address) 16) :inet6 :inet)))
-    (unless (member (length address) '(4 16))
-      (fnn-fault "ACL2 listener host resolved to an unsupported address"))
+         (projection
+           (fnn-core 'fn-native-config-host-listener-address
+                     (fnn-octet-list listener-host-octets)))
+         (family (first projection))
+         (address-list (second projection)))
+    (unless (or (and (eq family :inet) (fnn-octet-list-p address-list)
+                     (= (length address-list) 4))
+                (and (eq family :inet6) (fnn-octet-list-p address-list)
+                     (= (length address-list) 16)))
+      (fnn-fault "ACL2 listener address projection is malformed"))
     (fnn-owner-run root listener-port oncep max-connections
-                   nil address family)))
+                   nil (fnn-octets address-list) family)))
 
 (defun fnn-command-owner (command args)
   "Private low-level test entry; public operators use the normalized callback."

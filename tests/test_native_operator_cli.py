@@ -2,6 +2,8 @@
 """Executable boundary checks for the installed native operator image."""
 import os
 from pathlib import Path
+import select
+import socket
 import subprocess
 import tempfile
 import unittest
@@ -54,6 +56,61 @@ class NativeOperatorCliTests(unittest.TestCase):
         finally:
             config.chmod(0o600)
         self.assertEqual(result.returncode, 4, result.stderr.decode())
+
+    def initialize_store(self, name):
+        store = self.root / name
+        result = subprocess.run(
+            [str(IMAGE), "--fn", "store", str(store), "init", "fn.test"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=180, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        return store
+
+    @staticmethod
+    def reserve_port(host, family):
+        reservation = socket.socket(family, socket.SOCK_STREAM)
+        try:
+            reservation.bind((host, 0))
+            return reservation.getsockname()[1]
+        finally:
+            reservation.close()
+
+    def assert_operator_once_binds(self, host, family):
+        store = self.initialize_store("store-" + host.replace(":", "v"))
+        port = self.reserve_port(host, family)
+        config = self.root / ("listener-" + host.replace(":", "v") + ".toml")
+        config.write_text('[store]\npath = "{}"\n[listener]\nhost = "{}"\nport = {}\n'.format(
+            store, host, port), encoding="ascii")
+        process = subprocess.Popen(
+            [str(IMAGE), "--fn", "operator", str(config), "run", "--once"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            ready = select.select([process.stdout], [], [], 180)[0]
+            self.assertTrue(ready, "operator did not announce its port")
+            line = process.stdout.readline()
+            self.assertEqual(line, "LISTENING {}\n".format(port).encode(),
+                             process.stderr.read().decode("utf-8", "replace"))
+            with socket.create_connection((host, port), timeout=30) as client:
+                stream = client.makefile("rwb", buffering=0)
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                stream.write(b"QUIT\r\n")
+                self.assertTrue(stream.readline().startswith(b"205 "))
+            self.assertEqual(process.wait(timeout=60), 0,
+                             process.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
+
+    def test_operator_run_uses_acl2_projected_ipv4_loopbacks(self):
+        for host in ("127.0.0.1", "localhost"):
+            with self.subTest(host=host):
+                self.assert_operator_once_binds(host, socket.AF_INET)
+
+    def test_operator_run_uses_acl2_projected_ipv6_loopback(self):
+        self.assert_operator_once_binds("::1", socket.AF_INET6)
 
 
 if __name__ == "__main__":
