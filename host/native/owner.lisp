@@ -375,7 +375,13 @@ directories because one encoded label can be a prefix of a longer label.
     (setf (fnn-owner-service-stopping service) t
           (fnn-owner-service-exit-code service) exit-code))
   (let ((listener (fnn-owner-service-listener service)))
-    (when listener (ignore-errors (fnn-socket-shut listener))))
+    (when listener
+      ;; close(2) in another thread does not reliably wake a blocked accept(2)
+      ;; on Linux.  Shutdown first so the accept loop observes a socket error,
+      ;; sees STOPPING while this mutex is still held, and returns.
+      (ignore-errors
+        (sb-bsd-sockets:socket-shutdown listener :direction :io))
+      (ignore-errors (fnn-socket-shut listener))))
   ;; Wake every client before command cleanup waits for its worker.  Shared
   ;; journals and Store state remain open until all workers have returned.
   (dolist (socket (fnn-owner-service-clients service))
