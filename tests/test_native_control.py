@@ -67,7 +67,8 @@ class NativeControlTests(unittest.TestCase):
             env.update(extra_env)
         process = subprocess.Popen(
             [str(IMAGE), "--fn", "operator", str(self.config), "run"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            bufsize=0)
         seen_control = False
         deadline_lines = []
         for _ in range(4):
