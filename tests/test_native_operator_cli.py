@@ -89,7 +89,8 @@ class NativeOperatorCliTests(unittest.TestCase):
             self.assertTrue(ready, "operator did not announce its port")
             line = process.stdout.readline()
             self.assertEqual(line, "LISTENING {}\n".format(port).encode(),
-                             process.stderr.read().decode("utf-8", "replace"))
+                             "unexpected listener announcement; process status={!r}".format(
+                                 process.poll()))
             with socket.create_connection((host, port), timeout=30) as client:
                 stream = client.makefile("rwb", buffering=0)
                 self.assertTrue(stream.readline().startswith(b"200 "))
