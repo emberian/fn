@@ -27,6 +27,10 @@
   (declare (xargs :mode :program))
   (if (fn-stxk-p snapshot) (fn-stxk-snapshot snapshot) nil))
 
+(defun fn-hsig-host-authored-source-fields (source)
+  (declare (xargs :mode :program))
+  (fn-hsig-authored-source-fields source))
+
 (defun fn-hsig-host-authorized-article-event
     (sequence txid generation keyring-generation enrolled-snapshot
               msgid content-subject

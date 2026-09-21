@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "hybrid-signature")
 (include-book "stx-accept-records")
+(include-book "injection")
 
 ; A keyring snapshot is deliberately narrow: one principal and the exact
 ; ordered public-key set used by the signed-preimage function.  Custody and
@@ -126,10 +127,15 @@
               ed25519-observation ml-dsa-65-observation)
   "Construct the legacy article record and atomic kind-4 event in ACL2."
   (declare (xargs :guard t))
-  (let ((record
+  (let* ((fields (fn-hsig-authored-source-fields source))
+         (record
          (fn-record-make sequence txid generation msgid source groups
                          obligation-id content-subject release-evidence charge)))
-    (if (fn-record-p record)
+    (if (and fields
+             (equal msgid (car fields))
+             (equal groups (cadr fields))
+             (equal charge (fn-charge-for-payload (len source)))
+             (fn-record-p record))
         (fn-hsig-authorized-article-event
          sequence txid generation keyring-generation enrolled-snapshot msgid
          (fn-record-string-octets content-subject) (fn-record-encode record)
@@ -194,9 +200,23 @@
                              *fn-hsig-ml-dsa-65-signature-octets*)))))))))
 
 (in-theory (disable (:d fn-hsig-keyring-snapshot)
+                    (:d fn-hsig-authored-source-fields)
                     (:d fn-hsig-keyring-event)
                     (:d fn-hsig-keyring-snapshot-value)
                     (:d fn-hsig-verdict-detail)
                     (:d fn-hsig-authorized-article-event)
                     (:d fn-hsig-authorized-submission-event)
                     (:d fn-hsig-article-event-snapshot-bindsp)))
+(defun fn-hsig-authored-source-fields (source)
+  "Return the exact supplied Message-ID and Newsgroups for an admissible source."
+  (declare (xargs :guard t))
+  (let ((parsed (fn-article-parse source)))
+    (if (not (fn-article-result-okp parsed)) nil
+      (let ((article (fn-article-result-article parsed)))
+        (if (not (fn-article-syntax-p article)) nil
+          (let ((check (fn-af-proto-article-check article)))
+            (if (or (fn-inj-proto-reason check)
+                    (fn-inj-mandatory-reason article)
+                    (not (fn-inj-nth 1 check))
+                    (not (consp (fn-inj-nth 2 check)))) nil
+              (list (fn-inj-nth 1 check) (fn-inj-nth 2 check)))))))))

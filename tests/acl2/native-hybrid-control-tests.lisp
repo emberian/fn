@@ -17,21 +17,10 @@
 (assert-equal
  (fn-native-hybrid-control-author-decode
   (fn-native-hybrid-control-author-encode
-   7 (fn-record-string-octets "<hybrid@example.invalid>") '(65 13 10)
-   *nhc-ed-signature* *nhc-ml-signature*
-   (fn-record-string-octets "/tmp/ml-public.pem")
-   (list (fn-record-string-octets "example"))
-   (fn-record-string-octets "obligation")
-   (fn-record-string-octets "subject")
-   (fn-record-string-octets "release") 3))
- (list :hybrid-author 7
-       (fn-record-string-octets "<hybrid@example.invalid>") '(65 13 10)
-       *nhc-ed-signature* *nhc-ml-signature*
-       (fn-record-string-octets "/tmp/ml-public.pem")
-       (list (fn-record-string-octets "example"))
-       (fn-record-string-octets "obligation")
-       (fn-record-string-octets "subject")
-       (fn-record-string-octets "release") 3))
+   7 '(65 13 10) *nhc-ed-signature* *nhc-ml-signature*
+   (fn-record-string-octets "/tmp/ml-public.pem")))
+ (list :hybrid-author 7 '(65 13 10) *nhc-ed-signature* *nhc-ml-signature*
+       (fn-record-string-octets "/tmp/ml-public.pem")))
 
 (assert-equal
  (fn-native-hybrid-control-enroll-encode

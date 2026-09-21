@@ -1,13 +1,18 @@
 (in-package "ACL2")
 (include-book "native-control")
 (include-book "hybrid-store")
+(include-book "native-admin")
 
 (defconst *fn-nhctrl-enroll-kind* 4)
 (defconst *fn-nhctrl-author-kind* 5)
 (defconst *fn-nhctrl-max-payload* 65536)
 (defconst *fn-nhctrl-enroll-spec* '(:nat :blob :blob :blob))
-(defconst *fn-nhctrl-author-spec*
-  '(:nat :text :blob :blob :blob :text :blob :text :text :text :nat))
+(defconst *fn-nhctrl-author-spec* '(:nat :blob :blob :blob :text))
+
+(defun fn-native-hybrid-control-uint32 (text)
+  (declare (xargs :guard t))
+  (if (fn-native-admin-decimalp text)
+      (fn-native-admin-decimal-value (coerce text 'list)) nil))
 
 (defun fn-nhctrl-seal (kind specs values)
   (declare (xargs :guard t))
@@ -59,37 +64,25 @@
         (cons :hybrid-enroll v) nil)))
 
 (defun fn-native-hybrid-control-author-encode
-    (keyring-generation msgid source ed-signature ml-signature ml-path groups
-                        obligation content-subject release charge)
+    (keyring-generation source ed-signature ml-signature ml-path)
   (declare (xargs :guard t))
   (if (not (and (fn-record-uint32p keyring-generation)
-                (fn-af-message-idp msgid)
                 (fn-cbor-octet-listp source)
                 (consp source) (<= (len source) *fn-article-max-octets*)
                 (fn-hsig-exact-octets-p ed-signature 64)
-                (fn-hsig-exact-octets-p ml-signature 3309)
-                (fn-inj-group-namesp groups)
-                (fn-record-uint32p charge))) :bad
+                (fn-hsig-exact-octets-p ml-signature 3309))) :bad
     (fn-nhctrl-seal
      *fn-nhctrl-author-kind* *fn-nhctrl-author-spec*
-     (list keyring-generation msgid source ed-signature ml-signature ml-path
-           (fn-nctrl-groups-encode groups) obligation content-subject release charge))))
+     (list keyring-generation source ed-signature ml-signature ml-path))))
 
 (defun fn-native-hybrid-control-author-decode (octets)
   (declare (xargs :guard t))
   (let ((v (fn-nhctrl-open-values octets *fn-nhctrl-author-kind*
                                   *fn-nhctrl-author-spec*)))
-    (if (not (equal (len v) 11)) nil
-      (let ((groups (fn-nctrl-groups-decode (nth 6 v))))
-        (if (and (fn-record-uint32p (nth 0 v))
-                 (fn-af-message-idp (nth 1 v))
-                 (fn-cbor-at-mostp (nth 2 v) *fn-article-max-octets*)
-                 (consp (nth 2 v))
-                 (fn-hsig-exact-octets-p (nth 3 v) 64)
-                 (fn-hsig-exact-octets-p (nth 4 v) 3309)
-                 (fn-record-parse-okp groups)
-                 (fn-record-uint32p (nth 10 v)))
-            (list :hybrid-author (nth 0 v) (nth 1 v) (nth 2 v)
-                  (nth 3 v) (nth 4 v) (nth 5 v)
-                  (fn-record-parse-value groups) (nth 7 v) (nth 8 v)
-                  (nth 9 v) (nth 10 v)) nil)))))
+    (if (and (equal (len v) 5)
+             (fn-record-uint32p (nth 0 v))
+             (fn-cbor-at-mostp (nth 1 v) *fn-article-max-octets*)
+             (consp (nth 1 v))
+             (fn-hsig-exact-octets-p (nth 2 v) 64)
+             (fn-hsig-exact-octets-p (nth 3 v) 3309))
+        (cons :hybrid-author v) nil)))
