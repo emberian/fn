@@ -121,3 +121,20 @@ that `fn-bprj-preflight` and `fn-bprj-apply` see the same Store and state
 establish cryptography, liveness, raw Lisp guard verification, or an arbitrary
 concurrent disk execution trace. See [receiver semantics](bp-receipt.md) and
 [adapter ordering](bp-receive.md).
+
+## Native receipt operator path
+
+The DTN native image's `app-journal receipt-complete` command opens the already
+selected Store once, replays FNRJ against that Store, then persists request
+context, receipt intent, and committed receipt decision through the actual
+`fn-bprj-*` functions named above.  `receipt-replay` in a fresh process
+regenerates the canonical nonempty receipt bytes from the durable decision.
+The shared `fn-aj` frontier owns the FNRJ name, count, aggregate, frame bound,
+and resolution reservation; the shared `fn-jpub` machine owns physical
+publication classification.  An empty FNRJ explicitly resets only the receipt
+domain state before configuration.
+
+This operator path supplies a concrete native persistence and restart witness.
+Wiring it to the native TCPCL receive handler remains a composition join; the
+current command receives a bounded request file and Store-record file from its
+operator boundary.  Physical barriers and filesystem behavior remain A-HOST.

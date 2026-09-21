@@ -1,0 +1,125 @@
+{
+  "acl2_executable": "/home/ember/fn-tools/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "c8a7a804d9cc80e2025a8ab0e1d9325f2a0c4a027a5dcdcb2c1093e9cd5c8163",
+  "acl2_exit_codes": {
+    "books/journal-publish": 0,
+    "tests/acl2/journal-publish-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/Users/ember/dev/fn/build/lanes/w15-native-workflow/build/acl2/certify-20260921T083551Z-1624432",
+  "book_failures": {},
+  "book_results": {
+    "books/journal-publish": "passed",
+    "tests/acl2/journal-publish-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/journal-publish": 0.111,
+    "tests/acl2/journal-publish-tests": 0.289
+  },
+  "cert_cache": {
+    "already_cached": 2,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/journal-publish",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/journal-publish-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 2,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/journal-publish": "880002fb399db3de5df7de319bb9a9e9c86698420a631101f1c2dd1128dac797",
+    "tests/acl2/journal-publish-tests": "baa580287b8d648573f35de47af0adefe535d06df2149cef97a472878acc39ac"
+  },
+  "certify_wall_seconds": 0.406,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-tools/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/journal-publish": "cfdb3905e120ee68e589c2a101af3fdce1e38fe6cbf4788d2aa7d49d2f0b9ae2",
+    "tests/acl2/journal-publish-tests": "4508b0774844a102418535a099fe7c6d03a1af34c49694edd532ed44fc611c8b"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 299143b292e3a3b895fcb5f45d63625e 8265a2b50795",
+    "FN_CERTIFY_SUCCESS 299143b292e3a3b895fcb5f45d63625e eac7540b3655"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T08:35:51+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 299143b292e3a3b895fcb5f45d63625e 8265a2b50795",
+    "FN_CERTIFY_SUCCESS 299143b292e3a3b895fcb5f45d63625e eac7540b3655"
+  ],
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "books/journal-publish",
+    "tests/acl2/journal-publish-tests"
+  ],
+  "requested_books": [
+    "books/journal-publish",
+    "tests/acl2/journal-publish-tests"
+  ],
+  "run_id": "certify-20260921T083551Z-1624432",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/journal-publish": 0.0,
+    "tests/acl2/journal-publish-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/journal-publish.lisp": "e669d02932f31520cf765e9df47f612df7655c8f758d7d207c3d72d85fb8747b",
+    "tests/acl2/journal-publish-tests.lisp": "764c9b7110aa4de4afa6cc42c763074197887f1c1a7bb5db275d2e96a62bc7f3"
+  },
+  "source_digests_sha256_after": {
+    "books/journal-publish.lisp": "e669d02932f31520cf765e9df47f612df7655c8f758d7d207c3d72d85fb8747b",
+    "tests/acl2/journal-publish-tests.lisp": "764c9b7110aa4de4afa6cc42c763074197887f1c1a7bb5db275d2e96a62bc7f3"
+  },
+  "start_order": [
+    "books/journal-publish",
+    "tests/acl2/journal-publish-tests"
+  ],
+  "started_utc": "2026-09-21T08:35:51+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/Users/ember/dev/fn/build/lanes/w15-native-workflow"
+}
