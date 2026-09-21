@@ -1,0 +1,13 @@
+host=hbox
+implementation_revision=88b0cd3
+utc=2026-09-21T08:00:52Z
+Linux hbox 6.11.0-29-generic #29-Ubuntu SMP PREEMPT_DYNAMIC Fri Jun 13 20:29:41 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+SBCL 2.2.9.debian
+4ee2a19a83d825ecbed8b0f70518411ae4c7597547318e3b8c8d653a3bf83192  host/native/crypto.lisp
+84731bd485a25384dbdf71bd6d5d0e3300e3e6cb344b495295ad16120edc1297  tests/native_crypto_primitives.lisp
+a2ea2018798794c04a560f14fb92fffcc14784d6926999072f60f021203adf9a  tests/native_crypto_saved_image.lisp
+6310c2420916bd643d843aa61d1db6812ec8cdfa020c307dc32e2709aac73073  tests/test_native_crypto_saved_image.sh
+command=sbcl --noinform --disable-debugger --script tests/native_crypto_primitives.lisp
+FN_NATIVE_CRYPTO_TEST passed library="libsodium.so.23" version="1.0.18"
+command=tests/test_native_crypto_saved_image.sh
+FN_NATIVE_CRYPTO_SAVED_IMAGE_TEST passed library="libsodium.so.23" version="1.0.18"
