@@ -22,14 +22,18 @@
  (equal (fn-bs-profile-record-ceiling
          *fn-bs-meta-legacy-development-values*) 65538))
 (assert-event
- (fn-bs-publication-admissiblep *fn-bs-meta-development-values*
-                                0 0 196608))
+ (fn-bs-publication-admissiblep *fn-bs-meta-development-values* 0 196608))
 (assert-event
  (not (fn-bs-publication-admissiblep
-       *fn-bs-meta-legacy-development-values* 0 0 196608)))
+       *fn-bs-meta-legacy-development-values* 0 196608)))
 (assert-event
  (not (fn-bs-publication-admissiblep
-       *fn-bs-meta-development-values* 127 25000000 196608)))
+       *fn-bs-meta-development-values* 128 196608)))
+(assert-event
+ (fn-bs-profile-aggregate-covers-recordsp *fn-bs-meta-development-values*))
+(assert-event
+ (fn-bs-profile-aggregate-covers-recordsp
+  *fn-bs-meta-legacy-development-values*))
 (assert-event
  (equal (fn-bs-config-decode
          (fn-bs-config-encode *fn-bs-meta-legacy-development-values*))

@@ -39,6 +39,11 @@
 (verify-guards fn-cbor-octetp)
 (verify-guards fn-cbor-octet-listp)
 
+(defthm fn-cbor-octet-listp-implies-true-listp
+  (implies (fn-cbor-octet-listp xs)
+           (true-listp xs))
+  :hints (("Goal" :induct (fn-cbor-octet-listp xs))))
+
 ; This preflight examines no more than `bound + 1` cons cells.  It comes
 ; before octet validation, so a remote overlong list cannot make the decoder
 ; traverse or allocate in proportion to its unbounded claimed size.
@@ -60,6 +65,12 @@
     (and (consp xs) (fn-cbor-at-leastp (cdr xs) (1- n)))))
 
 (verify-guards fn-cbor-at-leastp)
+
+(defthm fn-cbor-at-leastp-is-length-lower-bound
+  (implies (natp n)
+           (equal (fn-cbor-at-leastp xs n)
+                  (<= n (len xs))))
+  :hints (("Goal" :induct (fn-cbor-at-leastp xs n))))
 
 (defun fn-cbor-valuep-bounded (x max-bytes)
   (declare (xargs :guard (natp max-bytes)))

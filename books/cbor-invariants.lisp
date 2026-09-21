@@ -70,23 +70,12 @@
        (not (cdr (cdr (cdr (cdr (fn-cbor-u32-bytes n)))))))
   :hints (("Goal" :in-theory (enable fn-cbor-u32-bytes))))
 
-(defthm fn-cbor-octet-listp-implies-true-listp
-  (implies (fn-cbor-octet-listp xs)
-           (true-listp xs))
-  :hints (("Goal" :induct (fn-cbor-octet-listp xs))))
-
 (defthm fn-cbor-at-mostp-from-length
   (implies (and (true-listp xs)
                 (natp bound)
                 (<= (len xs) bound))
            (fn-cbor-at-mostp xs bound))
   :hints (("Goal" :induct (fn-cbor-at-mostp xs bound))))
-
-(defthm fn-cbor-at-leastp-is-length-lower-bound
-  (implies (natp n)
-           (equal (fn-cbor-at-leastp xs n)
-                  (<= n (len xs))))
-  :hints (("Goal" :induct (fn-cbor-at-leastp xs n))))
 
 (defthm fn-cbor-at-mostp-append
   (implies (and (true-listp xs)

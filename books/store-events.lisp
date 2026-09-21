@@ -15,6 +15,19 @@
 (defconst *fn-store-event-release-code* 1)
 (defconst *fn-store-event-max-octets* 4096)
 
+; Pre-reservation callers know the event kind before its final bytes exist.
+; This table is the ACL2-owned conservative payload presented to the persisted
+; profile gate.  The final publication path separately checks actual bytes.
+(defun fn-store-publication-ceiling (kind)
+  (declare (xargs :guard t))
+  (cond ((equal kind :article) *fn-record-max-octets*)
+        ((or (equal kind :undertake) (equal kind :release))
+         *fn-store-event-max-octets*)
+        ((equal kind :statement-verdict) *fn-stxe-max-octets*)
+        ((equal kind :keyring-snapshot) *fn-stxk-max-octets*)
+        ((equal kind :accepted-statement) *fn-stxa-max-octets*)
+        (t 0)))
+
 ; Retention event:
 ; (:retention kind sequence txid generation obligation-id subject evidence charge)
 (defun fn-store-retention-event-make

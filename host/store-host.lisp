@@ -405,12 +405,14 @@
   (fn-bs-frontier-next n))
 
 (defun fn-store-publication-admissibility (profile committed-count
-                                                   committed-octets
                                                    prospective-payload-octets)
   (if (fn-bs-publication-admissiblep profile committed-count
-                                     committed-octets prospective-payload-octets)
+                                     prospective-payload-octets)
       :admissible
     :refused))
+
+(defun fn-store-publication-kind-ceiling (kind)
+  (fn-store-publication-ceiling kind))
 
 
 (defun fn-store-group-codes (name-octets domain-octets)

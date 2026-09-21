@@ -180,8 +180,10 @@ FNST's 196,608-octet ceiling counts its payload, excluding the fixed 42-octet
 frame header and trailer. A persisted format-7 Store profile derives the same
 per-record payload ceiling from `max_recovery_record_bytes / max_transactions`.
 Format-6 metadata remains readable and derives its original 65,538-octet
-ceiling. The profile gate checks the prospective payload and new aggregate
-before publication, so a legacy store refuses a larger record rather than
+ceiling. The profile proves that transaction count times this per-record bound
+fits its aggregate bound. Admission therefore checks only the canonical
+committed count and prospective payload before allocation or publication; no
+host-maintained aggregate becomes a second capacity authority. A legacy store refuses a larger record rather than
 accepting history it cannot reopen.
 
 See [RFC 8949 §4.2](https://www.rfc-editor.org/rfc/rfc8949.html#section-4.2) for
