@@ -1,0 +1,19 @@
+{
+  "schema": "fn-development-check-v1",
+  "subject": "immutable matrix report publication",
+  "base_commit": "f353ff7a8f8311d116d246b21b7c14063bde8173",
+  "inputs": {
+    "tools/v0_matrix.py": "558387cb006bc74d843e8d98d7767b415e04b2b8c65a9cb14d0f19ac1aece2eb",
+    "tests/test_v0_matrix.py": "95fb574e2d48ca2d5e0ca9e75996ba5922619cc1d6d594d3d708b1ed7a8695bc",
+    "planning/milestones.md": "2bff5b1d95b7004c505b8f1986b53f5dff6b128f06b8430464468fb67d80501b"
+  },
+  "tool": "3.14.7",
+  "command": "python3 -m unittest tests.test_v0_matrix",
+  "exit_code": 0,
+  "output": "..........................................\n----------------------------------------------------------------------\nRan 42 tests in 0.089s\n\nOK\n",
+  "limitations": [
+    "Local report filesystem and simulated gate-document tests only; no NNTP service, ACL2 certification or remote interoperability was exercised.",
+    "The current report remains a selected historical observation; source HEAD can advance after publication.",
+    "Atomic report publication is tooling behavior, not a proved application durability guarantee."
+  ]
+}

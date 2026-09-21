@@ -123,8 +123,12 @@ dependency order, each ending with an evidence record:
 
 **The gate over all six waves is one executable matrix.** `tools/v0_matrix.py`
 stands up two peered fn nodes on a farm box, drives every feature between them,
-and writes [`planning/v0-matrix.json`](v0-matrix.json) plus an evidence record
-under `planning/evidence/`. It carries one row per feature observation with five
+and writes a separate matrix and report under `planning/evidence/v0-runs/`
+for each run. Root uses `--publish-current` to select a non-overlaid,
+non-simulated measurement of the checkout's HEAD as
+[`planning/v0-matrix.json`](v0-matrix.json). An older run cannot replace a newer
+selected run. Publication records an observation; it does not declare a pass.
+The matrix carries one row per feature observation with five
 verdicts that are never collapsed into pass/fail: `accepted`, `refused` and
 `uncertain` are D13's three outcomes and each is a real observation, so a
 refusal row that draws its refusal is the feature working; `not-exercised` names
@@ -521,4 +525,3 @@ that **a wall-clock verdict taken while the box was loaded is not evidence
 about a book**, and a 2598 s figure that becomes 119 s with no edit is the
 shape of that mistake. Timings quoted as facts elsewhere in this tree should
 name the box and its load, as the convergence-layer records now do.
-

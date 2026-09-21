@@ -18,6 +18,8 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -316,6 +318,74 @@ class CommittedMatrixTests(unittest.TestCase):
         if not path.is_file():
             self.skipTest("{} has not been generated yet".format(v0_matrix.MATRIX_JSON))
         self.assertEqual(v0_matrix.check_file(path), [])
+
+
+class ReportPublicationTests(unittest.TestCase):
+    """Concurrent/historical runs must not silently regress selected evidence."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.repo = Path(temp.name)
+        gate = make_gate(temp.name)
+        gate.backfill()
+        self.doc = gate.document("2026-09-21T06:00:00Z", 1.0)
+        self.target = self.repo / v0_matrix.MATRIX_JSON
+
+    def test_parallel_runs_receive_distinct_history_directories(self):
+        with ThreadPoolExecutor(max_workers=8) as workers:
+            dirs = list(workers.map(
+                lambda _: v0_matrix.new_run_directory(self.repo, "abc1234"), range(20)))
+        self.assertEqual(len(set(dirs)), len(dirs))
+        self.assertTrue(all(path.is_dir() for path in dirs))
+        self.assertFalse(self.target.exists())
+
+    def test_current_measurement_is_published_as_valid_json(self):
+        with patch.object(v0_matrix, "resolve", return_value=("a" * 40, "aaaaaaa")):
+            v0_matrix.publish_current(self.repo, self.doc)
+        self.assertEqual(json.loads(self.target.read_text()), self.doc)
+        self.assertEqual(v0_matrix.check_file(self.target), [])
+
+    def test_custom_report_paths_cannot_overwrite_another_run(self):
+        path = self.repo / "report.json"
+        v0_matrix.write_report_once(path, "first run\n")
+        with self.assertRaises(FileExistsError):
+            v0_matrix.write_report_once(path, "second run\n")
+        self.assertEqual(path.read_text(), "first run\n")
+        self.assertEqual(list(self.repo.glob(".matrix-report-*")), [])
+
+    def test_an_old_source_cannot_replace_the_selected_report(self):
+        self.target.parent.mkdir(parents=True)
+        self.target.write_text(json.dumps(self.doc))
+        before = self.target.read_bytes()
+        with patch.object(v0_matrix, "resolve", return_value=("b" * 40, "bbbbbbb")):
+            with self.assertRaisesRegex(v0_matrix.GateError, "not this checkout's HEAD"):
+                v0_matrix.publish_current(self.repo, self.doc)
+        self.assertEqual(self.target.read_bytes(), before)
+
+    def test_parallel_publishers_leave_the_newer_run_selected(self):
+        newer = dict(self.doc, generated_at="2026-09-21T06:01:00Z")
+
+        def publish(doc):
+            try:
+                v0_matrix.publish_current(self.repo, doc)
+            except v0_matrix.GateError as error:
+                self.assertIn("newer matrix", str(error))
+
+        with patch.object(v0_matrix, "resolve", return_value=("a" * 40, "aaaaaaa")):
+            with ThreadPoolExecutor(max_workers=2) as workers:
+                list(workers.map(publish, [newer, self.doc]))
+        self.assertEqual(json.loads(self.target.read_text()), newer)
+
+    def test_overlay_dry_run_and_invalid_rows_cannot_publish(self):
+        with patch.object(v0_matrix, "resolve", return_value=("a" * 40, "aaaaaaa")):
+            for kwargs in ({"overlay": True}, {"simulated": True}):
+                with self.assertRaises(v0_matrix.GateError):
+                    v0_matrix.publish_current(self.repo, self.doc, **kwargs)
+            broken = dict(self.doc, rows_digest="edited")
+            with self.assertRaisesRegex(v0_matrix.GateError, "inconsistent"):
+                v0_matrix.publish_current(self.repo, broken)
+        self.assertFalse(self.target.exists())
 
 
 if __name__ == "__main__":
