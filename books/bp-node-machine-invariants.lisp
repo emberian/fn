@@ -14,12 +14,8 @@
        (not (and (fn-bpn-machine-state-fenced st)
                  (fn-bpn-machine-state-pending st)))
        (or (null (fn-bpn-machine-state-pending st))
-           (and (< (fn-bpn-machine-state-next-token st)
-                   *fn-bpn-machine-max-records*)
-                (fn-bpn-record-applicablep
-                 st
-                 (fn-bpn-pending-record
-                  (fn-bpn-machine-state-pending st)))))))
+           (< (fn-bpn-machine-state-next-token st)
+              *fn-bpn-machine-max-records*))))
 
 ; The native adapter bounds the lifecycle namespace before constructing a
 ; restart event.  Other event arms validate their operands inside fn-bpn-step.
@@ -103,6 +99,43 @@
               fn-bpn-machine-constructor-accessors)
             (theory 'minimal-theory)))))
 
+(defthm fn-bpn-state-with-accessors
+  (let ((next (fn-bpn-state-with st jobs contacts pending fenced next-token)))
+    (and (equal (fn-bpn-machine-state-config next)
+                (fn-bpn-machine-state-config st))
+         (equal (fn-bpn-machine-state-jobs next) jobs)
+         (equal (fn-bpn-machine-state-contacts next) contacts)
+         (equal (fn-bpn-machine-state-pending next) pending)
+         (equal (fn-bpn-machine-state-fenced next) fenced)
+         (equal (fn-bpn-machine-state-next-token next) next-token)
+         (equal (fn-bpn-machine-state-max-jobs next)
+                (fn-bpn-machine-state-max-jobs st))
+         (equal (fn-bpn-machine-state-max-octets next)
+                (fn-bpn-machine-state-max-octets st))))
+  :hints (("Goal" :in-theory (enable fn-bpn-state-with))))
+
+(defthm fn-bpn-pendingp-of-constructor
+  (equal
+   (fn-bpn-pendingp
+    (fn-bpn-make-pending token record success refusal uncertain))
+   (and (fn-bpn-machine-u64p token)
+        (fn-bpn-lifecycle-recordp record)
+        (fn-bpn-effect-listp success)
+        (fn-bpn-effectp refusal)
+        (fn-bpn-effectp uncertain))))
+
+(defthm fn-bpn-pending-constructor-accessors
+  (let ((pending (fn-bpn-make-pending token record success refusal uncertain)))
+    (and (equal (fn-bpn-pending-token pending) token)
+         (equal (fn-bpn-pending-record pending) record)
+         (equal (fn-bpn-pending-success-effects pending) success)
+         (equal (fn-bpn-pending-refusal-effect pending) refusal)
+         (equal (fn-bpn-pending-uncertainty-effect pending) uncertain))))
+
+(defthm fn-bpn-answer-constructor-accessors
+  (and (equal (fn-bpn-answer-state (fn-bpn-answer st effects)) st)
+       (equal (fn-bpn-answer-effects (fn-bpn-answer st effects)) effects)))
+
 (defthm fn-bpn-contact-step-is-noop-while-fenced
   (implies (fn-bpn-machine-state-fenced st)
            (equal (fn-bpn-contact-step st peer openp)
@@ -122,6 +155,122 @@
            (fn-bpn-jobp (fn-bpn-job-with-status job status token)))
   :hints (("Goal"
            :in-theory (enable fn-bpn-job-with-status fn-bpn-jobp))))
+
+(defthm fn-bpn-jobp-of-constructor
+  (equal
+   (fn-bpn-jobp
+    (fn-bpn-make-job work attempt generation sequence age peer route
+                     bundle wire status token))
+   (and (fn-bpn-machine-textp work)
+        (fn-bpn-machine-textp attempt)
+        (fn-bpn-machine-u64p generation)
+        (fn-bpp-timep sequence)
+        (fn-clock-age-anchorp age)
+        (fn-bpp-eidp peer)
+        (fn-bpn-routep route)
+        (fn-bpb-bundlep bundle)
+        (fn-cbor-octet-listp wire)
+        (fn-bpn-job-statusp status)
+        (fn-bpn-machine-u64p token))))
+
+(defthm fn-bpn-primary-encode-is-an-octet-list
+  (fn-cbor-octet-listp (fn-bpp-encode primary))
+  :hints (("Goal"
+           :use ((:instance fn-bpc-enc-are-octets
+                            (flg :item)
+                            (x (fn-bpp-block-value
+                                primary (fn-bpp-block-crc primary)))))
+           :in-theory
+           (union-theories '(fn-bpp-encode fn-bpc-enc-are-octets)
+                           (theory 'minimal-theory)))))
+
+(defthm fn-bpb-encode-is-an-octet-list
+  (implies (fn-bpb-bundlep bundle)
+           (fn-cbor-octet-listp (fn-bpb-encode bundle)))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-primary-encode-is-an-octet-list
+                            (primary (fn-bpb-bundle-primary bundle)))
+                 (:instance fn-bpb-encode-blocks-are-octets
+                            (xs (fn-bpb-bundle-blocks bundle)))
+                 (:instance fn-bpb-encode-block-are-octets
+                            (b (fn-bpb-bundle-payload bundle))))
+           :in-theory (e/d (fn-bpb-encode fn-bpb-bundlep)
+                           (fn-bpp-encode fn-bpb-encode-blocks
+                            fn-bpb-encode-block fn-bpb-blockp
+                            fn-bpb-block-listp fn-bpb-payload-blockp
+                            fn-bpb-splitp)))))
+
+(defthm fn-bpn-send-bundle-destination
+  (equal
+   (fn-bpp-destination
+    (fn-bpb-bundle-primary
+     (fn-bpn-send-bundle config peer adu sequence obs)))
+   peer)
+  :hints (("Goal" :in-theory (enable fn-bpn-send-bundle))))
+
+(defthm fn-bpn-send-bundle-anchor-is-typed
+  (implies (fn-clock-observationp obs)
+           (fn-clock-age-anchorp
+            (fn-bpn-anchor-of
+             (fn-bpn-send-bundle config peer adu sequence obs) obs)))
+  :hints (("Goal"
+           :in-theory
+           (enable fn-bpn-anchor-of fn-bpn-send-bundle
+                   fn-bpn-send-blocks fn-bpb-bundle-age
+                   fn-clock-age-anchorp fn-clock-observationp
+                   fn-clock-timep))))
+
+(defthm fn-bpn-keyp-of-list
+  (equal (fn-bpn-keyp (list work attempt generation))
+         (and (fn-bpn-machine-textp work)
+              (fn-bpn-machine-textp attempt)
+              (fn-bpn-machine-u64p generation)))
+  :hints (("Goal" :in-theory (enable fn-bpn-keyp len nth zp))))
+
+(defthm fn-bpn-enqueue-record-is-typed
+  (implies
+   (and (fn-bpn-configp config)
+        (fn-bpn-keyp (list work attempt generation))
+        (fn-bpp-timep sequence)
+        (fn-bpn-routep route)
+        (fn-bpp-eidp peer)
+        (fn-bpb-datap adu)
+        (fn-clock-observationp obs)
+        (fn-bpn-machine-u64p token)
+        (<= (len (fn-bpn-send config peer adu sequence obs))
+            *fn-bpn-machine-max-job-octets*))
+   (fn-bpn-lifecycle-recordp
+    (list
+     :queued token
+     (fn-bpn-make-job
+      work attempt generation sequence
+      (fn-bpn-anchor-of
+       (fn-bpn-send-bundle config peer adu sequence obs) obs)
+      peer route
+      (fn-bpn-send-bundle config peer adu sequence obs)
+      (fn-bpn-send config peer adu sequence obs)
+      :queued token))))
+  :hints
+  (("Goal"
+    :use ((:instance fn-bpn-send-bundle-is-a-bundle)
+          (:instance fn-bpn-send-bundle-anchor-is-typed)
+          (:instance fn-bpb-encode-is-an-octet-list
+                     (bundle (fn-bpn-send-bundle
+                              config peer adu sequence obs))))
+    :in-theory
+    (union-theories
+     '(fn-bpn-lifecycle-recordp fn-bpn-jobp-of-constructor
+       fn-bpn-keyp-of-list fn-bpn-machine-textp fn-bpn-send
+       fn-bpn-send-bundle-destination fn-bpn-job-statusp
+       fn-bpn-member fn-bpn-nth fn-bpn-machine-u64p natp
+       fn-cbor-ag-car car-cons cdr-cons true-listp len nth zp
+       fn-bpn-job-status-of-fn-bpn-make-job
+       fn-bpn-job-last-token-of-fn-bpn-make-job
+       fn-bpn-job-wire-of-fn-bpn-make-job
+       fn-bpn-job-peer-of-fn-bpn-make-job
+       fn-bpn-job-bundle-of-fn-bpn-make-job
+       (:type-prescription len))
+     (theory 'minimal-theory)))))
 
 (defthm fn-bpn-nth-is-nth-on-true-lists
   (implies (and (natp n) (true-listp values))
@@ -371,10 +520,237 @@
               fn-bpn-machine-limitp natp posp)
             (theory 'minimal-theory)))))
 
+(defthm fn-bpn-machine-invariant-components
+  (implies
+   (fn-bpn-machine-invariantp st)
+   (and (fn-bpn-machine-statep st)
+        (<= (fn-bpn-machine-state-next-token st)
+            *fn-bpn-machine-max-records*)
+        (not (and (fn-bpn-machine-state-fenced st)
+                  (fn-bpn-machine-state-pending st)))
+        (or (null (fn-bpn-machine-state-pending st))
+            (< (fn-bpn-machine-state-next-token st)
+               *fn-bpn-machine-max-records*))))
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(fn-bpn-machine-invariantp)
+                           (theory 'minimal-theory))))
+  :rule-classes :forward-chaining)
+
+(defthm fn-bpn-record-applicablep-of-metadata-state-with
+  (equal
+   (fn-bpn-record-applicablep
+    (fn-bpn-state-with
+     st (fn-bpn-machine-state-jobs st) contacts pending fenced
+     (fn-bpn-machine-state-next-token st))
+    record)
+   (fn-bpn-record-applicablep st record))
+  :hints
+  (("Goal"
+    :in-theory
+    (union-theories
+     '(fn-bpn-record-applicablep fn-bpn-state-with
+       fn-bpn-machine-constructor-accessors)
+     (theory 'minimal-theory)))))
+
+(defthm fn-bpn-propose-preserves-machine-invariant
+  (implies
+   (and (fn-bpn-machine-invariantp st)
+        (fn-bpn-lifecycle-recordp record)
+        (fn-bpn-effect-listp success)
+        (fn-bpn-effectp refusal)
+        (fn-bpn-effectp uncertain))
+   (fn-bpn-machine-invariantp
+    (fn-bpn-answer-state
+     (fn-bpn-propose st record success refusal uncertain))))
+  :hints
+  (("Goal"
+    :use ((:instance fn-bpn-machine-invariant-components)
+          (:instance fn-bpn-machine-statep-components)
+          (:instance fn-bpn-machine-statep-of-state-with
+                     (jobs (fn-bpn-machine-state-jobs st))
+                     (contacts (fn-bpn-machine-state-contacts st))
+                     (pending
+                      (fn-bpn-make-pending
+                       (fn-bpn-machine-state-next-token st)
+                       record success refusal uncertain))
+                     (fenced nil)
+                     (next-token (fn-bpn-machine-state-next-token st))))
+    :in-theory
+    (union-theories
+     '(fn-bpn-propose fn-bpn-machine-invariantp
+       fn-bpn-answer-constructor-accessors
+       fn-bpn-pendingp-of-constructor fn-bpn-pending-constructor-accessors
+       fn-bpn-maybe-pendingp fn-bpn-machine-boolp
+       fn-bpn-state-with-accessors)
+     (theory 'minimal-theory)))))
+
+(defthm fn-bpn-effect-listp-of-singleton
+  (equal (fn-bpn-effect-listp (list effect))
+         (fn-bpn-effectp effect))
+  :hints (("Goal" :in-theory (enable fn-bpn-effect-listp))))
+
+(defthm fn-bpn-effect-listp-of-nil
+  (fn-bpn-effect-listp nil)
+  :hints (("Goal" :in-theory (enable fn-bpn-effect-listp))))
+
+(defthm fn-bpn-effect-listp-of-pair
+  (equal (fn-bpn-effect-listp (list first second))
+         (and (fn-bpn-effectp first) (fn-bpn-effectp second)))
+  :hints (("Goal" :in-theory (enable fn-bpn-effect-listp))))
+
+(defthm fn-bpn-persist-effect-is-typed
+  (fn-bpn-effectp (list :persist token record))
+  :hints (("Goal" :in-theory (enable fn-bpn-effectp fn-bpn-member))))
+
+(defthm fn-bpn-propose-effects-are-typed
+  (implies (fn-bpn-effectp refusal)
+           (fn-bpn-effect-listp
+            (fn-bpn-answer-effects
+             (fn-bpn-propose st record success refusal uncertain))))
+  :hints (("Goal"
+           :in-theory
+           (union-theories
+            '(fn-bpn-propose fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-singleton
+              fn-bpn-persist-effect-is-typed)
+            (theory 'minimal-theory)))))
+
+(defthm fn-bpn-enqueue-step-effects-are-typed
+  (fn-bpn-effect-listp
+   (fn-bpn-answer-effects
+    (fn-bpn-enqueue-step st work attempt generation sequence
+                         route peer adu obs)))
+  :hints (("Goal"
+           :in-theory
+           (union-theories
+            '(fn-bpn-enqueue-step fn-bpn-propose-effects-are-typed
+              fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-singleton
+              fn-bpn-effectp fn-bpn-member car-cons cdr-cons
+              true-listp)
+            (theory 'minimal-theory)))))
+
+(defthm fn-bpn-start-one-effects-are-typed
+  (fn-bpn-effect-listp
+   (fn-bpn-answer-effects (fn-bpn-start-one st peer)))
+  :hints (("Goal"
+           :in-theory
+           (union-theories
+            '(fn-bpn-start-one fn-bpn-propose-effects-are-typed
+              fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-singleton
+              fn-bpn-effect-listp-of-nil
+              fn-bpn-effectp fn-bpn-member car-cons cdr-cons
+              true-listp)
+            (theory 'minimal-theory)))))
+
+(defthm fn-bpn-contact-step-effects-are-typed
+  (fn-bpn-effect-listp
+   (fn-bpn-answer-effects (fn-bpn-contact-step st peer openp)))
+  :hints (("Goal"
+           :in-theory
+           (union-theories
+            '(fn-bpn-contact-step fn-bpn-start-one-effects-are-typed
+              fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-singleton fn-bpn-effect-listp-of-nil
+              fn-bpn-effectp fn-bpn-member
+              car-cons cdr-cons true-listp)
+            (theory 'minimal-theory)))))
+
+(defthm fn-bpn-persist-result-step-effects-are-typed
+  (implies (fn-bpn-machine-statep st)
+           (fn-bpn-effect-listp
+            (fn-bpn-answer-effects
+             (fn-bpn-persist-result-step st token outcome))))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-machine-statep-components))
+           :in-theory
+           (union-theories
+            '(fn-bpn-persist-result-step fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-singleton
+              fn-bpn-effect-listp-of-nil
+              fn-bpn-maybe-pendingp fn-bpn-pendingp)
+            (theory 'minimal-theory)))))
+
+(defthm fn-bpn-forward-result-step-effects-are-typed
+  (fn-bpn-effect-listp
+   (fn-bpn-answer-effects (fn-bpn-forward-result-step st key outcome)))
+  :hints (("Goal"
+           :in-theory
+           (union-theories
+            '(fn-bpn-forward-result-step fn-bpn-propose-effects-are-typed
+              fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-singleton fn-bpn-effect-listp-of-pair
+              fn-bpn-effect-listp-of-nil
+              fn-bpn-effectp fn-bpn-member car-cons cdr-cons
+              true-listp)
+            (theory 'minimal-theory)))))
+
+(defthm fn-bpn-clock-step-effects-are-typed
+  (fn-bpn-effect-listp
+   (fn-bpn-answer-effects (fn-bpn-clock-step st obs)))
+  :hints (("Goal"
+           :in-theory
+           (union-theories
+            '(fn-bpn-clock-step fn-bpn-propose-effects-are-typed
+              fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-singleton
+              fn-bpn-effect-listp-of-nil
+              fn-bpn-effectp fn-bpn-member car-cons cdr-cons
+              true-listp)
+            (theory 'minimal-theory)))))
+
+(defthm fn-bpn-restart-step-effects-are-typed
+  (fn-bpn-effect-listp
+   (fn-bpn-answer-effects (fn-bpn-restart-step st records sequence-ready)))
+  :hints (("Goal"
+           :in-theory
+           (union-theories
+            '(fn-bpn-restart-step fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-singleton
+              fn-bpn-effectp fn-bpn-member car-cons cdr-cons
+              true-listp)
+            (theory 'minimal-theory)))))
+
+(defthm fn-bpn-enqueue-step-preserves-machine-invariant
+  (implies
+   (fn-bpn-machine-invariantp st)
+   (fn-bpn-machine-invariantp
+    (fn-bpn-answer-state
+     (fn-bpn-enqueue-step st work attempt generation sequence
+                          route peer adu obs))))
+  :hints
+  (("Goal"
+    :use ((:instance fn-bpn-machine-invariant-components)
+          (:instance fn-bpn-machine-statep-components))
+    :in-theory
+    (union-theories
+     '(fn-bpn-enqueue-step fn-bpn-propose-preserves-machine-invariant
+       fn-bpn-enqueue-record-is-typed fn-bpn-answer-constructor-accessors
+       fn-bpn-effect-listp-of-singleton fn-bpn-effectp fn-bpn-member
+       car-cons cdr-cons true-listp)
+     (theory 'minimal-theory)))))
+
+; Keystone: the effect output of the host-called dispatcher is typed from the
+; maintained input invariant, rather than assumed typed after the fact.
 (defthm fn-bpn-step-effects-are-typed
   (implies (fn-bpn-machine-invariantp st)
            (fn-bpn-effect-listp
-            (fn-bpn-answer-effects (fn-bpn-step st event)))))
+            (fn-bpn-answer-effects (fn-bpn-step st event))))
+  :hints (("Goal"
+           :in-theory
+           (union-theories
+            '(fn-bpn-machine-invariantp fn-bpn-step
+              fn-bpn-enqueue-step-effects-are-typed
+              fn-bpn-contact-step-effects-are-typed
+              fn-bpn-start-one-effects-are-typed
+              fn-bpn-persist-result-step-effects-are-typed
+              fn-bpn-forward-result-step-effects-are-typed
+              fn-bpn-clock-step-effects-are-typed
+              fn-bpn-restart-step-effects-are-typed
+              fn-bpn-answer-constructor-accessors fn-bpn-effect-listp)
+            (theory 'minimal-theory)))))
 
 (defthm fn-bpn-step-preserves-machine-invariant
   (implies (fn-bpn-machine-invariantp st)
