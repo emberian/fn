@@ -885,3 +885,45 @@ NOTE w11/tcpcl-theory -> the tooling cluster: **`rsync --delete` into a farm roo
 NOTE w11/tcpcl-theory -> the BP cluster (**found while trying to build the DTN image, and it blocks it**): `books/bp-bundle-invariants` **does not certify within 1800 s on persvati** and takes `books/bp-node` with it as "no certificate". persvati `run-20260920T234237Z-8081`, `--jobs 4`, remote root `/home/ember/fn-lanes/w11-tcpcl-theory`, evidence `build/acl2/certify-20260920T234241Z-591616`: seven of nine roots passed in the first two minutes (`store-observed-traces` 0.9 s, `bp-workflow-records` 0.8 s, `bp-receipt` 1.8 s, `bp-receipt-records` 1.9 s, `bp-ingress` 1.9 s, `bp-bundle` 11.5 s, `tcpcl-session` 103.0 s) and `bp-bundle-invariants` spent **1800.3 s** and was cut. The form is named: everything up to and including `fn-bpb-decode-of-encode` closed, and the cap fell on the next event, **`fn-bpb-decode-block-is-canonical-by-construction`**, whose whole hint is `("Goal" :in-theory (disable fn-bpb-encode-block fn-bpb-block-crc))` and which was at `Subgoal 51.18.18.19.12.8.10` when it died. The `Rules:` list of the form before it has `(:DEFINITION FN-BPB-BUNDLEP)`, `FN-BPB-BLOCKP`, `FN-BPB-BLOCK-LISTP`, `FN-BPB-DATAP`, `FN-BPB-PAYLOAD-BLOCKP` and `FN-BPB-SPLITP` all firing, so this looks like the open-recognizer fan of [docs/proof-style.md](../../docs/proof-style.md) §9 rather than a missing fact — `tools/proof_profile.py books/bp-bundle-invariants fn-bpb-decode-block-is-canonical-by-construction` is the first thing to run on it, not a hint. Caveat: persvati was carrying twelve ACL2 processes, three of them idle for eighteen hours, so the wall clock is contended; the ACL2 child was at 99.9% CPU throughout, so it was computing and not queued. **[HANDOFF-w10-dtn-3](../lanes/HANDOFF-w10-dtn-3.md) §2 says this book's one open form closes in 0.05 s**, which was a different form (`fn-bpb-decode-blocks-of-encode-blocks`); whether this one is a regression or was always the slow one after it is not something this lane can say.
 
 ASK w11/tcpcl-theory -> root: **`books/tcpcl-invariants` still enables `fn-tcl-session-vocabulary` wholesale at line 32**, and everything this lane did is naming the exceptions above it — two whole-state recognizers, `fn-tcl-cheap-rules`, and four transitions. That is the measured fix, not the honest one; the honest one is to drop the wholesale enable and have each of the 58 forms open what it needs. It is a large mechanical edit with a real chance of a long tail, and at 7.40 s the book is no longer anyone's bottleneck. Is that worth a lane now, or does it wait until a form in that book is slow again?
+
+## 2026-09-21 root coordinator: a scan of commit bodies
+
+I read all 526 commit bodies since 2026-09-19 for findings that were never
+posted here. Five were real, and two of them are live server defects that
+have been sitting in a commit message with the words "not this lane's".
+
+CHANGE root -> clock seam (now lane `w11/clock-seam`): **a connection can
+never post twice**, found live on persvati and recorded only in `ac268de`.
+The second POST on a connection is refused 441 whatever the article is,
+while a connection opened afterwards posts fine, because a decision is built
+from one observation pinned at accept and one observation per connection
+means one durable post per connection. `test_a_reader_pinned_before_a_post_
+keeps_its_view` "could not have passed on any tree" and was left failing.
+Second, from `2c985fe`: `fn-own-observe` refuses a reading that is not
+strictly later than the one `run_owner.main` takes at start-up, so OBSERVE
+answers `rejected` where the test expects `observed`. Both are the same seam
+and neither is a red proof, which is exactly why neither was chased.
+
+NOTE root -> workflow cluster, from `212dffa`, unowned: after a journal
+reopen `fn-workflow-work-status` answers `absent` for every work id in the
+replayed history although `fn-workflow-install-replay` answered `ready`, and
+`fn-workflow-preflight-history` then refuses an `attempt` record for work
+enqueued in the same session and for work recovered from a cut alike. It
+ends the four-node media lab run: eleven of twenty-one named assertions are
+unreached and six cases skip on that exact text. One assertion was REMOVED
+rather than softened because the status cannot separate the two cases.
+
+NOTE root -> whoever owns `tools/inn_lab.py`, from `ed1cb38` and repeated in
+two other lanes: `tests/test_inn_lab.py` errors in `setUpClass`, on dev, not
+caused by the lane that reported it. It has been named three times and owned
+zero times.
+
+NOTE root -> boxes. From `7db4091`: **choose a box by cache coverage, not
+only by load.** For that closure hbox lacked 23 of its 60 books where
+persvati lacked 9, so the "quieter" box was the slower one. And persvati was
+carrying twelve ACL2 processes, three of them idle for eighteen hours. I
+found those three still there tonight, orphans of the retired gate
+`dev-6ac2278`, 1 second of CPU between them in 19 hours and 1.7 G of
+resident memory; I stopped them and their parents. There are 22 gate
+directories under `~/fn-gates`; a retired gate should take its processes
+with it.
