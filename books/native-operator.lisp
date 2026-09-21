@@ -118,6 +118,26 @@
                (fn-nop-usage :unexpected-arguments "recover" config rest)))
             (t (fn-nop-usage :unsupported-command command config rest))))))
 
+(defun fn-native-operator-command-preflight (argv-octets)
+  "Parse only the config-free command boundary.
+
+The distinguished `(:needs-config)' result directs the raw boundary to read a
+configuration file.  Every other result is the ordinary tagged operator result,
+so malformed argv and help syntax remain ACL2-owned before any host file I/O."
+  (declare (xargs :guard t))
+  (if (or (not (true-listp argv-octets))
+          (< *fn-nop-max-arguments* (len argv-octets))
+          (not (fn-nop-argvp argv-octets)))
+      (fn-nop-usage :argv-bounds nil nil nil)
+    (let ((words (fn-nop-argument-texts argv-octets)))
+      (if (and (consp words) (equal (car words) "help"))
+          (fn-nop-parse-command words nil)
+        (list :needs-config)))))
+
+(defun fn-native-operator-preflight-needs-config-p (result)
+  (declare (xargs :guard t))
+  (equal result '(:needs-config)))
+
 (defun fn-native-operator-run (config-octets argv-octets)
   "One semantic authority for config defaults, argv grammar, and CLI tag.
 
@@ -125,24 +145,20 @@ A profile the current native owner cannot consume is USAGE, never an accepted
 service plan.  `posting.enabled = false' remains explicit unsupported-profile
 until owner convergence exposes one ACL2 posting projection to served/control."
   (declare (xargs :guard t))
-  (cond ((or (not (true-listp argv-octets))
-             (< *fn-nop-max-arguments* (len argv-octets))
-             (not (fn-nop-argvp argv-octets)))
-         (fn-nop-usage :argv-bounds nil nil nil))
-        (t (let ((words (fn-nop-argument-texts argv-octets)))
-             ; Help is an ACL2-selected action and deliberately needs no file.
-             (if (and (consp words) (equal (car words) "help"))
-                 (fn-nop-parse-command words nil)
-               (if (or (not (fn-ncfg-ascii-octetsp config-octets))
-                       (< *fn-ncfg-max-octets* (len config-octets)))
-                   (fn-nop-usage :configuration-bounds nil nil nil)
-                 (let ((loaded (fn-native-config-load config-octets)))
-                   (if (not (equal (fn-ncfg-first loaded) :accepted))
-                       (fn-nop-usage (list :configuration (fn-ncfg-second loaded)) nil nil nil)
-                     (let ((config (fn-ncfg-second loaded)))
-                       (if (not (fn-native-config-operator-availablep config))
-                           (fn-nop-usage :unsupported-profile nil config nil)
-                         (fn-nop-parse-command words config)))))))))))
+  (let ((preflight (fn-native-operator-command-preflight argv-octets)))
+    (if (not (fn-native-operator-preflight-needs-config-p preflight))
+        preflight
+      (let ((words (fn-nop-argument-texts argv-octets)))
+        (if (or (not (fn-ncfg-ascii-octetsp config-octets))
+                (< *fn-ncfg-max-octets* (len config-octets)))
+            (fn-nop-usage :configuration-bounds nil nil nil)
+          (let ((loaded (fn-native-config-load config-octets)))
+            (if (not (equal (fn-ncfg-first loaded) :accepted))
+                (fn-nop-usage (list :configuration (fn-ncfg-second loaded)) nil nil nil)
+              (let ((config (fn-ncfg-second loaded)))
+                (if (not (fn-native-config-operator-availablep config))
+                    (fn-nop-usage :unsupported-profile nil config nil)
+                  (fn-nop-parse-command words config))))))))))
 
 (in-theory (disable fn-native-operator-run))
 
