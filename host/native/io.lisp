@@ -742,9 +742,16 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defun fnn-at (store point)
   "Production has no injection branch; a scripted point raises its outcome."
   (when (eq point (fnn-store-fault-point store))
-    (if (eq (fnn-store-fault-class store) 'fnn-os-error)
-        (fnn-os-fail sb-posix:eio)
-      (error (fnn-store-fault-class store) :message (fnn-store-fault-message store)))))
+    (cond ((eq (fnn-store-fault-class store) 'fnn-os-error)
+           (fnn-os-fail sb-posix:eio))
+          ;; FN_NATIVE_INIT_FAULT is a developer-test seam.  SIGKILL is
+          ;; deliberate: unlike an exception it cannot run unwind-protect
+          ;; cleanup, so the next command tests an actual new process.
+          ((eq (fnn-store-fault-class store) :fnn-test-kill)
+           (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+           (fnn-fault "test SIGKILL did not terminate the process"))
+          (t
+           (error (fnn-store-fault-class store) :message (fnn-store-fault-message store))))))
 
 (defun fnn-config-path (s) (fnn-join (fnn-store-root s) "config.json"))
 (defun fnn-transactions (s) (fnn-join (fnn-store-root s) "transactions"))
@@ -755,13 +762,18 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defun fnn-config-record-path (s generation)
   (fnn-join (fnn-config-dir s) (format nil "~8,'0d.cfg" generation)))
 
-(defun fnn-config-record-names (store)
-  "The durable configuration records in generation order; NIL when absent."
+(defun fnn-config-record-names (store &optional test-fault-point)
+  "The durable configuration records in generation order; NIL when absent.
+
+Enumeration failure is not absence.  In particular, initialization must not
+turn an unreadable config directory into a generation-one publication or skip
+its final record-file barrier.  TEST-FAULT-POINT is the native fidelity test's
+pre-enumeration control; normal callers pass NIL."
+  (when test-fault-point (fnn-at store test-fault-point))
   (sort (remove-if-not (lambda (name)
                          (let ((n (length name)))
                            (and (> n 4) (string= ".cfg" (subseq name (- n 4))))))
-                       (handler-case (fnn-list-directory (fnn-config-dir store))
-                         (fnn-os-error () nil)))
+                       (fnn-list-directory (fnn-config-dir store)))
         #'string<))
 
 (defun fnn-config-records (store)
@@ -799,23 +811,35 @@ The core decides whether the records replay."
         (fnn-refuse "store is already locked")))
     fd))
 
-(defun fnn-safe-directory (path &optional create)
+(defun fnn-init-cut (store label)
+  "One test seam after a named fresh-initializer durable syscall."
+  (fnn-at store (intern (string-upcase label) :keyword)))
+
+(defun fnn-safe-directory (path &optional create initializer-store mkdir-cut parent-cut)
   (let ((st (fnn-lstat path)))
     (when (null st)
       (unless create (fnn-fault "missing store directory: ~a" path))
       (fnn-mkdir path #o700)
+      (when initializer-store (fnn-init-cut initializer-store mkdir-cut))
       (fnn-fsync-dir (fnn-parent path))
+      (when initializer-store (fnn-init-cut initializer-store parent-cut))
       (setq st (fnn-lstat path)))
     (when (or (null st) (not (fnn-directory-p st)) (fnn-symlink-p st))
       (fnn-fault "refusing non-directory store path: ~a" path))
     st))
 
-(defun fnn-publish-initial-file (store final contents)
+(defun fnn-publish-initial-file (store final contents &optional initializer-prefix)
   "Stage, barrier, link and barrier one initialization metadata file."
   (let* ((stage (fnn-join (fnn-staging store)
                           (format nil ".init-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
          (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600)))
-    (unwind-protect (progn (fnn-write-all fd contents) (fnn-fsync-file fd))
+    (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "created")))
+    (unwind-protect (progn (fnn-write-all fd contents)
+                           (when initializer-prefix
+                             (fnn-init-cut store (fnn-concat initializer-prefix "written")))
+                           (fnn-fsync-file fd)
+                           (when initializer-prefix
+                             (fnn-init-cut store (fnn-concat initializer-prefix "file-fenced"))))
       (fnn-close fd))
     (unwind-protect
          (progn
@@ -824,9 +848,14 @@ The core decides whether the records replay."
                (if (= (fnn-os-errno e) sb-posix:eexist)
                    (return-from fnn-publish-initial-file nil)
                    (error e))))
+           (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "linked")))
            (fnn-fsync-dir (fnn-store-root store))
+           (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "root-fenced")))
            t)
-      (ignore-errors (fnn-unlink stage)))))
+      (ignore-errors (fnn-unlink stage))
+      ;; Keep the real best-effort unlink policy above.  The test seam is
+      ;; deliberately outside that handler so its selected outcome is visible.
+      (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "stage-unlinked"))))))
 
 (defun fnn-transaction-files (store)
   "Sorted (sequence . path) pairs of the final namespace, gap-free or a fault."
@@ -883,37 +912,51 @@ The core decides whether the records replay."
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
   ;; the core from the operator's group names.
-  (fnn-safe-directory (fnn-store-root store) t)
+  (fnn-safe-directory (fnn-store-root store) t store
+                      "init-root-mkdir" "init-root-parent-fenced")
   (let ((lock-fd (fnn-open-lock store t t)))
     (unwind-protect
          (progn
-           (fnn-safe-directory (fnn-transactions store) t)
-           (fnn-safe-directory (fnn-staging store) t)
-           (fnn-safe-directory (fnn-config-dir store) t)
+           (fnn-init-cut store "init-lock-created")
+           (fnn-safe-directory (fnn-transactions store) t store
+                               "init-transactions-mkdir" "init-transactions-parent-fenced")
+           (fnn-safe-directory (fnn-staging store) t store
+                               "init-staging-mkdir" "init-staging-parent-fenced")
+           (fnn-safe-directory (fnn-config-dir store) t store
+                               "init-config-dir-mkdir" "init-config-dir-parent-fenced")
            (let ((config (fnn-metadata-config-frame profile)))
-             (if (fnn-publish-initial-file store (fnn-config-path store) config)
+             (if (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
                  (setf (fnn-store-config store) (fnn-metadata-config-decode config))
                  (fnn-load-config store)))
-           (when (null (fnn-config-record-names store))
+           (when (null (fnn-config-record-names store :init-config-records-first-enumerate))
              (fnn-publish-initial-file store (fnn-config-record-path store 1)
-                                       (fnn-bridge-config-initial groups))
-             (fnn-fsync-dir (fnn-config-dir store)))
+                                       (fnn-bridge-config-initial groups) "init-history-")
+             (fnn-fsync-dir (fnn-config-dir store))
+             (fnn-init-cut store "init-config-history-fenced"))
            ;; A missing allocator alongside committed history would permit
            ;; reuse of an aborted ID.  It is a fault, never an implicit 0.
            (when (and (null (fnn-check-regular (fnn-frontier-path store)))
                       (fnn-transaction-files store))
              (fnn-fault "refusing missing allocator frontier with committed history"))
            (if (fnn-publish-initial-file store (fnn-frontier-path store)
-                                         (fnn-metadata-frontier-frame 0))
+                                         (fnn-metadata-frontier-frame 0) "init-frontier-")
                (setf (fnn-store-frontier store) 0)
                (fnn-load-frontier store))
            (fnn-fsync-regular (fnn-config-path store))
-           (dolist (name (fnn-config-record-names store))
-             (fnn-fsync-regular (fnn-join (fnn-config-dir store) name)))
+           (fnn-init-cut store "init-final-config-file-fenced")
+           (dolist (name (fnn-config-record-names store :init-config-records-final-enumerate))
+             (fnn-fsync-regular (fnn-join (fnn-config-dir store) name))
+             ;; The fresh branch has generation 1 only.  Existing history is
+             ;; intentionally outside this packet.
+             (fnn-init-cut store "init-final-config-record-file-fenced"))
            (fnn-fsync-regular (fnn-frontier-path store))
+           (fnn-init-cut store "init-final-frontier-file-fenced")
            (fnn-fsync-dir (fnn-transactions store))
+           (fnn-init-cut store "init-transactions-fenced")
            (fnn-fsync-dir (fnn-store-root store))
-           (fnn-fsync-dir (fnn-parent (fnn-store-root store))))
+           (fnn-init-cut store "init-root-fenced")
+           (fnn-fsync-dir (fnn-parent (fnn-store-root store)))
+           (fnn-init-cut store "init-parent-fenced"))
       (ignore-errors (fnn-flock lock-fd +fnn-lock-un+))
       (fnn-close lock-fd))))
 
@@ -1173,8 +1216,51 @@ provenance the model only compares."
 
 ;;; Commands.
 
+(defparameter +fnn-init-model-cuts+
+  '("init-root-mkdir" "init-root-parent-fenced" "init-lock-created"
+    "init-transactions-mkdir" "init-transactions-parent-fenced"
+    "init-staging-mkdir" "init-staging-parent-fenced"
+    "init-config-dir-mkdir" "init-config-dir-parent-fenced"
+    "init-config-created" "init-config-written" "init-config-file-fenced"
+    "init-config-linked" "init-config-root-fenced" "init-config-stage-unlinked"
+    "init-history-created" "init-history-written" "init-history-file-fenced"
+    "init-history-linked" "init-history-root-fenced" "init-history-stage-unlinked"
+    "init-config-history-fenced"
+    "init-frontier-created" "init-frontier-written" "init-frontier-file-fenced"
+    "init-frontier-linked" "init-frontier-root-fenced" "init-frontier-stage-unlinked"
+    "init-final-config-file-fenced" "init-final-config-record-file-fenced"
+    "init-final-frontier-file-fenced" "init-transactions-fenced"
+    "init-root-fenced" "init-parent-fenced"))
+
+;; These controls are intentionally outside fn-bsi-current-init-program: they
+;; fail *before* a directory enumeration to verify the host does not confuse
+;; an OS error with an empty configuration history.
+(defparameter +fnn-init-test-controls+
+  '("init-config-records-first-enumerate" "init-config-records-final-enumerate"))
+
+(defun fnn-init-test-fault ()
+  "Developer-only FN_NATIVE_INIT_FAULT=MODEL-CUT:eio|kill selector.
+
+This is intentionally not a command-line option or an operator configuration
+field.  The external native fidelity test uses it to stop one child process at
+a source-pinned post-syscall cut."
+  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_INIT_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw :from-end t)))
+        (unless colon
+          (fnn-fault "invalid FN_NATIVE_INIT_FAULT (expected MODEL-CUT:eio|kill)"))
+        (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
+          (unless (or (member label +fnn-init-model-cuts+ :test #'string=)
+                      (member label +fnn-init-test-controls+ :test #'string=))
+            (fnn-fault "unknown FN_NATIVE_INIT_FAULT cut: ~a" label))
+          (list (intern (string-upcase label) :keyword)
+                (cond ((string= action "eio") 'fnn-os-error)
+                      ((string= action "kill") :fnn-test-kill)
+                      (t (fnn-fault "invalid FN_NATIVE_INIT_FAULT action: ~a" action)))
+                "developer-only native initializer fault"))))))
+
 (defun fnn-command-init (root groups)
-  (let ((store (make-fnn-store root :writable t)))
+  (let ((store (make-fnn-store root :writable t :fault (fnn-init-test-fault))))
     (unwind-protect
          (progn (fnn-initialize store (or groups +fnn-default-groups+))
                 (fnn-acquire store)
@@ -1636,6 +1722,8 @@ connection `fn-reader-reset' opens and projects with
 ;;;   tcpcl replay TRACE-FILE [ROLE NODE-ID PEER KEEPALIVE SEGMENT-MRU
 ;;;                      TRANSFER-MRU]
 ;;;   sha256 PATH
+;;; `FN_NATIVE_INIT_FAULT=MODEL-CUT:eio|kill` is a developer-only test seam;
+;;; it is intentionally absent from this command protocol and normal CLI.
 
 ;;; Verbs a layer above this file owns.  host/native/tcpcl.lisp registers
 ;;; "tcpcl" when it loads; naming its dispatcher here instead made this file
