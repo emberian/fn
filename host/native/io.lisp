@@ -25,7 +25,7 @@
 ;;;   (fnn-listen port &key family backlog) -> (values socket bound-port)
 ;;;   (fnn-connect host port &key family)   -> socket, an active open
 ;;;   (fnn-accept-loop listener handler once) -> one handler call per client
-;;;   (fnn-socket-fd socket)                -> the descriptor the three below take
+;;;   (fnn-socket-fd socket)                -> a nonblocking descriptor the three below take
 ;;;   (fnn-socket-shut socket)              -> close, errors swallowed
 ;;;   (fnn-recv fd seconds)                 -> octets, an empty vector at end
 ;;;                                            of input, or :timeout; at most
@@ -314,6 +314,24 @@ power-loss qualification."
 (defun fnn-eintr-p (errno)
   (and (integerp errno) (= errno sb-posix:eintr)))
 
+(defun fnn-would-block-p (errno)
+  "Whether ERRNO asks a nonblocking socket to wait for readiness again."
+  (and (integerp errno)
+       (or (= errno sb-posix:eagain)
+           (= errno sb-posix:ewouldblock))))
+
+(defun fnn-set-nonblocking (fd)
+  "Make socket descriptor FD nonblocking, preserving its existing flags.
+
+Every fd exposed by FNN-SOCKET-FD goes through this boundary before the
+deadline-aware recv/send helpers use it.  Connection establishment and DNS
+resolution deliberately remain outside this read/write deadline contract."
+  (fnn-posix ()
+    (let ((flags (sb-posix:fcntl fd sb-posix:f-getfl)))
+      (sb-posix:fcntl fd sb-posix:f-setfl
+                      (logior flags sb-posix:o-nonblock))))
+  fd)
+
 (defun fnn-retry-eintr (call &optional deadline)
   "Run CALL until it returns a result other than an interrupted syscall.
 
@@ -330,10 +348,16 @@ loops; it cannot make a blocking syscall itself interruptible."
             (fnn-os-fail sb-posix:etimedout))
           (return (values count errno))))))
 
-(defun fnn-write-progress (call remaining context &optional deadline)
-  "One write's positive progress, retrying EINTR without changing its deadline."
+(defun fnn-write-progress (call remaining context &optional deadline allow-would-block)
+  "One write's positive progress, retrying EINTR without changing its deadline.
+
+When ALLOW-WOULD-BLOCK is true, a nonblocking socket's EAGAIN/EWOULDBLOCK is
+reported to its readiness loop as :WOULD-BLOCK.  Store file writes still turn
+every such syscall failure into an OS error."
   (multiple-value-bind (count errno) (fnn-retry-eintr call deadline)
-    (cond ((null count) (fnn-os-fail errno))
+    (cond ((and (null count) allow-would-block (fnn-would-block-p errno))
+           :would-block)
+          ((null count) (fnn-os-fail errno))
           ((not (and (integerp count) (> count 0) (<= count remaining)))
            (fnn-fault "~a write made no valid progress" context))
           (t count))))
@@ -347,17 +371,20 @@ loops; it cannot make a blocking syscall itself interruptible."
                (lambda () (funcall *fnn-write-syscall* fd data offset remaining))
                remaining "store"))))))
 
-(defun fnn-read-fd (fd buffer &optional deadline)
+(defun fnn-read-fd (fd buffer &optional deadline allow-would-block)
   "Read into BUFFER; the octet count, 0 at end of file.  EINTR is retried.
 
-DEADLINE, when supplied by a socket receive, bounds retry loops but does not
-promise to interrupt a blocking unix-read after readiness was observed."
+For a nonblocking socket ALLOW-WOULD-BLOCK returns :WOULD-BLOCK so its caller
+can wait again under the same deadline.  Regular-file callers leave it NIL and
+receive an OS error for every failed read."
   (multiple-value-bind (count errno)
       (fnn-retry-eintr (lambda () (funcall *fnn-read-syscall* fd buffer)) deadline)
-    (when (null count) (fnn-os-fail errno))
-    (unless (and (integerp count) (<= 0 count) (<= count (length buffer)))
-      (fnn-fault "read returned an invalid count"))
-    count))
+    (cond ((and (null count) allow-would-block (fnn-would-block-p errno))
+           :would-block)
+          ((null count) (fnn-os-fail errno))
+          ((not (and (integerp count) (<= 0 count) (<= count (length buffer))))
+           (fnn-fault "read returned an invalid count"))
+          (t count))))
 
 (defun fnn-read-regular-bounded (path maximum)
   "Read one regular, non-symlink file through a no-follow descriptor."
@@ -1509,37 +1536,57 @@ this host obeys it."
 (defun fnn-recv (fd seconds)
   "Up to +fnn-max-read+ octets, an empty vector at end of input, :timeout.
 
-SECONDS bounds readiness and EINTR retries as one deadline.  The descriptor is
-currently blocking, so it does not claim to interrupt one unix-read that has
-already started after a readiness notification."
-  (let* ((deadline (+ (fnn-now) (* seconds internal-time-units-per-second)))
-         (remaining (fnn-seconds-to-deadline deadline)))
-    (if (or (<= remaining 0)
-            (not (funcall *fnn-fd-waiter* fd :input remaining)))
-        :timeout
+SECONDS bounds every readiness wait and interrupted/nonblocking retry as one
+absolute deadline.  FD must have passed through FNN-SOCKET-FD, which makes it
+nonblocking: a readiness race therefore returns EAGAIN and waits again rather
+than starting an unbounded blocking read.  A zero-second call performs one
+zero-time poll; it never spins after an EAGAIN race."
+  (when (< seconds 0) (fnn-fault "negative socket receive timeout"))
+  (let ((deadline (+ (fnn-now) (* seconds internal-time-units-per-second)))
+        (zero-poll-p (zerop seconds)))
+    (loop
+      (let ((remaining (fnn-seconds-to-deadline deadline)))
+        (when (and (<= remaining 0) (not zero-poll-p))
+          (return :timeout))
+        (unless (funcall *fnn-fd-waiter* fd :input remaining)
+          (return :timeout))
+        (setq zero-poll-p nil)
         (let* ((buffer (fnn-make-octets +fnn-max-read+))
-               (count (fnn-read-fd fd buffer deadline)))
-          (subseq buffer 0 count)))))
+               (count (fnn-read-fd fd buffer deadline t)))
+          (cond ((eq count :would-block)
+                 ;; The descriptor is nonblocking.  Go back through the
+                 ;; readiness waiter instead of polling the syscall in a loop.
+                 nil)
+                (t (return (subseq buffer 0 count)))))))))
 
 (defun fnn-send-all (fd octets seconds)
   "Write OCTETS with one deadline for readiness waits and EINTR retries.
 
-The current socket descriptors are blocking.  This bounds the wait/retry loop
-but does not claim to interrupt an individual unix-write after readiness; that
-requires a separate nonblocking-socket contract."
+FD must have passed through FNN-SOCKET-FD, which makes it nonblocking.  A
+partial write resumes at its unwritten offset; EAGAIN/EWOULDBLOCK returns to
+the readiness waiter under the same absolute deadline.  A zero-second call
+performs one zero-time output poll and cannot busy-spin after a race."
+  (when (< seconds 0) (fnn-fault "negative socket send timeout"))
   (let ((data (fnn-octets octets))
         (offset 0)
-        (deadline (+ (fnn-now) (* seconds internal-time-units-per-second))))
+        (deadline (+ (fnn-now) (* seconds internal-time-units-per-second)))
+        (zero-poll-p (zerop seconds)))
     (loop while (< offset (length data)) do
       (let ((remaining (fnn-seconds-to-deadline deadline)))
-        (when (<= remaining 0) (fnn-os-fail sb-posix:etimedout))
+        (when (and (<= remaining 0) (not zero-poll-p))
+          (fnn-os-fail sb-posix:etimedout))
         (unless (funcall *fnn-fd-waiter* fd :output remaining)
           (fnn-os-fail sb-posix:etimedout))
+        (setq zero-poll-p nil)
         (let ((unwritten (- (length data) offset)))
-          (incf offset
-                (fnn-write-progress
-                 (lambda () (funcall *fnn-write-syscall* fd data offset unwritten))
-                 unwritten "socket" deadline)))))))
+          (let ((progress
+                  (fnn-write-progress
+                   (lambda () (funcall *fnn-write-syscall* fd data offset unwritten))
+                   unwritten "socket" deadline t)))
+            ;; A readiness notification can race another reader.  The next
+            ;; iteration waits again, so EAGAIN cannot become a busy loop.
+            (unless (eq progress :would-block)
+              (incf offset progress))))))))
 
 (defun fnn-graceful-close (fd)
   "End a connection after its final reply without a reset: shutdown the
@@ -1559,7 +1606,9 @@ output side, then drain the peer's input for at most one second."
 ;;; (planning/lanes/HANDOFF-w4-tcpcl.md).  Nothing above this point opens a
 ;;; socket, and the reader below opens none of its own either.
 
-(defun fnn-socket-fd (socket) (sb-bsd-sockets:socket-file-descriptor socket))
+(defun fnn-socket-fd (socket)
+  "The nonblocking descriptor used by the deadline-aware socket helpers."
+  (fnn-set-nonblocking (sb-bsd-sockets:socket-file-descriptor socket)))
 
 (defun fnn-socket-shut (socket)
   (ignore-errors (sb-bsd-sockets:socket-close socket))
@@ -1587,7 +1636,11 @@ by passing one, not this file's default."
       (error (e) (fnn-socket-shut listener) (error e)))))
 
 (defun fnn-connect (host port &key (family :inet))
-  "An active open.  HOST is an address vector, or a name resolved here."
+  "An active open.  HOST is an address vector, or a name resolved here.
+
+DNS lookup and connect(2) are intentionally outside FNN-RECV/FNN-SEND-ALL's
+read/write deadline contract.  Callers obtain the socket, then FNN-SOCKET-FD
+switches the established descriptor to nonblocking operation."
   (let ((socket (make-instance (fnn-socket-class family) :type :stream :protocol :tcp)))
     (handler-case
         (progn
