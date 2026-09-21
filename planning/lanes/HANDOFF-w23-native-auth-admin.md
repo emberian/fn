@@ -54,8 +54,17 @@ SIGKILL at the same post-rename cut and recovers in a new process.  Recovery
 also removes a fixed surviving stage and barriers its namespace before reading
 the final registry.
 
-Focused certification evidence will be recorded here from the final
-source-preserving persvati run.
+Final source-preserving certification ran on
+`persvati:/home/ember/fn-lanes/w23-native-auth-admin-v2` through farm run
+`run-20260921T110118Z-c1d4`.  Manifest
+`planning/evidence/manifests/certify-20260921T110122Z-3010270.json` records
+status `passed`, ACL2 8.7, SBCL 2.6.8, jobs 4, 232.536 seconds, and the exact
+source/certificate digests for the closure.  The changed roots
+`books/native-auth-admin`, `host/native-auth-admin-host`,
+`tests/acl2/native-auth-admin-tests` and
+`tests/acl2/native-auth-admin-host-tests` all passed.  The ACL2 executable was
+`/home/ember/fn-tools/acl2-8.7/saved_acl2`, SHA-256
+`c8a7a804d9cc80e2025a8ab0e1d9325f2a0c4a027a5dcdcb2c1093e9cd5c8163`.
 
 ## Explicit limits
 
