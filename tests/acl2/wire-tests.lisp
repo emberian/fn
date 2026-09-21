@@ -55,6 +55,30 @@
 (assert-event
  (equal (fn-wire-result-events (fn-wire-begin-article *fn-wire-partial-command*))
         '((:reject :begin-article-unquiesced))))
+
+; Command and article physical-line profiles are separate.  The 510-octet
+; command content ceiling stays on the opening state; after a complete command
+; the article transition selects body-limit-plus-one, enough for any retained
+; article source line and one leading-dot stuffing byte.
+(defconst *fn-wire-article-profile-start*
+  (let ((wire (fn-wire-initial-state 510 8192)))
+    (fn-wire-begin-article-with-line-limit
+     wire (fn-wire-article-line-limit wire))))
+(assert-event
+ (equal (fn-wire-state-line-limit
+         (fn-wire-result-state *fn-wire-article-profile-start*))
+        8193))
+(assert-event
+ (equal (fn-wire-state-mode
+         (fn-wire-result-state *fn-wire-article-profile-start*))
+        :article))
+; A positive physical profile is necessary: accepting zero would produce a
+; malformed state and the next byte would have no coherent capacity meaning.
+(assert-event
+ (equal (fn-wire-result-events
+         (fn-wire-begin-article-with-line-limit
+          (fn-wire-initial-state 510 8192) 0))
+        '((:reject :begin-article-bad-line-limit))))
 (assert-event
  (not (equal (fn-wire-state-mode
               (fn-wire-result-state
