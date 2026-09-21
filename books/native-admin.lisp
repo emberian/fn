@@ -14,8 +14,9 @@
 (include-book "journal-publish")
 (include-book "native-config")
 (include-book "peer-config")
+(include-book "identity")
 
-(defconst *fn-native-admin-max-arguments* 10)
+(defconst *fn-native-admin-max-arguments* 14)
 (defconst *fn-native-admin-max-argument-octets* 512)
 (defconst *fn-native-admin-config-name-width* 8)
 (defconst *fn-native-admin-config-name-limit* 100000000)
@@ -114,46 +115,67 @@
                (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr result))))))))
 
 (defun fn-native-admin-peer-plan (words)
-  "Build the complete peer record in ACL2; raw Lisp receives no field defaults."
+  "Build the complete peer record in ACL2; raw Lisp receives no field defaults.
+
+The explicit grammar carries auth-kind/auth-value.  The older grammar is
+decoded as source-address for durable command compatibility."
   (declare (xargs :guard t))
-  (if (and (true-listp words)
-           (member-equal (len words) '(10 13))
-           (equal (car words) "peer")
-           (equal (cadr words) "add")
-           (fn-native-admin-decimalp (nth 5 words))
-           (<= 1 (fn-native-admin-decimal-value
-                  (coerce (nth 5 words) 'list)))
-           (<= (fn-native-admin-decimal-value
-                (coerce (nth 5 words) 'list)) 65535)
-           (not (equal (fn-native-config-ipv4-address
-                        (fn-record-string-octets (nth 8 words))) :bad))
-           (member-equal (nth 9 words) '("true" "false"))
-           (or (equal (len words) 10)
-               (and (member-equal (nth 10 words) '("clear" "implicit" "starttls"))
-                    (if (equal (nth 10 words) "clear")
-                        (and (equal (nth 11 words) "-") (equal (nth 12 words) "-"))
-                      (and (not (equal (nth 11 words) "-"))
-                           (not (equal (nth 12 words) "-")))))))
-      (let* ((inbound (if (equal (nth 6 words) "-") nil
-                        (list (nth 6 words) *fn-record-max-payload* 16)))
-             (outbound (if (equal (nth 7 words) "-") nil
-                         (list (nth 7 words) (equal (nth 9 words) "true")
-                               1024 1000)))
-             (peer (fn-cfg-peer-make
-                    (nth 2 words) (nth 3 words)
-                    (list :nntp 1 (nth 4 words)
-                          (fn-native-admin-decimal-value (coerce (nth 5 words) 'list))
-                          (if (or (equal (len words) 10)
-                                  (equal (nth 10 words) "clear")) '(:clear)
-                            (list :tls
-                                  (if (equal (nth 10 words) "implicit")
-                                      :implicit :starttls)
-                                  (nth 11 words) (nth 12 words))))
-                    inbound outbound (list :source-address (nth 8 words)))))
-        (if (fn-cfg-peerp peer)
-            (fn-native-admin-result :accepted nil :set-peer nil 0 peer)
-          (fn-native-admin-result :refused :peer-record nil nil 0 nil)))
-    (fn-native-admin-result :refused :syntax nil nil 0 nil)))
+  (let* ((count (len words))
+         (explicitp (member-equal count '(11 14)))
+         (auth-kind (if explicitp (nth 8 words) "source-address"))
+         (auth-value (if explicitp (nth 9 words) (nth 8 words)))
+         (streaming (if explicitp (nth 10 words) (nth 9 words)))
+         (security-index (if explicitp 11 10)))
+    (if (and (true-listp words)
+             (member-equal count '(10 11 13 14))
+             (equal (car words) "peer")
+             (equal (cadr words) "add")
+             (fn-native-admin-decimalp (nth 5 words))
+             (<= 1 (fn-native-admin-decimal-value
+                    (coerce (nth 5 words) 'list)))
+             (<= (fn-native-admin-decimal-value
+                  (coerce (nth 5 words) 'list)) 65535)
+             (member-equal auth-kind '("source-address" "principal"))
+             (if (equal auth-kind "source-address")
+                 (not (equal (fn-native-config-ipv4-address
+                              (fn-record-string-octets auth-value)) :bad))
+               (and (equal (len (fn-record-string-octets auth-value)) 64)
+                    (fn-id-hex-listp (fn-record-string-octets auth-value))))
+             (member-equal streaming '("true" "false"))
+             (or (member-equal count '(10 11))
+                 (and (member-equal (nth security-index words)
+                                    '("clear" "implicit" "starttls"))
+                      (if (equal (nth security-index words) "clear")
+                          (and (equal (nth (+ 1 security-index) words) "-")
+                               (equal (nth (+ 2 security-index) words) "-"))
+                        (and (not (equal (nth (+ 1 security-index) words) "-"))
+                             (not (equal (nth (+ 2 security-index) words) "-")))))))
+        (let* ((inbound (if (equal (nth 6 words) "-") nil
+                          (list (nth 6 words) *fn-record-max-payload* 16)))
+               (outbound (if (equal (nth 7 words) "-") nil
+                           (list (nth 7 words) (equal streaming "true")
+                                 1024 1000)))
+               (peer (fn-cfg-peer-make
+                      (nth 2 words) (nth 3 words)
+                      (list :nntp 1 (nth 4 words)
+                            (fn-native-admin-decimal-value
+                             (coerce (nth 5 words) 'list))
+                            (if (or (member-equal count '(10 11))
+                                    (equal (nth security-index words) "clear"))
+                                '(:clear)
+                              (list :tls
+                                    (if (equal (nth security-index words) "implicit")
+                                        :implicit :starttls)
+                                    (nth (+ 1 security-index) words)
+                                    (nth (+ 2 security-index) words))))
+                      inbound outbound
+                      (list (if (equal auth-kind "principal")
+                                :principal :source-address)
+                            auth-value))))
+          (if (fn-cfg-peerp peer)
+              (fn-native-admin-result :accepted nil :set-peer nil 0 peer)
+            (fn-native-admin-result :refused :peer-record nil nil 0 nil)))
+      (fn-native-admin-result :refused :syntax nil nil 0 nil))))
 
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."

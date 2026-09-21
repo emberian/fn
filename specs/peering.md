@@ -1290,6 +1290,15 @@ host/owner-host.lisp and the accept/drain wiring in tools/run_owner.py);
 the two evidence harnesses' peer records and the streaming half of the
 two-node feed scenario.
 
+The native administrative grammar has an explicit authentication selector:
+`peer add NAME PATH HOST PORT IN OUT AUTH-KIND AUTH-VALUE STREAMING` followed
+optionally by `SECURITY SERVER-NAME TRUST-ANCHOR`.  `AUTH-KIND` is
+`source-address` or `principal`; a principal value is the canonical 64-digit
+lowercase hexadecimal form of the 32-octet principal id.  ACL2 constructs the
+typed peer record and the existing configuration record codec persists and
+recovers it.  The earlier form without `AUTH-KIND` remains a source-address
+decode for compatibility with stored operator procedures.
+
 - **The per-peer scheduler is a table of schedulers, not a peer field on
   `fn-sched-item`.** §3.1's shape (peer at item index 7, `fn-sched-selection`
   over the peer-filtered queue) **falsifies two keystones of
