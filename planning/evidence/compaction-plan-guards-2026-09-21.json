@@ -18,5 +18,6 @@
     "output_log": "7c0de8f7370d1419e061afebc414f350b7cb591788e42564719cc1a05a034d72"
   },
   "result": "pass; :FN-W26-TESTS-PASSED at output line 2477 and no ACL2 Error, FAILED, or assertion failure",
-  "limitations": "This is a raw source LD result, not a certified-book manifest. The coordinated dependency closure was stopped after 21 prerequisites before these roots began, so dependency certification remains uncertain and no certificate claim follows."
+  "limitations": "This is a raw source LD result, not a certified-book manifest. The coordinated dependency closure was stopped after 21 prerequisites before these roots began, so dependency certification remains uncertain and no certificate claim follows.",
+  "output_log": "planning/evidence/compaction-plan-guards-2026-09-21.log"
 }

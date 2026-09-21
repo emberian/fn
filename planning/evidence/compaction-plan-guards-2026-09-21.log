@@ -1,0 +1,2478 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built August 28, 2026  20:52:14.                                   +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "byte-store-frame" ...):
+Unable to load compiled file for book
+  /Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-
+store-frame.lisp
+because that book is not certified.  See :DOC include-book.  No load
+was in progress for any parent book.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "byte-store-frame" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-store-frame.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "byte-store-scan" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-store-scan.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "byte-store-invariants"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-store-invariants.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "byte-store" ...):  There
+is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-store.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-files-invariants"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/store-files-invariants.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-files" ...):  There
+is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/store-files.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "replay" ...):  There
+is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/replay.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "node-invariants" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/node-invariants.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "acceptance-invariants"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/acceptance-invariants.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "node-retention-transitions"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/node-retention-transitions.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "retention-invariants"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/retention-invariants.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-events" ...): 
+There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/store-events.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-accept-records" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/stx-accept-records.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-keyring-records"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/stx-keyring-records.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-evidence-records"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/stx-evidence-records.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-lace" ...):  There
+is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/stx-lace.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-verify" ...):  There
+is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/stx-verify.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-carrier" ...):  There
+is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/stx-carrier.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "statement-invariants"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/statement-invariants.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Observation in ( INCLUDE-BOOK "statement-invariants" ...):  Reading
+.port file, /Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/s\
+tatement-invariants.port.
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "article" ...):  There
+is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/article.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "principal" ...):  There
+is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/principal.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "lace-invariants" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/lace-invariants.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "lace" ...):  There is
+no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/lace.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "hybrid-store" ...): 
+There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/hybrid-store.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "hybrid-signature" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/hybrid-signature.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "hybrid-profile" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/hybrid-profile.lisp".
+See :DOC uncertified-books.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "byte-store-frame" ...)
+Rules: NIL
+Warnings:  Uncertified and Compiled file
+Time:  1.29 seconds (prove: 0.00, print: 0.00, other: 1.29)
+ "/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-store-frame.lisp"
+ACL2 !>>
+Summary
+Form:  ( INCLUDE-BOOK "arithmetic/top" ...)
+Rules: NIL
+Time:  0.02 seconds (prove: 0.00, print: 0.00, other: 0.02)
+ "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/arithmetic/top.lisp"
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *FN-BS-TXN-NAME-MINIMUM-WIDTH* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *FN-BS-TXN-NAME-MINIMUM-WIDTH*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *FN-BS-TXN-NAME-SUFFIX* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *FN-BS-TXN-NAME-SUFFIX*
+ACL2 !>>
+For the admission of FN-BS-TXN-ZEROES we will use the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (NFIX COUNT).  The non-trivial part of the measure conjecture
+is
+
+Goal
+(AND (O-P (NFIX COUNT))
+     (IMPLIES (POSP COUNT)
+              (O< (NFIX (+ -1 COUNT)) (NFIX COUNT)))).
+Subgoal 2
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+That completes the proof of the measure theorem for FN-BS-TXN-ZEROES.
+Thus, we admit this function under the principle of definition.  We
+observe that the type of FN-BS-TXN-ZEROES is described by the theorem
+(TRUE-LISTP (FN-BS-TXN-ZEROES COUNT)).  We used primitive type reasoning.
+
+Computing the guard conjecture for FN-BS-TXN-ZEROES....
+
+The guard conjecture for FN-BS-TXN-ZEROES is trivial to prove, given
+the :compound-recognizer rule POSP-COMPOUND-RECOGNIZER.  FN-BS-TXN-ZEROES
+is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-ZEROES ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER POSP-COMPOUND-RECOGNIZER)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O-P)
+        (:DEFINITION O<)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE <-+-NEGATIVE-0-1))
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  130
+ FN-BS-TXN-ZEROES
+ACL2 !>>
+For the admission of FN-BS-TXN-NATURAL-DIGITS-REV we will use the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (NFIX N).  The non-trivial part of the measure conjecture
+is
+
+Goal
+(AND (O-P (NFIX N))
+     (IMPLIES (<= 10 (NFIX N))
+              (O< (NFIX (FLOOR (NFIX N) 10))
+                  (NFIX N)))).
+Subgoal 2
+Subgoal 1
+
+Splitter note (see :DOC splitter) for Subgoal 1 (2 subgoals).
+  if-intro: ((:DEFINITION NFIX) (:DEFINITION O<))
+
+Subgoal 1.2
+Subgoal 1.1
+
+Q.E.D.
+
+That completes the proof of the measure theorem for 
+FN-BS-TXN-NATURAL-DIGITS-REV.  Thus, we admit this function under the
+principle of definition.  We observe that the type of 
+FN-BS-TXN-NATURAL-DIGITS-REV is described by the theorem 
+(AND (CONSP (FN-BS-TXN-NATURAL-DIGITS-REV N))
+     (TRUE-LISTP (FN-BS-TXN-NATURAL-DIGITS-REV N))).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-BS-TXN-NATURAL-DIGITS-REV....
+
+The non-trivial part of the guard conjecture for FN-BS-TXN-NATURAL-DIGITS-REV,
+given the :executable-counterparts of EQL and NOT, is
+
+Goal
+(LET ((N (NFIX N)))
+  (AND (RATIONALP N)
+       (OR (<= 10 N) (INTEGERP N))
+       (OR (<= 10 N) (<= N 15))
+       (OR (<= 10 N) (<= 0 N))
+       (OR (< N 10) (INTEGERP (MOD N 10)))
+       (OR (< N 10) (<= (MOD N 10) 15))
+       (OR (< N 10) (<= 0 (MOD N 10)))
+       (OR (< N 10) (RATIONALP N))
+       T)).
+Goal'
+
+Splitter note (see :DOC splitter) for Goal' (2 subgoals).
+  if-intro: ((:DEFINITION FLOOR) (:DEFINITION NFIX))
+
+Subgoal 2
+Subgoal 1
+
+Q.E.D.
+
+That completes the proof of the guard theorem for 
+FN-BS-TXN-NATURAL-DIGITS-REV.  FN-BS-TXN-NATURAL-DIGITS-REV is compliant
+with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-NATURAL-DIGITS-REV ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FIX)
+        (:DEFINITION FLOOR)
+        (:DEFINITION MOD)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O-P)
+        (:DEFINITION O<)
+        (:DEFINITION SYNP)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART BINARY-*)
+        (:EXECUTABLE-COUNTERPART EQL)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART UNARY-/)
+        (:FAKE-RUNE-FOR-LINEAR NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:LINEAR NIQ-BOUNDS)
+        (:REWRITE <-*-/-LEFT-COMMUTED)
+        (:REWRITE <-Y-*-X-Y)
+        (:REWRITE COMMUTATIVITY-OF-*)
+        (:REWRITE EQUAL-DENOMINATOR-1)
+        (:REWRITE FOLD-CONSTS-IN-*)
+        (:REWRITE INVERSE-OF-+)
+        (:REWRITE NUMERATOR-WHEN-INTEGERP)
+        (:REWRITE RATIONAL-IMPLIES2)
+        (:REWRITE UNICITY-OF-1)
+        (:TYPE-PRESCRIPTION NONNEGATIVE-INTEGER-QUOTIENT))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FLOOR)
+             (:DEFINITION NFIX)
+             (:DEFINITION O<))
+Time:  0.02 seconds (prove: 0.02, print: 0.00, other: 0.00)
+Prover steps counted:  1691
+ FN-BS-TXN-NATURAL-DIGITS-REV
+ACL2 !>>
+The admission of FN-BS-TXN-REVERSE is trivial, using the relation O<
+(which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT XS).  We observe that the type of 
+FN-BS-TXN-REVERSE is described by the theorem 
+(TRUE-LISTP (FN-BS-TXN-REVERSE XS)).  We used primitive type reasoning
+and the :type-prescription rules BINARY-APPEND and TRUE-LISTP-APPEND.
+
+Computing the guard conjecture for FN-BS-TXN-REVERSE....
+
+The guard conjecture for FN-BS-TXN-REVERSE is trivial to prove, given
+the :type-prescription rule FN-BS-TXN-REVERSE.  FN-BS-TXN-REVERSE is
+compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-REVERSE ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION BINARY-APPEND)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-REVERSE)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-REVERSE
+ACL2 !>>
+Since FN-BS-TXN-NATURAL-DIGITS is non-recursive, its admission is trivial.
+We observe that the type of FN-BS-TXN-NATURAL-DIGITS is described by
+the theorem (TRUE-LISTP (FN-BS-TXN-NATURAL-DIGITS N)).  We used the
+:type-prescription rule FN-BS-TXN-REVERSE.
+
+Computing the guard conjecture for FN-BS-TXN-NATURAL-DIGITS....
+
+The guard conjecture for FN-BS-TXN-NATURAL-DIGITS is trivial to prove.
+FN-BS-TXN-NATURAL-DIGITS is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-NATURAL-DIGITS ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BS-TXN-REVERSE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-NATURAL-DIGITS
+ACL2 !>>
+ACL2 Warning [Non-rec] in ( DEFTHM FN-BS-TXN-NATURAL-DIGITS-CONSP ...):
+A :REWRITE rule generated from FN-BS-TXN-NATURAL-DIGITS-CONSP will
+be triggered only by terms containing the function symbol 
+FN-BS-TXN-NATURAL-DIGITS, which has a non-recursive definition.  Unless
+this definition is disabled, this rule is unlikely ever to be used.
+
+Goal'
+
+([ A key checkpoint:
+
+Goal'
+(CONSP (FN-BS-TXN-REVERSE (FN-BS-TXN-NATURAL-DIGITS-REV N)))
+
+*1 (Goal') is pushed for proof by induction.
+
+])
+
+Perhaps we can prove *1 by induction.  One induction scheme is suggested
+by this conjecture.  
+
+We will induct according to a scheme suggested by 
+(FN-BS-TXN-NATURAL-DIGITS-REV N).
+
+This suggestion was produced using the :induction rule 
+FN-BS-TXN-NATURAL-DIGITS-REV.  If we let (:P N) denote *1 above then
+the induction scheme we'll use is
+(AND (IMPLIES (AND (<= 10 (NFIX N))
+                   (:P (FLOOR (NFIX N) 10)))
+              (:P N))
+     (IMPLIES (< (NFIX N) 10) (:P N))).
+This induction is justified by the same argument used to admit 
+FN-BS-TXN-NATURAL-DIGITS-REV.  When applied to the goal at hand the
+above induction scheme produces two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+
+Splitter note (see :DOC splitter) for Subgoal *1/1 (3 subgoals).
+  if-intro: ((:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+             (:DEFINITION NFIX))
+
+Subgoal *1/1.3
+Subgoal *1/1.2
+Subgoal *1/1.2'
+Subgoal *1/1.1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal' is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-NATURAL-DIGITS-CONSP ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION DIGIT-TO-CHAR)
+        (:DEFINITION FLOOR)
+        (:DEFINITION FN-BS-TXN-NATURAL-DIGITS)
+        (:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:DEFINITION FN-BS-TXN-REVERSE)
+        (:DEFINITION MOD)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART DIGIT-TO-CHAR)
+        (:EXECUTABLE-COUNTERPART FLOOR)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-REVERSE)
+        (:EXECUTABLE-COUNTERPART IF)
+        (:EXECUTABLE-COUNTERPART MOD)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:EXECUTABLE-COUNTERPART UNARY-/)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE COMMUTATIVITY-OF-*)
+        (:REWRITE EQUAL-DENOMINATOR-1)
+        (:REWRITE FLOOR-=-X/Y . 3)
+        (:REWRITE MOD-=-0 . 2)
+        (:TYPE-PRESCRIPTION BINARY-APPEND)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+             (:DEFINITION NFIX))
+Warnings:  Non-rec
+Time:  0.03 seconds (prove: 0.03, print: 0.00, other: 0.01)
+Prover steps counted:  9004
+ FN-BS-TXN-NATURAL-DIGITS-CONSP
+ACL2 !>>
+Since FN-BS-TXN-DIGITS is non-recursive, its admission is trivial.
+We observe that the type of FN-BS-TXN-DIGITS is described by the theorem
+(TRUE-LISTP (FN-BS-TXN-DIGITS N)).  We used the :type-prescription
+rules BINARY-APPEND, FN-BS-TXN-NATURAL-DIGITS and TRUE-LISTP-APPEND.
+
+Computing the guard conjecture for FN-BS-TXN-DIGITS....
+
+The guard conjecture for FN-BS-TXN-DIGITS is trivial to prove, given
+primitive type reasoning and the :type-prescription rules FN-BS-TXN-ZEROES
+and LEN.  FN-BS-TXN-DIGITS is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-DIGITS ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION BINARY-APPEND)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-NATURAL-DIGITS)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-ZEROES)
+        (:TYPE-PRESCRIPTION LEN)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-DIGITS
+ACL2 !>>
+Since FN-BS-TXN-NAME-CHARS is non-recursive, its admission is trivial.
+We observe that the type of FN-BS-TXN-NAME-CHARS is described by the
+theorem 
+(AND (CONSP (FN-BS-TXN-NAME-CHARS N)) (TRUE-LISTP (FN-BS-TXN-NAME-CHARS N))).
+We used the :executable-counterpart of TRUE-LISTP and the :type-prescription
+rules BINARY-APPEND and TRUE-LISTP-APPEND.
+
+Computing the guard conjecture for FN-BS-TXN-NAME-CHARS....
+
+The guard conjecture for FN-BS-TXN-NAME-CHARS is trivial to prove,
+given the :type-prescription rule FN-BS-TXN-DIGITS.  FN-BS-TXN-NAME-CHARS
+is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-NAME-CHARS ...)
+Rules: ((:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:TYPE-PRESCRIPTION BINARY-APPEND)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-DIGITS)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-NAME-CHARS
+ACL2 !>>
+Since FN-BS-TXN-NAME-IMPL is non-recursive, its admission is trivial.
+We observe that the type of FN-BS-TXN-NAME-IMPL is described by the
+theorem (STRINGP (FN-BS-TXN-NAME-IMPL N)).  We used primitive type
+reasoning.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-NAME-IMPL ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-NAME-IMPL
+ACL2 !>>
+Since FN-BS-TXN-DIGIT-VALUE is non-recursive, its admission is trivial.
+We observe that the type of FN-BS-TXN-DIGIT-VALUE is described by the
+theorem 
+(AND (INTEGERP (FN-BS-TXN-DIGIT-VALUE CHAR))
+     (<= 0 (FN-BS-TXN-DIGIT-VALUE CHAR))).
+
+Computing the guard conjecture for FN-BS-TXN-DIGIT-VALUE....
+
+The guard conjecture for FN-BS-TXN-DIGIT-VALUE is trivial to prove,
+given the :executable-counterpart of EQLABLEP.  FN-BS-TXN-DIGIT-VALUE
+is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-DIGIT-VALUE ...)
+Rules: ((:EXECUTABLE-COUNTERPART EQLABLEP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-DIGIT-VALUE
+ACL2 !>>
+The admission of FN-BS-TXN-DIGIT-CHAR-LISTP is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT CHARS).  We observe that the type of 
+FN-BS-TXN-DIGIT-CHAR-LISTP is described by the theorem 
+(OR (EQUAL (FN-BS-TXN-DIGIT-CHAR-LISTP CHARS)
+           T)
+    (EQUAL (FN-BS-TXN-DIGIT-CHAR-LISTP CHARS)
+           NIL)).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-BS-TXN-DIGIT-CHAR-LISTP....
+
+The guard conjecture for FN-BS-TXN-DIGIT-CHAR-LISTP is trivial to prove,
+given the :executable-counterpart of TRUE-LISTP.  FN-BS-TXN-DIGIT-CHAR-LISTP
+is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-DIGIT-CHAR-LISTP ...)
+Rules: ((:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-DIGIT-CHAR-LISTP
+ACL2 !>>
+The admission of FN-BS-TXN-UNDIGITS-REV is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT CHARS).  We observe that the type of 
+FN-BS-TXN-UNDIGITS-REV is described by the theorem 
+(AND (INTEGERP (FN-BS-TXN-UNDIGITS-REV CHARS))
+     (<= 0 (FN-BS-TXN-UNDIGITS-REV CHARS))).
+We used primitive type reasoning and the :type-prescription rule 
+FN-BS-TXN-DIGIT-VALUE.
+
+Computing the guard conjecture for FN-BS-TXN-UNDIGITS-REV....
+
+The guard conjecture for FN-BS-TXN-UNDIGITS-REV is trivial to prove,
+given primitive type reasoning and the :type-prescription rules 
+FN-BS-TXN-DIGIT-VALUE and FN-BS-TXN-UNDIGITS-REV.  FN-BS-TXN-UNDIGITS-REV
+is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-UNDIGITS-REV ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-DIGIT-VALUE)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-UNDIGITS-REV))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-UNDIGITS-REV
+ACL2 !>>
+Since FN-BS-TXN-DECODE-DIGITS is non-recursive, its admission is trivial.
+We observe that the type of FN-BS-TXN-DECODE-DIGITS is described by
+the theorem 
+(AND (INTEGERP (FN-BS-TXN-DECODE-DIGITS CHARS))
+     (<= 0 (FN-BS-TXN-DECODE-DIGITS CHARS))).
+We used the :type-prescription rule FN-BS-TXN-UNDIGITS-REV.
+
+Computing the guard conjecture for FN-BS-TXN-DECODE-DIGITS....
+
+The guard conjecture for FN-BS-TXN-DECODE-DIGITS is trivial to prove.
+FN-BS-TXN-DECODE-DIGITS is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-DECODE-DIGITS ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BS-TXN-UNDIGITS-REV))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-DECODE-DIGITS
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  Subsumption reduces that number to two.
+However, one of these is flawed and so we are left with one viable
+candidate.  
+
+We will induct according to a scheme suggested by (APPEND A B), while
+accommodating (APPEND A B C).
+
+These suggestions were produced using the :induction rule BINARY-APPEND.
+If we let (:P A B C) denote *1 above then the induction scheme we'll
+use is
+(AND (IMPLIES (AND (NOT (ENDP A)) (:P (CDR A) B C))
+              (:P A B C))
+     (IMPLIES (ENDP A) (:P A B C))).
+This induction is justified by the same argument used to admit BINARY-APPEND.
+When applied to the goal at hand the above induction scheme produces
+two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-APPEND-ASSOCIATIVE ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION ENDP)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION BINARY-APPEND)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  447
+ FN-BS-TXN-APPEND-ASSOCIATIVE
+ACL2 !>>
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-APPEND-NIL-RIGHT ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE APPEND-TO-NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  48
+ FN-BS-TXN-APPEND-NIL-RIGHT
+ACL2 !>>
+Q.E.D.
+
+The storage of FN-BS-TXN-REVERSE-TRUE-LISTP depends upon the :type-
+prescription rule FN-BS-TXN-REVERSE.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-REVERSE-TRUE-LISTP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BS-TXN-REVERSE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-REVERSE-TRUE-LISTP
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by (APPEND A B).
+
+This suggestion was produced using the :induction rule BINARY-APPEND.
+If we let (:P A B) denote *1 above then the induction scheme we'll
+use is
+(AND (IMPLIES (AND (NOT (ENDP A)) (:P (CDR A) B))
+              (:P A B))
+     (IMPLIES (ENDP A) (:P A B))).
+This induction is justified by the same argument used to admit BINARY-APPEND.
+When applied to the goal at hand the above induction scheme produces
+two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/2''
+Subgoal *1/2'''
+Subgoal *1/2'4'
+Subgoal *1/2'5'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-REVERSE-APPEND ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION ENDP)
+        (:DEFINITION FN-BS-TXN-REVERSE)
+        (:DEFINITION NOT)
+        (:ELIM CAR-CDR-ELIM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION BINARY-APPEND)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE FN-BS-TXN-APPEND-ASSOCIATIVE)
+        (:REWRITE FN-BS-TXN-APPEND-NIL-RIGHT)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-REVERSE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  1714
+ FN-BS-TXN-REVERSE-APPEND
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Two induction schemes are suggested
+by this conjecture.  Subsumption reduces that number to one.  
+
+We will induct according to a scheme suggested by (FN-BS-TXN-REVERSE XS),
+while accommodating (TRUE-LISTP XS).
+
+These suggestions were produced using the :induction rules FN-BS-TXN-REVERSE
+and TRUE-LISTP.  If we let (:P XS) denote *1 above then the induction
+scheme we'll use is
+(AND (IMPLIES (NOT (CONSP XS)) (:P XS))
+     (IMPLIES (AND (CONSP XS) (:P (CDR XS)))
+              (:P XS))).
+This induction is justified by the same argument used to admit 
+FN-BS-TXN-REVERSE.  When applied to the goal at hand the above induction
+scheme produces three nontautological subgoals.
+Subgoal *1/3
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-REVERSE-INVOLUTION ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION FN-BS-TXN-REVERSE)
+        (:DEFINITION TRUE-LISTP)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-REVERSE)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-BS-TXN-REVERSE)
+        (:INDUCTION TRUE-LISTP)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE CONS-CAR-CDR)
+        (:REWRITE FN-BS-TXN-REVERSE-APPEND))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  385
+ FN-BS-TXN-REVERSE-INVOLUTION
+ACL2 !>>
+ACL2 Warning [Non-rec] in ( DEFTHM FN-BS-TXN-DIGIT-VALUE-OF-DIGIT-TO-CHAR
+...):  A :REWRITE rule generated from FN-BS-TXN-DIGIT-VALUE-OF-DIGIT-TO-CHAR
+will be triggered only by terms containing the function symbols 
+FN-BS-TXN-DIGIT-VALUE and DIGIT-TO-CHAR, which have non-recursive definitions.
+Unless these definitions are disabled, this rule is unlikely ever to
+be used.
+
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-DIGIT-VALUE-OF-DIGIT-TO-CHAR ...)
+Rules: ((:DEFINITION DIGIT-TO-CHAR)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-DIGIT-VALUE)
+        (:EXECUTABLE-COUNTERPART NATP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM))
+Warnings:  Non-rec
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.01)
+Prover steps counted:  279
+ FN-BS-TXN-DIGIT-VALUE-OF-DIGIT-TO-CHAR
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  One induction scheme is suggested
+by this conjecture.  
+
+We will induct according to a scheme suggested by 
+(FN-BS-TXN-NATURAL-DIGITS-REV N).
+
+This suggestion was produced using the :induction rule 
+FN-BS-TXN-NATURAL-DIGITS-REV.  If we let (:P N) denote *1 above then
+the induction scheme we'll use is
+(AND (IMPLIES (AND (<= 10 (NFIX N))
+                   (:P (FLOOR (NFIX N) 10)))
+              (:P N))
+     (IMPLIES (< (NFIX N) 10) (:P N))).
+This induction is justified by the same argument used to admit 
+FN-BS-TXN-NATURAL-DIGITS-REV.  When applied to the goal at hand the
+above induction scheme produces two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/2''
+Subgoal *1/1
+
+Splitter note (see :DOC splitter) for Subgoal *1/1 (3 subgoals).
+  if-intro: ((:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+             (:DEFINITION NFIX))
+
+Subgoal *1/1.3
+Subgoal *1/1.2
+Subgoal *1/1.2'
+Subgoal *1/1.1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+The storage of FN-BS-TXN-NATURAL-DIGITS-REV-CHARACTERS depends upon
+the :type-prescription rule CHARACTER-LISTP.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-NATURAL-DIGITS-REV-CHARACTERS ...)
+Rules: ((:DEFINITION CHARACTER-LISTP)
+        (:DEFINITION DIGIT-TO-CHAR)
+        (:DEFINITION FLOOR)
+        (:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:DEFINITION MOD)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART CHARACTER-LISTP)
+        (:EXECUTABLE-COUNTERPART CHARACTERP)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART DIGIT-TO-CHAR)
+        (:EXECUTABLE-COUNTERPART FLOOR)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:EXECUTABLE-COUNTERPART IF)
+        (:EXECUTABLE-COUNTERPART MOD)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART UNARY-/)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE COMMUTATIVITY-OF-*)
+        (:REWRITE EQUAL-DENOMINATOR-1)
+        (:REWRITE FLOOR-=-X/Y . 3)
+        (:REWRITE MOD-=-0 . 2)
+        (:REWRITE NUMERATOR-WHEN-INTEGERP)
+        (:TYPE-PRESCRIPTION CHARACTER-LISTP)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-NATURAL-DIGITS-REV))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+             (:DEFINITION NFIX))
+Time:  0.03 seconds (prove: 0.02, print: 0.00, other: 0.01)
+Prover steps counted:  6980
+ FN-BS-TXN-NATURAL-DIGITS-REV-CHARACTERS
+ACL2 !>>
+Q.E.D.
+
+The storage of FN-BS-TXN-NATURAL-DIGITS-REV-TRUE-LISTP depends upon
+the :type-prescription rule FN-BS-TXN-NATURAL-DIGITS-REV.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-NATURAL-DIGITS-REV-TRUE-LISTP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BS-TXN-NATURAL-DIGITS-REV))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-NATURAL-DIGITS-REV-TRUE-LISTP
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by 
+(FN-BS-TXN-UNDIGITS-REV CHARS).
+
+This suggestion was produced using the :induction rule FN-BS-TXN-UNDIGITS-REV.
+If we let (:P CHARS COUNT) denote *1 above then the induction scheme
+we'll use is
+(AND (IMPLIES (NOT (CONSP CHARS))
+              (:P CHARS COUNT))
+     (IMPLIES (AND (CONSP CHARS)
+                   (:P (CDR CHARS) COUNT))
+              (:P CHARS COUNT))).
+This induction is justified by the same argument used to admit 
+FN-BS-TXN-UNDIGITS-REV.  When applied to the goal at hand the above
+induction scheme produces two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/2''
+
+([ A key checkpoint while proving *1 (descended from Goal):
+
+Subgoal *1/2'
+(IMPLIES (NOT (CONSP CHARS))
+         (EQUAL (FN-BS-TXN-UNDIGITS-REV (FN-BS-TXN-ZEROES COUNT))
+                0))
+
+*1.1 (Subgoal *1/2'') is pushed for proof by induction.
+
+])
+Subgoal *1/1
+
+So we now return to *1.1, which is
+
+(EQUAL (FN-BS-TXN-UNDIGITS-REV (FN-BS-TXN-ZEROES COUNT))
+       0).
+Subgoal *1.1/2
+Subgoal *1.1/1
+
+*1.1 and *1 are COMPLETED!
+Thus key checkpoints Subgoal *1/2' and Goal are COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-UNDIGITS-REV-APPEND-ZEROES ...)
+Rules: ((:COMPOUND-RECOGNIZER POSP-COMPOUND-RECOGNIZER)
+        (:DEFINITION BINARY-APPEND)
+        (:DEFINITION FN-BS-TXN-DIGIT-VALUE)
+        (:DEFINITION FN-BS-TXN-UNDIGITS-REV)
+        (:DEFINITION FN-BS-TXN-ZEROES)
+        (:EXECUTABLE-COUNTERPART BINARY-*)
+        (:EXECUTABLE-COUNTERPART BINARY-+)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-DIGIT-VALUE)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-UNDIGITS-REV)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-BS-TXN-UNDIGITS-REV)
+        (:INDUCTION FN-BS-TXN-ZEROES)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE COMMUTATIVITY-OF-+)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-ZEROES)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Time:  0.02 seconds (prove: 0.02, print: 0.00, other: 0.00)
+Prover steps counted:  878
+ FN-BS-TXN-UNDIGITS-REV-APPEND-ZEROES
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by 
+(FN-BS-TXN-NATURAL-DIGITS-REV N).
+
+This suggestion was produced using the :induction rule 
+FN-BS-TXN-NATURAL-DIGITS-REV.  If we let (:P N) denote *1 above then
+the induction scheme we'll use is
+(AND (IMPLIES (AND (<= 10 (NFIX N))
+                   (:P (FLOOR (NFIX N) 10)))
+              (:P N))
+     (IMPLIES (< (NFIX N) 10) (:P N))).
+This induction is justified by the same argument used to admit 
+FN-BS-TXN-NATURAL-DIGITS-REV.  When applied to the goal at hand the
+above induction scheme produces two nontautological subgoals.
+Subgoal *1/2
+
+Splitter note (see :DOC splitter) for Subgoal *1/2 (16 subgoals).
+  if-intro: ((:DEFINITION DIGIT-TO-CHAR)
+             (:DEFINITION FN-BS-TXN-DIGIT-VALUE)
+             (:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+             (:DEFINITION FN-BS-TXN-UNDIGITS-REV)
+             (:DEFINITION NFIX))
+
+Subgoal *1/2.16
+Subgoal *1/2.16'
+Subgoal *1/2.16.2
+Subgoal *1/2.16.1
+Subgoal *1/2.16.1'
+Subgoal *1/2.15
+Subgoal *1/2.15'
+Subgoal *1/2.14
+Subgoal *1/2.14'
+Subgoal *1/2.14.2
+Subgoal *1/2.14.1
+Subgoal *1/2.14.1'
+Subgoal *1/2.13
+Subgoal *1/2.13'
+Subgoal *1/2.13.2
+Subgoal *1/2.13.1
+Subgoal *1/2.13.1'
+Subgoal *1/2.12
+Subgoal *1/2.11
+Subgoal *1/2.10
+Subgoal *1/2.10'
+Subgoal *1/2.10.2
+Subgoal *1/2.10.1
+Subgoal *1/2.10.1'
+Subgoal *1/2.9
+Subgoal *1/2.8
+Subgoal *1/2.8'
+Subgoal *1/2.8.2
+Subgoal *1/2.8.1
+Subgoal *1/2.8.1'
+Subgoal *1/2.7
+Subgoal *1/2.7'
+Subgoal *1/2.7.2
+Subgoal *1/2.7.1
+Subgoal *1/2.7.1'
+Subgoal *1/2.6
+Subgoal *1/2.5
+Subgoal *1/2.5'
+Subgoal *1/2.5.2
+Subgoal *1/2.5.1
+Subgoal *1/2.5.1'
+Subgoal *1/2.4
+Subgoal *1/2.3
+Subgoal *1/2.3'
+Subgoal *1/2.3.2
+Subgoal *1/2.3.1
+Subgoal *1/2.3.1'
+Subgoal *1/2.2
+Subgoal *1/2.1
+Subgoal *1/2.1'
+Subgoal *1/2.1.2
+Subgoal *1/2.1.1
+Subgoal *1/2.1.1'
+Subgoal *1/1
+
+Splitter note (see :DOC splitter) for Subgoal *1/1 (3 subgoals).
+  if-intro: ((:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+             (:DEFINITION NFIX))
+
+Subgoal *1/1.3
+Subgoal *1/1.2
+Subgoal *1/1.2'
+Subgoal *1/1.1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-UNDIGITS-REV-INVERTS-NATURAL-DIGITS-REV ...)
+Rules: ((:DEFINITION DIGIT-TO-CHAR)
+        (:DEFINITION FIX)
+        (:DEFINITION FN-BS-TXN-DIGIT-VALUE)
+        (:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:DEFINITION FN-BS-TXN-UNDIGITS-REV)
+        (:DEFINITION FORCE)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:ELIM FLOOR-MOD-ELIM)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART BINARY-*)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART DIGIT-TO-CHAR)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FIX)
+        (:EXECUTABLE-COUNTERPART FLOOR)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-UNDIGITS-REV)
+        (:EXECUTABLE-COUNTERPART FORCE)
+        (:EXECUTABLE-COUNTERPART IF)
+        (:EXECUTABLE-COUNTERPART IMPLIES)
+        (:EXECUTABLE-COUNTERPART INTEGERP)
+        (:EXECUTABLE-COUNTERPART MOD)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART RATIONALP)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART UNARY--)
+        (:EXECUTABLE-COUNTERPART UNARY-/)
+        (:FAKE-RUNE-FOR-LINEAR NIL)
+        (:FAKE-RUNE-FOR-LINEAR-EQUALITIES NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:GENERALIZE FLOOR-=-X/Y)
+        (:GENERALIZE FLOOR-BOUNDED-BY-/)
+        (:GENERALIZE FLOOR-TYPE-1)
+        (:GENERALIZE FLOOR-TYPE-2)
+        (:GENERALIZE FLOOR-TYPE-3)
+        (:GENERALIZE FLOOR-TYPE-4)
+        (:GENERALIZE MOD-=-0)
+        (:GENERALIZE MOD-BOUNDED-BY-MODULUS)
+        (:GENERALIZE MOD-TYPE)
+        (:GENERALIZE MOD-X-Y-=-X+Y-FOR-RATIONALS)
+        (:GENERALIZE MOD-X-Y-=-X-FOR-RATIONALS)
+        (:INDUCTION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:LINEAR MOD-BOUNDED-BY-MODULUS)
+        (:REWRITE ASSOCIATIVITY-OF-+)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE COMMUTATIVITY-OF-*)
+        (:REWRITE COMMUTATIVITY-OF-+)
+        (:REWRITE DISTRIBUTIVITY-OF-MINUS-OVER-+)
+        (:REWRITE EQUAL-*-/-1)
+        (:REWRITE FLOOR-=-X/Y . 3)
+        (:REWRITE FLOOR-TYPE-1)
+        (:REWRITE MOD-=-0 . 1)
+        (:REWRITE RIGHT-CANCELLATION-FOR-+)
+        (:REWRITE UNICITY-OF-0)
+        (:TYPE-PRESCRIPTION FLOOR)
+        (:TYPE-PRESCRIPTION FLOOR-TYPE-3 . 1)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-UNDIGITS-REV)
+        (:TYPE-PRESCRIPTION INTEGERP-MOD)
+        (:TYPE-PRESCRIPTION MOD-TYPE . 4)
+        (:TYPE-PRESCRIPTION RATIONALP-MOD))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION DIGIT-TO-CHAR)
+             (:DEFINITION FN-BS-TXN-DIGIT-VALUE)
+             (:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+             (:DEFINITION FN-BS-TXN-UNDIGITS-REV)
+             (:DEFINITION NFIX))
+Time:  0.34 seconds (prove: 0.34, print: 0.00, other: 0.01)
+Prover steps counted:  58251
+ FN-BS-TXN-UNDIGITS-REV-INVERTS-NATURAL-DIGITS-REV
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by (FN-BS-TXN-ZEROES COUNT).
+
+This suggestion was produced using the :induction rule FN-BS-TXN-ZEROES.
+If we let (:P COUNT) denote *1 above then the induction scheme we'll
+use is
+(AND (IMPLIES (AND (POSP COUNT) (:P (+ -1 COUNT)))
+              (:P COUNT))
+     (IMPLIES (NOT (POSP COUNT))
+              (:P COUNT))).
+This induction is justified by the same argument used to admit 
+FN-BS-TXN-ZEROES.  When applied to the goal at hand the above induction
+scheme produces two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-APPEND-ZERO-TO-ZEROES ...)
+Rules: ((:COMPOUND-RECOGNIZER POSP-COMPOUND-RECOGNIZER)
+        (:DEFINITION BINARY-APPEND)
+        (:DEFINITION FN-BS-TXN-ZEROES)
+        (:EXECUTABLE-COUNTERPART BINARY-APPEND)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-BS-TXN-ZEROES)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-ZEROES))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.01)
+Prover steps counted:  158
+ FN-BS-TXN-APPEND-ZERO-TO-ZEROES
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by (FN-BS-TXN-ZEROES COUNT).
+
+This suggestion was produced using the :induction rule FN-BS-TXN-ZEROES.
+If we let (:P COUNT) denote *1 above then the induction scheme we'll
+use is
+(AND (IMPLIES (AND (POSP COUNT) (:P (+ -1 COUNT)))
+              (:P COUNT))
+     (IMPLIES (NOT (POSP COUNT))
+              (:P COUNT))).
+This induction is justified by the same argument used to admit 
+FN-BS-TXN-ZEROES.  When applied to the goal at hand the above induction
+scheme produces two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-REVERSE-ZEROES ...)
+Rules: ((:COMPOUND-RECOGNIZER POSP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-BS-TXN-REVERSE)
+        (:DEFINITION FN-BS-TXN-ZEROES)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-REVERSE)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-BS-TXN-ZEROES)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE FN-BS-TXN-APPEND-ZERO-TO-ZEROES)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-ZEROES))
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+Prover steps counted:  143
+ FN-BS-TXN-REVERSE-ZEROES
+ACL2 !>>
+ACL2 Warning [Non-rec] in ( DEFTHM FN-BS-TXN-DECODE-DIGITS-LEFT-INVERSE
+...):  A :REWRITE rule generated from FN-BS-TXN-DECODE-DIGITS-LEFT-INVERSE
+will be triggered only by terms containing the function symbols 
+FN-BS-TXN-DECODE-DIGITS and FN-BS-TXN-DIGITS, which have non-recursive
+definitions.  Unless these definitions are disabled, this rule is unlikely
+ever to be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-BS-TXN-DECODE-DIGITS-LEFT-INVERSE
+...):  The previously added rule FN-BS-TXN-DECODE-DIGITS subsumes a
+newly proposed :REWRITE rule generated from 
+FN-BS-TXN-DECODE-DIGITS-LEFT-INVERSE, in the sense that the old rule
+rewrites a more general target.  Because the new rule will be tried
+first, it may nonetheless find application.
+
+
+ACL2 Warning [Use] in ( DEFTHM FN-BS-TXN-DECODE-DIGITS-LEFT-INVERSE
+...):  It is unusual to :USE the formula of an enabled :REWRITE or
+:DEFINITION rule, so you may want to consider disabling 
+(:REWRITE FN-BS-TXN-REVERSE-INVOLUTION) in the hint provided for Goal.
+See :DOC using-enabled-rules.
+
+Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-DECODE-DIGITS-LEFT-INVERSE ...)
+Rules: ((:DEFINITION FN-BS-TXN-DECODE-DIGITS)
+        (:DEFINITION FN-BS-TXN-DIGITS)
+        (:DEFINITION FN-BS-TXN-NATURAL-DIGITS)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE <-+-NEGATIVE-0-2)
+        (:REWRITE FN-BS-TXN-NATURAL-DIGITS-REV-TRUE-LISTP)
+        (:REWRITE FN-BS-TXN-REVERSE-APPEND)
+        (:REWRITE FN-BS-TXN-REVERSE-INVOLUTION)
+        (:REWRITE FN-BS-TXN-REVERSE-ZEROES)
+        (:REWRITE FN-BS-TXN-UNDIGITS-REV-APPEND-ZEROES)
+        (:REWRITE FN-BS-TXN-UNDIGITS-REV-INVERTS-NATURAL-DIGITS-REV)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:TYPE-PRESCRIPTION LEN))
+Hint-events: ((:USE FN-BS-TXN-REVERSE-INVOLUTION))
+Warnings:  Use, Subsume and Non-rec
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  1734
+ FN-BS-TXN-DECODE-DIGITS-LEFT-INVERSE
+ACL2 !>>
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BS-TXN-DECODE-NATURAL-DIGITS-LEFT-INVERSE ...):  A :REWRITE rule
+generated from FN-BS-TXN-DECODE-NATURAL-DIGITS-LEFT-INVERSE will be
+triggered only by terms containing the function symbols 
+FN-BS-TXN-DECODE-DIGITS and FN-BS-TXN-NATURAL-DIGITS, which have non-
+recursive definitions.  Unless these definitions are disabled, this
+rule is unlikely ever to be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM 
+FN-BS-TXN-DECODE-NATURAL-DIGITS-LEFT-INVERSE ...):  The previously
+added rule FN-BS-TXN-DECODE-DIGITS subsumes a newly proposed :REWRITE
+rule generated from FN-BS-TXN-DECODE-NATURAL-DIGITS-LEFT-INVERSE, in
+the sense that the old rule rewrites a more general target.  Because
+the new rule will be tried first, it may nonetheless find application.
+
+
+ACL2 Warning [Use] in ( DEFTHM FN-BS-TXN-DECODE-NATURAL-DIGITS-LEFT-INVERSE
+...):  It is unusual to :USE the formula of an enabled :REWRITE or
+:DEFINITION rule, so you may want to consider disabling 
+(:REWRITE FN-BS-TXN-REVERSE-INVOLUTION) in the hint provided for Goal.
+See :DOC using-enabled-rules.
+
+Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-DECODE-NATURAL-DIGITS-LEFT-INVERSE ...)
+Rules: ((:DEFINITION FN-BS-TXN-DECODE-DIGITS)
+        (:DEFINITION FN-BS-TXN-NATURAL-DIGITS)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-BS-TXN-NATURAL-DIGITS-REV-TRUE-LISTP)
+        (:REWRITE FN-BS-TXN-REVERSE-INVOLUTION)
+        (:REWRITE FN-BS-TXN-UNDIGITS-REV-INVERTS-NATURAL-DIGITS-REV)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-NATURAL-DIGITS-REV))
+Hint-events: ((:USE FN-BS-TXN-REVERSE-INVOLUTION))
+Warnings:  Use, Subsume and Non-rec
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.01)
+Prover steps counted:  1611
+ FN-BS-TXN-DECODE-NATURAL-DIGITS-LEFT-INVERSE
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  One induction scheme is suggested
+by this conjecture.  
+
+We will induct according to a scheme suggested by (FN-BS-TXN-ZEROES COUNT).
+
+This suggestion was produced using the :induction rule FN-BS-TXN-ZEROES.
+If we let (:P COUNT) denote *1 above then the induction scheme we'll
+use is
+(AND (IMPLIES (AND (POSP COUNT) (:P (+ -1 COUNT)))
+              (:P COUNT))
+     (IMPLIES (NOT (POSP COUNT))
+              (:P COUNT))).
+This induction is justified by the same argument used to admit 
+FN-BS-TXN-ZEROES.  When applied to the goal at hand the above induction
+scheme produces two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+The storage of FN-BS-TXN-ZEROES-CHARACTERS depends upon the :type-
+prescription rule CHARACTER-LISTP.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-ZEROES-CHARACTERS ...)
+Rules: ((:COMPOUND-RECOGNIZER POSP-COMPOUND-RECOGNIZER)
+        (:DEFINITION CHARACTER-LISTP)
+        (:DEFINITION FN-BS-TXN-ZEROES)
+        (:EXECUTABLE-COUNTERPART CHARACTER-LISTP)
+        (:EXECUTABLE-COUNTERPART CHARACTERP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-BS-TXN-ZEROES)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION CHARACTER-LISTP)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-ZEROES))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  168
+ FN-BS-TXN-ZEROES-CHARACTERS
+ACL2 !>>
+ACL2 Warning [Non-rec] in ( DEFTHM FN-BS-TXN-NAME-CHARS-CHARACTERS
+...):  A :REWRITE rule generated from FN-BS-TXN-NAME-CHARS-CHARACTERS
+will be triggered only by terms containing the function symbol 
+FN-BS-TXN-NAME-CHARS, which has a non-recursive definition.  Unless
+this definition is disabled, this rule is unlikely ever to be used.
+
+Goal'
+Goal''
+
+([ A key checkpoint:
+
+Goal''
+(CHARACTER-LISTP (FN-BS-TXN-REVERSE (FN-BS-TXN-NATURAL-DIGITS-REV N)))
+
+*1 (Goal'') is pushed for proof by induction.
+
+])
+
+Perhaps we can prove *1 by induction.  One induction scheme is suggested
+by this conjecture.  
+
+We will induct according to a scheme suggested by 
+(FN-BS-TXN-NATURAL-DIGITS-REV N).
+
+This suggestion was produced using the :induction rule 
+FN-BS-TXN-NATURAL-DIGITS-REV.  If we let (:P N) denote *1 above then
+the induction scheme we'll use is
+(AND (IMPLIES (AND (<= 10 (NFIX N))
+                   (:P (FLOOR (NFIX N) 10)))
+              (:P N))
+     (IMPLIES (< (NFIX N) 10) (:P N))).
+This induction is justified by the same argument used to admit 
+FN-BS-TXN-NATURAL-DIGITS-REV.  When applied to the goal at hand the
+above induction scheme produces two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/2''
+Subgoal *1/1
+
+Splitter note (see :DOC splitter) for Subgoal *1/1 (3 subgoals).
+  if-intro: ((:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+             (:DEFINITION NFIX))
+
+Subgoal *1/1.3
+Subgoal *1/1.2
+Subgoal *1/1.2'
+Subgoal *1/1.1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal'' is COMPLETED!
+
+Q.E.D.
+
+The storage of FN-BS-TXN-NAME-CHARS-CHARACTERS depends upon the :type-
+prescription rule CHARACTER-LISTP.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-NAME-CHARS-CHARACTERS ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION CHARACTER-LISTP)
+        (:DEFINITION DIGIT-TO-CHAR)
+        (:DEFINITION FLOOR)
+        (:DEFINITION FN-BS-TXN-DIGITS)
+        (:DEFINITION FN-BS-TXN-NAME-CHARS)
+        (:DEFINITION FN-BS-TXN-NATURAL-DIGITS)
+        (:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:DEFINITION FN-BS-TXN-REVERSE)
+        (:DEFINITION MOD)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART CHARACTER-LISTP)
+        (:EXECUTABLE-COUNTERPART CONS)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:EXECUTABLE-COUNTERPART DIGIT-TO-CHAR)
+        (:EXECUTABLE-COUNTERPART FLOOR)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-REVERSE)
+        (:EXECUTABLE-COUNTERPART IF)
+        (:EXECUTABLE-COUNTERPART MOD)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART UNARY-/)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:REWRITE <-+-NEGATIVE-0-2)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE CHARACTER-LISTP-APPEND)
+        (:REWRITE COMMUTATIVITY-OF-*)
+        (:REWRITE EQUAL-DENOMINATOR-1)
+        (:REWRITE FLOOR-=-X/Y . 3)
+        (:REWRITE FN-BS-TXN-APPEND-ASSOCIATIVE)
+        (:REWRITE FN-BS-TXN-ZEROES-CHARACTERS)
+        (:REWRITE MOD-=-0 . 2)
+        (:REWRITE NUMERATOR-WHEN-INTEGERP)
+        (:TYPE-PRESCRIPTION CHARACTER-LISTP)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-NATURAL-DIGITS-REV)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-REVERSE)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-ZEROES)
+        (:TYPE-PRESCRIPTION LEN))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-BS-TXN-NATURAL-DIGITS-REV)
+             (:DEFINITION NFIX))
+Warnings:  Non-rec
+Time:  0.03 seconds (prove: 0.03, print: 0.00, other: 0.00)
+Prover steps counted:  10682
+ FN-BS-TXN-NAME-CHARS-CHARACTERS
+ACL2 !>>
+ACL2 Warning [Non-rec] in ( DEFTHM FN-BS-TXN-DIGITS-TRUE-LISTP ...):
+A :REWRITE rule generated from FN-BS-TXN-DIGITS-TRUE-LISTP will be
+triggered only by terms containing the function symbol FN-BS-TXN-DIGITS,
+which has a non-recursive definition.  Unless this definition is disabled,
+this rule is unlikely ever to be used.
+
+
+Q.E.D.
+
+The storage of FN-BS-TXN-DIGITS-TRUE-LISTP depends upon the :type-
+prescription rule FN-BS-TXN-DIGITS.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-DIGITS-TRUE-LISTP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BS-TXN-DIGITS))
+Warnings:  Non-rec
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-DIGITS-TRUE-LISTP
+ACL2 !>>
+Splitter note (see :DOC splitter) for Goal (3 subgoals).
+  if-intro: ((:DEFINITION NFIX))
+
+Subgoal 3
+Subgoal 2
+
+([ A key checkpoint:
+
+Subgoal 2
+(IMPLIES (AND (INTEGERP COUNT) (<= 0 COUNT))
+         (EQUAL (LEN (FN-BS-TXN-ZEROES COUNT))
+                COUNT))
+
+*1 (Subgoal 2) is pushed for proof by induction.
+
+])
+Subgoal 1
+
+Perhaps we can prove *1 by induction.  One induction scheme is suggested
+by this conjecture.  
+
+We will induct according to a scheme suggested by (FN-BS-TXN-ZEROES COUNT).
+
+This suggestion was produced using the :induction rule FN-BS-TXN-ZEROES.
+If we let (:P COUNT) denote *1 above then the induction scheme we'll
+use is
+(AND (IMPLIES (AND (POSP COUNT) (:P (+ -1 COUNT)))
+              (:P COUNT))
+     (IMPLIES (NOT (POSP COUNT))
+              (:P COUNT))).
+This induction is justified by the same argument used to admit 
+FN-BS-TXN-ZEROES.  When applied to the goal at hand the above induction
+scheme produces four nontautological subgoals.
+Subgoal *1/4
+Subgoal *1/3
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Subgoal 2 is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-ZEROES-LENGTH ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER POSP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FIX)
+        (:DEFINITION FN-BS-TXN-ZEROES)
+        (:DEFINITION LEN)
+        (:DEFINITION NFIX)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART FN-BS-TXN-ZEROES)
+        (:EXECUTABLE-COUNTERPART INTEGERP)
+        (:EXECUTABLE-COUNTERPART LEN)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART POSP)
+        (:FAKE-RUNE-FOR-LINEAR NIL)
+        (:FAKE-RUNE-FOR-LINEAR-EQUALITIES NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-BS-TXN-ZEROES)
+        (:REWRITE CDR-CONS)
+        (:REWRITE MINUS-CANCELLATION-ON-LEFT)
+        (:REWRITE NATP-POSP)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-ZEROES)
+        (:TYPE-PRESCRIPTION LEN))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION NFIX))
+Time:  0.02 seconds (prove: 0.02, print: 0.00, other: 0.00)
+Prover steps counted:  364
+ FN-BS-TXN-ZEROES-LENGTH
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  These merge into two derived induction
+schemes.  However, one of these is flawed and so we are left with one
+viable candidate.  
+
+We will induct according to a scheme suggested by (LEN A), while ac-
+commodating (APPEND A B).
+
+These suggestions were produced using the :induction rules BINARY-APPEND
+and LEN.  If we let (:P A B) denote *1 above then the induction scheme
+we'll use is
+(AND (IMPLIES (NOT (CONSP A)) (:P A B))
+     (IMPLIES (AND (CONSP A) (:P (CDR A) B))
+              (:P A B))).
+This induction is justified by the same argument used to admit LEN.
+When applied to the goal at hand the above induction scheme produces
+two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-LEN-APPEND ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION FIX)
+        (:DEFINITION LEN)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION BINARY-APPEND)
+        (:INDUCTION LEN)
+        (:REWRITE CDR-CONS)
+        (:REWRITE COMMUTATIVITY-2-OF-+)
+        (:REWRITE COMMUTATIVITY-OF-+)
+        (:REWRITE UNICITY-OF-0)
+        (:TYPE-PRESCRIPTION LEN))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  382
+ FN-BS-TXN-LEN-APPEND
+ACL2 !>>
+ACL2 Warning [Non-rec] in ( DEFTHM FN-BS-TXN-DIGITS-LENGTH ...):  A
+:REWRITE rule generated from FN-BS-TXN-DIGITS-LENGTH will be triggered
+only by terms containing the function symbol FN-BS-TXN-DIGITS, which
+has a non-recursive definition.  Unless this definition is disabled,
+this rule is unlikely ever to be used.
+
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-DIGITS-LENGTH ...)
+Rules: ((:DEFINITION FN-BS-TXN-DIGITS)
+        (:DEFINITION NFIX)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE FN-BS-TXN-LEN-APPEND)
+        (:REWRITE FN-BS-TXN-ZEROES-LENGTH))
+Warnings:  Non-rec
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  112
+ FN-BS-TXN-DIGITS-LENGTH
+ACL2 !>>
+Computing the guard conjecture for FN-BS-TXN-NAME-IMPL....
+
+The non-trivial part of the guard conjecture for FN-BS-TXN-NAME-IMPL
+is
+
+Goal
+(CHARACTER-LISTP (FN-BS-TXN-NAME-CHARS N)).
+
+ACL2 Warning [Use] in ( VERIFY-GUARDS FN-BS-TXN-NAME-IMPL ...):  It
+is unusual to :USE the formula of an enabled :REWRITE or :DEFINITION
+rule, so you may want to consider disabling 
+(:REWRITE FN-BS-TXN-NAME-CHARS-CHARACTERS) in the hint provided for
+Goal.  See :DOC using-enabled-rules.
+
+
+Q.E.D.
+
+That completes the proof of the guard theorem for FN-BS-TXN-NAME-IMPL.
+FN-BS-TXN-NAME-IMPL is compliant with Common Lisp.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BS-TXN-NAME-IMPL ...)
+Rules: NIL
+Hint-events: ((:USE FN-BS-TXN-NAME-CHARS-CHARACTERS))
+Warnings:  Use
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-NAME-IMPL
+ACL2 !>>
+ACL2 Warning [Non-rec] in ( DEFTHM FN-BS-TXN-DIGITS-DECODE ...):  A
+:REWRITE rule generated from FN-BS-TXN-DIGITS-DECODE will be triggered
+only by terms containing the function symbols FN-BS-TXN-DECODE-DIGITS
+and FN-BS-TXN-DIGITS, which have non-recursive definitions.  Unless
+these definitions are disabled, this rule is unlikely ever to be used.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-BS-TXN-DIGITS-DECODE ...):  A
+newly proposed :REWRITE rule generated from FN-BS-TXN-DIGITS-DECODE
+probably subsumes the previously added :REWRITE rule 
+FN-BS-TXN-DECODE-DIGITS-LEFT-INVERSE, in the sense that the new rule
+will now probably be applied whenever the old rule would have been.
+
+
+ACL2 Warning [Subsume] in ( DEFTHM FN-BS-TXN-DIGITS-DECODE ...):  The
+previously added rules FN-BS-TXN-DECODE-DIGITS-LEFT-INVERSE and 
+FN-BS-TXN-DECODE-DIGITS subsume a newly proposed :REWRITE rule generated
+from FN-BS-TXN-DIGITS-DECODE, in the sense that the old rules rewrite
+more general targets.  Because the new rule will be tried first, it
+may nonetheless find application.
+
+
+ACL2 Warning [Use] in ( DEFTHM FN-BS-TXN-DIGITS-DECODE ...):  It is
+unusual to :USE the formula of an enabled :REWRITE or :DEFINITION rule,
+so you may want to consider disabling 
+(:REWRITE FN-BS-TXN-DECODE-DIGITS-LEFT-INVERSE) in the hint provided
+for Goal.  See :DOC using-enabled-rules.
+
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-DIGITS-DECODE ...)
+Rules: NIL
+Hint-events: ((:USE FN-BS-TXN-DECODE-DIGITS-LEFT-INVERSE))
+Warnings:  Use, Subsume and Non-rec
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-DIGITS-DECODE
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by (APPEND PREFIX A).
+
+This suggestion was produced using the :induction rule BINARY-APPEND.
+If we let (:P A B PREFIX) denote *1 above then the induction scheme
+we'll use is
+(AND (IMPLIES (AND (NOT (ENDP PREFIX))
+                   (:P A B (CDR PREFIX)))
+              (:P A B PREFIX))
+     (IMPLIES (ENDP PREFIX)
+              (:P A B PREFIX))).
+This induction is justified by the same argument used to admit BINARY-APPEND.
+When applied to the goal at hand the above induction scheme produces
+two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-CANCEL-EQUAL-PREFIX ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION ENDP)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION BINARY-APPEND)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  431
+ FN-BS-TXN-CANCEL-EQUAL-PREFIX
+ACL2 !>>Goal'
+Goal''
+Subgoal 2
+Subgoal 1
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-CANCEL-EQUAL-SUFFIX ...)
+Rules: ((:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Hint-events: ((:USE FN-BS-TXN-CANCEL-EQUAL-PREFIX)
+              (:USE FN-BS-TXN-REVERSE-APPEND)
+              (:USE FN-BS-TXN-REVERSE-INVOLUTION)
+              (:USE FN-BS-TXN-REVERSE-TRUE-LISTP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  893
+ FN-BS-TXN-CANCEL-EQUAL-SUFFIX
+ACL2 !>>Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-NAME-CHARS-EQUAL-IMPLIES-DIGITS-EQUAL ...)
+Rules: ((:DEFINITION FN-BS-TXN-NAME-CHARS)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Hint-events: ((:USE FN-BS-TXN-CANCEL-EQUAL-SUFFIX)
+              (:USE FN-BS-TXN-DIGITS-TRUE-LISTP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  101
+ FN-BS-TXN-NAME-CHARS-EQUAL-IMPLIES-DIGITS-EQUAL
+ACL2 !>>
+ACL2 Warning [Use] in ( DEFTHM FN-BS-TXN-COERCE-INVERSE ...):  It is
+unusual to :USE the formula of an enabled :REWRITE or :DEFINITION rule,
+so you may want to consider disabling (:REWRITE COERCE-INVERSE-2) in
+the hint provided for Goal.  See :DOC using-enabled-rules.
+
+Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-COERCE-INVERSE ...)
+Rules: ((:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE COERCE-INVERSE-1)
+        (:TYPE-PRESCRIPTION CHARACTER-LISTP))
+Hint-events: ((:USE COERCE-INVERSE-2))
+Warnings:  Use
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  162
+ FN-BS-TXN-COERCE-INVERSE
+ACL2 !>>Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-NAME-IMPL-EQUAL-IMPLIES-CHARS-EQUAL ...)
+Rules: ((:DEFINITION FN-BS-TXN-NAME-IMPL)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Hint-events: ((:USE FN-BS-TXN-COERCE-INVERSE)
+              (:USE FN-BS-TXN-NAME-CHARS-CHARACTERS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  254
+ FN-BS-TXN-NAME-IMPL-EQUAL-IMPLIES-CHARS-EQUAL
+ACL2 !>>Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-DIGITS-EQUAL-IMPLIES-NFIX-EQUAL ...)
+Rules: ((:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Hint-events: ((:USE FN-BS-TXN-DIGITS-DECODE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  120
+ FN-BS-TXN-DIGITS-EQUAL-IMPLIES-NFIX-EQUAL
+ACL2 !>>Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-NAME-IMPL-INJECTIVE ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Hint-events: ((:USE FN-BS-TXN-DIGITS-EQUAL-IMPLIES-NFIX-EQUAL)
+              (:USE FN-BS-TXN-NAME-CHARS-EQUAL-IMPLIES-DIGITS-EQUAL)
+              (:USE FN-BS-TXN-NAME-IMPL-EQUAL-IMPLIES-CHARS-EQUAL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  277
+ FN-BS-TXN-NAME-IMPL-INJECTIVE
+ACL2 !>>
+The guard proof obligation is
+
+(IMPLIES T T).
+
+Q.E.D.
+
+This concludes the guard proof.
+
+
+We now prove that the attachment satisfies the required constraint.
+The goal to prove is
+
+(AND (FN-BS-NAMEP (FN-BS-TXN-NAME-IMPL N))
+     (IMPLIES (AND (NATP I)
+                   (NATP J)
+                   (NOT (EQUAL I J)))
+              (NOT (EQUAL (FN-BS-TXN-NAME-IMPL I)
+                          (FN-BS-TXN-NAME-IMPL J))))).
+Goal'
+Goal''
+
+Q.E.D.
+
+Summary
+Form:  ( DEFATTACH (FN-BS-TXN-NAME FN-BS-TXN-NAME-IMPL) ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-BS-NAMEP)
+        (:DEFINITION FN-BS-TXN-DIGITS)
+        (:DEFINITION FN-BS-TXN-NAME-CHARS)
+        (:DEFINITION FN-BS-TXN-NAME-IMPL)
+        (:DEFINITION FN-BS-TXN-NATURAL-DIGITS)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Hint-events: ((:USE FN-BS-TXN-NAME-IMPL-INJECTIVE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  385
+ :ATTACHMENTS-RECORDED
+ACL2 !>>
+For the admission of FN-BS-TXN-OBSERVATION-COVERED we will use the
+relation O< (which is known to be well-founded on the domain recognized
+by O-P) and the measure (NFIX (+ (NFIX SELECTED-LOWER) (- (NFIX SEQUENCE)))).
+The non-trivial part of the measure conjecture is
+
+Goal
+(AND (O-P (NFIX (+ (NFIX SELECTED-LOWER)
+                   (- (NFIX SEQUENCE)))))
+     (IMPLIES (AND (NATP SEQUENCE)
+                   (NATP SELECTED-LOWER)
+                   (< SEQUENCE SELECTED-LOWER))
+              (O< (NFIX (+ (NFIX SELECTED-LOWER)
+                           (- (NFIX (+ 1 SEQUENCE)))))
+                  (NFIX (+ (NFIX SELECTED-LOWER)
+                           (- (NFIX SEQUENCE))))))).
+Subgoal 2
+
+Splitter note (see :DOC splitter) for Subgoal 2 (12 subgoals).
+  if-intro: ((:DEFINITION NFIX) (:DEFINITION O-P))
+
+Subgoal 2.12
+Subgoal 2.11
+Subgoal 2.10
+Subgoal 2.9
+Subgoal 2.8
+Subgoal 2.8'
+Subgoal 2.7
+Subgoal 2.6
+Subgoal 2.5
+Subgoal 2.4
+Subgoal 2.3
+Subgoal 2.3'
+Subgoal 2.2
+Subgoal 2.1
+Subgoal 1
+
+Splitter note (see :DOC splitter) for Subgoal 1 (2 subgoals).
+  if-intro: ((:DEFINITION NFIX) (:DEFINITION O<))
+
+Subgoal 1.2
+Subgoal 1.1
+
+Q.E.D.
+
+That completes the proof of the measure theorem for 
+FN-BS-TXN-OBSERVATION-COVERED.  Thus, we admit this function under
+the principle of definition.  We observe that the type of 
+FN-BS-TXN-OBSERVATION-COVERED is described by the theorem 
+(OR
+ (CONSP (FN-BS-TXN-OBSERVATION-COVERED NAMES SEQUENCE SELECTED-LOWER))
+ (AND
+    (SYMBOLP (FN-BS-TXN-OBSERVATION-COVERED NAMES SEQUENCE SELECTED-LOWER))
+    (NOT (EQUAL (FN-BS-TXN-OBSERVATION-COVERED NAMES SEQUENCE SELECTED-LOWER)
+                T))
+    (NOT (EQUAL (FN-BS-TXN-OBSERVATION-COVERED NAMES SEQUENCE SELECTED-LOWER)
+                NIL)))
+ (EQUAL (FN-BS-TXN-OBSERVATION-COVERED NAMES SEQUENCE SELECTED-LOWER)
+        NIL)).
+We used primitive type reasoning and the :type-prescription rule 
+FN-BS-TXN-OBSERVATION-PAIRS.
+
+Computing the guard conjecture for FN-BS-TXN-OBSERVATION-COVERED....
+
+The guard conjecture for FN-BS-TXN-OBSERVATION-COVERED is trivial to
+prove, given the :compound-recognizer rule NATP-COMPOUND-RECOGNIZER.
+FN-BS-TXN-OBSERVATION-COVERED is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-OBSERVATION-COVERED ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION NFIX)
+        (:DEFINITION NOT)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O-P)
+        (:DEFINITION O<)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART FIX)
+        (:EXECUTABLE-COUNTERPART INTEGERP)
+        (:EXECUTABLE-COUNTERPART NATP)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:EXECUTABLE-COUNTERPART UNARY--)
+        (:FAKE-RUNE-FOR-LINEAR NIL)
+        (:FAKE-RUNE-FOR-LINEAR-EQUALITIES NIL)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE <-+-NEGATIVE-0-1)
+        (:REWRITE <-+-NEGATIVE-0-2)
+        (:REWRITE COMMUTATIVITY-2-OF-+)
+        (:REWRITE DISTRIBUTIVITY-OF-MINUS-OVER-+)
+        (:REWRITE NATP-RW)
+        (:REWRITE UNICITY-OF-0)
+        (:TYPE-PRESCRIPTION FN-BS-TXN-OBSERVATION-PAIRS)
+        (:TYPE-PRESCRIPTION |x < y  =>  0 < y-x|))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION NFIX)
+             (:DEFINITION O-P)
+             (:DEFINITION O<))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  729
+ FN-BS-TXN-OBSERVATION-COVERED
+ACL2 !>>
+Since FN-BS-TXN-OBSERVATION-SELECTED is non-recursive, its admission
+is trivial.  We observe that the type of FN-BS-TXN-OBSERVATION-SELECTED
+is described by the theorem 
+(OR (AND (CONSP (FN-BS-TXN-OBSERVATION-SELECTED NAMES SELECTED-LOWER))
+         (TRUE-LISTP (FN-BS-TXN-OBSERVATION-SELECTED NAMES SELECTED-LOWER)))
+    (AND (SYMBOLP (FN-BS-TXN-OBSERVATION-SELECTED NAMES SELECTED-LOWER))
+         (NOT (EQUAL (FN-BS-TXN-OBSERVATION-SELECTED NAMES SELECTED-LOWER)
+                     T))
+         (NOT (EQUAL (FN-BS-TXN-OBSERVATION-SELECTED NAMES SELECTED-LOWER)
+                     NIL)))).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-BS-TXN-OBSERVATION-SELECTED....
+
+The guard conjecture for FN-BS-TXN-OBSERVATION-SELECTED is trivial
+to prove.  FN-BS-TXN-OBSERVATION-SELECTED is compliant with Common
+Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-TXN-OBSERVATION-SELECTED ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TXN-OBSERVATION-SELECTED
+ACL2 !>>
+The event ( VERIFY-GUARDS FN-BS-TXN-OBSERVATION-COVERED) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BS-TXN-OBSERVATION-COVERED)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( VERIFY-GUARDS FN-BS-TXN-OBSERVATION-SELECTED) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BS-TXN-OBSERVATION-SELECTED)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BS-TXN-OBSERVATION-SELECTED-ZERO-IS-DEFAULT ...):  A :REWRITE rule
+generated from FN-BS-TXN-OBSERVATION-SELECTED-ZERO-IS-DEFAULT will
+be triggered only by terms containing the function symbol 
+FN-BS-TXN-OBSERVATION-SELECTED, which has a non-recursive definition.
+Unless this definition is disabled, this rule is unlikely ever to be
+used.
+
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-TXN-OBSERVATION-SELECTED-ZERO-IS-DEFAULT ...)
+Rules: ((:DEFINITION FN-BS-TXN-OBSERVATION-COVERED)
+        (:DEFINITION FN-BS-TXN-OBSERVATION-SELECTED)
+        (:EXECUTABLE-COUNTERPART <)
+        (:EXECUTABLE-COUNTERPART NATP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL))
+Warnings:  Non-rec
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+Prover steps counted:  188
+ FN-BS-TXN-OBSERVATION-SELECTED-ZERO-IS-DEFAULT
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "byte-store-programs"
+...):  Unable to load compiled file for book
+  /Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-
+store-programs.lisp
+because that book is not certified.  See :DOC include-book.  No load
+was in progress for any parent book.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "byte-store-programs"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-store-programs.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-files-traces" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/store-files-traces.lisp".
+See :DOC uncertified-books.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "byte-store-programs" ...)
+Rules: NIL
+Warnings:  Uncertified and Compiled file
+Time:  0.06 seconds (prove: 0.00, print: 0.00, other: 0.06)
+ "/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-store-programs.lisp"
+ACL2 !>>
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "byte-store-txn-name"
+...):  Unable to load compiled file for book
+  /Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-
+store-txn-name.lisp
+because that book is not certified.  See :DOC include-book.  No load
+was in progress for any parent book.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "byte-store-txn-name"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-store-txn-name.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Observation in ( INCLUDE-BOOK "byte-store-txn-name" ...):  Reading
+.port file, /Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/b\
+yte-store-txn-name.port.
+
+Summary
+Form:  ( INCLUDE-BOOK "byte-store-txn-name" ...)
+Rules: NIL
+Warnings:  Uncertified and Compiled file
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-store-txn-name.lisp"
+ACL2 !>>
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "checkpoint-compaction"
+...):  Unable to load compiled file for book
+  /Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/checkpoint-
+compaction.lisp
+because that book is not certified.  See :DOC include-book.  No load
+was in progress for any parent book.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "checkpoint-compaction"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/checkpoint-compaction.lisp".
+See :DOC uncertified-books.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "checkpoint-compaction" ...)
+Rules: NIL
+Warnings:  Uncertified and Compiled file
+Time:  0.02 seconds (prove: 0.00, print: 0.00, other: 0.02)
+ "/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/checkpoint-compaction.lisp"
+ACL2 !>>
+The admission of FN-BS-PACK-COVERED-NAMES is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT PAIRS).  We observe that the type of 
+FN-BS-PACK-COVERED-NAMES is described by the theorem 
+(TRUE-LISTP (FN-BS-PACK-COVERED-NAMES PAIRS SELECTED-LOWER)).  We used
+primitive type reasoning.
+
+Computing the guard conjecture for FN-BS-PACK-COVERED-NAMES....
+
+The guard conjecture for FN-BS-PACK-COVERED-NAMES is trivial to prove,
+given the :executable-counterpart of NATP and the :type-prescription
+rule NFIX.  FN-BS-PACK-COVERED-NAMES is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-PACK-COVERED-NAMES ...)
+Rules: ((:EXECUTABLE-COUNTERPART NATP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION NFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-PACK-COVERED-NAMES
+ACL2 !>>
+Since FN-BS-PACK-RECLAIM-PLAN is non-recursive, its admission is trivial.
+We observe that the type of FN-BS-PACK-RECLAIM-PLAN is described by
+the theorem 
+(OR (TRUE-LISTP (FN-BS-PACK-RECLAIM-PLAN NAMES MAXIMUM SELECTED-LOWER))
+    (AND (SYMBOLP (FN-BS-PACK-RECLAIM-PLAN NAMES MAXIMUM SELECTED-LOWER))
+         (NOT (EQUAL (FN-BS-PACK-RECLAIM-PLAN NAMES MAXIMUM SELECTED-LOWER)
+                     T))
+         (NOT (EQUAL (FN-BS-PACK-RECLAIM-PLAN NAMES MAXIMUM SELECTED-LOWER)
+                     NIL)))).
+We used the :type-prescription rule FN-BS-PACK-COVERED-NAMES.
+
+Computing the guard conjecture for FN-BS-PACK-RECLAIM-PLAN....
+
+The non-trivial part of the guard conjecture for FN-BS-PACK-RECLAIM-PLAN,
+given the :compound-recognizer rule NATP-COMPOUND-RECOGNIZER and the
+:type-prescription rule LEN, is
+
+Goal
+(IMPLIES
+     (AND (NATP MAXIMUM)
+          (NATP SELECTED-LOWER)
+          (TRUE-LISTP NAMES)
+          (<= (LEN NAMES) MAXIMUM))
+     (LET ((SELECTED (FN-BS-TXN-OBSERVATION-SELECTED NAMES SELECTED-LOWER)))
+       (AND (OR (EQUAL SELECTED :INVALID)
+                (CONSP SELECTED)
+                (EQUAL SELECTED NIL))
+            (OR (EQUAL SELECTED :INVALID)
+                (CONSP (CDR SELECTED))
+                (EQUAL (CDR SELECTED) NIL))
+            (OR (EQUAL SELECTED :INVALID)
+                (CONSP (CDDR SELECTED))
+                (EQUAL (CDDR SELECTED) NIL))))).
+Goal'
+Goal''
+
+Q.E.D.
+
+That completes the proof of the guard theorem for FN-BS-PACK-RECLAIM-PLAN.
+FN-BS-PACK-RECLAIM-PLAN is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-PACK-RECLAIM-PLAN ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-BS-TXN-OBSERVATION-SELECTED)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:TYPE-PRESCRIPTION FN-BS-PACK-COVERED-NAMES)
+        (:TYPE-PRESCRIPTION LEN))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  500
+ FN-BS-PACK-RECLAIM-PLAN
+ACL2 !>>
+The admission of FN-BS-PACK-RECLAIM-STEPS is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT NAMES).  We observe that the type of 
+FN-BS-PACK-RECLAIM-STEPS is described by the theorem 
+(AND (CONSP (FN-BS-PACK-RECLAIM-STEPS NAMES))
+     (TRUE-LISTP (FN-BS-PACK-RECLAIM-STEPS NAMES))).
+We used primitive type reasoning.
+
+Computing the guard conjecture for FN-BS-PACK-RECLAIM-STEPS....
+
+The guard conjecture for FN-BS-PACK-RECLAIM-STEPS is trivial to prove.
+FN-BS-PACK-RECLAIM-STEPS is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-PACK-RECLAIM-STEPS ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-PACK-RECLAIM-STEPS
+ACL2 !>>
+Since FN-BS-PACK-RECLAIM-PROGRAM is non-recursive, its admission is
+trivial.  We observe that the type of FN-BS-PACK-RECLAIM-PROGRAM is
+described by the theorem 
+(TRUE-LISTP (FN-BS-PACK-RECLAIM-PROGRAM NAMES MAXIMUM SELECTED-LOWER)).
+We used the :type-prescription rule FN-BS-PACK-RECLAIM-STEPS.
+
+Computing the guard conjecture for FN-BS-PACK-RECLAIM-PROGRAM....
+
+The guard conjecture for FN-BS-PACK-RECLAIM-PROGRAM is trivial to prove.
+FN-BS-PACK-RECLAIM-PROGRAM is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-BS-PACK-RECLAIM-PROGRAM ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BS-PACK-RECLAIM-STEPS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-PACK-RECLAIM-PROGRAM
+ACL2 !>>
+The event ( VERIFY-GUARDS FN-BS-PACK-COVERED-NAMES) is redundant. 
+See :DOC redundant-events.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BS-PACK-COVERED-NAMES)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( VERIFY-GUARDS FN-BS-PACK-RECLAIM-PLAN) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BS-PACK-RECLAIM-PLAN)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( VERIFY-GUARDS FN-BS-PACK-RECLAIM-STEPS) is redundant. 
+See :DOC redundant-events.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BS-PACK-RECLAIM-STEPS)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( VERIFY-GUARDS FN-BS-PACK-RECLAIM-PROGRAM) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( VERIFY-GUARDS FN-BS-PACK-RECLAIM-PROGRAM)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+ACL2 Warning [Double-rewrite] in ( DEFTHM 
+FN-BS-PACK-RECLAIM-PLAN-IS-SELECTED-COVERED-NAMES ...):  In a :REWRITE
+rule generated from FN-BS-PACK-RECLAIM-PLAN-IS-SELECTED-COVERED-NAMES,
+equivalence relation LIST-EQUIV is maintained at one problematic occurrence
+of variable NAMES in the fourth hypothesis, but not at any binding
+occurrence of NAMES.  Consider replacing that occurrence of NAMES in
+the fourth hypothesis with (DOUBLE-REWRITE NAMES).  See :doc double-
+rewrite for more information on this issue.
+
+
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BS-PACK-RECLAIM-PLAN-IS-SELECTED-COVERED-NAMES ...):  A :REWRITE
+rule generated from FN-BS-PACK-RECLAIM-PLAN-IS-SELECTED-COVERED-NAMES
+will be triggered only by terms containing the function symbol 
+FN-BS-PACK-RECLAIM-PLAN, which has a non-recursive definition.  Unless
+this definition is disabled, this rule is unlikely ever to be used.
+
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-PACK-RECLAIM-PLAN-IS-SELECTED-COVERED-NAMES ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-BS-PACK-RECLAIM-PLAN)
+        (:DEFINITION FN-BS-TXN-OBSERVATION-SELECTED)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS))
+Warnings:  Non-rec and Double-rewrite
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+Prover steps counted:  697
+ FN-BS-PACK-RECLAIM-PLAN-IS-SELECTED-COVERED-NAMES
+ACL2 !>>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+We have been told to use induction.  One induction scheme is suggested
+by the induction hint.  
+
+We will induct according to a scheme suggested by 
+(FN-BS-PACK-RECLAIM-STEPS NAMES).
+
+This suggestion was produced using the :induction rule 
+FN-BS-PACK-RECLAIM-STEPS.  If we let (:P NAMES) denote *1 above then
+the induction scheme we'll use is
+(AND (IMPLIES (NOT (CONSP NAMES)) (:P NAMES))
+     (IMPLIES (AND (CONSP NAMES) (:P (CDR NAMES)))
+              (:P NAMES))).
+This induction is justified by the same argument used to admit 
+FN-BS-PACK-RECLAIM-STEPS.  When applied to the goal at hand the above
+induction scheme produces two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/1
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-PACK-RECLAIM-STEPS-LAST ...)
+Rules: ((:DEFINITION FN-BS-PACK-RECLAIM-STEPS)
+        (:DEFINITION LAST)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART LAST)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION FN-BS-PACK-RECLAIM-STEPS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION FN-BS-PACK-RECLAIM-STEPS))
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+Prover steps counted:  117
+ FN-BS-PACK-RECLAIM-STEPS-LAST
+ACL2 !>>
+ACL2 Warning [Non-rec] in ( DEFTHM 
+FN-BS-PACK-RECLAIM-PROGRAM-HAS-CLOSING-DIRECTORY-FENCE ...):  A :REWRITE
+rule generated from FN-BS-PACK-RECLAIM-PROGRAM-HAS-CLOSING-DIRECTORY-FENCE
+will be triggered only by terms containing the function symbol 
+FN-BS-PACK-RECLAIM-PROGRAM, which has a non-recursive definition. 
+Unless this definition is disabled, this rule is unlikely ever to be
+used.
+
+Goal'
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM FN-BS-PACK-RECLAIM-PROGRAM-HAS-CLOSING-DIRECTORY-FENCE
+...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION FN-BS-PACK-RECLAIM-PLAN)
+        (:DEFINITION FN-BS-PACK-RECLAIM-PROGRAM)
+        (:DEFINITION FN-BS-TXN-OBSERVATION-SELECTED)
+        (:DEFINITION NOT)
+        (:EXECUTABLE-COUNTERPART EQUAL)
+        (:EXECUTABLE-COUNTERPART LAST)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:REWRITE FN-BS-PACK-RECLAIM-PLAN-IS-SELECTED-COVERED-NAMES)
+        (:REWRITE FN-BS-PACK-RECLAIM-STEPS-LAST)
+        (:TYPE-PRESCRIPTION FN-BS-PACK-COVERED-NAMES))
+Warnings:  Non-rec
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+Prover steps counted:  938
+ FN-BS-PACK-RECLAIM-PROGRAM-HAS-CLOSING-DIRECTORY-FENCE
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK 
+"../../books/byte-store-compaction-correspondence" ...):  Unable to
+load compiled file for book
+  /Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-
+store-compaction-correspondence.lisp
+because that book is not certified.  See :DOC include-book.  No load
+was in progress for any parent book.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK 
+"../../books/byte-store-compaction-correspondence" ...):  There is
+no certificate on file for 
+"/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-store-compaction-correspondence.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Observation in ( INCLUDE-BOOK 
+"../../books/byte-store-compaction-correspondence" ...):  Reading .port
+file, /Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-
+store-compaction-correspondence.port.
+
+Summary
+Form:  ( INCLUDE-BOOK "../../books/byte-store-compaction-correspondence"
+...)
+Rules: NIL
+Warnings:  Uncertified and Compiled file
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/Users/ember/dev/fn/build/lanes/w26-compaction-plan-guards/books/byte-store-compaction-correspondence.lisp"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../../books/byte-store-frame" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../../books/byte-store-frame" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Summary
+Form:  ( INCLUDE-BOOK "std/testing/must-fail" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/std/testing/must-fail.lisp"
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *BSCC-NAMES* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *BSCC-NAMES*
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *BSCC-STORE* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *BSCC-STORE*
+ACL2 !>>
+Since FN-BS-TEST-RECLAIM-RUN is non-recursive, its admission is trivial.
+We observe that the type of FN-BS-TEST-RECLAIM-RUN is described by
+the theorem (TRUE-LISTP (FN-BS-TEST-RECLAIM-RUN)).  We used the :type-
+prescription rule FN-BS-RUN.
+
+Summary
+Form:  ( DEFUN FN-BS-TEST-RECLAIM-RUN ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BS-RUN))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BS-TEST-RECLAIM-RUN
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>>
+Summary
+Form:  ( MAKE-EVENT (QUOTE ...) ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ T
+ACL2 !>>Bye.
+ :EOF
+ACL2 !> :FN-W26-TESTS-PASSED
+ACL2 !>
