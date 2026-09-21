@@ -102,7 +102,7 @@
       (fn-aj-advance s frame-length)
     :fault))
 
-; (:ok final-name publication successor) is an authorized operation issued
+; (:ok final-name kind publication successor) is an authorized operation issued
 ; after the caller reports ownership of the journal lock and absence of ACL2's
 ; exact next name.  These are trusted host observations, not an unforgeable
 ; capability against hostile raw Lisp.  The executor receives the embedded
@@ -116,23 +116,27 @@
            (equal next-absentp t))
       (list :ok
             (fn-aj-record-name (fn-aj-domain s) (fn-aj-next s))
+            kind
             (fn-jpub-initial t)
             (fn-aj-advance s frame-length))
     (list :refused :journal-admission)))
 
 (defun fn-aj-operationp (operation)
   (and (true-listp operation)
-       (equal (len operation) 4)
+       (equal (len operation) 5)
        (equal (car operation) :ok)
        (stringp (car (cdr operation)))
-       (fn-jpub-statep (car (cdr (cdr operation))))
-       (equal (fn-jpub-next-action (car (cdr (cdr operation)))) :stage)
-       (fn-aj-statep (car (cdr (cdr (cdr operation)))))))
+       (keywordp (car (cdr (cdr operation))))
+       (fn-jpub-statep (car (cdr (cdr (cdr operation)))))
+       (equal (fn-jpub-next-action (car (cdr (cdr (cdr operation))))) :stage)
+       (fn-aj-statep (car (cdr (cdr (cdr (cdr operation))))))))
 
 (defun fn-aj-operation-name (operation) (car (cdr operation)))
-(defun fn-aj-operation-publication (operation) (car (cdr (cdr operation))))
-(defun fn-aj-operation-successor (operation)
+(defun fn-aj-operation-label (operation) (car (cdr (cdr operation))))
+(defun fn-aj-operation-publication (operation)
   (car (cdr (cdr (cdr operation)))))
+(defun fn-aj-operation-successor (operation)
+  (car (cdr (cdr (cdr (cdr operation))))))
 
 (defthm fn-aj-statep-of-initial
   (implies (fn-aj-domainp domain)
@@ -162,4 +166,5 @@
     fn-aj-next fn-aj-aggregate fn-aj-initializedp fn-aj-statep fn-aj-initial
     fn-aj-kind-allowedp fn-aj-advance fn-aj-fits-p fn-aj-recover-record
     fn-aj-authorize fn-aj-operationp fn-aj-operation-name
-    fn-aj-operation-publication fn-aj-operation-successor))
+    fn-aj-operation-label fn-aj-operation-publication
+    fn-aj-operation-successor))
