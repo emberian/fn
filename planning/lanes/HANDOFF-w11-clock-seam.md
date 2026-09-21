@@ -157,7 +157,41 @@ nothing to the unchecked number.
   certification.
 - `make check`: green, `session_depth` 0 defects, ledger current
   (`tools/ledger.py --write`).
-- Certification and the post-change live run: recorded in the section below.
+- **ACL2, persvati farm `run-20260921T005005Z-1235`** (`--jobs 6`,
+  `--affected-by books/owner.lisp --affected-by books/nntp-post.lisp
+  --closure`, remote root `/home/ember/fn-lanes/w11-clock-seam`), evidence
+  `build/acl2/certify-20260921T005013Z-1267023`, manifest `status: passed`,
+  `book_failures: {}`: **81 of 81 roots, 834.2 s of ACL2 wall**.
+  `books/owner` 2.3 s, `books/owner-invariants` 13.3 s, `books/nntp-post`
+  8.6 s, `tests/acl2/owner-tests` 1.7 s, `tests/acl2/nntp-post-tests` 0.7 s,
+  and `books/served`, `books/peer-inbound`, `books/owner-feed`,
+  `books/owner-config`, `tests/acl2/owner-config-tests` beside them. Worth
+  reporting on its own: **`books/nntp-effects` certified in 119.1 s** in this
+  run, where it was last recorded open at
+  `FN-NNTP-HDR-LABELLED-LINE-IS-BLOCK-TEXT` after 2598.79 s.
+- **Live, on persvati in that certified remote root**
+  (`FN_ACL2=$HOME/fn-tools/acl2-8.7/saved_acl2 python3 -m unittest -v
+  tests.test_owner tests.test_post`): **15 tests, 60.8 s, all pass, one skip**
+  (the nntplib probe; persvati has no python3.12). That includes
+  `test_a_reader_pinned_before_a_post_keeps_its_view` and
+  `test_clock_and_group_facts_go_through_the_owner`.
+- **The three outcomes, live through the host function itself.** A scratch
+  driver (`include-book "books/owner"`, `ld host/owner-host.lisp`, a fresh
+  `fn-own-start` owner) calling `fn-owner-observe`, which is what
+  `tools/run_owner.py` calls for OBSERVE and before every socket chunk:
+
+  | call | answer | `(fn-own-clock (@ fn-owner))` after |
+  | --- | --- | --- |
+  | fresh owner | — | `NIL` |
+  | `(1000000 843004800000 500 t)` | `:OBSERVED` | that reading |
+  | **the same reading again** | **`:OBSERVED`** | unchanged |
+  | `(999000 843004799000 500 t)`, backwards | **`:REFUSED`** | **`NIL`** |
+  | the same backwards reading again | `:OBSERVED` | that reading |
+  | `('x 5 5 t)`, not an observation | **`:INVALID`** | unchanged |
+
+  Rows two and three are the conflation that is gone: both used to answer
+  `:REJECTED`, because the owner does not move in either. Rows three and four
+  are the drop and the one-event recovery.
 
 ## Open
 
