@@ -31,38 +31,43 @@
        (fn-bpn-sequence-reservation-sequence reservation))
     nil))
 
-; (:ok sequence name-chars wire publication).  NAME-CHARS and WIRE are the
+; (:ok :authored-wire sequence name-chars wire publication).  NAME-CHARS and WIRE are the
 ; values the host must consume; it may not substitute the preview it observed.
 (defun fn-bpn-authored-wire-operation (sequence name wire publication)
   (declare (xargs :guard t))
-  (list :ok sequence name wire publication))
+  (list :ok :authored-wire sequence name wire publication))
 
 (defun fn-bpn-authored-wire-operationp (operation)
   (declare (xargs :guard t))
   (and (true-listp operation)
-       (equal (len operation) 5)
+       (equal (len operation) 6)
        (equal (car operation) :ok)
-       (fn-bpn-sequence-frontierp (nth 1 operation))
-       (equal (nth 2 operation)
-              (fn-bpn-authored-wire-name-chars (nth 1 operation)))
-       (fn-cbor-octet-listp (nth 3 operation))
-       (equal (nth 4 operation) (fn-jpub-initial t))))
+       (equal (nth 1 operation) :authored-wire)
+       (fn-bpn-sequence-frontierp (nth 2 operation))
+       (equal (nth 3 operation)
+              (fn-bpn-authored-wire-name-chars (nth 2 operation)))
+       (fn-cbor-octet-listp (nth 4 operation))
+       (equal (nth 5 operation) (fn-jpub-initial t))))
 
-(defun fn-bpn-authored-wire-operation-sequence (operation)
+(defun fn-bpn-authored-wire-operation-label (operation)
   (declare (xargs :guard t))
   (nth 1 operation))
 
-(defun fn-bpn-authored-wire-operation-name-chars (operation)
+(defun fn-bpn-authored-wire-operation-sequence (operation)
   (declare (xargs :guard t))
   (nth 2 operation))
 
-(defun fn-bpn-authored-wire-operation-wire (operation)
+(defun fn-bpn-authored-wire-operation-name-chars (operation)
   (declare (xargs :guard t))
   (nth 3 operation))
 
-(defun fn-bpn-authored-wire-operation-publication (operation)
+(defun fn-bpn-authored-wire-operation-wire (operation)
   (declare (xargs :guard t))
   (nth 4 operation))
+
+(defun fn-bpn-authored-wire-operation-publication (operation)
+  (declare (xargs :guard t))
+  (nth 5 operation))
 
 ; The shared spool lock serializes every BP journal user.  FINAL-ABSENT is an
 ; observation of the exact ACL2 preview made while that lock is held.  The

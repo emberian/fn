@@ -138,6 +138,9 @@
 (defun fn-bpn-host-authored-wire-operationp (operation)
   (and (fn-bpn-authored-wire-operationp operation) t))
 
+(defun fn-bpn-host-authored-wire-operation-label (operation)
+  (fn-bpn-authored-wire-operation-label operation))
+
 (defun fn-bpn-host-authored-wire-operation-name (operation)
   (let ((chars (fn-bpn-authored-wire-operation-name-chars operation)))
     (if (character-listp chars) (coerce chars 'string) "")))
