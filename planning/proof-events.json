@@ -1274,31 +1274,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-bs-known-inode-list-member-is-known"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-related-allocation-is-fresh"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-ready-relation-authority-is-quiet"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-start-frontier-preserves-relation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-frontier-file-result-preserves-relation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-frontier-replace-result-preserves-relation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-frontier-dir-error-preserves-relation"
         },
         {
           "kind": "theorem",
@@ -1310,31 +1286,15 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-initial-image-establishes-relation"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-init-program-establishes-initial-image"
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-init-program-establishes-relation"
+          "name": "fn-bs-initial-image-establishes-relation"
         },
         {
           "kind": "theorem",
           "name": "fn-bs-first-frontier-program-preserves-relation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-first-frontier-program-completes"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-first-frontier-program-rejects-old-frontier-bytes"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-related-allocation-is-not-a-transaction-target"
         }
       ]
     },

@@ -1,6 +1,6 @@
 {
   "lane": "w13/registry-sync",
-  "base_commit": "095dda7882798a44fba8329583706e1207dee4cf",
+  "base_commit": "a8eb20812aaf71fca0389044801c93d44dbcc100",
   "tool_versions": {
     "python": "3.14.7",
     "git": "2.54.0 (Apple Git-157)"
@@ -34,6 +34,18 @@
       "exit_status": 0,
       "result": "scaffold and structural checks passed; no ACL2 certification or scenario execution",
       "log_sha256": "d85146e93067fb7a8efd1fc29b01d5ca74ed8609f6065c4110ba7057ea2a416d"
+    },
+    {
+      "command": "python3 tools/ledger.py --write && python3 tools/ledger.py --check",
+      "exit_status": 0,
+      "result": "corrected PRF-044 to six keystone events; generated ledger current",
+      "log_sha256": "c0377bca02a7d2c70fe8f8bc2fed79af5dfb3cb349e0c4491becf287b22221a7"
+    },
+    {
+      "command": "make check",
+      "exit_status": 0,
+      "result": "fresh check on a8eb208-based source; no ACL2 certification or scenario execution",
+      "log_sha256": "2a3aa86c63f6aa461e360720e82b40658a0eaf14000e93875e771b3829c3cc24"
     }
   ],
   "artifacts": {
