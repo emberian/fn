@@ -209,3 +209,24 @@ canonical re-rendering rejects leading-zero aliases, signs, overflow and
 partial prefix/suffix values.  Native and Python hosts now marshal entry
 octets and execute the returned plan; neither parses, formats or sorts the
 generation namespace.
+
+### Selected-pack reclaim crash cuts
+
+`fnn-pack-prefix-reclaim` calls the logical
+`fn-bs-pack-reclaim-plan` on the bounded, sorted physical transaction
+namespace.  The plan returns only surviving names below the selected pack's
+coverage boundary.  Its byte program has one `pack-reclaim-unlink` cut after
+each issued unlink and one `pack-reclaim-directory` cut after the
+transaction-directory barrier.  Before that barrier, each pending
+`:del-entry` may apply or drop independently, so a process-death image may
+retain an arbitrary subset of covered names.  After the barrier, no crash
+choice restores a reclaimed name.  Neither transition permits a missing
+name in the uncovered suffix.
+
+Recovery calls `fn-store-checkpoint-compaction-observe` over the surviving
+sequence/raw-octet pairs.  `fn-cc-partial-deletion-preserves-exact-history`
+reconstructs the selected prefix plus exact suffix when every surviving
+covered byte string agrees with the pack; a conflicting surviving covered
+file returns `:conflict`.  The byte cut witnesses and source map are static
+model evidence until they run against a source-matched developer image.
+They do not qualify filesystem power-loss behavior.
