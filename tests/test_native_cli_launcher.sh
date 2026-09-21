@@ -23,5 +23,5 @@ set +e
 FN_NATIVE_HOST="$tmp/missing" "$root/packaging/fn-native" status >"$tmp/out" 2>"$tmp/err"
 code=$?
 set -e
-test "$code" -eq 5
+test "$code" -eq 4
 grep -q 'native host image missing' "$tmp/err"

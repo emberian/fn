@@ -13,7 +13,7 @@ image=${FN_NATIVE_HOST:-"$root/build/fn-host"}
 
 if [ ! -x "$image" ]; then
     echo "fn-native: native host image missing: $image (run tools/build_native_host.sh)" >&2
-    exit 5
+    exit 4
 fi
 
 # A saved ACL2 image must not inherit a user's customization/system-book
