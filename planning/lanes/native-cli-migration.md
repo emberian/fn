@@ -102,6 +102,48 @@ substitutes for the omitted operator commands.
    `net.fn.plist`.  Until then, these files continue to identify the Python
    CLI as a development service, and `fn-native` must be labeled experimental.
 
+### `fn.toml` native profile
+
+The native configuration lane owns the inert parser, ACL2 normalization
+wrapper, and its tests.  The launcher contract is deliberately smaller: it
+passes neither parsed settings nor defaults.  The eventual operator image
+entry receives a bounded `fn.toml` octet vector and bounded raw argv byte
+vectors; the configuration wrapper returns a tagged accepted canonical
+configuration, `refused` reason, or `fault`.  The exact image verb and
+function names belong to that lane, so this document does not invent a raw
+Lisp API for them.
+
+The compatibility target is the entire currently documented `fn.toml`
+surface.  The table is a contract for native-config implementation and for
+the later native `init` writer.  A table or key outside this profile is
+refused with exit 1 before service startup; it is never ignored, evaluated as
+Lisp, or silently supplied by host code.
+
+| Table and key | Native profile rule | Current availability |
+| --- | --- | --- |
+| `[store].path` | Required bounded path value. ACL2 validates its presence and canonical configuration use; raw host applies accepted path to bounded filesystem calls. | Needed for every store verb; direct raw `store ROOT` diagnostics already take a positional root. |
+| `[listener].host` | Optional; ACL2 defaults to `127.0.0.1` and accepts only the documented loopback identities. | Requires native owner configuration handoff. |
+| `[listener].port` | Optional natural; ACL2 defaults to 1119 and enforces its service bound before the host converts it for a socket. | Requires native owner configuration handoff. |
+| `[listener].tls_cert`, `[listener].tls_key` | Optional bounded paths; ACL2 enforces the pair-or-neither policy. | Unsupported until native TLS startup exists; refuse the profile rather than drop either path. |
+| `[posting].enabled` | Optional boolean; ACL2 defaults true and owns posting policy. | Unsupported for the native operator surface until owner/post control applies it. |
+| `[posting].agent` | Optional bounded identity; ACL2 defaults the documented operator identity and validates it. | Unsupported until native post/control owns injection attribution. |
+| `[anchor].server` | Optional bounded server identifier; ACL2 selects/validates pinned server policy. | Unsupported until the native pinned-anchor client and verifier land; refuse when present. |
+| `[auth].required`, `[auth].protected_only` | Optional booleans; ACL2 defaults false and owns the connection policy. | Unsupported until native owner/auth configuration applies them. |
+| `[auth].path` | Optional bounded credential-file path; ACL2 owns the reference policy. | Unsupported until the inert credential parser and native verifier path land. |
+| `[log].path` | Optional bounded host-output path. ACL2 decides whether logging is enabled; host opens only an accepted path. | Unsupported until native owner logging is wired. |
+| `[control].path` | Optional bounded Unix-socket path. ACL2 owns its default/reference; host owns socket creation after acceptance. | Unsupported until native owner control lifecycle is wired. |
+| `[acl2].path`, `[acl2].slots` | Python development-process controls, not settings a saved image can honor. | Explicitly refused by the native profile. They must be removed from a configuration migrated to the direct image; they are not ignored. |
+
+The native parser also refuses duplicate tables/keys, non-table values where a
+table is required, unknown tables/keys, invalid UTF-8, oversized paths or
+strings, out-of-range numerals, and syntactically accepted but currently
+unsupported fields.  A field becomes available only with a named native
+consumer and direct-native test; this prevents a configuration from claiming
+a TLS, anchor, credential, or control behavior that the saved image does not
+perform.  The native `init` implementation must write only fields whose
+native consumers are available, with the same canonical profile selected by
+ACL2.
+
 ## Packaging sequence
 
 1. Build and install the selected saved image and `.core` with
