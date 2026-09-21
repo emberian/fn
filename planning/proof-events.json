@@ -685,6 +685,14 @@
         {
           "kind": "theorem",
           "name": "fn-sn-extended-history-equals-live-completion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spc-prepare-equals-specification-under-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-opc-prepare-equals-owner-event-under-relation"
         }
       ]
     },

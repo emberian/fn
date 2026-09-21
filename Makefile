@@ -304,8 +304,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner \
 	books/owner-invariants \
 	books/owner-fault \
+	books/owner-prepare-correspondence \
 	tests/acl2/owner-tests \
 	tests/acl2/owner-config-tests \
+	tests/acl2/owner-prepare-correspondence-tests \
 	books/relay \
 	books/relay-invariants \
 	books/relay-crash-invariants \
