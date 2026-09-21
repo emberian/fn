@@ -11,6 +11,147 @@ concrete representation is useful, intentional separation. Two host paths that
 independently decide whether a publication succeeded are competing authority.
 Moving the second path from Python into Lisp does not remove that problem.
 
+## Current-source recheck (2026-09-21)
+
+This section supersedes the owner and pending-status sentences in the historical
+findings below.  It is a source audit, not new proof or runtime evidence.  The
+baseline is current `dev` at `90e0543`.  It was compared with pending BP
+publication implementation `668130de`, frozen owner fast-prepare
+`df8d191c`, frozen owner/control fault-isolation `a7867753`, frozen native auth
+`d111ef59`, and pending transaction namespace recovery `bdd18442`.
+
+- **U01 — landed.**  The visibility-implies-durability fallback is absent from
+  `host/native/bp-service.lisp:122-154`; failures in the current private
+  lifecycle publisher remain uncertain.  Pending `668130de` further routes
+  this actual caller through the shared publication interpreter, but U01's
+  harmful classification is already closed on current `dev`.
+- **U02 — landed.**  `host/native/bp.lisp:357-367` calls the ACL2-owned
+  `fn-bpn-host-run-outcome` projection in `host/bp-node-host.lisp:158-171`.
+  The TCPCL and lifecycle exit helpers have different operation contracts and
+  are intentional projections, not copies to collapse mechanically.
+- **U03 — landed.**  `host/native/bp-service.lisp:41-69` performs one bounded
+  startup observation, `:118-120` obtains canonical record names from ACL2,
+  and `books/bp-node-machine-codec.lisp:75-149` owns namespace/token binding.
+  `books/bp-node-machine.lisp:369-378` remains the admission owner; append no
+  longer enumerates the retained namespace.
+- **U04 — remaining on current, complete in pending packet.**  Current
+  `host/native/bp-service.lisp:122-154` still contains its own stage/link/two
+  barrier classifier.  At `668130de`,
+  `books/bp-node-machine-codec.lisp:177-222` authorizes the exact pending
+  token/record publication and `host/native/bp-service.lisp:122-160` calls
+  `fnn-immutable-publish-effect`.  This preserves authority-barrier failure as
+  uncertain while treating failure of cleanup after authority as durable,
+  because bounded recovery explicitly retains hidden stages.  It does not
+  claim that the raw interpreter alone proves phase correspondence.
+- **U05 — landed and exercised by the frozen native-owner gate.**
+  `books/owner.lisp:614-626` derives the ordinary body limit from the injection
+  configuration; configured session and peer-override call sites are at
+  `:655-713`.  The source-pinned owner gate includes an actual 9 KiB POST and
+  readback, so the historical “saved-image execution pending” sentence is
+  obsolete for this finding.
+- **U06 — landed in both callers.**  `books/feed-filename.lisp:66-100` owns the
+  layout and one total observation budget.  Native pathname projection is in
+  `host/native/feed-filename.lisp:18-71`; native recovery consumes it in
+  `host/native/owner.lisp:191-281`.  The development bridge also calls this
+  codec from `tools/run_owner.py:493-512`; it has no independent peer-to-path
+  decision.
+- **U07 — landed.**  `books/native-config.lisp:279-285` applies one bound to a
+  supplied value or its default, and its actual path projections are consumed
+  at `:347-361`.
+- **U08 — landed for shared-state fencing.**  The current owner fences under
+  the service mutex in `host/native/owner.lisp:395-442`, routes worker faults at
+  `:566-607`, and joins workers before closing journals and the Store at
+  `:633-675`.  HST-005 connection-local fault attribution is separate from
+  this closed duplicate-owner/shared-state finding and is addressed in the
+  frozen owner fault-isolation packet.
+- **U09 — operator shell landed; public owner-backed post remains frozen.**
+  `host/native/operator.lisp:24-48` is the current common renderer, but current
+  `:111-124` still reports public `post` as owner-required.  The frozen
+  owner/control packet adds the called post/control path at
+  `host/native/operator.lisp:86-113,145-156`.  Frozen native auth keeps raw
+  Lisp to bounded regular-file transport in `host/native/auth.lisp:12-44`,
+  while `books/native-auth-profile.lisp:45-210` owns syntax, credentials,
+  posting permission, and protected-transport policy.  That split is an
+  intentional semantic/transport boundary, not a duplicate parser.  The same
+  frozen image still registers the documented-private low-level
+  `--fn owner run` at `host/native/owner.lisp:685-701`; that path invokes
+  `fnn-owner-run` without the operator's auth startup hook, while the canonical
+  operator path installs the hook at `host/native/operator.lisp:61-87`.  This is
+  a packaged-entry/UX boundary defect.  It is not a remote authentication
+  bypass: invoking either process already requires local operator authority.
+- **U10 — app-history and store prepare landed; owner prepare remains frozen.**
+  The duplicate raw application history list is gone.  The Store caller uses
+  `fn-spc-prepare` in `host/store-node-host.lisp:379-418`.  Current
+  `host/owner-host.lisp:273-306` still prepares through replaying
+  `fn-owner-step`; frozen `df8d191c` changes the actual wrapper at
+  `host/owner-host.lisp:275-313` to `fn-opc-prepare` under the maintained owner
+  relation.  This is an optimized representation with a correspondence
+  theorem, not a second semantic owner.
+- **U11 — landed for BP receive, staging, and checkpoint namespaces.**  BP
+  receive bounds collection in `host/native/bp.lisp:218-239`, staging uses the
+  shared bounded observer at `host/native/io.lisp:1058-1065`, and checkpoint
+  recovery bounds before collection and delegates grammar/order to ACL2 in
+  `host/native/checkpoint.lisp:45-78`.  The historical statement that the
+  checkpoint filename codec is still pending is obsolete.
+- **U12 — remaining on current, repaired in the frozen owner/control packet.**
+  Current `host/native/io.lisp:2118-2121` still exits with `:abort t` from the
+  SIGTERM interrupt.  The frozen packet instead records a monotonic request and
+  shuts down the captured listener descriptor at
+  `host/native/io.lisp:2065-2067,2122-2136`; its owner loop consumes the request,
+  stops service, drains workers, and only then closes shared state in
+  `host/native/owner.lisp:836-930`.
+- **U13 — remaining on current, transaction half complete in a pending packet.**
+  Current `host/native/io.lisp:854-857,1034-1056` still has raw transaction
+  grammar, `parse-integer`, gap policy, and an unbounded directory observation.
+  Pending `bdd18442` replaces that path at `host/native/io.lisp:1053-1076` with
+  a bounded observation and ACL2 transaction plan.  The neighboring config
+  namespace remains raw even after that packet:
+  `host/native/io.lisp:910-924` formats `~8,'0d.cfg`, suffix-filters, and lists
+  without a pre-collection bound.
+
+### Deployed-path cleanup and intentional separation
+
+Two loaded projections have no caller in source or native tests:
+`fn-jpub-host-initial` and `fn-jpub-host-crash-outcome` in
+`host/journal-publish-host.lisp:6-19`, and `fn-bpn-host-machine-statep` and
+`fn-bpn-host-machine-max-records` in `host/bp-node-machine-host.lisp:10-11,79`.
+They are safe candidates for removal after the pending BP publication packet is
+integrated and its final wrapper set is known.  This finding does not include
+wrappers invoked by development bridges through constructed ACL2 symbol names.
+
+The following repeated shapes are intentional: immutable no-replace
+publication versus allocation-frontier, checkpoint-marker, and anchor atomic
+replacement; Store and owner fast-prepare representations connected to their
+replaying specifications; and ACL2 semantic parsers paired with bounded raw
+file/path transport.  They should remain separate until a named correspondence
+establishes that their durability, overwrite, or recovery contracts match.
+
+### Prerequisite-ready consolidations
+
+1. Integrate `668130de` and its evidence tip.  It replaces the last private BP
+   lifecycle classifier with the shared ACL2-owned publication contract at the
+   actual `:persist` caller and retains exact token/record echo checks.
+2. Integrate the frozen owner fast-prepare, owner/control, and native-auth
+   packets on one reconciled ancestry.  Make the packaged production entry
+   dispatch only through `operator`, or gate the raw `owner` verb into an
+   explicit diagnostic build, so a shipped invocation cannot accidentally
+   omit configuration and auth startup dependencies.  This closes the actual
+   owner caller in U10 and the pending U09/U12 service joins; changing a verb
+   name alone is not security isolation.
+3. Integrate `bdd18442`, then give `fnn-config-record-names` the same pattern:
+   bounded physical observation followed by an ACL2-owned canonical name and
+   contiguous-generation plan.  This closes U13 without inventing another
+   generic namespace framework.
+
+After the U04 publisher is present, the next concrete publication consolidation
+is the actual authored-wire call
+`host/native/bp.lisp:173-186,403-405` from raw replace to an ACL2-authorized
+immutable no-replace publication.  ACL2 already owns its sequence; the new
+authorization must assert the exact absent final name and preserve uncertainty
+from link attempt through the authority directory barrier.  Keep the mutable
+sequence frontier at `host/native/bp.lisp:133-171` on its distinct replace
+contract.
+
 ## Findings and repair assignments
 
 ### U01: BP lifecycle publication turns visibility into durability
