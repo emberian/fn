@@ -696,8 +696,10 @@
         "The posting allowance is the authenticated principal's, not the connection's.",
         "A wrong password is refused and grants nothing; the refusal is distinct from a fault."
       ],
-      "evidence": [],
-      "execution_scope": "Specified. The credential is held in the clear on this tree and the login runs over an unprotected loopback connection, so no confidentiality claim follows. RFC 4643 section 2.3's transport requirement is a separate obligation."
+      "evidence": [
+        "planning/evidence/native-auth-runtime-2026-09-21/README.md"
+      ],
+      "execution_scope": "Partial native evidence: startup loads bounded credential verifiers, required unauthenticated command returns 480, wrong password returns 481, correct password returns 281 and subsequent GROUP succeeds; authenticated reader IHAVE remains 502. Protected-only startup and legacy cleartext credential files refuse. Login transport is unprotected loopback, so no confidentiality claim follows. Native credential enrollment, TLS, reload and full cross-node scenario remain separate."
     },
     {
       "id": "SCN-023",

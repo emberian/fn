@@ -1197,9 +1197,10 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "planning/evidence/wave-realignment-2026-09-19.md",
-        "planning/evidence/native-owner-integrated-2026-09-21.md"
+        "planning/evidence/native-owner-integrated-2026-09-21.md",
+        "planning/evidence/native-auth-runtime-2026-09-21/README.md"
       ],
-      "implementation_note": "D07 requires a Python-free deployed Lisp node, operator CLI and helpers calling the executable ACL2 core. The frozen 03eb3ba native default/DTN images build from the recorded certified closure and pass their scoped owner/operator/storage/BP runtime suites, including public operator run and NNTP greeting/QUIT. Python is only an external test driver there. The full installed CLI/service, native authentication/control/outbound feed/protected transport/identity features and Python-free two-peer dependency gate remain open; the development bin/fn still invokes Python.",
+      "implementation_note": "D07 requires a Python-free deployed Lisp node, operator CLI and helpers calling the executable ACL2 core. The frozen 03eb3ba native default/DTN images build from the recorded certified closure and pass their scoped owner/operator/storage/BP runtime suites, including public operator run and NNTP greeting/QUIT. Python is only an external test driver there. The full installed CLI/service, native control/outbound feed/protected transport/identity features and Python-free two-peer dependency gate remain open; the development bin/fn still invokes Python. The later native AUTHINFO startup receiver has scoped certified-image login evidence; it is not part of frozen03.",
       "note": "Owner and served components have since certified and the frozen cdbd6b2 Python service matrix ran with recorded disagreements; the earlier owner-does-not-certify blocker is historical. Neither those results nor native component tests establish HST-001 for the full native production service. Required: exact host-called subjects or named refinements, justified execution guards, and SCN-015 native deployment/dependency evidence; no status advancement follows from choosing D07."
     },
     {
