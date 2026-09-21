@@ -31,7 +31,7 @@
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
 ; be a book both sessions include.  See books/frame-trailer.lisp.
-(include-book "../books/frame-trailer")
+(include-book "../books/feed-journal")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -890,25 +890,30 @@
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-owner-feed-command state)))
 
-; Replay: one journal frame at a time, decoded and folded through the feed
-; machine before any command is emitted.  The host supplies the digest it
-; computed over the protected prefix; `fn-feed-decode' checks it.
-(defun fn-owner-feed-entry-of-frame (frame digest)
-  (declare (xargs :mode :program))
-  (let ((decoded (fn-feed-decode frame digest)))
-    (if (fn-frame-result-okp decoded)
-        (fn-feed-journal-entry (fn-frame-result-kind decoded)
-                               (fn-frame-result-payload decoded))
-      nil)))
-
-(defun fn-owner-feed-replay-frame (peer-octets frame digest state)
+; The protected prefix and trailer belong to ACL2, including the boundary
+; between them. Python receives the whole sealed frame and never slices it.
+(defun fn-owner-feed-sealed-frame (index state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((peer (fn-store-octets->string peer-octets))
-        (entry (fn-owner-feed-entry-of-frame frame digest)))
-    (if (or (equal peer :bad) (null entry))
-        (value :bad)
-      (let ((state (fn-owner-step (list :feed-replay peer (list entry)) state)))
-        (value :ok)))))
+  (let* ((frame (fn-frame-item index (f-get-global 'fn-owner-feed-frames state)))
+         (prefix (fn-frame-protected-prefix frame)))
+    (value (append prefix (fn-frame-trailer prefix)))))
+
+; One bounded read from the physical journal. The scanner owns acceptance,
+; the exact safe offset and the entry fed to the existing replay transition.
+(defun fn-owner-feed-journal-scan (peer-octets prefix frame state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((peer (fn-store-octets->string peer-octets))
+         (result (fn-feed-journal-scan peer-octets prefix frame
+                   (f-get-global 'fn-owner-feed-safe-offset state))))
+    (if (equal peer :bad)
+        (value :invalid)
+      (if (equal (car result) :next)
+          (let* ((state (fn-owner-step
+                         (list :feed-replay peer (list (caddr result))) state))
+                 (state (f-put-global 'fn-owner-feed-safe-offset
+                                      (cadr result) state)))
+            (value :next))
+        (value (car result))))))
 
 ; The fence a process death owes every feed: one (:feed-restart peer) record
 ; per peer, durable, then fn-feed-restart on each.  fn-own-reopen does the
