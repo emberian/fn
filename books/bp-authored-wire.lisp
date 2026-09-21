@@ -52,7 +52,6 @@
        (fn-bpn-sequence-frontierp (nth 2 operation))
        (equal (nth 3 operation)
               (fn-bpn-authored-wire-name-chars (nth 2 operation)))
-       (fn-cbor-octet-listp (nth 4 operation))
        (equal (nth 5 operation) (fn-jpub-initial t))))
 
 (defun fn-bpn-authored-wire-operation-label (operation)
@@ -98,6 +97,15 @@
          (fn-jpub-initial t)))
     (list :fault :authored-wire-authority)))
 
+(local
+ (defthm fn-bpn-authored-wire-reservation-sequence-frontierp
+   (implies (fn-bpn-sequence-reservationp reservation)
+            (fn-bpn-sequence-frontierp
+             (fn-bpn-sequence-reservation-sequence reservation)))
+   :hints (("Goal" :in-theory
+            (enable fn-bpn-sequence-reservationp
+                    fn-bpn-sequence-reservation-sequence)))))
+
 (defthm fn-bpn-authored-wire-authorize-carries-reservation
   (implies (and (fn-bpn-configp config)
                 (fn-bpp-eidp peer)
@@ -126,7 +134,9 @@
                    fn-bpn-authored-wire-operation-sequence
                    fn-bpn-authored-wire-operation-name-chars
                    fn-bpn-authored-wire-operation-wire
-                   fn-bpn-authored-wire-name-for-reservation))))
+                   fn-bpn-authored-wire-name-for-reservation)
+           :use ((:instance
+                  fn-bpn-authored-wire-reservation-sequence-frontierp)))))
 
 (deftheory fn-bpn-authored-wire-vocabulary
   '((:d fn-bpn-authored-wire-name-chars)
