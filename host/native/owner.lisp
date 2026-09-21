@@ -592,6 +592,11 @@ the current connection."
         (fnn-publish store (fnn-owner-service-records service)
                      (fnn-octets record))
       (fnn-store-indeterminate (e) (error e))
+      (fnn-store-fault (e)
+        ; A structural/core fault is never a capacity refusal.  Preserve the
+        ; fence and propagate it to the service fault boundary.
+        (setf (fnn-store-fenced store) t)
+        (error e))
       (fnn-store-error (e)
         (unless (fnn-store-fenced store)
           (setf (fnn-store-fenced store) t)
@@ -658,6 +663,9 @@ the current connection."
                   (return-from fnn-owner-attempt :refused))))
             (fnn-owner-publish-prepared service "article")))
       (fnn-store-indeterminate () :uncertain)
+      (fnn-store-fault (e)
+        (setf (fnn-store-fenced store) t)
+        (error e))
       ((or fnn-store-error fnn-os-error) () :refused))))
 
 (defun fnn-owner-retention-commit (service event)

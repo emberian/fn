@@ -505,7 +505,7 @@
    (fn-sn-groups s) (fn-sn-capacity s) (fn-sn-files s) (fn-sn-node s)
    (fn-sn-keyring s) (fn-sn-index s) (fn-sn-keyring-generation s)
    (fn-sn-verdicts s) (fn-sn-keyring-snapshots s)
-   (1+ (fn-sn-identity-next s))))
+   (1+ (nfix (fn-sn-identity-next s)))))
 
 (defun fn-sn-finish (s)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
