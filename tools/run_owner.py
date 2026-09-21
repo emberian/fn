@@ -34,7 +34,7 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        durable_post, exit_code_for, group_codes, metadata,
                        post_article, validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
-from feed_wire import Journal, Session, TRAILER_BYTES  # the FNFD layout and the client half
+from feed_wire import Journal, Session  # the FNFD layout and the client half
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_READ = 512
@@ -421,22 +421,11 @@ class Acl2Owner(Acl2Store):
             "(fn-frame-trailer {})".format(octets))))
 
     def feed_frames(self):
-        """The FNFD frames the last feed call authorized, sealed here.
-
-        `fn-feed-encode' takes the trailer as an argument and ACL2 built each
-        frame with a zero one, so the host asks ACL2 for the trailer over the
-        protected prefix and appends it (A-CRYPTO).  Python chooses no field,
-        no bound and no digest; it slices at a constant the book fixed and
-        concatenates.
-        """
+        """ACL2 seals each authorized FNFD record, including prefix choice."""
         count = self._nat("(len (@ fn-owner-feed-frames))")
-        frames = []
-        for index in range(count):
-            frame = bytes(acl2_octet_list(self.call(
-                "(fn-frame-item {} (@ fn-owner-feed-frames))".format(index))))
-            protected = frame[:-TRAILER_BYTES]
-            frames.append(protected + self.trailer(protected))
-        return frames
+        return [bytes(acl2_octet_list(self.call(
+            "(fn-owner-feed-sealed-frame {} state)".format(index))))
+                for index in range(count)]
 
     def feed_record_peers(self):
         return self._names("(fn-owner-feed-record-peers state)")
@@ -445,11 +434,31 @@ class Acl2Owner(Acl2Store):
         return bytes(acl2_octet_list_any(self.call(
             "(fn-owner-feed-command state)")) or b"")
 
-    def feed_replay_frame(self, peer, frame):
-        digest = self.trailer(frame[:-TRAILER_BYTES])
-        return self._symbol_any("(fn-owner-feed-replay-frame '{} '{} '{} state)".format(
-            self.literal(peer.encode("utf-8")), self.literal(frame),
-            self.literal(digest)))
+    def feed_journal_prefix_size(self):
+        return self._nat("*fn-feed-journal-prefix-size*")
+
+    def feed_journal_prefix(self, prefix):
+        result = self._symbol_any("(fn-feed-journal-prefix '{} )".format(
+            self.literal(prefix)))
+        return int(result) if result.isdigit() else result
+
+    def feed_journal_begin(self):
+        self.call("(f-put-global 'fn-owner-feed-safe-offset 0 state)")
+
+    def feed_journal_scan(self, peer, prefix, frame):
+        return self._symbol_any("(fn-owner-feed-journal-scan '{} '{} '{} state)".format(
+            self.literal(peer.encode("utf-8")), self.literal(prefix), self.literal(frame)))
+
+    def feed_journal_offset(self):
+        return self._nat("(@ fn-owner-feed-safe-offset)")
+
+    def feed_journal_wrap(self, frame):
+        return bytes(acl2_octet_list(self.call("(fn-feed-journal-wrap '{})".format(
+            self.literal(frame)))))
+
+    def feed_journal_step(self, phase, event):
+        return self._symbol_any("(fn-feed-journal-phase-step :{} :{})".format(
+            phase, event))
 
     def feed_restart(self):
         return self._nat("(fn-owner-feed-restart state)")
@@ -650,6 +659,7 @@ class Owner:
         self.connections = {}
         self.feeds = {}
         self.feed_next_conn = 1
+        self.feed_uncertain = False
         self.stopping = False
 
     # -- NNTP connections -------------------------------------------------
@@ -939,6 +949,11 @@ class Owner:
         traceback.print_exception(type(error), error, error.__traceback__,
                                   file=sys.stderr)
         sys.stderr.flush()
+        if self.feed_uncertain:
+            # A persistence ambiguity is already fenced and is not a host fault.
+            self.stopping = True
+            self.exit_code = EXIT_UNCERTAIN
+            return
         if self.bridge.poisoned:
             # The ACL2 image IS the server: every decision the owner makes is
             # a call into it.  With the bridge lost there is nothing left to
@@ -1173,30 +1188,54 @@ class Owner:
         absorb the one retransmission a lost reply can cause.
         """
         peers = self.bridge.feed_configure()
-        for peer in peers:
-            journal = Journal(self.store.root, peer.encode("utf-8"))
-            replayed = 0
-            for frame in journal.records():
-                if self.bridge.feed_replay_frame(peer, frame) == "ok":
-                    replayed += 1
-            self.feeds[peer] = Feed(peer, journal)
-            print("FEED {} replayed {}".format(peer, replayed), flush=True)
-        if peers:
-            self.bridge.feed_restart()
-            self.feed_flush()
+        try:
+            for peer in peers:
+                journal = Journal(self.store.root, peer.encode("utf-8"),
+                                  self.bridge, faults=self.faults)
+                self.feeds[peer] = Feed(peer, journal)
+                print("FEED {} replayed {}".format(peer, journal.replayed), flush=True)
+            if peers:
+                self.bridge.feed_restart()
+                self.feed_flush()
+        except StoreIndeterminate as error:
+            self.feed_fence(error)
+            raise
+
+    def feed_fence(self, error):
+        """An ambiguous journal write fences the entire current owner image.
+
+        The logical feed may already have advanced. Only process restart,
+        physical prefix recovery and its barriers may make it writable again.
+        """
+        self.feed_uncertain = True
+        self.stopping = True
+        self.exit_code = EXIT_UNCERTAIN
+        print("FEED-UNCERTAIN recovery required: {}".format(error),
+              file=sys.stderr, flush=True)
 
     def feed_flush(self):
-        """Durable before the effect: append what the last call authorized."""
-        frames = self.bridge.feed_frames()
-        if not frames:
-            return
-        peers = self.bridge.feed_record_peers()
-        for peer, frame in zip(peers, frames):
-            feed = self.feeds.get(peer)
-            if feed is not None:
+        """Durable before the effect; failure forbids every later mutation."""
+        if self.feed_uncertain:
+            raise StoreIndeterminate("FNFD journal requires owner restart")
+        try:
+            frames = self.bridge.feed_frames()
+            if not frames:
+                return
+            peers = self.bridge.feed_record_peers()
+            if len(peers) != len(frames):
+                raise StoreFault("FNFD frame/peer bridge result mismatch")
+            for peer, frame in zip(peers, frames):
+                feed = self.feeds.get(peer)
+                if feed is None:
+                    raise StoreFault("FNFD obligation has no open journal: " + peer)
                 feed.journal.append(frame)
+        except Exception as error:
+            self.feed_fence(error)
+            raise StoreIndeterminate("FNFD obligations uncertain; owner restart required") from error
 
     def feed_dial(self, feed):
+        if self.feed_uncertain:
+            return False
         host, port = self.bridge.feed_endpoint(feed.peer)
         if not host or not port:
             return False
@@ -1244,6 +1283,8 @@ class Owner:
             except (KeyError, ValueError):
                 pass
         feed.close()
+        if self.feed_uncertain:
+            return
         try:
             self.bridge.feed_lost(feed.peer, self.clock.milliseconds())
             self.feed_flush()
@@ -1260,7 +1301,7 @@ class Owner:
 
     def feed_write(self, feed, command):
         """The bytes one feed decision authorized, after its records."""
-        if not command:
+        if self.feed_uncertain or not command:
             return
         head, _, body = command.partition(b"\r\n")
         if head.startswith(b"TAKETHIS") or head.startswith(b"CHECK") \
@@ -1272,8 +1313,12 @@ class Owner:
             feed.session.send_block(command)
 
     def feed_poll(self):
+        if self.feed_uncertain:
+            return
         now = self.clock.milliseconds()
         for feed in list(self.feeds.values()):
+            if self.feed_uncertain:
+                return
             # A feed that cannot make progress must not end the node, and
             # the boundary is one guarded unit PER FEED and not one for the
             # sweep: a fault while talking to one peer costs that peer's
@@ -1302,6 +1347,8 @@ class Owner:
                     return
 
     def feed_read(self, peer):
+        if self.feed_uncertain:
+            return
         feed = self.feeds.get(peer)
         if feed is None or feed.session is None:
             return
