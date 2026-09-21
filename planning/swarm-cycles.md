@@ -46,6 +46,11 @@ bytes are not silently treated as host-generated next-frontier bytes.
 
 ## W13: compose the durable services
 
+The `bp-lifecycle` Sol lane is active in `build/lanes/w13-bp-lifecycle`,
+starting from `8b474e2` and consuming the `bp-sequence` interface directly.
+It owns a new native queue/contact/restart machine and service entry, while
+the sequence lane retains allocation/codec ownership. Its farm is persvati.
+
 Start independent packets as W12 supplies their actual prerequisites; do not
 wait for an unrelated whole-tree green gate.
 
