@@ -8,7 +8,12 @@
 ; ordered public-key set used by the signed-preimage function.  Custody and
 ; succession policy are outside this representation.
 (defun fn-hsig-keyring-snapshot (principal keys)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal" :in-theory (enable fn-hsig-exact-octets-p
+                                               fn-hsig-keyset-p
+                                               fn-stmt-item-listp
+                                               fn-cbor-valuep)))))
   (if (and (fn-hsig-exact-octets-p principal 32)
            (fn-hsig-keyset-p keys))
       (fn-stmt-encode-items
@@ -33,7 +38,13 @@
 ; algorithm order.  Replay can therefore preserve and independently inspect
 ; the evidence which produced :verified.
 (defun fn-hsig-verdict-detail (principal keys signatures)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal" :in-theory (enable fn-hsig-exact-octets-p
+                                               fn-hsig-keyset-p
+                                               fn-hsig-signatures-p
+                                               fn-stmt-item-listp
+                                               fn-cbor-valuep)))))
   (if (and (fn-hsig-exact-octets-p principal 32)
            (fn-hsig-keyset-p keys)
            (fn-hsig-signatures-p signatures))
