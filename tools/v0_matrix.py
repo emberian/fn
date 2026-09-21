@@ -63,6 +63,17 @@ Dry run.  ``--dry-run --home DIR`` runs every script through bash on this
 machine with ``HOME`` redirected and no ssh, exactly as the other two gates
 do; `tests/test_v0_matrix.py` drives the JSON shape, the verdict vocabulary
 and one dry-run row that way.
+
+Native first slice. ``--backend native-operator`` takes an explicitly named
+saved image and two preprovisioned native configuration paths.  Its only
+server candidate is ``packaging/fn-native operator CONFIG run``.  It exercises
+the public native status action, NNTP POST, and the reader profile on both
+listeners.  It never initializes a store through Python and never falls back
+to ``bin/fn``, ``tools/run_owner.py`` or ``tools/run_reader.py``.  Native
+init/admin, orderly stop and outbound-feed activation remain named non-outcomes
+until their public composition exists.  Schema-1 records are historical Python
+evidence; new schema-2 records label backend, source revision and image digest
+separately.
 """
 from __future__ import annotations
 
@@ -73,6 +84,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shlex
 import sys
 import tempfile
 import time
@@ -109,7 +121,12 @@ def article(msgid: str, group: str, subject: str, body: str, path: str = "") -> 
     return ("\r\n".join(headers) + "\r\n\r\n" + body + "\r\n").encode()
 
 MATRIX_JSON = "planning/v0-matrix.json"
-SCHEMA_VERSION = 1
+LEGACY_SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+DEVELOPMENT_BACKEND = "development-python"
+NATIVE_BACKEND = "native-operator"
+BACKENDS = (DEVELOPMENT_BACKEND, NATIVE_BACKEND)
 
 # The five verdicts.  The first three are D13's outcomes; the last two are the
 # two ways a row can fail to be an outcome at all.
@@ -570,7 +587,12 @@ class Row:
             return None
         return self.verdict == self.spec.expected
 
-    def json(self, revision):
+    def json(self, revision, execution=None):
+        execution = execution or {
+            "backend": DEVELOPMENT_BACKEND,
+            "source": revision,
+            "image": "development Python entry points from {}".format(revision),
+        }
         limit = "; ".join(x for x in (self.spec.limit, self.limit) if x)
         return {
             "id": self.id,
@@ -590,6 +612,9 @@ class Row:
             "observed": self.observed,
             "exit_code": self.exit_code,
             "revision": revision,
+            "backend": execution["backend"],
+            "source": execution["source"],
+            "image": execution["image"],
             "log": self.log,
             "limit": limit,
             "blocker": self.blocker,
@@ -1278,8 +1303,23 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         "A `not-built` row is this matrix's reading of a probe, not a promise from\n"
         "  the lane it names.")
 
-    def __init__(self, *args, scale=False, inn=False, campaign=True, **kwargs):
+    def __init__(self, *args, scale=False, inn=False, campaign=True,
+                 backend=DEVELOPMENT_BACKEND, native_image=None,
+                 native_configs=None, native_group=GROUPS[0], **kwargs):
         super().__init__(*args, **kwargs)
+        if backend not in BACKENDS:
+            raise GateError("unknown execution backend {!r}".format(backend))
+        self.backend = backend
+        self.native_image = native_image
+        self.native_configs = dict(native_configs or {})
+        self.native_group = native_group
+        self.image_identity = ("development Python entry points from {}".format(self.rev)
+                               if backend == DEVELOPMENT_BACKEND else
+                               "{} (digest not probed)".format(native_image or "(missing)"))
+        self.native_post_ids = {
+            name: "<native-matrix-{}-{}@example.invalid>".format(
+                uuid.uuid4().hex[:12], name) for name in ("a", "b")
+        }
         self.want_scale = scale
         self.want_inn = inn
         self.want_campaign = campaign
@@ -1372,6 +1412,28 @@ class V0Matrix(twonode_gate.TwoNodeGate):
     @property
     def evidence_name(self):
         return getattr(self, "_evidence_name", "planning/evidence/(pending)")
+
+    def execution_identity(self):
+        """The runtime subject attached to the document and every row.
+
+        `source` is the deployed Git revision.  `image` is separate because
+        an externally supplied native image is not proved to have been built
+        from that source merely because the harness was invoked at it.
+        """
+        return {"backend": self.backend, "source": self.rev,
+                "image": self.image_identity}
+
+    def native_operator(self, node, *words) -> str:
+        """The packaged public native command, with no diagnostic entry."""
+        if self.backend != NATIVE_BACKEND:
+            raise GateError("native operator command requested on {}".format(
+                self.backend))
+        config = self.native_configs.get(node.name)
+        if not self.native_image or not config:
+            raise GateError("native image and both node configs are required")
+        return "FN_NATIVE_HOST={} packaging/fn-native operator {} {}".format(
+            shlex.quote(self.native_image), shlex.quote(config),
+            " ".join(shlex.quote(word) for word in words))
 
     def cli(self, node, args) -> str:
         """The operator surface, `bin/fn`, against this node's configuration."""
@@ -2015,10 +2077,19 @@ else echo NONE; fi
         # is V0-AUTH-GATED, and it must stay that way or the two rows would be
         # measuring each other.
         keys = self.POST_KEYS
+        group = self.native_group if self.backend == NATIVE_BACKEND else GROUPS[0]
+        msgid = (self.native_post_ids[node.name] if self.backend == NATIVE_BACKEND
+                 else SOCKET_POST[node.name])
+        # The first native slice requires a preprovisioned profile that permits
+        # local posting without a credential.  Credential administration is a
+        # separate pending public surface, and secrets must not enter evidence
+        # through the recorded invocation.
+        user = "" if self.backend == NATIVE_BACKEND else AUTH_USER
+        secret = "" if self.backend == NATIVE_BACKEND else AUTH_SECRET
         step = self.matrix("postcycle", "--port {} --group {} --msgid '{}' "
                            "--user {} --secret {}".format(
-                               node.port, GROUPS[0], SOCKET_POST[node.name],
-                               AUTH_USER, AUTH_SECRET),
+                               node.port, shlex.quote(group), msgid,
+                               shlex.quote(user), shlex.quote(secret)),
             name="node {} POST cycle".format(node.upper), expect=None)
         result = self.payload(step)
         if not result or "POST" not in result:
@@ -2027,16 +2098,16 @@ else echo NONE; fi
             # was never accepted, and the difference is visible: ask the node,
             # over a connection of its own, whether it now serves the article.
             after = self.feed("presence", "--port {} --groups {} --present '{}'".format(
-                node.port, GROUPS[0], SOCKET_POST[node.name]),
+                node.port, shlex.quote(group), msgid),
                 name="node {} serves the article whose POST never answered".format(
                     node.upper), expect=None)
             served = self.payload(after).get("present", {}).get(
-                SOCKET_POST[node.name], "(no reply)")
+                msgid, "(no reply)")
             committed = str(served).startswith("220")
             self.blocked(keys, "the POST driver produced no result on node {}: {}. "
                          "Asked afterwards on a fresh connection, the node answered "
                          "`ARTICLE {}` with '{}'{}".format(
-                             node.upper, error, SOCKET_POST[node.name], served,
+                             node.upper, error, msgid, served,
                              ". The article was COMMITTED and is served, and the "
                              "poster's connection never received a reply: a client "
                              "cannot tell accepted from uncertain, which is D13's "
@@ -2053,8 +2124,8 @@ else echo NONE; fi
                     "poster. Measured by hand on persvati 2026-09-20 as well: 340, the "
                     "article, the terminating dot, then no byte for 300 s while the "
                     "group's article count rose by one.".format(
-                        node.upper, SOCKET_POST[node.name]))
-                node.accepted.append(SOCKET_POST[node.name])
+                        node.upper, msgid))
+                node.accepted.append(msgid)
             return
         if not_permitted(result["POST"]):
             self.blocked(keys,
@@ -2112,7 +2183,7 @@ else echo NONE; fi
                         "row does not INDUCE a clock fault -- it checks that an "
                         "ordinary duplicate did not cause one")
         if str(result.get("COMMIT", "")).startswith("240"):
-            node.accepted.append(SOCKET_POST[node.name])
+            node.accepted.append(msgid)
 
     def post_concurrent(self):
         step = self.matrix("concurrent", "--port {} --group {} --msgid '{}' "
@@ -2173,8 +2244,9 @@ else echo NONE; fi
         "V0-READ-NEXT", "V0-READ-LAST", "V0-READ-FRAMING")
 
     def read_surface(self, node: NodeSpec):
+        group = self.native_group if self.backend == NATIVE_BACKEND else GROUPS[0]
         step = self.matrix("surface", "--port {} --group {} --msgid '{}' --absent '{}'"
-                           .format(node.port, GROUPS[0],
+                           .format(node.port, shlex.quote(group),
                                    node.accepted[0] if node.accepted else ART[node.name],
                                    ABSENT_ID),
                            name="node {} reader surface".format(node.upper), expect=None)
@@ -3020,6 +3092,11 @@ else echo NONE; fi
         POST and no transit.  Which one starts is itself a v0 row, and the
         ones that did not start are the blocker the later rows cite.
         """
+        if self.backend == NATIVE_BACKEND:
+            # Native evidence never falls through to a Python server.  The
+            # packaged wrapper is part of the subject; raw `--fn owner` is a
+            # diagnostic entry and is deliberately absent here.
+            return [(NATIVE_BACKEND, self.native_operator(node, "run"))]
         if self.server_template:
             return [("custom", self.server_template.format(
                 store=node.store, run=node.dir, node=node.name))]
@@ -3072,17 +3149,26 @@ else echo NONE; fi
                                 "ones above it in the list, which was given "
                                 "--max-connections {}".format(kind, MAX_CONNECTIONS))
             else:
-                self.emit("V0-NODE-START", REFUSED,
-                          " ;; ".join(a[1] for a in attempts),
-                          "; ".join("{}: {}".format(a[0], a[3][:200]) for a in attempts),
-                          node=node.name,
-                          limit="every entry point this commit has was tried in order")
+                invocation = " ;; ".join(a[1] for a in attempts)
+                observed = "; ".join(
+                    "{}: {}".format(a[0], a[3][:200]) for a in attempts)
+                if self.backend == NATIVE_BACKEND:
+                    self.emit(
+                        "V0-NODE-START", NOT_EXERCISED, invocation, observed,
+                        node=node.name,
+                        blocker="the packaged native process did not reach LISTENING; "
+                                "a host/configuration failure is not a node refusal",
+                        limit="the packaged operator was the only entry point tried")
+                else:
+                    self.emit("V0-NODE-START", REFUSED, invocation, observed,
+                              node=node.name,
+                              limit="every entry point this commit has was tried in order")
         if not started:
             return False
         node.port = self.port
         node.kind = self.selected
         node.post_enabled = ("--post" in self.commands[node.name][1]
-                             or self.selected.startswith(("owner", "fn")))
+                             or self.selected.startswith(("owner", "fn", NATIVE_BACKEND)))
         node.pid = self.sh("node {} pid".format(node.upper),
                            "cat {}/server.pid".format(node.dir)).output.strip()
         self.facts["node {}".format(node.name)] = "{} on port {} ({}), store {}".format(
@@ -3163,8 +3249,156 @@ else echo NONE; fi
                  "V0-CRASH-INTERRUPTED", "V0-CRASH-RESTART",
                  "V0-CLIENT-NNTPLIB", "V0-CLIENT-SLRN", "V0-STX-CROSS")
 
+    def probe_native_subject(self):
+        """Identify the exact packaged image without claiming its provenance.
+
+        The source revision and image digest remain separate facts.  A digest
+        does not prove that an externally supplied image came from this Git
+        tree; it only makes the executable subject unambiguous.
+        """
+        image = shlex.quote(self.native_image)
+        step = self.sh("native packaged operator subject", self.cd(r"""
+image={image}
+test -x "$image" || {{ echo "NATIVE-IMAGE-MISSING $image"; exit 4; }}
+test -x packaging/fn-native || {{ echo NATIVE-WRAPPER-MISSING; exit 4; }}
+if command -v sha256sum >/dev/null 2>&1; then
+  digest=$(sha256sum "$image" | awk '{{print $1}}')
+else
+  digest=$(shasum -a 256 "$image" | awk '{{print $1}}')
+fi
+echo "NATIVE-IMAGE-DIGEST $digest"
+FN_NATIVE_HOST="$image" packaging/fn-native operator /not-opened help run
+""".format(image=image)), timeout=300, expect=None)
+        marker = next((line for line in step.output.splitlines()
+                       if line.startswith("NATIVE-IMAGE-DIGEST ")), "")
+        if step.rc != 0 or not marker:
+            raise GateError("the packaged native subject did not execute: rc={} {}"
+                            .format(step.rc, step.first_line or "no output"))
+        digest = marker.split()[-1]
+        self.image_identity = "{} sha256={}; source correspondence unestablished".format(
+            self.native_image, digest)
+        self.facts["execution backend"] = self.backend
+        self.facts["execution source"] = self.rev
+        self.facts["execution image"] = self.image_identity
+        self.facts["certificates"] = (
+            "not acquired by this slice; it consumes the explicitly named saved image")
+        return step
+
+    def native_config_status(self, node):
+        """Exercise the public native offline action for a supplied config."""
+        config = self.native_configs[node.name]
+        present = self.sh("node {} native config exists".format(node.upper),
+                          self.cd("test -f {}".format(shlex.quote(config))), expect=None)
+        if present.rc != 0:
+            blocker = ("the native backend requires an existing regular config and "
+                       "store; {} was not available on the execution host".format(config))
+            self.blocked(("V0-NODE-STATUS", "V0-NODE-START") + self.POST_KEYS
+                         + self.READ_KEYS, blocker, nodes=(node.name,),
+                         invocation=self.native_operator(node, "status"))
+            return False
+        status = self.sh("node {} native operator status".format(node.upper),
+                         self.cd(self.native_operator(node, "status")),
+                         timeout=900, expect=None)
+        limit = ("the public native operator read one preprovisioned store; this "
+                 "slice did not create or alter its configuration")
+        if status.rc in (EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN):
+            self.from_step("V0-NODE-STATUS", status, node=node.name, limit=limit)
+        else:
+            self.emit(
+                "V0-NODE-STATUS", NOT_EXERCISED, status.command,
+                "rc={} {}".format(status.rc, status.first_line or "(no output)"),
+                node=node.name, blocker="native operator status reported host fault or "
+                                        "usage, not an accepted/refused/uncertain outcome",
+                limit=limit)
+        if status.rc != EXIT_OK:
+            self.blocked(
+                ("V0-NODE-START",),
+                "the pre-start public native status action exited {}; the harness did "
+                "not start a service over a store it could not open cleanly".format(
+                    status.rc),
+                nodes=(node.name,), invocation=self.native_operator(node, "run"))
+        return status.rc == EXIT_OK
+
+    def execute_native_acceptance(self):
+        """First native slice: packaged run, served POST, and reader profile.
+
+        Native init/admin and outbound-feed activation do not yet have a
+        stable public composition.  They stay explicit non-outcomes instead
+        of falling back to a Python runtime peer or diagnostic native verb.
+        """
+        self.configured = set()
+        self.preflight()
+        self.ship()
+        self.push_file(self.feed_driver(), "{}/feed.py".format(self.run), mode="755")
+        self.push_file(MATRIX_DRIVER, "{}/matrix.py".format(self.run), mode="755")
+        self.probe_native_subject()
+
+        setup_blocker = (
+            "the public native operator has no init/reinit command; this native slice "
+            "uses the two explicitly supplied, preprovisioned configurations")
+        for node in self.nodes:
+            self.sh("node {} native run directory".format(node.upper),
+                    "mkdir -p {}".format(node.dir))
+            self.blocked(("V0-NODE-INIT", "V0-NODE-CONFIG", "V0-NODE-REINIT",
+                          "V0-NODE-REINIT-SAFE"), setup_blocker,
+                         verdict=NOT_BUILT, owner="native operator init surface",
+                         nodes=(node.name,), invocation="packaging/fn-native operator CONFIG")
+            if self.native_config_status(node):
+                self.configured.add(node.name)
+
+        self.blocked(("V0-NODE-LOOPBACK",),
+                     "this slice consumes existing configs and does not synthesize a "
+                     "second config solely to test the loopback refusal",
+                     invocation="packaging/fn-native operator CONFIG run")
+
+        for node in self.nodes:
+            if node.name in self.configured:
+                self.start_node(node)
+        if self.a.port and self.b.port and self.a.port == self.b.port:
+            raise GateError("both native nodes reported the same port; they are one server")
+
+        for node in self.nodes:
+            if not node.port:
+                blocker = self.node_blocker(node)
+                self.blocked(self.POST_KEYS + self.READ_KEYS, blocker,
+                             nodes=(node.name,), invocation=self.native_operator(node, "run"))
+                continue
+            if self.require_live(node, self.POST_KEYS, nodes=(node.name,)):
+                self.phase("native POST {}".format(node.name), self.post_cycle, node)
+            if (node.accepted
+                    and self.require_live(node, self.READ_KEYS, nodes=(node.name,))):
+                self.phase("native reader {}".format(node.name), self.read_surface, node)
+            elif not node.accepted:
+                self.blocked(
+                    self.READ_KEYS,
+                    "the native POST phase supplied no known accepted article; the "
+                    "article-number and Message-ID reader rows would otherwise test a "
+                    "guessed pre-existing store state",
+                    nodes=(node.name,), invocation="matrix.py surface")
+
+        self.blocked(
+            self.FEED_KEYS,
+            "the packaged native owner has no activated outbound feed lifecycle in this "
+            "source/image contract; durable peer configuration alone does not start a "
+            "dialer, so no feed acceptance row was run",
+            verdict=NOT_BUILT, owner="native outbound feed activation",
+            invocation="packaging/fn-native operator CONFIG run")
+
+        for node in self.nodes:
+            if node.pid:
+                self.stop_node(node, tag="main")
+            self.blocked(
+                ("V0-NODE-STOP",),
+                "the native public operator has no orderly stop command or stop-result "
+                "contract; harness process cleanup is not an operator outcome",
+                verdict=NOT_BUILT, owner="native control surface", nodes=(node.name,),
+                invocation="harness process cleanup")
+        self.backfill()
+
     # -- the whole gate -----------------------------------------------------
     def execute(self):
+        if self.backend == NATIVE_BACKEND:
+            return self.execute_native_acceptance()
         self.configured = set()
         self.preflight()
         self.a.assigned_port = self.b.assigned_port = 0
@@ -3314,7 +3548,8 @@ else echo NONE; fi
 
     # -- the two documents ---------------------------------------------------
     def document(self, started, elapsed) -> dict:
-        rows = [row.json(self.rev) for row in self.rows]
+        execution = self.execution_identity()
+        rows = [row.json(self.rev, execution) for row in self.rows]
         order = {rid: i for i, rid in enumerate(PLANNED_IDS)}
         rows.sort(key=lambda r: order[r["id"]])
         summary = {v: sum(1 for r in rows if r["verdict"] == v) for v in VERDICTS}
@@ -3354,6 +3589,7 @@ else echo NONE; fi
             "tree": self.tree,
             "host": self.host.label,
             "evidence": self.evidence_name,
+            "execution": execution,
             "verdicts": list(VERDICTS),
             "outcomes": list(OUTCOMES),
             "summary": summary,
@@ -3370,6 +3606,11 @@ else echo NONE; fi
         summary = doc["summary"]
         lines = [
             "## The v0 matrix",
+            "",
+            "**Execution subject.** Backend `{backend}`; deployed source `{source}`; "
+            "runtime image `{image}`. These are separate labels: naming the source "
+            "and hashing an externally supplied image does not prove they correspond."
+            .format(**doc["execution"]),
             "",
             "{total} rows: {accepted} accepted, {refused} refused, {uncertain} "
             "uncertain, {not_exercised} not exercised, {not_built} not built; "
@@ -3498,9 +3739,10 @@ def validate(doc) -> list:
     the rows, and no tool but this one recomputes it.
     """
     problems = []
-    if doc.get("schema_version") != SCHEMA_VERSION:
-        problems.append("schema_version is {!r}, not {}".format(
-            doc.get("schema_version"), SCHEMA_VERSION))
+    schema = doc.get("schema_version")
+    if schema not in (LEGACY_SCHEMA_VERSION, SCHEMA_VERSION):
+        problems.append("schema_version is {!r}, not legacy {} or current {}".format(
+            schema, LEGACY_SCHEMA_VERSION, SCHEMA_VERSION))
     if doc.get("generated_by") != V0Matrix.TOOL:
         problems.append("generated_by is {!r}: the matrix is generated by {}, never "
                         "typed".format(doc.get("generated_by"), V0Matrix.TOOL))
@@ -3508,6 +3750,17 @@ def validate(doc) -> list:
     if not isinstance(rows, list) or not rows:
         problems.append("rows is missing or empty")
         return problems
+    execution = doc.get("execution")
+    if schema == SCHEMA_VERSION:
+        if not isinstance(execution, dict):
+            problems.append("schema 2 needs an execution subject")
+            execution = {}
+        if execution.get("backend") not in BACKENDS:
+            problems.append("execution backend {!r} is not one of {}".format(
+                execution.get("backend"), list(BACKENDS)))
+        for field in ("source", "image"):
+            if not execution.get(field):
+                problems.append("execution subject has no {}".format(field))
     digest = hashlib.sha256(json.dumps(
         rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     if doc.get("rows_digest") != digest:
@@ -3561,6 +3814,12 @@ def validate(doc) -> list:
         if row.get("revision") != doc.get("revision"):
             problems.append("{}: revision {!r} is not the document's {!r}".format(
                 rid, row.get("revision"), doc.get("revision")))
+        if schema == SCHEMA_VERSION:
+            for field in ("backend", "source", "image"):
+                if row.get(field) != execution.get(field):
+                    problems.append("{}: {} {!r} is not the execution subject's {!r}"
+                                    .format(rid, field, row.get(field),
+                                            execution.get(field)))
     summary = doc.get("summary", {})
     for verdict in VERDICTS:
         counted = sum(1 for r in rows if r.get("verdict") == verdict)
@@ -3700,6 +3959,17 @@ def main(argv=None) -> int:
                         help="a directory copied over the deployed tree before it runs")
     parser.add_argument("--server-command", default=None,
                         help="the server entry point, with {store}, {run} and {node}")
+    parser.add_argument("--backend", choices=BACKENDS, default=DEVELOPMENT_BACKEND,
+                        help="runtime peers: historical development Python or the "
+                             "packaged native operator")
+    parser.add_argument("--native-image", default=None,
+                        help="execution-host path to the saved native image")
+    parser.add_argument("--native-config-a", default=None,
+                        help="execution-host path to node A's preprovisioned config")
+    parser.add_argument("--native-config-b", default=None,
+                        help="execution-host path to node B's preprovisioned config")
+    parser.add_argument("--native-group", default=GROUPS[0],
+                        help="served group already present in both native stores")
     parser.add_argument("--scale", action="store_true",
                         help="run tools/scale_gate.py for the scale row (hours)")
     parser.add_argument("--inn", action="store_true",
@@ -3722,6 +3992,15 @@ def main(argv=None) -> int:
         return 0
     if not args.commit:
         parser.error("a commit is required unless --list or --check is given")
+    if args.backend == NATIVE_BACKEND:
+        if args.server_command:
+            parser.error("--server-command cannot replace the packaged native backend")
+        missing = [name for name, value in
+                   (("--native-image", args.native_image),
+                    ("--native-config-a", args.native_config_a),
+                    ("--native-config-b", args.native_config_b)) if not value]
+        if missing:
+            parser.error("{} requires {}".format(NATIVE_BACKEND, ", ".join(missing)))
 
     commit, rev = resolve(repo, args.commit)
     if args.dry_run:
@@ -3750,7 +4029,11 @@ def main(argv=None) -> int:
                         args.host, {}).get("acl2", "acl2"),
                     server_template=args.server_command,
                     extra_overlays=overlays[1:],
-                    scale=args.scale, inn=args.inn, campaign=args.campaign)
+                    scale=args.scale, inn=args.inn, campaign=args.campaign,
+                    backend=args.backend, native_image=args.native_image,
+                    native_configs={"a": args.native_config_a,
+                                    "b": args.native_config_b},
+                    native_group=args.native_group)
     try:
         gate._evidence_name = str(target.resolve().relative_to(repo))
     except ValueError:
