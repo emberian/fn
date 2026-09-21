@@ -85,6 +85,8 @@ def main(argv=None) -> int:
     equal_before = digest(equal_final)
     equal_rc, equal_output = invoke(image, equal)
     equal_after = digest(equal_final)
+    equal_restart_rc, equal_restart_output = invoke(image, equal)
+    equal_restart_final = equal / "journal" / "authored-1.wire"
 
     different = work / "different-collision"
     prepare(different)
@@ -93,6 +95,8 @@ def main(argv=None) -> int:
     different_before = digest(different_final)
     different_rc, different_output = invoke(image, different)
     different_after = digest(different_final)
+    different_restart_rc, different_restart_output = invoke(image, different)
+    different_restart_final = different / "journal" / "authored-1.wire"
 
     outputs = {
         "file-barrier": file_output,
@@ -100,7 +104,9 @@ def main(argv=None) -> int:
         "restart": restart_output,
         "template": template_output,
         "equal-collision": equal_output,
+        "equal-collision-restart": equal_restart_output,
         "different-collision": different_output,
+        "different-collision-restart": different_restart_output,
     }
     for name, output in outputs.items():
         (work / (name + ".log")).write_text(output)
@@ -117,13 +123,18 @@ def main(argv=None) -> int:
             "restart": restart_rc,
             "template": template_rc,
             "equal_collision": equal_rc,
+            "equal_collision_restart": equal_restart_rc,
             "different_collision": different_rc,
+            "different_collision_restart": different_restart_rc,
         },
         "sequences": {
             "file_barrier": authored_sequence(file_output),
             "namespace_barrier": authored_sequence(namespace_output),
             "restart": authored_sequence(restart_output),
             "template": authored_sequence(template_output),
+            "equal_collision_restart": authored_sequence(equal_restart_output),
+            "different_collision_restart": authored_sequence(
+                different_restart_output),
         },
         "namespace_visible_after_error": namespace_visible,
         "namespace_visible_sha256": namespace_digest,
@@ -144,8 +155,14 @@ def main(argv=None) -> int:
         template_rc == 4 and authored_sequence(template_output) == 0 and
         equal_rc == 3 and "already occupied" in equal_output and
         equal_before == equal_after and
+        equal_restart_rc == 4 and
+        authored_sequence(equal_restart_output) == 1 and
+        equal_restart_final.is_file() and
         different_rc == 3 and "already occupied" in different_output and
-        different_before == different_after)
+        different_before == different_after and
+        different_restart_rc == 4 and
+        authored_sequence(different_restart_output) == 1 and
+        different_restart_final.is_file())
     (work / "report.json").write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2, sort_keys=True))
