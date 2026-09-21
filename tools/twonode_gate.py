@@ -59,9 +59,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import deploy_gate                                            # noqa: E402
 from deploy_gate import (DEFAULT_HOST, EXIT_OK, EXIT_REFUSED,  # noqa: E402
-                         evidence_path, repo_root,
+                         evidence_path, repo_root, report,
                          EXIT_UNCERTAIN, GROUPS, GateError, Host, LocalHost,
-                         SshHost, Step, resolve)
+                         SshHost, Step, resolve,
+                         NOT_BUILT, NOT_EXERCISED)
 
 # One article per node, plus the two the transit scenario needs.
 ARTICLE_A = "<alpha@a.example.invalid>"
@@ -93,6 +94,21 @@ def article(msgid: str, group: str, subject: str, body: str, path: str = "") -> 
     return ("\r\n".join(headers) + "\r\n\r\n" + body + "\r\n").encode()
 
 
+def cli_absent(output: str) -> bool:
+    """Whether a CLI said the VERB does not exist, rather than refusing a value.
+
+    argparse rejects an unknown subcommand with `invalid choice:` and an
+    unknown option with `unrecognized arguments:`, both on exit 2.  A gate
+    that read either as a refusal would report a feature this tree has not
+    built yet as a defect in a node; they are different findings and the
+    difference is what `not-built` is for.
+    """
+    text = output.lower()
+    return any(one in text for one in
+               ("invalid choice", "unrecognized arguments", "unknown command",
+                "no such command"))
+
+
 class NodeSpec:
     """One fn node: its directory, its store, its listener and what it holds."""
 
@@ -116,6 +132,11 @@ class NodeSpec:
         # and the gate cannot say which offer command carried an article.
         self.tap_port = 0
         self.tap_log = "{}/tap.log".format(self.dir)
+        # Whether the RUNNING server configured an outbound feed, read from
+        # its own log (`FEED <peer> replayed N`, tools/run_owner.py) after
+        # the peer records are live.  None means not probed yet.  An entry
+        # point with no feed cannot fail a feed assertion: it has none.
+        self.has_feed = None
 
     @property
     def upper(self) -> str:
@@ -581,6 +602,102 @@ class TwoNodeGate(deploy_gate.DeployGate):
         "  not parse what it transfers, and no BP node is wired to the layer yet.",
         "The certificates were not re-established here; see the certificate row.")
 
+    # The deploy gate's declared assertions, restated over two nodes, plus
+    # this gate's own.  Nothing is recorded that is not here; anything here
+    # that the run never reaches is emitted `not-exercised` at the end.
+    NODES = ("a", "b")
+    DIRECTIONS = ("ab", "ba", "stream-ab")
+    TCPCL = ("exchange", "refused", "keepalive", "crash", "profile", "replay")
+    ASSERTIONS = dict(deploy_gate.DeployGate.ASSERTIONS)
+    ASSERTIONS.update({
+        "outcomes-distinct": (
+            "accepted, refused and uncertain stay distinct in the exit codes (D13)",
+            NODES),
+        "entry-point-listening": (
+            "the server entry point this gate selected reached LISTENING", NODES),
+        "path-identity": (
+            "the node records its own RFC 5537 <path-identity>, so loop "
+            "suppression can fire at all", NODES),
+        "peer-record-accepted": (
+            "the node accepted a peer record naming the other node", NODES),
+        "peer-record-persisted": (
+            "`peer list` shows the record after the configuration replay", NODES),
+        "wire-tap": (
+            "a recorder stands in front of the node, so which offer command "
+            "carried an article is observable", NODES),
+        "node-live": (
+            "the node's server process was still the one that reached LISTENING",
+            NODES),
+        "independence": (
+            "without a feed the node serves exactly what it accepted and "
+            "nothing the other node accepted", NODES),
+        "nodes-up": ("both server processes were alive after the control scenario",
+                     ("",)),
+        "transit-surface": (
+            "node B serves the transit commands of specs/peering.md 1.1", ("",)),
+        "duplicate-435": (
+            "a second IHAVE of an article the node holds draws 435 "
+            "(RFC 3977 6.3.2)", ("",)),
+        "check-438": ("CHECK of a held article draws 438 (RFC 4644 2.4)", ("",)),
+        "takethis-439": ("TAKETHIS of a held article draws 439 (RFC 4644 2.5)",
+                         ("",)),
+        "loop-refused": (
+            "an article whose Path already names the node is refused "
+            "(RFC 5537 3.5)", ("",)),
+        "feed-post-durable": (
+            "the article the feed is to carry became durable on the sending node",
+            DIRECTIONS),
+        "feed-arrival": (
+            "the receiving node served the article the sending node's own feed "
+            "offered", DIRECTIONS),
+        "feed-identical": (
+            "the receiving node serves the same octets the sender does, Path and "
+            "Xref aside (RFC 5537 3.6)", DIRECTIONS),
+        "feed-offer-command": (
+            "the offer command the peer record asks for is the one the wire "
+            "carried", DIRECTIONS),
+        "feed-reoffer-435": (
+            "re-offering a delivered article draws 435, which is what makes a "
+            "restart-by-offer safe", ("ab", "ba")),
+        "feed-reoffer-438": ("CHECK of a delivered article draws 438",
+                             ("ab", "ba")),
+        "k5-post": ("node A accepted the article the K5 restart is about", ("",)),
+        "k5-journal": (
+            "node A recorded the decision to offer on disk before the kill "
+            "(<store>/feed/*.fnfd)", ("",)),
+        "k5-restart": ("node A came back after the SIGKILL", ("",)),
+        "k5-arrival": (
+            "node B served the outstanding article after node A restarted (K5)",
+            ("",)),
+        "k5-exactly-one": (
+            "the wire in front of node B carried exactly one accepted transfer "
+            "across the kill", ("",)),
+        "k5-offer-recorded": (
+            "the wire in front of node B carried an offer naming the article "
+            "after the restart", ("",)),
+        "cut-post": ("node A accepted the article the lost-reply cut is about",
+                     ("",)),
+        "cut-node-b-restart": ("node B came back before the cut was taken", ("",)),
+        "cut-taken": (
+            "the tap cut the connection after the article and before the status "
+            "line, so a reply really was lost", ("",)),
+        "cut-arrival": (
+            "node B served the article within 120 s of the lost reply, by "
+            "re-offer (K5)", ("",)),
+        "cut-at-most-one": (
+            "node A observed at most one accepted transfer across the lost reply",
+            ("",)),
+        "cut-copies": (
+            "node B's group count rose by exactly one across the lost reply",
+            ("",)),
+        "kill-inside-transfer": (
+            "the SIGKILL landed inside a transfer node B had agreed to take",
+            ("",)),
+        "a-survives-b-kill": ("node A survived node B's SIGKILL", ("",)),
+        "tcpcl-image": ("the native image carrying the TCPCLv4 layer built", ("",)),
+        "tcpcl-scenario": ("the TCPCLv4 lab scenario held", TCPCL),
+    })
+
     def __init__(self, *args, server_template=None, extra_overlays=(), **kwargs):
         super().__init__(*args, **kwargs)
         self.server_template = server_template
@@ -643,15 +760,32 @@ class TwoNodeGate(deploy_gate.DeployGate):
             "node {} path-identity".format(node.upper),
             self.cd(self.fn("--store {} policy set path-identity {}".format(
                 node.store, node.path_identity))), timeout=900, expect=None)
-        if identity.rc != 0:
-            self.gaps.append(
-                "node {} has no <path-identity> of its own ({}): "
+        line = (identity.output.strip().splitlines()[-1]
+                if identity.output.strip() else "no output")
+        if identity.rc != 0 and cli_absent(identity.output):
+            # The CLI itself says the verb does not exist, so this is a
+            # feature that is not on the tree, not a node refusing a value.
+            self.not_built(
+                "path-identity",
+                "node {} has no <path-identity> of its own: the store CLI on this "
+                "commit has no `policy set path-identity` ({}). "
                 "`fn-peer-local-identity` reads the empty string, so this node "
                 "cannot refuse an article whose Path already names it and every "
                 "loop row below is about a check that cannot fire."
-                .format(node.upper,
-                        identity.output.strip().splitlines()[-1]
-                        if identity.output.strip() else "no output"))
+                .format(node.upper, line),
+                "the store CLI has no `policy` command on this commit",
+                instance=node.name)
+            return
+        self.check(
+            "path-identity", identity.rc == 0,
+            "node {} has no <path-identity> of its own ({}): "
+            "`fn-peer-local-identity` reads the empty string, so this node "
+            "cannot refuse an article whose Path already names it and every "
+            "loop row below is about a check that cannot fire."
+            .format(node.upper,
+                    identity.output.strip().splitlines()[-1]
+                    if identity.output.strip() else "no output"),
+            instance=node.name, observed="rc={}".format(identity.rc))
 
     def three_outcomes_node(self, node: NodeSpec, msgid: str, subject: str):
         """Accepted 0, refused 1, uncertain 3, on this node's own store (D13)."""
@@ -675,10 +809,12 @@ class TwoNodeGate(deploy_gate.DeployGate):
         expected = (EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN)
         self.facts["three outcomes {}".format(node.name)] = (
             "accepted={} refused={} uncertain={} (expected {})".format(*observed, expected))
-        if observed != expected:
-            self.gaps.append(
-                "node {}: the three outcomes did not stay distinct in the exit codes: "
-                "observed {}, expected {} (D13)".format(node.upper, observed, expected))
+        self.check("outcomes-distinct", observed == expected,
+                   "node {}: the three outcomes did not stay distinct in the exit "
+                   "codes: observed {}, expected {} (D13)".format(
+                       node.upper, observed, expected),
+                   instance=node.name,
+                   observed="accepted={} refused={} uncertain={}".format(*observed))
         self.sh("node {} recover after the uncertain publication".format(node.upper),
                 self.cd(self.fn("--store {} recover".format(node.store))), timeout=900)
         if accepted.rc == EXIT_OK:
@@ -692,7 +828,8 @@ class TwoNodeGate(deploy_gate.DeployGate):
             node.upper, uncertain), self.cd(self.fn(
                 "--store {} inspect --message-id '{}'".format(node.store, uncertain))),
             timeout=900, expect=None)
-        self.gaps.append(
+        self.limitation(
+            "uncertain-indeterminate-{}".format(node.name),
             "node {}: the injected uncertain publication {} is asserted in neither "
             "direction; `inspect` exited {} for it after recovery ({}). An "
             "indeterminate outcome is evidence about the report, not about the "
@@ -727,11 +864,14 @@ class TwoNodeGate(deploy_gate.DeployGate):
             # start is a probe the gate fell back from, never a pass.
             fallback = "python3 tools/run_reader.py --store {} --port 0 --post".format(
                 node.store)
-            self.gaps.append(
-                "node {}: the {} entry point did not reach LISTENING on this commit, so "
-                "the gate fell back to tools/run_reader.py --post. Every served result "
-                "for this node below is the reader's, not the {}'s."
-                .format(node.upper, self.selected, self.selected))
+            self.check(
+                "entry-point-listening", False,
+                "node {}: the {} entry point did not reach LISTENING on this commit, "
+                "so the gate fell back to tools/run_reader.py --post. Every served "
+                "result for this node below is the reader's, not the {}'s -- an "
+                "entry point that will not start is a failure, not a narrower scope."
+                .format(node.upper, self.selected, self.selected),
+                instance=node.name, observed="selected={}".format(self.selected))
             self.commands[node.name] = ("reader", fallback)
             self.selected, command = "reader", fallback
             if pinned:
@@ -770,12 +910,22 @@ echo TAP-TIMEOUT; cat {out}; exit 1
             timeout=120, expect=None)
         match = re.search(r"^TAPPING (\d+)", step.output, re.M)
         if step.rc != 0 or match is None:
-            self.gaps.append(
+            # The instrument, not the tree: with no tap the wire assertions
+            # cannot be decided either way, which is inconclusive and never a
+            # pass.
+            self.inconclusive(
+                "wire-tap",
                 "no wire tap could be started in front of node {}: its peer dials it "
                 "directly and no row below says which offer command (IHAVE, or RFC "
-                "4644 CHECK/TAKETHIS) carried an article -- only that it arrived."
-                .format(node.upper))
+                "4644 CHECK/TAKETHIS) carried an article -- only that it arrived. "
+                "Every 'exactly one accepted transfer' assertion about this node is "
+                "undecided on this run.".format(node.upper),
+                "the tap process did not print TAPPING",
+                instance=node.name,
+                observed=step.first_line or "no output")
             return False
+        self.check("wire-tap", True, "", instance=node.name,
+                   observed="tap on port {}".format(match.group(1)))
         node.tap_port = int(match.group(1))
         return True
 
@@ -793,15 +943,15 @@ echo TAP-TIMEOUT; cat {out}; exit 1
                        "{{ echo DEAD; tail -25 {}/server-{}-*.log 2>/dev/null | "
                        "tail -25; }}".format(node.pid or 0, node.dir, node.name),
                        timeout=120, expect=None)
-        if "ALIVE" in step.output:
-            return True
-        self.gaps.append(
+        self.check(
+            "node-live", "ALIVE" in step.output,
             "node {} was NOT running at {}: its server process is gone, so every "
             "row after this one that needed that socket is about the death and "
             "not about the feature. Its last lines: {}".format(
                 node.upper, where,
-                " | ".join(step.output.strip().splitlines()[-6:]) or "none"))
-        return False
+                " | ".join(step.output.strip().splitlines()[-6:]) or "none"),
+            instance=node.name, observed=where)
+        return "ALIVE" in step.output
 
     def log_tail(self, node: NodeSpec, why: str) -> Step:
         """The node's own last lines, kept beside the step that needed them.
@@ -844,6 +994,53 @@ echo TAP-TIMEOUT; cat {out}; exit 1
             "| tail -60".format(since + 1, node.tap_log),
             timeout=120, expect=expect)
 
+    def probe_feed(self, node: NodeSpec, tag: str) -> bool:
+        """Did this node's RUNNING server configure an outbound feed?
+
+        `tools/run_owner.py` prints one `FEED <peer> replayed <n>` line per
+        configured peer as it replays that peer's journal at startup
+        (`Owner.feed_configure`).  No such line means this entry point
+        configured no feed, and a feed assertion about it would be about
+        something that is not there -- which is `not-built`, not a failure.
+        An entry point the tree KNOWS has a feed and prints no line has
+        failed instead, and the two are recorded differently.
+        """
+        step = self.sh(
+            "node {} configured an outbound feed ({})".format(node.upper, tag),
+            "grep -h '^FEED ' {}/server-{}-*.log 2>/dev/null | tail -5; true".format(
+                node.dir, node.name), timeout=120, expect=None)
+        node.has_feed = "FEED " in step.output
+        self.facts["node {} feed".format(node.name)] = (
+            step.first_line if node.has_feed
+            else "no FEED line from the {} entry point".format(node.kind))
+        return node.has_feed
+
+    def no_feed_blocker(self, node: NodeSpec) -> str:
+        return ("node {}'s {} entry point wrote no `FEED <peer> replayed` line at "
+                "startup, so it configured no outbound feed"
+                .format(node.upper, node.kind))
+
+    def feed_unavailable(self, node: NodeSpec, keys, instance, label):
+        """Record a feed assertion the node has no feed to answer.
+
+        `run_owner.py` and `bin/fn` are the entry points this tree gives an
+        outbound feed; anything else (the reader, an operator's
+        `--server-command`) has none, and that is a feature absence.  An
+        entry point that should have one and does not is a failure, recorded
+        as such."""
+        blocker = self.no_feed_blocker(node)
+        for key in keys:
+            if node.kind in ("owner", "fn"):
+                self.check(key, False,
+                           "{}: {} -- {}, although {} is the entry point this tree "
+                           "gives one.".format(label, self.ASSERTIONS[key][0],
+                                               blocker, node.kind),
+                           instance=instance, observed="kind={}".format(node.kind))
+            else:
+                self.not_built(key, "{}: {} -- {}.".format(
+                    label, self.ASSERTIONS[key][0], blocker), blocker,
+                    instance=instance)
+
     def configure_peering(self, streaming=False, tag="peered"):
         """The peer records, and the restart that makes them live.
 
@@ -871,6 +1068,8 @@ echo TAP-TIMEOUT; cat {out}; exit 1
                 raise GateError(
                     "node {} did not come back on port {} after its peer record was "
                     "written".format(node.upper, node.port))
+        for node in self.nodes:
+            self.probe_feed(node, tag)
 
     def peer_records(self, streaming=False):
         """A peer record on each node naming the other (specs/peering.md 1.2).
@@ -916,24 +1115,26 @@ else echo NONE; fi
                          "at start-up)".format(
                              "CHECK/TAKETHIS" if streaming else "IHAVE"),
                     expect=None)
-                if added.rc != 0:
-                    self.gaps.append(
-                        "node {} refused the peer record for {} ({}), so this node "
-                        "resolves no peer at accept and configures no feed: every "
-                        "transit row below is about a reader connection."
-                        .format(node.upper, other.upper,
-                                added.output.strip().splitlines()[-1]
-                                if added.output.strip() else "no output"))
+                self.check(
+                    "peer-record-accepted", added.rc == 0,
+                    "node {} refused the peer record for {} ({}), so this node "
+                    "resolves no peer at accept and configures no feed: every "
+                    "transit row below is about a reader connection."
+                    .format(node.upper, other.upper,
+                            added.output.strip().splitlines()[-1]
+                            if added.output.strip() else "no output"),
+                    instance=node.name, observed="rc={}".format(added.rc))
                 listing = self.sh(
                     "node {} lists its peers".format(node.upper),
                     self.cd(self.fn("--store {} peer list".format(node.store))),
                     timeout=900)
-                if other.name not in listing.output:
-                    self.gaps.append(
-                        "node {} accepted `peer add {}` but `peer list` does not show "
-                        "it: the record did not survive the replay, so the transit "
-                        "scenario below is running without the peer table it names."
-                        .format(node.upper, other.name))
+                self.check(
+                    "peer-record-persisted", other.name in listing.output,
+                    "node {} accepted `peer add {}` but `peer list` does not show "
+                    "it: the record did not survive the replay, so the transit "
+                    "scenario below is running without the peer table it names."
+                    .format(node.upper, other.name),
+                    instance=node.name, observed=listing.first_line or "no output")
                 continue
             self.push_file(self.peer_stub(node, other), target)
             self.skip("node {} peer record for {}".format(node.upper, other.upper),
@@ -977,18 +1178,20 @@ else echo NONE; fi
                                      ",".join(other.accepted + node.rejected)),
                              name="independent: node {} holds its own and not {}'s".format(
                                  node.upper, other.upper))
-            if step.rc != 0:
-                self.gaps.append(
-                    "node {} failed the independence control: it did not serve exactly "
-                    "what it accepted. Every later claim that an article reached a node "
-                    "rests on this, so treat the feed result below as unfounded."
-                    .format(node.upper))
+            self.check(
+                "independence", step.rc == 0,
+                "node {} failed the independence control: it did not serve exactly "
+                "what it accepted. Every later claim that an article reached a node "
+                "rests on this, so treat the feed result below as unfounded."
+                .format(node.upper),
+                instance=node.name, observed=step.first_line or "rc={}".format(step.rc))
         alive = self.sh("both servers are still up", 'echo "{}"'.format(" ".join(
             "{name}=$(kill -0 {pid} 2>/dev/null && echo ALIVE || echo DEAD)".format(
                 pid=node.pid or 0, name=node.upper) for node in self.nodes)))
-        if "DEAD" in alive.output:
-            self.gaps.append("a server was not running at the end of the independent "
-                             "scenario: {}".format(alive.output.strip()))
+        self.check("nodes-up", "DEAD" not in alive.output,
+                   "a server was not running at the end of the independent "
+                   "scenario: {}".format(alive.output.strip()),
+                   observed=alive.output.strip()[:200])
 
     def scenario_feed(self):
         """Offer A's article to B by hand, RFC 3977 6.3.2, and reread it on B."""
@@ -1005,7 +1208,8 @@ else echo NONE; fi
             result.get("offer", "no answer"), result.get("ihave_advertised"))
         if not result.get("transit"):
             self.facts["feed"] = "not exercised"
-            self.gaps.append(
+            self.not_built(
+                "transit-surface",
                 "peering: not available on this tree. Node B answered `IHAVE {}` with "
                 "'{}' and its CAPABILITIES block does not list IHAVE, so the transit "
                 "commands of specs/peering.md 1.1 (IHAVE, CHECK, TAKETHIS, MODE STREAM) "
@@ -1013,7 +1217,16 @@ else echo NONE; fi
                 "article can cross between two fn nodes: the duplicate-suppression and "
                 "loop-suppression teeth were not exercised either, because there was no "
                 "transfer to duplicate."
-                .format(ARTICLE_A, result.get("offer", "no answer")))
+                .format(ARTICLE_A, result.get("offer", "no answer")),
+                "node B does not serve IHAVE/CHECK/TAKETHIS on this commit",
+                owner="the peering lane")
+            for key in ("duplicate-435", "check-438", "takethis-439", "loop-refused"):
+                self.not_built(
+                    key, "{}: there was no transfer to duplicate or to loop, because "
+                    "node B serves no transit surface on this commit."
+                    .format(self.ASSERTIONS[key][0]),
+                    "node B does not serve IHAVE/CHECK/TAKETHIS on this commit",
+                    owner="the peering lane")
             self.skip("feed: {} reread on B".format(ARTICLE_A),
                       "feed.py relay (IHAVE, 335, article, 235)",
                       "peering: not available on this tree")
@@ -1040,31 +1253,36 @@ else echo NONE; fi
                     "line for line".format(ARTICLE_A))
         if str(result.get("transfer", "")).startswith("235"):
             self.b.accepted.append(ARTICLE_A)
-        if not str(result.get("duplicate", "")).startswith("435"):
-            self.gaps.append(
-                "the second IHAVE of {} drew '{}', not 435: the Message-ID history did "
-                "not refuse an article the node already holds (RFC 3977 6.3.2)."
-                .format(ARTICLE_A, result.get("duplicate")))
-        if not str(result.get("check_duplicate", "")).startswith("438"):
-            self.gaps.append(
-                "CHECK of an article B already holds drew '{}', not 438: RFC 4644 "
-                "2.4's duplicate answer is not what the streaming peer sees."
-                .format(result.get("check_duplicate")))
-        if not str(result.get("takethis_duplicate", "")).startswith("439"):
-            self.gaps.append(
-                "TAKETHIS of an article B already holds drew '{}', not 439: a client "
-                "that ignores the advisory CHECK must be refused after the bytes "
-                "(RFC 4644 2.5), and a 2xx there would be a second copy."
-                .format(result.get("takethis_duplicate")))
-        if str(result.get("loop_result", "")).startswith("2"):
-            self.gaps.append(
-                "an article whose Path already names B was ACCEPTED by B ('{}'): the "
-                "loop suppression of RFC 5537 3.5 is not in place."
-                .format(result.get("loop_result")))
+        self.check("duplicate-435",
+                   str(result.get("duplicate", "")).startswith("435"),
+                   "the second IHAVE of {} drew '{}', not 435: the Message-ID history "
+                   "did not refuse an article the node already holds (RFC 3977 6.3.2)."
+                   .format(ARTICLE_A, result.get("duplicate")),
+                   observed=str(result.get("duplicate")))
+        self.check("check-438",
+                   str(result.get("check_duplicate", "")).startswith("438"),
+                   "CHECK of an article B already holds drew '{}', not 438: RFC 4644 "
+                   "2.4's duplicate answer is not what the streaming peer sees."
+                   .format(result.get("check_duplicate")),
+                   observed=str(result.get("check_duplicate")))
+        self.check("takethis-439",
+                   str(result.get("takethis_duplicate", "")).startswith("439"),
+                   "TAKETHIS of an article B already holds drew '{}', not 439: a client "
+                   "that ignores the advisory CHECK must be refused after the bytes "
+                   "(RFC 4644 2.5), and a 2xx there would be a second copy."
+                   .format(result.get("takethis_duplicate")),
+                   observed=str(result.get("takethis_duplicate")))
+        self.check("loop-refused",
+                   not str(result.get("loop_result", "")).startswith("2"),
+                   "an article whose Path already names B was ACCEPTED by B ('{}'): the "
+                   "loop suppression of RFC 5537 3.5 is not in place."
+                   .format(result.get("loop_result")),
+                   observed=str(result.get("loop_result")))
         self.b.rejected.append(LOOP_ID)
 
     def deliver_by_feed(self, source: NodeSpec, target: NodeSpec, msgid: str,
-                        label: str, expect_command: str, seconds=60) -> bool:
+                        label: str, expect_command: str, seconds=60,
+                        instance="ab") -> bool:
         """One article, posted on `source`, carried to `target` by fn's own feed.
 
         This is the v0 question. The offering side is the feed TABLE of
@@ -1080,16 +1298,26 @@ else echo NONE; fi
         posted = self.feed("post", "--port {} --msgid '{}' --group {}".format(
             source.port, msgid, GROUPS[0]),
             name="{}: {} posts {}".format(label, source.upper, msgid), expect=None)
-        if not self.payload(posted).get("ok"):
-            self.gaps.append(
-                "{}: POST of {} on node {} answered '{}', not 240, so the feed had "
-                "nothing durable to offer and this direction was not exercised."
-                .format(label, msgid, source.upper,
-                        self.payload(posted).get("result", "nothing")))
+        durable = bool(self.payload(posted).get("ok"))
+        self.check(
+            "feed-post-durable", durable,
+            "{}: POST of {} on node {} answered '{}', not 240, so the feed had "
+            "nothing durable to offer and this direction was not exercised."
+            .format(label, msgid, source.upper,
+                    self.payload(posted).get("result", "nothing")),
+            instance=instance,
+            observed=str(self.payload(posted).get("result", "nothing")))
+        if not durable:
+            blocker = "the article never became durable on node {}".format(source.upper)
             self.skip("{}: {} receives {} from {}'s feed".format(
                 label, target.upper, msgid, source.upper),
-                "run_owner.py Feed (books/owner-feed.lisp)",
-                "the article never became durable on node {}".format(source.upper))
+                "run_owner.py Feed (books/owner-feed.lisp)", blocker)
+            for key in ("feed-arrival", "feed-identical", "feed-offer-command"):
+                self.inconclusive(
+                    key, "{}: {} -- node {} never accepted the article, so this "
+                    "direction was not put to the test."
+                    .format(label, self.ASSERTIONS[key][0], source.upper),
+                    blocker, instance=instance)
             return False
         source.accepted.append(msgid)
         arrival = self.feed(
@@ -1103,16 +1331,26 @@ else echo NONE; fi
             "status={} attempts={} octets identical to the source={}".format(
                 result.get("status", "none"), result.get("attempts"),
                 result.get("identical")))
+        self.check(
+            "feed-arrival", bool(result.get("ok")),
+            "{}: node {} never served {} within {} s of node {} accepting it, so "
+            "the outbound feed did not transfer it. Nothing below about this "
+            "direction is about an article that crossed."
+            .format(label, target.upper, msgid, seconds, source.upper),
+            instance=instance,
+            observed="status={} attempts={}".format(
+                result.get("status", "none"), result.get("attempts")))
         if not result.get("ok"):
-            self.gaps.append(
-                "{}: node {} never served {} within {} s of node {} accepting it, so "
-                "the outbound feed did not transfer it. Nothing below about this "
-                "direction is about an article that crossed."
-                .format(label, target.upper, msgid, seconds, source.upper))
             self.read_tap(target, "{}: what {}'s feed put on the wire".format(
                 label, source.upper), since=mark, expect=None)
             self.log_tail(source, "its feed did not deliver")
             self.log_tail(target, "it did not receive")
+            for key in ("feed-identical", "feed-offer-command"):
+                self.inconclusive(
+                    key, "{}: {} -- the article did not arrive, so there is nothing "
+                    "to compare.".format(label, self.ASSERTIONS[key][0]),
+                    "the article never reached node {}".format(target.upper),
+                    instance=instance)
             return False
         target.accepted.append(msgid)
         self.derive("{}: {} serves {} byte for byte as {} does".format(
@@ -1120,12 +1358,13 @@ else echo NONE; fi
             "the ARTICLE block node {} returns is compared line for line with the "
             "one node {} returns; identical={}".format(
                 target.upper, source.upper, result.get("identical")))
-        if result.get("identical") is not True:
-            self.gaps.append(
-                "{}: node {} serves {} but NOT byte for byte as node {} serves it "
-                "(identical={}): a relaying agent must alter nothing but Path and "
-                "Xref (RFC 5537 3.6).".format(label, target.upper, msgid,
-                                              source.upper, result.get("identical")))
+        self.check(
+            "feed-identical", result.get("identical") is True,
+            "{}: node {} serves {} but NOT byte for byte as node {} serves it "
+            "(identical={}): a relaying agent must alter nothing but Path and "
+            "Xref (RFC 5537 3.6).".format(label, target.upper, msgid,
+                                          source.upper, result.get("identical")),
+            instance=instance, observed="identical={}".format(result.get("identical")))
         wire = self.read_tap(target, "{}: {}'s feed offered {} with {}".format(
             label, source.upper, msgid, expect_command), since=mark, expect=None)
         offered = [line for line in wire.output.splitlines()
@@ -1133,13 +1372,23 @@ else echo NONE; fi
         self.facts["{} wire".format(label)] = (
             "; ".join(line[3:] for line in wire.output.splitlines()
                       if line.startswith("C> "))[:400] or "nothing recorded")
-        if not offered:
-            self.gaps.append(
+        if offered:
+            self.check("feed-offer-command", True, "", instance=instance,
+                       observed=offered[0][:200])
+        else:
+            # The article arrived; WHICH command carried it is what the tap
+            # was for, and without that line the peer record's outbound half
+            # is unobserved rather than wrong.
+            self.inconclusive(
+                "feed-offer-command",
                 "{}: the tap in front of node {} recorded no `{}` from node {}'s "
                 "feed, so this run does not establish which offer command carried "
                 "{}. What it recorded was: {}".format(
                     label, target.upper, expect_command, source.upper, msgid,
-                    "; ".join(wire.output.splitlines()[:8]) or "nothing"))
+                    "; ".join(wire.output.splitlines()[:8]) or "nothing"),
+                "the tap recorded no {} naming the article".format(expect_command),
+                instance=instance,
+                observed="; ".join(wire.output.splitlines()[:4]) or "nothing")
         return True
 
     def scenario_owner_feed(self):
@@ -1150,18 +1399,44 @@ else echo NONE; fi
         nodes with fn on both ends of the decision.
         """
         if not (self.a.post_enabled and self.b.post_enabled):
+            blocker = ("neither node serves POST on this commit, so nothing can "
+                       "become durable for a feed to offer")
             for direction in ("A to B", "B to A"):
                 self.skip("owner feed: {}".format(direction),
                           "run_owner.py Feed (books/owner-feed.lisp)",
-                          "owner feed: neither node serves POST on this commit, so "
-                          "nothing can become durable for a feed to offer.")
+                          "owner feed: " + blocker + ".")
+            for instance in ("ab", "ba"):
+                for key in ("feed-post-durable", "feed-arrival", "feed-identical",
+                            "feed-offer-command", "feed-reoffer-435",
+                            "feed-reoffer-438"):
+                    self.not_built(
+                        key, "owner feed {}: {} -- {}.".format(
+                            instance, self.ASSERTIONS[key][0], blocker),
+                        blocker, instance=instance)
             return
         delivered = {}
         for source, target, tag in ((self.a, self.b, "ab"), (self.b, self.a, "ba")):
+            if source.has_feed is False:
+                self.feed_unavailable(
+                    source,
+                    ("feed-post-durable", "feed-arrival", "feed-identical",
+                     "feed-offer-command", "feed-reoffer-435", "feed-reoffer-438"),
+                    tag, "owner feed {}".format(tag))
+                self.skip("owner feed: {} to {}".format(source.upper, target.upper),
+                          "run_owner.py Feed (books/owner-feed.lisp)",
+                          self.no_feed_blocker(source))
+                delivered[tag] = False
+                continue
             msgid = "<fed-{}@example.invalid>".format(tag)
             delivered[tag] = self.deliver_by_feed(
-                source, target, msgid, "owner feed", "IHAVE")
+                source, target, msgid, "owner feed", "IHAVE", instance=tag)
             if not delivered[tag]:
+                for key in ("feed-reoffer-435", "feed-reoffer-438"):
+                    self.inconclusive(
+                        key, "owner feed {}: {} -- the article never crossed, so a "
+                        "re-offer of it has nothing to be refused about.".format(
+                            tag, self.ASSERTIONS[key][0]),
+                        "the feed did not deliver in this direction", instance=tag)
                 continue
             # The duplicate path on a SECOND offer of the same article, by
             # hand: the peer's own history is what makes a re-offer safe
@@ -1179,15 +1454,17 @@ else echo NONE; fi
                 "ihave={} check={} takethis={}".format(
                     second.get("offer"), second.get("check_duplicate"),
                     second.get("takethis_duplicate")))
-            if not str(second.get("offer", "")).startswith("435"):
-                self.gaps.append(
-                    "owner feed: re-offering {} to node {} drew '{}', not 435: the "
-                    "history answer that makes a restart-by-offer safe is not there."
-                    .format(msgid, target.upper, second.get("offer")))
-            if not str(second.get("check_duplicate", "")).startswith("438"):
-                self.gaps.append(
-                    "owner feed: CHECK of {} on node {} drew '{}', not 438."
-                    .format(msgid, target.upper, second.get("check_duplicate")))
+            self.check("feed-reoffer-435",
+                       str(second.get("offer", "")).startswith("435"),
+                       "owner feed: re-offering {} to node {} drew '{}', not 435: the "
+                       "history answer that makes a restart-by-offer safe is not there."
+                       .format(msgid, target.upper, second.get("offer")),
+                       instance=tag, observed=str(second.get("offer")))
+            self.check("feed-reoffer-438",
+                       str(second.get("check_duplicate", "")).startswith("438"),
+                       "owner feed: CHECK of {} on node {} drew '{}', not 438."
+                       .format(msgid, target.upper, second.get("check_duplicate")),
+                       instance=tag, observed=str(second.get("check_duplicate")))
         self.facts["owner feed"] = "A->B {} ; B->A {}".format(
             delivered.get("ab"), delivered.get("ba"))
 
@@ -1202,14 +1479,29 @@ else echo NONE; fi
         each and the ports do not move.
         """
         if not (self.a.post_enabled and self.b.post_enabled):
+            blocker = "neither node serves POST on this commit"
             self.skip("owner feed: streaming (RFC 4644)",
                       "peer add --streaming, then run_owner.py Feed",
-                      "owner feed: neither node serves POST on this commit")
+                      "owner feed: " + blocker)
+            for key in ("feed-post-durable", "feed-arrival", "feed-identical",
+                        "feed-offer-command"):
+                self.not_built(key, "owner feed streaming: {} -- {}.".format(
+                    self.ASSERTIONS[key][0], blocker), blocker, instance="stream-ab")
             return
         self.configure_peering(streaming=True, tag="streaming")
+        if self.a.has_feed is False:
+            self.feed_unavailable(
+                self.a, ("feed-post-durable", "feed-arrival", "feed-identical",
+                         "feed-offer-command"),
+                "stream-ab", "owner feed streaming")
+            self.skip("owner feed: streaming (RFC 4644)",
+                      "peer add --streaming, then run_owner.py Feed",
+                      self.no_feed_blocker(self.a))
+            self.facts["owner feed streaming"] = "no outbound feed on node A"
+            return
         delivered = self.deliver_by_feed(
             self.a, self.b, "<fed-streaming@example.invalid>",
-            "owner feed streaming", "CHECK")
+            "owner feed streaming", "CHECK", instance="stream-ab")
         self.facts["owner feed streaming"] = str(delivered)
 
     def scenario_feed_restart(self):
@@ -1224,10 +1516,21 @@ else echo NONE; fi
         own history absorbs the one retransmission a lost reply can cause.
         What this asserts is that B ends with exactly ONE copy.
         """
+        K5 = ("k5-post", "k5-journal", "k5-restart", "k5-arrival",
+              "k5-exactly-one", "k5-offer-recorded")
         if not self.a.post_enabled:
+            blocker = "node A does not serve POST on this commit"
+            self.skip("owner feed: restart by offer (K5)",
+                      "kill -9 with an offer outstanding", "owner feed: " + blocker)
+            for key in K5:
+                self.not_built(key, "K5: {} -- {}.".format(
+                    self.ASSERTIONS[key][0], blocker), blocker)
+            return
+        if self.a.has_feed is False:
+            self.feed_unavailable(self.a, K5, "", "K5")
             self.skip("owner feed: restart by offer (K5)",
                       "kill -9 with an offer outstanding",
-                      "owner feed: node A does not serve POST on this commit")
+                      self.no_feed_blocker(self.a))
             return
         msgid = "<fed-restart@example.invalid>"
         mark = self.tap_mark(self.b)
@@ -1235,11 +1538,19 @@ else echo NONE; fi
         posted = self.feed("post", "--port {} --msgid '{}' --group {}".format(
             self.a.port, msgid, GROUPS[0]),
             name="owner feed: A posts {} while B is down".format(msgid), expect=None)
-        if not self.payload(posted).get("ok"):
-            self.gaps.append(
-                "owner feed: POST of {} on node A answered '{}' while B was down, so "
-                "the restart scenario had no queued offer to resolve."
-                .format(msgid, self.payload(posted).get("result", "nothing")))
+        accepted_post = bool(self.payload(posted).get("ok"))
+        self.check(
+            "k5-post", accepted_post,
+            "owner feed: POST of {} on node A answered '{}' while B was down, so "
+            "the restart scenario had no queued offer to resolve."
+            .format(msgid, self.payload(posted).get("result", "nothing")),
+            observed=str(self.payload(posted).get("result", "nothing")))
+        if not accepted_post:
+            blocker = "node A never accepted the article the restart is about"
+            for key in ("k5-journal", "k5-restart", "k5-arrival", "k5-exactly-one",
+                        "k5-offer-recorded"):
+                self.inconclusive(key, "K5: {} -- {}.".format(
+                    self.ASSERTIONS[key][0], blocker), blocker)
             self.start_node(self.b, tag="restart")
             return
         journal = self.sh(
@@ -1248,16 +1559,24 @@ else echo NONE; fi
                 self.a.store), expect=None)
         self.facts["feed journal"] = journal.output.strip().splitlines()[-1] \
             if journal.output.strip() else "none"
-        if "NO-FEED-JOURNAL" in journal.output:
-            self.gaps.append(
-                "owner feed: node A wrote no <store>/feed/*.fnfd file while an offer "
-                "was outstanding, so nothing on disk records the decision to offer "
-                "and the restart below resolves from memory that did not survive.")
+        self.check(
+            "k5-journal", "NO-FEED-JOURNAL" not in journal.output,
+            "owner feed: node A wrote no <store>/feed/*.fnfd file while an offer "
+            "was outstanding, so nothing on disk records the decision to offer "
+            "and the restart below resolves from memory that did not survive.",
+            observed=self.facts.get("feed journal", "none"))
         self.sh("owner feed: kill -9 node A", "kill -9 {} || true".format(self.a.pid),
                 expect=None)
         self.start_node(self.b, tag="restart")
-        if not self.start_node(self.a, tag="restart"):
-            self.gaps.append("owner feed: node A did not restart after the kill")
+        restarted = self.start_node(self.a, tag="restart")
+        self.check("k5-restart", restarted,
+                   "owner feed: node A did not restart after the kill, so K5's "
+                   "restart-by-offer was never reached.")
+        if not restarted:
+            blocker = "node A did not restart after the kill"
+            for key in ("k5-arrival", "k5-exactly-one", "k5-offer-recorded"):
+                self.inconclusive(key, "K5: {} -- {}.".format(
+                    self.ASSERTIONS[key][0], blocker), blocker)
             return
         self.require_live(self.b, "the K5 restart, before the arrival")
         self.require_live(self.a, "the K5 restart, before the arrival")
@@ -1270,16 +1589,23 @@ else echo NONE; fi
         self.facts["owner feed restart"] = "status={} attempts={} identical={}".format(
             result.get("status", "none"), result.get("attempts"),
             result.get("identical"))
+        self.check(
+            "k5-arrival", bool(result.get("ok")),
+            "owner feed: after `kill -9` of node A and a restart of both nodes, "
+            "node B never served {} within 90 s ({}). K5's restart-by-offer is "
+            "NOT evidenced by this run.".format(
+                msgid, result.get("last_error", "no error reported")),
+            observed="status={} attempts={}".format(
+                result.get("status", "none"), result.get("attempts")))
         if not result.get("ok"):
-            self.gaps.append(
-                "owner feed: after `kill -9` of node A and a restart of both nodes, "
-                "node B never served {} within 90 s ({}). K5's restart-by-offer is "
-                "NOT evidenced by this run.".format(
-                    msgid, result.get("last_error", "no error reported")))
             for node in self.nodes:
                 self.log_tail(node, "the K5 arrival did not happen")
             self.read_tap(self.b, "owner feed: what crossed after A's restart",
                           since=mark, expect=None)
+            blocker = "the article never reached node B after the restart"
+            for key in ("k5-exactly-one", "k5-offer-recorded"):
+                self.inconclusive(key, "K5: {} -- {}.".format(
+                    self.ASSERTIONS[key][0], blocker), blocker)
             return
         self.b.accepted.append(msgid)
         counted = self.feed(
@@ -1308,19 +1634,34 @@ else echo NONE; fi
                 len(offers), len(accepted), len(refused),
                 "; ".join(one[3:] for one in lines
                           if one.startswith("C> "))[:400] or "nothing recorded"))
-        if len(accepted) != 1:
-            self.gaps.append(
+        if not self.b.tap_port:
+            # No instrument: the count is not zero, it is unobserved.
+            for key in ("k5-exactly-one", "k5-offer-recorded"):
+                self.inconclusive(key, "K5: {} -- there is no tap in front of node "
+                                  "B, so nothing recorded what crossed.".format(
+                                      self.ASSERTIONS[key][0]),
+                                  "no wire tap in front of node B")
+        else:
+            self.check(
+                "k5-exactly-one", len(accepted) == 1,
                 "owner feed: the tap in front of node B recorded {} accepted "
                 "transfers of {} across node A's kill, not exactly one. K5 says a "
                 "restart resolves by RE-OFFER and never by a second transfer; the "
                 "commands recorded were: {}".format(
                     len(accepted), msgid,
-                    "; ".join(one for one in lines)[:400] or "none"))
-        if not offers:
-            self.gaps.append(
-                "owner feed: the tap in front of node B recorded no offer naming {} "
-                "after node A restarted, so what delivered it is not established by "
-                "this run.".format(msgid))
+                    "; ".join(one for one in lines)[:400] or "none"),
+                observed="accepted={} offers={}".format(len(accepted), len(offers)))
+            if offers:
+                self.check("k5-offer-recorded", True, "",
+                           observed=offers[0][:200])
+            else:
+                self.inconclusive(
+                    "k5-offer-recorded",
+                    "owner feed: the tap in front of node B recorded no offer naming "
+                    "{} after node A restarted, so what delivered it is not "
+                    "established by this run.".format(msgid),
+                    "the tap recorded no IHAVE or CHECK naming the article",
+                    observed="; ".join(lines[:4]) or "nothing")
 
     def scenario_feed_peer_cut(self):
         """The receiver has the article; the sender has not heard the outcome.
@@ -1341,14 +1682,33 @@ else echo NONE; fi
         be asserting a coin toss (D13).
         """
         if not self.a.post_enabled:
+            blocker = "node A does not serve POST on this commit"
             self.skip("owner feed: the reply is lost mid-transfer",
                       "tap --cut-flag, then the feed re-offers",
-                      "owner feed: node A does not serve POST on this commit")
+                      "owner feed: " + blocker)
+            for key in ('cut-post', 'cut-node-b-restart', 'cut-taken', 'cut-arrival', 'cut-at-most-one', 'cut-copies'):
+                self.not_built(key, "lost reply: {} -- {}.".format(
+                    self.ASSERTIONS[key][0], blocker), blocker)
+            return
+        if self.a.has_feed is False:
+            self.feed_unavailable(
+                self.a, ("cut-post", "cut-node-b-restart", "cut-taken",
+                         "cut-arrival", "cut-at-most-one", "cut-copies"),
+                "", "lost reply")
+            self.skip("owner feed: the reply is lost mid-transfer",
+                      "tap --cut-flag, then the feed re-offers",
+                      self.no_feed_blocker(self.a))
             return
         if not self.b.tap_port:
+            blocker = "no tap in front of node B, so the cut cannot be placed"
             self.skip("owner feed: the reply is lost mid-transfer",
-                      "tap --cut-flag, then the feed re-offers",
-                      "no tap in front of node B, so the cut cannot be placed")
+                      "tap --cut-flag, then the feed re-offers", blocker)
+            # The scenario the whole K5 claim rests on could not be created.
+            # That is not a pass and it is not a feature that is missing: it
+            # is the one case where the harness could not put the question.
+            for key in ('cut-post', 'cut-node-b-restart', 'cut-taken', 'cut-arrival', 'cut-at-most-one', 'cut-copies'):
+                self.inconclusive(key, "lost reply: {} -- {}.".format(
+                    self.ASSERTIONS[key][0], blocker), blocker)
             return
         msgid = "<fed-cut@example.invalid>"
         before = self.feed("presence", "--port {} --groups {}".format(
@@ -1361,18 +1721,34 @@ else echo NONE; fi
             self.a.port, msgid, GROUPS[0]),
             name="owner feed cut: A posts {} while B is down".format(msgid),
             expect=None)
-        if not self.payload(posted).get("ok"):
-            self.gaps.append(
-                "owner feed cut: POST of {} on node A answered '{}' while B was "
-                "down, so there was no queued offer to cut.".format(
-                    msgid, self.payload(posted).get("result", "nothing")))
+        accepted_post = bool(self.payload(posted).get("ok"))
+        self.check(
+            "cut-post", accepted_post,
+            "owner feed cut: POST of {} on node A answered '{}' while B was "
+            "down, so there was no queued offer to cut.".format(
+                msgid, self.payload(posted).get("result", "nothing")),
+            observed=str(self.payload(posted).get("result", "nothing")))
+        if not accepted_post:
+            blocker = "node A never accepted the article the cut is about"
+            for key in ("cut-node-b-restart", "cut-taken", "cut-arrival",
+                        "cut-at-most-one", "cut-copies"):
+                self.inconclusive(key, "lost reply: {} -- {}.".format(
+                    self.ASSERTIONS[key][0], blocker), blocker)
             self.start_node(self.b, tag="after-cut")
             return
         self.a.accepted.append(msgid)
         self.sh("owner feed cut: arm the tap in front of node B",
                 "touch {}.cut".format(self.b.tap_log), expect=None)
-        if not self.start_node(self.b, tag="after-cut"):
-            self.gaps.append("owner feed cut: node B did not restart")
+        restarted = self.start_node(self.b, tag="after-cut")
+        self.check("cut-node-b-restart", restarted,
+                   "owner feed cut: node B did not restart, so the cut was never "
+                   "placed and the lost-reply scenario did not happen.")
+        if not restarted:
+            blocker = "node B did not restart, so no transfer could be cut"
+            for key in ("cut-taken", "cut-arrival", "cut-at-most-one",
+                        "cut-copies"):
+                self.inconclusive(key, "lost reply: {} -- {}.".format(
+                    self.ASSERTIONS[key][0], blocker), blocker)
             return
         arrival = self.feed(
             "wait", "--port {} --from-port {} --msgid '{}' --seconds 120".format(
@@ -1393,23 +1769,50 @@ else echo NONE; fi
                 result.get("status", "none"), result.get("identical"), len(accepted),
                 "; ".join(one[3:] for one in lines
                           if one.startswith("C> "))[:400] or "nothing recorded"))
-        if "CUT-TAKEN" not in armed.output:
-            self.gaps.append(
+        cut_taken = "CUT-TAKEN" in armed.output
+        if cut_taken:
+            self.check("cut-taken", True, "", observed="CUT-TAKEN")
+        else:
+            # Without the cut there was no lost reply, so what the rest of
+            # this scenario measured is an ordinary transfer under another
+            # name.  Its remaining assertions cannot speak for K5.
+            self.inconclusive(
+                "cut-taken",
                 "owner feed cut: the tap in front of node B never took the cut, so "
-                "no reply was lost and this scenario measured an ordinary transfer.")
-        if not result.get("ok"):
-            self.gaps.append(
-                "owner feed cut: node B never served {} within 120 s of the cut. A "
-                "lost reply must be resolved by a re-offer (K5); on this run it was "
-                "not, so the article is lost between two nodes that are both up."
-                .format(msgid))
+                "no reply was lost and this scenario measured an ordinary transfer. "
+                "Nothing in it is evidence about loss-reply recovery.",
+                "the arming file was still there, so the tap never cut",
+                observed=armed.first_line or "no output")
+        arrived = bool(result.get("ok"))
+        detail = (
+            "owner feed cut: node B never served {} within 120 s of the cut. A "
+            "lost reply must be resolved by a re-offer (K5); on this run it was "
+            "not, so the article is lost between two nodes that are both up."
+            .format(msgid))
+        if arrived or cut_taken:
+            self.check("cut-arrival", arrived, detail,
+                       observed="status={} cut={}".format(
+                           result.get("status", "none"), cut_taken))
+        else:
+            self.inconclusive(
+                "cut-arrival",
+                detail + " The cut was not taken either, so this run cannot "
+                "separate a failed re-offer from a transfer that never started.",
+                "the tap never took the cut and the article never arrived",
+                observed="status={}".format(result.get("status", "none")))
+        if not arrived:
+            blocker = "the article never reached node B"
+            for key in ("cut-at-most-one", "cut-copies"):
+                self.inconclusive(key, "lost reply: {} -- {}.".format(
+                    self.ASSERTIONS[key][0], blocker), blocker)
             return
         self.b.accepted.append(msgid)
-        if len(accepted) > 1:
-            self.gaps.append(
-                "owner feed cut: node A observed {} accepted transfers of {} across "
-                "one lost reply, not at most one: the re-offer path transferred the "
-                "article twice.".format(len(accepted), msgid))
+        self.check(
+            "cut-at-most-one", len(accepted) <= 1,
+            "owner feed cut: node A observed {} accepted transfers of {} across "
+            "one lost reply, not at most one: the re-offer path transferred the "
+            "article twice.".format(len(accepted), msgid),
+            observed="accepted-transfers={}".format(len(accepted)))
         after = self.feed("presence", "--port {} --groups {} --present '{}'".format(
             self.b.port, GROUPS[0], msgid),
             name="owner feed cut: node B holds {} exactly once".format(msgid),
@@ -1419,14 +1822,19 @@ else echo NONE; fi
             "node B {} held {} articles in {} and now holds {}".format(
                 GROUPS[0], start_count, GROUPS[0], end_count))
         if start_count is None or end_count is None:
-            self.gaps.append(
+            self.inconclusive(
+                "cut-copies",
                 "owner feed cut: node B's GROUP line did not carry a count either "
-                "side of the cut, so 'exactly one copy' rests on the reread alone.")
-        elif end_count != start_count + 1:
-            self.gaps.append(
+                "side of the cut, so 'exactly one copy' rests on the reread alone.",
+                "no article count in node B's GROUP reply",
+                observed="before={} after={}".format(start_count, end_count))
+        else:
+            self.check(
+                "cut-copies", end_count == start_count + 1,
                 "owner feed cut: node B's {} went from {} articles to {} across one "
                 "lost reply; exactly one article crossed, so exactly one is the "
-                "right difference.".format(GROUPS[0], start_count, end_count))
+                "right difference.".format(GROUPS[0], start_count, end_count),
+                observed="before={} after={}".format(start_count, end_count))
 
     @staticmethod
     def group_count(payload: dict, group: str):
@@ -1442,11 +1850,17 @@ else echo NONE; fi
         mode = ("transit" if self.b.transit and self.b.transit.startswith("335")
                 else "post" if self.b.post_enabled else "read")
         if mode == "read":
-            self.gaps.append(
+            self.inconclusive(
+                "kill-inside-transfer",
                 "node B offers neither a transit surface nor POST on this commit, so "
                 "the kill could not land inside a transfer: it landed on an open reader "
                 "connection instead, and 'the unfinished transfer is absent' below is "
-                "about an article that was never in flight.")
+                "about an article that was never in flight.",
+                "no transit surface and no POST, so nothing was in flight to cut",
+                observed="mode=read")
+        else:
+            self.check("kill-inside-transfer", True, "",
+                       observed="mode={}".format(mode))
         step = self.feed("cut", "--to-port {} --mode {} --group {} --msgid '{}' --pid {}"
                          .format(self.b.port, mode, GROUPS[0], INTERRUPTED_ID, self.b.pid),
                          name="kill -9 node B mid-{}".format(mode), timeout=180)
@@ -1457,9 +1871,10 @@ else echo NONE; fi
         survivor = self.sh("node A survived node B's death",
                            "kill -0 {} 2>/dev/null && echo ALIVE || echo DEAD".format(
                                self.a.pid or 0))
-        if "ALIVE" not in survivor.output:
-            self.gaps.append("node A did not survive node B's SIGKILL; the two nodes are "
-                             "not independent processes in the way this gate assumed.")
+        self.check("a-survives-b-kill", "ALIVE" in survivor.output,
+                   "node A did not survive node B's SIGKILL; the two nodes are "
+                   "not independent processes in the way this gate assumed.",
+                   observed=survivor.first_line or "no output")
         self.sh("node B recover after the kill",
                 self.cd(self.fn("--store {} recover".format(self.b.store))), timeout=1800)
         self.sh("node B status after recovery",
@@ -1508,13 +1923,19 @@ else echo NONE; fi
                         timeout=1800, expect=None)
         if build.rc != 0 or "built build/fn-host" not in build.output:
             self.facts["tcpcl"] = "no image: the layer could not be exercised"
-            self.gaps.append(
-                "The native image did not build on this commit, so the TCPCLv4\n"
-                "  convergence layer was not exercised at all. Its last lines were:\n"
-                "  " + " | ".join(build.output.strip().splitlines()[-3:]))
-            self.skip("tcpcl exchange", "tools/tcpcl_lab.py",
-                      "build/fn-host was not produced on this commit")
+            blocker = "build/fn-host was not produced on this commit"
+            self.not_built(
+                "tcpcl-image",
+                "The native image did not build on this commit, so the TCPCLv4 "
+                "convergence layer was not exercised at all. Its last lines were: "
+                + " | ".join(build.output.strip().splitlines()[-3:]),
+                blocker)
+            for name in self.TCPCL:
+                self.not_built("tcpcl-scenario", "tcpcl {}: {}".format(name, blocker),
+                               blocker, instance=name)
+            self.skip("tcpcl exchange", "tools/tcpcl_lab.py", blocker)
             return
+        self.check("tcpcl-image", True, "", observed=build.first_line)
         lab = self.sh("tcpcl lab (exchange, refused, keepalive, crash, "
                       "profile, replay)",
                       self.cd("python3 tools/tcpcl_lab.py --image build/fn-host "
@@ -1533,12 +1954,15 @@ else echo NONE; fi
         self.facts["tcpcl"] = "passed={} failed={}".format(
             ",".join(summary.get("passed", [])) or "none",
             ",".join(summary.get("failed", [])) or "none")
-        for name in ("exchange", "refused", "keepalive", "crash",
-                     "profile", "replay"):
+        for name in self.TCPCL:
             row = rows.get(name)
             if row is None:
-                self.skip("tcpcl {}".format(name), "tools/tcpcl_lab.py",
-                          "the lab produced no result for this scenario")
+                blocker = "the lab produced no result for this scenario"
+                self.skip("tcpcl {}".format(name), "tools/tcpcl_lab.py", blocker)
+                self.inconclusive("tcpcl-scenario",
+                                  "tcpcl {}: {}, so it is unobserved rather than "
+                                  "failed.".format(name, blocker),
+                                  blocker, instance=name)
                 continue
             note = ", ".join("{}={}".format(k, v) for k, v in sorted(row.items())
                              if k not in ("scenario", "ok"))
@@ -1547,9 +1971,10 @@ else echo NONE; fi
             self.steps.append(Step("tcpcl {}".format(name), lab.command,
                                    0 if row.get("ok") else 1, lab.output, 0.0,
                                    note[:600], 0))
-            if not row.get("ok"):
-                self.gaps.append(
-                    "The tcpcl `{}` scenario did not hold: {}".format(name, note[:300]))
+            self.check("tcpcl-scenario", bool(row.get("ok")),
+                       "The tcpcl `{}` scenario did not hold: {}".format(
+                           name, note[:300]),
+                       instance=name, observed=note[:200])
 
     # -- evidence ---------------------------------------------------------
     def evidence(self, path, started, elapsed):
@@ -1560,11 +1985,13 @@ else echo NONE; fi
         Saying it twice does not make it twice as true, and a per-node gap
         still names its node, so no gap is merged with a different one."""
         seen, unique = set(), []
-        for gap in self.gaps:
-            if gap not in seen:
-                seen.add(gap)
-                unique.append(gap)
-        self.gaps = unique
+        for one in self.found:
+            mark = (one.id, one.verdict, one.detail)
+            if mark in seen:
+                continue
+            seen.add(mark)
+            unique.append(one)
+        self.found = unique
         return super().evidence(path, started, elapsed)
 
     # -- the whole gate ---------------------------------------------------
@@ -1668,28 +2095,26 @@ def main(argv=None) -> int:
         gate.execute()
     except GateError as error:
         failure = str(error)
-        gate.gaps.append("the gate stopped early: {}".format(error))
+        gate.limitation("gate-stopped-early",
+                        "the gate stopped early: {}".format(error))
     finally:
         try:
             gate.cleanup()
         except Exception as error:      # cleanup must never hide the result
-            gate.gaps.append("cleanup did not finish: {}: {}".format(
-                type(error).__name__, error))
+            gate.limitation("cleanup-unfinished",
+                            "cleanup did not finish: {}: {}".format(
+                                type(error).__name__, error))
     elapsed = time.monotonic() - clock
+    gate.finalize_findings()
     date = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
     target = evidence_path(args.evidence, repo,
                            "twonode-{}-{}.md".format(rev, date))
     gate.evidence(target, started, elapsed)
     print("evidence: {}".format(target))
-    bad = [s for s in gate.steps if s.failed]
-    print("steps={} failed={} not-exercised={}".format(
-        len(gate.steps), len(bad), sum(1 for s in gate.steps if s.rc is None)))
-    for step in bad:
-        print("  FAILED rc={} {}: {}".format(step.rc, step.name, step.first_line))
+    report(gate)
     if failure:
         print("gate error: {}".format(failure))
-        return 2
-    return 1 if bad else 0
+    return gate.exit_code(failure)
 
 
 if __name__ == "__main__":
