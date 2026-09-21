@@ -191,8 +191,29 @@ def compact(script: str) -> str:
 
 
 def not_exercised(name, command, reason) -> Step:
-    step = Step(name, command, None, "", 0.0, reason)
-    return step
+    """A step that did not run because something it NEEDS is absent.
+
+    A dependency that is not installed, an interpreter the box does not have,
+    a surface this commit has not built.  `rc` is None, so `Step.failed` is
+    False and the gate can still pass: an absence is a finding, and the
+    evidence file lists it, but it is not this commit failing.
+    """
+    return Step(name, command, None, "", 0.0, reason)
+
+
+def did_not_complete(name, command, reason) -> Step:
+    """A step that did not run because something the gate DID run failed.
+
+    A symptom is not an absence, and until 2026-09-21 this gate and its three
+    subclasses recorded both the same way.  A server that will not restart
+    after the recovery it was killed for, a lab that produced no row, a
+    profile pass that printed no JSON: each was a `not_exercised` step with
+    `rc=None`, which `Step.failed` cannot see, so the gate printed `failed=0`
+    and exited 0 over a durability defect.  This records rc=1 against
+    expect=0, so it is a failed step, it appears in the FAILED list, and the
+    exit code says so.
+    """
+    return Step(name, command, 1, reason, 0.0, reason, expect=0)
 
 
 # --------------------------------------------------------------------------
@@ -490,6 +511,13 @@ class DeployGate:
         self.port = 0
         self.posted = [SEED_ID]     # what a reread after recovery must find
         self.post_enabled = False
+        # The symptom of the last `start_server` that did not reach LISTENING.
+        self.server_failure = ""
+        # Whether this deploy tree ended up holding certificates.  It decides
+        # whether a phase that needs a certified tree -- the native image,
+        # which `tools/build_native_host.sh` refuses to build over an
+        # uncertified book -- reports an absence or a failure.
+        self.certificates_ok = False
 
     # -- plumbing ---------------------------------------------------------
     def sh(self, name, script, timeout=600, note="", expect=0) -> Step:
@@ -506,7 +534,13 @@ class DeployGate:
         return step
 
     def skip(self, name, command, reason):
+        """This step needs something that is not here.  See `not_exercised`."""
         self.steps.append(not_exercised(name, command, reason))
+        self.gaps.append("{}: {}".format(name, reason))
+
+    def broke(self, name, command, reason):
+        """This step's subject failed.  See `did_not_complete`: a FAILED row."""
+        self.steps.append(did_not_complete(name, command, reason))
         self.gaps.append("{}: {}".format(name, reason))
 
     def cd(self, script: str) -> str:
@@ -617,12 +651,14 @@ fi
                 self.gaps.append(
                     "some books in the gate did not hash to this revision's sources, so "
                     "their pairs were not copied: {}".format(step.first_line))
+            self.certificates_ok = step.rc == 0
             return step
         step = self.sh("certify on host",
                        self.cd("make certify FN_CERTIFY_JOBS={} 2>&1 | tail -40".format(self.jobs)),
                        timeout=6 * 3600)
         self.facts["certificates"] = "make certify on the host, {} jobs, rc={}".format(
             self.jobs, step.rc)
+        self.certificates_ok = step.rc == 0
         return step
 
     def init_store(self):
@@ -709,7 +745,13 @@ echo SERVER-TIMEOUT; tail -25 {log}; exit 1
             timeout=SERVER_READY_SECONDS + 120, expect=None)
         match = re.search(r"^LISTENING (\d+)", step.output, re.M)
         if step.rc != 0 or match is None:
+            # Why it did not start, for the row that records the consequence:
+            # `SERVER-DIED` with the log tail, `SERVER-TIMEOUT`, or whatever
+            # the shell said.  A reason of "it did not start" and no symptom
+            # is a row nobody can act on.
+            self.server_failure = step.first_line or "no LISTENING line"
             return False
+        self.server_failure = ""
         self.port = int(match.group(1))
         self.server_kind = kind
         self.post_enabled = "--post" in command or kind.startswith(("owner", "fn"))
@@ -749,6 +791,11 @@ echo stopped
              "echo NONE"]))
         match = re.search(r"^USE (\S+)", chooser.output, re.M)
         if match is None:
+            # waiver-ok: environment -- the probe asks each interpreter on the
+            # box whether `import nntplib` works and prints USE or NONE, so it
+            # reads a command's OUTPUT to learn that a dependency is absent
+            # rather than to learn that something failed.  The reason below is
+            # the predicate: no interpreter here has a stdlib nntplib.
             self.skip("nntplib probe", "tests/interop_store_nntplib.py",
                       "no interpreter on the host has a stdlib nntplib "
                       "(python3 is {}; nntplib was removed in 3.13 by PEP 594 and no "
@@ -761,8 +808,12 @@ echo stopped
         if not self.start_server("reader (read-only)",
                                  "python3 tools/run_reader.py --store {} --port 0".format(
                                      self.store), "probe"):
-            self.skip("nntplib probe", "tests/interop_store_nntplib.py",
-                      "the read-only reader did not reach LISTENING")
+            # `tools/run_reader.py` is on the tree this gate deployed, so a
+            # reader that does not reach LISTENING is this commit failing to
+            # serve, not a probe dependency the box is missing.
+            self.broke("nntplib probe", "tests/interop_store_nntplib.py",
+                       "the read-only reader did not reach LISTENING: {}".format(
+                           self.server_failure or "no symptom recorded"))
             return
         self.sh("nntplib probe", self.cd("{} tests/interop_store_nntplib.py {}".format(
             interpreter, self.port)), timeout=300,
@@ -871,8 +922,12 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
             self.news_client()
             self.stop_server("after-recovery")
         else:
-            self.skip("reread after recovery", "drive.py reread",
-                      "the server did not restart after recovery")
+            # The subject of this gate is "serves, dies and recovers".  A
+            # server that started before the kill and will not start after it
+            # is that subject failing, not a dependency this box lacks.
+            self.broke("reread after recovery", "drive.py reread",
+                       "the server did not restart after recovery: {}".format(
+                           self.server_failure or "no symptom recorded"))
         self.sh("server log tail", "tail -15 {}/server-main.log".format(self.run))
         if not self.keep:
             self.sh("remove the deploy tree", "rm -rf {}".format(self.deploy))
