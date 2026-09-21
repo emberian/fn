@@ -266,36 +266,37 @@ def current_owner(work, counts, payload, folded_bytes, seed, acl2):
 
 def native_direct(work, payload, seed, native_image, native_source_revision, native_image_digest):
     """Direct native store/reader startup and recovery, explicitly not owner POST."""
-    result = {"path": "native direct store and reader; no served owner/control claim",
+    result = {"path": "native image --fn store/reader positional ABI; no Python child in command tree and no served owner/control claim",
               "image": native_image, "source_revision": native_source_revision or "unspecified",
               "image_sha256": native_image_digest or (file_sha256(native_image) if native_image and Path(native_image).is_file() else "unavailable")}
     if not native_image or not Path(native_image).is_file():
         result["not_measured"] = "no executable --native-image was supplied"
         return result
     root, source = work / "native-store", work / "native.eml"
-    env = dict(os.environ, FN_HOST="native", FN_NATIVE_HOST=native_image)
-    init = command([sys.executable, "tools/run_store.py", "--store", str(root), "init",
-                    "--group", GROUPS[0], "--group", GROUPS[1]], cwd=ROOT, environment=env)
+    image = str(Path(native_image).resolve())
+    env = dict(os.environ)
+    env.pop("FN_HOST", None)
+    env.pop("FN_NATIVE_HOST", None)
+    init = command([image, "--fn", "store", str(root), "init", *GROUPS],
+                   cwd=ROOT, environment=env)
     result["store_init"] = init
     if init["returncode"] != 0:
         return result
     msgid, source, shape = write_source(work, seed, 900001, payload)
-    post = command([sys.executable, "tools/run_store.py", "--store", str(root), "post",
-                    "--message-id", msgid, "--payload", str(source),
-                    "--group", GROUPS[0], "--group", GROUPS[1]], cwd=ROOT, environment=env)
+    post = command([image, "--fn", "store", str(root), "post", msgid, str(source),
+                    "-", "-", *GROUPS], cwd=ROOT, environment=env)
     post["source"] = shape
     result["store_post"] = post
-    result["store_recover"] = command([sys.executable, "tools/run_store.py", "--store",
-                                        str(root), "recover"], cwd=ROOT, environment=env)
+    result["store_recover"] = command([image, "--fn", "store", str(root), "recover"],
+                                        cwd=ROOT, environment=env)
     log = work / "native-reader.log"
     before_reader = time.monotonic()
-    reader_argv = [sys.executable, "tools/run_reader.py", "--store", str(root),
-                   "--port", "0", "--once"]
+    reader_argv = [image, "--fn", "reader", "0", "1", str(root)]
     with log.open("w") as output:
         reader = subprocess.Popen(reader_argv, cwd=ROOT, env=env, stdout=output,
                                   stderr=subprocess.STDOUT, text=True)
     port, _ = wait_listening(reader, log)
-    reader_result = {"argv": reader_argv, "environment": {"FN_HOST": "native", "FN_NATIVE_HOST": native_image},
+    reader_result = {"argv": reader_argv, "environment": {"python_child": False},
                      "startup_seconds": time.monotonic() - before_reader, "port": port}
     if port is not None:
         before = time.monotonic()
@@ -326,7 +327,7 @@ def report_text(result):
              "- Harness revision: `{}`; harness SHA-256 `{}`.".format(result["harness_revision"], result["harness_sha256"]),
              "- Host: `{}`; load at start `{}`.".format(result["host"]["platform"], result["loadavg_at_start"]),
              "- Owner scope: development-oracle evidence only: `bin/fn post` through the live `bin/fn run` control socket; each accepted post reports `path=control`. This Python bridge path is not a production endpoint.",
-             "- Native scope: direct `tools/run_store.py` / `tools/run_reader.py`; it does not measure served owner/control behavior.", "",
+             "- Native scope: direct native-image `--fn store` / `--fn reader` calls with no Python child; it does not measure served owner/control behavior.", "",
              "## Owner results", ""]
     if owner.get("not_measured"):
         lines.append("- Owner path: {}.".format(owner["not_measured"]))
