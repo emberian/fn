@@ -1650,3 +1650,28 @@ loss of an entire previously durable suffix cannot be detected without an
 independent durable anchor. The scanner retains existing
 `fn-feed-apply-record` semantics for valid records; it does not retroactively
 enforce `fn-feed-drivenp` against configuration changes or historical no-ops.
+
+## Outbound authenticated TLS transport (2026-09-21)
+
+An NNTP transport is versioned as `(:nntp 1 host port security)`.  `security`
+is `(:clear)` or `(:tls mode server-name trust-anchor-path)`, where `mode` is
+`:implicit` or `:starttls`.  The port is always explicit: neither mode infers a
+port, and an outbound peer never reuses the listener's certificate or private
+key.  The old `(:nntp host port)` row remains a decode-only cleartext profile.
+
+For STARTTLS, `books/feed-connection.lisp` owns the greeting, exact STARTTLS
+command, required 382 response, handshake-owed phase, and the post-handshake
+MODE/ready transition.  The host may report `fn-fc-after-tls` only after the
+OpenSSL client completes chain validation against the configured anchor and
+hostname validation against `server-name`.  Implicit TLS begins in the same
+handshake-owed phase before a greeting is consumed.  A refusal, certificate
+failure, name mismatch, interrupted handshake, or protected I/O failure closes
+that peer-local connection and reaches the existing durable `fn-feed-lost`
+requeue path; it never retries cleartext.
+
+This authenticates the destination of an outbound connection.  It does not
+authenticate an inbound connection as the configured named peer, repair the
+shared/source-address ambiguity in the current inbound projection, prove
+OpenSSL or certificates correct, or establish peer honesty.  AUTHINFO, a
+principal-bound profile, or mutual TLS remains required to make that stronger
+claim.

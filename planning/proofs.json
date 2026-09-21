@@ -1562,6 +1562,26 @@
         "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record",
         "fn-bpn-step-queue-acceptance-is-durable-or-exact-duplicate"
       ]
+    },
+    {
+      "id": "PRF-047",
+      "title": "Outbound NNTP TLS phase ordering and no protocol downgrade",
+      "statement": "fn-fc-step emits STARTTLS only after an accepted greeting in the configured STARTTLS profile, requires 382 before entering the handshake-owed phase, and fn-fc-after-tls alone advances that phase to MODE or ready; implicit TLS begins handshake-owed before greeting. Host failures are reported through the existing peer-local loss and durable requeue path.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-004"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/feed-connection.lisp",
+        "tests/acl2/feed-connection-tests.lisp",
+        "host/native/tls.lisp",
+        "tests/test_native_tls_transport.py"
+      ],
+      "pending_subject": "Add and certify named keystones for TLS phase ordering and loss-to-requeue composition over the host-called owner functions; OpenSSL chain/hostname behavior remains trusted integration evidence, not an ACL2 proof.",
+      "progress_note": "Ground witnesses cover accepted 382, refusal, authenticated client success, wrong anchor and wrong hostname. Focused integrated batch certification is pending."
     }
   ]
 }

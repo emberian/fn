@@ -132,7 +132,7 @@
                     (if (equal (nth 10 words) "clear")
                         (and (equal (nth 11 words) "-") (equal (nth 12 words) "-"))
                       (and (not (equal (nth 11 words) "-"))
-                           (not (equal (nth 12 words) "-"))))))
+                           (not (equal (nth 12 words) "-")))))))
       (let* ((inbound (if (equal (nth 6 words) "-") nil
                         (list (nth 6 words) *fn-record-max-payload* 16)))
              (outbound (if (equal (nth 7 words) "-") nil
