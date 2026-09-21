@@ -242,6 +242,18 @@
                       state)))
           (value :refused))))))
 
+; The bounds `books/peer-config.lisp' holds a peer record to, for the operator
+; surface that has to name a value inside them.  `fn-cfg-peer-inboundp'
+; (books/peer-config.lisp:143) requires the inbound octet cap to be at most
+; `*fn-record-max-payload*' and the inflight count, queue and backoff to be
+; `fn-record-uint32p'.  Before this list, `bin/fn' and `tools/run_store.py'
+; both typed 1048576 as the default `--inbound-max-octets' -- thirty-two times
+; that ceiling -- so an operator's first `peer add' was refused
+; `:peer-record'.  The default is resolved from here now and no host types a
+; peer bound (AGENTS.md, one owner per decision).
+(defun fn-store-cfg-peer-constants ()
+  (list *fn-record-max-payload* *fn-cbor-max-uint*))
+
 (defun fn-store-cfg-set-peer (name-octets path-octets host-octets port
                               in-groups-octets in-max-octets in-inflight
                               out-groups-octets out-streaming out-max-queue
