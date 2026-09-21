@@ -1,6 +1,6 @@
 ; Actual owner-table boundary witnesses for bounded FNFD port admission.
 (in-package "ACL2")
-(include-book "../../books/owner-feed")
+(include-book "../../books/owner-feed-port")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defconst *fn-ofp-peer* "nodeB")
@@ -96,8 +96,16 @@
   (fn-cfg-peer-make "peer2" "peer2.fn.test" '(:nntp "127.0.0.1" 1121)
                     '("fn.*" 32768 16) '("fn.*" t 256 1000)
                     '(:source-address "127.0.0.3")))
-(defconst *fn-ofp-two-table*
+(defconst *fn-ofp-two-base-table*
   (fn-own-feed-reconfigure nil (list *fn-ofp-record* *fn-ofp-record-2*)))
+(defconst *fn-ofp-restart-source*
+  (fn-own-feed-find *fn-ofp-peer* (fn-own-feed-port-table *fn-ofp-lost*)))
+(assert-event (fn-feedp *fn-ofp-restart-source*))
+(defconst *fn-ofp-two-table*
+  (fn-own-feed-put
+   "peer2" *fn-ofp-record-2* *fn-ofp-restart-source*
+   (fn-own-feed-put *fn-ofp-peer* *fn-ofp-record* *fn-ofp-restart-source*
+                    *fn-ofp-two-base-table*)))
 (defconst *fn-ofp-restart-fold*
   (fn-own-feed-port-restart-fold
    (fn-own-feed-names *fn-ofp-two-table*)

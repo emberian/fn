@@ -81,6 +81,16 @@
          (fn-own-feed-port-peer peer tbl (list :restart)))
   :hints (("Goal" :in-theory (enable fn-own-feed-port-restart-peer))))
 
+; The port wrapper has one result constructor on every branch, so its record
+; projection is always a proper list.  This is also the exact type fact the
+; restart fold needs before it may append two accepted peer batches.
+(defthm fn-own-feed-port-peer-records-true-listp
+  (true-listp (fn-own-feed-port-records
+               (fn-own-feed-port-peer peer tbl event)))
+  :hints (("Goal" :in-theory (enable fn-own-feed-port-peer
+                                     fn-own-feed-port-result
+                                     fn-own-feed-port-records))))
+
 ; Restart is an all-or-nothing port transaction across the configured peers.
 ; The original table is carried separately so a late refusal cannot expose an
 ; earlier peer's restart or journal records to the host.
@@ -111,6 +121,7 @@
   :hints (("Goal" :induct (fn-own-feed-port-restart-fold
                             names current original)
            :in-theory (enable fn-own-feed-port-restart-fold
+                              fn-own-feed-port-result
                               fn-own-feed-port-status))))
 
 (defthm fn-own-feed-port-restart-fold-accepted-cons-unfolds
