@@ -236,3 +236,20 @@
            (fn-auth-configp
             (fn-native-auth-result-config
              (fn-native-auth-load octets presentp requiredp protected tls)))))
+
+; Keystone for the startup boundary: when the parser accepts, the config the
+; host installs carries the caller's three normalized policy observations
+; exactly.  Raw Lisp cannot silently drop REQUIRED, enable TLS, or weaken
+; PROTECTED-ONLY while transporting the credential file.
+(defthm fn-native-auth-load-accepted-pins-policy
+  (implies
+   (equal (fn-native-auth-result-status
+           (fn-native-auth-load octets presentp requiredp protected tls))
+          :accepted)
+   (let ((config
+          (fn-native-auth-result-config
+           (fn-native-auth-load octets presentp requiredp protected tls))))
+     (and (equal (fn-auth-config-requiredp config) (and requiredp t))
+          (equal (fn-auth-config-protected-onlyp config) (and protected t))
+          (equal (fn-auth-config-tls-availablep config) (and tls t)))))
+  :rule-classes nil)
