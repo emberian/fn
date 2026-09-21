@@ -286,7 +286,8 @@ configured server context and never a protected client session."
 (defun fnn-tls-open-client-context (trust-anchor-path)
   "Create a peer-verifying client context rooted only in TRUST-ANCHOR-PATH."
   (fnn-tls-initialize)
-  (unless (and (stringp trust-anchor-path) (> (length trust-anchor-path) 0))
+  (unless (and (stringp trust-anchor-path) (> (length trust-anchor-path) 0)
+               (null (position (code-char 0) trust-anchor-path)))
     (error 'fnn-tls-config-error :detail "a trust-anchor path is required"))
   (let* ((method (fnn-%tls-client-method))
          (pointer (and (not (fnn-tls-null-pointer-p method)) (fnn-%ssl-ctx-new method))))
@@ -307,7 +308,8 @@ configured server context and never a protected client session."
 
 (defun fnn-tls-connect (context fd server-name seconds)
   "Complete an authenticated client handshake with chain and hostname checks."
-  (unless (and (stringp server-name) (> (length server-name) 0))
+  (unless (and (stringp server-name) (> (length server-name) 0)
+               (null (position (code-char 0) server-name)))
     (error 'fnn-tls-config-error :detail "a TLS server name is required"))
   (let ((ssl (fnn-%ssl-new (fnn-tls-context-pointer context)))
         (deadline (fnn-tls-deadline seconds))

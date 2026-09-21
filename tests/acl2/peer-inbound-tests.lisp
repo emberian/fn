@@ -27,6 +27,29 @@
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) '("fn.*" 32769 1) nil '(:principal "p")))))
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) nil '("fn.*" 2 1 0) '(:principal "p")))))
 (assert-event (not (fn-cfg-peerp (fn-cfg-peer-make "x" "inn" '(:nntp "h" 1) nil nil '(:password "p")))))
+(assert-event
+ (not (fn-cfg-peerp
+       (fn-cfg-peer-make "x" "inn"
+                         (list :nntp 1 "h" 119
+                               (list :tls :starttls "" "/tmp/ca.pem"))
+                         nil nil '(:principal "p")))))
+(assert-event
+ (not (fn-cfg-peerp
+       (fn-cfg-peer-make "x" "inn"
+                         (list :nntp 1 "h" 119
+                               (list :tls :implicit
+                                     (coerce (list #\n #\e #\w #\s (code-char 0)
+                                                   #\x) 'string)
+                                     "/tmp/ca.pem"))
+                         nil nil '(:principal "p")))))
+(assert-event
+ (not (fn-cfg-peerp
+       (fn-cfg-peer-make "x" "inn"
+                         (list :nntp 1 "h" 119
+                               (list :tls :implicit "news.example"
+                                     (coerce (list #\/ #\t #\m #\p (code-char 0)
+                                                   #\/ #\c #\a) 'string)))
+                         nil nil '(:principal "p")))))
 ; Round trip through the rows, and the injectivity it gives.
 ; The rows-to-record round trip on two ground records (the general theorem
 ; is open, books/peer-config.lisp).

@@ -17,6 +17,7 @@
 (define-condition fnn-store-indeterminate (fnn-store-error) ())
 (define-condition fnn-store-fault (fnn-store-error) ())
 (define-condition fnn-os-error (error) ())
+(define-condition fnn-tls-error (error) ())
 
 (defconstant +fnn-max-read+ 512)
 
@@ -65,6 +66,12 @@
 (defun fnn-connect (&rest ignored)
   (declare (ignore ignored))
   (error "unexpected raw TCP connect"))
+(defun fnn-tls-open-client-context (&rest ignored) (declare (ignore ignored)) :context)
+(defun fnn-tls-connect (&rest ignored) (declare (ignore ignored)) (error 'fnn-tls-error))
+(defun fnn-tls-close-context (&rest ignored) (declare (ignore ignored)) nil)
+(defun fnn-tls-close-channel (&rest ignored) (declare (ignore ignored)) nil)
+(defun fnn-tls-send-all (&rest ignored) (declare (ignore ignored)) nil)
+(defun fnn-tls-read (&rest ignored) (declare (ignore ignored)) :timeout)
 
 ;;; Only read here; worker/lifecycle functions are not entered until the final
 ;;; no-offer-before-ready check below.
@@ -208,5 +215,36 @@
           (symbol-function 'fnn-connect) old-connect
           (symbol-function 'fnn-socket-fd) old-fd
           (symbol-function 'fnn-feed-connect-core) old-core)))
+
+;; A failed authenticated handshake transfers context ownership to the link
+;; before SSL_connect and releases it exactly once on every retry.
+(let* ((runtime (%make-fnn-feed-runtime :service :tls-leak-test
+                                        :lock (sb-thread:make-mutex)))
+       (link (%make-fnn-feed-link :peer "tls" :peer-octets #(116) :fd 19))
+       (opens 0) (closes 0)
+       (old-open (symbol-function 'fnn-tls-open-client-context))
+       (old-connect (symbol-function 'fnn-tls-connect))
+       (old-close (symbol-function 'fnn-tls-close-context)))
+  (unwind-protect
+       (progn
+         (setf (symbol-function 'fnn-tls-open-client-context)
+               (lambda (anchor) (declare (ignore anchor)) (incf opens) (list :ctx opens))
+               (symbol-function 'fnn-tls-connect)
+               (lambda (&rest ignored) (declare (ignore ignored)) (error 'fnn-tls-error))
+               (symbol-function 'fnn-tls-close-context)
+               (lambda (context) (declare (ignore context)) (incf closes)))
+         (dotimes (attempt 2)
+           (declare (ignore attempt))
+           (handler-case
+               (fnn-feed-enable-tls runtime link
+                                    '(:tls :implicit "news.example" "/tmp/ca.pem"))
+             (fnn-tls-error () nil)))
+         (unless (and (= opens 2) (= closes 2)
+                      (null (fnn-feed-link-tls-context link)))
+           (error "failed TLS retries leaked contexts: opens=~a closes=~a held=~s"
+                  opens closes (fnn-feed-link-tls-context link))))
+    (setf (symbol-function 'fnn-tls-open-client-context) old-open
+          (symbol-function 'fnn-tls-connect) old-connect
+          (symbol-function 'fnn-tls-close-context) old-close)))
 
 (format t "native feed raw phase/sequencing test passed~%")
