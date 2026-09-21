@@ -655,6 +655,13 @@ fi
             "python3 tools/run_store.py --store /nonexistent peer --help "
             ">/dev/null 2>&1 && echo STORE-PEER || echo NONE"), expect=None)
         if "STORE-PEER" not in probe.output:
+            # waiver-ok: capability -- the probe asks this tree whether
+            # `run_store.py peer` exists and prints STORE-PEER or NONE, so it
+            # reads a command's OUTPUT to learn that a subcommand is absent,
+            # not to learn that something failed.  The peer CLI landed on
+            # 2026-09-21 (w11/twonode-feed), so on a current tree this branch
+            # is not taken; it stays for a run against an older commit, and
+            # the reason below is the predicate.
             self.facts["peer record"] = "no CLI on this commit"
             self.skip("fn peer record for INN",
                       "run_store.py peer add (specs/peering.md 1.2, (:set-peer record))",
