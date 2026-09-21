@@ -1624,9 +1624,41 @@ subsequent command is a fresh process rather than an in-process retry."
         (cons "recordbarrier" (list :record-barrier 'fnn-os-error
                                     "injected transaction directory barrier failure"))))
 
+(defparameter +fnn-post-model-cuts+
+  '(:frontier-staged-durable :frontier-replaced :frontier-attempted
+    :frontier-durable :frontier-reserved :record-staged-durable
+    :record-linked :record-attempted :record-durable :record-completing
+    :record-staging-cleaned :finish-consumed :finish-durable))
+
+(defun fnn-post-test-fault ()
+  "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector.
+
+The point is one of fnn-advance-frontier/fnn-publish/fnn-finish's actual
+fnn-at boundaries.  SIGKILL cannot run unwind-protect, so the next command
+observes a genuine new-process image."
+  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_POST_FAULT")))
+    (when raw
+      (unless (fnn-developer-image-p)
+        (fnn-fault "FN_NATIVE_POST_FAULT requires a developer image"))
+      (let ((colon (position #\: raw :from-end t)))
+        (unless colon
+          (fnn-fault "invalid FN_NATIVE_POST_FAULT (expected MODEL-CUT:eio|kill)"))
+        (let* ((label (subseq raw 0 colon))
+               (point (intern (string-upcase label) :keyword))
+               (action (subseq raw (1+ colon))))
+          (unless (member point +fnn-post-model-cuts+)
+            (fnn-fault "unknown FN_NATIVE_POST_FAULT cut: ~a" label))
+          (list point
+                (cond ((string= action "eio") 'fnn-os-error)
+                      ((string= action "kill") :fnn-test-kill)
+                      (t (fnn-fault
+                          "invalid FN_NATIVE_POST_FAULT action: ~a" action)))
+                "developer-only native post fault"))))))
+
 (defun fnn-command-post (root message-id payload-path charge-text inject groups)
   (let* ((msgid (fnn-octets (fnn-ascii-octet-list message-id)))
-         (fault (and inject (cdr (assoc inject +fnn-cli-faults+ :test #'string=)))))
+         (fault (or (and inject (cdr (assoc inject +fnn-cli-faults+ :test #'string=)))
+                    (fnn-post-test-fault))))
     (when (and inject (null fault)) (error 'fnn-usage-error :message "unknown fault point"))
     (multiple-value-bind (store records) (fnn-open-live-store root t fault)
       (unwind-protect
