@@ -28,6 +28,7 @@
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
+(include-book "../books/owner-tls-prefix")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
 (include-book "../books/feed-wire-input")
@@ -933,18 +934,24 @@
         (value id)
       (value nil))))
 
-; One socket read of one connection is one fn-own-read: fn-served-step over
-; the connection's wire, session and pinned archive
-; (fn-own-read-is-served-step-on-pinned-prefix).  The whole chunk is
-; consumed; there is no suffix and no loop in Python.
+; One observed socket region is one ACL2 prefix transition.  Its effects and
+; configured-owner state equal fn-ocfg-read over the complete observation
+; (fn-ocfg-read-tls-prefix-is-full-read); fn-owner-consumed names the exact
+; physical prefix.  The native adapter leaves any suffix for the TLS record
+; layer instead of parsing STARTTLS in raw Lisp.
 (defun fn-owner-chunk (id octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
-      (let* ((result (fn-ocfg-read (fn-owner-ocfg state) id octets))
-             (state (fn-owner-install-ocfg (cdr result) state))
-             (state (fn-owner-install-effects (car result) state)))
+      (let* ((result (fn-ocfg-read-tls-prefix
+                      (fn-owner-ocfg state) id octets))
+             (state (fn-owner-install-ocfg
+                     (fn-own-tls-result-owner result) state))
+             (state (fn-owner-install-effects
+                     (fn-own-tls-result-effects result) state))
+             (state (f-put-global 'fn-owner-consumed
+                                  (fn-own-tls-result-consumed result) state)))
         (value :ok)))))
 
 (defun fn-owner-close (id state)

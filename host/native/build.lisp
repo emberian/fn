@@ -22,6 +22,8 @@
 (include-book "books/node-config")
 (include-book "books/nntp")
 (include-book "books/served")
+(include-book "books/served-tls-prefix")
+(include-book "books/owner-tls-prefix")
 (include-book "books/nntp-effects")
 (include-book "books/native-config")
 (include-book "books/native-auth-profile")
@@ -107,9 +109,14 @@
         ; environment.
         (fnn-select-image-profile
          (or (sb-ext:posix-getenv "FN_NATIVE_PROFILE") "production"))
+        ; OpenSSL 3 is the explicit native STARTTLS trust boundary.  It loads
+        ; after io.lisp because its deadline/descriptor helpers are physical
+        ; transport primitives, not protocol decisions.
+        (load "host/native/tls.lisp")
         (defun fn-native-entry (st)
           (declare (ignore st))
           (fnn-crypto-startup)
+          (fnn-tls-reset)
           (fnn-main)
           (values nil :exited *the-live-state*))
         ; Bounded raw file read only; parsing, defaults and availability are

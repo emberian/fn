@@ -218,6 +218,26 @@ is installed into the owner for both served and control submission."
       (fn-native-config-listener-port (fn-native-operator-result-config result))
     0))
 
+(defun fn-native-operator-result-run-tls-cert-octets (result)
+  (declare (xargs :guard t))
+  (if (and (fn-native-operator-result-run-planp result)
+           (fn-native-config-tls-cert
+            (fn-native-operator-result-config result)))
+      (fn-record-string-octets
+       (fn-native-config-tls-cert
+        (fn-native-operator-result-config result)))
+    nil))
+
+(defun fn-native-operator-result-run-tls-key-octets (result)
+  (declare (xargs :guard t))
+  (if (and (fn-native-operator-result-run-planp result)
+           (fn-native-config-tls-key
+            (fn-native-operator-result-config result)))
+      (fn-record-string-octets
+       (fn-native-config-tls-key
+        (fn-native-operator-result-config result)))
+    nil))
+
 (defun fn-native-operator-result-run-oncep (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-run-planp result)

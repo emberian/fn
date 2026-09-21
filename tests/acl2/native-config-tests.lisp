@@ -29,8 +29,8 @@
         '(:inet (127 0 0 1))))
 
 ; The native owner consumes the ACL2-selected credential path and policy.
-; Required auth and a custom path are live; protected-only remains unavailable
-; until the native host has a real TLS facility.
+; Required auth and a custom path are live.  Protected-only requires the
+; paired TLS paths that the native OpenSSL boundary consumes.
 (defconst *fn-ncfg-native-auth*
   (fn-native-config-load
    (fn-ncfg-test-lines
@@ -47,6 +47,16 @@
 (assert-event
  (not (fn-native-config-operator-availablep
        (car (cdr *fn-ncfg-native-protected-auth*)))))
+(defconst *fn-ncfg-native-protected-tls*
+  (fn-native-config-load
+   (fn-ncfg-test-lines
+    '("[store]" "path = \"/srv/fn\""
+      "[listener]" "tls_cert = \"/run/fn/cert.pem\""
+      "tls_key = \"/run/fn/key.pem\""
+      "[auth]" "required = true" "protected_only = true"))))
+(assert-event
+ (fn-native-config-operator-availablep
+  (car (cdr *fn-ncfg-native-protected-tls*))))
 
 (defconst *fn-ncfg-disabled-result*
   (fn-native-config-load

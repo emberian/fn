@@ -33,6 +33,32 @@
                                               (fn-nop-test-argv '("recover"))))
                      :accepted))
 
+; TLS paths are now an executable native run profile.  ACL2 projects the
+; exact paths; protected-only remains unavailable without such a pair.
+(defconst *fn-nop-tls-run*
+  (fn-native-operator-run
+   (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""
+                        "[listener]" "tls_cert = \"/etc/fn/cert.pem\""
+                        "tls_key = \"/etc/fn/key.pem\""
+                        "[auth]" "protected_only = true"))
+   (fn-nop-test-argv '("run" "--once"))))
+(assert-event
+ (equal (fn-native-operator-result-status *fn-nop-tls-run*) :accepted))
+(assert-event
+ (equal (fn-native-operator-result-run-tls-cert-octets *fn-nop-tls-run*)
+        (fn-record-string-octets "/etc/fn/cert.pem")))
+(assert-event
+ (equal (fn-native-operator-result-run-tls-key-octets *fn-nop-tls-run*)
+        (fn-record-string-octets "/etc/fn/key.pem")))
+(assert-event
+ (equal
+  (fn-native-operator-result-status
+   (fn-native-operator-run
+    (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""
+                         "[auth]" "protected_only = true"))
+    (fn-nop-test-argv '("run"))))
+  :usage))
+
 ; Help is a config-free ACL2 action, including an absent/broken configuration.
 (defconst *fn-nop-help-without-config*
   (fn-native-operator-run nil (fn-nop-test-argv '("help" "run"))))

@@ -3,7 +3,8 @@
 ;;; This raw module reads one bounded regular file selected by ACL2 and hands
 ;;; its octets to books/native-auth-profile.lisp.  It does not parse TOML,
 ;;; decode hex, build credentials, choose permissions, hash secrets or mark a
-;;; socket protected.  The current native image always reports TLS unavailable.
+;;; socket protected.  TLS availability is observed only from a successfully
+;;; loaded service context, never inferred from configured path text.
 
 (in-package "ACL2")
 
@@ -21,13 +22,13 @@
           (fnn-refuse "AUTHINFO credential file exceeds ACL2 bound: ~a" path))
         (values (fnn-octet-list (fnn-read-regular-bounded path maximum)) t)))))
 
-(defun fnn-native-auth-install (path requiredp protected-onlyp)
+(defun fnn-native-auth-install (path requiredp protected-onlyp tls-availablep)
   "Load and install the exact ACL2-produced config before any connection opens."
   (multiple-value-bind (octets presentp)
       (fnn-native-auth-read path (fnn-core 'fn-native-auth-host-max-octets))
     (let* ((result
              (fnn-core 'fn-native-auth-host-load octets presentp
-                       requiredp protected-onlyp nil))
+                       requiredp protected-onlyp (and tls-availablep t)))
            (status (fnn-core 'fn-native-auth-host-status result)))
       (unless (eq status :accepted)
         (fnn-refuse "AUTHINFO profile refused: ~a"
@@ -38,7 +39,8 @@
       :accepted)))
 
 (defun fnn-native-auth-startup-hook (path requiredp protected-onlyp)
-  "Return a composable owner hook; SERVICE is intentionally not semantic input."
+  "Return a composable owner hook.  SERVICE contributes only whether a real
+TLS context loaded; ACL2 still owns the authentication policy decision."
   (lambda (service)
-    (declare (ignore service))
-    (fnn-native-auth-install path requiredp protected-onlyp)))
+    (fnn-native-auth-install path requiredp protected-onlyp
+                             (fnn-owner-service-tls-context service))))

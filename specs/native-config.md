@@ -1,6 +1,6 @@
 # Native operator configuration
 
-Status: executable W14 profile. This is an operator-startup profile, separate
+Status: executable native profile. This is an operator-startup profile, separate
 from the durable group and peer configuration records replayed by the node.
 
 `fn-native-config-load` is the semantic subject. Its input is one raw vector
@@ -36,13 +36,15 @@ Every path is bounded to 512 octets, ordinary text to 256, and an anchor name
 to 128. `fn-native-config-operator-availablep` is a separate ACL2 decision
 that refuses use of settings whose native consumer does not exist yet. The
 native owner now consumes `auth.required` and the selected `auth.path` through
-`books/native-auth-profile.lisp`; TLS, `auth.protected_only`, non-default
+`books/native-auth-profile.lisp`. It also consumes the paired TLS paths and
+admits `auth.protected_only` when a certificate path is present. Non-default
 posting agent, anchor, log, and `[acl2]` remain unavailable rather than being
-silently ignored. Either Boolean posting policy and the bounded control path
-are consumed by the local owner control service. In particular, the native
-host does not call an ordinary socket protected: protected-only AUTHINFO
-remains unavailable until a real TLS facility can deliver the model's
-`:tls-established` event.
+silently ignored. Both Boolean posting policies and the bounded control path
+are consumed by the local control service. Path presence does not make a socket protected: the native
+operator must first load and key-check an OpenSSL 3 context, and each owner
+connection becomes protected only after its own successful handshake and the
+model's `:tls-established` transition. Missing, malformed and mismatched
+certificate/key material fails before the listener opens.
 
 The credential registry is a second bounded ACL2 profile. It accepts at most
 65,536 ASCII octets, 1,024 lines and 128 canonical `[login."NAME"]` tables.
@@ -59,6 +61,9 @@ the listener opens. Each accepted connection then pins the resulting existing
 `fn-auth-config` in its served session. Credential replacement while the
 process is running is not a reload operation in this version; a restart is
 required, and no live-generation claim follows from atomic file replacement.
+The TLS context is likewise loaded once and shared across connection-specific
+OpenSSL sessions; a failed peer handshake does not reload it or stop the
+listener.
 
 The owner convergence consumer uses ACL2 projections for store root, listener
 host/port, control path, posting enablement, max connections (32), and

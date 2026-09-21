@@ -326,17 +326,27 @@ has observed durability, not a pipelining defect.
 ## Transport security, and what is trusted
 
 TLS is a **host facility and is outside the model**. RFC 4642 STARTTLS is
-served by `books/nntp-auth.lisp`, which emits a `(:starttls)` effect;
-`tools/run_owner.py` wraps the accepted socket with Python's `ssl` module
-using the configured `[listener] tls cert key`. The book sees plaintext
-octets on both sides of the handshake, and no theorem in this tree says
-anything about confidentiality, integrity, certificate validation, cipher
-selection or the handshake itself. What is proved is the protocol state
-machine around the upgrade: the capability label appears only where RFC 4642
-§2.1 allows, 382 is emitted only from the branch that also records the TLS
-layer, a second STARTTLS is 502, and the cached username and the
-authenticated subject are discarded across the handshake. The clause-by-clause
-split is the RFC 4642 matrix in [the audit](nntp-audit.md).
+served by `books/nntp-auth.lisp`, which emits a `(:starttls)` effect. The
+native owner loads a configured OpenSSL 3 server context and performs the
+handshake in `host/native/tls.lisp`; the development adapter uses Python's
+`ssl` module. Both adapters report `(:tls-established)` to ACL2 only after a
+successful handshake. The book sees plaintext octets on both sides of that
+boundary, and no theorem in this tree says anything about confidentiality,
+integrity, certificate validation, cipher selection or the handshake itself.
+The OpenSSL library, dynamic loader, C ABI and socket BIO are explicit native
+trust. The implementation follows OpenSSL's documented retry contracts for
+[`SSL_accept`](https://docs.openssl.org/3.0/man3/SSL_accept/),
+[`SSL_get_error`](https://docs.openssl.org/3.0/man3/SSL_get_error/),
+[`SSL_read`](https://docs.openssl.org/3.0/man3/SSL_read/) and
+[`SSL_write`](https://docs.openssl.org/3.0/man3/SSL_write/); this is an
+implementation dependency, not a TLS correctness theorem.
+
+What is proved is the protocol state machine around the upgrade: the
+capability label appears only where RFC 4642 §2.1 allows, 382 is emitted only
+from the branch that also records that a handshake is owed, a second STARTTLS
+is 502, and the cached username and authenticated subject are discarded
+across the handshake. The clause-by-clause split is the RFC 4642 matrix in
+[the audit](nntp-audit.md).
 
 AUTHINFO USER/PASS is likewise a **cleartext mechanism on the wire**, and no
 change below makes it otherwise: the secret still crosses the connection in
@@ -398,9 +408,12 @@ the bounded credential file and constructs the same `fn-auth-config` the
 served owner already pins at connection open. `host/native/auth.lisp` only
 reads the ACL2-selected path and transports octets; it neither parses a
 credential nor hashes or compares a secret. The native operator admits
-`auth.required` on its ACL2-restricted loopback listeners. It still refuses
-`auth.protected_only` and TLS paths before listening because the saved image
-does not yet have a TLS handshake facility. Credentials are startup-pinned;
+`auth.required` on its ACL2-restricted loopback listeners. The W23 native
+transport consumes the ACL2-projected paired TLS paths, validates the
+certificate/key pair before listening, and admits `auth.protected_only` only
+when such a pair is configured. The authentication profile receives TLS
+availability from the successfully loaded context; configured path text alone
+does not establish it. Credentials and the TLS context are startup-pinned;
 live reload/generation switching remains open.
 
 **Native administration component 2026-09-21**:
@@ -445,6 +458,19 @@ re-enters the plaintext stream with the `(:tls-established)` wire event,
 the only transition that sets `tlsp`
 (`fn-auth-tls-established-sets-the-layer`). ACL2 owns the decision; the
 host owns only the socket.
+
+The native transport additionally tolerates a peer that places its
+ClientHello behind the STARTTLS line in one kernel observation. This is a
+robustness property and does not relax RFC 4642's client prohibition. The
+sole connection worker observes with `MSG_PEEK`; `fn-ocfg-read-tls-prefix`
+returns the one ACL2 transition, its effects and the exact consumed count.
+`fn-ocfg-read-tls-prefix-is-full-read` proves that the actual host-call result
+equals the full observation, while `fn-served-tls-prefix-suffix-accounting`
+proves that prefix and suffix reconstruct it. Raw Lisp then consumes and
+byte-checks only that prefix before OpenSSL reads the suffix. Sole-reader
+ownership and stable `MSG_PEEK`/consume behavior are explicit scheduling and
+platform premises; a short, changed or failed consume closes the connection
+without replaying the logical transition.
 
 ### The posting allowance
 
