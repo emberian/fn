@@ -1,7 +1,7 @@
 # w11-lab-gate handoff
 
 Branch `w11/lab-gate`, worktree `build/lanes/w11-lab-gate`, from `dev`
-`cbede52`.
+`cbede52`, with `dev` `b51108b` merged at `123ced9`.
 
 The lane exists because of one incident. `receive_bpa_request` gained a
 required keyword-only `bundle` on 2026-09-19 (`4ec3541`); the callers in
@@ -166,20 +166,27 @@ fourth dead harness. `d484e9a` gave `fn-served-open` a seventh formal and
 updated both Lisp callers; `tests/test_served_differential.py:57` spells that
 call as text, so all seven of its tests raised `FN-SERVED-OPEN takes 7
 arguments ... given 6` instead of comparing bytes, and the bridge host and
-`books/served` went a day with no divergence check running. **That call now
-ends in `(fn-auth-open-config)`, exactly as `host/reader-host.lisp:137`
-passes it, and `python3 -m unittest tests.test_served_differential` is 7 of 7
-in 2.4 s.**
+`books/served` went a day with no divergence check running. The repair is
+one argument, `(fn-auth-open-config)`, exactly as `host/reader-host.lisp:137`
+passes it: **`python3 -m unittest tests.test_served_differential` is 7 of 7 in
+2.4 s** where before it was 7 errors. Credit where it is due — the same
+repair landed on `dev` from another lane while this one was measuring, and
+the merge keeps dev's comment with a sentence naming the lint added to it.
+What this lane contributes is the check that catches the next one.
 
-904 applications over 25 host files and 480 readable Python strings, 264
+918 applications over 25 host files and 371 readable Python strings, 262
 undecided, **3 findings left**: `fn-sched-pos` at
 `tests/test_teeth_check.py:58` and `:60` and `fn-feed-observe` at `:280`, all
 synthetic fixtures for the teeth checker rather than calls anything makes.
 They are another lane's fixtures and this lint does not gate, so they are
-reported rather than edited. Docstrings are prose and are skipped (four of
-the first eight findings were exactly that); a form holding a `{}` or a `%s`
-is not decided at all, because a `" ".join(...)` in that slot stands for any
-number of arguments.
+reported rather than edited. Two kinds of prose are skipped, each after it produced findings on the real
+tree: a docstring (four of the first eight), and a sentence that merely
+*mentions* a form — `"... the authenticated principal's allowance
+(fn-auth-postingp, RFC 3977 section 6.3.1.1). The feed was never reached."`
+parses, so a string counts only when every top-level item in it is a form,
+which prose never is (two more, on dev's `tools/v0_matrix.py`, found by the
+merge). A form holding a `{}` or a `%s` is not decided at all, because a
+`" ".join(...)` in that slot stands for any number of arguments.
 
 Are the two the same check? **The same question, a different mechanism, and
 the answer decided the scope.** A book's arity is ACL2's own business —
@@ -301,7 +308,12 @@ It gates.
   historical `bundle` break as a fixture, a keyword typo, a `**kwargs` callee
   that must not be flagged, a failure-keyed skip, an environmental skip that
   must not be flagged, and a declared waiver that must not be flagged.
-- `make check` green at each commit.
+- `make check` green at each commit, including after the `dev` merge.
+- On hbox: the lane tree is mirrored at `/tank/fn/lanes/w11-lab-gate` (tracked
+  files only) with its ION run under `/tank/fn/ltp/run/fnlab-20260921T015951Z`
+  and the start/stop/lab logs beside the mirror in `ltp-20260921T015951Z/`.
+  Both ION nodes were stopped and verified gone; nothing this lane started is
+  still running there. The mirror can be removed when the lane lands.
 
 ## Two notes for other lanes
 
@@ -343,7 +355,13 @@ lab then ran green. It was written, measured, and removed. What is left is
    methods. Resolving method calls on locally constructed objects would raise
    it a lot and needs a small type inference; worth doing only if something
    breaks that this misses.
-5. **The gates' response-code waivers** (item 7 above) are the last
+5. **Three `acl2-arity` findings remain** and are another lane's:
+   `fn-sched-pos` at `tests/test_teeth_check.py:58` and `:60` and
+   `fn-feed-observe` at `:280`, synthetic fixtures for the teeth checker
+   spelled with the wrong arity. Nothing evaluates them, so they are not a
+   defect; spelling them correctly would let `acl2-arity` gate as the other
+   two lints do.
+6. **The gates' response-code waivers** (item 7 above) are the last
    failure-keyed verdicts, and they are cross-process. The cheap improvement
    is to put the observed reply into each skipped step's own reason, the way
    `inn_lab.py:946` already does.
