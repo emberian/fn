@@ -762,16 +762,23 @@
         "Build the node image carrying the convergence layer and establish a contact between two of them.",
         "Transfer one bundle each way inside one session, segmented by the layer's own rules.",
         "Interrupt the contact and re-establish it; hold an idle contact open with the keepalive.",
-        "Carry an fn article inside a bundle and deliver it to the receiving node's application."
+        "Carry an fn article inside a bundle and deliver it to the receiving node's application.",
+        "Inject errors at native lifecycle publication barriers, reopen, and distinguish a visible record from durable queue acceptance.",
+        "Reuse a session-local transfer ID in another inbound session with different content; retain both evidence records and fence all mutation after an uncertain journal write."
       ],
       "expected": [
         "The transfer is segmented and acknowledged by the layer's own rules, and the assertions are over the events the layer recorded.",
         "A bundle's arrival is not an fn application acceptance, and the two are reported separately.",
-        "An interrupted contact loses no bundle and delivers none twice.",
+        "An interrupted contact retains durably queued work; transport retries may repeat a bundle, while application acceptance and obligation charging remain idempotent.",
         "A refused contact is refused with its own reason, distinct from a fault."
       ],
-      "evidence": [],
-      "execution_scope": "Specified. The layer transfers opaque octets today: it does not parse what it carries, and no BP node is wired behind it, so the last step has no implementation to exercise."
+      "evidence": [
+        "planning/evidence/bp-convergence-native-2026-09-21.md",
+        "tests/test_bp_service_native.py",
+        "tests/bp-dtn7/run_fn_bp_sequence_durability.py",
+        "tests/bp-dtn7/run_fn_tcpcl_spool_recovery.py"
+      ],
+      "execution_scope": "Partial: native BP codec/node and durable outbound lifecycle execute behind TCPCL. The frozen certified-image packet covers sequence allocation, spool recovery, selected process-death cuts, lifecycle publication/restart and mixed transport/article outcomes. Full native application journal/receipt composition, cross-session evidence preservation, receive-loop persistence fencing and universal observed-file/lifecycle proofs remain open (PRF-045/046)."
     },
     {
       "id": "SCN-026",

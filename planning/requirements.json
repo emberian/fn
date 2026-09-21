@@ -652,7 +652,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-001",
-        "PRF-004"
+        "PRF-004",
+        "PRF-046"
       ],
       "verification": [
         "proof",
@@ -913,7 +914,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-018",
-        "PRF-029"
+        "PRF-029",
+        "PRF-046"
       ],
       "verification": [
         "proof",
@@ -945,7 +947,9 @@
       "proof_targets": [
         "PRF-012",
         "PRF-018",
-        "PRF-038"
+        "PRF-038",
+        "PRF-045",
+        "PRF-046"
       ],
       "verification": [
         "proof",
@@ -960,10 +964,11 @@
         "tests/evidence/2026-09-18-bp-exchange.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
-        "planning/evidence/bp-dtn7-w11-2026-09-21.md"
+        "planning/evidence/bp-dtn7-w11-2026-09-21.md",
+        "planning/evidence/bp-convergence-native-2026-09-21.md"
       ],
-      "implementation_note": "Actual pinned dtn7-rs TCP-CLA exchange exercised durable fn work, outage/restart, lost receipt, duplicate recognition and return receipt. Joint sender binding and fixed-Store receiver replay are certified; five receiver SIGKILL cuts and the 133-test suite passed. BPA observations never discharge application work/archive pins. The prior inert-bundle restart failure and explicit fn retry are retained in evidence. Authentication, changing-Store/host refinement, LTP, multi-relay and physical qualification remain open.",
-      "note": "The BP half has certified keystones (fn-bp-step-preserves-node, fn-bp-trace-preserves-node, and the bp-receiver invariants), and the requirement as written also names LTP, for which there is only planning/ltp-feasibility.md -- a feasibility study, not an implementation. Stays specified because the requirement's scope is wider than the evidence. Amended 2026-09-21 (w11/bp-node): fn now ENCODES BPv7 as well as carrying it, PRF-038 names the codec's round trip and the node's two ends, and the dtn7-rs exchange has one side authoring each way rather than dtn7 authoring both. Still `specified` and not `implemented`, for the reason already given -- the requirement names LTP, for which there is only a feasibility study -- and now for a second: `specs/bp-design.md` section 1.5's processing machine does not exist, so no bundle is stored, retried, expired or reassembled by a node state."
+      "implementation_note": "Actual pinned dtn7-rs TCP-CLA exchange exercised durable fn work, outage/restart, lost receipt, duplicate recognition and return receipt. Joint sender binding and fixed-Store receiver replay are certified; five receiver SIGKILL cuts and the 133-test suite passed. BPA observations never discharge application work/archive pins. The prior inert-bundle restart failure and explicit fn retry are retained in evidence. Authentication, changing-Store/host refinement, LTP, multi-relay and physical qualification remain open. W13 native carrier convergence adds durable allocation, queue/contact/restart/expiry, spool ownership and recovery, with certified-image tests. Receive-loop fencing, fault classification and session evidence retention remain open; see the native evidence record.",
+      "note": "The requirement remains specified: native BP codecs and an outbound lifecycle now execute in the native host, while full application composition, LTP profile/return transport, multi-relay operation and physical qualification remain incomplete. The earlier claim that fn-bpn-step does not exist is superseded by books/bp-node-machine.lisp; the stronger lifecycle and observed-file allocation targets are PRF-045/046 and are not closed by the current helper theorems."
     },
     {
       "id": "NNT-001",

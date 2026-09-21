@@ -1254,7 +1254,7 @@
       ],
       "assumptions": [],
       "status": "in-progress",
-      "note": "Lane w11/bp-node, 2026-09-21; the codec keystones are lane w10/dtn-3's. All seven named theorems are in books/bp-bundle-invariants.lisp and books/bp-node.lisp, both certified (hbox run-20260921T005707Z-8672 and run-20260921T021131Z-1eb0). Teeth in tests/acl2/bp-bundle-tests.lisp and tests/acl2/bp-node-tests.lisp, including the 32-block boundary and the refusal one past it, the three distinct outcomes, and a node configured for a 16-octet transfer refusing a bundle a larger node accepts. The EXTERNAL check is *bpb-dtn7-0-21-0*: 132 octets dtn7-rs 0.21.0 authored, which fn decodes and re-encodes byte for byte (planning/evidence/bp-dtn7-w11-2026-09-21.md). OPEN under this target, and recorded rather than weakened: fn-bpb-decode-blocks-are-canonical-by-construction and fn-bpb-accepted-input-is-canonical-by-construction were REMOVED by w10/dtn-3 after a rewriter runaway with three cures measured and none stopping it, so 'every accepted input re-encodes to itself' is NOT proved for a whole bundle -- it holds of dtn7-rs's captured vector by evaluation only. The node's processing machine (fn-bpn-step) does not exist, so T1 to T6 of specs/bp-design.md section 1.6 have no subject and are not claimed here."
+      "note": "Lane w11/bp-node, 2026-09-21; the codec keystones are lane w10/dtn-3's. All seven named theorems are in books/bp-bundle-invariants.lisp and books/bp-node.lisp, both certified (hbox run-20260921T005707Z-8672 and run-20260921T021131Z-1eb0). Teeth in tests/acl2/bp-bundle-tests.lisp and tests/acl2/bp-node-tests.lisp, including the 32-block boundary and the refusal one past it, the three distinct outcomes, and a node configured for a 16-octet transfer refusing a bundle a larger node accepts. The EXTERNAL check is *bpb-dtn7-0-21-0*: 132 octets dtn7-rs 0.21.0 authored, which fn decodes and re-encodes byte for byte (planning/evidence/bp-dtn7-w11-2026-09-21.md). OPEN under this target, and recorded rather than weakened: fn-bpb-decode-blocks-are-canonical-by-construction and fn-bpb-accepted-input-is-canonical-by-construction were REMOVED by w10/dtn-3 after a rewriter runaway with three cures measured and none stopping it, so 'every accepted input re-encodes to itself' is NOT proved for a whole bundle -- it holds of dtn7-rs's captured vector by evaluation only. The native outbound lifecycle now calls fn-bpn-step in books/bp-node-machine.lisp, with source-pinned runtime evidence. This codec target does not cover its persistence, restart or obligation-preservation contracts; PRF-045/046 track those still-open obligations."
     },
     {
       "id": "PRF-039",
@@ -1440,6 +1440,65 @@
         "planning/lanes/HANDOFF-w12-feed-durability.md"
       ],
       "progress_note": "The manifest certifies these book/test inputs. Actual subject calls: host/owner-host.lisp fn-owner-feed-journal-scan calls fn-feed-journal-scan; tools/run_owner.py Acl2Owner.feed_journal_step calls fn-feed-journal-phase-step for Journal._step. The finite phase theorem extends that same step through arbitrary observations. Physical torn-suffix repair, barriers and the global owner fence have scoped live-scanner and host-method tests in tests/test_feed_journal_live.py and tests/test_feed_fence.py; those tests do not run the combined owner/NNTP path. This target does not prove physical byte-image survival, general K5 live/replay correspondence, acceptance/feed atomicity, detection of whole-prefix rollback, bounded total journal growth, or hardware durability."
+    },
+    {
+      "id": "PRF-045",
+      "title": "BP creation allocation non-reuse across observed-file recovery",
+      "statement": "Target: under explicit stable-storage and admissible crash-image premises, finite traces through the actual sequence recover/reserve functions never return a previously returned creation sequence, including old-or-new rename outcomes, lost returns and restart without hidden in-memory phase knowledge.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-038"
+      ],
+      "assumptions": [
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-node-records.lisp",
+        "books/bp-sequence-persistence.lisp",
+        "tests/acl2/bp-sequence-persistence-tests.lisp",
+        "host/native/bp.lisp",
+        "planning/evidence/bp-convergence-native-2026-09-21.md",
+        "planning/lanes/HANDOFF-w12-bp-sequence.md"
+      ],
+      "pending_subject": "The certified fn-bpn-sp-step trace model remembers phases that a restarted host cannot observe. It does not discharge this target. The observed-file transition, returned-allocation invariant and host correspondence are active successor work.",
+      "progress_note": "The native host obtains sequence/frame values from ACL2 and completes the file/namespace barriers before returning the allocation; tested failures and restart are evidence about those exact sources, not universal physical non-reuse. No events are registered for this pending target."
+    },
+    {
+      "id": "PRF-046",
+      "title": "Durable native BP lifecycle and application-obligation confinement",
+      "statement": "Target: reachable traces of the host-called fn-bpn-step preserve valid lifecycle state, withhold queue acceptance and sending until the matching durable records exist, retain exact work/peer/wire context across restart, fence mutation after uncertain publication, and never discharge application obligations from transport completion or bundle expiry.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005",
+        "REP-006",
+        "RET-001"
+      ],
+      "depends_on": [
+        "PRF-012",
+        "PRF-038",
+        "PRF-045"
+      ],
+      "assumptions": [
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-node-machine.lisp",
+        "books/bp-node-machine-codec.lisp",
+        "tests/acl2/bp-node-machine-tests.lisp",
+        "host/native/bp-service.lisp",
+        "tests/test_bp_service_native.py",
+        "planning/evidence/bp-convergence-native-2026-09-21.md",
+        "planning/evidence/manifests/certify-20260921T081657Z-1438651.json"
+      ],
+      "pending_subject": "The adapter directly calls fn-bpn-step, but current no-release theorem assumes its output already satisfies the effect recognizer; the resume helper theorem only preserves fields of a setter. Neither is registered as a keystone. Universal valid-state/effect preservation, actual restart context preservation, physical observation correspondence and bounded served execution remain open.",
+      "progress_note": "Reachable evaluated queue/contact/restart/expiry cases and source-pinned EIO/process tests exercise the implementation. U01 removes visible-file-as-durable classification and U02 gives ACL2 mixed-outcome policy. Core-fault collapse, receive-loop persistence fencing, cross-session evidence naming, host-owned naming/admission and repeated history validation remain implemented-surface debt."
     }
   ]
 }

@@ -12,8 +12,8 @@ selected feature set and its assurance obligations during this migration.
 The user also requested a high-assurance, pleasant implementation with duplicated
 decisions and awkward interfaces consolidated. The [consolidation audit](duplication-audit-2026-09-21.md)
 tracks concrete findings and owners. A BP candidate's visible-file fallback after
-failed publication barriers is a blocking durability defect; repair and fault
-evidence precede landing. Outcome aggregation and repeated journal scans are
+failed publication barriers was repaired in the integrated `2dab68d` packet,
+with actual-error and restart evidence. Outcome aggregation and repeated journal scans are
 separate assigned work. This extends the one-owner rule to raw Lisp as well as
 Python; the native migration is not permission to reproduce the same twins.
 
@@ -68,7 +68,7 @@ evidence. A passing scaffold check is not certification; certification is not a
 running-system, RFC-conformance or mission-qualification claim.
 
 The next integration order is the combined live-config/submission/feed path,
-native BP allocation/lifecycle and their crash joins, then persisted identity
+native BP receive integrity and allocation/lifecycle crash joins, then persisted identity
 and admission context, checkpoints/index adoption, and bounded long-lived
 operation. Prerequisite-ready work continues in parallel. Fresh initializer
 transcription and native metadata adoption close existing assurance gaps;
@@ -82,3 +82,11 @@ one 1 KiB store post, initialization, reopen and reader startup. It does not
 measure the concurrent native owner, scaling or the two-peer release workload.
 The historical scale measurements and placeholder native comparison do not
 qualify this head; the converged owner still needs its own measurement.
+
+Native BP carrier convergence through `2dab68d` is integrated with a certified
+persvati image and source-pinned allocation/spool/queue/crash tests. The
+[evidence record](evidence/bp-convergence-native-2026-09-21.md) retains the open
+receive fencing, fault classification and session evidence overwrite findings.
+PRF-045/046 now name the universal allocation/lifecycle obligations without
+promoting helper lemmas to whole-path proofs. Native FNWF/FNRJ composition is
+being repaired for remaining host admission/naming decisions before landing.

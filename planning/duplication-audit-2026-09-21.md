@@ -36,8 +36,11 @@ original failure and source-pinned evidence. Model the observation actually
 supplied to the called machine; its abstract `:persist-result` does not itself
 prove the host's classification.
 
-Owner: `submission_path` (Sol, BP convergence). This blocks a positive native
-lifecycle durability claim, not the frozen logical certification already running.
+Repair integrated through `2dab68d`: the fallback is removed, recovery repeats
+the namespace barrier, and actual OS-error injections at both barriers require
+uncertainty. The [native BP evidence](evidence/bp-convergence-native-2026-09-21.md)
+records the certified-image runs. This closes this classification defect, not
+the full lifecycle correspondence target (PRF-046).
 
 ### U02: independent outcome aggregators disagree about uncertainty
 
@@ -54,8 +57,10 @@ summaries and host faults. `fnn-tcl-exit-code` and `fnn-bps-exit-code` have
 different absent-result defaults; do not mechanically collapse them into one
 severity ranking without stating their different operation contracts.
 
-Owner: BP convergence, after its frozen gate. CLI consolidation consumes the
-result contract rather than creating another mapping.
+Repair integrated through `2dab68d`: `fn-bpn-host-run-outcome` owns the policy,
+and a reachable duplex test combines a refused article with an uncertain
+transport result. Cross-session aggregation/fencing and core-fault taxonomy
+remain separate receive-path obligations.
 
 ### U03: lifecycle admission is decided twice and rescans growing history
 
@@ -195,3 +200,19 @@ the real directory listing return EACCES; an error merely raised before the
 listing would not distinguish the former swallowing handler. Selected SIGKILL
 and independent restart tests accompany the source cut map. That map remains
 source-reviewed correspondence, not a whole-program or every-crash-point proof.
+
+### BP successor obligations from the integrated carrier review
+
+`fnn-command-bp-receive` still catches the broad store-error superclass and can
+collapse a core fault to refusal; its journal-indeterminate handler does not yet
+stop the enclosing receive loop. Separately, `fnn-bp-record` replaces names based
+on a constant passive-session tag and session-local transfer ID, which can be
+reused across connections. The BP receive successor must demonstrate and repair
+cross-session evidence overwrite using one ACL2-owned durable identity and
+publication contract. The source-pinned BP handoff records these limits.
+
+The new FNWF/FNRJ candidate has a shared ACL2 publication machine, but its raw
+journal adapter still computes admission headroom and namespace sequences and
+rescans retained history on append. Root returned these concrete semantic-owner
+and cost defects to its lane before claiming native application adoption. Shared
+I/O alone does not make raw-host policy an ACL2 decision.

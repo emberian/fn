@@ -1,13 +1,23 @@
 # fn as a BPv7 node: design
 
-Status: design with exact statements, wave 4. Nothing here is certified; every
-`defun` and `defthm` below is a commitment for the packets in "Migration",
-not a claim. The books it builds on are certified today: `bp-primary-cbor`,
-`bp-primary`, `bp-fragment`, `clock`, `bp-adu`, `bp-workflow`, `bp-receipt`,
-`bp-release`, `relay`, and the wave-3 `scheduler` book
-(`build/lanes/w3-scheduler/books/scheduler.lisp`, uncommitted at the time of
-writing; its contact observation is `(fn-sched-contact peer start end)` and its
-events are `admit`, `open`, `close`, `tick`, `expiry`, `transport`, `restart`).
+Status: the detailed wave-4 design below remains a target contract. Native
+bundle encoding/decoding and TCPCL are implemented, and the outbound lifecycle
+now lives in `books/bp-node-machine.lisp`, called by
+`host/native/bp-service.lisp`. Its queue, contact, persistence-result, retry,
+expiry and restart paths have [certified-image component evidence](../planning/evidence/bp-convergence-native-2026-09-21.md).
+This is a subset of the full processing/routing/reassembly/application contract,
+not certification of every definition or theorem proposed below.
+
+PRF-045 tracks creation allocation across observed-file recovery; the earlier
+phase-retaining model alone does not describe a restarted host. PRF-046 tracks
+the host-called lifecycle contract: current output-recognizer corollaries and
+setter preservation lemmas do not prove that contract. The receive path still
+needs fault classification, persistence fencing and cross-session evidence
+retention repairs; naming/admission ownership and repeated-history cost are also
+open. Application FNWF/FNRJ native adoption is a separate active composition.
+
+The following motivation describes the earlier external-BPA starting point;
+its assertion that the core has no caller is historical, not current status.
 
 ## Why
 
