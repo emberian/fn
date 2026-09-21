@@ -45,8 +45,12 @@ DTN_EPOCH_NS = 946684800 * 1_000_000_000  # 2000-01-01T00:00:00Z
 # The owner's typed words beyond the store's: each is the result of one
 # fn-owner-* entry in host/owner-host.lisp.  acl2_symbol's set is the store's
 # closed vocabulary and stays closed; this is the owner's.
-OWNER_WORDS = {b":OBSERVED", b":REJECTED", b":DECLARED", b":BEGUN", b":CLOSED",
-               b":OK", b":UNKNOWN", b":FED", b":TAKEN", b":IDLE"}
+# OBSERVE answers fn-own-observe-outcome's word and nothing else (D10-a):
+# `observed`, `refused` (the host contradicted the clock it was reporting,
+# and the owner has dropped it) or `invalid`.  The old `rejected` spelled
+# the first and the second the same way and was computed here.
+OWNER_WORDS = {b":OBSERVED", b":REFUSED", b":INVALID", b":DECLARED", b":BEGUN",
+               b":CLOSED", b":OK", b":UNKNOWN", b":FED", b":TAKEN", b":IDLE"}
 
 
 def acl2_owner_symbol(output):
@@ -417,6 +421,14 @@ class Clock:
         return time.monotonic_ns() // 1_000_000
 
     def observe(self, bridge):
+        """Report a reading; the WORD is the owner's (fn-own-observe-outcome).
+
+        A `refused` here is not a host error to raise on: the owner has
+        dropped the clock it held, so the next decision it is asked for is
+        refused for that reason and with its own text (`441 posting failed;
+        this server has no usable clock reading`, DATE 503), and the next
+        reading this method takes is accepted whatever it says.
+        """
         monotonic_ms = time.monotonic_ns() // 1_000_000
         wall_ms = max(0, (time.time_ns() - DTN_EPOCH_NS) // 1_000_000)
         return bridge.observe(monotonic_ms, wall_ms, self.error_ms, True)

@@ -468,6 +468,18 @@
                     (:d fn-peer-session-inflight) (:d fn-peer-session-node)
                     (:d fn-peer-session-cfg) (:d fn-peer-make-session)))
 
+; The reader session under a transit session, named ONCE.  The served command
+; chain is four records deep -- auth over peer over post over the reader
+; session -- and all three base accessors are `car', so a walk that stops one
+; level short is answered with a plausible value instead of an error.  Four
+; such misses shipped on 2026-09-20 (see tools/session_depth.py, which reads
+; this ladder out of the books and fails on a wrong depth).  This is a MACRO
+; rather than a function on purpose: it expands to exactly the term every
+; call site spells today, so naming the walk costs no theorem, no rule and no
+; re-proof, and the next wrapper is one edit here instead of a sweep.
+(defmacro fn-peer-reader-session (ps)
+  `(fn-post-session-base (fn-peer-session-base ,ps)))
+
 ; nil | (:ihave msgid) | (:takethis msgid)
 (defun fn-peer-transferp (x)
   (declare (xargs :guard t))
@@ -525,7 +537,7 @@
 (defun fn-peer-single (ps text)
   (declare (xargs :guard t))
   (fn-nntp-result-effects
-   (fn-nntp-single (fn-post-session-base (fn-peer-session-base ps)) text)))
+   (fn-nntp-single (fn-peer-reader-session ps) text)))
 
 ; A reply that echoes the offered Message-ID (RFC 4644: the first parameter
 ; MUST be the message-id), built over octets: the token came from the
@@ -724,7 +736,7 @@
       (fn-post-make-result
        ps
        (fn-nntp-result-effects
-        (fn-nntp-multi (fn-post-session-base (fn-peer-session-base ps))
+        (fn-nntp-multi (fn-peer-reader-session ps)
                        "101 capability list follows"
                        (fn-peer-capability-lines
                         (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))
@@ -740,9 +752,7 @@
    ((null (fn-peer-session-peer ps))
     (fn-peer-delegate ps archive config observation injection wire-event))
    ; A closed session serves nothing further.
-   ((not (equal (fn-nntp-session-openp
-                 (fn-post-session-base (fn-peer-session-base ps)))
-                t))
+   ((not (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t))
     (fn-peer-delegate ps archive config observation injection wire-event))
    ; Awaiting the transit article: the body arrives as one (:article lines)
    ; event through the same wire article mode POST uses, and leaves as the
@@ -937,7 +947,7 @@
                                    fn-nntp-multi fn-peer-capability-lines
                                    fn-cfg-peer-find fn-nntp-capability-lines))
            :use ((:instance fn-nntp-effects-multi
-                            (session (fn-post-session-base (fn-peer-session-base ps)))
+                            (session (fn-peer-reader-session ps))
                             (initial "101 capability list follows")
                             (lines (fn-peer-capability-lines
                                     (fn-cfg-peer-find (fn-peer-session-peer ps)

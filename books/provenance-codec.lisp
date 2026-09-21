@@ -471,8 +471,20 @@
                              fn-prov-kind-code))))))
 
 ; Step 3: the rebuild of a record's own fields is that record.  This is where
-; `books/provenance.lisp's four `-of-its-accessors' facts and the octet/string
-; round trip of `books/records-invariants.lisp' are spent.
+; the four generated `<ctor>-of-accessors' facts (`fn-defrecord',
+; books/defrecord.lisp) and the octet/string round trip of
+; `books/records-invariants.lisp' are spent.
+;
+; Two things about the citation, both measured on 2026-09-20 (w10/dtn-3),
+; when the generated family replaced `books/provenance.lisp's four
+; hand-written `-of-its-accessors' lemmas.  The generated rule is stated
+; under the SHAPE predicate, so the instance's hypothesis is
+; `(fn-prov-post-shapep p)`, which the generated
+; `fn-prov-postp-forward-shape' puts in the context of the branch where
+; `(fn-prov-postp p)' holds.  And the generated rule is an ENABLED rewrite,
+; so all four are DISABLED in the `e/d' below: without that the rewriter
+; collapses each `:use' hypothesis to `(equal p p)' and the citation is gone
+; before the goal can spend it.
 (local
  (defthm fn-prov-rebuild-of-its-own-fields
    (implies (and (fn-prov-encodablep p) (not (stringp p)))
@@ -485,10 +497,10 @@
                                     (fn-prov-field-o p))
                    p))
    :hints (("Goal"
-            :use ((:instance fn-prov-post-of-its-accessors (x p))
-                  (:instance fn-prov-transit-of-its-accessors (x p))
-                  (:instance fn-prov-bp-of-its-accessors (x p))
-                  (:instance fn-prov-local-of-its-accessors (x p)))
+            :use ((:instance fn-prov-make-post-of-accessors (x p))
+                  (:instance fn-prov-make-transit-of-accessors (x p))
+                  (:instance fn-prov-make-bp-of-accessors (x p))
+                  (:instance fn-prov-make-local-of-accessors (x p)))
             :in-theory (e/d (fn-prov-rebuild fn-prov-kind-code
                              fn-prov-field-a fn-prov-field-b fn-prov-field-c
                              fn-prov-field-m fn-prov-field-n fn-prov-field-o
@@ -500,7 +512,13 @@
                              fn-prov-diagnostic-mismatch
                              fn-record-uint32p fn-record-string-round-trip)
                             (fn-record-string-octets
-                             fn-record-octets-string))))))
+                             fn-record-octets-string
+                             ;; Cited above by `:use'; enabled, each would
+                             ;; rewrite its own citation away.
+                             fn-prov-make-post-of-accessors
+                             fn-prov-make-transit-of-accessors
+                             fn-prov-make-bp-of-accessors
+                             fn-prov-make-local-of-accessors))))))
 
 ; -----------------------------------------------------------------------------
 ; Keystones

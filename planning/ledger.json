@@ -243,6 +243,7 @@
     "books/owner",
     "books/owner-invariants",
     "tests/acl2/owner-tests",
+    "tests/acl2/owner-config-tests",
     "books/relay",
     "books/relay-invariants",
     "books/relay-crash-invariants",
@@ -278,22 +279,23 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 275,
-    "books_in_root_closure": 274,
-    "roots": 274,
-    "theorems": 5473,
-    "functions": 3917,
-    "assert_events": 5190,
+    "books": 276,
+    "books_in_root_closure": 275,
+    "roots": 275,
+    "theorems": 5564,
+    "functions": 3930,
+    "assert_events": 5459,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1453,
-      "declared-off": 189,
-      "default-guarded": 1781,
-      "default-unguarded": 494
+      "verified": 1461,
+      "declared-off": 190,
+      "default-guarded": 1790,
+      "default-unguarded": 489
     },
-    "suspect_theorems": 45,
+    "suspect_theorems": 46,
     "export_hygiene_warnings": 72,
+    "enabled_projection_warnings": 26,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 87,
     "host_names_warnings": 33,
@@ -354,7 +356,7 @@
       "book": "books/acceptance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 47,
+      "theorems": 50,
       "functions": 45,
       "guards": {
         "verified": 36,
@@ -436,7 +438,7 @@
       "book": "books/anchor.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 54,
+      "theorems": 58,
       "functions": 59,
       "guards": {
         "verified": 40,
@@ -809,13 +811,13 @@
       "book": "books/bp-bundle-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 28,
-      "functions": 0,
+      "theorems": 30,
+      "functions": 1,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -828,7 +830,8 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-bpb-decode-refuses-overlong-input"
+        "fn-bpb-decode-refuses-overlong-input",
+        "fn-bpbi-bpp-encode-unfolds"
       ],
       "read_error": null
     },
@@ -836,7 +839,7 @@
       "book": "books/bp-bundle.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
+      "theorems": 41,
       "functions": 48,
       "guards": {
         "verified": 31,
@@ -947,15 +950,15 @@
       "book": "books/bp-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
+      "theorems": 21,
       "functions": 30,
       "guards": {
-        "verified": 22,
+        "verified": 23,
         "declared-off": 0,
-        "default-guarded": 8,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
-      "verify_guards_events": 22,
+      "verify_guards_events": 23,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -1815,7 +1818,7 @@
       "book": "books/checkpoint-publish.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 57,
+      "theorems": 60,
       "functions": 49,
       "guards": {
         "verified": 13,
@@ -2130,12 +2133,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 14,
+      "functions": 16,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 14
+        "default-unguarded": 16
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -2200,7 +2203,7 @@
       "book": "books/exchange.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
+      "theorems": 40,
       "functions": 43,
       "guards": {
         "verified": 34,
@@ -2695,7 +2698,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 1,
-      "defmacros": 0,
+      "defmacros": 2,
       "encapsulates": 0,
       "includes": [
         "auth-secret",
@@ -2845,7 +2848,7 @@
       "book": "books/nntp-post.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
+      "theorems": 20,
       "functions": 18,
       "guards": {
         "verified": 12,
@@ -2856,7 +2859,7 @@
       "verify_guards_events": 12,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 0,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -3086,7 +3089,7 @@
       "book": "books/node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 34,
+      "theorems": 37,
       "functions": 33,
       "guards": {
         "verified": 27,
@@ -3116,7 +3119,7 @@
       "book": "books/owner-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 19,
+      "theorems": 22,
       "functions": 34,
       "guards": {
         "verified": 0,
@@ -3171,13 +3174,13 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 101,
-      "functions": 7,
+      "theorems": 113,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 7
+        "default-guarded": 6,
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -3199,11 +3202,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 46,
-      "functions": 95,
+      "functions": 96,
       "guards": {
         "verified": 0,
         "declared-off": 3,
-        "default-guarded": 92,
+        "default-guarded": 93,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -3278,7 +3281,7 @@
       "book": "books/peer-feed-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 106,
+      "theorems": 127,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3371,7 +3374,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
-      "defmacros": 0,
+      "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "identity",
@@ -3524,7 +3527,7 @@
       "book": "books/provenance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 71,
+      "theorems": 68,
       "functions": 35,
       "guards": {
         "verified": 12,
@@ -3608,7 +3611,7 @@
       "book": "books/records.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 43,
+      "theorems": 44,
       "functions": 48,
       "guards": {
         "verified": 46,
@@ -3787,7 +3790,7 @@
       "book": "books/retention.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
+      "theorems": 42,
       "functions": 38,
       "guards": {
         "verified": 38,
@@ -3869,7 +3872,7 @@
       "book": "books/scheduler.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 59,
+      "theorems": 64,
       "functions": 104,
       "guards": {
         "verified": 27,
@@ -3897,7 +3900,7 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 61,
+      "theorems": 62,
       "functions": 37,
       "guards": {
         "verified": 2,
@@ -4025,11 +4028,11 @@
       "book": "books/store-files-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 43,
-      "functions": 3,
+      "theorems": 58,
+      "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
         "default-unguarded": 3
       },
@@ -4045,7 +4048,9 @@
       "system_includes": [
         "arithmetic/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-sf-stable-records-outside-the-window"
+      ],
       "read_error": null
     },
     {
@@ -4078,14 +4083,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 30,
-      "functions": 49,
+      "functions": 55,
       "guards": {
-        "verified": 47,
+        "verified": 52,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 3,
         "default-unguarded": 0
       },
-      "verify_guards_events": 47,
+      "verify_guards_events": 52,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -4162,12 +4167,12 @@
       "theorems": 52,
       "functions": 5,
       "guards": {
-        "verified": 0,
+        "verified": 2,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 5
+        "default-guarded": 1,
+        "default-unguarded": 2
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -5308,17 +5313,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 1,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 45,
+      "assert_events": 52,
       "must_fails": 0,
-      "defconsts": 12,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -6082,7 +6087,7 @@
       "book": "tests/acl2/defrecord-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 31,
+      "theorems": 37,
       "functions": 19,
       "guards": {
         "verified": 9,
@@ -6091,7 +6096,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 9,
-      "assert_events": 32,
+      "assert_events": 37,
       "must_fails": 0,
       "defconsts": 3,
       "defmacros": 0,
@@ -6104,7 +6109,6 @@
       "system_includes": [],
       "suspects": [
         "fn-drt-mark-unfolds-to-a-tagged-list",
-        "fn-drt-pinp-forward-shape-instantiated",
         "fn-drt-point-unfolds-to-a-list"
       ],
       "read_error": null
@@ -6375,7 +6379,7 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 73,
+      "assert_events": 82,
       "must_fails": 0,
       "defconsts": 15,
       "defmacros": 1,
@@ -6402,9 +6406,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 33,
+      "assert_events": 62,
       "must_fails": 0,
-      "defconsts": 22,
+      "defconsts": 26,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -6481,7 +6485,7 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 165,
+      "assert_events": 167,
       "must_fails": 0,
       "defconsts": 65,
       "defmacros": 0,
@@ -6515,6 +6519,31 @@
       "encapsulates": 0,
       "includes": [
         "../../books/node-traces"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/owner-config-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 75,
+      "must_fails": 0,
+      "defconsts": 19,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-config"
       ],
       "system_includes": [],
       "suspects": [],
@@ -6558,9 +6587,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 155,
+      "assert_events": 210,
       "must_fails": 0,
-      "defconsts": 56,
+      "defconsts": 72,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -6583,9 +6612,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 96,
+      "assert_events": 108,
       "must_fails": 0,
-      "defconsts": 37,
+      "defconsts": 38,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -6659,7 +6688,7 @@
         "default-unguarded": 12
       },
       "verify_guards_events": 0,
-      "assert_events": 43,
+      "assert_events": 44,
       "must_fails": 0,
       "defconsts": 5,
       "defmacros": 0,
@@ -6685,7 +6714,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 100,
+      "assert_events": 103,
       "must_fails": 0,
       "defconsts": 10,
       "defmacros": 0,
@@ -6762,7 +6791,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 61,
+      "assert_events": 62,
       "must_fails": 4,
       "defconsts": 35,
       "defmacros": 0,
@@ -6889,9 +6918,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 79,
+      "assert_events": 95,
       "must_fails": 0,
-      "defconsts": 40,
+      "defconsts": 45,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7241,9 +7270,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 63,
+      "assert_events": 101,
       "must_fails": 0,
-      "defconsts": 26,
+      "defconsts": 28,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7317,7 +7346,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 60,
+      "assert_events": 62,
       "must_fails": 0,
       "defconsts": 7,
       "defmacros": 0,
@@ -7344,9 +7373,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 104,
+      "assert_events": 117,
       "must_fails": 0,
-      "defconsts": 53,
+      "defconsts": 56,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7369,7 +7398,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 58,
+      "assert_events": 59,
       "must_fails": 0,
       "defconsts": 29,
       "defmacros": 0,
@@ -7538,7 +7567,7 @@
     {
       "theorem": "fn-auth-consistent-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 394,
+      "line": 409,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp"
       ]
@@ -7546,7 +7575,7 @@
     {
       "theorem": "fn-auth-token-argp-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 609,
+      "line": 622,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp"
       ]
@@ -7562,9 +7591,17 @@
     {
       "theorem": "fn-bpb-decode-refuses-overlong-input",
       "book": "books/bp-bundle-invariants.lisp",
-      "line": 339,
+      "line": 530,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpb-decode and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-bpbi-bpp-encode-unfolds",
+      "book": "books/bp-bundle-invariants.lisp",
+      "line": 277,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-bpp-encode"
       ]
     },
     {
@@ -7602,7 +7639,7 @@
     {
       "theorem": "fn-bs-names-outcomes-of-no-ops",
       "book": "books/byte-store-scan.lisp",
-      "line": 295,
+      "line": 298,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value"
       ]
@@ -7639,14 +7676,6 @@
       "reasons": [
         "definition-restated: the conclusion is the body of fn-drt-mark",
         "reflexive-conclusion: a conjunct is (equal X X)"
-      ]
-    },
-    {
-      "theorem": "fn-drt-pinp-forward-shape-instantiated",
-      "book": "tests/acl2/defrecord-tests.lisp",
-      "line": 93,
-      "reasons": [
-        "instance-corollary: the statement is fn-drt-pinp-forward-shape instantiated, discharging nothing"
       ]
     },
     {
@@ -7750,7 +7779,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 514,
+      "line": 646,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]
@@ -7774,7 +7803,7 @@
     {
       "theorem": "fn-prov-wire-of-a-string-is-itself-by-definition",
       "book": "books/provenance-codec.lisp",
-      "line": 543,
+      "line": 561,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value"
       ]
@@ -7801,6 +7830,14 @@
       "line": 327,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-sf-stable-records-outside-the-window",
+      "book": "books/store-files-invariants.lisp",
+      "line": 88,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value"
       ]
     },
     {
@@ -8134,7 +8171,7 @@
       {
         "theorem": "fn-sf-completed-frontier-barrier-removes-old-choice",
         "book": "books/store-files-invariants.lisp",
-        "line": 262,
+        "line": 313,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -8310,6 +8347,265 @@
         "book": "books/wildmat-work.lisp",
         "line": 369,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      }
+    ],
+    "enabled_projection": [
+      {
+        "function": "fn-aw-v",
+        "book": "books/article-work-primitives.lisp",
+        "line": 10,
+        "stated_in": [
+          "books/article-public-work.lisp",
+          "books/article-work-scanners.lisp",
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-aw-c",
+        "book": "books/article-work-primitives.lisp",
+        "line": 11,
+        "stated_in": [
+          "books/article-public-bound.lisp",
+          "books/article-public-work.lisp",
+          "books/article-work-scanners.lisp",
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-header",
+        "book": "books/article.lisp",
+        "line": 91,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-body",
+        "book": "books/article.lisp",
+        "line": 94,
+        "stated_in": [
+          "books/article-properties.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-fields",
+        "book": "books/article.lisp",
+        "line": 97,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-field-raw-lines",
+        "book": "books/article.lisp",
+        "line": 112,
+        "stated_in": [
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-field-name",
+        "book": "books/article.lisp",
+        "line": 115,
+        "stated_in": [
+          "books/stx-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-field-unfolded-value",
+        "book": "books/article.lisp",
+        "line": 118,
+        "stated_in": [
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-result-article",
+        "book": "books/article.lisp",
+        "line": 153,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp",
+          "books/injection-invariants.lisp",
+          "books/nntp-legacy.lisp",
+          "books/nntp-post.lisp",
+          "books/peer-inbound-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-line-value",
+        "book": "books/article.lisp",
+        "line": 193,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp",
+          "books/article-public-bound.lisp",
+          "books/article-public-work.lisp",
+          "books/article-work-scanners.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-line-rest",
+        "book": "books/article.lisp",
+        "line": 196,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp",
+          "books/article-public-bound.lisp",
+          "books/article-work-scanners.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpf-bytes",
+        "book": "books/bp-fragment.lisp",
+        "line": 66,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpf-result-tag",
+        "book": "books/bp-fragment.lisp",
+        "line": 298,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpf-result-bytes",
+        "book": "books/bp-fragment.lisp",
+        "line": 302,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-flags",
+        "book": "books/bp-primary.lisp",
+        "line": 394,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp",
+          "books/bp-node.lisp",
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-crc-type",
+        "book": "books/bp-primary.lisp",
+        "line": 395,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-source",
+        "book": "books/bp-primary.lisp",
+        "line": 397,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-creation-time",
+        "book": "books/bp-primary.lisp",
+        "line": 399,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-sequence",
+        "book": "books/bp-primary.lisp",
+        "line": 400,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-result-block",
+        "book": "books/bp-primary.lisp",
+        "line": 599,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-transfer-work-value",
+        "book": "books/transfer-work.lisp",
+        "line": 13,
+        "stated_in": [
+          "books/transfer-public-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-transfer-work-cost",
+        "book": "books/transfer-work.lisp",
+        "line": 14,
+        "stated_in": [
+          "books/transfer-public-bound.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-result-value",
+        "book": "books/wildmat.lisp",
+        "line": 52,
+        "stated_in": [
+          "books/wildmat-parser-invariants.lisp",
+          "books/wildmat-utf8-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-utf8-rest",
+        "book": "books/wildmat.lisp",
+        "line": 59,
+        "stated_in": [
+          "books/wildmat-utf8-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-pattern-items",
+        "book": "books/wildmat.lisp",
+        "line": 206,
+        "stated_in": [
+          "books/wildmat-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-scan-items",
+        "book": "books/wildmat.lisp",
+        "line": 251,
+        "stated_in": [
+          "books/wildmat-parser-invariants.lisp",
+          "books/wildmat-utf8-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       }
     ],
     "teeth_form": [],

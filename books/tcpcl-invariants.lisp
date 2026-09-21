@@ -33,14 +33,38 @@
 ; clock withdraws fn-clock-observationp under fn-clock-vocabulary; the tick
 ; keystone reads fn-clock-monotonic under it, so it is opened here as well.
 (local (in-theory (enable fn-clock-observationp)))
-; Both whole-state recognizers stay closed here, and they must be named
-; together: line 32 enables the whole session vocabulary, and the vocabulary
-; now holds two of them.  fn-tcl-drive's totality test names
-; fn-tcl-session-cheapp (w9/dtn-e2e), so leaving that one open turns every
-; expansion of fn-tcl-drive into a case split over its twenty conjuncts and
-; their sub-recognizers -- 8844 subgoals for fn-tcl-drive-is-a-result, which
-; is 1371 prover steps with it closed.
-(local (in-theory (disable fn-tcl-sessionp fn-tcl-session-cheapp fn-tcl-messagep)))
+; The four transitions the profile named (w9/dtn-e2e, 2026-09-20:
+; FN-TCL-STEP 481,747 frames / 81 tries, FN-TCL-RECV-SEGMENT 213,787/19,
+; FN-TCL-RECV-INIT 182,438/19, FN-TCL-BROKEN-STREAM 130,858/57) are closed
+; for the whole book and opened at the forms that need them.  The enable
+; above is wholesale, so they were open everywhere -- including under the
+; subgoal `:in-theory' hints below.  ACL2 8.7's :doc hints says it: an
+; `:in-theory' hint "will always be evaluated relative to the current ACL2
+; logical world, not relative to the theory of a previous goal", so C1's
+; ("Subgoal *1/3" :in-theory (enable fn-tcl-drive-is-a-result)) undid C1's
+; own Goal `(e/d ... (fn-tcl-step ...))' and reopened the step function
+; under every subgoal of the fold.  Measured: with nothing else changed,
+; C1 went from 0.42 s to 0.05 s when this line closed them.
+; Both whole-state recognizers are named here, and they must be: the
+; vocabulary now holds two of them, and fn-tcl-drive's totality test names
+; fn-tcl-session-cheapp, so an open one turns every expansion of
+; fn-tcl-drive into a case split over its conjuncts and their
+; sub-recognizers -- 8844 subgoals for fn-tcl-drive-is-a-result when
+; w9/dtn-e2e first merged the guard change.
+(local (in-theory (disable fn-tcl-sessionp fn-tcl-session-cheapp fn-tcl-messagep
+                           fn-tcl-step fn-tcl-recv-segment fn-tcl-recv-init
+                           fn-tcl-broken-stream)))
+; fn-tcl-session-cheapp reaches this book only as fn-tcl-drive's totality
+; test, and the one rewrite fn-tcl-sessionp-is-cheap discharges it wherever
+; the session is known.  Everything else the cheap recognizer exports is put
+; aside under one name: the whole family, facts and forward-chaining fields
+; and preservation together, because the forward-chaining half is what costs
+; -- it runs to fixpoint beside the fn-tcl-sessionp family on every goal
+; carrying either recognizer's term, which C1 measured as
+; `Time: 2688.15 seconds (prove: 0.02, print: 0.00, other: 2688.13)`.
+; Naming only the preservation chain here (configuration A' of
+; HANDOFF-w9-dtn-e2e) left C1 open at 2688 s: it was the wrong half.
+(local (in-theory (disable fn-tcl-cheap-rules)))
 
 (local (defthm fn-tcl-append-assoc
          (equal (append (append a b) c) (append a (append b c)))))
@@ -132,13 +156,22 @@
            :in-theory (e/d (fn-tcl-drive)
                            (fn-tcl-step fn-tcl-decode-for fn-tcl-input-error
                             fn-tcl-drive-is-a-result fn-tcl-segment-mru)))
-          ; the need case: the split's right side is the whole drive rebuilt
+          ; the consuming case: the split's right side is the whole drive
+          ; rebuilt
           ("Subgoal *1/3" :in-theory (enable fn-tcl-drive-is-a-result))
-          ("Subgoal *1/2" :expand ((fn-tcl-drive s (append left right) now)))
+          ; the need case: the left part keeps the whole buffer, so the
+          ; right side is the whole drive rebuilt here too.  It needed no
+          ; rule while fn-tcl-drive's totality test was the literal
+          ; (fn-tcl-sessionp s) of this theorem's own hypothesis; with the
+          ; test naming fn-tcl-session-cheapp the two sides no longer open
+          ; to the same term and Subgoal *1/2'4' is fn-tcl-drive-is-a-result.
+          ("Subgoal *1/2" :expand ((fn-tcl-drive s (append left right) now))
+                          :in-theory (enable fn-tcl-drive-is-a-result))
           ; the base case: an empty or closed left leaves the whole drive,
           ; rebuilt, on the right
           ("Subgoal *1/1" :expand ((fn-tcl-drive s (append left right) now))
-                          :in-theory (enable fn-tcl-drive-is-a-result))))
+                          :in-theory (enable fn-tcl-drive-is-a-result))
+          ("Subgoal *1/4" :in-theory (enable fn-tcl-drive-is-a-result))))
 
 ; -----------------------------------------------------------------------------
 ; C2.  A final acknowledgement means every segment.
@@ -242,7 +275,7 @@
                                  (len data)))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
-            :in-theory (disable fn-tcl-c2-closed)
+            :in-theory (e/d (fn-tcl-broken-stream) (fn-tcl-c2-closed))
             :expand ((fn-tcl-recv-segment s m now))))))
 
 (defthm fn-tcl-final-ack-means-every-segment
@@ -358,10 +391,22 @@
                          (equal (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound s))
                                 (fn-tcl-xfer-segment-xfer-id m)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-step fn-tcl-settle) (fn-tcl-c2-closed)))))
+           :in-theory (e/d (fn-tcl-step fn-tcl-settle fn-tcl-recv-segment
+                            fn-tcl-broken-stream)
+                           (fn-tcl-c2-closed)))))
 
-; The recognizer is open again from here: C3 and C4 were written against it.
-(local (in-theory (enable fn-tcl-sessionp)))
+; The recognizer stays CLOSED from here too.  C3 and C4 were written against
+; an open one, and the five forms below this line that paid for it were
+; 585.52 s of this book's 609.53 s (hbox,
+; certify-20260920T230902Z-1283742): 230.01 s for
+; fn-tcl-live-inbound-ends-in-exactly-one-outcome, 160.97 s for
+; fn-tcl-step-emits-at-most-one-inbound-outcome, 134.12 s for
+; fn-tcl-tick-fails-a-live-inbound-only-when-closing, 44.42 s for
+; fn-tcl-input-error-never-completes-a-transfer and 16.00 s for
+; fn-tcl-tcp-close-never-completes-a-transfer, each carrying the eleven
+; sub-recognizers of fn-tcl-sessionp into its clause.  They are 1.62, 1.09,
+; 0.21, 0.03 and 0.01 s closed.  What they actually need about a field
+; arrives by forward chaining, as it does in C2 above.
 
 ; -----------------------------------------------------------------------------
 ; C3.  Exactly one outcome.
@@ -409,7 +454,9 @@
            (<= (fn-tcl-inbound-outcome-count (fn-tcl-result-events (fn-tcl-step s m now)) id)
                1))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep) (fn-tcl-ext-decision)))))
+           :in-theory (e/d (fn-tcl-messagep fn-tcl-step fn-tcl-recv-segment
+                            fn-tcl-recv-init fn-tcl-broken-stream)
+                           (fn-tcl-ext-decision)))))
 
 (defthm fn-tcl-live-inbound-ends-in-exactly-one-outcome
   (implies (and (fn-tcl-sessionp s)
@@ -426,7 +473,9 @@
                    (fn-tcl-result-events (fn-tcl-step s m now)) id)
                   1))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep) (fn-tcl-ext-decision)))))
+           :in-theory (e/d (fn-tcl-messagep fn-tcl-step fn-tcl-recv-segment
+                            fn-tcl-recv-init fn-tcl-broken-stream)
+                           (fn-tcl-ext-decision)))))
 
 (defthm fn-tcl-tick-fails-a-live-inbound-only-when-closing
   (implies (and (fn-tcl-sessionp s) (fn-clock-observationp obs))
@@ -490,7 +539,8 @@
                                  (fn-tcl-result-events
                                   (fn-tcl-settle (fn-tcl-broken-stream s live-id now))))))
          :rule-classes nil
-         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)))))
+         :hints (("Goal" :in-theory (e/d (fn-tcl-broken-stream)
+                                         (fn-tcl-c2-closed))))))
 
 ; C4, first theorem: one transfer at a time per direction (RFC 9174
 ; section 5.2).  A segment for another Transfer ID while one is live never
@@ -545,7 +595,8 @@
                                            6 (fn-tcl-xfer-segment-xfer-id m)))
                               (fn-tcl-result-events (fn-tcl-step s m now)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep) (fn-tcl-ext-decision)))))
+           :in-theory (e/d (fn-tcl-messagep fn-tcl-step fn-tcl-recv-segment)
+                           (fn-tcl-ext-decision)))))
 
 (defthm fn-tcl-ending-refuses-new-sends
   (implies (and (fn-tcl-sessionp s)
@@ -566,9 +617,10 @@
                         (fn-tcl-pump (fn-tcl-result-session (fn-tcl-step s m now)) later))
                        nil)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep) (fn-tcl-ext-decision fn-tcl-recv-segment
-                                              fn-tcl-recv-contact fn-tcl-recv-init
-                                              fn-tcl-recv-ack fn-tcl-recv-term)))))
+           :in-theory (e/d (fn-tcl-messagep fn-tcl-step)
+                           (fn-tcl-ext-decision fn-tcl-recv-segment
+                            fn-tcl-recv-contact fn-tcl-recv-init
+                            fn-tcl-recv-ack fn-tcl-recv-term)))))
 
 (defthm fn-tcl-keepalive-zero-disables-both
   (implies (and (fn-tcl-sessionp s)
@@ -607,7 +659,9 @@
   (equal (fn-tcl-session-local (fn-tcl-result-session (fn-tcl-step s m now)))
          (fn-tcl-session-local s))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-tcl-sessionp fn-tcl-ext-decision))))
+           :in-theory (e/d (fn-tcl-step fn-tcl-recv-segment fn-tcl-recv-init
+                            fn-tcl-broken-stream)
+                           (fn-tcl-sessionp fn-tcl-ext-decision)))))
 
 ; The two "need more input" cases of the fold below: the decoder keeps the
 ; whole buffer, so the carry is bounded by the decoder's own need bound.

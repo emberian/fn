@@ -986,7 +986,7 @@
     {
       "id": "PRF-028",
       "title": "What a configuration generation serves (R5)",
-      "statement": "fn-cstr-created-group-is-served-exactly-from-its-generation: a group created by the delta that produces generation g is live at every generation from g on and at none below it -- both directions, so a connection pinned below g must not see it. fn-cstr-retired-group-is-served-exactly-below-its-generation: a group retired at g is live exactly at the generations from its creation up to g, and the entry, its stamp and its watermark stay (NNT-006). Covered scope: one delta over a typed configuration value; the per-connection pin that observes these is books/owner-config, which does not certify.",
+      "statement": "fn-cstr-created-group-is-served-exactly-from-its-generation: a group created by the delta that produces generation g is live at every generation from g on and at none below it -- both directions, so a connection pinned below g must not see it. fn-cstr-retired-group-is-served-exactly-below-its-generation: a group retired at g is live exactly at the generations from its creation up to g, and the entry, its stamp and its watermark stay (NNT-006). fn-ocfg-open-pins-the-live-configuration: under the state relation fn-ocfg-statep, an open that installs a connection at the identifier the owner was about to allocate gives that connection the owner's LIVE configuration as its pin -- the two hypotheses are fn-ocfg-statep and that the open was not refused. fn-ocfg-advance-observes-the-live-configuration: under fn-ocfg-statep, a connection that survives its advance is re-pinned to the live configuration -- the two hypotheses are fn-ocfg-statep and that the advance kept a connection at that identifier. fn-ocfg-pin-is-stable-without-advance: over an arbitrary finite event list holding no (:advance id) and no (:close id), a pinned connection keeps the configuration it opened at -- the hypotheses are that it has a pin and that the list re-pins nothing for it. fn-ocfg-list-active-lists-the-pinned-served-table: for an open connection, LIST ACTIVE renders the group names of the PIN's generation and never the allocation domain. Covered scope: one delta over a typed configuration value for the two fn-cstr theorems; for the four fn-ocfg theorems, the owner paired with a pin table whose domain the recognizer fixes to the open connections, over the owner's own events. NOT covered: no host line calls any fn-ocfg- function, so none of the four has the equating theorem the assurance rules ask for; the served port still answers LIST ACTIVE from the allocation domain, which is the R5 wire seam recorded at the end of books/owner-config.lisp and in specs/reconfiguration.md section 8.",
       "milestone": "M2",
       "requirements": [
         "NNT-006"
@@ -997,7 +997,13 @@
       "assumptions": [],
       "status": "in-progress",
       "evidence": [],
-      "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20); teeth in tests/acl2/config-stream-tests over a two-group value, with the served TABLE compared at two generations, not only the predicate. The owner-side consumer (books/owner-config, the per-connection pin and LIST ACTIVE at the pin) is written and claims no event: books/owner has no certificate on any box."
+      "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20); teeth in tests/acl2/config-stream-tests over a two-group value, with the served TABLE compared at two generations, not only the predicate. Status 2026-09-20 (w11/owner-config): books/owner-config's two open keystones are CLOSED, neither weakened -- each gained the hypothesis (fn-ocfg-statep oc), which is the carried state relation. Closing the first needed one new conjunct of fn-own-relation, fn-own-ids-below-next-p (every open connection's identifier is strictly below fn-own-next-id); the bound was already true of every reachable owner state and merely unstated, so it is not an allocation defect. Teeth ship with them in the new tests/acl2/owner-config-tests, whose scenario holds two configurations and two pins at once so no assertion can hold of an empty value. The R5 wire seam is still open: the served port answers LIST ACTIVE from the allocation domain, so fn-ocfg-served-port-answers-list-active-at-the-pin is false and is recorded rather than stated.",
+      "events": [
+        "fn-ocfg-open-pins-the-live-configuration",
+        "fn-ocfg-advance-observes-the-live-configuration",
+        "fn-ocfg-pin-is-stable-without-advance",
+        "fn-ocfg-list-active-lists-the-pinned-served-table"
+      ]
     },
     {
       "id": "PRF-029",
@@ -1013,7 +1019,7 @@
       "assumptions": [],
       "status": "in-progress",
       "evidence": [],
-      "progress_note": "books/owner-feed.lisp admits with no open form and tests/acl2/owner-feed-tests.lisp runs 98 assertions green (laptop ACL2 8.7, ld over books/peer-feed-invariants then the book, 2026-09-20, lane w10/owner-feed). NOT CERTIFIED: books/owner-feed includes books/peer-feed-invariants, which fails at fn-feed-apply-record-preserves-feedp (residue: the attempt bound in the :feed-sent arm), so no certificate exists for this closure. The owner-side statement over fn-own-step is open because books/served has no certificate on dev."
+      "progress_note": "books/owner-feed and tests/acl2/owner-feed-tests are CERTIFIED as of 2026-09-20, lane w6/peering-feed-4 (laptop ACL2 8.7, evidence build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T212559Z-13370; the persvati closure run-20260920T211802Z-ba78 reached them for the first time). What unblocked them was books/peer-feed-invariants, which now certifies with no open form. books/owner certifies too. The owner-side statement over fn-own-step is still open, and the reason has moved: books/owner-invariants is open at the :open-peer arm of fn-own-step-preserves-relation, not at the feed."
     },
     {
       "id": "PRF-030",
@@ -1060,6 +1066,54 @@
       "status": "in-progress",
       "evidence": [],
       "progress_note": "books/nntp-auth, books/served, books/owner and books/nntp-auth-invariants ADMIT with zero errors under tools/acl2 over the book source (ACL2 8.7, laptop, 2026-09-20); tests/acl2/nntp-auth-tests passes 120 assertions. None of the four is CERTIFIED: the installed certificate cache mixes two origin roots and books/config's certificate names sub-books by absolute path from a root that is not the one loaded, so certify-book refuses below peer-inbound. A farm run over the closure is the certification of record and has not been made. OPEN, OB-AUTH-FOLD: the fold-level statement -- no read of a connection under a configuration that grants posting to no one emits a submission -- is not proved. It needs three lemmas that do not exist: fn-auth-step-preserves-the-config (books/nntp-auth), a wire lemma that command mode emits only (:command ...) events (books/wire-invariants), and a reader lemma that fn-nntp-post-step emits a submission only from an (:article ...) event (books/nntp-post). Named in the header of books/nntp-auth-invariants.lisp. Live evidence: planning/evidence/auth-w10-2026-09-20.md, 8 passed 1 skipped; the skip is nntplib, removed from the standard library in Python 3.13, so the independent-client half is NOT supplied."
+    },
+    {
+      "id": "PRF-032",
+      "title": "The recovery window's crash image is kernel-admissible and risks no acknowledged record",
+      "statement": "In the recovery window -- the phases between a process replaying what it scanned from the view and completing its five recovery fences -- a crash may drop the record the replay read, because that record's directory entry is the entry operation a dead process left pending. fn-sf-recovery-crash-imagep admits exactly that image and no other, gated by an empty success history; every image it admits is produced by fn-sf-image-crash with the same frontier, records, :replaying phase and success history; and an acknowledged pair of the pre-crash state names a record of EVERY image it admits, the rolled-back one included.",
+      "milestone": "M5",
+      "requirements": [
+        "FLR-001",
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-007"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "note": "Decision D14-b, lane w10/kernel-freedom. The recognizer is a SECOND one: fn-sf-crash-imagep is unchanged and stays the reliance predicate that fn-own-reopen gates on and every reopen theorem takes as a premise, because widening it is false for the composition -- an owner reopened on an image is a recovery-window state whose own success history is empty while its ledger names records earlier processes acknowledged, and which of a state's records are fenced is a fact about the byte store's pending list, not about the kernel state. The counterexample is mechanized in tests/acl2/owner-tests.lisp (the owner half) and tests/acl2/store-observed-traces-tests.lisp (the kernel half). This target retires the open row K2r of specs/crash-model-v2.md; crash-model-v2 K2, whose conclusion this predicate is, remains open on the byte side (K1's three remaining clauses and the frontier sub-case K2f).",
+      "events": [
+        "fn-sf-recovery-crash-realizes-every-admissible-image",
+        "fn-sf-recovery-admissible-image-facts",
+        "fn-sf-recovery-crash-image-extends-stable-records",
+        "fn-sf-crash-rollback-preserves-state",
+        "fn-sf-crash-rollback-image-is-recovery-admissible",
+        "fn-sf-crash-imagep-implies-recovery-crash-imagep",
+        "fn-sf-image-crash-preserves-state"
+      ],
+      "evidence": [
+        "books/store-files.lisp",
+        "books/store-files-invariants.lisp",
+        "tests/acl2/store-observed-traces-tests.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "planning/evidence/kernel-freedom-d14b-2026-09-20.md",
+        "planning/lanes/HANDOFF-w10-kernel-freedom.md"
+      ]
+    },
+    {
+      "id": "PRF-033",
+      "title": "A clock the host contradicts is dropped, and the refusal is not an article verdict",
+      "statement": "fn-own-observe answers exactly one of :observed, :refused and :invalid, and the host reports that word rather than inferring one from a state comparison. On a related owner a :refused reading names a host contradiction -- the monotonic counter went backwards, has-wall changed, or a widened error bound moved the earliest admissible true time back -- and never merely a reading that did not move, because a reading equal to the one held is admitted. A refusal leaves the owner with no clock, and with no usable injection reading fn-nntp-post-step emits no submission and answers `441 posting failed; this server has no usable clock reading', which is a different constant from every article verdict the step can give.",
+      "milestone": "M3",
+      "requirements": [
+        "FLR-004",
+        "NNT-004",
+        "NNT-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "note": "Decision D10-a, lane w11/clock-seam. Keystones fn-own-observe-refusal-names-a-contradiction (books/owner-invariants.lisp) and fn-post-without-a-clock-refuses-with-the-clock-line (books/nntp-post.lisp), with fn-own-observe-outcome-is-one-of-three and fn-own-observe-outcome-decides-the-clock-by-definition named for what they are and cited by :use. Teeth are evaluated in tests/acl2/owner-tests.lisp (the served-path second post on one connection, the same-reading collision, the clock 441 with an empty queue, DATE 503, and one-event recovery) and tests/acl2/nntp-post-tests.lisp (one must-fail per hypothesis). OPEN under this target: two submissions inside one millisecond still share a generated Message-ID, because fn-clock-later-observationp is non-strict; separating them needs the owner to remember the reading it last minted under and is not done here."
     }
   ]
 }

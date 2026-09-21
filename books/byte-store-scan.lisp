@@ -3,9 +3,12 @@
 ; specs/crash-model-v2.md sections 3.1 to 3.3.  This book answers the question
 ; the byte model exists to answer: what the host's recover() reads out of a
 ; crash image, and why that reading is one the file kernel
-; (books/store-files.lisp) already admits.  The kernel predicate
-; fn-sf-crash-imagep is NOT changed; it is the interface this book proves
-; inhabited by every byte-level crash of a related state.
+; (books/store-files.lisp) already admits.  The kernel predicate this book
+; proves inhabited by every byte-level crash of a related state is
+; fn-sf-recovery-crash-imagep, what the PLATFORM may leave (decision D14-b).
+; fn-sf-crash-imagep, what a consumer may RELY on, is unchanged and is not
+; K2's conclusion: widening it is false for the composition, and the
+; counterexample is in tests/acl2/owner-tests.lisp.
 ;
 ; The route.  The previous lane (w9/storage, planning/lanes/HANDOFF-w9-storage.md)
 ; recorded that the natural PER-DIRECTORY lemma -- "one directory's entries
@@ -469,8 +472,10 @@
 ; view said, and it carries no success: fn-sn-initial starts with none and
 ; Store.recover runs once per process, at open (run_store.py:1674,
 ; run_owner.py:660, fn9p.py:428, run_reader.py:313, run_bp_ingress.py:132).
-; The last conjunct is K2r's content: a crash here loses no acknowledged
-; record even though fn-sf-crash-imagep does not admit its shorter image.
+; The last conjunct lines this arm up with the recovery arm of
+; fn-sf-recovery-crash-imagep, whose own (null (fn-sf-successes s)) conjunct
+; is why a crash here loses no acknowledged record (D14-b).  K2r is retired:
+; fn-sf-recovery-admissible-image-facts proves it at the kernel.
 (defun fn-bs-replay-matches-scan (bs ks)
   (declare (xargs :guard t :verify-guards nil))
   (let ((scan (fn-bs-scan-store bs)))
@@ -753,17 +758,23 @@
 ; contiguity (the three above, with fn-bs-txn-names-of-1+), and no :fault
 ; (fn-bs-read-records-under-agreement against (fn-bs-durable bs)).
 ;
-; K2 has a MODEL question in front of it, not a proof one.  Design section 3.2
-; writes the pending transaction entry's name as
-; (fn-bs-txn-name (len (fn-sf-records ks))); this book writes
-; (fn-bs-txn-name (len (fn-bs-durable-names bs :transactions))), because the
-; namespace clause has to be decidable from the byte store alone.  They are
-; not interchangeable: with this book's form, a state whose durable records
-; are already (append (fn-sf-records ks) (list rc)) and which also carries a
-; pending link admits an image holding rc TWICE, which fn-sf-crash-imagep does
-; not admit.  Either fn-bs-store-relation carries
-; (equal (len (fn-bs-durable-records bs)) (len (fn-sf-records ks))) whenever
-; the transaction directory is not quiet, or section 3.2's form is restored
-; and the namespace theorem takes the kernel's record count as an input.
-; Decide that before proving K2; K3 is then fn-sf-crash-realizes-every-
+; K2's two MODEL questions are both DECIDED and neither blocks it any more.
+; D14-a keeps this book's (fn-bs-txn-name (len (fn-bs-durable-names bs
+; :transactions))) over section 3.2's (fn-bs-txn-name (len (fn-sf-records
+; ks))), and excludes the image holding rc TWICE by the publish window's
+; (equal (fn-bs-durable-records bs) (fn-sf-records ks)), an equality of LISTS
+; rather than of counts.  D14-b then makes K2's CONCLUSION
+; fn-sf-recovery-crash-imagep, so K2 needs no (not (fn-bs-replay-visiblep
+; ks)) hypothesis and K2r is gone; K3 is fn-sf-recovery-crash-realizes-every-
 ; admissible-image (books/store-files-invariants.lisp) applied to K2.
+;
+; What K2 still waits on is byte-side, and there are two things.  K1's other
+; three clauses, above.  And K2f: the recovery window can also be entered
+; with a pending :root entry operation -- die at frontier-replaced
+; (tools/run_store.py:1305), reopen, and the rename is drained only by
+; fsync_dir(self.root) at :1216, the FOURTH recovery barrier -- so a crash
+; there rolls the frontier back to the durable value, which the kernel does
+; not hold.  fn-bs-replay-matches-scan needs a clause saying the durable
+; frontier is the scanned one minus one whenever a :root operation is
+; pending, true because advance_frontier writes old+1, and
+; fn-sf-recovery-crash-imagep then needs a matching frontier arm.

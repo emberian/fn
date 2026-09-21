@@ -364,6 +364,21 @@
                     (:d fn-auth-session-tlsp)
                     (:d fn-auth-session-handshakingp)))
 
+; The two deeper reaches out of an auth session, named ONCE, for the same
+; reason and in the same way as `fn-peer-reader-session'
+; (books/peer-inbound.lisp): the chain is auth over peer over post over the
+; reader session, all three base accessors are `car', and a call that stops
+; one level short is answered with a plausible value rather than an error.
+; Macros, not functions: each expands to exactly the term its call sites
+; spell today, so the name costs no theorem, no rule and no re-proof, and
+; adding a wrapper is one edit in each of these two books.
+; `tools/session_depth.py' reads this ladder out of the books and fails on a
+; wrong depth; it counts a hand-spelled walk as drift.
+(defmacro fn-auth-post-session (as)
+  `(fn-peer-session-base (fn-auth-session-base ,as)))
+(defmacro fn-auth-reader-session (as)
+  `(fn-peer-reader-session (fn-auth-session-base ,as)))
+
 (defun fn-auth-sessionp (x)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-auth-session-shapep x)
@@ -432,9 +447,7 @@
 (defun fn-auth-single (as text)
   (declare (xargs :guard t))
   (fn-nntp-result-effects
-   (fn-nntp-single (fn-post-session-base
-                    (fn-peer-session-base (fn-auth-session-base as)))
-                   text)))
+   (fn-nntp-single (fn-auth-reader-session as) text)))
 
 ; The one new effect.  The host has already written the 382 line when it acts
 ; on this; the handshake begins with the first octet after that reply's CRLF
@@ -777,8 +790,7 @@
     (fn-post-make-result
      as
      (fn-nntp-result-effects
-      (fn-nntp-multi (fn-post-session-base
-                      (fn-peer-session-base (fn-auth-session-base as)))
+      (fn-nntp-multi (fn-auth-reader-session as)
                      "101 capability list follows"
                      (fn-auth-capability-lines (fn-auth-session-config as)
                                                (fn-auth-session-subject as)
@@ -956,9 +968,7 @@
                                    fn-inj-config-allow
                                    fn-auth-postingp))
            :use ((:instance fn-nntp-effects-multi
-                            (session (fn-post-session-base
-                                      (fn-peer-session-base
-                                       (fn-auth-session-base as))))
+                            (session (fn-auth-reader-session as))
                             (initial "101 capability list follows")
                             (lines (fn-auth-capability-lines
                                     (fn-auth-session-config as)
