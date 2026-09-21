@@ -226,6 +226,20 @@
         ((equal kind :remove-group) (list (fn-cfg-remove-group name)))
         (t nil)))
 
+(defun fn-owner-reconfigure-deltas (id deltas state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((oc (fn-owner-ocfg state))
+         (reason (fn-ocfg-reconfig-refusal oc id deltas))
+         (state (fn-owner-step (list :reconfigure id deltas) state))
+         (staged (fn-ocfg-staged (fn-owner-ocfg state))))
+    (if staged
+        (let* ((state (f-put-global 'fn-owner-config-octets
+                                    (fn-cfg-encode staged) state))
+               (state (f-put-global 'fn-owner-config-reason nil state)))
+          (value :staged))
+      (let ((state (f-put-global 'fn-owner-config-reason reason state)))
+        (value :refused)))))
+
 (defun fn-owner-reconfigure (id kind name-octets state)
   ; :staged leaves exactly one encoded configuration record in the output
   ; slot.  :refused leaves the named ACL2 refusal reason there.  No state is
@@ -236,21 +250,11 @@
     (if (equal name :bad)
         (let ((state (f-put-global 'fn-owner-config-reason :group-name state)))
           (value :refused))
-      (let* ((oc (fn-owner-ocfg state))
-             (deltas (fn-owner-config-deltas kind name)))
+      (let ((deltas (fn-owner-config-deltas kind name)))
         (if (null deltas)
             (let ((state (f-put-global 'fn-owner-config-reason :delta-kind state)))
               (value :refused))
-          (let* ((reason (fn-ocfg-reconfig-refusal oc id deltas))
-                 (state (fn-owner-step (list :reconfigure id deltas) state))
-                 (staged (fn-ocfg-staged (fn-owner-ocfg state))))
-            (if staged
-                (let* ((state (f-put-global 'fn-owner-config-octets
-                                              (fn-cfg-encode staged) state))
-                       (state (f-put-global 'fn-owner-config-reason nil state)))
-                  (value :staged))
-              (let ((state (f-put-global 'fn-owner-config-reason reason state)))
-                (value :refused)))))))))
+          (fn-owner-reconfigure-deltas id deltas state))))))
 
 (defun fn-owner-reconfigure-octets (state)
   (declare (xargs :stobjs state :mode :program))

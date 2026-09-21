@@ -144,10 +144,14 @@
                       (request
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-control-host-request-decode
+                                       (fnn-octet-list frame))))
+                      (admin
+                        (and (typep frame 'fnn-octets)
+                             (fnn-core 'fn-native-control-host-admin-decode
                                        (fnn-octet-list frame)))))
-                 (if (not (and (consp request) (eq (car request) :request)))
-                     :refused
-                   (let ((msgid (second request))
+                 (cond
+                   ((and (consp request) (eq (car request) :request))
+                    (let ((msgid (second request))
                          (groups (third request))
                          (article (fourth request)))
                      (unless (and (fnn-octet-list-p msgid)
@@ -157,7 +161,10 @@
                        (fnn-fault "ACL2 returned a malformed control request"))
                      (fnn-owner-control-submit-serialized
                       service (fnn-octets msgid)
-                      (mapcar #'fnn-octets groups) (fnn-octets article)))))
+                      (mapcar #'fnn-octets groups) (fnn-octets article))))
+                   ((and (consp admin) (eq (car admin) :admin))
+                    (fnn-owner-live-admin-serialized service (second admin)))
+                   (t :refused)))
              (fnn-store-indeterminate () :uncertain)
              (fnn-store-fault () :fault)
              (fnn-store-error () :refused)
@@ -349,6 +356,37 @@
 
 (defun fnn-control-transport-outcome (stage)
   (fnn-core 'fn-native-control-host-transport-outcome stage))
+
+(defun fnn-control-admin (path-octets argv)
+  "Send one ACL2-bounded administrative vector to the live owner."
+  (let ((request-list
+          (fnn-core 'fn-native-control-host-admin-encode argv))
+        (socket nil) (stage :before-submission))
+    (unless (fnn-octet-list-p request-list)
+      (fnn-fault "ACL2 refused normalized live administration"))
+    (unwind-protect
+         (handler-case
+             (progn
+               (setq socket (fnn-control-connect
+                             (fnn-octets-string path-octets)))
+               (let ((fd (fnn-socket-fd socket)))
+                 (setq stage :after-submission)
+                 (fnn-send-all fd (fnn-octets request-list)
+                               +fnn-control-io-seconds+)
+                 (sb-bsd-sockets:socket-shutdown socket :direction :output)
+                 (let* ((frame (fnn-control-read-frame
+                                socket (fnn-core
+                                        'fn-native-control-host-max-frame)))
+                        (status (and (typep frame 'fnn-octets)
+                                     (fnn-core
+                                      'fn-native-control-host-reply-decode
+                                      (fnn-octet-list frame)))))
+                   (if (member status '(:accepted :duplicate :refused :busy
+                                        :uncertain :fault))
+                       status
+                     (fnn-control-transport-outcome stage)))))
+           (error () (fnn-control-transport-outcome stage)))
+      (when socket (fnn-socket-shut socket)))))
 
 (defun fnn-control-submit (path-octets msgid-octets group-octets payload-path-octets)
   "Submit one exact bounded file; return ACL2's status keyword."

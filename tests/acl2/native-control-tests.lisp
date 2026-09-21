@@ -68,3 +68,13 @@
  (equal (fn-native-control-transport-outcome :before-submission) :refused))
 (assert-event
  (equal (fn-native-control-transport-outcome :after-submission) :uncertain))
+
+(defconst *fn-nctrl-admin-argv*
+  (list (fn-record-string-octets "peer")
+        (fn-record-string-octets "remove")
+        (fn-record-string-octets "far")))
+(assert-event
+ (equal (fn-native-control-admin-decode
+         (fn-native-control-admin-encode *fn-nctrl-admin-argv*))
+        (list :admin *fn-nctrl-admin-argv*)))
+(assert-event (equal (fn-native-control-admin-encode nil) :bad))

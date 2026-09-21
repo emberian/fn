@@ -1203,3 +1203,18 @@ differences are deliberate:
   strictly below `fn-own-next-id` --- which was already true of every
   reachable owner state and merely unstated, so identifier allocation did
   not change.
+
+### Native live administration update (2026-09-21)
+
+The public native operator sends group, capacity, and peer plans through the
+bounded FNCT Unix control channel when the configured owner is running. ACL2
+decodes the argument vector and reconstructs the existing native-admin plan.
+The shared owner stages the delta, the immutable publisher makes the exact
+owner-produced configuration record durable, and only then does
+`fn-owner-reconfigure-complete` publish the generation and
+`fn-owner-feed-configure` refresh the feed table. Newly selected peers gain
+FNFD journals before the socket runtime observes them; removed peers lose
+their socket worker only when ACL2 removes them from its feed table, while
+historical journals remain available for replay. An ambiguous publication
+fences the owner and requires reopen. Offline administration remains the
+fallback only when no control socket exists.
