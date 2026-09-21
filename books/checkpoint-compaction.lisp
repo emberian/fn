@@ -4,6 +4,7 @@
 ; bytes of every compacted transaction for the one Store decoder to replay.
 (in-package "ACL2")
 (include-book "store-events")
+(include-book "frame-journal")
 
 (defconst *fn-cc-magic* '(102 110 45 120)) ; "fn-x"
 (defconst *fn-cc-version* 0)
@@ -150,45 +151,6 @@
               (fn-cc-encode-events (cdr events)))
     nil))
 
-; The generic one-item CBOR entry point bounds its whole input to one Store
-; frame.  A pack is a bounded concatenation of such items, so its first item
-; legitimately has a remainder larger than that bound.  This local streaming
-; entry point applies the already-checked pack aggregate bound and retains the
-; canonical CBOR argument rules and the Store payload bound per byte string.
-(defun fn-cc-decode-bytes (additional tail)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((argument (fn-cbor-decode-argument additional tail)))
-    (if (not (fn-cbor-result-okp argument)) argument
-      (let ((length (fn-cbor-result-value argument))
-            (content (fn-cbor-result-rest argument)))
-        (if (not (fn-cbor-canonical-argumentp additional length))
-            (fn-cbor-error :noncanonical)
-          (if (< *fn-record-max-octets* length)
-              (fn-cbor-error :limit)
-            (if (<= length (len content))
-                (fn-cbor-ok (cons :bytes (take length content))
-                            (nthcdr length content))
-              (fn-cbor-error :truncated))))))))
-
-(defun fn-cc-decode-one (octets)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (not (fn-cbor-octet-listp octets)) (fn-cbor-error :malformed)
-    (if (not (consp octets)) (fn-cbor-error :truncated)
-      (let ((head (car octets)))
-        (if (< head 32)
-            (fn-cbor-decode-unsigned head (cdr octets))
-          (if (and (< 63 head) (< head 96))
-              (fn-cc-decode-bytes (- head 64) (cdr octets))
-            (fn-cbor-error :unsupported)))))))
-
-(defun fn-cc-decode-items (octets count values)
-  (declare (xargs :guard t :verify-guards nil :measure (nfix count)))
-  (if (zp count) (list :ok (reverse values) octets)
-    (let ((one (fn-cc-decode-one octets)))
-      (if (not (fn-cbor-result-okp one)) (list :error :field)
-        (fn-cc-decode-items (fn-cbor-result-rest one) (1- count)
-                            (cons (fn-cbor-result-value one) values))))))
-
 ; Canonical summary bytes.  Each already-canonical transaction is carried as
 ; one definite CBOR byte string, so boundaries do not depend on host filenames.
 (defun fn-cc-encode (summary)
@@ -215,7 +177,9 @@
   (if (or (not (fn-cbor-octet-listp octets))
           (< *fn-cc-max-octets* (len octets)))
       (list :error :octets)
-    (let ((header (fn-cc-decode-items octets 5 nil)))
+    (let ((header (fn-stmt-decode-items-bounded
+                   5 octets *fn-cc-max-octets*
+                   *fn-frame-max-store-payload*)))
       (if (or (not (equal (car header) :ok))
               (not (equal (fn-cc-nth 0 (fn-cc-nth 1 header))
                           (cons :bytes *fn-cc-magic*)))
@@ -231,8 +195,9 @@
                   (not (and (consp count-item) (equal (car count-item) :uint)))
                   (< *fn-cc-max-events* (cdr count-item)))
               (list :error :header)
-            (let* ((body (fn-cc-decode-items
-                          (fn-cc-nth 2 header) (cdr count-item) nil))
+            (let* ((body (fn-stmt-decode-items-bounded
+                          (cdr count-item) (fn-cc-nth 2 header)
+                          *fn-cc-max-octets* *fn-frame-max-store-payload*))
                    (events (if (equal (car body) :ok)
                                (fn-cc-values-event-octets (fn-cc-nth 1 body)) :bad))
                    (summary (fn-cc-make (cdr sequence-item) (cdr frontier-item) events)))
