@@ -14,7 +14,7 @@
     (when (string= chosen point) (fnn-os-fail sb-posix:eio path))))
 
 (defun fnn-immutable-publish-effect
-  (publication stage final final-directory octets &key cleanup-directory)
+  (publication stage final final-directory octets &key cleanup-directory observer)
   "Execute an ACL2-authorized immutable publication state.  PUBLICATION must
 come from the caller's ACL2 allocation/admission machine after it establishes
 exclusive authority and absence of that machine's exact final name.  This raw
@@ -27,6 +27,11 @@ executor cannot mint authority.  It returns fn-jpub's classification."
     (labels ((advance (event)
                (setq publication
                      (fnn-core 'fn-jpub-host-step publication event)))
+             (observed (point)
+               ; Consumers use this for process-death tests at modelled cuts.
+               ; The callback observes the already-reported ACL2 state and
+               ; cannot alter the publication classification.
+               (when observer (funcall observer point publication)))
              (observe (ok-event error-event thunk)
                (handler-case (progn (funcall thunk) (advance ok-event))
                  (fnn-os-error () (advance error-event)))))
@@ -53,23 +58,27 @@ executor cannot mint authority.  It returns fn-jpub's classification."
                            ; failing close may already have released it.
                            (let ((handle fd))
                              (setq fd nil)
-                             (fnn-close handle)))))
+                             (fnn-close handle))
+                           (observed :file-barrier))))
                (:begin-link (advance '(:link-begin)))
                (:link
                 (handler-case
                     (progn (fnn-immutable-test-fault "link" final)
                            (fnn-link stage final)
-                           (advance '(:link-result :ok)))
+                           (advance '(:link-result :ok))
+                           (observed :link-result))
                   (fnn-os-error (e)
                     (advance (if (= (fnn-os-errno e) sb-posix:eexist)
                                  '(:link-result :exists)
-                               '(:link-result :error))))))
+                               '(:link-result :error)))
+                    (observed :link-result))))
                (:directory-barrier
                 (observe '(:directory-barrier-result :ok)
                          '(:directory-barrier-result :error)
                          (lambda ()
                            (fnn-immutable-test-fault "namespace" final)
-                           (fnn-fsync-dir final-directory))))
+                           (fnn-fsync-dir final-directory)
+                           (observed :directory-barrier))))
                (otherwise
                 (fnn-fault "ACL2 returned no immutable publication action"))))
         (when fd (ignore-errors (fnn-close fd)))
