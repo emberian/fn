@@ -977,7 +977,11 @@ The core decides whether the records replay."
     st))
 
 (defun fnn-publish-initial-file (store final contents &optional initializer-prefix)
-  "Stage, barrier, link and barrier one initialization metadata file."
+  "Stage, barrier, then immutably publish one initialization metadata file.
+
+The return is :PUBLISHED after a new final name, or :EXISTING after link(2)
+reported EEXIST.  An error other than EEXIST at link is indeterminate: the
+kernel may have issued the namespace operation even when it reports failure."
   (let* ((stage (fnn-join (fnn-staging store)
                           (format nil ".init-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
          (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600)))
@@ -991,15 +995,23 @@ The core decides whether the records replay."
       (fnn-close fd))
     (unwind-protect
          (progn
-           (handler-case (fnn-link stage final)
+           (handler-case
+               (progn
+                 (fnn-link stage final)
+                 (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "linked")))
+                 (fnn-fsync-dir (fnn-store-root store))
+                 (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "root-fenced")))
+                 :published)
              (fnn-os-error (e)
                (if (= (fnn-os-errno e) sb-posix:eexist)
-                   (return-from fnn-publish-initial-file nil)
-                   (error e))))
-           (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "linked")))
-           (fnn-fsync-dir (fnn-store-root store))
-           (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "root-fenced")))
-           t)
+                   (progn
+                     ;; The following cut is after the actual EEXIST return,
+                     ;; before cleanup of the separately staged candidate.
+                     (when initializer-prefix
+                       (fnn-init-cut store (fnn-concat initializer-prefix "link-eexist")))
+                     :existing)
+                   (fnn-indeterminate
+                    "initial immutable-link outcome is indeterminate: ~a" e))))
       (ignore-errors (fnn-unlink stage))
       ;; Keep the real best-effort unlink policy above.  The test seam is
       ;; deliberately outside that handler so its selected outcome is visible.
@@ -1105,12 +1117,18 @@ because the name may or may not still be present after the syscall."
            (fnn-safe-directory (fnn-config-dir store) t store
                                "init-config-dir-mkdir" "init-config-dir-parent-fenced")
            (let ((config (fnn-metadata-config-frame profile)))
-             (if (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
+             (if (eq (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
+                     :published)
                  (setf (fnn-store-config store) (fnn-metadata-config-decode config))
                  (fnn-load-config store)))
            (when (null (fnn-config-record-names store :init-config-records-first-enumerate))
-             (fnn-publish-initial-file store (fnn-config-record-path store 1)
-                                       (fnn-bridge-config-initial groups) "init-history-")
+             (when (eq (fnn-publish-initial-file store (fnn-config-record-path store 1)
+                                              (fnn-bridge-config-initial groups) "init-history-")
+                       :existing)
+               ;; The exclusive writer lock does not authorize an external
+               ;; writer.  Preserve this conflicting durable evidence for
+               ;; recovery instead of silently accepting a racing history.
+               (fnn-indeterminate "configuration history appeared during initialization"))
              (fnn-fsync-dir (fnn-config-dir store))
              (fnn-init-cut store "init-config-history-fenced"))
            ;; A missing allocator alongside committed history would permit
@@ -1118,8 +1136,9 @@ because the name may or may not still be present after the syscall."
            (when (and (null (fnn-check-regular (fnn-frontier-path store)))
                       (fnn-transaction-files store))
              (fnn-fault "refusing missing allocator frontier with committed history"))
-           (if (fnn-publish-initial-file store (fnn-frontier-path store)
-                                         (fnn-metadata-frontier-frame 0) "init-frontier-")
+           (if (eq (fnn-publish-initial-file store (fnn-frontier-path store)
+                                             (fnn-metadata-frontier-frame 0) "init-frontier-")
+                   :published)
                (setf (fnn-store-frontier store) 0)
                (fnn-load-frontier store))
            (fnn-fsync-regular (fnn-config-path store))
@@ -1439,12 +1458,12 @@ from the live ACL2 configuration; the native host does not name a provenance."
     "init-staging-mkdir" "init-staging-parent-fenced"
     "init-config-dir-mkdir" "init-config-dir-parent-fenced"
     "init-config-created" "init-config-written" "init-config-file-fenced"
-    "init-config-linked" "init-config-root-fenced" "init-config-stage-unlinked"
+    "init-config-linked" "init-config-link-eexist" "init-config-root-fenced" "init-config-stage-unlinked"
     "init-history-created" "init-history-written" "init-history-file-fenced"
-    "init-history-linked" "init-history-root-fenced" "init-history-stage-unlinked"
+    "init-history-linked" "init-history-link-eexist" "init-history-root-fenced" "init-history-stage-unlinked"
     "init-config-history-fenced"
     "init-frontier-created" "init-frontier-written" "init-frontier-file-fenced"
-    "init-frontier-linked" "init-frontier-root-fenced" "init-frontier-stage-unlinked"
+    "init-frontier-linked" "init-frontier-link-eexist" "init-frontier-root-fenced" "init-frontier-stage-unlinked"
     "init-final-config-file-fenced" "init-final-config-record-file-fenced"
     "init-final-frontier-file-fenced" "init-transactions-fenced"
     "init-root-fenced" "init-parent-fenced"))

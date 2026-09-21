@@ -55,6 +55,39 @@
         (list :unlink :staging stage)
         (list :cut (string-append label "stage-unlinked"))))
 
+; A retry over an already-published immutable final still creates and fences a
+; new staging candidate.  link(2) then reports EEXIST, the candidate is
+; cleaned up, and the initializer continues.  This is the native
+; fnn-publish-initial-file branch, not a successful :link relabelled after
+; the fact.  The distinct step checks that the final was already present.
+(defun fn-bsi-publish-existing-steps (label stage target-dir target-name octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (list :create :staging stage)
+        (list :cut (string-append label "created"))
+        (list :write-all :staging stage octets)
+        (list :cut (string-append label "written"))
+        (list :fsync-file :staging stage)
+        (list :cut (string-append label "file-fenced"))
+        (list :link-eexist :staging stage target-dir target-name)
+        (list :cut (string-append label "link-eexist"))
+        (list :unlink :staging stage)
+        (list :cut (string-append label "stage-unlinked"))))
+
+(defun fn-bsi-final-fences ()
+  (declare (xargs :guard t :verify-guards nil))
+  (list (list :fsync-file :root *fn-bs-config-name*)
+        (list :cut "init-final-config-file-fenced")
+        (list :fsync-file :config *fn-bsi-config-record-name*)
+        (list :cut "init-final-config-record-file-fenced")
+        (list :fsync-file :root *fn-bs-frontier-name*)
+        (list :cut "init-final-frontier-file-fenced")
+        (list :fsync-dir :transactions)
+        (list :cut "init-transactions-fenced")
+        (list :fsync-dir :root)
+        (list :cut "init-root-fenced")
+        (list :fsync-dir :parent)
+        (list :cut "init-parent-fenced")))
+
 (defun fn-bsi-current-init-program (config config-record frontier
                                            config-stage record-stage frontier-stage)
   (declare (xargs :guard t :verify-guards nil))
@@ -89,18 +122,34 @@
          (list :cut "init-config-history-fenced"))
    (fn-bsi-publish-steps "init-frontier-" frontier-stage :root *fn-bs-frontier-name* frontier)
    ; Store.initialize:1014-1024, including every actual init-barrier site.
-   (list (list :fsync-file :root *fn-bs-config-name*)
-         (list :cut "init-final-config-file-fenced")
-        (list :fsync-file :config *fn-bsi-config-record-name*)
-         (list :cut "init-final-config-record-file-fenced")
-        (list :fsync-file :root *fn-bs-frontier-name*)
-         (list :cut "init-final-frontier-file-fenced")
-         (list :fsync-dir :transactions)
-         (list :cut "init-transactions-fenced")
-         (list :fsync-dir :root)
-         (list :cut "init-root-fenced")
-         (list :fsync-dir :parent)
-         (list :cut "init-parent-fenced"))))
+   (fn-bsi-final-fences)))
+
+; Existing valid stores take this mutation trace during `store init`: both
+; root metadata links answer EEXIST, while the pre-existing configuration
+; history is enumerated and is not republished.  Directory/lock reads are
+; boundary checks with no byte-store mutation; the program begins after those
+; checks have established this existing-image input.
+(defun fn-bsi-existing-init-program (config frontier config-stage frontier-stage)
+  (declare (xargs :guard t :verify-guards nil))
+  (append (fn-bsi-publish-existing-steps "init-config-" config-stage :root
+                                          *fn-bs-config-name* config)
+          (fn-bsi-publish-existing-steps "init-frontier-" frontier-stage :root
+                                          *fn-bs-frontier-name* frontier)
+          (fn-bsi-final-fences)))
+
+; A restart after the history directory barrier but before frontier publication
+; has an immutable config final and record, but no frontier final.  The retry
+; therefore sees EEXIST only for config and must create/fence the frontier.
+; This transition deliberately does not cover an external history record that
+; appears after the empty enumeration; the host reports that conflict as
+; uncertain.
+(defun fn-bsi-history-retry-program (config frontier config-stage frontier-stage)
+  (declare (xargs :guard t :verify-guards nil))
+  (append (fn-bsi-publish-existing-steps "init-config-" config-stage :root
+                                          *fn-bs-config-name* config)
+          (fn-bsi-publish-steps "init-frontier-" frontier-stage :root
+                                *fn-bs-frontier-name* frontier)
+          (fn-bsi-final-fences)))
 
 ; The exact fresh final byte representation.  Staging cleanup is intentionally
 ; pending: os.unlink has no following staging-directory fsync in this host
