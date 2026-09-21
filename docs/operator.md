@@ -73,6 +73,7 @@ Build or select the source-pinned production `fn-host` and adjacent
 
 ```sh
 FN_NATIVE_HOST=/path/to/fn-host FN_NATIVE_CORE=/path/to/fn-host.core \
+  FN_NATIVE_SOURCE_REVISION=<image-source-commit> \
   DESTDIR=/tmp/fn-package PREFIX=/usr/local packaging/install-native.sh
 ```
 

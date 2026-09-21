@@ -23,20 +23,27 @@ int main(int argc, char **argv) {
   putchar('\n'); return 3;
 }
 EOF
-cc "$tmp/host.c" -o "$tmp/fn-host"
+cc "$tmp/host.c" -o "$tmp/host-runtime"
+cat > "$tmp/fn-host" <<EOF
+#!/bin/sh
+exec "$tmp/host-runtime" --core "$tmp/fn-host.core" "\$@"
+EOF
+chmod 755 "$tmp/fn-host"
 printf core > "$tmp/fn-host.core"
-DESTDIR="$tmp/root" PREFIX=/opt/fn FN_NATIVE_HOST="$tmp/fn-host" \
+PREFIX="$tmp/root/opt/fn" FN_NATIVE_HOST="$tmp/fn-host" \
+  FN_NATIVE_SOURCE_REVISION=0123456789abcdef \
   FN_NATIVE_CORE="$tmp/fn-host.core" sh "$root/packaging/install-native.sh"
 test -x "$tmp/root/opt/fn/bin/fn"
 test -s "$tmp/root/opt/fn/libexec/fn/fn-host.core"
-grep -q '^profile=production$' "$tmp/root/opt/fn/share/fn/native-artifacts.txt"
-grep -q 'ExecStart=/opt/fn/bin/fn operator /etc/fn/fn.toml run' "$tmp/root/opt/fn/share/fn/systemd/fn.service"
-grep -q '<string>/opt/fn/bin/fn</string>' "$tmp/root/opt/fn/share/fn/launchd/net.fn.plist"
+grep -q '^source_revision=0123456789abcdef$' "$tmp/root/opt/fn/share/fn/native-artifacts.txt"
+grep -q -- "--core \"$tmp/root/opt/fn/libexec/fn/fn-host.core\"" "$tmp/root/opt/fn/libexec/fn/fn-host"
+grep -q "ExecStart=$tmp/root/opt/fn/bin/fn operator /etc/fn/fn.toml run" "$tmp/root/opt/fn/share/fn/systemd/fn.service"
+grep -q "<string>$tmp/root/opt/fn/bin/fn</string>" "$tmp/root/opt/fn/share/fn/launchd/net.fn.plist"
 set +e
 out=$("$tmp/root/opt/fn/bin/fn" operator /etc/fn/fn.toml status)
 rc=$?
 set -e
 test "$rc" -eq 3
-printf '%s\n' "$out" | grep -q 'arg=--fn arg=operator arg=/etc/fn/fn.toml arg=status'
-printf '%s\n' "$out" | grep -q 'exe=.*/opt/fn/libexec/fn/fn-host'
+printf '%s\n' "$out" | grep -q "arg=--core arg=$tmp/root/opt/fn/libexec/fn/fn-host.core arg=--fn arg=operator arg=/etc/fn/fn.toml arg=status"
+printf '%s\n' "$out" | grep -q 'exe=.*/host-runtime'
 ! printf '%s\n' "$out" | grep -qi python
