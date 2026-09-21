@@ -33,14 +33,21 @@ store and a supported minimal configuration, its component commands are:
 packaging/fn-native operator /path/to/fn.toml help
 packaging/fn-native operator /path/to/fn.toml status
 packaging/fn-native operator /path/to/fn.toml recover
+packaging/fn-native operator /path/to/fn.toml group create fn.announce
+packaging/fn-native operator /path/to/fn.toml group retire fn.announce
+packaging/fn-native operator /path/to/fn.toml capacity 1048576
 packaging/fn-native operator /path/to/fn.toml run
 ```
 
 `help` does not read the configuration file. `run` uses the normalized native
 owner callback. Missing, nonregular or oversized configuration is usage (5);
 a hard read/open failure remains a fault (4). Refused work (1), uncertain
-persistence (3) and successful execution (0) remain distinct. An accepted
-command plan alone is never reported as a successful post.
+persistence (3) and successful execution (0) remain distinct. `group` and
+`capacity` use the same durable configuration records as the development
+operator and refuse while the owner holds its writer lock. A valid profile
+with settings the running native owner cannot consume still permits these
+offline actions, plus `status` and `recover`; only `run` refuses that profile.
+An accepted command plan alone is never reported as a successful post.
 
 The [operator integration record](../planning/evidence/native-operator-installed-20260921T0920.md)
 contains source-pinned component execution, including an actual loopback reader.

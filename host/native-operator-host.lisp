@@ -122,3 +122,8 @@
 (defun fn-native-operator-host-result-post-group-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-post-group-octets result))
+
+(defun fn-native-operator-host-result-admin-plan (result)
+  "Exact accepted ACL2 native-admin plan; raw Lisp may only deliver it."
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-admin-plan result))
