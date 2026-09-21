@@ -302,7 +302,7 @@
 (assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "TAKETHIS"))))
 (assert-event (equal (au-peer-reply *au-s-peer-req*
                                     "IHAVE <auth-peer@example.invalid>")
-                     (append (au-single "335 send it")
+                     (append (au-single "335 send it; end with <CR-LF>.<CR-LF>")
                              (list (fn-nntp-begin-article-effect)))))
 (assert-event (equal (au-peer-reply *au-s-peer-req*
                                     "CHECK <auth-peer@example.invalid>")
