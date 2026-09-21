@@ -55,6 +55,13 @@
 (assert-event (equal (fn-native-control-status-exit-code :uncertain) 3))
 (assert-event (equal (fn-native-control-status-exit-code :fault) 4))
 
+(assert-event
+ (equal (fn-native-control-lease-path
+         (fn-record-string-octets "/run/fn/control.sock"))
+        (fn-record-string-octets "/run/fn/control.sock.lock")))
+(assert-event
+ (equal (fn-native-control-lease-path nil) :bad))
+
 ; Losing the connection after a complete handoff cannot be called refusal.
 (assert-event
  (equal (fn-native-control-transport-outcome :before-submission) :refused))

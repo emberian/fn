@@ -96,10 +96,58 @@ class NativeControlTests(unittest.TestCase):
             stderr=subprocess.PIPE, timeout=60, check=False)
 
     def inspect(self, message_id):
+        return self.inspect_store(self.store, message_id)
+
+    def inspect_store(self, store, message_id):
         return subprocess.run(
-            [str(IMAGE), "--fn", "store", str(self.store), "inspect", message_id],
+            [str(IMAGE), "--fn", "store", str(store), "inspect", message_id],
             cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, timeout=180, check=False)
+
+    def test_shared_control_path_is_not_stolen_by_another_store(self):
+        owner = self.start_owner()
+        second_store = self.root / "second-store"
+        second_config = self.root / "second.toml"
+        initialized = subprocess.run(
+            [str(IMAGE), "--fn", "store", str(second_store), "init", "fn.test"],
+            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=180, check=False)
+        self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+        second_config.write_text(
+            "[store]\npath = \"{}\"\n"
+            "[listener]\nhost = \"127.0.0.1\"\nport = {}\n"
+            "[control]\npath = \"{}\"\n".format(
+                second_store, free_port(), self.control), encoding="ascii")
+        second = subprocess.Popen(
+            [str(IMAGE), "--fn", "operator", str(second_config), "run"],
+            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        try:
+            second_stdout, second_stderr = second.communicate(timeout=60)
+            self.assertEqual(second.returncode, 1, second_stderr.decode())
+            self.assertNotIn(b"CONTROL ", second_stdout)
+            self.assertIn(b"control path is already owned", second_stderr)
+
+            message_id = "<control-lease@example.invalid>"
+            payload = self.article(message_id)
+            accepted = self.post(message_id, payload)
+            self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
+            observed = self.inspect(message_id)
+            self.assertEqual(observed.returncode, 0, observed.stderr.decode())
+            self.assertEqual(observed.stdout, payload)
+            absent = self.inspect_store(second_store, message_id)
+            self.assertNotEqual(absent.returncode, 0)
+        finally:
+            if second.poll() is None:
+                second.kill()
+                second.wait(timeout=10)
+            second.stdout.close()
+            second.stderr.close()
+            owner.send_signal(signal.SIGTERM)
+            self.assertEqual(owner.wait(timeout=30), 0,
+                             owner.stderr.read().decode("utf-8", "replace"))
+            owner.stdout.close()
+            owner.stderr.close()
 
     def test_two_clients_sigterm_cleanup_and_restart(self):
         owner = self.start_owner({"FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP": "1"})
@@ -132,6 +180,11 @@ class NativeControlTests(unittest.TestCase):
             active = socket.create_connection(("127.0.0.1", self.port), timeout=30)
             self.addCleanup(active.close)
             self.assertTrue(active.makefile("rb", buffering=0).readline().startswith(b"200 "))
+            active_control = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            active_control.settimeout(30)
+            active_control.connect(str(self.control))
+            active_control.sendall(b"F")  # hold an incomplete bounded frame
+            self.addCleanup(active_control.close)
             owner.send_signal(signal.SIGTERM)
             ready = select.select([owner.stdout], [], [], 30)[0]
             self.assertTrue(ready, "owner did not enter ordinary cleanup")
@@ -139,6 +192,7 @@ class NativeControlTests(unittest.TestCase):
             owner.send_signal(signal.SIGTERM)
             self.assertEqual(owner.wait(timeout=30), 0,
                              owner.stderr.read().decode("utf-8", "replace"))
+            self.assertEqual(active_control.recv(1), b"")
             self.assertFalse(self.control.exists())
         finally:
             if owner.poll() is None:

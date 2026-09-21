@@ -54,7 +54,12 @@ Message-ID/group validation, status classes and exit codes. Raw Lisp reads one
 regular payload file, moves bounded octets, and performs socket lifecycle only.
 Failure before request handoff is refused; loss after handoff is uncertain,
 because the missing reply cannot distinguish durable acceptance from a request
-the owner never observed. The control adapter never opens the Store.
+the owner never observed. Before removing a stale socket node, the service
+holds an exclusive lock on the ACL2-derived adjacent `.lock` path; another
+Store configured with the same control path is refused and cannot steal the
+live endpoint. Stop hooks use shutdown only to wake connection owners, which
+perform the final close before the close hook releases the lease. The control
+adapter never opens the Store.
 
 ## What the owner is
 
