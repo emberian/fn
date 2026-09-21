@@ -257,6 +257,69 @@
 
 (in-theory (disable (:d fn-replay-advance-txid)))
 
+; Identity evidence is folded beside the article/retention node.  Every Store
+; event advances this context exactly once.  Standalone kind-2 evidence is
+; validated against its historical snapshot but is deliberately removed from
+; the accepted-verdict projection; only a bound kind-4 composite contributes
+; an accepted article verdict.
+(defun fn-replay-identity-advance (ctx)
+  (declare (xargs :guard t))
+  (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
+                   (fn-stxk-context-snapshots ctx)
+                   (fn-stxk-context-verdicts ctx)
+                   (fn-stxk-context-current-generation ctx) nil))
+
+(defun fn-replay-identity-step (ctx event)
+  (declare (xargs :guard t))
+  (if (not (equal (fn-stxk-context-kind ctx) :ok)) ctx
+    (if (not (equal (fn-store-event-sequence event)
+                    (fn-stxk-context-next ctx)))
+        (fn-stxk-fault ctx :sequence)
+      (cond
+       ((fn-stxk-p event) (fn-stxk-apply-snapshot ctx event))
+       ((fn-stxe-p event)
+        (let ((checked (fn-stxk-apply-verdict ctx event)))
+          (if (not (equal (fn-stxk-context-kind checked) :ok)) checked
+            (fn-stxk-context :ok (fn-stxk-context-next checked)
+                             (fn-stxk-context-snapshots checked)
+                             (fn-stxk-context-verdicts ctx)
+                             (fn-stxk-context-current-generation checked) nil))))
+       ((fn-stxa-p event)
+        (if (not (fn-stxa-bindsp event))
+            (fn-stxk-fault ctx :composite-binding)
+          (let ((decoded (fn-stxe-decode-exact
+                          (fn-stxa-verdict-event event))))
+            (if (not (fn-stmt-okp decoded))
+                (fn-stxk-fault ctx :composite-verdict)
+              (fn-stxk-apply-verdict ctx (fn-stmt-value decoded))))))
+       (t (fn-replay-identity-advance ctx))))))
+
+(defun fn-replay-identity-loop (records ctx)
+  (declare (xargs :guard t :measure (len records)))
+  (if (consp records)
+      (if (not (fn-store-event-p (car records)))
+          (fn-stxk-fault ctx :invalid-record)
+        (fn-replay-identity-loop
+         (cdr records) (fn-replay-identity-step ctx (car records))))
+    (if (null records) ctx (fn-stxk-fault ctx :improper-record-list))))
+
+(defun fn-replay-identity (records)
+  (declare (xargs :guard t))
+  (fn-replay-identity-loop records (fn-stxk-initial-context 0)))
+
+(defun fn-replay-verdict-pairs (events)
+  (declare (xargs :guard t))
+  (if (consp events)
+      (let ((e (car events)))
+        (if (fn-stxe-p e)
+            (cons (cons (fn-stxe-msgid e)
+                        (fn-stx-make-verdict
+                         (fn-stxe-token e) (fn-stxe-detail e)
+                         (fn-stxe-keyring-generation e)))
+                  (fn-replay-verdict-pairs (cdr events)))
+          (fn-replay-verdict-pairs (cdr events))))
+    nil))
+
 ; Apply exactly one record only after its sequence has been checked.  NIL is a
 ; refusal signal; it is deliberately not a normal partial state.  The guard
 ; on the node is discharged through the two node transitions by their
@@ -311,34 +374,58 @@
              advanced (fn-retain-release retention id subject :forward evidence)
              event)))))))
 
+(defun fn-replay-apply-identity-neutral (node event)
+  (declare (xargs :guard (and (fn-node-statep node)
+                              (fn-store-event-p event))))
+  (let ((advanced (fn-replay-advance-txid node (fn-store-event-txid event))))
+    (if (equal (fn-state-next-txid (fn-node-acceptance advanced))
+               (fn-store-event-txid event))
+        (fn-replay-advance-txid advanced (1+ (fn-store-event-txid event)))
+      nil)))
+
+(defun fn-replay-composite-record (event)
+  (declare (xargs :guard t))
+  (if (and (fn-stxa-p event) (fn-stxa-bindsp event))
+      (let ((decoded (fn-record-decode-exact (fn-stxa-article-record event))))
+        (if (fn-record-result-okp decoded)
+            (fn-record-result-record decoded)
+          nil))
+    nil))
+
 (defun fn-replay-apply-record (node record)
   (declare (xargs :guard (and (fn-node-statep node) (true-listp record))
                   :verify-guards nil))
   (if (fn-store-retention-event-p record)
       (fn-replay-apply-retention-event node record)
-    (let ((advanced (fn-replay-advance-txid node (fn-store-event-txid record))))
+    (if (or (fn-stxe-p record) (fn-stxk-p record))
+        (fn-replay-apply-identity-neutral node record)
+      (let* ((article (if (fn-stxa-p record)
+                          (fn-replay-composite-record record)
+                        record))
+             (advanced (fn-replay-advance-txid node (fn-store-event-txid record))))
       (if (not (equal (fn-state-next-txid (fn-node-acceptance advanced))
                       (fn-store-event-txid record)))
           nil
-        (let ((prepared
+        (if (not (fn-record-p article)) nil
+          (let ((prepared
                (fn-node-prepare advanced
-                                (fn-store-event-generation record)
-                                (fn-record-msgid record)
-                                (fn-record-payload record)
-                                (fn-record-groups record)
-                                (fn-record-obligation-id record)
-                                (fn-record-content-subject record)
-                                (fn-record-release-evidence record)
-                                (fn-record-charge record))))
+                                (fn-record-generation article)
+                                (fn-record-msgid article)
+                                (fn-record-payload article)
+                                (fn-record-groups article)
+                                (fn-record-obligation-id article)
+                                (fn-record-content-subject article)
+                                (fn-record-release-evidence article)
+                                (fn-record-charge article))))
           (if (not (fn-node-pending-matchesp
                     prepared
-                    (fn-store-event-txid record)
-                    (fn-store-event-generation record)))
+                    (fn-record-txid article)
+                    (fn-record-generation article)))
               nil
             (fn-node-complete prepared
-                              (fn-store-event-txid record)
-                              (fn-store-event-generation record)
-                              :durable)))))))
+                              (fn-record-txid article)
+                              (fn-record-generation article)
+                              :durable)))))))))
 
 ; A non-NIL one-record result is the existing node transaction machine's
 ; durable branch, hence remains a valid node.  NIL is intentionally a refusal,
