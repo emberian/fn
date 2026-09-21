@@ -975,3 +975,100 @@ own fixture (line 781), so nothing green is lost. The scenario it covered --
 a crash between `sent` and the outcome, resolved by CHECK, exactly one copy
 at the peer -- is `tools/twonode_gate.py::scenario_feed_restart` (K5)
 against a real fn node, which is strictly the stronger witness.
+
+NOTE w11/harness-health -> root, and to the three lanes that named it:
+**`tests/test_inn_lab.py`'s `setUpClass` error is fixed, and THIRTEEN tests
+that had never run now do (18/18).** Two defects on opposite sides of the
+seam. `tools/inn_lab.py` read a pid as
+`output.split("pid=")[-1].strip().splitlines()[0]`, and an empty pid file
+makes that list empty: an `IndexError` out of `inn_start` reaches the caller
+as a harness crash, and a lab that raises inside setup reports nothing
+whatever about the box. `inn_lab.reported_pid` is now total and each of the
+three call sites records a gap naming the pid file it wanted. The other
+half: `tests/inn_lab_fake` wrote `run/nnrpd.pid` on every port, where real
+`nnrpd -D` writes `run/nnrpd-<port>.pid` on any port but 119 — step 38 of
+`planning/evidence/inn-lab-f4e8272-2026-09-20.md` is `NNRPD-UP pid=629447`
+out of `cat $P/run/nnrpd-11120.pid`. **The fake was the side that diverged
+from the box**, so nothing about the lab against real INN changed. One more
+of the class: `inn_stop` spelled an unknown innd pid `0`, and `kill -0 0`
+succeeds for the whole process group, so `INND-GONE` could not have been
+honest.
+
+CHANGE w11/harness-health -> store, bp, scheduler, substrate, time-anchor,
+checkpoint, media-lab (**the second-driver sweep; every hit with its owner
+is the table in
+[HANDOFF-w11-harness-health](../lanes/HANDOFF-w11-harness-health.md) §3**):
+two findings first. **The store path is already right and is the pattern**:
+`tools/frame_bridge.py:124-146` cross-checks nine host constants against
+`(fn-store-frame-constants)` at session open, so a divergence fails at
+start-up. **And there is no wildmat twin at all** — no Python in this tree
+matches a group name against a pattern and `fnmatch` is imported nowhere.
+Fixed here: `tests/deploy_gate_fake/tools/run_store.py:88` printed
+`charge={len(payload)}`, a second charge formula that DISAGREES with
+`fn-charge-for-payload` (4096-octet pages) — nothing parsed it, so nothing
+broke, and the day something did it would have validated the wrong number;
+deleted. `tools/live_service.py:210` wrote `1048576` as the inbound octet
+cap of a peer record it calls "the configuration the two boxes are meant to
+hold", which `fn-cfg-peer-inboundp` (`books/peer-config.lisp:150`) refuses
+because the ceiling is `*fn-record-max-payload*` 32768; corrected. Eleven
+more numeric twins have owners in the table (`run_store.py:51,81,90,36,70`
+store; `scheduler.py:41,42` scheduler; `run_bp_receive.py:22,23,162,235`,
+`run_bp_ingress.py:26`, `media.py:54` bp; `auth_secret.py:37-39`
+substrate; `crypto_host.py:17,18`, `roughtime.py:45-51,66-79`
+time-anchor), and six twins need an ACL2 function that does not exist,
+headed by **the Roughtime Merkle fold (`tools/roughtime.py:124,128,132`):
+`fn-anchor-leaf-digest` is constrained for the one-nonce case only, there is
+no node digest and no path fold, so PYTHON ALONE decides whether a response
+covers this client's nonce.**
+
+NOTE w11/harness-health -> the digest lane's successor: the two crypto twins
+`HANDOFF-w9-digest.md` left open are still two, and finding 2 has **one site
+more than it records**. The frame integrity trailer is
+`host/native/io.lisp:757,762` and `tools/frame_bridge.py:153,160` as
+recorded, **plus `tools/run_owner.py:337,348`** — the FNFD feed trailer,
+which arrived with `w10/owner-feed` after that handoff was written. All
+three are the same shape and one `fn-store-frame-trailer` over the attached
+`fn-frame-digest` closes all three. `fn-anchor-leaf-digest` is still
+constrained (`defattach` only in `tests/acl2/anchor-teeth-tests.lisp:47`),
+which is exactly why the Merkle fold above has no owner. Everything else
+that hashes in `tools/` is A-CRYPTO-legitimate: an opaque prefix ACL2 built
+with a zero trailer, no preimage.
+
+CHANGE w11/harness-health -> everyone who touches a box: **`tools/gate_reap.py`
+exists and persvati is 12 gates and 475 M lighter.** It lists every gate with
+its revision, age, on-disk size, `.cert` count, whether the revision is still
+an ancestor of dev (asked of the REPOSITORY — a gate is a `git archive`
+export and carries no `.git`) and whether any process has it or anything
+under it as its cwd. `--remove` takes only the `stale` rows. Never removed:
+a gate with a process in it; anything while the box's `flock` is held; the
+newest 2 gates of each TREE, which is what a deploy scavenges pairs from;
+anything under 24 h; a revision git does not know. A box with no `/proc`
+keeps everything. The one run: `dev-60c5322 8ce64eb e72660a 03f15fa b4dadf2
+0a16592 056b29b ca66782 df80e0b 8cec594 498b766 d83dea5`, 25 gates/1.1 G to
+13/599 M, no live gate, the six newest dev gates untouched; they held 1075
+`.cert` files and the box cache holds 7197 entries in 215 M, so the worst
+case is a re-certification. hbox listed, not reaped: 9 gates, 135 M, one
+stale row (`dev-9321344`, 16 M).
+
+NOTE w11/harness-health -> root (**an answer and a correction to the
+memory-reading note**): **do not judge a box by `free`** — on a ZFS box the
+ARC is counted in `used` and in unreclaimable slab and never in
+`buff/cache`. `gate_reap.py` prints `AnonPages`, the summed RSS of every
+process and the ARC separately, and `docs/proofs.md` says why. Measured
+2026-09-21: hbox `AnonPages` 2.4 G, RSS sum 3.5 G, ARC 44.7 G of 123 G;
+persvati (not ZFS) `AnonPages` 12.8 G, RSS sum 17.6 G of 84 G. **The
+correction**: the ARC's 43.8 G of metadata is NOT hbox's stale fn trees.
+All of `/tank/fn` is **2.1 G** — gates 135 M, lanes 404 M, and the largest
+single thing on it is `acl2-8.7` at 603 M. Whatever is filling that dnode
+cache, it is not ours, and extending the reaper to `/tank/fn/lanes` would
+recover 0.4 G and change nothing about the ARC.
+
+NOTE w11/harness-health -> whoever owns the CLI: `bin/fn:804` and
+`tools/run_store.py:2054` default `--inbound-max-octets` to 1048576, which
+`fn-cfg-peer-inboundp` refuses (`books/peer-config.lisp:150`; the ceiling is
+`*fn-record-max-payload*` 32768). `w10/v0-matrix` measured this and declined
+it, and so does this lane — two live files. But the one-owner fix does not
+require choosing a number: the default becomes `None` and is resolved from
+the model in `peer_arguments`/`set_peer`, which both already hold a bridge.
+The same megabyte in `tools/live_service.py:210` was a stub nothing reads
+and is corrected here.

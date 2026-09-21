@@ -85,7 +85,11 @@ def main(argv=None):
     state["articles"].append({"msgid": args.message_id, "groups": args.group,
                               "payload": base64.b64encode(payload).decode()})
     save(args.store, state)
-    print("committed sequence={} charge={}".format(len(state["articles"]), len(payload)))
+    # No `charge=`: `len(payload)` is a SECOND charge formula, and it
+    # disagrees with `fn-charge-for-payload` (books/identity.lisp:271), which
+    # charges in 4096-octet pages.  Nothing read it, so nothing broke -- and
+    # the day something did, it would have validated the wrong number.
+    print("committed sequence={}".format(len(state["articles"])))
     return OK
 
 
