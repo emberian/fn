@@ -11,6 +11,11 @@ physical storage correspondence, concrete storage codecs, durable native BP
 sequence allocation, shared CLI/NNTP submission, and ACL2 outbound framing.
 Both hbox and persvati are used for owned certification and integration work.
 Root integrates coherent batches and updates the registries from their evidence.
+The first auth/feed/framing/artifact batch is integrated at `cdbd6b2`; Terra
+is measuring the combined two-node runtime on hbox and Luna is synchronizing
+the generated evidence ledger. The overnight goal is active. Per the latest
+budget direction, routine work favors Luna/Terra and Astra reviews larger
+batches; ongoing Astra proof lanes are preparing scoped handoffs.
 
 The principal composition obligations are explicit: durable article acceptance
 must preserve feed intent; uncertain persistence must fence all mutations;
