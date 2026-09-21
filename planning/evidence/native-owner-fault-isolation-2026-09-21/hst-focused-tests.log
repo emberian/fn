@@ -1,0 +1,8 @@
+test_reset_peer_does_not_stop_concurrent_writer_or_reader (tests.test_native_owner.NativeOwnerTests.test_reset_peer_does_not_stop_concurrent_writer_or_reader) ... ok
+test_local_handler_fault_uses_core_fault_and_preserves_other_clients (tests.test_native_owner.NativeOwnerTests.test_local_handler_fault_uses_core_fault_and_preserves_other_clients) ... ok
+test_two_client_uncertainty_fences_before_later_mutation (tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.592s
+
+OK

@@ -1,0 +1,111 @@
+test_client_disconnect_is_not_a_global_owner_fault (tests.test_native_owner.NativeOwnerTests.test_client_disconnect_is_not_a_global_owner_fault) ... ok
+test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence (tests.test_native_owner.NativeOwnerTests.test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence) ... ok
+test_invalid_complete_feed_evidence_is_process_fault (tests.test_native_owner.NativeOwnerTests.test_invalid_complete_feed_evidence_is_process_fault) ... ok
+test_local_handler_fault_uses_core_fault_and_preserves_other_clients (tests.test_native_owner.NativeOwnerTests.test_local_handler_fault_uses_core_fault_and_preserves_other_clients) ... FAIL
+test_post_is_committed_and_readable_after_owner_exit (tests.test_native_owner.NativeOwnerTests.test_post_is_committed_and_readable_after_owner_exit) ... ok
+test_reset_peer_does_not_stop_concurrent_writer_or_reader (tests.test_native_owner.NativeOwnerTests.test_reset_peer_does_not_stop_concurrent_writer_or_reader) ... FAIL
+test_two_client_uncertainty_fences_before_later_mutation (tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation) ... ok
+test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart (tests.test_native_owner.NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart) ... FAIL
+test_disabled_posting_refuses_cli_and_served_post (tests.test_native_control.NativeControlTests.test_disabled_posting_refuses_cli_and_served_post) ... FAIL
+test_lost_reply_after_submission_is_uncertain_and_recovers (tests.test_native_control.NativeControlTests.test_lost_reply_after_submission_is_uncertain_and_recovers) ... FAIL
+test_prelisten_sigterm_skips_modules_and_reopens (tests.test_native_control.NativeControlTests.test_prelisten_sigterm_skips_modules_and_reopens) ... FAIL
+test_shared_control_path_is_not_stolen_by_another_store (tests.test_native_control.NativeControlTests.test_shared_control_path_is_not_stolen_by_another_store) ... FAIL
+test_two_clients_sigterm_cleanup_and_restart (tests.test_native_control.NativeControlTests.test_two_clients_sigterm_cleanup_and_restart) ... FAIL
+
+======================================================================
+FAIL: test_local_handler_fault_uses_core_fault_and_preserves_other_clients (tests.test_native_owner.NativeOwnerTests.test_local_handler_fault_uses_core_fault_and_preserves_other_clients)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_owner.py", line 146, in test_local_handler_fault_uses_core_fault_and_preserves_other_clients
+    self.assert_live_writer_and_reader(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        writer, reader, b"<after-native-handler-fault@example.invalid>")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_owner.py", line 76, in assert_live_writer_and_reader
+    self.assertTrue(reader.readline().startswith(b"220 "))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_reset_peer_does_not_stop_concurrent_writer_or_reader (tests.test_native_owner.NativeOwnerTests.test_reset_peer_does_not_stop_concurrent_writer_or_reader)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_owner.py", line 126, in test_reset_peer_does_not_stop_concurrent_writer_or_reader
+    self.assert_live_writer_and_reader(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        writer, reader, b"<after-native-reset@example.invalid>")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_owner.py", line 76, in assert_live_writer_and_reader
+    self.assertTrue(reader.readline().startswith(b"220 "))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart (tests.test_native_owner.NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_owner.py", line 235, in test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart
+    self.assertEqual(configured.returncode, 0, configured.stderr.decode())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 4 != 0 : store: [Errno 2] No such file or directory: 'acl2'
+
+
+======================================================================
+FAIL: test_disabled_posting_refuses_cli_and_served_post (tests.test_native_control.NativeControlTests.test_disabled_posting_refuses_cli_and_served_post)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_control.py", line 313, in test_disabled_posting_refuses_cli_and_served_post
+    owner = self.start_owner()
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_control.py", line 75, in start_owner
+    self.assertTrue(ready, "native operator did not become ready")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [] is not true : native operator did not become ready
+
+======================================================================
+FAIL: test_lost_reply_after_submission_is_uncertain_and_recovers (tests.test_native_control.NativeControlTests.test_lost_reply_after_submission_is_uncertain_and_recovers)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_control.py", line 260, in test_lost_reply_after_submission_is_uncertain_and_recovers
+    owner = self.start_owner({"FN_NATIVE_CONTROL_TEST_STOP": "after-submit"})
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_control.py", line 75, in start_owner
+    self.assertTrue(ready, "native operator did not become ready")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [] is not true : native operator did not become ready
+
+======================================================================
+FAIL: test_prelisten_sigterm_skips_modules_and_reopens (tests.test_native_control.NativeControlTests.test_prelisten_sigterm_skips_modules_and_reopens)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_control.py", line 242, in test_prelisten_sigterm_skips_modules_and_reopens
+    restarted = self.start_owner()
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_control.py", line 75, in start_owner
+    self.assertTrue(ready, "native operator did not become ready")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [] is not true : native operator did not become ready
+
+======================================================================
+FAIL: test_shared_control_path_is_not_stolen_by_another_store (tests.test_native_control.NativeControlTests.test_shared_control_path_is_not_stolen_by_another_store)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_control.py", line 108, in test_shared_control_path_is_not_stolen_by_another_store
+    owner = self.start_owner()
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_control.py", line 75, in start_owner
+    self.assertTrue(ready, "native operator did not become ready")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [] is not true : native operator did not become ready
+
+======================================================================
+FAIL: test_two_clients_sigterm_cleanup_and_restart (tests.test_native_control.NativeControlTests.test_two_clients_sigterm_cleanup_and_restart)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_control.py", line 153, in test_two_clients_sigterm_cleanup_and_restart
+    owner = self.start_owner({"FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP": "1"})
+  File "/home/ember/fn-lanes/w22-owner-fault-runtime/tests/test_native_control.py", line 75, in start_owner
+    self.assertTrue(ready, "native operator did not become ready")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [] is not true : native operator did not become ready
+
+----------------------------------------------------------------------
+Ran 13 tests in 903.228s
+
+FAILED (failures=8)
