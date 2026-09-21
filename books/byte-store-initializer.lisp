@@ -18,10 +18,12 @@
 (defconst *fn-bsi-lock-name* "writer.lock")
 (defconst *fn-bsi-config-record-name* "00000001.cfg")
 
-; The three stage names stand for the pid/random names the host creates.  The
-; input boundary requires them distinct, which is the condition the model can
-; state for the host's O_EXCL allocations.  It does not mention the desired
-; kernel relation or metadata decoding.
+; The three stage names stand for the pid/random names the host creates.  A
+; finished publication leaves its staging name absent from the *view*, even
+; though the create/unlink pair remains pending, so equal names work in this
+; fresh program.  An O_EXCL EEXIST against an entry that was already present
+; is a separate existing-entry branch and remains open.  This boundary does
+; not mention the desired kernel relation or metadata decoding.
 (defun fn-bsi-fresh-inputp (config config-record frontier config-stage record-stage frontier-stage)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-cbor-octet-listp config)
@@ -34,27 +36,24 @@
        (consp frontier)
        (fn-bs-namep config-stage)
        (fn-bs-namep record-stage)
-       (fn-bs-namep frontier-stage)
-       (not (equal config-stage record-stage))
-       (not (equal config-stage frontier-stage))
-       (not (equal record-stage frontier-stage))))
+       (fn-bs-namep frontier-stage)))
 
-(defun fn-bsi-publish-steps (stage target-dir target-name octets)
+(defun fn-bsi-publish-steps (label stage target-dir target-name octets)
   (declare (xargs :guard t :verify-guards nil))
   (list (list :create :staging stage)
-        (list :cut "init-file-created")
+        (list :cut (string-append label "created"))
         (list :write-all :staging stage octets)
-        (list :cut "init-file-written")
+        (list :cut (string-append label "written"))
         (list :fsync-file :staging stage)
-        (list :cut "init-file-fenced")
+        (list :cut (string-append label "file-fenced"))
         (list :link :staging stage target-dir target-name)
-        (list :cut "init-file-linked")
+        (list :cut (string-append label "linked"))
         ; _publish_initial_file currently fences root even for a config/
         ; target.  The caller supplies the later config-directory fence.
         (list :fsync-dir :root)
-        (list :cut "init-root-fenced-after-link")
+        (list :cut (string-append label "root-fenced"))
         (list :unlink :staging stage)
-        (list :cut "init-stage-unlinked")))
+        (list :cut (string-append label "stage-unlinked"))))
 
 (defun fn-bsi-current-init-program (config config-record frontier
                                            config-stage record-stage frontier-stage)
@@ -82,20 +81,20 @@
          (list :cut "init-config-dir-mkdir")
          (list :fsync-dir :root)
          (list :cut "init-config-dir-parent-fenced"))
-   (fn-bsi-publish-steps config-stage :root *fn-bs-config-name* config)
-   (fn-bsi-publish-steps record-stage :config *fn-bsi-config-record-name* config-record)
+   (fn-bsi-publish-steps "init-config-" config-stage :root *fn-bs-config-name* config)
+   (fn-bsi-publish-steps "init-history-" record-stage :config *fn-bsi-config-record-name* config-record)
    ; The explicit post-publication config-directory barrier is not redundant:
    ; _publish_initial_file fenced :root, while the link above targets :config.
    (list (list :fsync-dir :config)
          (list :cut "init-config-history-fenced"))
-   (fn-bsi-publish-steps frontier-stage :root *fn-bs-frontier-name* frontier)
+   (fn-bsi-publish-steps "init-frontier-" frontier-stage :root *fn-bs-frontier-name* frontier)
    ; Store.initialize:1014-1024, including every actual init-barrier site.
    (list (list :fsync-file :root *fn-bs-config-name*)
-         (list :cut "init-config-file-fenced")
-         (list :fsync-file :config *fn-bsi-config-record-name*)
-         (list :cut "init-config-record-file-fenced")
-         (list :fsync-file :root *fn-bs-frontier-name*)
-         (list :cut "init-frontier-file-fenced")
+         (list :cut "init-final-config-file-fenced")
+        (list :fsync-file :config *fn-bsi-config-record-name*)
+         (list :cut "init-final-config-record-file-fenced")
+        (list :fsync-file :root *fn-bs-frontier-name*)
+         (list :cut "init-final-frontier-file-fenced")
          (list :fsync-dir :transactions)
          (list :cut "init-transactions-fenced")
          (list :fsync-dir :root)
@@ -135,7 +134,10 @@
               4))
 
 ; This is a separate concrete representation lemma rather than a claim that
-; the obsolete metadata-only initializer was the host path.
+; the obsolete metadata-only initializer was the host path.  This lemma, not
+; fn-bsi-current-init-program-establishes-relation, carries the durability
+; claim for config/00000001.cfg: fn-bs-store-relation currently observes only
+; :root and :transactions and is intentionally blind to :config and the lock.
 (local
  (defun fn-bsi-find-run (term)
    (declare (xargs :mode :program))
@@ -198,9 +200,12 @@
                             (fn-bs-apply-ops fn-bs-run)))
           (fn-bsi-unroll-hint clause stable-under-simplificationp)))
 
-; Conditional relation proof.  fn-bsi-fresh-inputp is an I/O/domain contract;
-; fn-bs-initial-inputp is the independent metadata-to-kernel binding.  Keeping
-; them separate makes it possible to test each missing condition honestly.
+; Conditional relation-projection proof.  fn-bsi-fresh-inputp is an I/O/domain
+; contract; fn-bs-initial-inputp is the independent metadata-to-kernel binding.
+; Keeping them separate makes it possible to test each missing condition
+; honestly.  This theorem does not establish config-history durability because
+; fn-bs-store-relation has no :config clause; cite the image theorem above for
+; that physical fact.
 (defthm fn-bsi-current-init-program-establishes-relation
   (implies (and (fn-bsi-fresh-inputp config config-record frontier
                                      config-stage record-stage frontier-stage)

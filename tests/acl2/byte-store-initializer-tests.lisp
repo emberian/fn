@@ -27,6 +27,21 @@
   (if (zp n) (list outcome)
     (cons :ok (fn-bsi-test-outcome-at (1- n) outcome))))
 
+(defun fn-bsi-test-cut-names (program)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp program)
+      (if (equal (car (car program)) :cut)
+          (cons (nth 1 (car program)) (fn-bsi-test-cut-names (cdr program)))
+        (fn-bsi-test-cut-names (cdr program)))
+    nil))
+
+(defun fn-bsi-test-no-duplicatesp (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp xs)
+      (and (not (member-equal (car xs) (cdr xs)))
+           (fn-bsi-test-no-duplicatesp (cdr xs)))
+    t))
+
 (assert-event
  (fn-bsi-fresh-inputp (fn-bsi-test-config) (fn-bsi-test-record)
                       (fn-bsi-test-frontier)
@@ -47,21 +62,26 @@
         (not (fn-bs-dir-quietp bs :staging))
         (fn-bs-dir-quietp bs :config))))
 
-; Pin durable calls and their post-call cuts.  These cuts are model crash
-; points even where current Python faults.at uses the repeated init-barrier
-; label rather than a distinct injected name.
+; Pin durable calls and their post-call cuts.  The three publication instances
+; have distinct labels; current Python still exposes only the older repeated
+; init-barrier injection label, a source-correspondence limit recorded in the
+; handoff rather than evidence that every model cut is host-killable.
 (assert-event
  (let ((p (fn-bsi-test-program)))
    (and (member-equal '(:fsync-dir :parent) p)
         (member-equal '(:cut "init-root-parent-fenced") p)
         (member-equal '(:fsync-dir :config) p)
         (member-equal '(:cut "init-config-history-fenced") p)
-        (member-equal '(:cut "init-config-record-file-fenced") p)
-        (member-equal '(:cut "init-parent-fenced") p))))
+        (member-equal '(:cut "init-final-config-record-file-fenced") p)
+        (member-equal '(:cut "init-parent-fenced") p)
+        (member-equal '(:cut "init-config-linked") p)
+        (member-equal '(:cut "init-history-linked") p)
+        (member-equal '(:cut "init-frontier-linked") p)
+        (fn-bsi-test-no-duplicatesp (fn-bsi-test-cut-names p)))))
 
-; Error after the root parent fence: the lock and all later publications have
-; not run.  This reaches a real initializer failure boundary, not a synthetic
-; postcondition mutation.
+; The lock creation errors after the root parent fence: all metadata
+; publications have not run.  This reaches a real initializer failure
+; boundary, not a synthetic postcondition mutation.
 (assert-event
  (let* ((run (fn-bsi-test-run (fn-bsi-test-outcome-at 4 '(:eio :drop))))
         (bs (car (car (last run)))))
@@ -70,8 +90,9 @@
         (not (fn-bs-lookup bs :root *fn-bsi-lock-name*))
         (equal (fn-bs-durable-entry bs :root *fn-bs-config-name*) nil))))
 
-; Error after the config-history link can leave either legal directory image.
-; The runner stops there; the explicit config-directory barrier never runs.
+; A config-directory fsync error after the history link can leave either legal
+; directory image.  The barrier runs and reports EIO; the runner stops at that
+; failed barrier, so no later fence runs.
 (assert-event
  (let* ((drop (fn-bsi-test-run (fn-bsi-test-outcome-at 42 '(:eio :drop))))
         (keep (fn-bsi-test-run (fn-bsi-test-outcome-at 42 '(:eio :apply))))
@@ -81,15 +102,23 @@
         (equal (fn-bs-durable-entry new :config *fn-bsi-config-record-name*) 2)
         (not (equal old new)))))
 
-; The physical input boundary and the metadata-to-kernel binding are separate
-; theorem hypotheses, each with a reachable counterexample.
+; The metadata-binding witness violates fn-bs-initial-inputp.  The physical
+; witness below keeps that binding true and violates only the string-name
+; portion of fn-bsi-fresh-inputp.
+(assert-event
+ (and (fn-bs-initial-inputp (fn-bsi-test-config) (fn-bsi-test-frontier))
+      (not (fn-bsi-fresh-inputp (fn-bsi-test-config) (fn-bsi-test-record)
+                                (fn-bsi-test-frontier) 7
+                                *fn-bsi-test-record-stage*
+                                *fn-bsi-test-frontier-stage*))))
 (must-fail
  (assert-event
   (fn-bs-store-relation
    (car (car (last (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state)
-                              (fn-bsi-current-init-program nil (fn-bsi-test-record)
+                              (fn-bsi-current-init-program (fn-bsi-test-config)
+                                                           (fn-bsi-test-record)
                                                            (fn-bsi-test-frontier)
-                                                           *fn-bsi-test-config-stage*
+                                                           7
                                                            *fn-bsi-test-record-stage*
                                                            *fn-bsi-test-frontier-stage*)
                               nil nil nil))))
@@ -106,3 +135,38 @@
                                                            *fn-bsi-test-frontier-stage*)
                               nil nil nil))))
    (fn-sf-initial-state))))
+
+; Equal fresh stage names are a positive witness: the prior pending
+; create/unlink pair has no name in the running view, so the next O_EXCL
+; create succeeds.  This does not cover an entry that was already present.
+(assert-event
+ (let* ((stage ".one-fresh-stage")
+        (run (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state)
+                        (fn-bsi-current-init-program (fn-bsi-test-config)
+                                                     (fn-bsi-test-record)
+                                                     (fn-bsi-test-frontier)
+                                                     stage stage stage)
+                        nil nil nil))
+        (bs (car (car (last run)))))
+   (and (fn-bsi-fresh-inputp (fn-bsi-test-config) (fn-bsi-test-record)
+                             (fn-bsi-test-frontier) stage stage stage)
+        (equal bs (fn-bsi-current-initial-image (fn-bsi-test-config)
+                                                 (fn-bsi-test-record)
+                                                 (fn-bsi-test-frontier)
+                                                 stage stage stage))
+        (fn-bs-store-relation bs (fn-sf-initial-state)))))
+
+; Removing only the history-directory fence leaves the old relation true,
+; because it does not observe :config, while the complete-image keystone is
+; false.  This is the separating witness for the image theorem's real scope.
+(assert-event
+ (let* ((program (remove-equal '(:fsync-dir :config) (fn-bsi-test-program)))
+        (run (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state) program nil nil nil))
+        (bs (car (car (last run)))))
+   (and (fn-bs-store-relation bs (fn-sf-initial-state))
+        (equal (fn-bs-durable-entry bs :config *fn-bsi-config-record-name*) nil)
+        (not (equal bs (fn-bsi-current-initial-image
+                        (fn-bsi-test-config) (fn-bsi-test-record)
+                        (fn-bsi-test-frontier) *fn-bsi-test-config-stage*
+                        *fn-bsi-test-record-stage*
+                        *fn-bsi-test-frontier-stage*))))))
