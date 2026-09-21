@@ -558,9 +558,10 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "planning/evidence/wave-realignment-2026-09-19.md",
-        "planning/evidence/feed-journal-w12-host.json"
+        "planning/evidence/feed-journal-w12-host.json",
+        "tests/acl2/store-identity-traces-tests.lisp"
       ],
-      "implementation_note": "Real frame checksum/truncation/schema/namespace faults refuse normal recovery. Repair workflow and old-valid-store rollback detection remain open. W12 adds bounded ACL2 FNFD prefix recovery, durable torn-suffix repair and an owner-wide fence after ambiguous journal I/O. Its scanner/phase theorems and component tests are scoped by PRF-043; physical correspondence and integrated acceptance/feed recovery remain open.",
+      "implementation_note": "Real frame checksum/truncation/schema/namespace faults refuse normal recovery. Repair workflow and old-valid-store rollback detection remain open. W12 adds bounded ACL2 FNFD prefix recovery, durable torn-suffix repair and an owner-wide fence after ambiguous journal I/O. Its scanner/phase theorems and component tests are scoped by PRF-043; physical correspondence and integrated acceptance/feed recovery remain open. Composed recovery now faults on identity replay failure even when embedded article replay succeeds; the missing-enrollment kind-4 trace runs against actual fn-sn-open-observed definitions. Fresh certification and native corrupt-history startup remain open.",
       "note": "Frame integrity evidence is scoped by PRF-035. W12 repairs only a torn final FNFD envelope; complete invalid evidence is preserved and fails startup. General media repair, durable staging orphan collection and old-valid-store rollback detection remain open."
     },
     {

@@ -161,6 +161,37 @@
                       (car (last (fn-stx-store (fn-sn-node *sit-recovered*)))))
                      *sit-source*))
 (assert-event
- (consp (fn-retain-find-id
+(consp (fn-retain-find-id
          "forward-obligation"
          (fn-retain-pins (fn-node-retention (fn-sn-node *sit-recovered*))))))
+
+; Structurally bound signed article, but no durable enrollment precedes it.
+; The ordinary node replay accepts its article; the independent identity
+; replay correctly rejects its missing historical snapshot. The composed
+; recovery must report a fault, never open an empty node successfully.
+(defconst *sit-orphan-record*
+  (fn-record-make 0 0 0 "<orphan@example.invalid>" *sit-source* *sit-groups*
+                  "orphan-obligation" "orphan-subject" "orphan-release" 3))
+(defconst *sit-orphan-composite*
+  (fn-hsig-authorized-article-event
+   0 0 0 1 *sit-snapshot* "<orphan@example.invalid>"
+   (fn-record-string-octets "orphan-subject")
+   (fn-record-encode *sit-orphan-record*)
+   *sit-principal* *sit-keys* *sit-source* *sit-signatures* *sit-ml-key*
+   :verified :verified))
+(defconst *sit-orphan-history* (list *sit-orphan-composite*))
+(assert-event (fn-stxa-bindsp *sit-orphan-composite*))
+(assert-event (fn-sn-observed-historyp 1 *sit-orphan-history*))
+(assert-event (fn-sf-history-recoverablep *sit-groups* 32 *sit-orphan-history* 1))
+(assert-event (equal (fn-stxk-context-kind
+                      (fn-replay-identity *sit-orphan-history*)) :fault))
+(defconst *sit-orphan-recovered*
+  (fn-sn-recover (fn-sn-observed-seed *sit-groups* 32 1 *sit-orphan-history*)))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sit-orphan-recovered*)) :fault))
+(assert-event (equal (fn-sf-records (fn-sn-files *sit-orphan-recovered*))
+                     *sit-orphan-history*))
+(assert-event (not (fn-sn-open-okp
+                    (fn-sn-open-observed *sit-groups* 32 1 *sit-orphan-history*))))
+(assert-event (equal (fn-sf-phase
+                      (fn-sn-files (fn-sit-barriers *sit-orphan-recovered* 5)))
+                     :fault))

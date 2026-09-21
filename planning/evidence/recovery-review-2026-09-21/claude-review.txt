@@ -1,0 +1,49 @@
+I've traced the identity-journal/recovery-join path from `specs/storage.md` and `specs/host.md` down through `books/store-node.lisp`, `books/replay.lisp`, `books/store-files.lisp`, `books/store-observed.lisp` (included transitively, needed to check the keystone theorem at the recovery root), `host/native/owner.lisp`, `host/owner-host.lisp`, and `tests/acl2/store-identity-traces-tests.lisp`. Two concrete source-level findings, plus one flagged gap:
+
+## Finding 1 (confirmed defect, high severity): `fn-sn-recover` silently discards the replayed node on an identity-only recovery fault
+
+**Where:** `books/store-node.lisp:608-629`, function `fn-sn-recover`.
+
+```lisp
+(let* ((files (fn-sf-recover (fn-sn-files s) (fn-sn-groups s) (fn-sn-capacity s)))
+       (node (fn-sf-replay-node ... (fn-sf-records files) (fn-sf-frontier files)))
+       (identity-context (fn-replay-identity (fn-sf-records files))))
+  (if (and (equal (fn-sf-phase files) :recovering)
+           (equal (fn-stxk-context-kind identity-context) :ok))
+      (fn-sn-update-replayed s files node ... identity-context)
+    (fn-sn-update s files (fn-sn-node s))))   ; <-- else branch
+```
+
+`files` is computed once and used in **both** arms of the `if`. `fn-sf-recover` (`books/store-files.lisp:815-824`) decides `:recovering` purely from `fn-sf-history-recoverablep`, i.e. from the plain node-level walk (`fn-sf-replay-node`/`fn-replay` in `books/replay.lisp`), which never touches `fn-stxk-context`. `fn-replay-apply-record`'s stxa (kind-4) branch only checks `fn-stxa-bindsp` (self-consistency of the composite wrapper) before accepting the embedded article into the node (`books/replay.lisp:458-465, 474-500`) — it never looks up the referenced keyring snapshot. The snapshot lookup and binding proof (`fn-hsig-article-event-snapshot-bindsp`) happen only inside `fn-replay-identity-step` (`books/replay.lisp:330-358`), a second, independent walk.
+
+**Triggering trace:** a durable history whose kind-4 records are all structurally self-consistent (so the node-level walk accepts every article and `fn-sf-history-recoverablep` is true, so `fn-sf-recover` reaches `:recovering`), but one composite's `keyring-generation` doesn't resolve to an enrolled snapshot (`fn-stxk-find` returns nil) or its embedded verdict statement fails to decode — either produces `fn-stxk-fault` (`:composite-binding`/`:composite-verdict`), so `fn-stxk-context-kind` is not `:ok`. The outer `and` is then false, so the `else` branch fires with `files` still at `:recovering` (already computed) but `node` reverts to `(fn-sn-node s)` — the seed's **empty** `fn-node-initial-state`.
+
+**Consequence:** `fn-sn-open-observed` (`books/store-observed.lisp:164-179`) only gates success on `(fn-sf-phase (fn-sn-files opened)) = :recovering`; it never inspects the node. So this reaches `fn-sn-open-ok`, the native host (`host/native/owner.lisp:390-450`, `fnn-owner-install`) sees `:recovering`, issues the five barrier fsyncs and reaches `:ready` — serving with an empty node while the durable transaction history is non-empty. This is exactly what STO-008 forbids ("Recovery must not emit a fresh success for missing or corrupt data") and it also appears to falsify the stated keystone `fn-sn-recover-replaying-output-is-exact` (`books/store-observed.lisp:211-232`), whose hypothesis is only `(fn-sf-phase (fn-sn-files (fn-sn-recover st))) = :recovering` — a hypothesis this branch satisfies while its conclusion (`fn-sn-node` equals the full replay) is false. I have not run ACL2 to see whether that theorem actually fails to certify (the task states certification is pending); this is read from source, not from a certification run.
+
+**Smallest viable repair:** when `identity-context` is not `:ok`, force `files` itself into `:fault` (reuse the same construction `fn-sf-recover` uses on its own recoverability failure) before falling through to `fn-sn-update`, rather than leaving `files` at `:recovering` with the stale node.
+
+## Finding 2 (confirmed defect, matches an AGENTS.md-named class): whole-history replay runs on every prepare, for every event kind
+
+**Where:** `books/store-files.lisp:430-439`, `fn-sf-prepare-record`, called identically by `fn-sn-prepare` (line 355-368), `fn-sn-prepare-retention` (380-391) and `fn-sn-prepare-identity` (402-416) in `books/store-node.lisp` — i.e. every legacy article, every retention event and every identity event.
+
+```lisp
+(defun fn-sf-prepare-record (s record groups capacity)
+  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :reserved)
+           (fn-sf-candidatep record (fn-sf-records s) (fn-sf-frontier s))
+           (fn-sf-history-recoverablep
+            groups capacity (append (fn-sf-records s) (list record))
+            (fn-sf-frontier s)))
+      ...))
+```
+
+`fn-sf-history-recoverablep` calls `fn-sf-replay-node` → `fn-replay` (`books/replay.lisp:618-623`), which builds a fresh `fn-node-initial-state` and walks **every** durable record from scratch (`fn-replay-loop`). This runs on the reserved→record-staged transition of every single POST/retention/identity commit, so accepting the Nth record costs O(N) node reconstruction, and the store as a whole costs O(N²) to fill. This is precisely the class AGENTS.md names explicitly: "No whole-state revalidation on a served path. A recognizer over the entire store or the entire retained input must not run per command or per byte; carry the invariant in state and prove it preserved. (D3, wire.)" Per HST-001 the host executes this same definition, not a hand-optimized shadow, so this is a real cost on the native served/owner path (`host/native/owner.lisp` `fnn-owner-attempt`/`-retention-commit`/`-identity-commit`, all reached through `fn-owner-step`'s `:prepare*` dispatch to these `fn-sn-prepare*` functions), not just a spec artifact.
+
+**Smallest viable repair:** replace the full replay in `fn-sf-prepare-record`'s admission gate with an incrementally-carried invariant (prove that a record admitted by `fn-node-prepare`/`fn-node-complete` against the current live node necessarily keeps the store recoverable at the new frontier, rather than re-deriving that fact from an empty node every time).
+
+## Possible gap needing evidence (not claimed as confirmed): cross-counter congruence
+
+`fn-sf-candidatep` (`books/store-files.lisp:236-244`) gates a record's `sequence` field against `(len (fn-sf-records s))` (the journal position), while `fn-sn-prepare-identity`'s identity gate (`books/store-node.lisp:408-410`) checks the same field against `(fn-sn-identity-next s)` via `fn-replay-identity-step`. Record construction (`fn-owner-prepare`/`fn-owner-prepare-retention`, `host/owner-host.lisp:304-342, 358-376`) always sources this field from `(fn-sn-identity-next s)`. These two counters are advanced together by `fn-sn-finish`/`fn-sn-advance-identity-next` on every commit kind, and reconstructed together by `fn-replay-identity-loop` on reopen (`books/store-observed.lisp`'s recovery path), so by inspection they stay congruent on every path I read. I did not find, within the files in scope, an explicit theorem stating `(fn-sn-identity-next s) = (len (fn-sf-records (fn-sn-files s)))` as an invariant of `fn-sn-statep`; that proof (if it exists) likely lives in `books/store-node-invariants.lisp`, outside this review's file list. Worth a targeted check there rather than treating the congruence as re-derived from what I've read.
+
+---
+
+I did not find a distinct sequence/txid mismatch, a missing-progress-update, or an uncertain/fault/refused-conflation bug beyond what's above; the exception-routing asymmetry between `fnn-owner-attempt` (converts store conditions to return words) and `fnn-owner-retention-commit`/`fnn-owner-identity-commit` (let them propagate as conditions) is intentional and correctly handled by their respective callers (`fnn-owner-handle-chunk`'s explicit `uncertain` fence vs. `fnn-owner-shared-action-locked`'s condition-to-exit-code mapping for the CLI path) — not a defect. `fnn-owner-identity-commit` currently has no caller in this snapshot, consistent with the stated pending authored-control integration, so I did not report that as a gap.
