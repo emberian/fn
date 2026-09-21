@@ -625,6 +625,43 @@
                               (fn-own-feed-effect-peer effects) state)))
     state))
 
+; The only host projection of a bounded feed step.  The ACL2 subject has
+; already selected the next table, journal records and effects together.  A
+; refusal is published as empty output and deliberately does not replace the
+; owner's core, so queued delivery intent remains available for recovery.
+(defun fn-owner-feed-install-port-result (owner result state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (equal (fn-own-feed-port-status result) :accepted)
+      (let* ((state (fn-owner-replace-core
+                     (fn-own-with-feeds owner
+                                        (fn-own-feed-port-table result)) state))
+             (state (fn-owner-feed-install-feed
+                     (fn-own-feed-port-records result)
+                     (fn-own-feed-port-effects result) state)))
+        (mv :accepted state))
+    (let ((state (fn-owner-feed-install-feed nil nil state)))
+      (mv :refused state))))
+
+; Restart is one selected port step per configured peer.  The fold retains
+; intermediate tables only locally: one refused peer returns the original
+; table and no accumulated records, so the host cannot publish a partial
+; restart fence.
+(defun fn-owner-feed-port-restart-fold (names current original)
+  (declare (xargs :mode :program))
+  (if (consp names)
+      (let ((one (fn-own-feed-port-restart-peer (car names) current)))
+        (if (equal (fn-own-feed-port-status one) :refused)
+            (fn-own-feed-port-result :refused original nil nil)
+          (let ((rest (fn-owner-feed-port-restart-fold
+                       (cdr names) (fn-own-feed-port-table one) original)))
+            (if (equal (fn-own-feed-port-status rest) :refused)
+                rest
+              (fn-own-feed-port-result
+               :accepted (fn-own-feed-port-table rest)
+               (append (fn-own-feed-port-records one)
+                       (fn-own-feed-port-records rest)) nil)))))
+    (fn-own-feed-port-result :accepted current nil nil)))
+
 ; Project the durable intent before the store is allowed to begin.  The host
 ; supplies values ACL2 itself produced (provenance, configuration generation
 ; and next transaction id); this function derives the exact object identity,
@@ -1081,11 +1118,12 @@
         (value nil)
       (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
-             (records (fn-own-tick-peer-records owner peer obs))
-             (result (fn-own-tick-peer owner peer obs))
-             (state (fn-owner-replace-core (cdr result) state))
-             (state (fn-owner-feed-install-feed records (car result) state)))
-        (value (if (car result) :offer :idle))))))
+             (result (fn-own-feed-port-tick-peer
+                      peer (fn-own-feeds owner) obs)))
+        (mv-let (status state)
+          (fn-owner-feed-install-port-result owner result state)
+          (value (if (equal status :refused) :refused
+                   (if (fn-own-feed-port-effects result) :offer :idle))))))))
 
 ; One reply line from one peer.
 (defun fn-owner-feed-octets (peer-octets line monotonic state)
@@ -1095,11 +1133,20 @@
         (value nil)
       (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
-             (records (fn-own-feed-reply-records owner peer line obs))
-             (result (fn-own-feed-reply owner peer line obs))
-             (state (fn-owner-replace-core (cdr result) state))
-             (state (fn-owner-feed-install-feed records (car result) state)))
-        (value (if (car result) :send :quiet))))))
+             (entry (fn-own-feed-entry-of peer (fn-own-feeds owner)))
+             (feed (fn-own-feed-entry-feed entry))
+             (msgid (fn-own-feed-inflight-msgid (fn-feed-queue feed)))
+             (response (fn-own-feed-parse-response line msgid)))
+        (if (null response)
+            (let ((state (fn-owner-feed-install-feed nil nil state)))
+              (value :quiet))
+          (let ((result (fn-own-feed-port-observe-peer
+                         peer (fn-own-feeds owner) response
+                         (fn-own-feed-article owner msgid) obs)))
+            (mv-let (status state)
+              (fn-owner-feed-install-port-result owner result state)
+              (value (if (equal status :refused) :refused
+                       (if (fn-own-feed-port-effects result) :send :quiet))))))))))
 
 ; The connection to ONE peer is gone.  The host reports the event and the
 ; time it happened; ACL2 decides what it means.  `fn-own-feed-lost-records'
@@ -1120,11 +1167,11 @@
         (value nil)
       (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
-             (records (fn-own-feed-lost-records owner peer obs))
-             (state (fn-owner-replace-core
-                     (fn-own-feed-lost owner peer obs) state))
-             (state (fn-owner-feed-install-feed records nil state)))
-        (value :ok)))))
+             (result (fn-own-feed-port-lost-peer
+                      peer (fn-own-feeds owner) obs)))
+        (mv-let (status state)
+          (fn-owner-feed-install-port-result owner result state)
+          (value (if (equal status :refused) :refused :ok)))))))
 
 ; Which peer's journal each pending frame belongs in, in the same order as
 ; the frames: the record's own field 0, read by ACL2.
@@ -1194,9 +1241,10 @@
 (defun fn-owner-feed-restart (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
-         (records (fn-own-feed-restart-records (fn-own-feeds owner)))
-         (state (fn-owner-replace-core
-                 (fn-own-with-feeds owner (fn-own-feed-restart-all (fn-own-feeds owner)))
-                 state))
-         (state (fn-owner-feed-install-feed records nil state)))
-    (value (len records))))
+         (table (fn-own-feeds owner))
+         (result (fn-owner-feed-port-restart-fold
+                  (fn-own-feed-names table) table table)))
+    (mv-let (status state)
+      (fn-owner-feed-install-port-result owner result state)
+      (value (if (equal status :refused) :refused
+               (len (fn-own-feed-port-records result)))))))
