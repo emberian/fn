@@ -43,6 +43,7 @@
 (defconst *fn-frame-results* '(:durable :aborted :committed :absent))
 (defconst *fn-frame-receipt-outcomes* '(:committed :absent))
 (defconst *fn-frame-authorized* '(:authorized))
+(defconst *fn-frame-application-results* '(:accepted :duplicate))
 
 (defconst *fn-frame-workflow-kinds*
   '(:config :enqueue :attempt :transport :receipt-intent :outcome
@@ -63,13 +64,24 @@
    (cons :retry-request '(:text :text :nat :text))))
 
 (defconst *fn-frame-receipt-kinds*
-  '(:config :request-context :receipt-intent :receipt-decision))
+  ; Append-only: the first four codes are the deployed version-1 FNRJ
+  ; vocabulary.  Native application ingress adds intent/context-v2 without
+  ; changing any legacy code or byte string.
+  '(:config :request-context :receipt-intent :receipt-decision
+    :request-intent :request-context-v2))
 
 (defconst *fn-frame-receipt-specs*
   (list
    (cons :config '(:text :text :text))
    (cons :request-context
          (list :text :blob :blob (cons :enum *fn-frame-authorized*)))
+   (cons :request-intent
+         (list :text :blob :nat :nat
+               (cons :enum *fn-frame-application-results*)))
+   (cons :request-context-v2
+         (list :text :blob :blob :nat :nat :nat
+               (cons :enum *fn-frame-authorized*)
+               (cons :enum *fn-frame-application-results*)))
    (cons :receipt-intent
          (list :text :text :blob (cons :enum *fn-frame-authorized*)))
    (cons :receipt-decision
