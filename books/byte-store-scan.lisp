@@ -786,31 +786,23 @@
                             fn-bs-read-records fn-bs-record-of
                             fn-bs-scan-store fn-sf-crash-imagep)))))
 
-; K1, K2 and K3 themselves stay OPEN.  K1 is the four scan clauses: the config
-; and frontier entries (fn-bs-crash-keeps-untouched-entry, since the phase
-; clause leaves no pending operation at either name) with their contents
-; (fn-bs-crash-keeps-fenced-content through the relation's authority clause),
-; contiguity (the three above, with fn-bs-txn-names-of-1+), and no :fault
-; (fn-bs-read-records-under-agreement against (fn-bs-durable bs)).
+; K1, K2, K3 and K4 are CLOSED as of 2026-09-21 (lane w11/k1-scan).  K1 and
+; K2 are sections 8 to 10 below; K3 and K4 are books/byte-store-keystones.lisp,
+; which sits at the seam where the host reopen entry lives.  K1 is the four
+; scan clauses: the config entry and content, the frontier entry and its
+; decode, contiguity, and no :fault; the namespace clause above is the third
+; and w9/storage-3 closed it.  D14-a and D14-b stand unchanged, and both of
+; D14-c's rollback arms are LIVE in K2's proof rather than decoration -- a
+; crash that loses the pending link lands in the record arm, one that loses
+; the pending rename in the frontier arm.
 ;
-; K2's two MODEL questions are both DECIDED and neither blocks it any more.
-; D14-a keeps this book's (fn-bs-txn-name (len (fn-bs-durable-names bs
-; :transactions))) over section 3.2's (fn-bs-txn-name (len (fn-sf-records
-; ks))), and excludes the image holding rc TWICE by the publish window's
-; (equal (fn-bs-durable-records bs) (fn-sf-records ks)), an equality of LISTS
-; rather than of counts.  D14-b then makes K2's CONCLUSION
-; fn-sf-recovery-crash-imagep, so K2 needs no (not (fn-bs-replay-visiblep
-; ks)) hypothesis and K2r is gone; K3 is fn-sf-recovery-crash-realizes-every-
-; admissible-image (books/store-files-invariants.lisp) applied to K2.
-;
-; What K2 still waits on is byte-side: K1's other three clauses, above.
-; K2f -- the recovery window entered with a pending :root entry operation --
-; is MODELLED as of 2026-09-20 (lane w11/bytestore-k2): the frontier arm of
-; fn-sf-recovery-crash-imagep and its gate fn-sf-frontier-rollback-visiblep
-; are certified in books/store-files{,-invariants}.lisp, and
-; fn-bs-replay-matches-scan above carries the matching clause.  What is not
-; proved is the same thing K2 as a whole is not proved: that the relation
-; IMPLIES the conclusion.  The clause is an obligation on K0, not a theorem.
+; What is STILL open in this cluster is K0 (fn-bs-program-step-preserves-
+; relation), which is what discharges the relation's own clauses on the
+; host's programs -- including the two D14-c added to fn-bs-replay-matches-
+; scan, that the durable frontier is the scanned one minus one under a
+; pending :root operation and that at most one authority directory has a
+; pending entry operation in the window.  Those are obligations on K0, not
+; theorems, and K2 assumes them through the relation.  K5 to K8 are open.
 
 ; -----------------------------------------------------------------------------
 ; 8. K1: the scan of a crash image of a related state never faults.

@@ -416,7 +416,8 @@
         "PRF-007",
         "PRF-032",
         "PRF-034",
-        "PRF-036"
+        "PRF-036",
+        "PRF-040"
       ],
       "verification": [
         "proof",
@@ -438,7 +439,9 @@
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
         "tests/evidence/2026-09-21-four-node-lab.md",
-        "tests/evidence/2026-09-21-four-node-lab.json"
+        "tests/evidence/2026-09-21-four-node-lab.json",
+        "books/byte-store-scan.lisp",
+        "books/byte-store-keystones.lisp"
       ],
       "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, and every process-death cut is a model crash point. Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open.",
       "keystones": [
@@ -524,7 +527,8 @@
       "proof_targets": [
         "PRF-007",
         "PRF-032",
-        "PRF-036"
+        "PRF-036",
+        "PRF-040"
       ],
       "verification": [
         "proof",
@@ -535,7 +539,9 @@
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/byte-store-scan.lisp",
+        "books/byte-store-keystones.lisp"
       ],
       "implementation_note": "Abstract isolated-slot model plus real adapter barriers and injected failures. No claim that the slot model is already a proved refinement of this adapter or a qualified power-loss model.",
       "keystones": [

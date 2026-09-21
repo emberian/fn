@@ -99,6 +99,8 @@
     "books/byte-store",
     "books/byte-store-invariants",
     "books/byte-store-scan",
+    "books/byte-store-keystones",
+    "tests/acl2/byte-store-scan-tests",
     "books/byte-store-programs",
     "tests/acl2/byte-store-tests",
     "books/assumptions",
@@ -284,12 +286,12 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 280,
-    "books_in_root_closure": 280,
-    "roots": 280,
-    "theorems": 5692,
+    "books": 282,
+    "books_in_root_closure": 282,
+    "roots": 282,
+    "theorems": 5784,
     "functions": 3971,
-    "assert_events": 5826,
+    "assert_events": 5840,
     "must_fails": 63,
     "encapsulates": 19,
     "guards": {
@@ -298,11 +300,11 @@
       "default-guarded": 1795,
       "default-unguarded": 495
     },
-    "suspect_theorems": 46,
+    "suspect_theorems": 47,
     "export_hygiene_warnings": 73,
-    "enabled_projection_warnings": 21,
+    "enabled_projection_warnings": 23,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 89,
+    "include_hygiene_warnings": 91,
     "host_names_warnings": 33,
     "hand_written_record_warnings": 18
   },
@@ -1679,6 +1681,32 @@
       "read_error": null
     },
     {
+      "book": "books/byte-store-keystones.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-scan",
+        "store-observed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/byte-store-programs.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -1708,7 +1736,7 @@
       "book": "books/byte-store-scan.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
+      "theorems": 134,
       "functions": 32,
       "guards": {
         "verified": 0,
@@ -4107,6 +4135,7 @@
         "arithmetic/top"
       ],
       "suspects": [
+        "fn-sf-frontier-rollback-visiblep-unfolds",
         "fn-sf-stable-records-outside-the-window"
       ],
       "read_error": null
@@ -5859,6 +5888,32 @@
       "system_includes": [
         "std/testing/must-fail"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/byte-store-scan-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 14,
+      "must_fails": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-keystones",
+        "../../books/byte-store-programs"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -7944,6 +7999,14 @@
       ]
     },
     {
+      "theorem": "fn-sf-frontier-rollback-visiblep-unfolds",
+      "book": "books/store-files-invariants.lisp",
+      "line": 407,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep"
+      ]
+    },
+    {
       "theorem": "fn-sf-stable-records-outside-the-window",
       "book": "books/store-files-invariants.lisp",
       "line": 88,
@@ -8613,6 +8676,24 @@
         "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
+        "function": "fn-bs-scan-frontier",
+        "book": "books/byte-store-scan.lisp",
+        "line": 379,
+        "stated_in": [
+          "books/byte-store-keystones.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bs-scan-records",
+        "book": "books/byte-store-scan.lisp",
+        "line": 380,
+        "stated_in": [
+          "books/byte-store-keystones.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
         "function": "fn-transfer-work-value",
         "book": "books/transfer-work.lisp",
         "line": 13,
@@ -8895,6 +8976,13 @@
         "line": 2,
         "include": "bp-workflow-invariants",
         "included": "books/bp-workflow-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/byte-store-keystones.lisp",
+        "line": 20,
+        "include": "byte-store-scan",
+        "included": "books/byte-store-scan.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -9189,6 +9277,13 @@
         "line": 3,
         "include": "../../books/bp-workflow-transport-invariants",
         "included": "books/bp-workflow-transport-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-scan-tests.lisp",
+        "line": 24,
+        "include": "../../books/byte-store-keystones",
+        "included": "books/byte-store-keystones.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
