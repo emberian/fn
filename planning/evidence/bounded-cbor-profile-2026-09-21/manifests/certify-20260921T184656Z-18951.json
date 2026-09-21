@@ -1,0 +1,114 @@
+{
+  "acl2_compatibility": null,
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/statement-invariants": 0
+  },
+  "acl2_slots": 4,
+  "acl2_toolchain": {
+    "launcher": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+    "launcher_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+    "launcher_size": 142,
+    "reason": "shell expansion is outside the recognized launcher subset at /opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2:6",
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "unqualified"
+  },
+  "acl2_toolchain_identity": null,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "book_failures": {},
+  "book_results": {
+    "books/statement-invariants": "passed"
+  },
+  "book_wall_seconds": {
+    "books/statement-invariants": 31.219
+  },
+  "certificate_digests_sha256": {
+    "books/statement-invariants": "bbbafdfccd7db2cac19011faec9b2e6854db14812d2b03c0e5b1a2167414cebb"
+  },
+  "certify_wall_seconds": 31.222,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/statement-invariants": "125d427c26e7605ae6a87cd9438b86653ae0bce0323d19bc82ae3535ec0baf1c"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS e3bf0d2ee92b4b554801e2d74ca64767 3818b94ef8d7"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T18:47:27+00:00",
+  "git_branch": "w27/bounded-event-profiles",
+  "git_dirty": true,
+  "git_revision": "f732bfa2e422b6d8207ff8c689f8f2bd04f1d48c",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS e3bf0d2ee92b4b554801e2d74ca64767 3818b94ef8d7"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "662e8ef911ffe2cef222a48b8a279a01f86a4557dcf1fc00bc8002c8d8dfacb4",
+  "requested_before_filter": [
+    "books/statement-invariants"
+  ],
+  "requested_books": [
+    "books/statement-invariants"
+  ],
+  "run_id": "certify-20260921T184656Z-18951",
+  "runner_sha256": "cb79d3bea9e5a531e33e44c882f8f615d4c0258db2c4f7361746ff1e2416c7d6",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/statement-invariants": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor-invariants.lisp": "999c4e6d08f6cb6ade7ca6b80da1564c4ecd26727a0c5e1c382d7aa7e3a36f64",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/statement-invariants.lisp": "ae9301f03968f83bcfa91f492a616bef7706bd0e7979a50290abdb700dc1c601",
+    "books/statement.lisp": "48887b25bfe62fa7c820a1348a43849152641813fb834f39368c7f6dbe5aac7a"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor-invariants.lisp": "999c4e6d08f6cb6ade7ca6b80da1564c4ecd26727a0c5e1c382d7aa7e3a36f64",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/statement-invariants.lisp": "ae9301f03968f83bcfa91f492a616bef7706bd0e7979a50290abdb700dc1c601",
+    "books/statement.lisp": "48887b25bfe62fa7c820a1348a43849152641813fb834f39368c7f6dbe5aac7a"
+  },
+  "start_order": [
+    "books/statement-invariants"
+  ],
+  "started_utc": "2026-09-21T18:46:56+00:00",
+  "status": "passed",
+  "timeout_seconds": 120,
+  "tree": "/Users/ember/dev/fn/build/lanes/w27-bounded-event-profiles"
+}

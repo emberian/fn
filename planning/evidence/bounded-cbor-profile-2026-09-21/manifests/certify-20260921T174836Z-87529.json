@@ -1,0 +1,128 @@
+{
+  "acl2_compatibility": null,
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/cbor": 0,
+    "books/cbor-invariants": 0,
+    "books/records": 0
+  },
+  "acl2_slots": 4,
+  "acl2_toolchain": {
+    "launcher": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+    "launcher_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+    "launcher_size": 142,
+    "reason": "shell expansion is outside the recognized launcher subset at /opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2:6",
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "unqualified"
+  },
+  "acl2_toolchain_identity": null,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "book_failures": {},
+  "book_results": {
+    "books/cbor": "passed",
+    "books/cbor-invariants": "passed",
+    "books/records": "passed"
+  },
+  "book_wall_seconds": {
+    "books/cbor": 0.174,
+    "books/cbor-invariants": 0.683,
+    "books/records": 4.512
+  },
+  "certificate_digests_sha256": {
+    "books/cbor": "bc527c5d7936397b83124c2d364258efd7625656c711409401824291499ddffb",
+    "books/cbor-invariants": "69e4cddb273b217f47184e830f49fe51b0912b8c8024674cf56c3c1d7c369e77",
+    "books/records": "09a1cca8b751571e9aaa4a18bd0c5a56d1419e9e89c36294896907557da065f9"
+  },
+  "certify_wall_seconds": 5.374,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/cbor": "65415bf6bec0e07f20b6de996d613f5d0f7d83a8e98dfe06c1d56c3c65d384a0",
+    "books/cbor-invariants": "ea78ebf501d12834df9bbc497f44977285b2ba58803ce10507c01ccdc5069074",
+    "books/records": "cfba621c880799db3d0cc685e0bef4d05a0df2cfbb9335ef769af6a3df3acc2b"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 12d698514726ca9ab902144f4e426ede 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 12d698514726ca9ab902144f4e426ede bf0ee880713d",
+    "FN_CERTIFY_SUCCESS 12d698514726ca9ab902144f4e426ede d45992d8befd"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T17:48:41+00:00",
+  "git_branch": "w27/bounded-event-profiles",
+  "git_dirty": true,
+  "git_revision": "24ffc52b3261744070465046f39bc892097897c4",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 12d698514726ca9ab902144f4e426ede 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 12d698514726ca9ab902144f4e426ede bf0ee880713d",
+    "FN_CERTIFY_SUCCESS 12d698514726ca9ab902144f4e426ede d45992d8befd"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "662e8ef911ffe2cef222a48b8a279a01f86a4557dcf1fc00bc8002c8d8dfacb4",
+  "requested_before_filter": [
+    "books/cbor",
+    "books/cbor-invariants",
+    "books/records"
+  ],
+  "requested_books": [
+    "books/cbor",
+    "books/cbor-invariants",
+    "books/records"
+  ],
+  "run_id": "certify-20260921T174836Z-87529",
+  "runner_sha256": "cb79d3bea9e5a531e33e44c882f8f615d4c0258db2c4f7361746ff1e2416c7d6",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/cbor": 0.0,
+    "books/cbor-invariants": 0.0,
+    "books/records": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor-invariants.lisp": "999c4e6d08f6cb6ade7ca6b80da1564c4ecd26727a0c5e1c382d7aa7e3a36f64",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor-invariants.lisp": "999c4e6d08f6cb6ade7ca6b80da1564c4ecd26727a0c5e1c382d7aa7e3a36f64",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c"
+  },
+  "start_order": [
+    "books/cbor",
+    "books/cbor-invariants",
+    "books/records"
+  ],
+  "started_utc": "2026-09-21T17:48:36+00:00",
+  "status": "passed",
+  "timeout_seconds": 900,
+  "tree": "/Users/ember/dev/fn/build/lanes/w27-bounded-event-profiles"
+}
