@@ -236,7 +236,55 @@ tree: `not-built` 23 to 1, twelve new transit disagreements. Two independent
 measurements of the same move is the best evidence this lane has that the
 number is the tree's and not the harness's.
 
-## 7. What is still open after this lane
+## 7. A cache defect this lane hit and did not fix
+
+`python3 tools/certs.py install` on the merged tree reported `installed`
+and then ACL2 refused the very first `include-book`:
+
+```
+ACL2 Error in ( INCLUDE-BOOK "served" ...):
+-- its certificate requires the book "/home/ember/fn-lanes/w11-owner-survival/books/nntp-auth.lisp",
+   but that book has not been included although the book
+   "/home/ember/fn-lanes/w11-auth-live/books/nntp-auth.lisp"
+   -- which has the same familiar name as that required book (but with a
+   different full-book-name) -- has been included
+```
+
+**`install` chooses a best entry per book, and a certificate is only valid
+against a consistent SET.** An ACL2 `.cert` post-alist names every sub-book
+by absolute path, so two pairs made in two different roots cannot be used
+together, whatever each one is worth on its own. `choose_entry`
+(`tools/certs.py:326`) takes this worktree's own entry, else any entry whose
+origin root does not exist on this machine, else any snapshot entry -- all
+per book, with no constraint that two books in one closure agree.
+
+Measured in this worktree after one `install`: the installed `.cert` files
+name **eight different origin roots**, and no two of them can be mixed.
+
+```
+32  /home/ember/fn-lanes/w11-auth-live
+17  /home/ember/fn-gates/dev-909e055
+10  /home/ember/fn-lanes/dev-w6pf4
+ 9  /home/ember/fn-lanes/w10-dtn-3
+ 5  /home/ember/fn-lanes/w11-owner-survival
+ 3  /Users/ember/dev/fn/build/lanes/w11-wildmat-xpat   (worktree removed)
+ 2  /home/ember/fn-lanes/w11-twonode-feed
+ 1  /Users/ember/dev/fn/build/lanes/w11-fault-tests    (worktree removed)
+```
+
+This is why a lane can read `installed 119, kept 31, uncached 131` and still
+have nothing it can load. It is not this lane's to fix and it is not a
+defect of any book; the shape of the fix is to choose a consistent set --
+one origin per closure, preferring the origin that covers the most of the
+tree -- rather than a best entry per book.
+
+The practical consequence here: the merged tree's `books/owner-fault` could
+not be certified locally afterwards. Its certification at the pre-merge
+content is section 2's, `books/owner-fault.lisp` differs between the two
+only in comments, and the merged closure is what the re-run on persvati
+loaded.
+
+## 8. What is still open after this lane
 
 * `tools/run_reader.py` has no fault boundary at all. The reader host serves
   no writer and holds no store, so a fault there costs less, but the process
