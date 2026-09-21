@@ -31,6 +31,8 @@ PROOF_ENVIRONMENT = {
 }
 MAX_LAUNCHER_BYTES = 64 * 1024
 ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*", re.DOTALL)
+LITERAL_VALUE = re.compile(r"[A-Za-z0-9_./:+,@%=-]*")
+LITERAL_ABSOLUTE_PATH = re.compile(r"/[A-Za-z0-9_./:+,@%=-]+")
 
 
 def content_hash(path: Path) -> str:
@@ -71,6 +73,13 @@ def _shell_words(line: str) -> list[str]:
     lexer.commenters = "#"
     lexer.whitespace_split = True
     return list(lexer)
+
+
+def _literal_assignment(word: str) -> tuple[str, str] | None:
+    if not ASSIGNMENT.fullmatch(word):
+        return None
+    name, value = word.split("=", 1)
+    return (name, value) if LITERAL_VALUE.fullmatch(value) else None
 
 
 def _launcher_exec(path: Path, expected_sha256: str) -> tuple[Path, list[str], dict[str, str]]:
@@ -122,15 +131,19 @@ def _launcher_exec(path: Path, expected_sha256: str) -> tuple[Path, list[str], d
             raise ValueError(
                 f"shell control operator is outside the recognized launcher "
                 f"subset at {path}:{number}")
-        if words[0] == "export" and len(words) == 2 and ASSIGNMENT.fullmatch(words[1]):
+        exported = _literal_assignment(words[1]) if len(words) == 2 else None
+        if words[0] == "export" and exported is not None:
             if found is not None:
                 raise ValueError(f"command follows exec at {path}:{number}")
-            name, value = words[1].split("=", 1)
+            name, value = exported
             environment[name] = value
             continue
         index = 0
-        while index < len(words) and ASSIGNMENT.fullmatch(words[index]):
-            name, value = words[index].split("=", 1)
+        while index < len(words):
+            assignment = _literal_assignment(words[index])
+            if assignment is None:
+                break
+            name, value = assignment
             environment[name] = value
             index += 1
         if index >= len(words) or words[index] != "exec" or index + 1 >= len(words):
@@ -138,7 +151,8 @@ def _launcher_exec(path: Path, expected_sha256: str) -> tuple[Path, list[str], d
         if found is not None:
             raise ValueError(f"multiple exec commands in ACL2 launcher {path}")
         executable = Path(words[index + 1])
-        if not executable.is_absolute():
+        if (not executable.is_absolute()
+                or not LITERAL_ABSOLUTE_PATH.fullmatch(str(executable))):
             raise ValueError(f"ACL2 launcher exec is not an absolute path: {executable}")
         found = (executable.resolve(), words[index + 2:])
     if found is None:
@@ -172,7 +186,8 @@ def _saved_core(arguments: list[str], launcher: Path) -> Path:
             if core is not None or index + 1 >= len(arguments):
                 raise ValueError(f"ACL2 launcher must name exactly one saved core: {launcher}")
             core = Path(arguments[index + 1])
-            if not core.is_absolute():
+            if (not core.is_absolute()
+                    or not LITERAL_ABSOLUTE_PATH.fullmatch(str(core))):
                 raise ValueError(f"ACL2 saved core is not an absolute path: {core}")
             index += 2
             continue

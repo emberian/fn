@@ -118,6 +118,10 @@ class FingerprintTests(unittest.TestCase):
                     runtime, core),
                 'exec "{}" --core "{}" --eval "(load /absolute/extra)" "$@"'.format(
                     runtime, core),
+                'export X=~\nexec "{}" --core "{}" "$@"'.format(runtime, core),
+                'X={{one,two}} exec "{}" --core "{}" "$@"'.format(runtime, core),
+                'exec "/absolute/sbcl*" --core "{}" "$@"'.format(core),
+                'exec "{}" --core "/absolute/core*" "$@"'.format(runtime),
             )
             for command in commands:
                 launcher = root / "acl2"
