@@ -207,7 +207,7 @@ the whole-tree run behind these statuses is
 | --- | --- | --- |
 | Configuration is a replayed durable record | **done** | `books/config.lisp` ten delta kinds, `books/config-records.lisp`, `books/node-config.lisp` |
 | Live reconfiguration as an owner event | **open** | `fn group create|retire` refuses while a service is live ([BOARD](deputies/BOARD.md), w5-fn-cli) |
-| Crash model K1 to K11 | **partial** | STO-004, STO-005, FLR-001, FLR-002 `implemented`; K11 (truncation and resize never validate) is a design |
+| Crash model K1 to K11 | **partial** | STO-004, STO-005, FLR-001, FLR-002 `implemented`. **K1 to K4 of `specs/crash-model-v2.md` are proved** (PRF-040, lane `w11/k1-scan`, `books/byte-store-scan.lisp` and `books/byte-store-keystones.lisp`): the scan of every byte-level crash image of a related store succeeds and is an image the file kernel admits, the constructor reproduces it, and the host reopen succeeds on it. K0 and K5 to K8 are open, and K0 is what discharges the relation's own clauses on the host's programs; K11 (truncation and resize never validate) is still a design |
 | Every cut-table crash point is a transition | **open** | the deploy gate exercises one kill point and says so; `tests/campaign/cuts.py` is the table |
 | Persisted checkpoints | **done** | STO-006 `implemented`, `books/checkpoint.lisp` |
 | Index adoption | **partial** | STO-001 `implemented`; `books/index` certifies |
