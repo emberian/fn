@@ -836,36 +836,44 @@
         (fn-auth-with-base as (fn-peer-with-node ps (fn-sn-node (fn-own-store o))))
       as)))
 
+(defun fn-own-finish-read (o conn result)
+  (declare (xargs :guard t))
+  (let* ((effects (fn-served-result-effects result))
+         (sconn (fn-served-result-conn result))
+         (id (fn-own-conn-id conn))
+         (next (fn-own-conn-make id
+                                 (fn-own-conn-version conn)
+                                 (fn-own-conn-frontier conn)
+                                 (fn-served-conn-wire sconn)
+                                 (fn-served-conn-session sconn)
+                                 (fn-own-conn-archive conn)
+                                 (fn-own-conn-config conn)
+                                 (fn-own-conn-observation conn)))
+         (decision (fn-served-submission effects)))
+    (cons effects
+          (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
+              (let ((o2 (fn-own-set-conns
+                         o (fn-own-replace-conn next (fn-own-conns o)))))
+                (if decision
+                    (fn-own-enqueue
+                     o2 (fn-own-sub-make id (fn-own-conn-version conn)
+                                         nil decision))
+                  o2))
+            (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o)))))))
+
 (defun fn-own-read (o id octets)
   (declare (xargs :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
-        (let* ((result (fn-served-step (fn-served-make-conn (fn-own-conn-wire conn)
-                                                            (fn-own-conn-live-session o conn)
-                                                            (fn-own-conn-archive conn)
-                                                            (fn-own-conn-config conn)
-                                                            (fn-own-conn-observation conn)
-                                                            (fn-own-clock o))
-                                       octets))
-               (effects (fn-served-result-effects result))
-               (sconn (fn-served-result-conn result))
-               (next (fn-own-conn-make (fn-own-conn-id conn)
-                                       (fn-own-conn-version conn)
-                                       (fn-own-conn-frontier conn)
-                                       (fn-served-conn-wire sconn)
-                                       (fn-served-conn-session sconn)
-                                       (fn-own-conn-archive conn)
-                                       (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn)))
-               (decision (fn-served-submission effects)))
-          (cons effects
-                (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
-                    (let ((o2 (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o)))))
-                      (if decision
-                          (fn-own-enqueue o2 (fn-own-sub-make id (fn-own-conn-version conn)
-                                                              nil decision))
-                        o2))
-                  (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o))))))
+        (fn-own-finish-read
+         o conn
+         (fn-served-step (fn-served-make-conn (fn-own-conn-wire conn)
+                                              (fn-own-conn-live-session o conn)
+                                              (fn-own-conn-archive conn)
+                                              (fn-own-conn-config conn)
+                                              (fn-own-conn-observation conn)
+                                              (fn-own-clock o))
+                         octets))
       (cons nil o))))
 
 ; The per-event law under the served port: one framed wire event is one

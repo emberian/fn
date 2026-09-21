@@ -91,8 +91,12 @@
 
 (let* ((certificate (sb-ext:posix-getenv "FN_TLS_TEST_CERT"))
        (private-key (sb-ext:posix-getenv "FN_TLS_TEST_KEY"))
-       (wrong-key (sb-ext:posix-getenv "FN_TLS_TEST_WRONG_KEY")))
-  (fnn-tls-test-check (and certificate private-key wrong-key)
+       (wrong-key (sb-ext:posix-getenv "FN_TLS_TEST_WRONG_KEY"))
+       (encrypted-certificate
+         (sb-ext:posix-getenv "FN_TLS_TEST_ENCRYPTED_CERT"))
+       (encrypted-key (sb-ext:posix-getenv "FN_TLS_TEST_ENCRYPTED_KEY")))
+  (fnn-tls-test-check (and certificate private-key wrong-key
+                           encrypted-certificate encrypted-key)
                       "certificate/key test environment")
   (fnn-tls-test-check
    (handler-case
@@ -100,6 +104,15 @@
      (fnn-tls-config-error (condition)
        (search "mismatch" (fnn-tls-error-detail condition))))
    "certificate/private-key mismatch diagnostic")
+  (fnn-tls-test-check
+   (handler-case
+       (progn (fnn-tls-open-context encrypted-certificate encrypted-key) nil)
+     (fnn-tls-config-error (condition)
+       (search "encrypted keys are unsupported"
+               (fnn-tls-error-detail condition))))
+   "encrypted private key is refused without a password prompt")
+  (fnn-tls-test-check (string= (read-line *standard-input*) "stdin-sentinel")
+                      "encrypted key refusal leaves stdin untouched")
   (let ((context (fnn-tls-open-context certificate private-key))
         (listener (make-instance 'sb-bsd-sockets:inet-socket
                                  :type :stream :protocol :tcp)))
@@ -141,4 +154,3 @@
             (finish-output)))
       (fnn-tls-close-context context)
       (sb-bsd-sockets:socket-close listener))))
-

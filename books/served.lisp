@@ -557,6 +557,48 @@
   (declare (xargs :guard t))
   (and (fn-auth-session-handshakingp (fn-served-conn-session conn)) t))
 
+; The one physical byte transition shared by the ordinary fold and adapters
+; that must return additional traversal metadata.  Keeping framing and
+; dispatch here prevents a counted transport fold from becoming a sibling
+; implementation of served semantics.
+(defun fn-served-feed-byte (conn byte)
+  (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))))
+  (let ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) byte)))
+    (fn-served-dispatch-events
+     (fn-served-make-conn (fn-wire-result-state fed)
+                          (fn-served-conn-session conn)
+                          (fn-served-conn-archive conn)
+                          (fn-served-conn-config conn)
+                          (fn-served-conn-observation conn)
+                          (fn-served-conn-injection conn))
+     (fn-wire-result-events fed))))
+
+(defthm fn-served-feed-byte-preserves-wire-statep
+  (implies (fn-wire-statep (fn-served-conn-wire conn))
+           (fn-wire-statep
+            (fn-served-conn-wire
+             (fn-served-result-conn (fn-served-feed-byte conn byte)))))
+  :hints (("Goal"
+           :in-theory (disable fn-served-dispatch-events fn-wire-feed-byte
+                               fn-wire-statep)
+           :use ((:instance fn-wire-feed-byte-preserves-statep
+                            (wire-state (fn-served-conn-wire conn)))
+                 (:instance fn-served-dispatch-events-preserves-wire-statep
+                            (conn
+                             (fn-served-make-conn
+                              (fn-wire-result-state
+                               (fn-wire-feed-byte
+                                (fn-served-conn-wire conn) byte))
+                              (fn-served-conn-session conn)
+                              (fn-served-conn-archive conn)
+                              (fn-served-conn-config conn)
+                              (fn-served-conn-observation conn)
+                              (fn-served-conn-injection conn)))
+                            (events
+                             (fn-wire-result-events
+                              (fn-wire-feed-byte
+                               (fn-served-conn-wire conn) byte))))))))
+
 (defun fn-served-feed (conn octets)
   (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))
                   :verify-guards nil
@@ -565,15 +607,7 @@
           (fn-served-closed-wirep (fn-served-conn-wire conn))
           (fn-served-tls-handshakingp conn))
       (fn-served-make-result conn nil)
-    (let* ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) (car octets)))
-           (here (fn-served-dispatch-events
-                  (fn-served-make-conn (fn-wire-result-state fed)
-                                       (fn-served-conn-session conn)
-                                       (fn-served-conn-archive conn)
-                                       (fn-served-conn-config conn)
-                                       (fn-served-conn-observation conn)
-                                       (fn-served-conn-injection conn))
-                  (fn-wire-result-events fed)))
+    (let* ((here (fn-served-feed-byte conn (car octets)))
            (tail (fn-served-feed (fn-served-result-conn here) (cdr octets))))
       (fn-served-make-result
        (fn-served-result-conn tail)
