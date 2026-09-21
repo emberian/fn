@@ -550,6 +550,49 @@ directories because one encoded label can be a prefix of a longer label.
                     (values cid (fnn-owner-octets-global 'fn-owner-output)
                             (eq word :uncertain))))))))))
 
+(defun fnn-owner-complete-bound-submission
+    (service submit-callback msgid payload groups evidence generation txid)
+  "Complete one ACL2-admitted control submission while the owner mutex is held.
+
+The interface callback is the sole admission event.  Local control and BP
+applications then share this exact durable intent, Store attempt, resolution
+and control-outcome sequence."
+  (let ((submitted (funcall submit-callback)))
+    (unless (member submitted '(:submitted :busy :refused))
+      (fnn-fault "owner bound submit returned ~a" submitted))
+    (unless (eq submitted :submitted)
+      (return-from fnn-owner-complete-bound-submission submitted))
+    (let ((taken (fnn-owner-action 'fn-owner-take)))
+      (unless (eq taken :taken-control)
+        (fnn-fault "owner bound take returned ~a" taken))
+      (unless (and (equalp msgid
+                           (fnn-owner-octets-global 'fn-owner-submit-msgid))
+                   (equalp payload
+                           (fnn-owner-octets-global 'fn-owner-submit-octets))
+                   (equalp groups (fnn-owner-submit-groups)))
+        (fnn-fault "owner bound submission changed after admission"))
+      (let ((intent
+              (fnn-owner-action 'fn-owner-submission-intent
+                                (fnn-octet-list evidence) generation txid)))
+        (unless (eq intent :ready)
+          (let ((result
+                  (fnn-owner-action 'fn-owner-control-outcome :refused)))
+            (unless (eq result :refused)
+              (fnn-fault "owner bound intent refusal changed outcome"))
+            (return-from fnn-owner-complete-bound-submission result)))
+        (fnn-owner-feed-flush service)
+        (let ((word (fnn-owner-attempt service msgid payload groups evidence)))
+          (fnn-owner-action 'fn-owner-submission-resolution
+                            word (fnn-octet-list evidence) generation txid)
+          (fnn-owner-feed-flush service)
+          (let ((result (fnn-owner-action 'fn-owner-control-outcome word)))
+            (unless (member result
+                            '(:accepted :duplicate :refused :uncertain))
+              (fnn-fault "owner bound completion returned ~a" result))
+            (when (eq result :uncertain)
+              (fnn-indeterminate "owner bound Store outcome is uncertain"))
+            result))))))
+
 (defun fnn-owner-handle-chunk (service cid incoming)
   "Run one owner read and its serial writer drain under the service mutex."
   (fnn-owner-serialized

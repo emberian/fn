@@ -1,48 +1,6 @@
 ;;; Native BP application receiver over the one writable owner Store.
 (in-package "ACL2")
 
-(defun fnn-owner-complete-bound-submission
-    (service submit-callback msgid payload groups evidence generation txid)
-  "Complete one ACL2-admitted control submission while the owner mutex is held.
-
-SUBMIT-CALLBACK is the sole interface-specific admission event.  This function
-then follows the owner writer's exact durable order and returns the ACL2 control
-result; it never turns an uncertain observation into an accepted result."
-  (let ((submitted (funcall submit-callback)))
-    (unless (member submitted '(:submitted :busy :refused))
-      (fnn-fault "owner application submit returned ~a" submitted))
-    (unless (eq submitted :submitted)
-      (return-from fnn-owner-complete-bound-submission submitted))
-    (let ((taken (fnn-owner-action 'fn-owner-take)))
-      (unless (eq taken :taken-control)
-        (fnn-fault "owner application take returned ~a" taken))
-      ;; The values the owner took must be byte-identical to the ACL2 plan.
-      (unless (and (equalp msgid (fnn-owner-octets-global 'fn-owner-submit-msgid))
-                   (equalp payload (fnn-owner-octets-global 'fn-owner-submit-octets))
-                   (equalp groups (fnn-owner-submit-groups)))
-        (fnn-fault "owner application submission changed after admission"))
-      (let ((intent
-              (fnn-owner-action 'fn-owner-submission-intent
-                                (fnn-octet-list evidence) generation txid)))
-        (unless (eq intent :ready)
-          (let ((result (fnn-owner-action 'fn-owner-control-outcome :refused)))
-            (unless (eq result :refused)
-              (fnn-fault "owner application intent refusal changed outcome"))
-            (return-from fnn-owner-complete-bound-submission result)))
-        ;; No Store mutation may precede this barrier.
-        (fnn-owner-feed-flush service)
-        (let ((word (fnn-owner-attempt service msgid payload groups evidence)))
-          (fnn-owner-action 'fn-owner-submission-resolution
-                            word (fnn-octet-list evidence) generation txid)
-          ;; Resolution, including abort, is durable before owner completion.
-          (fnn-owner-feed-flush service)
-          (let ((result (fnn-owner-action 'fn-owner-control-outcome word)))
-            (unless (member result '(:accepted :duplicate :refused :uncertain))
-              (fnn-fault "owner application completion returned ~a" result))
-            (when (eq result :uncertain)
-              (fnn-indeterminate "owner application Store outcome is uncertain"))
-            result))))))
-
 (defun fnn-bpapp-core-record (name &rest args)
   (let ((record (apply #'fnn-core-state name args)))
     (unless (and (consp record) (keywordp (first record)))
