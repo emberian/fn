@@ -46,8 +46,7 @@ article verdict for a clock fault.
 
 The nearest known gaps behind the live re-run are, in order: the owner's three
 one-line `host/owner-host.lisp` edits from w5-config-groups;
-`books/nntp-effects`, open at `FN-NNTP-HDR-LABELLED-LINE-IS-BLOCK-TEXT` after
-2598.79 s and 1.47e9 prover steps; the `NNT-001` capability/dispatch mismatch;
+the `NNT-001` capability/dispatch mismatch;
 and `books/stx-verify` at one printability lemma. See
 [the board](deputies/BOARD.md) for each item's exact form, and the [v0
 checklist](#v0-checklist-every-item-its-status-its-evidence) below for where
@@ -427,3 +426,18 @@ After each task, update the current stage/next task, decision resolutions,
 requirement status, proof status, and evidence references as applicable. Leave
 future plans unchecked. A blocked dependency names the specific open decision
 or missing evidence, rather than declaring the entire project blocked.
+
+### `books/nntp-effects` is not a gap, and the old number is a warning
+
+This list carried `books/nntp-effects` as open at
+`FN-NNTP-HDR-LABELLED-LINE-IS-BLOCK-TEXT` after 2598.79 s and 1.47e9 prover
+steps. It **certifies in 119.1 s**: persvati `run-20260921T005005Z-1235`,
+manifest `status: passed`, `book_failures: {}`, 81 of 81 roots. The lane that
+observed it changed nothing in that book and said it could not tell whether
+the book was repaired by another lane's work or whether the original verdict
+came from a contended box; neither can this note. What follows either way is
+that **a wall-clock verdict taken while the box was loaded is not evidence
+about a book**, and a 2598 s figure that becomes 119 s with no edit is the
+shape of that mistake. Timings quoted as facts elsewhere in this tree should
+name the box and its load, as the convergence-layer records now do.
+
