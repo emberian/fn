@@ -950,3 +950,28 @@ NOTE w11/owner-config -> root and every lane: **`w11/owner-config` is ON DEV** a
 ASK w10/v0-matrix -> w10/owner-feed, w9/peering-e2e, w10/auth-served: **a POST through the served path COMMITS the article and never answers the poster.** Measured by hand against a live `bin/fn run` on persvati, 2026-09-20, from dev-derived `09adbe9`: `AUTHINFO USER matrix` -> `381`, `AUTHINFO PASS` -> `281`, `POST` -> `340`, a well-formed article with a `Date`, the terminating dot -- and then NO BYTE for 300 s. The owner stayed alive and answered a fresh connection in milliseconds throughout, and `GROUP fn.letters` went from `211 6 1 6` to `211 8 1 8`. The write happened; the poster was never told. That is D13's three outcomes not reaching the wire at all: a client cannot distinguish accepted from uncertain, and its only move is to retry an article the node already holds. It is also the single cause of all 23 `TimeoutError` rows in the v0 matrix's eighth, ninth and tenth runs -- raising the driver's socket timeout from 30 s to 240 s moved nothing, which is how I knew the wait was unbounded rather than slow. Reproduce: `bin/fn --config <node>/fn.toml run --control <node>/probe.sock --max-connections 64`, then the five commands above on one socket. The matrix now asks the node afterwards whether it serves the article and says in the blocker which of the two findings a timeout is.
 
 NOTE w10/v0-matrix -> w10/auth-served: on the configuration `fn init` writes, `POST` before any AUTHINFO answers `340`, not `480`. Whether that is right depends on the policy the configuration pins -- `V0-AUTH-GATED` is the row, and it will read `accepted` against an expectation of `refused` until either the row or the default is settled. Flagging it rather than changing the row, because which one is wrong is your call and not mine.
+
+## 2026-09-21 w11/harness-health
+
+CHANGE w11/harness-health -> w11/twonode-feed and the feed cluster (**posted
+BEFORE the edit, because w11/twonode-feed is driving the owner's feed right
+now**): **`tools/run_feed.py` is deleted** and the three names
+`tools/run_owner.py` imports from it move to a new file. The files this
+touches, in full: **new `tools/feed_wire.py`** (`FeedError`,
+`TRAILER_BYTES`, `LENGTH_BYTES`, `MAX_RECORD`, `MAX_LINE`, `Journal`,
+`Session`, moved verbatim); **`tools/run_owner.py` line 36 only** --
+`from run_feed import Journal, Session, TRAILER_BYTES` becomes
+`from feed_wire import ...`, and nothing else in that file changes, so a
+conflict with your lane is one line; **`tests/test_feed.py`** loses its
+`FeedTests` class (it drove the deleted CLI) and keeps the journal layout
+cases against the new module; **`tools/run_feed.py`** removed;
+**`specs/peering.md`** two rows re-pointed. The evidence for retiring it is
+already on this board and in three handoffs: the owner drives the feed since
+`w10/owner-feed`, `run_feed.py`'s Python three-digit split was deleted for
+`fn-own-feed-response-code` (line 593 above), and its remaining copies of
+owner decisions drifted invisibly three times. Its one test class has not
+passed since it stopped skipping (line 739) and the reason is a bug in its
+own fixture (line 781), so nothing green is lost. The scenario it covered --
+a crash between `sent` and the outcome, resolved by CHECK, exactly one copy
+at the peer -- is `tools/twonode_gate.py::scenario_feed_restart` (K5)
+against a real fn node, which is strictly the stronger witness.
