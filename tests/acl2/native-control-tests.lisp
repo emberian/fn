@@ -78,3 +78,78 @@
          (fn-native-control-admin-encode *fn-nctrl-admin-argv*))
         (list :admin *fn-nctrl-admin-argv*)))
 (assert-event (equal (fn-native-control-admin-encode nil) :bad))
+
+; Admin argv is an ordered vector, so the ordinary symmetric peer plan carries
+; its repeated wildmat word and the full 512-octet word budget.
+(defconst *fn-nctrl-admin-symmetric-argv*
+  (list (fn-record-string-octets "peer")
+        (fn-record-string-octets "add")
+        (fn-record-string-octets "near")
+        (fn-record-string-octets "path-id")
+        (fn-record-string-octets "host.example")
+        (fn-record-string-octets "119")
+        (fn-record-string-octets "*")
+        (fn-record-string-octets "*")
+        (fn-record-string-octets "198.51.100.5")
+        (fn-record-string-octets "true")))
+(defconst *fn-nctrl-admin-512-octets*
+  (append (fn-record-string-octets
+           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+          (fn-record-string-octets
+           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+          (fn-record-string-octets
+           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+          (fn-record-string-octets
+           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+          (fn-record-string-octets
+           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+          (fn-record-string-octets
+           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+          (fn-record-string-octets
+           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+          (fn-record-string-octets
+           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")))
+(assert-event
+ (equal (fn-native-control-admin-decode
+         (fn-native-control-admin-encode *fn-nctrl-admin-symmetric-argv*))
+        (list :admin *fn-nctrl-admin-symmetric-argv*)))
+(assert-event
+ (equal (fn-native-control-admin-decode
+         (fn-native-control-admin-encode (list *fn-nctrl-admin-512-octets*)))
+        (list :admin (list *fn-nctrl-admin-512-octets*))))
+(assert-event
+ (equal (fn-native-control-admin-encode
+         (append *fn-nctrl-admin-symmetric-argv*
+                 (list (fn-record-string-octets "extra"))))
+        :bad))
+(assert-event
+ (equal (fn-native-control-admin-encode
+         (list (append *fn-nctrl-admin-512-octets* '(97))))
+        :bad))
+(assert-event
+ (equal (car (fn-native-control-admin-decode
+              (fn-nctrl-seal
+               *fn-nctrl-admin-kind*
+               (append (fn-cbor-encode (cons :uint 11))
+                       (fn-nctrl-admin-words-encode
+                        (append *fn-nctrl-admin-symmetric-argv*
+                                (list (fn-record-string-octets "extra"))))))))
+        :refused))
+(assert-event
+ (equal (car (fn-native-control-admin-decode
+              (fn-nctrl-seal
+               *fn-nctrl-admin-kind*
+               (append (fn-cbor-encode (cons :uint 1))
+                       (fn-cbor-encode (cons :bytes '(128)))))))
+        :refused))
+(assert-event
+ (equal (car (fn-native-control-admin-decode
+              (fn-nctrl-seal *fn-nctrl-admin-kind*
+                              (append (fn-nctrl-admin-argv-encode
+                                       *fn-nctrl-admin-argv*)
+                                      '(0)))))
+        :refused))
+(assert-event
+ (equal (car (fn-native-control-admin-decode
+              (fn-nctrl-seal *fn-nctrl-admin-kind* '(1 65))))
+        :refused))

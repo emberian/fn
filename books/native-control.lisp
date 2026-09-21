@@ -101,6 +101,61 @@
                      (fn-nctrl-group-octets (fn-record-parse-value parsed))
                      nil)))))))))))
 
+; Administrative argv is its own ordered vector grammar.  It shares the
+; count-plus-bytes representation with group lists, but deliberately does not
+; inherit group-name width or uniqueness rules: an argv word is an ASCII,
+; nonempty octet list of at most 512 octets, and repeated words are ordinary.
+(defun fn-nctrl-admin-words-encode (argv)
+  (declare (xargs :guard t))
+  (if (consp argv)
+      (append (fn-cbor-encode (cons :bytes (car argv)))
+              (fn-nctrl-admin-words-encode (cdr argv)))
+    nil))
+
+(defun fn-nctrl-admin-argv-encode (argv)
+  (declare (xargs :guard t))
+  (if (not (fn-native-admin-argvp argv))
+      nil
+    (append (fn-cbor-encode (cons :uint (len argv)))
+            (fn-nctrl-admin-words-encode argv))))
+
+(defun fn-nctrl-admin-words-decode (count octets)
+  (declare (xargs :guard t))
+  (if (zp count)
+      (fn-record-parse-ok nil octets)
+    (let ((first (fn-record-read-bytes octets)))
+      (if (not (fn-record-parse-okp first))
+          first
+        (let ((word (fn-record-parse-value first)))
+          (if (not (and (consp word)
+                        (<= (len word) *fn-native-admin-max-argument-octets*)
+                        (fn-record-ascii-octet-listp word)))
+              (fn-record-parse-error :argument)
+            (let ((tail (fn-nctrl-admin-words-decode
+                         (1- count) (fn-record-parse-rest first))))
+              (if (not (fn-record-parse-okp tail))
+                  tail
+                 (fn-record-parse-ok
+                 (cons word (fn-record-parse-value tail))
+                 (fn-record-parse-rest tail))))))))))
+
+(defun fn-nctrl-admin-argv-decode (octets)
+  (declare (xargs :guard t))
+  (if (not (fn-cbor-octet-listp octets))
+      (fn-record-parse-error :arguments)
+    (let ((counted (fn-record-read-uint octets)))
+      (if (not (fn-record-parse-okp counted))
+          (fn-record-parse-error :arguments)
+        (let ((count (fn-record-parse-value counted)))
+          (if (or (zp count) (< *fn-native-admin-max-arguments* count))
+              (fn-record-parse-error :arguments)
+            (let ((parsed (fn-nctrl-admin-words-decode
+                           count (fn-record-parse-rest counted))))
+              (if (or (not (fn-record-parse-okp parsed))
+                      (consp (fn-record-parse-rest parsed)))
+                  (fn-record-parse-error :arguments)
+                parsed))))))))
+
 (defun fn-nctrl-seal (kind payload)
   (declare (xargs :guard t))
   (if (not (and (fn-cbor-octetp kind)
@@ -126,7 +181,7 @@
   (declare (xargs :guard t))
   (if (or (not (fn-native-admin-argvp argv)) (not (consp argv)))
       :bad
-    (let ((payload (fn-nctrl-groups-encode argv)))
+    (let ((payload (fn-nctrl-admin-argv-encode argv)))
       (if payload (fn-nctrl-seal *fn-nctrl-admin-kind* payload) :bad))))
 
 (defun fn-nctrl-open (octets expected-kind)
@@ -175,7 +230,8 @@
   (let ((opened (fn-nctrl-open octets *fn-nctrl-admin-kind*)))
     (if (not (fn-frame-result-okp opened))
         (list :refused :frame)
-      (let ((parsed (fn-nctrl-groups-decode (fn-frame-result-payload opened))))
+      (let ((parsed (fn-nctrl-admin-argv-decode
+                     (fn-frame-result-payload opened))))
         (if (not (fn-record-parse-okp parsed))
             (list :refused :arguments)
           (let ((argv (fn-record-parse-value parsed)))
@@ -305,6 +361,10 @@ distinguish an unobserved refusal from a durable acceptance."
                     (:d fn-nctrl-requestp)
                     (:d fn-nctrl-groups-encode)
                     (:d fn-nctrl-groups-decode)
+                    (:d fn-nctrl-admin-words-encode)
+                    (:d fn-nctrl-admin-argv-encode)
+                    (:d fn-nctrl-admin-words-decode)
+                    (:d fn-nctrl-admin-argv-decode)
                     (:d fn-nctrl-seal)
                     (:d fn-nctrl-open)
                     (:d fn-native-control-lease-path)
