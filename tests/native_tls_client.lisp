@@ -23,9 +23,24 @@
   (unwind-protect
        (handler-case
            (progn
+             (unless (handler-case
+                         (progn (fnn-tls-open-client-context
+                                 (coerce (list #\/ #\t #\m #\p (code-char 0)
+                                               #\/ #\c #\a) 'string))
+                                nil)
+                       (fnn-tls-config-error () t))
+               (error "embedded-NUL trust anchor reached OpenSSL"))
              (sb-bsd-sockets:socket-connect socket #(127 0 0 1) port)
-             (setq context (fnn-tls-open-client-context anchor)
-                   channel (fnn-tls-connect context
+             (setq context (fnn-tls-open-client-context anchor))
+             (unless (handler-case
+                         (progn (fnn-tls-connect
+                                 context (sb-bsd-sockets:socket-file-descriptor socket)
+                                 (coerce (list #\l #\o #\c #\a #\l (code-char 0)
+                                               #\x) 'string) 5)
+                                nil)
+                       (fnn-tls-config-error () t))
+               (error "embedded-NUL server name reached OpenSSL"))
+             (setq channel (fnn-tls-connect context
                                             (sb-bsd-sockets:socket-file-descriptor socket)
                                             name 5))
              (fnn-tls-send-all channel (fnn-octets '(80 73 78 71 13 10)) 5)

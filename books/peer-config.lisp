@@ -133,6 +133,13 @@
        (consp (fn-record-string-octets text))
        (fn-wildmat-result-okp (fn-wildmat-parse (fn-record-string-octets text)))))
 
+(defun fn-cfg-cstringp (text)
+  "A nonempty ACL2 string whose C representation cannot truncate early."
+  (declare (xargs :guard t))
+  (and (fn-cfg-labelp text)
+       (consp (fn-record-string-octets text))
+       (not (member-equal 0 (fn-record-string-octets text)))))
+
 (defun fn-cfg-peer-transportp (x)
   (declare (xargs :guard t))
   (or (and (true-listp x) (equal (len x) 5) (equal (car x) :nntp)
@@ -144,8 +151,8 @@
                  (and (true-listp security) (equal (len security) 4)
                       (equal (car security) :tls)
                       (member-equal (cadr security) '(:implicit :starttls))
-                      (fn-cfg-labelp (caddr security))
-                      (fn-cfg-labelp (cadddr security))))))
+                      (fn-cfg-cstringp (caddr security))
+                      (fn-cfg-cstringp (cadddr security))))))
       ; Legacy durable peers decode as explicit cleartext.
       (and (true-listp x) (equal (len x) 3) (equal (car x) :nntp)
            (fn-cfg-labelp (car (cdr x)))

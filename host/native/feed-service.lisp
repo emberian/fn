@@ -165,13 +165,21 @@ closed by this worker, preserving the one-closer rule."
     (fnn-fault "TLS transition without a TLS peer policy"))
   (let* ((server-name (third security)) (anchor (fourth security))
          (context (fnn-tls-open-client-context anchor)))
-    (let ((channel (fnn-tls-connect context (fnn-feed-link-fd link) server-name 10)))
-      (setf (fnn-feed-link-tls-context link) context
-            (fnn-feed-link-tls-channel link) channel)
-      (multiple-value-bind (word command)
-          (fnn-feed-tls-established-core (fnn-feed-runtime-service runtime) link)
-        (when (> (length command) 0) (fnn-tls-send-all channel command 10))
-        (when (eq word :ready) (setf (fnn-feed-link-ready link) t))))))
+    ;; Publish ownership before SSL_connect: every failure path can now close
+    ;; the context through the link, including a repeated certificate failure.
+    (setf (fnn-feed-link-tls-context link) context)
+    (handler-case
+        (let ((channel (fnn-tls-connect context (fnn-feed-link-fd link) server-name 10)))
+          (setf (fnn-feed-link-tls-channel link) channel)
+          (multiple-value-bind (word command)
+              (fnn-feed-tls-established-core (fnn-feed-runtime-service runtime) link)
+            (when (> (length command) 0) (fnn-tls-send-all channel command 10))
+            (when (eq word :ready) (setf (fnn-feed-link-ready link) t))))
+      (error (condition)
+        (when (fnn-feed-link-tls-context link)
+          (fnn-tls-close-context (fnn-feed-link-tls-context link))
+          (setf (fnn-feed-link-tls-context link) nil))
+        (error condition)))))
 
 (defun fnn-feed-send (link octets)
   (if (fnn-feed-link-tls-channel link)
