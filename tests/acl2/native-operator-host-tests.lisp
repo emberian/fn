@@ -20,3 +20,18 @@
                      (fn-native-operator-result-config *fn-nop-host-result*)))
 (assert-event (equal (fn-native-operator-host-result-arguments *fn-nop-host-result*)
                      '(:status)))
+
+
+(defconst *fn-nop-host-run-result*
+  (fn-native-operator-host-run *fn-nop-host-config*
+                               (list (fn-record-string-octets "run")
+                                     (fn-record-string-octets "--once"))))
+(assert-event (equal (fn-native-operator-host-result-native-action *fn-nop-host-run-result*)
+                     :run))
+(assert-event (equal (fn-native-operator-host-result-run-store-octets *fn-nop-host-run-result*)
+                     (fn-record-string-octets "/srv/fn")))
+(assert-event (equal (fn-native-operator-host-result-run-listener-host-octets *fn-nop-host-run-result*)
+                     (fn-record-string-octets "127.0.0.1")))
+(assert-event (equal (fn-native-operator-host-result-run-listener-port *fn-nop-host-run-result*) 1119))
+(assert-event (equal (fn-native-operator-host-result-run-oncep *fn-nop-host-run-result*) t))
+(assert-event (equal (fn-native-operator-host-result-run-max-connections *fn-nop-host-run-result*) 32))

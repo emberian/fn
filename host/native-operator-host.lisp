@@ -49,3 +49,24 @@
 (defun fn-native-operator-host-result-arguments (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-arguments result))
+
+
+(defun fn-native-operator-host-result-run-store-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-store-octets result))
+
+(defun fn-native-operator-host-result-run-listener-host-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-listener-host-octets result))
+
+(defun fn-native-operator-host-result-run-listener-port (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-listener-port result))
+
+(defun fn-native-operator-host-result-run-oncep (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-oncep result))
+
+(defun fn-native-operator-host-result-run-max-connections (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-max-connections result))
