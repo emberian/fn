@@ -124,8 +124,59 @@
   (true-listp (fn-cbor-decode-bytes additional tail)))
 (defthm fn-stmt-cbor-decode-bounded-true-listp
   (true-listp (fn-cbor-decode-bounded octets input-budget item-budget)))
+(defthm fn-stmt-cbor-decode-prechecked-true-listp
+  (true-listp (fn-cbor-decode-prechecked octets item-budget)))
 (defthm fn-stmt-cbor-decode-true-listp
   (true-listp (fn-cbor-decode octets)))
+
+; Parse exactly COUNT items from an already validated bounded octet list.  It
+; returns the untouched remainder and performs no whole-suffix preflight.
+(defun fn-stmt-decode-prefix-items-prechecked (count octets item-budget)
+  (declare (xargs :guard (and (natp count)
+                              (fn-cbor-octet-listp octets)
+                              (natp item-budget))
+                  :measure (nfix count)))
+  (if (zp count)
+      (fn-stmt-ok2 nil octets)
+    (let ((first (fn-cbor-decode-prechecked octets item-budget)))
+      (if (not (fn-cbor-result-okp first))
+          (fn-stmt-error (fn-stmt-value first))
+        (let ((tail (fn-stmt-decode-prefix-items-prechecked
+                     (1- count) (fn-cbor-result-rest first) item-budget)))
+          (if (not (fn-stmt-okp tail))
+              tail
+            (fn-stmt-ok2 (cons (fn-cbor-result-value first)
+                               (fn-stmt-value tail))
+                         (fn-stmt-rest tail))))))))
+
+(defun fn-stmt-decode-prefix-items-bounded
+  (count octets outer-budget item-budget)
+  (declare (xargs :guard (and (natp count) (natp outer-budget)
+                              (natp item-budget))))
+  (if (not (fn-cbor-at-mostp octets outer-budget))
+      (fn-stmt-error :limit)
+    (if (not (fn-cbor-octet-listp octets))
+        (fn-stmt-error :malformed)
+      (fn-stmt-decode-prefix-items-prechecked count octets item-budget))))
+
+(defun fn-stmt-decode-items-prechecked (fuel octets item-budget)
+  (declare (xargs :guard (and (natp fuel)
+                              (fn-cbor-octet-listp octets)
+                              (natp item-budget))
+                  :measure (nfix fuel)))
+  (if (atom octets)
+      (fn-stmt-ok nil)
+    (if (zp fuel)
+        (fn-stmt-error :too-many-items)
+      (let ((first (fn-cbor-decode-prechecked octets item-budget)))
+        (if (not (fn-cbor-result-okp first))
+            (fn-stmt-error (fn-stmt-value first))
+          (let ((tail (fn-stmt-decode-items-prechecked
+                       (1- fuel) (fn-cbor-result-rest first) item-budget)))
+            (if (not (fn-stmt-okp tail))
+                tail
+              (fn-stmt-ok (cons (fn-cbor-result-value first)
+                                (fn-stmt-value tail))))))))))
 
 ; Decode at most `fuel` items and require the input to be consumed exactly.
 ; `fuel` bounds the number of allocations; each item is bounded by the
@@ -134,28 +185,14 @@
 (defun fn-stmt-decode-items-bounded (fuel octets outer-budget item-budget)
   (declare (xargs :guard (and (natp fuel) (natp outer-budget)
                               (natp item-budget))))
-  ; One bounded preflight occurs before recursive item parsing.  Recursive
-  ; calls pass the already bounded suffix without rescanning it against a
-  ; shrinking budget; fuel bounds item allocations and item-budget bounds
-  ; every byte-string allocation before TAKE.
+  ; One bounded preflight and octet validation occur before recursive parsing.
   (if (not (fn-cbor-at-mostp octets outer-budget))
       (fn-stmt-error :limit)
     (if (atom octets)
         (if (null octets)
             (fn-stmt-ok nil)
           (fn-stmt-error :malformed))
-      (if (zp fuel)
-          (fn-stmt-error :too-many-items)
-        (let ((first (fn-cbor-decode-bounded octets outer-budget item-budget)))
-          (if (not (fn-cbor-result-okp first))
-              (fn-stmt-error (fn-stmt-value first))
-            (let ((tail (fn-stmt-decode-items-bounded
-                         (1- fuel) (fn-cbor-result-rest first)
-                         outer-budget item-budget)))
-              (if (not (fn-stmt-okp tail))
-                  tail
-                (fn-stmt-ok (cons (fn-cbor-result-value first)
-                                  (fn-stmt-value tail)))))))))))
+      (fn-stmt-decode-items-prechecked fuel octets item-budget))))
 
 (defun fn-stmt-decode-items (fuel octets)
   (declare (xargs :guard (natp fuel)))
