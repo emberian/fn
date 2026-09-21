@@ -384,6 +384,46 @@
                                       fn-nntp-step fn-post-offeredp
                                       fn-post-refusal-line))))
 
+; A clock fault is not an article verdict (decision D10-a, specs/nntp.md).
+; The reading `fn-own-read` supplies with the event is the owner's current
+; clock observation, and after a reading that contradicts the one it held
+; the owner has NO clock (books/owner.lisp `fn-own-observe`), so what
+; arrives here is not an observation at all.  The article is then refused
+; with the CLOCK line -- a distinct constant -- and no submission is
+; emitted, so a client can tell a server whose host withdrew its clock from
+; a server that judged the article.  Before D10-a the owner kept the
+; contradicted reading instead, every POST after the first in that window
+; minted the identity of the first, and the duplicate was reported as
+; `441 posting failed; the article was refused'.
+(local
+ (defthm fn-inj-decide-without-a-clock-refuses-clock-unusable
+   (implies (and (fn-inj-configp config)
+                 (fn-inj-config-allow config)
+                 (not (fn-clock-observationp observation)))
+            (equal (fn-inj-decide source config observation)
+                   (fn-inj-refuse :clock-unusable)))
+   :hints (("Goal" :in-theory (enable fn-inj-decide)))))
+
+(defthm fn-post-without-a-clock-refuses-with-the-clock-line
+  (implies (and (fn-post-sessionp ps)
+                (fn-post-session-awaiting ps)
+                (fn-inj-configp config)
+                (fn-inj-config-allow config)
+                (not (fn-clock-observationp injection)))
+           (and (equal (fn-post-result-submission
+                        (fn-nntp-post-step ps archive config observation
+                                           injection (list :article body)))
+                       nil)
+                (equal (fn-post-result-effects
+                        (fn-nntp-post-step ps archive config observation
+                                           injection (list :article body)))
+                       (fn-post-single
+                        ps
+                        "441 posting failed; this server has no usable clock reading"))))
+  :hints (("Goal" :in-theory (disable fn-nntp-step fn-post-offeredp
+                                      fn-inj-decide fn-post-single
+                                      fn-post-sessionp))))
+
 (defthm fn-post-disallowed-posting-does-not-await
   (implies (and (fn-post-sessionp ps)
                 (not (fn-inj-config-allow config)))
