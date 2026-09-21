@@ -420,6 +420,50 @@ written into `/Users/ember/dev/fn`, untracked, blocking a merge.
 `--evidence` on that root; an absolute `--evidence` is still taken as given,
 and `--repo` still overrides.
 
+### What a harness verdict means
+
+A step's exit code is not a scenario's conclusion, and until 2026-09-20 the
+gate family had no way to say so: every scenario assertion appended a sentence
+to a `gaps` list, the exit read only `Step.failed`, and a probe declared
+`expect=None` could not be failed at all. The two-node gate could therefore
+watch an article fail to arrive after a cut connection, record two accepted
+transfers where at most one is allowed, or read the wrong final group count,
+and exit 0 -- the headline "63 steps, 0 failed" structurally could not include
+a violated scenario assertion
+([the follow-up review](../planning/review-2026-09-20-astra-followup.md), F1).
+
+`tools/deploy_gate.py` now carries a `Finding` beside the `Step`, with the
+vocabulary [`tools/v0_matrix.py`](../tools/v0_matrix.py) already keeps apart
+over its rows: a fixed set of words never collapsed into pass/fail, a declared
+inventory (`ASSERTIONS`) so an assertion the run never reached is emitted
+rather than lost, one emitter that refuses an undeclared key or an undecided
+verdict with no blocker, and a sha256 over the records in
+`<evidence>.findings.json` so a verdict cannot be typed in afterwards. A
+v0_matrix row is an OBSERVATION of a feature and `accepted`/`refused`/
+`uncertain` are D13's outcomes; a finding is a CONCLUSION about an assertion,
+so its two deciding words are `held` and `violated` and D13's outcomes stay in
+the steps' expected exit codes.
+
+| verdict | what it says | effect on the exit |
+| --- | --- | --- |
+| `held` | the assertion was decided and is true | none |
+| `violated` | the assertion was decided and is false | exit 1 |
+| `inconclusive` | the run meant to decide it and could not | exit 3 |
+| `not-exercised` | the run did not reach it; `blocker` says why | none |
+| `not-built` | the feature it is about is not on this tree | none |
+| `limitation` | a scope boundary no run of this harness crosses | none |
+
+The line between `inconclusive` and `limitation` is the one that keeps the
+fix from being indiscriminate: a postpublish fault is indeterminate by
+construction (D13) and no run can decide it, so it is a limitation and reports
+without failing; a tap that never took its cut, a GROUP reply with no count,
+or an offer command no recorder saw is a defect in THAT run, establishes
+nothing, and must not stand behind a release claim. Exit 3 is D13's uncertain,
+and `tools/verdict.py` carries it out as a fourth fiber state rather than
+folding it into `fail` or `pass`. `tests/test_gate_verdicts.py` injects each
+bad outcome into the real scenario methods and requires the failed assertion
+and the nonzero exit.
+
 ### Reaping gate directories, and reading a box's memory
 
 A gate is a `git archive` export plus the certificates it earned, at
