@@ -159,7 +159,7 @@ def certs_script(host: str, root: Path, action: str,
 
     The cache lives on the box (``HOSTS[host]["cache"]``), not here, and a
     pair in it is usable only if this tree's books hash to the same closure,
-    which ``certs.py`` checks.  `install` runs before the runner; `publish
+    which ``certs.py`` checks.  `install-set` runs before the runner; `publish
     --origin-kind run` runs after it, so the next lane on the box finds the
     pairs this run made and `install` accepts them: a finished run root is a
     snapshot, not a live worktree.
