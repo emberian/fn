@@ -55,6 +55,13 @@
                    selected-lower)))
   :hints (("Goal" :in-theory (enable fn-bs-pack-reclaim-plan))))
 
+(local
+ (defthm fn-bs-pack-reclaim-steps-last
+   (equal (last (fn-bs-pack-reclaim-steps names))
+          (list (list :cut "pack-reclaim-directory")))
+   :hints (("Goal" :induct (fn-bs-pack-reclaim-steps names)
+            :in-theory (enable fn-bs-pack-reclaim-steps)))))
+
 ; The exact source text calls the logical subject above.  This executable fact
 ; pins the two physical cut labels to transitions rather than prose strings.
 (defthm fn-bs-pack-reclaim-program-has-closing-directory-fence
