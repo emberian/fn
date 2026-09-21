@@ -1,0 +1,25 @@
+{
+  "kind": "bounded ACL2 source evaluation, not certification",
+  "date": "2026-09-21",
+  "source_revision": "ff87fc676c539dfd9dd2b666171a9305bb09f3f9",
+  "tools": {
+    "ACL2": "8.7",
+    "SBCL": "2.6.8"
+  },
+  "invocation": "python3 tools/run_command.py --timeout 120 -- sh -c 'SBCL_HOME=/opt/homebrew/opt/sbcl/lib/sbcl/ /opt/homebrew/opt/sbcl/libexec/bin/sbcl --tls-limit 16384 --dynamic-space-size 2048 --control-stack-size 64 --disable-ldb --core /opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2.core --end-runtime-options --no-userinit --eval \"(acl2::lp)\" < /tmp/fn-w30-hybrid-source.lsp > /tmp/fn-w30-hybrid-source-fixed.out 2>&1'",
+  "result": "Initial hybrid Store LD failed on undefined REPEAT; fixed Store and control LD completed all assertions with no ACL2 Error or FAILED text and final marker.",
+  "limitations": [
+    "Source evaluation with uncertified/stale dependency warnings, not certificate or whole-closure guard verification.",
+    "Does not exercise real cryptographic primitives or native owner.",
+    "Initial marker alone would have falsely suggested success."
+  ],
+  "source_sha256": {
+    "tests/acl2/hybrid-store-tests.lisp": "85e801e68215294843ee2acaf5cfd694075d16caea7b3c28a10c97a0cb96f4b8",
+    "tests/acl2/native-hybrid-control-tests.lisp": "655edab1e157e26cbbcfa15a210e29bae065ac9417887947861f955c3ce40e09"
+  },
+  "artifact_sha256": {
+    "fixed.log": "4b1d279a461d4e1ed7b4c7c84b0c8b037e60235764a74c6ee8cd95c9a268c803",
+    "driver.lsp": "cbf0a02d141b642f903318b8e988d450dea3fd2ab54230122fc7c447226b33d4",
+    "initial.log": "1287f1ab09303c1ae9d4a00c36faf4fe38e835cfc2d9a0de42cfd3db4a65c6c4"
+  }
+}

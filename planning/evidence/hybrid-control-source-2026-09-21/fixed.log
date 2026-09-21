@@ -1,0 +1,1245 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built August 28, 2026  20:52:14.                                   +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "../../books/hybrid-store"
+...):  Unable to load compiled file for book
+  /Users/ember/dev/fn/books/hybrid-store.lisp
+because that book is not certified.  See :DOC include-book.  No load
+was in progress for any parent book.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "../../books/hybrid-store"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/books/hybrid-store.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "hybrid-signature" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/books/hybrid-signature.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "cbor" ...):  
+The certificate for "/Users/ember/dev/fn/books/cbor.lisp" lists the
+book-hash of that book as 2033416726.  But its book-hash is now computed
+to be 745113856.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "records" ...):  After
+processing the events in the book "/Users/ember/dev/fn/books/records.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "cbor-invariants" ...):
+The certificate for "/Users/ember/dev/fn/books/cbor-invariants.lisp"
+lists the book-hash of that book as 1562624670.  But its book-hash
+is now computed to be 1029667773.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "records-invariants" ...):
+After processing the events in the book 
+"/Users/ember/dev/fn/books/records-invariants.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "crypto-seam" ...):  After
+processing the events in the book 
+"/Users/ember/dev/fn/books/crypto-seam.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "article" ...):  After
+processing the events in the book "/Users/ember/dev/fn/books/article.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "hybrid-profile" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/books/hybrid-profile.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-accept-records" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/books/stx-accept-records.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-keyring-records"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/books/stx-keyring-records.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-evidence-records"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/books/stx-evidence-records.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-lace" ...):  
+The certificate for "/Users/ember/dev/fn/books/stx-lace.lisp" lists
+the book-hash of that book as 1153174124.  But its book-hash is now
+computed to be 489506499.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "statement-invariants"
+...):  
+The certificate for "/Users/ember/dev/fn/books/statement-invariants.lisp"
+lists the book-hash of that book as 858764438.  But its book-hash is
+now computed to be 1719292121.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "statement" ...):  
+The certificate for "/Users/ember/dev/fn/books/statement.lisp" lists
+the book-hash of that book as 37509725.  But its book-hash is now computed
+to be 123498458.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-carrier" ...):  After
+processing the events in the book 
+"/Users/ember/dev/fn/books/stx-carrier.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/article.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/crypto-seam.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "principal" ...):  After
+processing the events in the book "/Users/ember/dev/fn/books/principal.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/crypto-seam.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-verify" ...):  After
+processing the events in the book 
+"/Users/ember/dev/fn/books/stx-verify.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/principal.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-carrier.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/article.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/crypto-seam.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "lace" ...):  After processing
+the events in the book "/Users/ember/dev/fn/books/lace.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/crypto-seam.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "lace-invariants" ...):
+After processing the events in the book 
+"/Users/ember/dev/fn/books/lace-invariants.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/lace.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/crypto-seam.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "provenance" ...):  After
+processing the events in the book 
+"/Users/ember/dev/fn/books/provenance.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "retention" ...):  After
+processing the events in the book "/Users/ember/dev/fn/books/retention.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/provenance.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "node" ...):  After processing
+the events in the book "/Users/ember/dev/fn/books/node.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/retention.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/provenance.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "article-fields" ...):
+After processing the events in the book 
+"/Users/ember/dev/fn/books/article-fields.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/article.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "injection" ...):  After
+processing the events in the book "/Users/ember/dev/fn/books/injection.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/article-fields.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/article.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "frame" ...):  
+The certificate for "/Users/ember/dev/fn/books/frame.lisp" lists the
+book-hash of that book as 782833894.  But its book-hash is now computed
+to be 483324748.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "frame-journal" ...):
+The certificate for "/Users/ember/dev/fn/books/frame-journal.lisp"
+lists the book-hash of that book as 1519089553.  But its book-hash
+is now computed to be 322955672.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "frame-octets" ...): 
+After processing the events in the book 
+"/Users/ember/dev/fn/books/frame-octets.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "wildmat" ...):  After
+processing the events in the book "/Users/ember/dev/fn/books/wildmat.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "frame-fields" ...): 
+After processing the events in the book 
+"/Users/ember/dev/fn/books/frame-fields.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/wildmat.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/frame-octets.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "identity" ...):  After
+processing the events in the book "/Users/ember/dev/fn/books/identity.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/frame.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/frame-journal.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/frame-fields.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/wildmat.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/frame-octets.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "../../books/hybrid-store" ...)
+Rules: NIL
+Warnings:  Uncertified and Compiled file
+Time:  1.14 seconds (prove: 0.00, print: 0.00, other: 1.13)
+ "/Users/ember/dev/fn/books/hybrid-store.lisp"
+ACL2 !>>
+Summary
+Form:  ( INCLUDE-BOOK "std/testing/assert-equal" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/std/testing/assert-equal.lisp"
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *HST-PRINCIPAL* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *HST-PRINCIPAL*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *HST-ED-KEY* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *HST-ED-KEY*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *HST-ML-KEY* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *HST-ML-KEY*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *HST-KEYS* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *HST-KEYS*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *HST-SIGNATURES* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *HST-SIGNATURES*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *HST-SOURCE* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *HST-SOURCE*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *HST-RECORD* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *HST-RECORD*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *HST-RECORD-OCTETS* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *HST-RECORD-OCTETS*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *HST-SNAPSHOT* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *HST-SNAPSHOT*
+ACL2 !>>
+Since HST-LINE is non-recursive, its admission is trivial.  We observe
+that the type of HST-LINE is described by the theorem 
+(AND (CONSP (HST-LINE TEXT)) (TRUE-LISTP (HST-LINE TEXT))).  We used
+the :executable-counterpart of TRUE-LISTP and the :type-prescription
+rules BINARY-APPEND and TRUE-LISTP-APPEND.
+
+Summary
+Form:  ( DEFUN HST-LINE ...)
+Rules: ((:EXECUTABLE-COUNTERPART TRUE-LISTP)
+        (:TYPE-PRESCRIPTION BINARY-APPEND)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ HST-LINE
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *HST-AUTHORED-SOURCE* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *HST-AUTHORED-SOURCE*
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *HST-EVENT* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *HST-EVENT*
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK 
+"../../books/native-hybrid-control" ...):  Unable to load compiled
+file for book
+  /Users/ember/dev/fn/books/native-hybrid-control.lisp
+because that book is not certified.  See :DOC include-book.  No load
+was in progress for any parent book.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK 
+"../../books/native-hybrid-control" ...):  There is no certificate
+on file for "/Users/ember/dev/fn/books/native-hybrid-control.lisp".
+See :DOC uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "native-control" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/books/native-control.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "frame-trailer" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/books/frame-trailer.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "frame-invariants" ...):
+After processing the events in the book 
+"/Users/ember/dev/fn/books/frame-invariants.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/frame.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/frame-journal.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/frame-fields.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/wildmat.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/frame-octets.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "crypto-attach" ...):
+After processing the events in the book 
+"/Users/ember/dev/fn/books/crypto-attach.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/frame-octets.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/crypto-seam.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "native-config" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/books/native-config.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "native-admin" ...): 
+There is no certificate on file for 
+"/Users/ember/dev/fn/books/native-admin.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "node-config" ...):  
+The certificate for "/Users/ember/dev/fn/books/node-config.lisp" lists
+the book-hash of that book as 1856192255.  But its book-hash is now
+computed to be 1519608266.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "node-invariants" ...):
+After processing the events in the book 
+"/Users/ember/dev/fn/books/node-invariants.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/node.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/retention.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/provenance.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "config" ...):  After
+processing the events in the book "/Users/ember/dev/fn/books/config.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "config-invariants" ...):
+After processing the events in the book 
+"/Users/ember/dev/fn/books/config-invariants.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/config.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "replay" ...):  
+The certificate for "/Users/ember/dev/fn/books/replay.lisp" lists the
+book-hash of that book as 55770668.  But its book-hash is now computed
+to be 1933649633.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "node-retention-transitions"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/books/node-retention-transitions.lisp".  See :DOC
+uncertified-books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "retention-invariants"
+...):  After processing the events in the book 
+"/Users/ember/dev/fn/books/retention-invariants.lisp":
+-- its certificate requires the book "/home/ember/fn-gates/dev-e4fb8bc/books/r\
+etention.lisp", but that book has not been included although the book
+"/Users/ember/dev/fn/books/retention.lisp" -- which has the same familiar
+name as that required book (but with a different full-book-name; see
+:DOC full-book-name) -- has been included;
+-- its certificate requires the book "/home/ember/fn-gates/dev-e4fb8bc/books/p\
+rovenance.lisp", but that book has not been included although the book
+"/Users/ember/dev/fn/books/provenance.lisp" -- which has the same familiar
+name as that required book (but with a different full-book-name; see
+:DOC full-book-name) -- has been included;
+-- its certificate requires the book "/home/ember/fn-gates/dev-e4fb8bc/books/c\
+bor.lisp", but that book has not been included although the book "/Users/ember\
+/dev/fn/books/cbor.lisp" -- which has the same familiar name as that
+required book (but with a different full-book-name; see :DOC full-
+book-name) -- has been included;
+-- its certificate requires the book "/home/ember/fn-gates/dev-e4fb8bc/books/d\
+efrecord.lisp", but that book has not been included although the book
+"/Users/ember/dev/fn/books/defrecord.lisp" -- which has the same familiar
+name as that required book (but with a different full-book-name; see
+:DOC full-book-name) -- has been included;
+-- its certificate requires the book "/home/ember/fn-gates/dev-e4fb8bc/books/a\
+cceptance-alloc.lisp", but that book has not been included although
+the book "/Users/ember/dev/fn/books/acceptance-alloc.lisp" -- which
+has the same familiar name as that required book (but with a different
+full-book-name; see :DOC full-book-name) -- has been included.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-events" ...): 
+There is no certificate on file for 
+"/Users/ember/dev/fn/books/store-events.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "config-records" ...):
+After processing the events in the book 
+"/Users/ember/dev/fn/books/config-records.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/replay.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/node-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/node.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/retention.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/provenance.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/config.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "wire" ...):  
+The certificate for "/Users/ember/dev/fn/books/wire.lisp" lists the
+book-hash of that book as 2007445288.  But its book-hash is now computed
+to be 383117393.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "nntp-syntax" ...):  After
+processing the events in the book 
+"/Users/ember/dev/fn/books/nntp-syntax.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/wildmat.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/wire.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-node-resolution"
+...):  
+The certificate for "/Users/ember/dev/fn/books/store-node-resolution.lisp"
+lists the book-hash of that book as 70207473.  But its book-hash is
+now computed to be 340012302.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-node-invariants"
+...):  
+The certificate for "/Users/ember/dev/fn/books/store-node-invariants.lisp"
+lists the book-hash of that book as 1405223063.  But its book-hash
+is now computed to be 1187530030.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-node" ...):  
+The certificate for "/Users/ember/dev/fn/books/store-node.lisp" lists
+the book-hash of that book as 98329454.  But its book-hash is now computed
+to be 992350066.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-files-invariants"
+...):  
+The certificate for "/Users/ember/dev/fn/books/store-files-invariants.lisp"
+lists the book-hash of that book as 73476337.  But its book-hash is
+now computed to be 1503701387.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-files" ...):  
+The certificate for "/Users/ember/dev/fn/books/store-files.lisp" lists
+the book-hash of that book as 696630959.  But its book-hash is now
+computed to be 728855991.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "stx-index" ...):  After
+processing the events in the book "/Users/ember/dev/fn/books/stx-index.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-lace.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/node.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/retention.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/provenance.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/lace-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/lace.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-verify.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/principal.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-carrier.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/article.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/crypto-seam.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-files-traces" ...):
+After processing the events in the book 
+"/Users/ember/dev/fn/books/store-files-traces.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-files-invariants.lisp" so book recertificatio\
+n is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-files.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/replay.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/node-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/node.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/retention.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/provenance.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-node-traces" ...):
+After processing the events in the book 
+"/Users/ember/dev/fn/books/store-node-traces.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-files-traces.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-node-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-node.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-index.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-lace.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/lace-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/lace.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-verify.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/principal.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-carrier.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/article.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/crypto-seam.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-files-invariants.lisp" so book recertificatio\
+n is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-files.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/replay.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/node-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/node.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/retention.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/provenance.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "store-observed" ...):
+After processing the events in the book 
+"/Users/ember/dev/fn/books/store-observed.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-node-resolution.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-node-traces.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-files-traces.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-node-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-node.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-index.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-lace.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/lace-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/lace.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-verify.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/principal.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/stx-carrier.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/article.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/statement.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/crypto-seam.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-files-invariants.lisp" so book recertificatio\
+n is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/store-files.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/replay.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/records.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/node-invariants.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/node.lisp" so book recertification is probably
+required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/retention.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/provenance.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "byte-store-txn-name"
+...):  There is no certificate on file for 
+"/Users/ember/dev/fn/books/byte-store-txn-name.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "byte-store-frame" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/books/byte-store-frame.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "byte-store-scan" ...):
+The certificate for "/Users/ember/dev/fn/books/byte-store-scan.lisp"
+lists the book-hash of that book as 895666201.  But its book-hash is
+now computed to be 1873985335.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "byte-store" ...):  After
+processing the events in the book 
+"/Users/ember/dev/fn/books/byte-store.lisp":
+-- its certificate requires the book "/tank/fn/lanes/w9-storage-3/books/cbor-
+invariants.lisp", but that book has not been included although the
+book "/Users/ember/dev/fn/books/cbor-invariants.lisp" -- which has
+the same familiar name as that required book (but with a different
+full-book-name; see :DOC full-book-name) -- has been included;
+-- its certificate requires the book "/tank/fn/lanes/w9-storage-3/books/cbor.l\
+isp", but that book has not been included although the book "/Users/ember/dev/\
+fn/books/cbor.lisp" -- which has the same familiar name as that required
+book (but with a different full-book-name; see :DOC full-book-name)
+-- has been included;
+-- its certificate requires the book "/tank/fn/lanes/w9-storage-3/books/accept\
+ance-alloc.lisp", but that book has not been included although the
+book "/Users/ember/dev/fn/books/acceptance-alloc.lisp" -- which has
+the same familiar name as that required book (but with a different
+full-book-name; see :DOC full-book-name) -- has been included.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "byte-store-invariants"
+...):  After processing the events in the book 
+"/Users/ember/dev/fn/books/byte-store-invariants.lisp":
+-- its certificate requires the book "/tank/fn/lanes/w11-sn-index/books/frame.\
+lisp", but that book has not been included although the book "/Users/ember/dev\
+/fn/books/frame.lisp" -- which has the same familiar name as that required
+book (but with a different full-book-name; see :DOC full-book-name)
+-- has been included;
+-- its certificate requires the book "/tank/fn/lanes/w11-sn-index/books/frame-
+journal.lisp", but that book has not been included although the book
+"/Users/ember/dev/fn/books/frame-journal.lisp" -- which has the same
+familiar name as that required book (but with a different full-book-
+name; see :DOC full-book-name) -- has been included;
+-- its certificate requires the book "/tank/fn/lanes/w11-sn-index/books/frame-
+fields.lisp", but that book has not been included although the book
+"/Users/ember/dev/fn/books/frame-fields.lisp" -- which has the same
+familiar name as that required book (but with a different full-book-
+name; see :DOC full-book-name) -- has been included;
+-- its certificate requires the book "/tank/fn/lanes/w11-sn-index/books/wildma\
+t.lisp", but that book has not been included although the book "/Users/ember/d\
+ev/fn/books/wildmat.lisp" -- which has the same familiar name as that
+required book (but with a different full-book-name; see :DOC full-
+book-name) -- has been included;
+-- its certificate requires the book "/tank/fn/lanes/w11-sn-index/books/frame-
+octets.lisp", but that book has not been included although the book
+"/Users/ember/dev/fn/books/frame-octets.lisp" -- which has the same
+familiar name as that required book (but with a different full-book-
+name; see :DOC full-book-name) -- has been included;
+-- its certificate requires the book "/tank/fn/lanes/w11-sn-index/books/byte-
+store.lisp", but that book has not been included although the book
+"/Users/ember/dev/fn/books/byte-store.lisp" -- which has the same familiar
+name as that required book (but with a different full-book-name; see
+:DOC full-book-name) -- has been included;
+-- its certificate requires the book "/tank/fn/lanes/w11-sn-index/books/cbor-
+invariants.lisp", but that book has not been included although the
+book "/Users/ember/dev/fn/books/cbor-invariants.lisp" -- which has
+the same familiar name as that required book (but with a different
+full-book-name; see :DOC full-book-name) -- has been included;
+-- its certificate requires the book "/tank/fn/lanes/w11-sn-index/books/cbor.l\
+isp", but that book has not been included although the book "/Users/ember/dev/\
+fn/books/cbor.lisp" -- which has the same familiar name as that required
+book (but with a different full-book-name; see :DOC full-book-name)
+-- has been included;
+-- its certificate requires the book "/tank/fn/lanes/w11-sn-index/books/accept\
+ance-alloc.lisp", but that book has not been included although the
+book "/Users/ember/dev/fn/books/acceptance-alloc.lisp" -- which has
+the same familiar name as that required book (but with a different
+full-book-name; see :DOC full-book-name) -- has been included.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "journal-publish" ...):
+There is no certificate on file for 
+"/Users/ember/dev/fn/books/journal-publish.lisp".  See :DOC uncertified-
+books.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "peer-config" ...):  
+The certificate for "/Users/ember/dev/fn/books/peer-config.lisp" lists
+the book-hash of that book as 1126614884.  But its book-hash is now
+computed to be 569448181.
+See :DOC book-hash-mismatch.
+
+
+ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "path" ...):  After processing
+the events in the book "/Users/ember/dev/fn/books/path.lisp":
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/article-fields.lisp" so book recertification
+is probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/article.lisp" so book recertification is
+probably required;
+-- its certificate requires the uncertified book 
+"/Users/ember/dev/fn/books/cbor.lisp" so book recertification is probably
+required.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "../../books/native-hybrid-control" ...)
+Rules: NIL
+Warnings:  Uncertified and Compiled file
+Time:  0.85 seconds (prove: 0.00, print: 0.00, other: 0.85)
+ "/Users/ember/dev/fn/books/native-hybrid-control.lisp"
+ACL2 !>>
+The event ( INCLUDE-BOOK "std/testing/assert-equal" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "std/testing/assert-equal" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *NHC-PRINCIPAL* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *NHC-PRINCIPAL*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *NHC-ED-KEY* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *NHC-ED-KEY*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *NHC-ML-KEY* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *NHC-ML-KEY*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *NHC-ED-SIGNATURE* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *NHC-ED-SIGNATURE*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *NHC-ML-SIGNATURE* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *NHC-ML-SIGNATURE*
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>> :PASSED
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>FN-W30-HYBRID-SOURCE-END
+NIL
+ACL2 !>

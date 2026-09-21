@@ -17,6 +17,45 @@ parallel service/peering, BP/DTN, preservation, identity and crash-correspondenc
 implementation, with focused checks per lane and combined gates per frozen batch.
 Usage remaining does not narrow the release scope.
 
+## Current integration checkpoint
+
+The next production/developer/DTN image source is frozen at `773e9ae3`.
+The preceding affected certification closure is still running on persvati;
+its source `09677bf1` is a prerequisite-cache batch, not the promised image
+source. The earlier combined
+`8e8d1080` attempt failed in statement and provenance codec proofs. Focused
+repairs have real certificates; the combined successor result remains pending.
+
+Native bidirectional exchange, duplicate suppression and restart/requeue have
+[scoped immutable-image evidence](evidence/native-peering-915d5c72-2026-09-21.md)
+for `915d5c72`. That source is older than the combined freeze. A further matrix
+witness run has reproduced the selected exchange/requeue cases with the actual
+running executable and core observed through `/proc`; its failed receiver-setup
+attempt and corrected run are being archived. Protected exchange between hbox
+and persvati, live configuration, and current-image recovery remain queued.
+
+The native hybrid enrollment/author control join is integrated: exact-source
+field admission and both primitive observations feed the shared durable
+submission path. A missing-enrollment history fixture is now ACL2-generated;
+its native startup test must fault while retaining exact observed files. The
+local hybrid Store/control test books execute after repairing a missing fixture
+constructor dependency; this is source evaluation, not new certification.
+Portable `FN-Authorship` propagation and real native hybrid author/restart
+qualification remain active work.
+
+Selected-prefix compaction tests now enumerate repeated unlink interruptions
+and preserve actual event bytes across candidate and selection cuts. Their
+runtime campaign awaits the source-matched image. General uncovered-suffix
+physical correspondence remains in progress. Tagged-event append proof repair
+and hypothesis teeth are integrated; focused certification remains pending.
+The persistent Message-ID trie and builder uniqueness definitions are integrated,
+with source-evaluated correspondence events. The live reader still uses its old
+lookup path until the maintained owner/pinned-reader join lands; no measured
+speedup or fresh certificate is claimed for the trie.
+
+The dated narrative below preserves earlier gates and their narrower scopes;
+this checkpoint supersedes their descriptions of the next active image.
+
 ## Integrated and under validation
 
 Main contains native owner/operator help/status/recover/run, feed intent and
@@ -106,8 +145,8 @@ remain recorded and are not reclassified by component certificates.
 The next wide source batch also includes outbound AUTHINFO with ACL2-rendered
 commands, exact opened-descriptor credential checks, large Store-event codecs,
 a new explicit physical profile preserving legacy reads, ordered durable identity
-context, and compaction reclaim crash programs. Native author submission still
-needs its live-owner control join. Profile admission and expected-refusal cleanup
+context, and compaction reclaim crash programs. Native author submission now includes its live-owner control join in source;
+its real primitive/restart runtime test remains pending. Profile admission and expected-refusal cleanup
 must compose before the next image is frozen. Large-event and partial-deletion
 witnesses are source/component evidence; full caller guards and native fault
 execution remain open. The [crypto review](review-2026-09-21-hybrid-cross-model.md)
@@ -133,10 +172,10 @@ ACL2 expects lists. Main repairs that boundary and includes a regression that
 fails against the old constructor; the older image gate is applying the same
 repair before continuing exchange tests.
 
-The combined successor freezes `df21773d` for certification and image builds
-on persvati. Live hybrid control remains a separate in-progress packet: review
-identified boundary-call and test-harness defects, plus the need to compose
-source-derived article admission and durable outbound feed intent. An inner
+The earlier combined successor froze `df21773d` for certification on persvati.
+Hybrid control review identified boundary-call and test-harness defects, plus
+the need to compose source-derived article admission and durable outbound feed
+intent; these repairs are included in the later `773e9ae3` image freeze. An inner
 kind-4 writer alone is not the complete author-posting workflow. Hybrid subject
 injectivity books and concrete counterexamples now have
 [source-matched certification](evidence/hybrid-injectivity-certification-2026-09-21.md)
@@ -161,8 +200,8 @@ The native peering investigation has also repaired the pure administration
 call boundary and the unimplemented transit drain branch. A taken peer article
 now goes through the ACL2 transfer decision, durable feed intent, shared Store
 attempt and transit outcome. Earlier runs never reached that Store attempt.
-The gate lane is exercising the repaired path; a source check is not a
-two-peer result. The served counted fast transition is integrated with
+The repaired path has the scoped frozen-image two-peer evidence above;
+current-main and protected cross-host qualification remain separate gates. The served counted fast transition is integrated with
 [focused correspondence evidence](evidence/native-served-fast-path-w26-2026-09-21.md);
 its current outer-owner closure still needs certification.
 

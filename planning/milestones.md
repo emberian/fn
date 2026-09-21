@@ -17,8 +17,8 @@ native credential administration and the outbound-feed component are
 integrated. The current service-composition source joins connection fault
 isolation and public administration, routes accepted IPv4/loopback addresses through
 the ACL2 peer/open decision, and activates the existing outbound feed through
-the public owner's lifecycle hooks. It has no source-matched image or two-node
-result yet. STARTTLS and public credential/group/capacity/peer administration
+the public owner's lifecycle hooks. An older frozen repair has source-matched native two-node exchange evidence;
+the wider combined source still awaits its own image and qualification. STARTTLS and public credential/group/capacity/peer administration
 are joined in source. The next frozen qualification batch will exercise their
 composition. Parallel implementation extends authoritative Store history for
 BP obligations and identity/key snapshots, live administration, checkpoint
