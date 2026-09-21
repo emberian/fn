@@ -125,7 +125,8 @@
   t)
 
 (defun fnn-hsig-read-key (path privatep)
-  (unless (and (stringp path) (> (length path) 0))
+  (unless (and (stringp path) (> (length path) 0)
+               (not (find (code-char 0) path)))
     (error 'fnn-hsig-fault :detail "a PEM key path is required"))
   (let ((bio (fnn-%hsig-bio-new-file path "rb")))
     (when (fnn-hsig-null-p bio)
@@ -269,12 +270,14 @@ the other, and unsupported ML-DSA is never mapped to :VERIFIED."
 (defun fnn-hsig-authorize-profile
     (principal keys source signatures ml-public-key-path)
   "Verify and ask ACL2's selected-profile conjunction for the final verdict."
-  (let ((preimage (fnn-call 'fn-hsig-host-preimage principal keys source)))
+  (let ((preimage (fnn-core 'fn-hsig-host-preimage principal keys source)))
     (unless (and preimage (plusp (length preimage)))
       (return-from fnn-hsig-authorize-profile nil))
     (let* ((ed-public-key (cdr (first keys)))
            (ml-public-key (cdr (second keys)))
+           (observed-ml-key (fnn-hsig-ml-dsa-65-public-key ml-public-key-path))
            (observations (fnn-hsig-observe ed-public-key ml-public-key
                                            ml-public-key-path preimage signatures)))
-      (fnn-call 'fn-hsig-host-authorize principal keys source signatures
+      (fnn-core 'fn-hsig-host-authorize principal keys source signatures
+                (coerce observed-ml-key 'list)
                 (first observations) (second observations)))))

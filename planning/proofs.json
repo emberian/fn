@@ -1635,12 +1635,8 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
-      "events": [
-        "fn-hsig-subject-body-is-octets",
-        "fn-hsig-authorization-requires-both-components",
-        "fn-hsig-authorization-binds-complete-profile"
-      ],
+      "status": "in-progress",
+      "events": [],
       "evidence": [
         "books/hybrid-signature.lisp",
         "tests/acl2/hybrid-signature-tests.lisp",

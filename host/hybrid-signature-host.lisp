@@ -8,6 +8,7 @@
       (fn-hsig-signed-preimage principal keys source)
     nil))
 
-(defun fn-hsig-host-authorize (principal keys source signatures ed ml)
+(defun fn-hsig-host-authorize
+    (principal keys source signatures observed-ml-key ed ml)
   (declare (xargs :mode :program))
-  (fn-hsig-authorize principal keys source signatures ed ml))
+  (fn-hsig-authorize principal keys source signatures observed-ml-key ed ml))
