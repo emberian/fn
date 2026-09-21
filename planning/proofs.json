@@ -1653,6 +1653,36 @@
       ]
     },
     {
+      "id": "PRF-050",
+      "title": "Authoritative mixed Store history and atomic identity acceptance",
+      "statement": "The host-called owner publication path writes one ordered Store-event stream whose journal sequence is independent of burned allocator transaction IDs; a bound kind-4 article and historical verdict commit atomically against the exact earlier enrolled key snapshot, recovery reconstructs the same historical verdict without current-key recomputation, and expected prepublication refusal consumes its reservation while indeterminate or structural faults remain fenced.",
+      "milestone": "M3",
+      "requirements": [
+        "OBJ-007",
+        "STO-002",
+        "STO-003"
+      ],
+      "depends_on": [
+        "PRF-007",
+        "PRF-048"
+      ],
+      "assumptions": [
+        "A-DURABILITY"
+      ],
+      "status": "in-progress",
+      "evidence": [
+        "books/store-events.lisp",
+        "books/replay.lisp",
+        "books/store-node.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/acl2/store-identity-traces-tests.lisp",
+        "tests/native_owner_publication.lisp"
+      ],
+      "pending_subject": "Certify the actual fn-sn prepare/finish/recovery preservation and correspondence theorems for the carried journal sequence and kind-4 snapshot binding, then relate every physical publication/recovery cut to that state. The raw witness establishes condition routing and reservation cleanup only; it does not prove filesystem durability or cryptographic primitive correctness.",
+      "progress_note": "Source integration carries journal sequence separately from allocation frontier, uses one native prepared-publication helper for article, retention and identity events, and replays enrolled kind-3 plus bound kind-4 history. A fresh source trace covers enrollment, atomic acceptance, reopen, a burned transaction-id gap, later events and another reopen; it preserves the kind-4 historical verdict and reports no historical authority for a legacy fn-r record. The raw shared-helper witness covers expected refusal followed by a valid commit, indeterminate fencing, and structural-fault fencing. No theorem events are registered yet and the combined image gate remains separate."
+    },
+    {
       "id": "PRF-051",
       "title": "Outbound AUTHINFO phase ordering and secret custody",
       "statement": "fn-fc-step emits AUTHINFO USER/PASS only after the configured transport phase, refuses clear transport unless the durable policy explicitly allows it, and reaches MODE or ready only after 281; the host reads an owner-only bounded profile and ACL2 decodes it, while failure follows peer-local loss and durable requeue.",

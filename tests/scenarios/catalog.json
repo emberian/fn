@@ -855,6 +855,34 @@
         "planning/evidence/owner-survival-2026-09-21.md"
       ],
       "execution_scope": "Implemented as tests/test_owner.py OwnerSurvivesAFaultTests, two cases, one owner process each. The fault is injected, not provoked by a peer: the two real crashes it stands for are fixed, and a regression that provokes one from the wire needs two nodes (tools/v0_matrix.py's transit rows). This remains Python-host evidence. Native attributable-fault survival is pending and is not replaced by the separate shared-state global-fence scenario SCN-015."
+    },
+    {
+      "id": "SCN-027",
+      "title": "Atomic signed acceptance across refusal, burned allocation and restart",
+      "milestone": "M3",
+      "status": "implemented",
+      "requirements": [
+        "OBJ-007",
+        "STO-002",
+        "STO-003"
+      ],
+      "steps": [
+        "Enroll one exact hybrid key snapshot, commit one atomically bound article-plus-verdict event, and reopen the Store.",
+        "Reserve and refuse another transaction so the allocator transaction ID advances without advancing the Store journal sequence.",
+        "Commit later Store events, reopen again, and query the historical verdicts.",
+        "At the shared native publication helper, inject an expected prepublication refusal and then a valid operation; separately inject indeterminate and structural-fault outcomes."
+      ],
+      "expected": [
+        "The kind-4 article and its historical verdict appear together and remain bound to the exact enrolled snapshot after both reopens.",
+        "The burned allocator ID creates no journal-sequence gap and does not prevent later recovery.",
+        "A legacy article has no reconstructed historical verdict because its record contains no immutable verdict evidence.",
+        "Expected refusal consumes the reservation and permits the following valid commit; indeterminate and structural faults remain fenced and are never reported as refusal."
+      ],
+      "evidence": [
+        "tests/acl2/store-identity-traces-tests.lisp",
+        "tests/native_owner_publication.lisp"
+      ],
+      "execution_scope": "The fresh ACL2 source trace executes the actual fn-sn transitions and reopen path; the raw SBCL witness executes the actual shared fnn-owner-publish-prepared helper with controlled publication/core observations. These results do not establish filesystem durability, cryptographic primitive correctness, arbitrary-trace preservation or the current combined saved image; PRF-050 remains in progress."
     }
   ]
 }
