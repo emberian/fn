@@ -68,6 +68,10 @@ class Journal:
                 if status == "next":
                     self.replayed += 1
                     continue
+                if status == "migration-required":
+                    raise StoreFault(
+                        "FNFD migration required before legacy timing outcome: "
+                        + self.path)
                 if status == "invalid":
                     raise StoreFault("invalid complete FNFD evidence: " + self.path)
                 self._step(status)
