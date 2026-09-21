@@ -123,6 +123,17 @@ class NativeAuthTests(unittest.TestCase):
         self.assertNotIn(b"LISTENING ", result.stdout)
         self.assertIn(b"unsupported-profile", result.stderr.lower())
 
+    def test_legacy_cleartext_registry_is_refused_before_listener(self):
+        self.auth.write_text(
+            '[login."legacy"]\nsecret = "never-read"\n', encoding="ascii")
+        result = subprocess.run(
+            [str(IMAGE), "--fn", "operator", str(self.config), "run", "--once"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=environment(), timeout=180, check=False)
+        self.assertEqual(result.returncode, 1, result.stderr.decode())
+        self.assertNotIn(b"LISTENING ", result.stdout)
+        self.assertIn(b"cleartext-credential", result.stderr.lower())
+
 
 if __name__ == "__main__":
     unittest.main()
