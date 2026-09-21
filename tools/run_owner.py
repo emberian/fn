@@ -30,7 +30,7 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        Acl2Store, EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN,
                        NO_FAULTS, ScriptedFaults, Store,
                        StoreError, StoreFault, StoreIndeterminate, UsageParser,
-                       acl2_nat, acl2_octets, acl2_result, acl2_symbol, conservative_charge,
+                       acl2_keyword, acl2_nat, acl2_octets, acl2_result, acl2_symbol, conservative_charge,
                        durable_post, exit_code_for, group_codes, metadata,
                        validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
