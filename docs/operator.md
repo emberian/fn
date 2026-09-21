@@ -119,9 +119,13 @@ configuration file holds only what the host needs in order to start.
 Native peer records use the same offline durable administration path:
 
 ```text
-fn-native --fn operator /etc/fn/fn.toml peer add NAME PATH-ID HOST PORT INBOUND|- OUTBOUND|- SOURCE-ADDRESS true|false
+fn-native --fn operator /etc/fn/fn.toml peer add NAME PATH-ID HOST PORT INBOUND|- OUTBOUND|- AUTH-KIND AUTH-VALUE true|false
 fn-native --fn operator /etc/fn/fn.toml peer remove NAME
 ```
+
+`AUTH-KIND` is `source-address` or `principal`. A principal is the canonical
+64-digit lowercase hexadecimal principal id. The older form with only a source
+address in this position remains accepted as a compatibility decode.
 
 ACL2 parses the port and streaming word, supplies the inbound body/inflight
 limits and outbound queue/backoff limits, builds the typed peer record and
