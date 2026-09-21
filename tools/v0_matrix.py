@@ -814,7 +814,11 @@ PROBES = (
     ("XPAT", "XPAT Subject 1 *", False),
     ("LISTGROUP", "LISTGROUP {group}", False),
     ("CHECK", "CHECK <pin.check@matrix.example.invalid>", False),
-    ("TAKETHIS", "TAKETHIS <pin.take@matrix.example.invalid>", True),
+    # RFC 4644 section 2.5 is block-first: unlike POST and IHAVE, TAKETHIS
+    # has no preliminary status line.  Waiting for one leaves both probe and
+    # server waiting forever, so its probe must write the terminating block
+    # before it reads the final decision.
+    ("TAKETHIS", "TAKETHIS <pin.take@matrix.example.invalid>", "block-first"),
 )
 
 
@@ -841,7 +845,13 @@ def pins(args):
             # the withdrawal, not the dispatch.
             if label != "AUTHINFO":
                 login(probe, args, {})
-            reply = probe.cmd(template.format(group=args.group))[0]
+            command = template.format(group=args.group)
+            if opens == "block-first":
+                probe.send(command)
+                probe.sock.sendall(b".\r\n")
+                reply = probe.line()
+            else:
+                reply = probe.cmd(command)[0]
             answered[label] = reply
             # A command that opened a transfer is closed with an empty block
             # so the server is left in a clean state and the process is not
