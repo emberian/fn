@@ -78,7 +78,7 @@
 (assert-event (equal (fn-own-view-version (fn-own-view *own-0*)) 0))
 
 ; Reader A opens at version 0 and is greeted.
-(defconst *own-open-a* (fn-own-open *own-0*))
+(defconst *own-open-a* (fn-own-open *own-0* nil))
 (assert-event (equal (fn-served-reply-octets (car *own-open-a*)) *fn-served-greeting*))
 (defconst *own-a* (cdr *own-open-a*))
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 0 (fn-own-conns *own-a*))) 0))
@@ -211,6 +211,49 @@
                 '(:open))))
 (assert-event (equal (fn-own-run *own-0* *own-trace*) *own-after*))
 
+; -----------------------------------------------------------------------------
+; D14-b, the owner half of the counterexample: why the recovery freedom is
+; fn-sf-recovery-crash-imagep and NOT a widening of fn-sf-crash-imagep, which
+; is the gate of fn-own-reopen (owner.lisp:911).
+;
+; *own-reopened* is an ordinary reachable owner: its store is a
+; recovery-window state, its own success history is empty (fn-sn-open-observed
+; keeps no ghost), and its LEDGER still names both records -- including the
+; second, which an earlier process completed and acknowledged and which is
+; therefore fenced.  The kernel cannot see that: which of its records are
+; fenced is a fact about the byte store's pending list.  So the platform
+; predicate admits the rolled-back image of this very state, while the ledger
+; clause of fn-own-relation is false on it.  Had fn-sf-crash-imagep been
+; widened, fn-own-reopen would take that image and
+; fn-own-reopen-preserves-relation would be FALSE.
+
+(assert-event (fn-sf-record-rollback-visiblep (fn-sn-files (fn-own-store *own-reopened*))))
+(assert-event (equal (fn-sf-successes (fn-sn-files (fn-own-store *own-reopened*))) nil))
+(assert-event (equal (len (fn-own-ledger *own-reopened*)) 2))
+(defconst *own-rolled-back-image* (fn-sf-but-last *own-image-records*))
+(assert-event (equal (len *own-rolled-back-image*) 1))
+; The platform predicate admits it; the reliance predicate does not.
+(assert-event (fn-sf-recovery-crash-imagep (fn-sn-files (fn-own-store *own-reopened*))
+                                           *own-image-frontier* *own-rolled-back-image*))
+(assert-event (not (fn-sf-crash-imagep (fn-sn-files (fn-own-store *own-reopened*))
+                                       *own-image-frontier* *own-rolled-back-image*)))
+; The reopen on it would hold exactly the shorter list...
+(assert-event (equal (fn-sf-records
+                      (fn-sn-files
+                       (fn-sn-open-state
+                        (fn-sn-open-observed *own-groups* 10 *own-image-frontier*
+                                             *own-rolled-back-image*))))
+                     *own-rolled-back-image*))
+; ...fn-own-reopen carries the ledger across unchanged...
+(assert-event (equal (fn-own-ledger *own-reopened*) (fn-own-ledger *own-closed*)))
+; ...and the ledger clause of fn-own-relation is false on that list, which is
+; the counterexample: relation in, no relation out.
+(assert-event (fn-own-relation *own-reopened*))
+(assert-event (fn-own-ledger-durablep (fn-own-ledger *own-reopened*) *own-image-records*))
+(assert-event (with-guard-checking :none
+               (not (fn-own-ledger-durablep (fn-own-ledger *own-reopened*)
+                                            *own-rolled-back-image*))))
+
 ; The host's restart dispatch: the image's open result has kind :ok, and the
 ; owner started over it satisfies the relation (fn-own-open-kind-ok-is-okp,
 ; fn-own-open-observed-start-relation).
@@ -256,8 +299,8 @@
 (assert-event (equal (len (fn-own-conns *own-full*)) 4))
 (assert-event (equal (fn-own-max-conns *own-full*) 4))
 (assert-event (fn-own-conns-boundedp (fn-own-conns *own-full*) *own-groups*))
-(assert-event (null (car (fn-own-open *own-full*))))
-(assert-event (equal (cdr (fn-own-open *own-full*)) *own-full*))
+(assert-event (null (car (fn-own-open *own-full* nil))))
+(assert-event (equal (cdr (fn-own-open *own-full* nil)) *own-full*))
 
 ; -----------------------------------------------------------------------------
 ; Clock and facts on the witness.
@@ -268,12 +311,101 @@
 (assert-event (equal (fn-own-declare-group *own-after* "fn.new") *own-after*))
 (defconst *own-clocked* (fn-own-step *own-after* (list :observe *own-obs*)))
 (assert-event (equal (fn-own-clock *own-clocked*) *own-obs*))
-(assert-event (equal (fn-own-step *own-clocked* (list :observe *own-obs-backwards*))
+; D10-a.  A reading that is not a later observation of the same clock is
+; REFUSED, and the refusal costs the owner the clock it held.  This line
+; used to assert that the owner was UNCHANGED, which is exactly the
+; behaviour that let a node go on deciding -- minting Message-Ids, stamping
+; facts, answering DATE -- under a clock its host had just contradicted.
+(assert-event (equal (fn-own-observe-outcome *own-clocked* *own-obs-backwards*)
+                     :refused))
+(defconst *own-contradicted*
+  (fn-own-step *own-clocked* (list :observe *own-obs-backwards*)))
+(assert-event (null (fn-own-clock *own-contradicted*)))
+(assert-event (fn-own-relation *own-contradicted*))
+(assert-event (equal (fn-own-conns *own-contradicted*) (fn-own-conns *own-clocked*)))
+(assert-event (equal (fn-own-ledger *own-contradicted*) (fn-own-ledger *own-clocked*)))
+; Recovery is one event: with no clock, the very next reading is admitted,
+; whatever it says.  The node stops being sure and then starts again.
+(assert-event (equal (fn-own-observe-outcome *own-contradicted* *own-obs-backwards*)
+                     :observed))
+; The case the HOST used to get wrong: a reading EQUAL to the one held is
+; admitted, and the owner does not move because it does not have to.
+; host/owner-host.lisp inferred the word from exactly that non-movement.
+(assert-event (equal (fn-own-observe-outcome *own-clocked* *own-obs*) :observed))
+(assert-event (equal (fn-own-step *own-clocked* (list :observe *own-obs*))
                      *own-clocked*))
+; The third word.  A host message that carries no observation changes
+; nothing, including the clock.
+(assert-event (equal (fn-own-observe-outcome *own-clocked* 7) :invalid))
+(assert-event (equal (fn-own-step *own-clocked* '(:observe 7)) *own-clocked*))
+; TEETH for fn-own-observe-refusal-names-a-contradiction, one witness per
+; disjunct of its conclusion, each SEPARATING: only the named reading moved
+; backwards.  *own-obs-backwards* is the monotonic disjunct (500 < 1000 with
+; the same wall and the same bound, so the earliest admissible true time did
+; not move).
+(assert-event (and (< (fn-clock-monotonic *own-obs-backwards*)
+                      (fn-clock-monotonic *own-obs*))
+                   (equal (fn-clock-earliest-true *own-obs-backwards*)
+                          (fn-clock-earliest-true *own-obs*))
+                   (equal (fn-clock-has-wall *own-obs-backwards*)
+                          (fn-clock-has-wall *own-obs*))))
+; The earliest-admissible-time disjunct alone: the monotonic counter went
+; FORWARD and the wall reading went back.
+(defconst *own-obs-wall-back* (fn-clock-observation 9000 1599999000000 5000 t))
+(assert-event (and (< (fn-clock-monotonic *own-obs*)
+                      (fn-clock-monotonic *own-obs-wall-back*))
+                   (< (fn-clock-earliest-true *own-obs-wall-back*)
+                      (fn-clock-earliest-true *own-obs*))))
+(assert-event (equal (fn-own-observe-outcome *own-clocked* *own-obs-wall-back*)
+                     :refused))
+; The has-wall disjunct alone: a host that stops claiming a wall reading is
+; not reporting the same clock, whatever its numbers say.
+(defconst *own-obs-no-wall* (fn-clock-observation 9000 1600000008000 5000 nil))
+(assert-event (equal (fn-own-observe-outcome *own-clocked* *own-obs-no-wall*)
+                     :refused))
+; TOOTH for the theorem's one real hypothesis, (fn-own-relation o): an owner
+; whose clock field is not an observation at all -- unreachable, and the
+; relation is what excludes it -- is :refused with the conclusion FALSE.
+; (The hypothesis that a clock is held is NOT in the theorem: with none the
+; outcome is :observed, so that instance is vacuous rather than a tooth.)
+(defconst *own-clock-garbage*
+  (fn-own-make (fn-own-store *own-clocked*) (fn-own-view *own-clocked*)
+               (fn-own-conns *own-clocked*) (fn-own-next-id *own-clocked*)
+               (fn-own-max-conns *own-clocked*) (fn-own-pending *own-clocked*)
+               (fn-own-ledger *own-clocked*)
+               (list :fn-clock-observation 'x 1600000000000 5000 t)
+               (fn-own-facts *own-clocked*) (fn-own-config *own-clocked*)
+               (fn-own-queue *own-clocked*) (fn-own-inflight *own-clocked*)
+               (fn-own-feeds *own-clocked*)))
+(assert-event (not (fn-own-relation *own-clock-garbage*)))
+(assert-event (equal (fn-own-observe-outcome *own-clock-garbage* *own-obs*) :refused))
+(assert-event
+ (with-guard-checking :none
+  (not (or (< (fn-clock-monotonic *own-obs*)
+              (fn-clock-monotonic (fn-own-clock *own-clock-garbage*)))
+           (not (equal (fn-clock-has-wall *own-obs*)
+                       (fn-clock-has-wall (fn-own-clock *own-clock-garbage*))))
+           (< (fn-clock-earliest-true *own-obs*)
+              (fn-clock-earliest-true (fn-own-clock *own-clock-garbage*)))))))
 (defconst *own-declared* (fn-own-step *own-clocked* '(:declare-group "fn.new")))
 (assert-event (equal (fn-own-replay-facts (fn-own-facts *own-declared*)) '("fn.new")))
 (assert-event (equal (fn-own-group-fact-stamp (car (fn-own-facts *own-declared*))) *own-obs*))
 (assert-event (fn-own-relation (fn-own-step *own-declared* (list :observe *own-obs-later*))))
+; A contradicted reading costs the owner the clock and nothing else: the
+; facts already created keep the stamps they were created under, which are
+; readings and not the current one, and no NEW fact can be created until a
+; reading is accepted again.
+(defconst *own-declared-contradicted*
+  (fn-own-step *own-declared* (list :observe *own-obs-backwards*)))
+(assert-event (null (fn-own-clock *own-declared-contradicted*)))
+(assert-event (equal (fn-own-replay-facts (fn-own-facts *own-declared-contradicted*))
+                     '("fn.new")))
+(assert-event (equal (fn-own-group-fact-stamp
+                      (car (fn-own-facts *own-declared-contradicted*)))
+                     *own-obs*))
+(assert-event (equal (fn-own-declare-group *own-declared-contradicted* "fn.other")
+                     *own-declared-contradicted*))
+(assert-event (fn-own-relation *own-declared-contradicted*))
 
 ; -----------------------------------------------------------------------------
 ; The served POST path on the witness, from *own-closed* (two posts durable,
@@ -430,6 +562,105 @@
 (assert-event (null (fn-own-queue (fn-own-step *own-queued-again* '(:close 4)))))
 
 ; -----------------------------------------------------------------------------
+; D10-a on the served path: a connection posts MORE THAN ONCE, each post
+; decides under the reading the owner last admitted, and a contradicted
+; clock is refused as a clock fault and not as an article verdict.
+;
+; The subject is fn-own-read, which is what host/owner-host.lisp
+; `fn-owner-chunk' calls on every socket chunk; connection 4 has already had
+; one 240 above and is re-pinned to the committed view.
+
+(defconst *own-article-2*
+  (append (fn-nntp-string-octets "From: poster@example.invalid") '(13 10)
+          (fn-nntp-string-octets "Subject: again") '(13 10)
+          (fn-nntp-string-octets "Newsgroups: fn.letters") '(13 10)
+          '(13 10)
+          (fn-nntp-string-octets "Hello again, news.") '(13 10)
+          '(46 13 10)))
+(defconst *own-obs-2* (fn-clock-observation 2000500 1600000010500 500 t))
+(defconst *own-obs-2-back* (fn-clock-observation 1999000 1600000009000 500 t))
+
+; The host reports a later reading and the owner admits it.
+(assert-event (equal (fn-own-observe-outcome *own-late* *own-obs-2*) :observed))
+(defconst *own-late-2* (fn-own-step *own-late* (list :observe *own-obs-2*)))
+(assert-event (fn-own-relation *own-late-2*))
+; POST is offered again on the same connection, and the article is injected.
+(defconst *own-second*
+  (fn-own-read (cdr (fn-own-read *own-late-2* 4 *own-post-command*)) 4 *own-article-2*))
+(assert-event (null (fn-served-reply-octets (car *own-second*))))
+(assert-event (fn-inj-injectedp (fn-served-submission (car *own-second*))))
+(assert-event (equal (len (fn-own-queue (cdr *own-second*))) 1))
+(assert-event (fn-own-relation (cdr *own-second*)))
+; and its identity is NOT the first post's: the second post on a connection
+; is a new article, which is what the per-submission injection clock buys.
+(assert-event (not (equal (fn-own-sub-msgid (car (fn-own-queue (cdr *own-second*))))
+                          (fn-own-sub-msgid (car (fn-own-queue *own-q*))))))
+
+; TOOTH for the hypothesis that the two readings differ
+; (fn-post-distinct-injection-clocks-give-distinct-identities,
+; books/nntp-post.lisp).  Under the reading the FIRST post used, a second
+; article with a different body receives the SAME generated Message-ID.
+; That collision is the duplicate the durable path refuses, and before the
+; per-submission seam every post on a connection was in it.
+(defconst *own-second-stale*
+  (fn-own-read (cdr (fn-own-read *own-late* 4 *own-post-command*)) 4 *own-article-2*))
+(assert-event (equal (fn-own-clock *own-late*) *own-post-obs*))
+(assert-event (not (equal *own-article-2* *own-article*)))
+(assert-event (equal (fn-own-sub-msgid (car (fn-own-queue (cdr *own-second-stale*))))
+                     (fn-own-sub-msgid (car (fn-own-queue *own-q*)))))
+
+; THE CLOCK FAULT IS NOT AN ARTICLE VERDICT.  A reading that contradicts the
+; one the owner held costs it the clock; the next article on the connection
+; is refused with the CLOCK line and queues nothing, and that line is not
+; the line a refused article gets.  Before D10-a the owner kept the
+; contradicted reading, minted the previous identity again, and the poster
+; was told `441 posting failed; the article was refused'.
+(assert-event (equal (fn-own-observe-outcome *own-late* *own-obs-2-back*) :refused))
+(defconst *own-late-noclock* (fn-own-step *own-late* (list :observe *own-obs-2-back*)))
+(assert-event (null (fn-own-clock *own-late-noclock*)))
+(assert-event (fn-own-relation *own-late-noclock*))
+(defconst *own-clockless*
+  (fn-own-read (cdr (fn-own-read *own-late-noclock* 4 *own-post-command*)) 4
+               *own-article-2*))
+(assert-event
+ (equal (fn-served-reply-octets (car *own-clockless*))
+        (append (fn-nntp-string-octets
+                 "441 posting failed; this server has no usable clock reading")
+                '(13 10))))
+(assert-event (null (fn-own-queue (cdr *own-clockless*))))
+(assert-event
+ (not (equal (fn-served-reply-octets (car *own-clockless*))
+             (append (fn-nntp-string-octets "441 posting failed; the article was refused")
+                     '(13 10)))))
+(assert-event
+ (not (equal (fn-served-reply-octets (car *own-clockless*))
+             (fn-served-reply-octets (car *own-bad*)))))
+; A group fact is refused for the same reason and DATE answers 503 on a
+; connection opened while the clock is gone.
+(assert-event (equal (fn-own-declare-group *own-late-noclock* "fn.new")
+                     *own-late-noclock*))
+(defconst *own-clockless-reader* (fn-own-run *own-late-noclock* '((:close 3) (:open))))
+(assert-event (null (fn-own-conn-observation
+                     (fn-own-find-conn 6 (fn-own-conns *own-clockless-reader*)))))
+(assert-event
+ (equal (fn-served-reply-octets
+         (car (fn-own-read *own-clockless-reader* 6
+                           (append (fn-nntp-string-octets "DATE") '(13 10)))))
+        (append (fn-nntp-string-octets "503 no clock observation supplied") '(13 10))))
+; Recovery is one event: the next reading is admitted and the connection
+; opened after it posts again.
+(assert-event (equal (fn-own-observe-outcome *own-late-noclock* *own-obs-2-back*)
+                     :observed))
+(defconst *own-recovered*
+  (fn-own-step *own-late-noclock* (list :observe *own-obs-2-back*)))
+(assert-event (equal (fn-own-clock *own-recovered*) *own-obs-2-back*))
+(assert-event
+ (fn-inj-injectedp
+  (fn-served-submission
+   (car (fn-own-read (cdr (fn-own-read *own-recovered* 4 *own-post-command*)) 4
+                     *own-article-2*)))))
+
+; -----------------------------------------------------------------------------
 ; Teeth.  One concrete violating value per hypothesis of each keystone: the
 ; conclusion evaluated to false on an owner with that hypothesis dropped.
 ; Values outside a guard are evaluated under with-guard-checking :none.
@@ -440,11 +671,11 @@
   (let* ((archive (fn-own-view-archive (fn-own-view *own-after*)))
          (sconn (fn-served-result-conn
                  (fn-served-open archive *fn-nntp-max-initial-line-octets*
-                                 *fn-own-body-limit* nil nil nil))))
+                                 *fn-own-body-limit* nil nil nil nil))))
     (fn-own-make (fn-own-store *own-after*) (fn-own-view *own-after*)
                  (list (fn-own-conn-make 0 0 0 (fn-served-conn-wire sconn)
                                          (fn-served-conn-session sconn) archive nil nil))
-                 1 4 nil nil nil nil nil nil nil)))
+                 1 4 nil nil nil nil nil nil nil nil)))
 (assert-event (not (fn-own-relation *own-bogus*)))
 
 ; K1 (served) without (fn-own-relation o): the reply is not the served step
@@ -474,7 +705,7 @@
         (sconn (fn-served-result-conn
                 (fn-served-open (fn-own-view-archive (fn-own-view o))
                                 *fn-nntp-max-initial-line-octets* *fn-own-body-limit*
-                                nil nil nil))))
+                                nil nil nil nil))))
    (not (equal (car (fn-own-read o 99 *own-group-octets*))
                (fn-served-result-effects
                 (fn-served-step
@@ -518,7 +749,8 @@
                     (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                        (fn-own-take 2 (fn-sf-records (fn-sn-files s)))
                                        (fn-sf-frontier (fn-sn-files s))))
-                   *fn-nntp-max-initial-line-octets* *fn-own-body-limit* nil nil nil))
+                   *fn-nntp-max-initial-line-octets* *fn-own-body-limit* nil nil nil
+                   nil))
                  *own-group-command*))))))
 ; The after-any-trace forms, on the same values with the empty trace.
 (assert-event (not (fn-own-relation (fn-own-run *own-bogus* nil))))
@@ -529,7 +761,7 @@
 (defconst *own-bogus-pin*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*)
                (list (fn-own-conn-make 0 7 0 nil nil nil nil nil))
-               1 4 nil nil nil nil nil nil nil))
+               1 4 nil nil nil nil nil nil nil nil))
 (assert-event
  (not (equal (fn-own-take 7 (fn-sf-records (fn-sn-files (fn-own-store
                                                          (fn-own-run *own-bogus-pin* *own-trace*)))))
@@ -548,7 +780,7 @@
  (with-guard-checking :none
   (let ((o (fn-own-make (fn-own-store *own-0*) (fn-own-view-make 3 0 nil)
                         (list (fn-own-conn-make 0 "seven" 0 nil nil nil nil nil))
-                        1 4 nil nil nil nil nil nil nil)))
+                        1 4 nil nil nil nil nil nil nil nil)))
     (not (<= (fn-own-reclaim-floor o)
              (fn-own-conn-version (fn-own-find-conn 0 (fn-own-conns o))))))))
 
@@ -561,7 +793,7 @@
                      (fn-own-conn-make 2 2 2 nil nil nil nil nil)
                      (fn-own-conn-make 3 2 2 nil nil nil nil nil)
                      (fn-own-conn-make 4 2 2 nil nil nil nil nil))
-               5 4 nil nil nil nil nil nil nil))
+               5 4 nil nil nil nil nil nil nil nil))
 (assert-event (not (<= (len (fn-own-conns (fn-own-run *own-over* nil)))
                        (fn-own-max-conns *own-over*))))
 (assert-event (not (fn-own-conns-boundedp (fn-own-conns (fn-own-run *own-over* nil))
@@ -570,7 +802,7 @@
 ; K5 without (fn-own-relation o): a ledger entry with no record.
 (defconst *own-forged*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*) nil 0 4 nil
-               (list (cons 0 0)) nil nil nil nil nil))
+               (list (cons 0 0)) nil nil nil nil nil nil))
 (assert-event
  (not (fn-sf-record-has-pairp (cons 0 0)
                               (fn-sf-records (fn-sn-files (fn-own-store
@@ -587,7 +819,7 @@
 (assert-event (not (fn-own-relation (fn-own-run *own-bogus* nil))))
 (assert-event
  (with-guard-checking :none
-  (not (fn-snt-relation (fn-own-store (fn-own-run (fn-own-make nil nil nil 0 4 nil nil nil nil nil nil nil)
+  (not (fn-snt-relation (fn-own-store (fn-own-run (fn-own-make nil nil nil 0 4 nil nil nil nil nil nil nil nil)
                                                   nil))))))
 
 ; Root without open-okp: a rejected image (malformed frontier) has kind
@@ -619,7 +851,7 @@
 ; stamped nil; without (member-equal fact facts): a fact the log never held.
 (defconst *own-unstamped*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*) nil 0 4 nil nil nil
-               (list (fn-own-group-fact-make "fn.new" nil)) nil nil nil))
+               (list (fn-own-group-fact-make "fn.new" nil)) nil nil nil nil))
 (assert-event (not (fn-own-relation *own-unstamped*)))
 (assert-event (not (fn-clock-observationp
                     (fn-own-group-fact-stamp (car (fn-own-facts *own-unstamped*))))))
@@ -633,7 +865,8 @@
 (defconst *own-forged-post*
   (fn-own-make (fn-own-store *own-p1*) (fn-own-view *own-p1*) (fn-own-conns *own-p1*)
                5 4 4 (list (cons 9 9)) (fn-own-clock *own-p1*) nil *own-config* nil
-               (fn-own-sub-make 4 2 0 (fn-served-submission (car *own-submitted*)))))
+               (fn-own-sub-make 4 2 0 (fn-served-submission (car *own-submitted*)))
+               nil))
 (assert-event (not (fn-own-relation *own-forged-post*)))
 (assert-event
  (let ((conn (fn-own-find-conn 4 (fn-own-conns *own-forged-post*))))
@@ -648,20 +881,33 @@
 (assert-event
  (not (fn-sf-record-has-pairp (car (last (fn-own-ledger *own-forged-post*)))
                               (fn-sf-records (fn-sn-files (fn-own-store *own-forged-post*))))))
-; Without (fn-own-find-conn id conns): an unknown connection is answered
-; nothing, the served outcome over the absent connection's fields is nothing
-; too, and nothing is in flight.
+; Without (fn-own-find-conn id conns): the owner answers an unknown
+; connection NOTHING and nothing is in flight.  Until `w10/session-depth'
+; this was also the witness that the theorem's equality hypothesis can hold
+; with no connection, because the served outcome over the absent
+; connection's fields was nothing too.  It is not any more:
+; `fn-nntp-post-outcome' now answers a malformed session with the FOURTH
+; outcome, 403 (`*fn-post-malformed-session-line*',
+; books/nntp-post.lisp), so the two sides DIFFER.  What is asserted is
+; therefore the separation: the owner's refusal is its own, taken before
+; the served path is entered, and it is not the served 403.
+; That settles the hypothesis: no connection-free state can satisfy the
+; equality any more, so `(fn-own-find-conn id (fn-own-conns o))' has no
+; violating value and is DELETED from
+; `fn-own-durable-reply-names-a-durable-record' (docs/proof-style.md
+; section 5).  The theorem is strictly stronger; this assertion is why.
 (assert-event
  (with-guard-checking :none
   (let ((conn (fn-own-find-conn 99 (fn-own-conns *own-after-post*))))
-    (and (equal (car (fn-own-outcome *own-after-post* 99 :durable))
-                (fn-served-result-effects
-                 (fn-served-post-outcome
-                  (fn-served-make-conn (fn-own-conn-wire conn) (fn-own-conn-session conn)
-                                       (fn-own-conn-archive conn) (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn)
-                                       (fn-own-clock *own-after-post*))
-                  :durable)))
+    (and (null (car (fn-own-outcome *own-after-post* 99 :durable)))
+         (not (equal (car (fn-own-outcome *own-after-post* 99 :durable))
+                     (fn-served-result-effects
+                      (fn-served-post-outcome
+                       (fn-served-make-conn (fn-own-conn-wire conn) (fn-own-conn-session conn)
+                                            (fn-own-conn-archive conn) (fn-own-conn-config conn)
+                                            (fn-own-conn-observation conn)
+                                            (fn-own-clock *own-after-post*))
+                       :durable))))
          (null (fn-own-inflight *own-after-post*))))))
 ; Without the 240 hypothesis: the reply on *own-taken* is the uncertain 441
 ; and nothing was consumed after the mark.

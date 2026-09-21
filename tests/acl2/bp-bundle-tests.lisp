@@ -181,11 +181,23 @@
         :truncated))
 
 ; A declared byte-string length above the per-block bound is refused from the
-; length alone: the input here is nine octets, not a mebibyte.
+; length alone: the input here is ten octets, not a mebibyte.  The head is
+; 90 = 64 + 26, major type 2 with a four-octet argument (RFC 8949 section
+; 3), and 0xFFFFFFFF is above `*fn-bpb-max-data*`.  This assertion had 26
+; rather than 90 until 2026-09-20 and had never run, because the book above
+; it did not certify; 26 is major type 0, so what it actually measured was
+; the refusal below.
+(assert-event
+ (equal (fn-cbor-result-value
+         (fn-bpb-decode-block (list 133 1 1 0 0 90 255 255 255 255)))
+        :limit))
+
+; And the same octets with a major-type-0 head where the data byte string
+; belongs: a different refusal, kept distinct rather than collapsed.
 (assert-event
  (equal (fn-cbor-result-value
          (fn-bpb-decode-block (list 133 1 1 0 0 26 255 255 255 255)))
-        :limit))
+        :not-a-byte-string))
 
 ; A head that is not a five- or six-element definite array.
 (assert-event
@@ -193,8 +205,18 @@
         (fn-cbor-error :malformed)))
 
 ; A bundle with no payload block at all.
+; The empty bundle array is `:malformed`, NOT `:primary-block-refused`: the
+; break octet is not the start of a CBOR item, so `fn-bpc-dec` refuses before
+; `fn-bpp-decode` is ever reached.  This assertion said
+; `:primary-block-refused` until 2026-09-20 and had never run.  The witness
+; for that reason is the line below it: `(0)` IS a CBOR item, so the scan
+; hands it to `fn-bpp-decode`, which is what refuses.
 (assert-event
  (equal (fn-bpb-decode (list 159 255) *fn-bpb-max-input*)
+        (fn-cbor-error :malformed)))
+
+(assert-event
+ (equal (fn-bpb-decode (list 159 0 255) *fn-bpb-max-input*)
         (fn-cbor-error :primary-block-refused)))
 
 ; Octets after the break.
@@ -211,3 +233,42 @@
  (equal (fn-cbor-result-value
          (fn-bpb-decode-blocks (fn-bpb-encode-block *bpb-hop*) 0))
         :too-many-blocks))
+
+; The boundary the round trip found (w10/dtn-3).  A bundle carrying the full
+; `*fn-bpb-max-blocks*` canonical blocks is an array of that many PLUS the
+; payload block, so a decoder budgeted at `*fn-bpb-max-blocks*` refuses its
+; own encoder's output: `fn-bpb-decode-of-encode` is false at exactly this
+; value.  `fn-bpb-decode` now budgets `(+ 1 *fn-bpb-max-blocks*)`, and this
+; is the witness at the boundary.
+(defun fn-bpbt-filler-blocks (n)
+  (declare (xargs :guard (and (natp n) (<= n 1000))))
+  (if (zp n)
+      nil
+    (cons (fn-bpb-bundle-age-block (+ 1 (nfix n)) 0 0 0)
+          (fn-bpbt-filler-blocks (- (nfix n) 1)))))
+
+(defconst *bpb-full*
+  (fn-bpb-make-bundle *bpb-primary* (fn-bpbt-filler-blocks *fn-bpb-max-blocks*)
+                      *bpb-payload-block*))
+
+(assert-event (equal (len (fn-bpb-bundle-blocks *bpb-full*))
+                     *fn-bpb-max-blocks*))
+(assert-event (fn-bpb-bundlep *bpb-full*))
+(assert-event (equal (fn-bpb-decode (fn-bpb-encode *bpb-full*)
+                                    *fn-bpb-max-input*)
+                     (fn-cbor-ok *bpb-full* nil)))
+
+; And one canonical block more is still refused, by the budget, one block
+; later: the bound on canonical blocks is not loosened by counting the
+; payload.
+(defconst *bpb-over-full*
+  (fn-bpb-make-bundle *bpb-primary*
+                      (fn-bpbt-filler-blocks (+ 1 *fn-bpb-max-blocks*))
+                      *bpb-payload-block*))
+
+(assert-event (not (fn-bpb-bundlep *bpb-over-full*)))
+(assert-event
+ (with-guard-checking :none
+  (equal (fn-cbor-result-value
+          (fn-bpb-decode (fn-bpb-encode *bpb-over-full*) *fn-bpb-max-input*))
+         :too-many-blocks)))

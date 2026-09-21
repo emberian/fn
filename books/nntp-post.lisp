@@ -248,10 +248,27 @@
 
 ; The host's durable observation, reported distinctly.  240 is reachable from
 ; :durable and from nothing else.
+;
+; A session that is not an fn-post-sessionp is a FOURTH outcome and is
+; answered as one.  It used to be answered with no effects at all, and that
+; is how the served path came to emit neither 240 nor 441 for a whole day
+; (books/served.lisp reached one wrapper short of the POST session; a client
+; got the 340 offer, sent its article and was never told whether it was
+; stored).  "No effects" is not accepted, not refused and not uncertain: it
+; is silence that reads as success, which is exactly what AGENTS.md's three
+; outcomes rule forbids.  403 is RFC 3977 section 3.2.1's internal fault, it
+; is distinct from 240 and from both 441s
+; (fn-post-outcome-separates-a-malformed-session below), and it makes the
+; next missed wrapper a visible failure on the wire and in the test book
+; instead of a silent one.
+(defconst *fn-post-malformed-session-line*
+  "403 internal fault; the posting session is malformed")
+
 (defun fn-nntp-post-outcome (ps completion)
   (declare (xargs :guard t))
   (if (not (fn-post-sessionp ps))
-      (fn-post-make-result ps nil nil)
+      (fn-post-make-result ps (fn-post-single ps *fn-post-malformed-session-line*)
+                           nil)
     (fn-post-make-result
      ps
      (fn-post-single
@@ -367,6 +384,46 @@
                                       fn-nntp-step fn-post-offeredp
                                       fn-post-refusal-line))))
 
+; A clock fault is not an article verdict (decision D10-a, specs/nntp.md).
+; The reading `fn-own-read` supplies with the event is the owner's current
+; clock observation, and after a reading that contradicts the one it held
+; the owner has NO clock (books/owner.lisp `fn-own-observe`), so what
+; arrives here is not an observation at all.  The article is then refused
+; with the CLOCK line -- a distinct constant -- and no submission is
+; emitted, so a client can tell a server whose host withdrew its clock from
+; a server that judged the article.  Before D10-a the owner kept the
+; contradicted reading instead, every POST after the first in that window
+; minted the identity of the first, and the duplicate was reported as
+; `441 posting failed; the article was refused'.
+(local
+ (defthm fn-inj-decide-without-a-clock-refuses-clock-unusable
+   (implies (and (fn-inj-configp config)
+                 (fn-inj-config-allow config)
+                 (not (fn-clock-observationp observation)))
+            (equal (fn-inj-decide source config observation)
+                   (fn-inj-refuse :clock-unusable)))
+   :hints (("Goal" :in-theory (enable fn-inj-decide)))))
+
+(defthm fn-post-without-a-clock-refuses-with-the-clock-line
+  (implies (and (fn-post-sessionp ps)
+                (fn-post-session-awaiting ps)
+                (fn-inj-configp config)
+                (fn-inj-config-allow config)
+                (not (fn-clock-observationp injection)))
+           (and (equal (fn-post-result-submission
+                        (fn-nntp-post-step ps archive config observation
+                                           injection (list :article body)))
+                       nil)
+                (equal (fn-post-result-effects
+                        (fn-nntp-post-step ps archive config observation
+                                           injection (list :article body)))
+                       (fn-post-single
+                        ps
+                        "441 posting failed; this server has no usable clock reading"))))
+  :hints (("Goal" :in-theory (disable fn-nntp-step fn-post-offeredp
+                                      fn-inj-decide fn-post-single
+                                      fn-post-sessionp))))
+
 (defthm fn-post-disallowed-posting-does-not-await
   (implies (and (fn-post-sessionp ps)
                 (not (fn-inj-config-allow config)))
@@ -377,6 +434,22 @@
   :hints (("Goal" :in-theory (disable fn-nntp-step fn-post-offeredp
                                       fn-inj-decide fn-inj-injectedp
                                       fn-post-refusal-line fn-post-sessionp))))
+
+; The fourth outcome is distinct from all three of the others, whatever
+; completion the store reported: a caller that reaches the wrong depth cannot
+; be mistaken for one that posted, one that was refused or one that is
+; uncertain.  This is the teeth of the 403 above; it is what the old
+; no-effects answer could not say.
+(defthm fn-post-outcome-separates-a-malformed-session
+  (implies (and (not (fn-post-sessionp bad))
+                (fn-post-sessionp good))
+           (not (equal (fn-post-result-effects (fn-nntp-post-outcome bad completion))
+                       (fn-post-result-effects (fn-nntp-post-outcome good other)))))
+  :hints (("Goal" :in-theory (e/d (fn-post-single fn-nntp-single)
+                                  (fn-nntp-replyp fn-post-sessionp
+                                   fn-nntp-response-textp
+                                   fn-nntp-initial-status-linep))))
+  :rule-classes nil)
 
 (defthm fn-post-outcome-240-only-for-a-durable-observation
   (implies (and (fn-post-sessionp ps)

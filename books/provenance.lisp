@@ -283,30 +283,6 @@
    :rule-classes nil
    :hints (("Goal" :in-theory (enable len)))))
 
-(local
- (defthm fn-prov-list-of-len-3
-   (implies (and (true-listp x) (equal (len x) 3))
-            (equal x (list (car x) (car (cdr x)) (car (cdr (cdr x))))))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (enable len)))))
-
-(local
- (defthm fn-prov-list-of-len-4
-   (implies (and (true-listp x) (equal (len x) 4))
-            (equal x (list (car x) (car (cdr x)) (car (cdr (cdr x)))
-                           (car (cdr (cdr (cdr x)))))))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (enable len)))))
-
-(local
- (defthm fn-prov-list-of-len-5
-   (implies (and (true-listp x) (equal (len x) 5))
-            (equal x (list (car x) (car (cdr x)) (car (cdr (cdr x)))
-                           (car (cdr (cdr (cdr x))))
-                           (car (cdr (cdr (cdr (cdr x))))))))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (enable len)))))
-
 ; A `:mismatch' diagnostic is its own two-element list: what the codec needs
 ; to rebuild one from the identity octets it read back.
 (defthm fn-prov-mismatch-diagnostic-rebuilds
@@ -315,49 +291,18 @@
   :hints (("Goal" :in-theory (enable fn-prov-diagnosticp)
            :use ((:instance fn-prov-list-of-len-2 (x d))))))
 
-; Constructor of accessors.  `fn-defrecord' generates accessor-of-constructor
-; but not this direction (docs/proof-style.md section 1), and the codec needs
-; it: a decoded record is rebuilt from the fields it read, and the round trip
-; says that rebuild is the record it started from.  `:rule-classes nil' --- a
-; name for one includer's `:use', never a rewrite rule that fires on every
-; provenance term (section 3).
-
-(defthm fn-prov-post-of-its-accessors
-  (implies (fn-prov-postp x)
-           (equal (fn-prov-make-post (fn-prov-post-principal x)
-                                     (fn-prov-post-generation x))
-                  x))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-prov-opened)
-           :use ((:instance fn-prov-list-of-len-3)))))
-
-(defthm fn-prov-transit-of-its-accessors
-  (implies (fn-prov-transitp x)
-           (equal (fn-prov-make-transit (fn-prov-transit-peer x)
-                                        (fn-prov-transit-kind x)
-                                        (fn-prov-transit-diagnostic x)
-                                        (fn-prov-transit-generation x))
-                  x))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-prov-opened)
-           :use ((:instance fn-prov-list-of-len-5)))))
-
-(defthm fn-prov-bp-of-its-accessors
-  (implies (fn-prov-bpp x)
-           (equal (fn-prov-make-bp (fn-prov-bp-node-id x)
-                                   (fn-prov-bp-bundle x)
-                                   (fn-prov-bp-label x))
-                  x))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-prov-opened)
-           :use ((:instance fn-prov-list-of-len-4)))))
-
-(defthm fn-prov-local-of-its-accessors
-  (implies (fn-prov-localp x)
-           (equal (fn-prov-make-local (fn-prov-local-reason x)) x))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-prov-opened)
-           :use ((:instance fn-prov-list-of-len-2)))))
+; Constructor of accessors used to be written out here, four times, as
+; `fn-prov-post-of-its-accessors' and its siblings.  `fn-defrecord' generates
+; the family since 2026-09-20 (w10/dtn-3) as `<ctor>-OF-ACCESSORS', so the
+; four are gone and `books/provenance-codec.lisp' cites the generated names.
+;
+; The generated form differs from what stood here in two ways an includer has
+; to know.  It is stated under the SHAPE predicate rather than the recognizer
+; --- `fn-prov-post-shapep', reached from `fn-prov-postp' by the generated
+; forward-chaining fact --- and it is an ENABLED rewrite rather than
+; `:rule-classes nil'.  A form that cites one by `:use' must therefore
+; DISABLE it in the same hint, or the rewriter collapses the hypothesis the
+; `:use' adds to `(equal p p)' before the goal can spend it.
 
 ; The field types, exported so the codec need not open a recognizer to know
 ; that a peer name is a string.

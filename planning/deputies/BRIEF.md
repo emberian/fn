@@ -41,6 +41,16 @@ cross-cluster steps you could not take alone.
   for the next lane. If your `installed` count is near zero, say so in your
   report: it means the box's cache has nothing for your books, not that the
   run was wasted.
+- **READING `free` ON hbox IS WRONG.** hbox is a ZFS box, and the ZFS ARC is
+  counted in `used` and in unreclaimable slab, never in `buff/cache`, so
+  `free`'s `available` column badly under-reports. Measured 2026-09-21:
+  `free -g` said 98 G used and 25 G available, while `/proc/meminfo` showed
+  Slab 87.0 G with SUnreclaim 82.3 G, AnonPages just 1.2 G, and the ARC at
+  45.1 G of which 43.8 G is metadata, dnode, dbuf and bonus caches. The sum
+  of every process's RSS on the box was **2.7 G across 988 processes**, and
+  no HOL process was resident at all. So hbox had ~29 G free outright plus
+  ~45 G the ARC gives back under pressure, and 24 near-idle CPUs. To judge
+  hbox, read `AnonPages` and the RSS sum, not `free`'s `used`.
 - Box facts, measured 2026-09-20. persvati's ACL2 is
   `$HOME/fn-tools/acl2-8.7/saved_acl2`; hbox's is
   `/tank/fn/acl2-8.7/saved_acl2`, and `tools/certify_books.py` on hbox needs
@@ -51,6 +61,29 @@ cross-cluster steps you could not take alone.
   another lane is using (a `--jobs 12` race on a busy persvati lost
   `books/nntp-effects` once and cascaded "no certificate" into six roots).
   On hbox every ACL2 run goes through `swarm-build`.
+- **One lock per box, and a farm run does not take it.** A gate --
+  `~/fn-gates/<tree>-<rev>/gate.sh` on persvati, `/tank/fn/gates/<tree>-<rev>`
+  on hbox -- holds `flock` on ONE file for its whole certification:
+  `$HOME/fn-gates/.gate.lock` on persvati, `/tank/fn/gates/.lock` on hbox.
+  `tools/verdict.py` takes that same file (it used to keep a second scheme of
+  its own, which is not a lock), refuses with the holding process named, and
+  queues only with `--wait-for-lock`. A `flock` dies with its holder, so
+  nothing there is ever stale and nothing is ever removed by hand. Your
+  `farm.py submit` deliberately does NOT take it -- it is a `--closure` run
+  into your own remote root, not a gate -- so check the lock before you start
+  a gate, not before you submit:
+  `ssh <box> 'flock -n <lockfile> true && echo free || echo held'`.
+- **The box cache is seeded as each book certifies**, so a run that fails
+  (every wide run on this tree does) still leaves its passing pairs for you;
+  if `wait` times out it fetches and publishes what exists before returning 3,
+  and the run id stays usable for a second `wait`. Measured before/after in
+  `planning/evidence/farm-cache-failed-run-2026-09-20.md`.
+- **Run a harness from the tree you mean.** Every harness writes its evidence
+  under the worktree the COMMAND was invoked from (`git rev-parse
+  --show-toplevel`), not the one the script file lives in; a relative
+  `--evidence` is anchored there too. Before this, a lane running the main
+  checkout's `tools/twonode_gate.py` wrote its record into
+  `/Users/ember/dev/fn`, where it sat untracked and blocked a merge.
 - `certify-book` STOPS AT THE FIRST FAILURE, so "the book is open at X and
   everything else certifies" is a claim only about the events BEFORE X. The
   events after it have never run. Say "certified up to X; the N events after

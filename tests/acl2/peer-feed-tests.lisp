@@ -8,6 +8,17 @@
 (in-package "ACL2")
 (include-book "../../books/peer-feed-invariants")
 
+; `(nth n (mv-list 2 (fn-feed-... )))' and not `(mv-nth n (fn-feed-... ))':
+; a `defconst' or `assert-event' body is translated for EVALUATION, with a
+; single-value signature, and ACL2 rejects a multi-valued call anywhere in
+; it -- "It is illegal to invoke FN-FEED-TICK-STEP here because of a
+; signature mismatch.  This function call returns a result of shape (MV * *)
+; where a result of shape * is required."  `mv-nth' is fine in a `defthm',
+; which translates in the don't-care signature, which is why the invariants
+; book states every effect theorem that way and this book cannot.  No
+; assertion of this book had ever run before 2026-09-20 (the root it
+; includes had no certificate), so the defect had never been reached.
+
 ; -----------------------------------------------------------------------------
 ; Witnesses
 ;
@@ -51,8 +62,8 @@
 
 (assert-event (equal (fn-feed-selection *ff1* *ff-obs*) *ff-a*))
 
-(defconst *ff2* (mv-nth 0 (fn-feed-tick-step *ff1* *ff-obs*)))
-(defconst *ff2-fx* (mv-nth 1 (fn-feed-tick-step *ff1* *ff-obs*)))
+(defconst *ff2* (nth 0 (mv-list 2 (fn-feed-tick-step *ff1* *ff-obs*))))
+(defconst *ff2-fx* (nth 1 (mv-list 2 (fn-feed-tick-step *ff1* *ff-obs*))))
 
 (assert-event (fn-feedp *ff2*))
 (assert-event (equal *ff2-fx*
@@ -70,10 +81,10 @@
 ; Scenario 2: 238, TAKETHIS, 239.  The entry finishes; the attempt id is the
 ; offer's, not a new one.
 
-(defconst *ff3* (mv-nth 0 (fn-feed-observe *ff2* (fn-feed-response 238 *ff-a*)
-                                           '(65 10) *ff-obs*)))
-(defconst *ff3-fx* (mv-nth 1 (fn-feed-observe *ff2* (fn-feed-response 238 *ff-a*)
-                                              '(65 10) *ff-obs*)))
+(defconst *ff3* (nth 0 (mv-list 2 (fn-feed-observe *ff2* (fn-feed-response 238 *ff-a*)
+                                           '(65 10) *ff-obs*))))
+(defconst *ff3-fx* (nth 1 (mv-list 2 (fn-feed-observe *ff2* (fn-feed-response 238 *ff-a*)
+                                              '(65 10) *ff-obs*))))
 (assert-event (fn-feed-sentp (fn-feed-state-of *ff-a* (fn-feed-queue *ff3*))))
 (assert-event (equal (fn-feed-state-attempt
                       (fn-feed-state-of *ff-a* (fn-feed-queue *ff3*)))
@@ -83,8 +94,8 @@
                                  (append (fn-feed-takethis-line *ff-a*)
                                          '(65 10))))))
 
-(defconst *ff4* (mv-nth 0 (fn-feed-observe *ff3* (fn-feed-response 239 *ff-a*)
-                                           nil *ff-obs*)))
+(defconst *ff4* (nth 0 (mv-list 2 (fn-feed-observe *ff3* (fn-feed-response 239 *ff-a*)
+                                           nil *ff-obs*))))
 (assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff4*)) :done))
 (assert-event (equal (fn-feed-inflight-count (fn-feed-queue *ff4*)) 0))
 
@@ -96,11 +107,11 @@
 ; Scenario 3: 431 on the second article -- backoff, then a retry, then 435
 ; (the peer already has it), which finishes the entry just as 239 would.
 
-(defconst *ff5* (mv-nth 0 (fn-feed-tick-step *ff4* *ff-obs*)))
+(defconst *ff5* (nth 0 (mv-list 2 (fn-feed-tick-step *ff4* *ff-obs*))))
 (assert-event (fn-feed-offeredp (fn-feed-state-of *ff-b* (fn-feed-queue *ff5*))))
 
-(defconst *ff6* (mv-nth 0 (fn-feed-observe *ff5* (fn-feed-response 431 *ff-b*)
-                                           nil *ff-obs*)))
+(defconst *ff6* (nth 0 (mv-list 2 (fn-feed-observe *ff5* (fn-feed-response 431 *ff-b*)
+                                           nil *ff-obs*))))
 (assert-event (equal (fn-feed-state-of *ff-b* (fn-feed-queue *ff6*)) :queued))
 (assert-event (equal (fn-feed-entry-attempts
                       (fn-feed-find *ff-b* (fn-feed-queue *ff6*)))
@@ -111,12 +122,26 @@
 (assert-event (null (fn-feed-selection *ff6* *ff-obs*)))
 (assert-event (equal (fn-feed-selection *ff6* *ff-obs-later*) *ff-b*))
 
-(defconst *ff7* (mv-nth 0 (fn-feed-tick-step *ff6* *ff-obs-later*)))
+(defconst *ff7* (nth 0 (mv-list 2 (fn-feed-tick-step *ff6* *ff-obs-later*))))
+; The retry opens a FRESH attempt id and never re-runs the old one, which is
+; the half of exactly-once the journal rests on: attempt 1 went to <a@fn>,
+; attempt 2 to <b@fn>'s first offer, and this re-offer of <b@fn> is attempt
+; 3.  (This assertion said 2 until 2026-09-20 and had never been evaluated,
+; because the root this book includes had no certificate.  The machine is
+; right and the expectation was wrong: `fn-feed-next-attempt' is monotone
+; over the whole feed, not per entry.)
+(assert-event (equal (fn-feed-state-attempt
+                      (fn-feed-state-of *ff-a* (fn-feed-queue *ff2*)))
+                     1))
+(assert-event (equal (fn-feed-state-attempt
+                      (fn-feed-state-of *ff-b* (fn-feed-queue *ff5*)))
+                     2))
 (assert-event (equal (fn-feed-state-attempt
                       (fn-feed-state-of *ff-b* (fn-feed-queue *ff7*)))
-                     2))
-(defconst *ff8* (mv-nth 0 (fn-feed-observe *ff7* (fn-feed-response 435 *ff-b*)
-                                           nil *ff-obs-later*)))
+                     3))
+(assert-event (equal (fn-feed-next-attempt *ff7*) 4))
+(defconst *ff8* (nth 0 (mv-list 2 (fn-feed-observe *ff7* (fn-feed-response 435 *ff-b*)
+                                           nil *ff-obs-later*))))
 (assert-event (equal (fn-feed-state-of *ff-b* (fn-feed-queue *ff8*)) :done))
 (assert-event (null (fn-feed-selection *ff8* *ff-obs-later*)))
 
@@ -164,7 +189,7 @@
 ; Message-ID, never a TAKETHIS.
 (assert-event (equal (fn-feed-selection *ff-restarted* *ff-obs*) *ff-b*))
 (defconst *ff-restart-fx*
-  (mv-nth 1 (fn-feed-tick-step *ff-restarted* *ff-obs*)))
+  (nth 1 (mv-list 2 (fn-feed-tick-step *ff-restarted* *ff-obs*))))
 (assert-event (equal *ff-restart-fx*
                      (list (list :command 9 (fn-feed-check-line *ff-b*)))))
 (assert-event (fn-feed-command-offersp
@@ -174,11 +199,11 @@
 
 ; And the peer's own history answers: a 438 finishes the entry with no second
 ; copy transferred.
-(defconst *ff-after-restart* (mv-nth 0 (fn-feed-tick-step *ff-restarted*
-                                                          *ff-obs*)))
+(defconst *ff-after-restart* (nth 0 (mv-list 2 (fn-feed-tick-step *ff-restarted*
+                                                          *ff-obs*))))
 (defconst *ff-settled*
-  (mv-nth 0 (fn-feed-observe *ff-after-restart*
-                             (fn-feed-response 438 *ff-b*) nil *ff-obs*)))
+  (nth 0 (mv-list 2 (fn-feed-observe *ff-after-restart*
+                             (fn-feed-response 438 *ff-b*) nil *ff-obs*))))
 (assert-event (equal (fn-feed-state-of *ff-b* (fn-feed-queue *ff-settled*))
                      :done))
 
@@ -198,10 +223,10 @@
 (defconst *ff-tight* (fn-feed-enqueue
                       (fn-feed-open *ff-peer* *ff-lim1* *ff-contact* 7)
                       *ff-a* 1))
-(defconst *ff-tight-offered* (mv-nth 0 (fn-feed-tick-step *ff-tight* *ff-obs*)))
+(defconst *ff-tight-offered* (nth 0 (mv-list 2 (fn-feed-tick-step *ff-tight* *ff-obs*))))
 (defconst *ff-tight-dropped*
-  (mv-nth 0 (fn-feed-observe *ff-tight-offered*
-                             (fn-feed-response 436 *ff-a*) nil *ff-obs*)))
+  (nth 0 (mv-list 2 (fn-feed-observe *ff-tight-offered*
+                             (fn-feed-response 436 *ff-a*) nil *ff-obs*))))
 (assert-event (fn-feed-droppedp
                (fn-feed-state-of *ff-a* (fn-feed-queue *ff-tight-dropped*))))
 (assert-event (equal (fn-feed-state-reason
@@ -288,14 +313,25 @@
                       (fn-feed-entry *ff-a* :queued 0 0))
                 *ff-contact* 0 7 1))
 (assert-event (not (fn-feedp *ff-forged-feed*)))
+(assert-event (fn-feed-distinctp *ff2-fx*))
 (assert-event (not (fn-feed-distinctp (fn-feed-queue *ff-forged-feed*))))
 (assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff-forged-feed*))
                      :done))
 
-; `fn-feed-restart-emits-no-transfer' -- drop `fn-feedp'.  A forged feed with
-; TWO entries in flight is not `fn-feedp'; settle it by hand on one entry only
-; and the other still emits a TAKETHIS, which is exactly the blind
-; retransmission the restart rule forbids.
+; `fn-feed-restart-emits-no-transfer' -- the SEPARATING WITNESS, and why the
+; theorem carries no `fn-feedp' hypothesis any more.  `*ff5*' has <b@fn> in
+; flight, so `fn-feed-send' on it emits a TAKETHIS and the article; after the
+; restart the same call emits nothing.  That is the content, on a reachable
+; state.
+;
+; The `fn-feedp' hypothesis the theorem used to carry has NO violating value,
+; so it is deleted from the theorem (docs/proof-style.md sec. 5):
+; `fn-feed-send' refuses a feed it does not recognize on its own, and
+; `fn-feed-restart' returns such a feed unchanged, so both sides are already
+; nil.  What stood here instead was a forged two-in-flight feed and an
+; assertion that it DOES emit a transfer; it does not, and the assertion had
+; never been evaluated.  The forged feed is kept for what it does show --
+; `fn-feed-restart' refuses a feed that is not `fn-feedp'.
 (defconst *ff-two-inflight*
   (fn-feed-make *ff-peer* *ff-limits*
                 (list (fn-feed-entry *ff-a* (fn-feed-offered 1) 0 0)
@@ -305,9 +341,13 @@
 (assert-event (equal (fn-feed-inflight-count (fn-feed-queue *ff-two-inflight*))
                      2))
 (assert-event (equal (fn-feed-restart *ff-two-inflight*) *ff-two-inflight*))
-(assert-event (consp (mv-nth 1 (fn-feed-send
-                                (fn-feed-restart *ff-two-inflight*)
-                                *ff-a* '(65 10)))))
+(assert-event (null (nth 1 (mv-list 2 (fn-feed-send
+                                       (fn-feed-restart *ff-two-inflight*)
+                                       *ff-a* '(65 10))))))
+(assert-event (fn-feed-offeredp (fn-feed-state-of *ff-b* (fn-feed-queue *ff5*))))
+(assert-event (consp (nth 1 (mv-list 2 (fn-feed-send *ff5* *ff-b* '(65 10))))))
+(assert-event (null (nth 1 (mv-list 2 (fn-feed-send (fn-feed-restart *ff5*)
+                                                    *ff-b* '(65 10))))))
 
 ; `fn-feed-selection-is-queued' -- drop the contact hypothesis inside the
 ; selection: the same feed with an observation OUTSIDE the contact window
@@ -319,6 +359,25 @@
 ; `fn-feed-selection' -- drop the connection.  A feed with no connection
 ; selects nothing however well the contact holds.
 (assert-event (null (fn-feed-selection (fn-feed-with-conn *ff1* nil) *ff-obs*)))
+
+; `fn-feed-done-is-never-selected' -- drop `(fn-feed-selection f obs)'.  That
+; hypothesis is not decoration; without it the theorem is FALSE, and this is
+; the counterexample the prover produced (`Subgoal 73'', lane
+; w6/peering-feed-4).  Take `msgid' to be NIL.  The feed below is `fn-feedp'
+; and has no connection, so it selects NOTHING; NIL is no Message-ID of its
+; queue, so `fn-feed-state-of' answers NIL, which is not `:queued'; and the
+; selection IS NIL, so the conclusion `(not (equal (fn-feed-selection f obs)
+; msgid))' fails on it.  Nothing is offered in that state, which is what
+; `fn-feed-tick-step-is-silent-without-a-selection' says, so the hypothesis
+; costs the keystone nothing.
+(defconst *ff-no-conn* (fn-feed-with-conn *ff1* nil))
+(assert-event (fn-feedp *ff-no-conn*))
+(assert-event (null (fn-feed-selection *ff-no-conn* *ff-obs*)))
+(assert-event (not (equal (fn-feed-state-of nil (fn-feed-queue *ff-no-conn*))
+                          :queued)))
+(assert-event (equal (fn-feed-selection *ff-no-conn* *ff-obs*) nil))
+(assert-event (not (not (equal (fn-feed-selection *ff-no-conn* *ff-obs*)
+                               nil))))
 
 ; `fn-feed-drop-needs-a-drop-record' -- the separating witness.  Replaying the
 ; journal WITHOUT its drop record leaves the entry queued, not dropped: the

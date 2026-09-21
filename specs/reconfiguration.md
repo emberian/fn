@@ -1101,9 +1101,13 @@ differences are deliberate:
   `books/owner-invariants.lisp` are untouched. `fn-ocfg-statep` requires the
   table's domain to be exactly the open connections, which is what makes the
   pin a derived quantity the relation constrains rather than a writable field.
-  **Not certified**: `books/owner` has no certificate on any box (it is the
-  milestone's current task), so nothing that includes it can certify, and this
-  book claims no event.
+  **Certified** (w11/owner-config, persvati `run-20260921T001423Z-0f98`,
+  ACL2 8.7): the book and its new test root `tests/acl2/owner-config-tests`
+  both pass, with 74 of 74 roots in the closure. Four of the five keystones
+  are PRF-028 events, each with a `pending_subject`: no host line calls any
+  `fn-ocfg-` function yet (item 7 below). Two of them carry the hypothesis
+  `(fn-ocfg-statep oc)`, which is what makes them true --- see §2.3's reader
+  rule and the note on the identifier bound below.
 - **Capacity as a configuration change (R6, lane `w9/reconfig`).**
   `fn store capacity <n>` and `run_store.py capacity <n>`;
   `fn-store-cfg-reconfigure` gains `:set-capacity` and hands it to the same
@@ -1189,5 +1193,13 @@ differences are deliberate:
   `fn-cstr-ok-merged-replay-ends-in-a-configured-node`). (9) The two kinds are
   interleaved in the MODEL and not on disk; `host/store-node-host.lisp` still
   replays configuration first and gates a capacity decrease with a dry-run
-  replay instead. (10) `books/owner` certifies nowhere, so
-  `books/owner-config` cannot be certified and claims no event.
+  replay instead. (10) `books/owner-config` CERTIFIES as of
+  2026-09-20 (w11/owner-config) and its four pin keystones are PRF-028
+  events; what is still open about them is item (7), the wire: no host line
+  calls any `fn-ocfg-` function, so each event carries a `pending_subject`
+  and the equating theorem is recorded rather than stated. Closing the first
+  keystone needed one new conjunct of `fn-own-relation`,
+  `fn-own-ids-below-next-p` --- every open connection's identifier is
+  strictly below `fn-own-next-id` --- which was already true of every
+  reachable owner state and merely unstated, so identifier allocation did
+  not change.

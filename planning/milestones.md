@@ -9,20 +9,45 @@ and the open list, is
 [wave-realignment-2026-09-19](evidence/wave-realignment-2026-09-19.md). No full
 implementation/proof milestone is complete.
 
-**Current task: make `books/owner` certify.** It is still the single blocker,
-and running the packaged service proved it in the plainest way available: on
-`52eb0db` `fn run` cannot start on either box because ACL2 refuses
-`(include-book "books/owner")`, so the live unit on persvati and hbox serves
-through `tools/run_reader.py` instead
-([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)). It is also the whole of
-both gates' missing roots, the four `test_owner` errors, and the reason no gate
-has concurrent-session evidence. Behind it, in order: the owner's three
-one-line `host/owner-host.lisp` edits from w5-config-groups; the one-durable-post-
-per-connection defect, which is the pinned clock observation and not the
-read-back re-pin ([BOARD](deputies/BOARD.md), w5/owner-followups, DIAGNOSED);
-`books/nntp-effects`, open at `FN-NNTP-HDR-LABELLED-LINE-IS-BLOCK-TEXT` after
-2598.79 s and 1.47e9 prover steps; the `NNT-001` capability/dispatch mismatch;
-`books/stx-verify` at one printability lemma; and `tcpcl-invariants` at C2. See
+**`books/owner` certifies** as of 2026-09-20 --- persvati
+`run-20260920T224103Z-7c59` (w10/owner-relation) and again in
+`run-20260920T234122Z-7687` (w11/snt-guards, 1.77 s), with
+`books/owner-invariants`, `books/served`, `books/nntp-auth`,
+`books/peer-inbound`, `books/provenance-codec` and `tests/acl2/owner-tests`
+(166 of 166 assertions) beside it. What that unblocks has not been re-measured
+against the packaged service: the claim that `fn run` cannot start because
+ACL2 refuses `(include-book "books/owner")`
+([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) was true at `52eb0db`
+and is no longer the reason, so **the current task is to re-run the live unit
+and both gates on current `dev` and say what is actually missing now.**
+
+**`books/owner-config` certifies** as of 2026-09-20 (w11/owner-config,
+persvati `run-20260921T001423Z-0f98`, 74 of 74 roots), with its new test root
+`tests/acl2/owner-config-tests` beside it, so the owner cluster has no red
+root. Its two keystones that were false as stated each gained the hypothesis
+`(fn-ocfg-statep oc)`, and the first needed one new conjunct of
+`fn-own-relation` --- `fn-own-ids-below-next-p`, already true of every
+reachable owner state and merely unstated
+([handoff](lanes/HANDOFF-w11-owner-config.md)). What is still open there is
+the WIRE, not the model: no host line calls any `fn-ocfg-` function, so the
+served port still answers LIST ACTIVE from the allocation domain and every
+PRF-028 owner-side event carries a `pending_subject`.
+
+**A connection posts repeatedly.** The one-durable-post-per-connection defect
+was fixed by `w5/clock-seam` (merge `7d8eff8`, the per-submission injection
+clock) and the board line was never closed; measured live on persvati at
+`dev` `5ae226f`, `tests.test_post.StorePostTests.test_a_reader_pinned_before_a_post_keeps_its_view`
+and `tests.test_owner.OwnerTests.test_clock_and_group_facts_go_through_the_owner`
+both pass. What remained at that seam, and is closed by
+[D10-a](decisions.md)/PRF-033 (w11/clock-seam), is that a REFUSED clock
+observation froze the owner's clock and the resulting duplicate identity
+reached the poster as `441 posting failed; the article was refused` -- an
+article verdict for a clock fault.
+
+The nearest known gaps behind the live re-run are, in order: the owner's three
+one-line `host/owner-host.lisp` edits from w5-config-groups;
+the `NNT-001` capability/dispatch mismatch;
+and `books/stx-verify` at one printability lemma. See
 [the board](deputies/BOARD.md) for each item's exact form, and the [v0
 checklist](#v0-checklist-every-item-its-status-its-evidence) below for where
 each sits.
@@ -94,7 +119,7 @@ the whole-tree run behind these statuses is
 | --- | --- | --- |
 | The owner certifies | **blocked** | `books/owner` has no certificate; ACL2 refuses `(include-book "books/owner")`, which is why `fn run` cannot start at all ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
 | The owner runs as a service | **blocked** | the installed unit falls back to `tools/run_reader.py`, the same second choice `tools/deploy_gate.py` makes ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
-| POST is durable end to end | **partial** | one durable post per connection works and rereads byte-for-byte after a kill ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md) rows 23 to 28); a **second** post on the same connection is always refused 441, diagnosed to the one clock observation pinned at accept ([BOARD](deputies/BOARD.md), w5/owner-followups) |
+| POST is durable end to end | **partial** | a post is durable and rereads byte-for-byte after a kill ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md) rows 23 to 28), and a connection now posts REPEATEDLY: `test_a_reader_pinned_before_a_post_keeps_its_view` passes live on persvati at `dev` `5ae226f` (w5/clock-seam's per-submission injection clock, merge `7d8eff8`). Open: two submissions inside one millisecond still share a generated Message-ID ([D10-a](decisions.md), PRF-033) |
 | Capabilities match dispatch | **open** | refuted by counterexample: POST answers 340 while CAPABILITIES omits POST, against RFC 3977 5.2.2 (NNT-001 note, `planning/requirements.json`) |
 | Concurrent sessions | **open** | `tools/run_reader.py` is `listen(1)` and serves one connection to completion; the owner is the only concurrent server ([BOARD](deputies/BOARD.md), w5-deploy-gate) |
 | Three outcomes distinct at the CLI | **done** | accepted 0, refused 1, uncertain 3 ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md) rows 11 to 13) |
@@ -128,7 +153,7 @@ the whole-tree run behind these statuses is
 
 | Item | Status | Evidence |
 | --- | --- | --- |
-| TCPCLv4 C1 to C4 certified | **partial** | the three tcpcl books certified inside a 60-of-63 closure, `run-20260920T051453Z-c9a2` ([BOARD](deputies/BOARD.md), w8/tcpcl-native) |
+| TCPCLv4 C1 to C4 certified | **done** | `books/tcpcl-session`, `books/tcpcl-invariants` and `tests/acl2/tcpcl-tests` certified together on hbox with the served-path guard, no prover step limit: 62.76 s, 7.25 s, 0.46 s, `certify-20260921T000317Z-1324995` ([handoff](lanes/HANDOFF-w11-tcpcl-theory.md), w11/tcpcl-theory). The invariants book took 609.69 s before that lane |
 | TCPCLv4 hosted, no Lisp-computed protocol value | **done in code, untested** | `host/tcpcl-host.lisp`, `host/native/tcpcl.lisp`; the image did not build and none of the five scenarios ran ([tcpcl-9cbf301](evidence/tcpcl-9cbf301-2026-09-20.md)) |
 | A two-node transfer over fn's own CL | **open** | the v0.4 gate condition; no run |
 | S1 statement field codec | **partial** | `books/stx-carrier` certified; `books/stx-verify` open at `fn-stx-decimal-octets-are-printable` |
@@ -371,7 +396,12 @@ loopback and one each way with dtn7-rs 0.21.0 over RFC 9174. That closes v0.4's
 gate, "a two-node transfer over fn's own convergence layer", and nothing more:
 the image is the DTN-only build list, there is no BP node behind the layer, and
 `books/tcpcl-invariants` had no verdict against the new text when this was
-written. See [the evidence](evidence/tcpcl-dtn-w9-2026-09-20.md) and
+written. It has one now: `w9/dtn-e2e` reverted that guard rather than leave
+the invariants book timing out, and `w11/tcpcl-theory` re-landed it together
+with the theory work the book needed to survive it, all three roots certified
+together (`certify-20260921T000317Z-1324995`, the invariants book 609.69 s to
+7.25 s). See [the evidence](evidence/tcpcl-dtn-w9-2026-09-20.md),
+[w11's](evidence/tcpcl-theory-w11-2026-09-20.md) and
 [the wave record](evidence/wave-realignment-2026-09-19.md) §1.
 
 ## M5: bounded long-lived operation
@@ -412,3 +442,18 @@ After each task, update the current stage/next task, decision resolutions,
 requirement status, proof status, and evidence references as applicable. Leave
 future plans unchecked. A blocked dependency names the specific open decision
 or missing evidence, rather than declaring the entire project blocked.
+
+### `books/nntp-effects` is not a gap, and the old number is a warning
+
+This list carried `books/nntp-effects` as open at
+`FN-NNTP-HDR-LABELLED-LINE-IS-BLOCK-TEXT` after 2598.79 s and 1.47e9 prover
+steps. It **certifies in 119.1 s**: persvati `run-20260921T005005Z-1235`,
+manifest `status: passed`, `book_failures: {}`, 81 of 81 roots. The lane that
+observed it changed nothing in that book and said it could not tell whether
+the book was repaired by another lane's work or whether the original verdict
+came from a contended box; neither can this note. What follows either way is
+that **a wall-clock verdict taken while the box was loaded is not evidence
+about a book**, and a 2598 s figure that becomes 119 s with no edit is the
+shape of that mistake. Timings quoted as facts elsewhere in this tree should
+name the box and its load, as the convergence-layer records now do.
+

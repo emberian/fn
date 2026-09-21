@@ -24,6 +24,7 @@ not on this tree: `tools/run_feed.py` runs the proved machine or nothing.
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import socket
@@ -43,7 +44,11 @@ HAVE_ACL2 = shutil.which(ACL2) is not None
 HAVE_BOOKS = (ROOT / "books/peer-feed.cert").exists()
 REASON = "needs ACL2 and a certified books/peer-feed"
 
-ARTICLE = ("Path: peer.example.invalid!not-for-mail\r\n"
+# The Path must NOT name the peer's own path-identity: the fake peer
+# refuses such an article 437 (RFC 5537 section 3.5, its `take'), which
+# is a loop refusal, not the acceptance every case below asserts.  This
+# is fn's own path on an article fn is offering OUT.
+ARTICLE = ("Path: fn.example.invalid!not-for-mail\r\n"
            "From: t <t@fn.invalid>\r\n"
            "Newsgroups: fn.letters\r\n"
            "Subject: {}\r\n"
@@ -71,6 +76,15 @@ class FakePeer:
                 shutil.copy(entry, self.dir / "tools" / entry.name)
         self.store = self.dir / "store"
         self.store.mkdir()
+        # The fake reader pins its article list at accept
+        # (tests/deploy_gate_fake/tools/run_reader.py `serve'), so the store
+        # file must exist before the first connection: without it `serve'
+        # raises FileNotFoundError in the connection thread, the 201 greeting
+        # is never written, and the client blocks until `--timeout' and
+        # reports `FAULT timed out'.  The shape is that fake store's own
+        # (`run_store.py initialize').
+        (self.store / "store.json").write_text(json.dumps(
+            {"groups": ["fn.letters"], "articles": [], "uncertain": []}))
         self.proc = subprocess.Popen(
             [sys.executable, str(self.dir / "tools/run_peer.py"),
              "--store", str(self.store), "--port", "0",
@@ -82,7 +96,6 @@ class FakePeer:
         self.port = int(line.split()[1])
 
     def holds(self):
-        import json
         path = self.store / "store.json"
         if not path.exists():
             return []
