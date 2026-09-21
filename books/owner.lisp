@@ -1340,21 +1340,13 @@
                    o (fn-own-feed-put peer (fn-own-feed-entry-record e) g
                                       tbl)))))))))
 
-(defun fn-own-feed-reply-records (o peer octets)
+(defun fn-own-feed-reply-records (o peer octets obs)
   (declare (xargs :guard t))
-  (let* ((tbl (fn-own-feeds o))
-         (e (fn-own-feed-entry-of peer tbl)))
-    (if (null e)
-        nil
-      (let* ((f (fn-own-feed-entry-feed e))
-             (msgid (fn-own-feed-inflight-msgid (fn-feed-queue f)))
-             (code (fn-own-feed-response-code octets)))
-        (if (or (null code) (null msgid))
-            nil
-          (fn-own-feed-reply-records-of
-           peer msgid
-           (fn-feed-state-attempt (fn-feed-state-of msgid (fn-feed-queue f)))
-           code))))))
+  (let* ((e (fn-own-feed-entry-of peer (fn-own-feeds o)))
+         (f (fn-own-feed-entry-feed e))
+         (msgid (fn-own-feed-inflight-msgid (fn-feed-queue f)))
+         (response (fn-own-feed-parse-response octets msgid)))
+    (if (and e response) (fn-feed-observe-records f response obs) nil)))
 
 ; The connection one peer's feed writes to.  The host opens the socket and
 ; reports its identifier here; nil stops selection at once
@@ -1390,9 +1382,9 @@
 ; The FNFD record that authorizes it, read off the state BEFORE it moves:
 ; `(:feed-outcome peer msgid attempt 400)' for the entry in flight, and
 ; nothing at all when none is.
-(defun fn-own-feed-lost-records (o peer)
+(defun fn-own-feed-lost-records (o peer obs)
   (declare (xargs :guard t))
-  (fn-own-feed-lost-records-of peer (fn-own-feeds o)))
+  (fn-own-feed-lost-records-of peer (fn-own-feeds o) obs))
 
 ; Replay: the peer's FNFD journal, folded through the feed machine, before
 ; any command may be emitted.  The host reads the file and decodes each frame

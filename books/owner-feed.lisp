@@ -47,6 +47,7 @@
 
 (in-package "ACL2")
 (include-book "peer-feed-invariants")
+(include-book "feed-events")
 (include-book "peer-config")
 (include-book "article-fields")
 (include-book "identity-invariants")
@@ -1133,12 +1134,23 @@
             (fn-own-feed-enqueue-records (cdr names) msgid tick))
     nil))
 
+(defun fn-own-feed-enqueue-records-in (names tbl msgid tick)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let* ((name (car names))
+             (e (fn-own-feed-entry-of name tbl)))
+        (append (if e (fn-feed-enqueue-records (fn-own-feed-entry-feed e) msgid tick) nil)
+                (fn-own-feed-enqueue-records-in
+                 (cdr names) (fn-own-feed-enqueue-all (list name) tbl msgid tick)
+                 msgid tick)))
+    nil))
+
 (defun fn-own-feed-accept-records (tbl origin msgid octets tick)
   (declare (xargs :guard t))
-  (fn-own-feed-enqueue-records
+  (fn-own-feed-enqueue-records-in
    (fn-own-feed-targets tbl origin (fn-own-feed-groups-of octets)
                         (fn-own-feed-path-of octets))
-   msgid tick))
+   tbl msgid tick))
 
 ; -----------------------------------------------------------------------------
 ; Acceptance intents
@@ -1414,17 +1426,10 @@
                        (fn-feed-lost (fn-own-feed-entry-feed e) obs)
                        tbl))))
 
-(defun fn-own-feed-lost-records-of (peer tbl)
+(defun fn-own-feed-lost-records-of (peer tbl obs)
   (declare (xargs :guard t))
-  (let* ((e (fn-own-feed-entry-of peer tbl))
-         (f (fn-own-feed-entry-feed e))
-         (msgid (and e (fn-own-feed-inflight-msgid (fn-feed-queue f)))))
-    (if (null msgid)
-        nil
-      (list (fn-own-feed-outcome-record
-             peer msgid
-             (fn-feed-state-attempt (fn-feed-state-of msgid (fn-feed-queue f)))
-             400)))))
+  (let ((e (fn-own-feed-entry-of peer tbl)))
+    (if e (fn-feed-lost-records (fn-own-feed-entry-feed e) obs) nil)))
 
 (local (defthm fn-feed-lost-keeps-peer-and-contact
   (and (equal (fn-feed-peer (fn-feed-lost f obs)) (fn-feed-peer f))
@@ -1502,13 +1507,8 @@
 
 (defun fn-own-feed-tick-peer-records (peer tbl obs)
   (declare (xargs :guard t))
-  (let* ((e (fn-own-feed-entry-of peer tbl))
-         (f (fn-own-feed-entry-feed e))
-         (selected (and e (fn-feed-selection f obs))))
-    (if (null selected)
-        nil
-      (list (fn-own-feed-offer-record peer selected (fn-feed-next-attempt f)
-                                      (nfix (fn-clock-monotonic obs)))))))
+  (let ((e (fn-own-feed-entry-of peer tbl)))
+    (if e (fn-feed-tick-records (fn-own-feed-entry-feed e) obs) nil)))
 
 (defun fn-own-feed-tick-records (names tbl obs)
   (declare (xargs :guard t))

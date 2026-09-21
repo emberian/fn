@@ -1054,7 +1054,7 @@
         (value nil)
       (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
-             (records (fn-own-feed-reply-records owner peer line))
+             (records (fn-own-feed-reply-records owner peer line obs))
              (result (fn-own-feed-reply owner peer line obs))
              (state (fn-owner-replace-core (cdr result) state))
              (state (fn-owner-feed-install-feed records (car result) state)))
@@ -1079,8 +1079,9 @@
         (value nil)
       (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
-             (records (fn-own-feed-lost-records owner peer))
-             (state (fn-owner-replace-core (fn-own-feed-lost owner peer obs) state))
+             (records (fn-own-feed-lost-records owner peer obs))
+             (state (fn-owner-replace-core
+                     (fn-own-feed-lost owner peer obs) state))
              (state (fn-owner-feed-install-feed records nil state)))
         (value :ok)))))
 
