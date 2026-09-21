@@ -29,22 +29,31 @@
                     "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
                     "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a")))
        (ed-signature (fnn-hsig-ed25519-sign ed-secret message))
+       (ml-public (fnn-hsig-ml-dsa-65-public-key public))
        (ml-signature (fnn-hsig-ml-dsa-65-sign private message))
        (signatures (list (cons :ed25519 ed-signature)
                          (cons :ml-dsa-65 ml-signature))))
   (fnn-hsig-check (fnn-crypto-ed25519-verify ed-public message ed-signature)
                   "libsodium Ed25519 sign/verify")
-  (fnn-hsig-check (fnn-hsig-ml-dsa-65-verify public message ml-signature)
+  (fnn-hsig-check (fnn-hsig-ml-dsa-65-verify
+                   ml-public public message ml-signature)
                   "OpenSSL ML-DSA-65 sign/verify")
-  (fnn-hsig-check (equal (fnn-hsig-observe ed-public public message signatures)
+  (fnn-hsig-check (equal (fnn-hsig-observe ed-public ml-public public
+                                           message signatures)
                          '(:verified :verified))
                   "both observations remain distinct")
   (let ((bad (copy-seq ml-signature)))
     (setf (aref bad 0) (logxor 1 (aref bad 0)))
-    (fnn-hsig-check (not (fnn-hsig-ml-dsa-65-verify public message bad))
+    (fnn-hsig-check (not (fnn-hsig-ml-dsa-65-verify
+                          ml-public public message bad))
                     "one bad ML-DSA component is refused"))
+  (let ((wrong-key (copy-seq ml-public)))
+    (setf (aref wrong-key 0) (logxor 1 (aref wrong-key 0)))
+    (fnn-hsig-check (not (fnn-hsig-ml-dsa-65-verify
+                          wrong-key public message ml-signature))
+                    "PEM key must equal the enrolled key bytes"))
   (fnn-hsig-check
-   (not (equal (fnn-hsig-observe ed-public public message
+   (not (equal (fnn-hsig-observe ed-public ml-public public message
                                  (list (cons :ed25519 ed-signature)))
                '(:verified :verified)))
    "stripping ML-DSA never yields two verified observations"))
