@@ -2,7 +2,8 @@
 
 Branch `w11/transit-correct`, worktree `build/lanes/w11-transit-correct`,
 from `dev` `0eedafc`, merged with `dev` `fd2eb2d` and then `9e4b7ee`.
-Head `3f68944`.
+Head `9a4f6f4`. The certification of record is of `3f68944`; the two
+commits since it change only `planning/`, no book, host file or tool.
 
 ## Three defects, three different places, and none of them was the model
 
