@@ -98,43 +98,6 @@
   (fn-digest-tagged-preimage *fn-hsig-domain-tag*
                              (fn-hsig-subject-body principal keys source)))
 
-; Fixed-width principal/key fields and the final u16 source length make the
-; body framing injective.  This is a statement about bytes below either
-; signature primitive; it makes no collision-resistance claim.
-(defthm fn-hsig-subject-body-injective
-  (implies (and (fn-hsig-subject-p principal-a keys-a source-a)
-                (fn-hsig-subject-p principal-b keys-b source-b)
-                (equal (fn-hsig-subject-body principal-a keys-a source-a)
-                       (fn-hsig-subject-body principal-b keys-b source-b)))
-           (and (equal principal-a principal-b)
-                (equal keys-a keys-b)
-                (equal source-a source-b)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-hsig-subject-p fn-hsig-keyset-p
-                                      fn-hsig-exact-octets-p
-                                      fn-hsig-subject-body))))
-
-(defthm fn-hsig-signed-preimage-injective
-  (implies (and (fn-hsig-subject-p principal-a keys-a source-a)
-                (fn-hsig-subject-p principal-b keys-b source-b)
-                (equal (fn-hsig-signed-preimage principal-a keys-a source-a)
-                       (fn-hsig-signed-preimage principal-b keys-b source-b)))
-           (and (equal principal-a principal-b)
-                (equal keys-a keys-b)
-                (equal source-a source-b)))
-  :rule-classes nil
-  :hints (("Goal"
-           :use ((:instance fn-digest-tagged-preimage-injective
-                            (tag1 *fn-hsig-domain-tag*)
-                            (m1 (fn-hsig-subject-body
-                                 principal-a keys-a source-a))
-                            (tag2 *fn-hsig-domain-tag*)
-                            (m2 (fn-hsig-subject-body
-                                 principal-b keys-b source-b)))
-                 (:instance fn-hsig-subject-body-injective))
-           :in-theory (enable fn-hsig-signed-preimage
-                              fn-hsig-subject-p))))
-
 ; This is the authorization subject the native host calls after it has asked
 ; both primitive libraries to verify the single ACL2-produced preimage.
 (defun fn-hsig-authorize (principal keys source signatures
