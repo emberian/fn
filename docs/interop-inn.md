@@ -24,7 +24,7 @@ one fn commit beside it and tears only that down.
 | INN | 2.7.4, from the release tarball, sha256 in [`tests/inn/pin.json`](../tests/inn/pin.json) |
 | prefix | `/tank/fn/inn/2.7.4`, owned by the ordinary user; no root, no system path |
 | source | `/tank/fn/inn/src/inn-2.7.4` (unpacked tarball, with `configure.log`, `make.log`, `install.log`) |
-| fn | shipped per run to `~/fn-deploy/<rev>`, exactly as the deploy gate ships it |
+| fn | shipped per run to `~/fn-deploy/<tree>-<rev>`, exactly as the deploy gate ships it |
 | ACL2 | `/tank/fn/acl2-8.7/saved_acl2`; certificates come from `/tank/fn/gates/<tree>-<rev>` |
 
 ### The port scheme
