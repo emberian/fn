@@ -9,7 +9,9 @@ makes no availability or flight-readiness claim; see
 
 Everything below is one command, `fn`, and one configuration file.
 
-Status (2026-09-21): these instructions describe the **development service**.
+Status (2026-09-21): `bin/fn` and the workflow below describe the explicit
+**Python development service**. The production package uses the native saved
+image and the separate installation procedure below.
 The owner now certifies and runs; the earlier owner-load failure is historical.
 The [frozen two-node exercise](../planning/evidence/v0-integrated-runtime-w12-2026-09-21.md)
 records authentication and BP crash disagreements, not a passing release gate.
@@ -60,9 +62,26 @@ operator workflow below, and the low-level `store` diagnostic is not a second
 public posting interface. The production image does not register raw
 `--fn owner run` and refuses raw `--fn reader`; `operator CONFIG run` is its one
 owner-service start and therefore always passes through the ACL2 native
-configuration plan and authentication startup. Native SIGTERM still aborts the process directly;
-orderly native worker shutdown is pending, distinct from the development
-service stop procedure below.
+configuration plan and authentication startup. Native SIGTERM enters the owner
+stop boundary, wakes and joins connection, control, and feed workers, closes
+TLS and journals, and preserves the owner's exit outcome.
+
+### Install the native production entry
+
+Build or select the source-pinned production `fn-host` and adjacent
+`fn-host.core`, then stage an installation without starting a service:
+
+```sh
+FN_NATIVE_HOST=/path/to/fn-host FN_NATIVE_CORE=/path/to/fn-host.core \
+  DESTDIR=/tmp/fn-package PREFIX=/usr/local packaging/install-native.sh
+```
+
+The layout is `bin/fn`, `libexec/fn/fn-host`, and
+`libexec/fn/fn-host.core`. The command only clears ACL2 customization variables
+and execs `fn-host --fn operator CONFIG ...`; it has no Python fallback.
+`share/fn/native-artifacts.txt` records launcher/core hashes and runtime
+libraries. Rendered service files live under `share/fn/systemd` and
+`share/fn/launchd`. Installation does not enable, start, or restart them.
 
 Native owner and reader component tests use a distinct saved image. Building it
 is an explicit evidence action and does not replace `build/fn-host`:
@@ -157,10 +176,10 @@ may administer the node; `[posting] enabled = false` disables article posting,
 not operator configuration changes. Do not give an agent this socket merely
 to grant posting access; use its separately configured NNTP posting principal.
 
-- systemd: install [`packaging/fn.service`](../packaging/fn.service) as
+- native systemd: install the rendered `share/fn/systemd/fn.service` as
   `/etc/systemd/system/fn.service`, then
   `systemctl daemon-reload && systemctl enable --now fn`.
-- launchd: install [`packaging/net.fn.plist`](../packaging/net.fn.plist) as
+- native launchd: install the rendered `share/fn/launchd/net.fn.plist` as
   `/Library/LaunchDaemons/net.fn.plist`, then
   `sudo launchctl bootstrap system /Library/LaunchDaemons/net.fn.plist`.
 
