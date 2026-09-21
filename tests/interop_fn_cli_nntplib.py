@@ -16,7 +16,15 @@ def main():
     parser.add_argument("message_id")
     args = parser.parse_args()
     with nntplib.NNTP("127.0.0.1", port=args.port, timeout=20) as client:
-        assert client.getwelcome().startswith("201 "), client.getwelcome()
+        # RFC 3977 section 5.1.1: 200 is "posting allowed", 201 is not, and
+        # `fn run` is the OWNER, which accepts POST -- so 200 is the right
+        # code and books/served.lisp `fn-served-greeting` is what chooses it
+        # from the posting configuration (tests/test_owner.py asserts the
+        # same octets).  This asserted 201 from the days when `fn run`
+        # started the read-only reader, and nothing noticed because the case
+        # never reached it: `Service.start` lost the CONTROL line to a
+        # BufferedReader and the whole test failed at start-up instead.
+        assert client.getwelcome().startswith("200 "), client.getwelcome()
         _, count, first, last, name = client.group(args.group)
         assert name == args.group and count >= 1, (count, first, last, name)
         _, number, found = client.stat(str(last))
