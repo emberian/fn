@@ -519,6 +519,13 @@ power-loss qualification."
       (fnn-fault "ACL2 returned malformed allocation frontier successor"))
     value))
 
+(defun fnn-transaction-name (sequence)
+  (let ((value (fnn-core 'fn-store-txn-name sequence)))
+    (unless (and (stringp value) (> (length value) 0)
+                 (null (find #\/ value)))
+      (fnn-fault "ACL2 refused transaction filename"))
+    value))
+
 ;;; ---------------------------------------------------------------------------
 ;;; The store bridge: fixed calls into host/store-node-host.lisp.
 
@@ -1052,7 +1059,7 @@ The core decides whether the records replay."
 (defun fnn-publish (store sequence record)
   (fnn-require-writer store)
   (when (fnn-store-fenced store) (fnn-indeterminate "store is fenced pending recovery"))
-  (let* ((final (fnn-join (fnn-transactions store) (format nil "~20,'0d.txn" sequence)))
+  (let* ((final (fnn-join (fnn-transactions store) (fnn-transaction-name sequence)))
          (stage (fnn-join (fnn-staging store)
                           (format nil ".stage-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
          (data (fnn-frame record))
