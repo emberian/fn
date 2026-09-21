@@ -70,8 +70,12 @@ class CertificateChoiceTests(unittest.TestCase):
         })
         gate = self.gate(host)
         gate.certificates()
-        self.assertTrue(any("--closure $(python3 tools/proof_artifacts.py roots "
-                            "--profile default)" in script for script in host.scripts))
+        certification = next(script for script in host.scripts
+                             if "certify_books.py" in script)
+        self.assertIn("--closure $(python3 tools/proof_artifacts.py roots "
+                      "--profile default)", certification)
+        self.assertIn("export FN_CERT_CACHE=$HOME/.cache/fn-certs", certification)
+        self.assertIn("export FN_CERT_ORIGIN_KIND=gate", certification)
         self.assertTrue(gate.certificates_ok)
 
     def test_an_uncertified_fallback_stops_the_gate(self):
