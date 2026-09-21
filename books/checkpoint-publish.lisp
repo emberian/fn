@@ -268,6 +268,67 @@
             (t s))
     s))
 
+; The native checkpoint adapter drives marker replacement without retaining
+; the publication machine's ghost generations.  These three functions are
+; its decision surface.  Their phases are deliberately the phases above: the
+; correspondence theorem below says the phase-only driver is exactly the
+; projection of the full machine, rather than a second replacement policy.
+(defun fn-cpp-marker-driver-action (phase)
+  (declare (xargs :guard t))
+  (cond ((equal phase :marker-staged) :stage-and-file-barrier)
+        ((equal phase :marker-data-durable) :replace)
+        ((equal phase :marker-attempted) :directory-barrier)
+        (t :done)))
+
+(defun fn-cpp-marker-driver-step (phase result)
+  (declare (xargs :guard t))
+  (cond ((equal phase :marker-staged)
+         (cond ((equal result :ok) :marker-data-durable)
+               ((equal result :known-fail) :candidate-published)
+               (t phase)))
+        ((equal phase :marker-data-durable)
+         (cond ((equal result :ok) :marker-attempted)
+               ((equal result :error) :fenced-marker)
+               (t phase)))
+        ((equal phase :marker-attempted)
+         (cond ((equal result :ok) :idle)
+               ((equal result :error) :fenced-marker)
+               (t phase)))
+        (t phase)))
+
+(defun fn-cpp-marker-driver-outcome (phase)
+  (declare (xargs :guard t))
+  (cond ((equal phase :idle) :durable)
+        ((equal phase :candidate-published) :refused)
+        ((equal phase :fenced-marker) :uncertain)
+        (t :pending)))
+
+(defun fn-cpp-marker-step (s result)
+  (declare (xargs :guard t))
+  (cond ((equal (fn-cpp-phase s) :marker-staged)
+         (fn-cpp-marker-file-result s result))
+        ((equal (fn-cpp-phase s) :marker-data-durable)
+         (fn-cpp-marker-replace-result s result))
+        ((equal (fn-cpp-phase s) :marker-attempted)
+         (fn-cpp-marker-dir-result s result))
+        (t s)))
+
+; The generation namespace is parsed at the host boundary, but choosing the
+; next generation and distinguishing a gap from uint32 exhaustion is an ACL2
+; decision.  NAMES must be ascending and gap-free from zero.
+(defun fn-cpp-next-generation-from (names expected)
+  (declare (xargs :guard t))
+  (cond ((not (fn-record-uint32p expected)) :exhausted)
+        ((null names) expected)
+        ((atom names) :bad)
+        ((equal (car names) expected)
+         (fn-cpp-next-generation-from (cdr names) (+ 1 expected)))
+        (t :bad)))
+
+(defun fn-cpp-next-generation (names)
+  (declare (xargs :guard t))
+  (fn-cpp-next-generation-from names 0))
+
 ; -----------------------------------------------------------------------------
 ; Crash images and recovery
 
@@ -494,6 +555,25 @@
 (defthm fn-cpp-marker-dir-result-preserves-state
   (implies (fn-cpp-statep s)
            (fn-cpp-statep (fn-cpp-marker-dir-result s result))))
+
+(defthm fn-cpp-marker-step-preserves-state
+  (implies (fn-cpp-statep s)
+           (fn-cpp-statep (fn-cpp-marker-step s result))))
+
+; This is the native marker driver's correspondence theorem.  The host calls
+; FN-CPP-MARKER-DRIVER-STEP and retains only its returned phase; for every
+; reachable marker phase that value is the full checkpoint publication
+; machine's next phase under the same observed syscall result.
+(defthm fn-cpp-marker-driver-step-corresponds
+  (implies (and (fn-cpp-statep s)
+                (member-equal (fn-cpp-phase s)
+                              '(:marker-staged :marker-data-durable
+                                :marker-attempted)))
+           (equal (fn-cpp-marker-driver-step (fn-cpp-phase s) result)
+                  (fn-cpp-phase (fn-cpp-marker-step s result))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-cpp-marker-step
+                                      fn-cpp-marker-driver-step))))
 
 (defthm fn-cpp-crash-image-is-image
   (implies (fn-cpp-statep s)
@@ -780,6 +860,7 @@
                     fn-cpp-candidate-link-result fn-cpp-candidate-dir-result
                     fn-cpp-select fn-cpp-marker-file-result
                     fn-cpp-marker-replace-result fn-cpp-marker-dir-result
+                    fn-cpp-marker-step
                     fn-cpp-crash fn-cpp-corrupt fn-cpp-recover
                     fn-cpp-capturablep fn-cpp-generation-octets
                     fn-cpp-entry-checkpoint))

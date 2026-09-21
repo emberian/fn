@@ -3,7 +3,7 @@
 ; and slices the suffix by the sequence ACL2 returned; ACL2 revalidates that
 ; suffix in fn-checkpoint-restore.
 (in-package "ACL2")
-(include-book "../books/checkpoint-codec")
+(include-book "../books/checkpoint-publish")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -38,6 +38,28 @@
 (defun fn-store-checkpoint-selection-decode (octets digest)
   (declare (xargs :mode :program))
   (fn-cpc-selection-decode octets digest))
+
+; The native adapter parses only the bounded filename grammar.  ACL2 owns the
+; namespace decision: ascending generation numbers must be gap-free from zero,
+; and the uint32 successor has a distinct exhaustion result.
+(defun fn-store-checkpoint-next-generation (generations)
+  (declare (xargs :mode :program))
+  (fn-cpp-next-generation generations))
+
+; Selection replacement is a separate contract from immutable generation
+; publication.  The native adapter retains this returned phase and asks ACL2
+; for every next action, observation transition, and terminal outcome.
+(defun fn-store-checkpoint-marker-action (phase)
+  (declare (xargs :mode :program))
+  (fn-cpp-marker-driver-action phase))
+
+(defun fn-store-checkpoint-marker-step (phase result)
+  (declare (xargs :mode :program))
+  (fn-cpp-marker-driver-step phase result))
+
+(defun fn-store-checkpoint-marker-outcome (phase)
+  (declare (xargs :mode :program))
+  (fn-cpp-marker-driver-outcome phase))
 
 ; Decode a selected generation against the live configuration and the
 ; observed durable frontier and record count.  The accepted checkpoint is

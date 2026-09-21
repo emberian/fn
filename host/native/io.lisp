@@ -699,6 +699,11 @@ not repeat the staging-prefix, held-name, or phase policy."
 ;; completion subject a second time.
 (defvar *fnn-observe-callback* #'fnn-bridge-io)
 (defvar *fnn-finish-callback* #'fnn-bridge-finish)
+; host/native/checkpoint.lisp installs this callback after it loads.  A build
+; without that optional layer retains authoritative full replay and reports
+; no selected checkpoint.
+(defvar *fnn-checkpoint-recover-callback*
+  (lambda (store records) (declare (ignore store records)) '(:none)))
 
 (defun fnn-bridge-article-count () (fnn-nat (fnn-core-state 'fn-store-sn-article-count)))
 (defun fnn-bridge-next-txid () (fnn-nat (fnn-core-state 'fn-store-sn-next-txid)))
@@ -850,6 +855,9 @@ resolves the names against `domain' and the host carries that list verbatim."
 
 (defstruct (fnn-store (:constructor %make-fnn-store))
   root writable lock-fd config frontier fenced (orphans nil) (completion-pending nil)
+  ;; The checkpoint layer runs only after authoritative full replay.  It keeps
+  ;; its diagnostic outcome here and never replaces the live store-node state.
+  (checkpoint-outcome '(:none))
   ;; The replayed configuration the core hands back at recover.  The host
   ;; stores it and passes it back; it derives no name, code or generation.
   (config-generation nil) (config-served nil) (config-domain nil)
@@ -1220,6 +1228,11 @@ because the name may or may not still be present after the syscall."
       ((or fnn-store-fault fnn-store-indeterminate) (e)
         (setf (fnn-store-fenced store) t)
         (error e)))
+    ; Full journal replay above remains authoritative.  The checkpoint layer
+    ; restores into separate ACL2 globals and compares that image with
+    ; fn-store-sn; it cannot reset or replace the live node.
+    (setf (fnn-store-checkpoint-outcome store)
+          (funcall *fnn-checkpoint-recover-callback* store records))
     (setf (fnn-store-fenced store) nil)
     records))
 
@@ -1403,6 +1416,16 @@ from the live ACL2 configuration; the native host does not name a provenance."
       (format nil "staging-orphans=~d [~{~a~^ ~}]" (length (fnn-store-orphans store))
               (fnn-store-orphans store))))
 
+(defun fnn-checkpoint-report (store)
+  (let ((outcome (fnn-store-checkpoint-outcome store)))
+    (case (first outcome)
+      (:none "checkpoint=none")
+      (:ok (format nil "checkpoint=ok generation=~d suffix-from=~d differential=~a"
+                   (second outcome) (third outcome)
+                   (if (fourth outcome) "equal" "DIFFERENT")))
+      (:corrupt (format nil "checkpoint=corrupt reason=~a" (second outcome)))
+      (otherwise (fnn-fault "invalid checkpoint recovery outcome")))))
+
 ;;; Commands.
 
 (defparameter +fnn-init-model-cuts+
@@ -1555,10 +1578,14 @@ this reads only whether there is one."
   (multiple-value-bind (store records) (fnn-open-live-store root t (fnn-recovery-test-fault))
     (unwind-protect
          (multiple-value-bind (report code) (fnn-anchor-report store)
-           (fnn-out "recovered transactions=~d articles=~d ~a ~a"
+           (fnn-out "recovered transactions=~d articles=~d ~a ~a ~a"
                     (length records) (fnn-bridge-article-count)
-                    (fnn-orphan-report store) report)
-           code)
+                    (fnn-orphan-report store) report
+                    (fnn-checkpoint-report store))
+           (if (and (= code +fnn-exit-ok+)
+                    (eq (first (fnn-store-checkpoint-outcome store)) :corrupt))
+               +fnn-exit-fault+
+             code))
       (fnn-store-close store))))
 
 (defun fnn-command-status (root)
