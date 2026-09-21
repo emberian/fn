@@ -283,7 +283,7 @@
     "books": 277,
     "books_in_root_closure": 276,
     "roots": 276,
-    "theorems": 5625,
+    "theorems": 5627,
     "functions": 3946,
     "assert_events": 5598,
     "must_fails": 63,
@@ -951,7 +951,7 @@
       "book": "books/bp-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 23,
+      "theorems": 25,
       "functions": 30,
       "guards": {
         "verified": 23,

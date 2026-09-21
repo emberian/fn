@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 277 |
 | Certification roots in the Makefile | 276 |
 | Books inside the root closure | 276 |
-| `defthm` and `defthmd` events | 5625 |
+| `defthm` and `defthmd` events | 5627 |
 | `defun` events | 3946 |
 | Functions with verified guards | 1475 |
 | Functions declared `:verify-guards nil` and never verified | 191 |
@@ -105,7 +105,7 @@ that `make certify` requests.
 | `books/bp-fragment-invariants.lisp` | root | 40 | 3 | 0/0/0/3 | 0 | 0 | 2 |
 | `books/bp-fragment.lisp` | root | 6 | 30 | 30/0/0/0 | 0 | 0 | 0 |
 | `books/bp-ingress.lisp` | root | 22 | 44 | 41/0/3/0 | 0 | 0 | 0 |
-| `books/bp-node.lisp` | root | 23 | 30 | 23/0/7/0 | 0 | 0 | 0 |
+| `books/bp-node.lisp` | root | 25 | 30 | 23/0/7/0 | 0 | 0 | 0 |
 | `books/bp-outbound.lisp` | root | 10 | 11 | 2/0/9/0 | 0 | 0 | 0 |
 | `books/bp-primary-cbor.lisp` | root | 86 | 16 | 12/0/3/1 | 0 | 0 | 1 |
 | `books/bp-primary-invariants.lisp` | root | 44 | 0 | 0/0/0/0 | 0 | 0 | 0 |

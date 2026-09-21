@@ -468,6 +468,28 @@
 (verify-guards fn-bpn-forwardp)
 
 ; -----------------------------------------------------------------------------
+; The three bridges above exist for ONE obligation, `fn-bpn-receive`'s
+; guard, and they are closed here so that no keystone pays for them.
+; Measured 2026-09-21 on K1: left open, its `Time:` line reads
+; `427.20 seconds (prove: 0.43, other: 426.77)` -- seven minutes in which
+; the prover did four tenths of a second of proof search.  `other` is
+; forward chaining and type reasoning (docs/proof-style.md section 9.1), and
+; two of these three ARE forward-chaining rules triggered on
+; `(fn-bpb-bundle-primary (fn-cbor-result-value (fn-bpb-decode octets
+; limit)))` -- a term K1's goal is full of.  The cure for that shape is a
+; theory change and never a hint.
+(local (in-theory (disable fn-bpn-decoded-primary-is-a-block
+                           fn-bpn-decoded-primary-flag-test-is-guarded
+                           fn-bpn-bundle-primary-is-a-block
+                           ;; And the exported rule the three rest on, for
+                           ;; the same reason: its left-hand side is
+                           ;; `(fn-bpb-bundlep (fn-cbor-result-value
+                           ;; (fn-bpb-decode ...)))` and every keystone
+                           ;; below opens `fn-bpn-receive`, which puts that
+                           ;; term in front of it.
+                           fn-bpb-decode-yields-bundle)))
+
+; -----------------------------------------------------------------------------
 ; Keystones.
 ;
 ; K5 IS STATED FIRST, and the order is load-bearing rather than cosmetic.  K1
@@ -478,6 +500,39 @@
 ; had ever certified, the form does not fail, it RUNS -- twenty minutes on
 ; hbox with no checkpoint, because the rewriter cannot relieve that
 ; hypothesis and falls back on induction over an encoder.
+
+; The two extension blocks fn writes carry CBOR that this book never has to
+; look inside.  `fn-bpc-enc-are-octets` and `fn-bpc-enc-length-bound` are
+; exported by `books/bp-primary-cbor` and say everything `fn-bpb-datap`
+; wants; what K5 must NOT do is let `fn-bpc-enc` unfold, because the goal
+; then becomes `(FN-CBOR-OCTET-LISTP (CONS 130 (APPEND
+; (FN-CBOR-ENCODE-ARGUMENT 0 (FN-BPN-CONFIG-HOP-LIMIT CONFIG)) '(0))))` and
+; neither exported rule matches it any more (measured 2026-09-21).  So the
+; two facts are proved here once, with the encoder CLOSED, and K5 closes it
+; too.
+(local
+ (defthm fn-bpn-hop-count-data-is-block-data
+   (implies (fn-bpp-hop-countp hop)
+            (fn-bpb-datap (fn-bpp-hop-count-data hop)))
+   :hints (("Goal"
+            :in-theory (e/d (fn-bpb-datap fn-bpp-hop-count-data
+                             fn-bpp-hop-countp fn-bpc-shapep fn-bpc-cost
+                             ;; Both are in `fn-bpc-vocabulary` and both are
+                             ;; DISABLED at the end of
+                             ;; `books/bp-primary-cbor`; the length bound is
+                             ;; the whole of what is missing.
+                             fn-bpc-enc-are-octets fn-bpc-enc-length-bound)
+                            (fn-bpc-enc))))))
+
+(local
+ (defthm fn-bpn-bundle-age-data-is-block-data
+   (implies (fn-bpp-bundle-agep ms)
+            (fn-bpb-datap (fn-bpp-bundle-age-data ms)))
+   :hints (("Goal"
+            :in-theory (e/d (fn-bpb-datap fn-bpp-bundle-age-data
+                             fn-bpp-bundle-agep fn-bpc-shapep fn-bpc-cost
+                             fn-bpc-enc-are-octets fn-bpc-enc-length-bound)
+                            (fn-bpc-enc))))))
 
 ; K5.  What `fn-bpn-send` puts on the wire is a bundle: it decodes, and it
 ; decodes to the bundle that was built.
@@ -494,9 +549,22 @@
                             fn-bpb-block-numbers fn-bpb-payload-blockp
                             fn-bpb-blockp fn-bpb-datap
                             fn-bpb-hop-count-block fn-bpb-bundle-age-block
-                            fn-bpb-payload-block fn-bpn-configp)
+                            fn-bpb-payload-block fn-bpn-configp
+                            ;; The creation timestamp is
+                            ;; `(if (fn-clock-has-wall obs) (fn-clock-wall
+                            ;; obs) 0)` and `fn-bpp-timep` wants it bounded,
+                            ;; so the clock's observation recognizer has to
+                            ;; be open here for the same reason
+                            ;; `fn-bpn-receive`'s guard opens it.  Measured
+                            ;; 2026-09-21: closed, the form stops at
+                            ;; `Subgoal 12.5`, `(INTEGERP (FN-CLOCK-WALL
+                            ;; OBS))`, with `(FN-CLOCK-OBSERVATIONP OBS)`
+                            ;; sitting unopened in its own hypotheses.
+                            fn-clock-observationp)
                            (fn-bpp-eidp fn-bpp-vchar-listp fn-bpp-vcharp
-                            fn-cbor-octet-listp fn-cbor-octetp)))))
+                            fn-cbor-octet-listp fn-cbor-octetp
+                            fn-bpc-enc fn-bpp-hop-count-data
+                            fn-bpp-bundle-age-data)))))
 
 ; K5 is `fn-bpn-send`'s guard obligation, so the verification deferred at the
 ; definition happens here.
@@ -517,6 +585,18 @@
    :hints (("Goal"
             :in-theory (enable fn-bpn-send-bundle fn-bpb-payload
                                fn-bpb-payload-block)))))
+
+; `fn-bpb-decode-of-encode`'s second hypothesis is `(natp limit)`, and the
+; limit K1 hands it is the receiver's configured transfer limit.
+; `fn-defrecord` generates no per-field type fact, so without this the only
+; route to it is opening `fn-bpn-configp` -- which K1 must not do, because
+; K5's own hypothesis is that literal.
+(local
+ (defthm fn-bpn-config-transfer-limit-is-a-natural
+   (implies (fn-bpn-configp config)
+            (natp (fn-bpn-config-transfer-limit config)))
+   :rule-classes (:rewrite :type-prescription)
+   :hints (("Goal" :in-theory (enable fn-bpn-configp)))))
 
 ; K1.  What a peer receives from `fn-bpn-send` carries exactly the ADU that
 ; was sent.  The subject is the pair of functions the host calls: `bp send`
@@ -551,11 +631,25 @@
                     (fn-bpb-encode
                      (fn-bpn-send-bundle config peer adu sequence obs))
                     (fn-bpn-config-transfer-limit peer-config)))
-           :in-theory (e/d (fn-bpn-receive fn-bpn-send fn-bpn-received-adu
-                            fn-bpn-configp)
+           ;; `fn-bpn-configp` is NOT opened: K5's hypothesis is
+           ;; `(fn-bpn-configp config)` as a literal, and opening the
+           ;; recognizer here would leave the rule unable to fire on the
+           ;; very term this proof needs it for.  The one field fact the
+           ;; decoder's `(natp limit)` hypothesis wants comes from the
+           ;; local type lemma above instead.
+           :in-theory (e/d (fn-bpn-receive fn-bpn-send fn-bpn-received-adu)
                            (fn-bpb-decode fn-bpb-encode fn-bpb-payload
                             fn-bpn-send-bundle fn-bpb-bundlep
-                            fn-bpp-eidp fn-bpp-vchar-listp fn-bpp-vcharp)))))
+                            fn-bpn-configp
+                            fn-bpp-eidp fn-bpp-vchar-listp fn-bpp-vcharp
+                            fn-bpp-previous-nodep fn-bpp-dtn-sspp
+                            fn-bpp-eid-node-idp fn-bpp-eid-singletonp
+                            fn-bpb-decode-yields-bundle
+                            fn-bpp-blockp fn-bpp-flags-conformantp
+                            fn-bpp-fragmentp fn-bpp-flag-onp
+                            fn-bpn-expiry fn-bpn-hop-exceededp
+                            fn-bpn-anchor-of fn-bpb-bundle-hop-count
+                            fn-bpb-bundle-age)))))
 
 ; K2.  A bundle the clock calls expired is never forwarded, and neither is one
 ; whose hop count has passed its limit.
@@ -585,11 +679,28 @@
        (implies (fn-bpn-uncertainp r)
                 (and (not (fn-bpn-acceptedp r)) (not (fn-bpn-refusedp r))))))
 
+; Every branch of `fn-bpn-receive` returns one of the three constructors, so
+; the proof is the case split and nothing else -- once the vocabulary under
+; the decoder is closed.  Open, this form's `Time:` line read
+; `371.16 seconds (prove: 0.00, other: 371.16)`: no proof search at all,
+; just forward chaining and type reasoning over a decoded bundle the
+; statement never looks inside (docs/proof-style.md section 9.1).
 (defthm fn-bpn-receive-yields-one-of-three
   (or (fn-bpn-acceptedp (fn-bpn-receive config octets obs))
       (fn-bpn-refusedp (fn-bpn-receive config octets obs))
       (fn-bpn-uncertainp (fn-bpn-receive config octets obs)))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-bpn-receive fn-bpn-acceptedp fn-bpn-refusedp
+                            fn-bpn-uncertainp fn-bpn-accepted fn-bpn-refused
+                            fn-bpn-uncertain)
+                           (fn-bpb-decode fn-bpp-blockp fn-bpb-bundlep
+                            fn-bpp-flags-conformantp fn-bpp-fragmentp
+                            fn-bpp-flag-onp fn-bpn-expiry
+                            fn-bpn-hop-exceededp fn-bpn-anchor-of
+                            fn-bpb-bundle-hop-count fn-bpb-bundle-age
+                            fn-bpp-eidp fn-bpp-vchar-listp fn-bpp-vcharp)))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory.
