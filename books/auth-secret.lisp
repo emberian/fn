@@ -24,16 +24,16 @@
 ; content identity digest never share a preimage, whatever their messages
 ; (books/crypto-seam.lisp, `fn-digest-tagged-preimage-injective').
 ;
-; WHAT IS PROVED AND WHAT IS NOT.  Proved here: the enrolled secret always
-; checks; the stored verifier is not an octet list at all, so the slot that
-; used to carry the secret cannot carry one; the stored digest is 32 octets
-; whatever the secret, so it does not even reveal the secret's length; and
-; the preimage recovers (salt, secret).  NOT proved, and not provable in this
-; logic: that a WRONG secret is rejected.  That is second-preimage resistance
-; of the attached digest -- A-CRYPTO (specs/failures.md) -- and the seam's
-; own local witness is a constant digest under which every secret passes.
-; The test book exhibits rejection as a witness on concrete octets, which is
-; evidence about those octets and nothing more.
+; WHAT IS PROVED AND WHAT IS NOT.  The enrolled secret checks; the verifier
+; is a structured value rather than an octet list; its digest has fixed length;
+; and the preimage encoding recovers (salt, secret).  These are shape/encoding
+; facts, not confidentiality or password-guessing resistance.  The concrete
+; scheme uses one fast tagged SHA-256 computation per guess, with no tunable
+; work factor.  A salt does not make a low-entropy password hard to guess.
+; No theorem here proves distinct secrets have distinct digests; the seam's
+; local constant-digest witness makes every secret pass.  The test book's
+; concrete rejection witness is evidence for those inputs, not a universal
+; rejection or secrecy theorem.  See specs/nntp.md for the hardening boundary.
 ;
 ; This book also does not make AUTHINFO USER/PASS safe on an unprotected
 ; connection: the secret still crosses the wire in the clear, which is why
