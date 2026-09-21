@@ -32,6 +32,56 @@ that do not separate nonempty patterns, and the reserved ASCII punctuation
 `!`, `,`, `[`, `\`, and `]` as exact items.  There are no bracket-set,
 backslash-quoting, or other §4.3 extensions.
 
+## Two character profiles, one grammar (decision D19)
+
+§4.1's exclusions are justified in the RFC itself by the use it had in mind:
+"This should not be a problem, since these characters cannot occur in
+newsgroup names, which is the only current use of wildmats."  RFC 2980 §2.9's
+XPAT is the other use.  It matches a **header value**, which is prose, which
+contains SP, and whose pattern §2.9 builds by joining the trailing command
+arguments "separated by a single space" — so every multi-token XPAT pattern
+carries an SP that §4.1 excludes.  §4.3 permits the widening: "An NNTP server
+or extension MAY extend the syntax or semantics of wildmats provided that all
+wildmats that meet the requirements of Section 4.1 have the meaning ascribed
+to them by Section 4.2."
+
+The grammar's structure — comma alternation, post-comma `!`, `*`, `?` — is one
+implementation.  Only the literal set is profiled.
+
+| | newsgroup-name profile | header-value profile |
+| --- | --- | --- |
+| literal set | `fn-wildmat-exactp`, RFC 3977 §4.1 `<wildmat-exact>` verbatim | `fn-wildmat-text-exactp` |
+| entry point | `fn-wildmat-parse` | `fn-wildmat-parse-text` |
+| callers | `LIST ACTIVE`, `LIST NEWSGROUPS`, `LIST ACTIVE.TIMES`, peer feed patterns, owner feed patterns | `XPAT` only |
+
+The header-value profile is one rule: a pattern is a fragment of a command
+line, so every printable US-ASCII character, SP, and every UTF-8 non-ASCII
+character is a literal, less the four wildmat metacharacters `!` `*` `,` `?`.
+Controls and DEL are excluded from both.  Against `<wildmat-exact>` that is
+exactly four more code points — `%x20 SP`, `%x5B [`, `%x5C \`, `%x5D ]` —
+and `fn-wildmat-text-exactp-adds-exactly-four-code-points` proves the
+difference is no larger.  §4.1 reserved `[`, `\` and `]` for a possible future
+extension; reading them as literals in the header profile spends that reserved
+syntax there, which D19 records as a knowing local cost.
+
+**How §4.3's proviso is discharged rather than asserted.** The scanner scans
+the wider set and `fn-wildmat-parse` recovers §4.1 with a precheck
+(`fn-wildmat-rfc3977-codepointsp`) on the decoded code points, so it accepts
+and refuses exactly the octet lists it accepted and refused before the second
+profile existed, with the same `:error` reason.
+`fn-wildmat-parse-yields-rfc3977-patterns` is the §4.1 result shape it still
+produces.  The matcher's literal test reads the wider set — that is what makes
+a matched SP a match at all — and
+`fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items` states that on
+every §4.1 item it computes what it computed before, with the previous body
+verbatim as the right-hand side.
+
+`fn-wildmat-patternp`, `fn-wildmat-pattern-listp` and `fn-wildmat-parsedp`
+recognize a pattern *record*, not grammar conformance, and carry the wider
+item set so that one matcher serves both profiles; every theorem that
+hypothesises one is thereby stronger than before.  The §4.1-profiled record
+shape is `fn-wildmat-rfc3977-pattern-listp`.
+
 RFC 3977 §4.2 controls semantics.  Each constituent pattern is anchored to the
 whole target.  `?` matches one decoded Unicode scalar value and `*` matches zero
 or more scalar values.  The rightmost pattern that matches decides inclusion:
@@ -97,7 +147,13 @@ unknown or malformed LIST variants return 501.
 `tests/acl2/wildmat-tests.lisp` covers the §4.4 examples, whole-character
 multibyte `?`, negative/rightmost precedence, empty-star anchoring, grammar
 rejections, reserved punctuation, profile boundary lengths, a many-star input,
-and invalid UTF-8 classes.  The UTF-8/parser/matcher invariant books now prove successful-step Unicode
+and invalid UTF-8 classes.  It also covers the two profiles against each
+other: the joined XPAT pattern `*T *t*` refused by `fn-wildmat-parse` and
+parsed by `fn-wildmat-parse-text`, matching `T st` and not `Test` — the same
+two answers INN 2.7.4's `uwildmat_simple` gives for the same pattern
+([the measurement](../planning/evidence/inn-xpat-2026-09-20.md)) — a phrase
+pattern over a phrase value, `[PATCH]`, and HTAB, DEL and a leading `!`
+refused by both.  The UTF-8/parser/matcher invariant books now prove successful-step Unicode
 scalar validity and strict progress, decoded output bounds, successful parser
 recognition, and actual DP equivalence to independent anchored semantics with
 rightmost precedence. These results are in the

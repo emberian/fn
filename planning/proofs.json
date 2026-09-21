@@ -240,7 +240,8 @@
         "fn-served-step-partition-independence",
         "fn-served-reply-stream-is-partition-independent",
         "fn-served-feed-of-append",
-        "fn-served-run-is-the-concatenated-step"
+        "fn-served-run-is-the-concatenated-step",
+        "fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -711,6 +712,7 @@
         "fn-wildmat-utf8-next-success-strict-progress",
         "fn-wildmat-successful-decode-length-bounded-by-input",
         "fn-wildmat-successful-parse-parsedp",
+        "fn-wildmat-parse-yields-rfc3977-patterns",
         "fn-transfer-entry-candidate-work-value",
         "fn-transfer-entry-candidate-work-cost-bound",
         "fn-transfer-missing-work-cost-bound",
