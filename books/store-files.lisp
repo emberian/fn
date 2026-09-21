@@ -639,12 +639,28 @@
 ; the image replayable at its own frontier
 ; (fn-snt-recovery-admissible-crash-image-is-recoverable).
 ;
-; No (null (fn-sf-successes s)) conjunct: rolling the frontier back drops no
-; record, so every acknowledged pair still names one.  A hypothesis that is
-; not needed is not added (docs/proof-style.md s9.2).
+; The empty success history is here for D14-b's reason in its frontier
+; spelling, and it is NOT about losing a record -- rolling the frontier back
+; loses none.  It is the only kernel-visible mark that separates a :replaying
+; state built by fn-sn-open-observed from THIS PROCESS'S SCAN, where the
+; rename may still be pending, from one reached by fn-sf-crash, where the
+; model already knows it is not: a crash from :reserved has observed
+; (:frontier-directory :ok), so fsync_dir(self.root) returned and the rename
+; is durable, and a crash from :frontier-attempted is already covered by
+; fn-sf-crash's :old choice (fn-sf-frontier-new-visiblep holds there).
+; Without this conjunct the predicate would admit, on a crashed :reserved
+; state, an image the same model refutes.  fn-sn-open-observed keeps no ghost
+; (fn-sn-open-observed-success-exact-history) and Store.recover runs once per
+; process, so the conjunct costs nothing reachable; and
+; fn-bs-replay-matches-scan already carries (equal (fn-sf-successes ks) nil),
+; so it costs K2 nothing either.  Like D14-b's, it is necessary and not
+; sufficient: an empty-success crashed state still satisfies it, and the
+; predicate stays an over-approximation, which is why it is a conclusion and
+; never a premise.
 (defun fn-sf-frontier-rollback-visiblep (s)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-sf-recovery-visiblep s)
+       (null (fn-sf-successes s))
        (posp (fn-sf-frontier s))
        (fn-sf-record-listp (fn-sf-records s) 0 0 (1- (fn-sf-frontier s)))))
 
