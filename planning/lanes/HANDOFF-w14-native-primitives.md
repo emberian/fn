@@ -16,8 +16,8 @@ gaps separate as follows.
 | DELE and SREP signed preimages | `books/anchor.lisp`; host wrappers in `host/anchor-host.lisp` | Remain ACL2-owned | Call `fn-anchor-host-delegation-octets` and `fn-anchor-host-signed-octets`; never rebuild either in raw Lisp |
 | Delegation window | `fn-anchor-window-okp`, reached through `fn-anchor-verifiedp-observed` | Remain ACL2-owned | Remove the Python parser's historical preflight from the production composition; pass fields to the ACL2 entry |
 | Merkle/nonce binding | Python parses/folds up to 32 nodes; accepted ACL2 scope is only `fn-anchor-one-nonce-p` | For the selected accepted scope, the host observes empty `PATH`, zero `INDX`, and equality of `ROOT` with `fnn-crypto-anchor-leaf(NONCE)` | A non-empty path stays `:uncertain :unmodelled-tree`.  A general native fold cannot establish acceptance until ACL2 models it (D22) |
-| Roughtime tagged-message parsing | `tools/roughtime.py` | `books/anchor-wire.lisp`, implemented in the follow-on commit | Native acquisition must call `fn-anchor-wire-host-parse`; request encoding and UDP acquisition remain to implement |
-| Server list, pinned key and nonce generation | JSON plus Python `os.urandom` | Still missing | One bounded native/ACL2 configuration owner, explicit OS CSPRNG trust, and no caller-selected unpinned key |
+| Roughtime tagged-message request/response grammar | `tools/roughtime.py` | `fn-anchor-wire-request` and `fn-anchor-wire-parse-response`, implemented in the follow-on packet | Native acquisition calls both through `host/anchor-wire-host.lisp`; no raw-Lisp grammar |
+| Server list, pinned key and nonce generation | JSON plus Python `os.urandom` | OS CSPRNG implemented in `fnn-anchor-csprng-nonce`; pinned manifest still missing | One pinned native manifest must inject endpoint/key; no defaults or caller-selected unpinned key |
 | FNAN framing and anchor decisions | `books/anchor-record.lisp`, `books/anchor.lisp`, `host/anchor-host.lisp` | Already ACL2-owned | Native storage must call those wrappers and preserve accepted/refused/uncertain |
 | NNTP TLS | Python `ssl` in `tools/run_owner.py`; ACL2 owns the surrounding STARTTLS state | Native owner lane, using the existing OpenSSL 3 `libssl` dependency | Flush 382 before the handshake; on success call `fn-owner-tls-established`; handshake/certificate/cipher properties remain TCB claims |
 | Native author signing and principal signature verification | Python CLI can make Ed25519 signatures, while `fn-sig-*` remains an abstract ACL2 seam | Not selected here | D09 must choose the suite/container, key custody and migration policy first |
@@ -94,9 +94,11 @@ received DELE and SREP octets to `books/anchor.lisp`'s canonical reconstruction.
 `host/anchor-wire-host.lisp` is the program-mode bridge.  Its `:parsed` result
 contains the ten anchor fields, PATH, INDX, ACL2's delegation subject, ACL2's
 response subject, and a one-nonce shape bit.  It makes no crypto, delegation-
-window, pinned-membership, freshness or storage decision.  UDP acquisition,
-nonce generation and request encoding remain the next native packet; the
-configuration/CLI lane owns the server address and pinned-key inputs.
+window, pinned-membership, freshness or storage decision.
+`host/native/anchor.lisp` now supplies nonce generation, UDP acquisition and
+primitive composition.  The pinned server manifest remains separate; the
+configuration/CLI lane owns only its bounded selected server name and correctly
+refuses availability until that manifest and this consumer are integrated.
 
 The public safety theorem is `fn-anchor-wire-parse-success-has-anchor`, whose
 subject is exactly `fn-anchor-wire-parse-response`; the deployed bridge calls
@@ -111,6 +113,40 @@ offset, truncation and packet-bound negatives.  The book and test certified
 under ACL2 8.7.  Exact source digests, invocations, results, manifests, the
 independent host-load transcript and limitations are archived in
 [`tests/evidence/2026-09-21-native-anchor-wire.md`](../../tests/evidence/2026-09-21-native-anchor-wire.md).
+
+All 34 parser/request `defun` events are guard-verified in that archived run.
+This corrects the first parser checkpoint, which certified with guard eagerness
+disabled and therefore was not yet suitable for a native executable call.
+
+## Native acquisition seam
+
+`host/native/anchor.lisp` exposes `fnn-anchor-acquire(host, port, pinned-key,
+timeout)`.  It accepts no default endpoint or key.  It validates the endpoint
+and exact 32-octet key before I/O, reads a 32-octet nonce from `/dev/urandom`,
+asks `fn-anchor-wire-host-request` for the 1024-octet request, performs one
+connected IPv4 UDP exchange with a 4096-octet response cap, asks
+`fn-anchor-wire-host-parse` to parse and bind the response, and runs libsodium
+only over the two subjects ACL2 returned.  For the currently accepted
+one-nonce scope it also compares ACL2's signed ROOT with
+`fnn-crypto-anchor-leaf(nonce)`.
+
+The result is `:observed`, `:refused`, `:uncertain`, or `:fault`; this seam
+never says `:accepted`.  Its observed payload is the ten ACL2 fields plus the
+boolean signature and one-nonce observations for the existing ACL2
+accept/restore/advance entries.  Timeout, DNS/socket failure and an unavailable
+crypto facility stay uncertain.  Malformed/overbound responses are refused;
+invalid local inputs and primitive/core faults remain faults.
+
+The component test passed on `nextop`, `hbox` and `persvati`, and an ACL2 8.7
+raw-mode smoke reached the real executable counterpart of
+`fn-anchor-wire-host-request`.  Exact commands, versions, source/log hashes and
+limits are archived in
+[`tests/evidence/2026-09-21-native-anchor-acquisition.md`](../../tests/evidence/2026-09-21-native-anchor-acquisition.md).
+
+Remaining deployment gates are the pinned endpoint/key manifest, common image
+load/startup ordering, native FNAN persistence/recovery, the call from
+acquisition into the actual ACL2 decision, and CLI outcome wiring.  This packet
+does not infer endpoint/key policy from the current `[anchor].server` string.
 
 ## TLS composition contract for the owner lane
 
@@ -149,9 +185,9 @@ It passed at implementation revision `88b0cd3` on the laptop with libsodium
 1.0.22 and on `hbox` and `persvati` with libsodium 1.0.18.  Exact source
 digests, tool versions, invocations, outputs and limitations are archived in
 [`tests/evidence/2026-09-21-native-crypto-primitives.md`](../../tests/evidence/2026-09-21-native-crypto-primitives.md).
-This is component evidence for the primitive seam.  Native anchor acquisition,
-FNAN persistence/recovery, owner STARTTLS and the no-Python deployment gate
-remain separate integration evidence.
+This is component evidence for the primitive seam.  FNAN persistence/recovery,
+owner STARTTLS and the no-Python deployment gate remain separate integration
+evidence.
 
 `tests/test_native_crypto_saved_image.sh` writes a temporary SBCL core whose
 serialized state falsely says the facility is ready, restarts it, requires the
