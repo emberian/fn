@@ -643,6 +643,7 @@
         "tests/acl2/store-prepare-correspondence-tests.lisp",
         "books/owner-prepare-correspondence.lisp",
         "tests/acl2/owner-prepare-correspondence-tests.lisp",
+        "planning/evidence/native-owner-prepare-correspondence-w18-2026-09-21.md",
         "planning/evidence/store-prepare-correspondence-w18-2026-09-21.md"
       ],
       "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open."

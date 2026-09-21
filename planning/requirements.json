@@ -1278,6 +1278,7 @@
         "tests/acl2/store-prepare-correspondence-tests.lisp",
         "books/owner-prepare-correspondence.lisp",
         "tests/acl2/owner-prepare-correspondence-tests.lisp",
+        "planning/evidence/native-owner-prepare-correspondence-w18-2026-09-21.md",
         "planning/evidence/store-prepare-correspondence-w18-2026-09-21.md"
       ],
       "implementation_note": "Logical certification excludes program-mode host helpers and retains ACL2/runtime/adapter assumptions. The host-called standalone store and shared-owner prepare projections are equated to the replaying specification and former owner event under relations established by observed open and preserved through the owner transition family; their executable bodies retain candidate and pending binding checks and omit the per-prepare appended-history replay. BP composition evidence records 11 scoped roots, unchanged source digests and 133 Python tests without an all-roots or power-loss claim. A separate seven-book inventory records the complete 41-function ADU guard graph and 97 remaining unverified BP functions. W14 adds a native libsodium primitive seam for the existing anchor Ed25519/SHA-512 profile with vector/negative and saved-image restart tests on the recorded hosts. Raw Lisp/FFI/library behavior remains trusted; complete physical correspondence, the saved-image owner gate for this revision, integrated native anchor and STARTTLS remain open.",
