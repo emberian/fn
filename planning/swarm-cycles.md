@@ -17,7 +17,7 @@ Private group cryptography remains deferred, with privacy boundaries preserved.
 ## Current staffing and integration checkpoint
 
 D07 selects a Python-free production runtime. Frozen integration source
-`67f45a3` combines native owner/operator, safe feed filenames, application
+`03eb3ba3` combines native owner/operator, safe feed filenames, application
 journals, BP receive evidence, checkpoint and anchor persistence. Sol owns its
 combined farm gate. The earlier `76901c1` closure/build succeeded; runtime testing
 required a listener-shutdown repair now integrated. Source-pinned runtime
@@ -27,12 +27,12 @@ operator coverage and the selected two-peer release gate are complete.
 
 | Active lane / worker | Next complete result |
 | --- | --- |
-| `owner-convergence` / Sol | Frozen `67f45a3` default/DTN build and actual combined native suites; retained persvati feed-port closure; shared-owner runtime composition defects. |
+| `owner-convergence` / Sol | Frozen `03eb3ba3` default/DTN build and actual combined native suites; retained persvati feed-port closure; shared-owner runtime composition defects. |
 | `submission-path` / Sol | Native BP inbound request intent, actual owner acceptance, durable receipt decision and lost-receipt/restart idempotence. |
 | `bp-fidelity-convergence` / Sol | Native local control/submission channel using the same serialized owner acceptance path; bounded framing and explicit ambiguous reply outcome. Allocation proofs and anchor source review are handed off. |
-| `artifact-set` / Sol | ACL2-owned BP lifecycle filename/recovery plan and admission frontier; remove per-append retained-history enumeration. |
+| `artifact-set` / Sol | Consolidate actual BP lifecycle immutable publication onto the shared ACL2 phase interpreter. Namespace recovery and no-rescan admission are integrated. |
 | `native-storage-codec` / Sol | Checkpoint namespace codec/bounds, mutation fencing and unconditional reporting of differential mismatch. Initial native checkpoint adoption is integrated. |
-| `native-config-impl` / Terra | Total FNFD traversal observation budget across sibling subtrees; retained retired-peer journals count without being reaped. Safe codec/caller is integrated. |
+| `native-config-impl` / Terra | Native group/capacity administration through ACL2 plans and the shared durable configuration path. Safe FNFD codec and total traversal budget are integrated. |
 | `storage-codecs` / Terra | Native outbound NNTP feed socket/timer interpreter over ACL2 effects, with durable FNFD records before transmission and actual two-node tests. |
 | `storage-initializer` / Terra | Actual initializer EEXIST/retry semantics and syscall-cut correspondence; recovery cleanup packet is integrated. |
 | `store-prepare-correspondence-sol` / Sol | Incremental prepare equivalent under maintained relation, actual host adoption and saved-image scale measurement; no whole-history runtime recognizer. |

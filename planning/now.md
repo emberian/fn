@@ -14,10 +14,10 @@ incremental store preparation from the maintained relation. Native BP applicatio
 acceptance/receipt composition is still implementation work, not carrier evidence.
 
 
-W22 frozen batch: `67f45a3` adds the actual listener wakeup repair, logical
+W22 frozen batch: `03eb3ba3` adds the actual listener wakeup repair, logical
 feed restart/caller projection, and native operator join to the previous
-consolidation batch. Hbox is assigned combined certification, both image builds
-and native runtime suites; no result from an older image is relabeled for it.
+consolidation batch. Persvati is running the combined certification, both image builds
+and native runtime suites (run `run-20260921T095031Z-5cf4`); no result from an older image is relabeled for it.
 Native outbound feed I/O, local control submission and authentication adoption
 now have concrete parallel lanes, while BP application receipts and performance
 correspondence continue. These are remaining selected v0 behaviors, not a
