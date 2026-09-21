@@ -381,7 +381,7 @@ recovery barriers, while the cuts are `recover-replayed` at `:1207` and
 minus one, and a matching frontier arm here; that is the next packet, not this
 one.
 
-### 2026-09-20: D19 — the outbound guard is cured by a total take and drop, not by a carried length
+### 2026-09-20: D20 — the outbound guard is cured by a total take and drop, not by a carried length
 
 The send-side half of the served-path guard cost that
 `planning/lanes/HANDOFF-w9-dtn-e2e.md` §7 opened and `w11/tcpcl-theory` closed
