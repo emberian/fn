@@ -103,6 +103,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-invariants \
 	books/byte-store-scan \
 	books/byte-store-keystones \
+	tests/acl2/byte-store-scan-tests \
 	books/byte-store-programs \
 	tests/acl2/byte-store-tests \
 	books/assumptions \
