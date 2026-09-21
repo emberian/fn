@@ -386,3 +386,19 @@ alongside the local service. Web/9p interfaces can follow using the same contrac
 Exact packaging is open: use certified ACL2 definitions in a supported host image
 with controlled integration, and document any raw Lisp boundary. A hand-maintained
 shadow implementation is not the intended path to a smaller binary.
+
+### Native configuration-history observation
+
+Native recovery observes at most `*fn-nco-max-config-observations*` physical
+entries from `config/` before retaining the list.  Each observed entry must be
+a regular non-symlink file whose bounded octets exactly decode as a
+configuration record.  ACL2 derives the record generation, compares the
+observed basename with `fn-native-admin-config-name`, orders decoded entries
+by generation, and accepts only the contiguous plan from generation 1.  An
+unreadable directory, excess entry, symlink/non-file, decode failure, alias,
+duplicate or generation gap is a recovery fault retaining the on-disk
+evidence; it is never treated as an absent history or a replayable prefix.
+
+This is a configuration-namespace recovery boundary only.  It does not claim
+that all existing/retry initialization paths, later durable barriers, or
+platform crash persistence correspond to the ACL2 model.
