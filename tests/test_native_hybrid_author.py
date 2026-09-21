@@ -10,6 +10,7 @@ from tests.native_process import wait_for_announcement, stop_and_diagnostics
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 
 
 def free_port():
@@ -49,18 +50,19 @@ class NativeHybridAuthorTest(unittest.TestCase):
         self.ml_private = self.root / "ml-private.pem"
         self.ml_public = self.root / "ml-public.pem"
         generated = subprocess.run(
-            ["openssl", "genpkey", "-algorithm", "ML-DSA-65", "-out", str(self.ml_private)],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-        if generated.returncode:
-            self.skipTest("active openssl lacks ML-DSA-65")
-        subprocess.run(["openssl", "pkey", "-in", str(self.ml_private), "-pubout",
-                        "-out", str(self.ml_public)], check=True)
+            [OPENSSL, "genpkey", "-algorithm", "ML-DSA-65", "-out", str(self.ml_private)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, check=False)
+        self.assertEqual(generated.returncode, 0,
+                         "opted-in hybrid gate requires working ML-DSA-65: "
+                         + generated.stderr.decode("utf-8", "replace"))
+        subprocess.run([OPENSSL, "pkey", "-in", str(self.ml_private), "-pubout",
+                        "-out", str(self.ml_public)], timeout=60, check=True)
         self.ml_private_b = self.root / "ml-private-b.pem"
         self.ml_public_b = self.root / "ml-public-b.pem"
-        subprocess.run(["openssl", "genpkey", "-algorithm", "ML-DSA-65", "-out",
-                        str(self.ml_private_b)], check=True)
-        subprocess.run(["openssl", "pkey", "-in", str(self.ml_private_b), "-pubout",
-                        "-out", str(self.ml_public_b)], check=True)
+        subprocess.run([OPENSSL, "genpkey", "-algorithm", "ML-DSA-65", "-out",
+                        str(self.ml_private_b)], timeout=60, check=True)
+        subprocess.run([OPENSSL, "pkey", "-in", str(self.ml_private_b), "-pubout",
+                        "-out", str(self.ml_public_b)], timeout=60, check=True)
 
     def invoke(self, *args, timeout=60):
         return subprocess.run([str(IMAGE), "--fn", *args], cwd=ROOT,
