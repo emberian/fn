@@ -119,3 +119,8 @@ python3 tools/farm.py submit persvati --jobs 4 --closure \
 
 Farm run `run-20260921T073923Z-0cb4` exited 0; its source-pinned closure
 manifest is `certify-20260921T073927Z-1075245.json`.
+
+The follow-up lock classification transcript is
+[`bp-sequence-lock-native-2026-09-21.md`](../evidence/bp-sequence-lock-native-2026-09-21.md).
+It proves a live `EAGAIN` contention path refuses without authoring; other
+`flock` errors are native faults.
