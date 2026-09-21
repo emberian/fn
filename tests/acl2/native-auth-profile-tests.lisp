@@ -46,6 +46,20 @@
 (assert-event (not (fn-auth-cred-postingp
                     (car (fn-auth-config-creds *fn-native-auth-test-config*)))))
 
+; Reachable witness for fn-native-auth-load-accepted-pins-policy: required is
+; true in the accepted host-installed config.  Its acceptance hypothesis has
+; teeth: protected-only with no TLS is refused, result-config falls back to
+; the open policy, and therefore does not carry the requested required bit.
+(assert-event
+ (equal (fn-auth-config-requiredp *fn-native-auth-test-config*) t))
+(assert-event
+ (not
+  (equal
+   (fn-auth-config-requiredp
+    (fn-native-auth-result-config
+     (fn-native-auth-load *fn-native-auth-test-file* t t t nil)))
+   t)))
+
 ; Missing is an explicit observation and preserves the policy with no creds.
 (assert-event
  (equal (fn-native-auth-load nil nil t nil nil)
