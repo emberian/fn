@@ -250,6 +250,7 @@ class FrameSession:
             raise BridgeError("ACL2 returned malformed frontier successor")
         return value
 
+
     # -- journal records ----------------------------------------------------
 
     def schema(self, schema_name: str, kind: str):

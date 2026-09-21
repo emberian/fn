@@ -76,6 +76,7 @@
       (1+ n)
     nil))
 
+
 (defun fn-bs-frontier-decode-impl (octets)
   (declare (xargs :guard t))
   (if (not (fn-cbor-octet-listp octets))
