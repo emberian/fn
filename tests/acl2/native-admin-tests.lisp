@@ -69,3 +69,28 @@
 (assert-event (equal (fn-native-admin-publication-status
                       (fn-native-admin-publication-authorize nil 0 nil nil nil nil))
                      :refused))
+
+; A second, admissible configuration record is authorized only for the exact
+; next ACL2-rendered name.  An observed collision for that name refuses before
+; any shared immutable-publisher state is exposed to the raw adapter.
+(defconst *fn-na-second-record*
+  (fn-cfg-record-make
+   1 0 2 (list (fn-cfg-set-capacity 1048576))
+   (fn-clock-observation 7 9 0 t)))
+(defconst *fn-na-publication*
+  (fn-native-admin-publication-authorize
+   nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* t nil))
+(assert-event (equal (fn-native-admin-publication-status *fn-na-publication*)
+                     :accepted))
+(assert-event (equal (fn-native-admin-publication-generation *fn-na-publication*) 2))
+(assert-event (equal (fn-native-admin-publication-name *fn-na-publication*)
+                     "00000002.cfg"))
+(assert-event (equal (fn-jpub-phase
+                      (fn-native-admin-publication-jpub *fn-na-publication*))
+                     :staging))
+(assert-event
+ (equal (fn-native-admin-publication-status
+         (fn-native-admin-publication-authorize
+          nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* t
+          '("00000002.cfg")))
+        :refused))
