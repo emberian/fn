@@ -1,0 +1,181 @@
+; Durable FNBS records for the outbound BP lifecycle machine.
+;
+; Kind 1 belongs to books/bp-node-records.lisp's sequence frontier.  This
+; append-only extension owns kinds 2 through 4.  The host never serializes a
+; lifecycle decision: it asks this book for a complete frame and gives this
+; book the complete frame during recovery.
+
+(in-package "ACL2")
+(include-book "bp-node-machine")
+(include-book "frame-trailer")
+
+(set-verify-guards-eagerness 0)
+
+(defconst *fn-bpn-lifecycle-queued-code* 2)
+(defconst *fn-bpn-lifecycle-attempting-code* 3)
+(defconst *fn-bpn-lifecycle-result-code* 4)
+
+; Eight-byte token, two bounded identifiers, generation, creation sequence,
+; encoded peer EID and the exact encoded bundle.  The maximum is below the
+; generic frame layer's cap and is the only whole-payload bound the host uses.
+(defconst *fn-bpn-lifecycle-max-payload* 134144)
+
+(defconst *fn-bpn-lifecycle-queued-spec*
+  '(:nat :text :text :nat :nat :text :nat :text :nat :nat :nat :blob :blob))
+(defconst *fn-bpn-lifecycle-attempting-spec*
+  '(:nat :text :text :nat))
+(defconst *fn-bpn-lifecycle-result-statuses*
+  '(:requeued :finished :expired))
+(defconst *fn-bpn-lifecycle-result-reasons*
+  '(:none :refused :failed :uncertain))
+(defconst *fn-bpn-lifecycle-result-spec*
+  (list :nat :text :text :nat
+        (cons :enum *fn-bpn-lifecycle-result-statuses*)
+        (cons :enum *fn-bpn-lifecycle-result-reasons*)))
+
+(defun fn-bpn-lifecycle-kind-code (kind)
+  (declare (xargs :guard t))
+  (cond ((equal kind :queued) *fn-bpn-lifecycle-queued-code*)
+        ((equal kind :attempting) *fn-bpn-lifecycle-attempting-code*)
+        ((fn-bpn-member kind '(:requeued :finished :expired))
+         *fn-bpn-lifecycle-result-code*)
+        (t 0)))
+
+(defun fn-bpn-lifecycle-code-kind (code)
+  (declare (xargs :guard t))
+  (cond ((equal code *fn-bpn-lifecycle-queued-code*) :queued)
+        ((equal code *fn-bpn-lifecycle-attempting-code*) :attempting)
+        ((equal code *fn-bpn-lifecycle-result-code*) :result)
+        (t nil)))
+
+(defun fn-bpn-lifecycle-spec (kind)
+  (declare (xargs :guard t))
+  (cond ((equal kind :queued) *fn-bpn-lifecycle-queued-spec*)
+        ((equal kind :attempting) *fn-bpn-lifecycle-attempting-spec*)
+        ((equal kind :result) *fn-bpn-lifecycle-result-spec*)
+        (t nil)))
+
+(defun fn-bpn-peer-octets (peer)
+  (declare (xargs :guard (fn-bpp-eidp peer)))
+  (fn-bpc-enc :item (fn-bpp-eid-value peer)))
+
+(defun fn-bpn-peer-from-octets (octets)
+  (declare (xargs :guard t))
+  (let ((decoded (fn-bpc-decode-exact octets)))
+    (if (not (fn-cbor-result-okp decoded))
+        nil
+      (let ((peer (fn-bpp-value-eid (fn-cbor-result-value decoded))))
+        (if (fn-bpp-eidp peer) peer nil)))))
+
+(defun fn-bpn-lifecycle-record-values (record)
+  (declare (xargs :guard (fn-bpn-lifecycle-recordp record)))
+  (let ((kind (fn-cbor-ag-car record)))
+    (if (equal kind :queued)
+        (let ((job (fn-bpn-nth 2 record)))
+          (let ((route (fn-bpn-job-route job)))
+            (list (fn-bpn-record-token record)
+                  (fn-bpn-job-work-id job)
+                  (fn-bpn-job-attempt-id job)
+                  (fn-bpn-job-generation job)
+                  (fn-bpn-job-sequence job)
+                  (fn-bpn-nth 1 route) (fn-bpn-nth 2 route)
+                  (fn-bpn-nth 3 route) (fn-bpn-nth 4 route)
+                  (fn-bpn-nth 5 route) (fn-bpn-nth 6 route)
+                  (fn-bpn-peer-octets (fn-bpn-job-peer job))
+                  (fn-bpn-job-wire job))))
+      (if (equal kind :attempting)
+          (list (fn-bpn-record-token record)
+                (fn-bpn-nth 2 record) (fn-bpn-nth 3 record)
+                (fn-bpn-nth 4 record))
+        (list (fn-bpn-record-token record)
+              (fn-bpn-nth 2 record) (fn-bpn-nth 3 record)
+              (fn-bpn-nth 4 record) (fn-bpn-nth 6 record)
+              (fn-bpn-nth 5 record))))))
+
+(defun fn-bpn-lifecycle-record-protected (record)
+  (declare (xargs :guard (fn-bpn-lifecycle-recordp record)))
+  (let* ((kind (fn-cbor-ag-car record))
+         (code (fn-bpn-lifecycle-kind-code kind))
+         (spec (fn-bpn-lifecycle-spec
+                (if (equal code *fn-bpn-lifecycle-result-code*) :result kind)))
+         (values (fn-bpn-lifecycle-record-values record))
+         (payload (fn-frame-fields-octets spec values)))
+    (if (and (not (equal code 0))
+             (fn-frame-values-okp spec values)
+             (fn-cbor-at-mostp payload *fn-bpn-lifecycle-max-payload*))
+        (fn-frame-protected *fn-frame-magic-bundle-store*
+                            *fn-frame-version* code payload)
+      :bad)))
+
+(defun fn-bpn-lifecycle-record-frame (record)
+  (declare (xargs :guard (fn-bpn-lifecycle-recordp record)))
+  (let ((protected (fn-bpn-lifecycle-record-protected record)))
+    (if (equal protected :bad)
+        :bad
+      (fn-bpn-append protected (fn-frame-trailer protected)))))
+
+(defun fn-bpn-lifecycle-queued-from-values (values)
+  (declare (xargs :guard t))
+  (let* ((wire (fn-bpn-nth 12 values))
+         (peer (fn-bpn-peer-from-octets (fn-bpn-nth 11 values)))
+         (route (list :route (fn-bpn-nth 5 values) (fn-bpn-nth 6 values)
+                      (fn-bpn-nth 7 values) (fn-bpn-nth 8 values)
+                      (fn-bpn-nth 9 values) (fn-bpn-nth 10 values)))
+         (decoded (if (fn-cbor-octet-listp wire)
+                      (fn-bpb-decode wire *fn-bpn-machine-max-job-octets*)
+                    (fn-cbor-error :malformed)))
+         (bundle (if (fn-cbor-result-okp decoded)
+                     (fn-cbor-result-value decoded) nil))
+         (job (fn-bpn-make-job
+               (fn-bpn-nth 1 values) (fn-bpn-nth 2 values)
+               (fn-bpn-nth 3 values) (fn-bpn-nth 4 values)
+               peer route bundle wire :queued (fn-bpn-nth 0 values)))
+         (record (list :queued (fn-bpn-nth 0 values) job)))
+    (if (fn-bpn-lifecycle-recordp record) record nil)))
+
+(defun fn-bpn-lifecycle-record-from-values (kind values)
+  (declare (xargs :guard t))
+  (let ((record
+         (cond ((equal kind :queued)
+                (fn-bpn-lifecycle-queued-from-values values))
+               ((equal kind :attempting)
+                (list :attempting (fn-bpn-nth 0 values)
+                      (fn-bpn-nth 1 values) (fn-bpn-nth 2 values)
+                      (fn-bpn-nth 3 values)))
+               ((equal kind :result)
+                (list (fn-bpn-nth 4 values) (fn-bpn-nth 0 values)
+                      (fn-bpn-nth 1 values) (fn-bpn-nth 2 values)
+                      (fn-bpn-nth 3 values) (fn-bpn-nth 5 values)
+                      (fn-bpn-nth 4 values)))
+               (t nil))))
+    (if (fn-bpn-lifecycle-recordp record) record nil)))
+
+(defun fn-bpn-lifecycle-record-unframe (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets)))
+  (let ((answer (fn-frame-decode
+                 octets
+                 (fn-frame-trailer (fn-frame-protected-prefix octets))
+                 *fn-bpn-lifecycle-max-payload*)))
+    (if (not (and (fn-frame-result-okp answer)
+                  (equal (fn-frame-result-magic answer)
+                         *fn-frame-magic-bundle-store*)
+                  (equal (fn-frame-result-version answer) *fn-frame-version*)))
+        nil
+      (let* ((kind (fn-bpn-lifecycle-code-kind
+                    (fn-frame-result-kind answer)))
+             (spec (fn-bpn-lifecycle-spec kind)))
+        (if (null kind)
+            nil
+          (let ((parsed (fn-frame-fields-parse
+                         spec (fn-frame-result-payload answer))))
+            (if (not (fn-frame-parse-okp parsed))
+                nil
+              (fn-bpn-lifecycle-record-from-values
+               kind (fn-frame-parse-value parsed)))))))))
+
+(defun fn-bpn-lifecycle-frame-limit ()
+  (declare (xargs :guard t))
+  (+ *fn-frame-header-octets* *fn-bpn-lifecycle-max-payload*
+     *fn-frame-trailer-octets*))
+
+(deftheory fn-bpn-machine-codec-vocabulary nil)
