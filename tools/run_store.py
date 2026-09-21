@@ -510,6 +510,21 @@ class Acl2Store:
     def record_txid(self, record):
         return acl2_nat(self.call("(fn-store-record-txid '" + self.literal(record) + ")"))
 
+    def transaction_name(self, sequence):
+        """The ACL2-owned final name for an allocated record sequence."""
+        if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 0:
+            raise StoreError("transaction sequence is not a natural")
+        octets = acl2_octets(self.call("(fn-store-txn-name-octets {})".format(sequence)))
+        try:
+            name = octets.decode("ascii")
+        except UnicodeDecodeError as error:  # pragma: no cover - ACL2 theorem excludes it
+            raise StoreError("ACL2 returned a non-ASCII transaction name") from error
+        # The durable allocator is separately bounded below 10^20.  This is a
+        # boundary check on the returned path component, not another formatter.
+        if not SEQ_NAME.fullmatch(name):
+            raise StoreError("ACL2 returned an invalid bounded transaction name")
+        return name
+
     def recover(self, records, frontier, config_records=()):
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
         config = "(" + " ".join(self.literal(record) for record in config_records) + ")"
@@ -1384,7 +1399,7 @@ class Store:
         self._require_writer()
         if self.fenced:
             raise StoreIndeterminate("store is fenced pending recovery")
-        name = "{:020d}.txn".format(sequence)
+        name = acl2.transaction_name(sequence)
         final = self.transactions / name
         stage = self.staging / (".stage-{}-{}".format(os.getpid(), os.urandom(12).hex()))
         data = frame(record)
