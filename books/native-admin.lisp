@@ -116,7 +116,8 @@
 (defun fn-native-admin-peer-plan (words)
   "Build the complete peer record in ACL2; raw Lisp receives no field defaults."
   (declare (xargs :guard t))
-  (if (and (member-equal (len words) '(10 13))
+  (if (and (true-listp words)
+           (member-equal (len words) '(10 13))
            (equal (car words) "peer")
            (equal (cadr words) "add")
            (fn-native-admin-decimalp (nth 5 words))

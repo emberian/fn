@@ -154,3 +154,11 @@
           nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* t
           '("00000002.cfg")))
         :refused))
+
+; Length alone does not establish a proper argument vector.
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-peer-plan
+          '("peer" "add" "near" "near" "localhost" "119"
+            "*" "*" "127.0.0.1" "true" . improper-tail)))
+        :refused))
