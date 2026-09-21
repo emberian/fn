@@ -13,13 +13,42 @@ subject gap *underneath* the reported one: `fn-stx-acceptedp`, the hypothesis
 of every S3 keystone, was an assumption attributed to a book that has never
 existed, and it is now a theorem about the transition the host calls.
 
+## 0. Certification
+
+Two boxes, both green, `--affected-by books/stx-lace.lisp --closure`. The fan
+is 31 roots and not most of the tree, because `books/node.lisp` is untouched:
+only `stx-index` and `stx-policy` include `stx-lace`, and no book outside the
+stx cluster includes `stx-index`, `stx-authority` or `stx-epochs`.
+
+| Box | Run | Evidence | ACL2 | Jobs | Roots | Wall |
+| --- | --- | --- | --- | --- | --- | --- |
+| laptop | local | `build/acl2/certify-20260921T004848Z-71469` | `/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2` sha256 `36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324` | 1 | **31 of 31, exit 0** | 225.8 s |
+| hbox | `run-20260921T005550Z-81ad` | `build/acl2/certify-20260921T005558Z-1362139` | `/tank/fn/acl2-8.7/saved_acl2` sha256 `64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5` | 8 | **31 of 31, exit 0** | 137.6 s |
+
+Per root, hbox: `books/stx-lace` 0.47 s, `books/stx-index` 0.71 s,
+`books/stx-policy` 0.48 s, `books/stx-authority` 0.82 s, `books/stx-epochs`
+0.63 s, `tests/acl2/stx-transit-tests` 0.91 s with 84 `assert-event`s. The new
+theorem is **1,542 prover steps, 0.01 s**, with no new lemma. hbox's cache
+reported `installed 59, kept 36, uncached 181` over the whole tree before the
+run. Baseline before any edit, laptop, the same six-book chain:
+`build/acl2/certify-20260921T004453Z-66002`, exit 0.
+
+Ledger, before to after: `defthm`/`defthmd` events 5559 to 5560,
+`assert-event` checks 5400 to 5422, `books/stx-lace.lisp` theorems 19 to 20,
+`tests/acl2/stx-transit-tests.lisp` witnesses 62 to 84. The new theorem is not
+flagged SUSPECT. `make check` exits 0.
+
 ## 1. The enumeration the packet asked for, with a verdict per site
 
 Measured over `books/`, `tests/acl2/` and `host/` by an s-expression walk, not
 by eye. Reproduce with the script in the commit body of this lane's second
 commit.
 
-### 1a. `fn-node-make-state` — 26 four-argument applications
+### 1a. `fn-node-make-state` — 26 four-argument occurrences, 21 real applications
+
+One occurrence is the `fn-defrecord` `:constructor` declaration and four are the
+argument positions of one local accessor-of-constructor lemma; the other 21 are
+applications.
 
 | Site | What it builds | Verdict for a fifth slot |
 | --- | --- | --- |
@@ -45,7 +74,7 @@ commit.
 Split by what the statement does with it, which is what decides whether a
 strengthening breaks the proof:
 
-- **26 theorems CONCLUDE `fn-node-statep`, in 12 books.** Each must re-prove
+- **26 theorems CONCLUDE `fn-node-statep`, in 13 books.** Each must re-prove
   the new conjunct. They are `fn-node-{prepare,complete,recover,install-stage}-preserves-state`
   and `fn-node-initial-state-is-state` (node, node-invariants);
   `fn-node-step-preserves-state`, `fn-node-trace-preserves-state`
@@ -65,7 +94,7 @@ strengthening breaks the proof:
   `fn-snt-prepared-durable-is-idle-at-successor` (store-node-invariants);
   `fn-snt-typed-store-components` (store-node-traces);
   `fn-sn-prepare-node-preserves-state` (store-node).
-  **Verdict: each of these twelve books would have to reason about statement
+  **Verdict: each of these thirteen books would have to reason about statement
   parsing and signature verification to re-prove a node-state fact.**
 - 87 theorems only hypothesise it and survive a strengthening unchanged.
 
@@ -200,9 +229,13 @@ cycle. The change, for whoever takes it:
    `fn-store-sn-lookup` (`host/store-node-host.lisp:464`), reached from
    `bin/fn statement`. Then and only then does `fn-stx-index-lookup` have a
    host line and PRF-023's theorem-subject rule is met.
-4. Note that `books/store-node.lisp` is 13 books of closure and would become
-   ~20; that is a real cost, and it is paid by the store cluster alone rather
-   than by the 70 books above `node`.
+4. The cost, measured: `books/store-node.lisp`'s include closure (itself
+   included) is **14** books and would become **27**, gaining `article
+   cbor-invariants crypto-seam lace lace-invariants principal
+   records-invariants statement statement-invariants stx-carrier stx-index
+   stx-lace stx-verify`. That is real, and it is paid by the store cluster
+   alone rather than by the 70 books above `node`. `store-node` is not in
+   `stx-index`'s closure, so there is no cycle.
 
 **Owner: the store-node cluster, with the substrate cluster.** Not this lane:
 `w11/bytestore-k2` is live on the crash model below `store-files`, and
