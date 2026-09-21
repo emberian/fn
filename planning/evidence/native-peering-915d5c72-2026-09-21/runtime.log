@@ -1,0 +1,11 @@
+test_condition_handlers_and_cleanup_enclose_the_served_body (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_condition_handlers_and_cleanup_enclose_the_served_body) ... ok
+test_transit_take_uses_transfer_decision_and_store_outcome (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_transit_take_uses_transfer_decision_and_store_outcome) ... ok
+test_durable_feed_requeues_after_source_process_death (tests.test_native_peering.NativePeeringTests.test_durable_feed_requeues_after_source_process_death) ... ok
+test_public_native_outbound_feed_crosses_and_suppresses_duplicate (tests.test_native_peering.NativePeeringTests.test_public_native_outbound_feed_crosses_and_suppresses_duplicate) ... ok
+test_reply_reset_after_durable_transit_is_connection_local (tests.test_native_peering.NativePeeringTests.test_reply_reset_after_durable_transit_is_connection_local) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 3.739s
+
+OK
+native-peering launcher-sha256=3e989879fc615fab5c929e05c3215768cc6c4b707b7ac123b20aed13f930045f core-sha256=eaa5b56c8337b5c6b02eb046ef5ba7cd6c2eaabf59720db664104d0fe5ad08b2 declared-source=915d5c729877eddee7dd3f72eadad21cca463d1a
