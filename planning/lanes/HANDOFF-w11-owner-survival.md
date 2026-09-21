@@ -100,7 +100,7 @@ the control channel answers, so it is the same process; stderr carries
 from another connection to `240` and shows the faulted article is absent.
 
 `SCN-026` is that scenario; `HST-005` (`specs/host.md`) is the requirement;
-`PRF-035` is the proof target.
+`PRF-040` is the proof target (claimed as PRF-035; five lanes took 035 to 039 the same evening and this one renumbered on merging dev).
 
 ## 5. The matrix re-run
 

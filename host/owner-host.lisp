@@ -27,6 +27,11 @@
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-fault")
+; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
+; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
+; ACL2 session does not load `host/store-host.lisp', so the one owner has to
+; be a book both sessions include.  See books/frame-trailer.lisp.
+(include-book "../books/frame-trailer")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -50,9 +55,24 @@
 ; The posting configuration: the groups served at the live configuration
 ; generation (books/node-config, fn-cnode-served-of), the store's payload
 ; bound.  Derived from the replayed configuration by ACL2.
+; The node's own <path-identity>, from the ONE slot that holds it: the
+; configuration policy `path-identity`, which `fn-peer-local-identity`
+; (books/peer-inbound.lisp) and `fn-store-prov-post` also read.
+; `*fn-owner-agent*` was a second copy of a node's identity, and that is how
+; two fn nodes on one gate came to write the SAME Path -- so neither could
+; recognise itself in the other's articles and RFC 5537 section 3.5 loop
+; suppression had nothing to compare. The constant is now only the fallback
+; for a store whose slot is unset.
+(defun fn-owner-agent-of (cfg)
+  (declare (xargs :mode :program))
+  (let ((identity (fn-cfg-policy (fn-cfg-value cfg) "path-identity")))
+    (if (and (stringp identity) (not (equal identity "")))
+        (fn-record-string-octets identity)
+      *fn-owner-agent*)))
+
 (defun fn-owner-post-config (cfg)
   (declare (xargs :mode :program))
-  (fn-inj-make-config t *fn-owner-agent*
+  (fn-inj-make-config t (fn-owner-agent-of cfg)
                       (fn-owner-group-octets (fn-cnode-served-of cfg))
                       *fn-store-max-payload*))
 
@@ -346,22 +366,27 @@
                  ; subject, evidence, charge).  The generation passed here is
                  ; 0 because no element read from this list depends on it.
                  ;
-                 ; RENDERED TO OCTETS, as the global's contract has always
-                 ; been (the POST path stages fn-inj-decision-groups, whose
-                 ; elements are fn-cbor-octet-listp by fn-inj-group-namesp)
-                 ; and as the line below already does for the evidence.
-                 ; fn-peer-scope-groups answers STRINGS -- "Strings, as
-                 ; fn-node-prepare takes", books/peer-inbound.lisp:139 -- so
-                 ; this global held two different shapes depending on which
-                 ; path filled it, and the bridge reads one:
-                 ; `Acl2Owner.submit_groups' (tools/run_owner.py) decodes
-                 ; each element with acl2_octet_list.  On the first transit
-                 ; transfer it met "fn.letters" where it required a list of
-                 ; naturals, raised RuntimeError inside `Owner.drain', and
-                 ; THE OWNER PROCESS DIED -- the second of the two crashes
-                 ; tools/v0_matrix.py found on persvati on 2026-09-20, and
-                 ; the one that took 22 transit rows, the feed rows and the
-                 ; crash rows of the matrix with it.  One shape per global.
+                 ; It answers with STRINGS ("Strings, as fn-node-prepare
+                 ; takes", books/peer-inbound.lisp fn-peer-scope-groups, which
+                 ; ends in `fn-record-octets-string') where the POST path's
+                 ; `fn-inj-decision-groups' answers with OCTETS -- its
+                 ; elements are `fn-cbor-octet-listp' by
+                 ; `fn-inj-group-namesp' -- and the host reads ONE global for
+                 ; both.  Reading a string as an octet list raised
+                 ; `unexpected ACL2 octet-list result' inside `Owner.drain',
+                 ; which did not catch, so the OWNER PROCESS DIED on the
+                 ; first article a peer transferred: the second half of the
+                 ; w10/v0-matrix board ASK, and the death that took 22
+                 ; transit rows, the feed rows and the crash rows of the
+                 ; matrix with it.  The conversion is ACL2's own and happens
+                 ; here, where the global is written, so the two paths agree
+                 ; on a representation without Python choosing one.
+                 ;
+                 ; `w11/twonode-feed' and `w11/owner-survival' diagnosed and
+                 ; fixed this independently on the same evening, and the two
+                 ; fixes differed only in which of two identical helpers they
+                 ; called.  The duplicate is folded: `fn-owner-group-octets'
+                 ; above is the one, and `fn-owner-group-octet-list' is gone.
                  (state (f-put-global 'fn-owner-submit-groups
                                       (if (equal (fn-peer-decision-kind d) :want)
                                           (fn-owner-group-octets (nth 3 args))
@@ -665,6 +690,49 @@
              t
            nil)))
 
+; How long the host must wait between dial attempts for this peer: the peer
+; record's own outbound backoff.  Read here so the NUMBER stays ACL2's; the
+; host only measures the interval with the clock it already owns.
+;
+; Without it the host dialled on queue length alone, and the feed machine's
+; backoff does not gate a dial (it gates `fn-feed-selection`, which needs a
+; connection first).  A peer that was down therefore drew a fresh TCP
+; connection about five times a second for as long as one entry stayed
+; queued: 9,479 refused connections in one two-node gate run, all of them in
+; the window where one node was restarting.
+(defun fn-owner-feed-backoff-ms (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((record (fn-owner-feed-record peer-octets state)))
+    (value (if (and record (natp (fn-cfg-peer-backoff record)))
+               (fn-cfg-peer-backoff record)
+             0))))
+
+; Is there an entry this feed could OFFER if it had a connection: a
+; `:queued` one, which is what `fn-feed-selection` picks.  Queue length is
+; not that question -- an entry in flight is in the queue -- and answering
+; the wrong one is what made a peer that lost a reply a denial of service:
+; the entry stayed `:sent`, the host re-dialled on queue length alone every
+; few seconds, each dial took a connection on the peer that the peer did not
+; release, and the peer reached its `--max-connections` bound and began
+; refusing EVERY client at accept.  Measured on two-node gate `a5c6792`:
+; seven tap sessions, `MODE STREAM` and nothing else in each, and node B
+; closing the harness's reader probes for the next 90 s.
+;
+; This does not resolve the in-flight entry -- only a restart does today,
+; and the packet that fixes it is in the lane handoff.  It stops the host
+; opening a socket it has nothing to send on.
+(defun fn-owner-feed-has-queued (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        (value nil)
+      (value (if (fn-feed-head-queued
+                  (fn-feed-queue
+                   (fn-own-feed-find peer (fn-own-feeds
+                                           (f-get-global 'fn-owner state)))))
+                 t
+               nil)))))
+
 (defun fn-owner-feed-queue-length (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
@@ -690,7 +758,7 @@
 ; the constrained trailer (A-CRYPTO); the host writes them length-prefixed.
 ; `fn-feed-encode' takes the trailer as an argument, so these frames carry a
 ; ZERO trailer: tools/run_owner.py hashes the protected prefix and appends the
-; real one (A-CRYPTO), exactly as tools/run_feed.py does.  The header, the
+; real one (A-CRYPTO).  The header, the
 ; field encoding and every bound stay ACL2's; the host slices at a constant it
 ; did not choose.
 (defconst *fn-owner-feed-zero-trailer*

@@ -16,7 +16,6 @@ A served POST is a submission the book queued on the connection's read;
 uses and feeds the observed word back, and the book renders the 240 or 441.
 """
 import argparse
-import hashlib
 import os
 import selectors
 import signal
@@ -25,6 +24,7 @@ import ssl
 import tomllib
 import sys
 import time
+import traceback
 
 from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECONDS,
                        Acl2Store, EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN,
@@ -34,7 +34,7 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        durable_post, exit_code_for, group_codes, metadata,
                        post_article, validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
-from run_feed import Journal, Session, TRAILER_BYTES  # the FNFD layout and the client half
+from feed_wire import Journal, Session, TRAILER_BYTES  # the FNFD layout and the client half
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_READ = 512
@@ -364,6 +364,20 @@ class Acl2Owner(Acl2Store):
         return self._nat("(fn-owner-feed-queue-length '{} state)".format(
             self.literal(peer.encode("utf-8"))))
 
+    def feed_has_queued(self, peer):
+        """Is there an entry the feed could OFFER: `fn-feed-head-queued`.
+
+        Not the queue length: an entry in flight is in the queue, and
+        dialling for one the feed cannot offer is what filled a peer's
+        connection table after a lost reply."""
+        return acl2_boolean(self.call("(fn-owner-feed-has-queued '{} state)".format(
+            self.literal(peer.encode("utf-8")))))
+
+    def feed_backoff_ms(self, peer):
+        """The peer record's outbound backoff, which ACL2 reads, not Python."""
+        return self._nat("(fn-owner-feed-backoff-ms '{} state)".format(
+            self.literal(peer.encode("utf-8"))))
+
     def feed_connect(self, peer, conn):
         return self._symbol_any("(fn-owner-feed-connect '{} {} state)".format(
             self.literal(peer.encode("utf-8")),
@@ -377,13 +391,28 @@ class Acl2Owner(Acl2Store):
         return self._symbol_any("(fn-owner-feed-octets '{} '{} {} state)".format(
             self.literal(peer.encode("utf-8")), self.literal(line), monotonic))
 
+    def trailer(self, prefix):
+        """The integrity trailer over a protected prefix, computed by ACL2.
+
+        `fn-frame-trailer' (books/frame-trailer.lisp) is `fn-frame-digest',
+        realised by `fn-sha256' through `books/crypto-attach.lisp'.  Until
+        `w11/one-owner' this method did not exist and the two call sites
+        below ran `hashlib.sha256', which made the FNFD trailer a third
+        owner of one decision beside `tools/frame_bridge.py' and
+        `host/native/io.lisp'.
+        """
+        octets = "'(" + " ".join(str(byte) for byte in prefix) + ")"
+        return bytes(acl2_octet_list(self.call(
+            "(fn-frame-trailer {})".format(octets))))
+
     def feed_frames(self):
         """The FNFD frames the last feed call authorized, sealed here.
 
         `fn-feed-encode' takes the trailer as an argument and ACL2 built each
-        frame with a zero one, so the host hashes the protected prefix and
-        appends the real digest (A-CRYPTO).  Python chooses no field and no
-        bound; it slices at a constant the book fixed.
+        frame with a zero one, so the host asks ACL2 for the trailer over the
+        protected prefix and appends it (A-CRYPTO).  Python chooses no field,
+        no bound and no digest; it slices at a constant the book fixed and
+        concatenates.
         """
         count = self._nat("(len (@ fn-owner-feed-frames))")
         frames = []
@@ -391,7 +420,7 @@ class Acl2Owner(Acl2Store):
             frame = bytes(acl2_octet_list(self.call(
                 "(fn-frame-item {} (@ fn-owner-feed-frames))".format(index))))
             protected = frame[:-TRAILER_BYTES]
-            frames.append(protected + hashlib.sha256(protected).digest())
+            frames.append(protected + self.trailer(protected))
         return frames
 
     def feed_record_peers(self):
@@ -402,7 +431,7 @@ class Acl2Owner(Acl2Store):
             "(fn-owner-feed-command state)")) or b"")
 
     def feed_replay_frame(self, peer, frame):
-        digest = hashlib.sha256(frame[:-TRAILER_BYTES]).digest()
+        digest = self.trailer(frame[:-TRAILER_BYTES])
         return self._symbol_any("(fn-owner-feed-replay-frame '{} '{} '{} state)".format(
             self.literal(peer.encode("utf-8")), self.literal(frame),
             self.literal(digest)))
@@ -564,6 +593,12 @@ class Feed:
         self.session = None
         self.conn_id = None
         self.pending_article = b""
+        # When the host may next open a socket for this peer. The interval
+        # is the peer record's own outbound backoff (ACL2 reads it); only
+        # the waiting is the host's. The feed machine's backoff cannot do
+        # this job: it gates `fn-feed-selection`, which needs a connection
+        # that a dial has not made yet.
+        self.next_dial = 0.0
 
     def close(self):
         if self.session is not None:
@@ -598,6 +633,23 @@ class Owner:
 
     # -- NNTP connections -------------------------------------------------
     def accept_nntp(self, listener):
+        """One accepted connection, and never the end of the service.
+
+        Everything below can raise: the bridge, the TLS handshake, the
+        peer-table read. An unexpected error here used to unwind through
+        `run` and the OWNER PROCESS EXITED at accept, which reaches the
+        client as a closed connection and reaches every later client as
+        `ConnectionRefusedError` -- one connection deciding the lifetime of
+        a service that was serving readers.
+
+        `w11/twonode-feed` contained that with a try/except of its own right
+        here, printing `ACCEPT-FAULT` and the traceback. This function no
+        longer catches, because `run` calls it under the ONE host-fault
+        boundary below, which prints the same word with the same traceback
+        and also counts it: an accept fault abandons nothing, so it is the
+        one kind that can repeat on every turn of the loop, and the count is
+        what bounds it. `ACCEPT-FAULT` is a defect signal, not an outcome.
+        """
         try:
             sock, _ = listener.accept()
         except OSError:
@@ -721,8 +773,12 @@ class Owner:
         """The TLS handshake, and the whole of it (RFC 4642 section 2.2).
 
         This is the trust boundary: Python's `ssl` performs the handshake and
-        no theorem in this tree says anything about it
-        (docs/trust-boundary.md, specs/nntp.md).  What ACL2 decided is
+        no theorem in this tree says anything about it (specs/nntp.md,
+        "Transport security, and what is trusted"; the audit row is
+        specs/nntp-audit.md section 2.3).  This line named
+        docs/trust-boundary.md until 2026-09-21; no such file has ever
+        existed, and the boundary it pointed at is the section named here.
+        What ACL2 decided is
         already decided -- that a handshake is owed, that the 382 was the
         right answer, that the connection served nothing behind it -- and
         what ACL2 is told afterwards is one wire event.  The socket goes
@@ -802,16 +858,30 @@ class Owner:
         else:
             self.unattributed_faults = 0
 
+    # The site's established log word.  `w11/twonode-feed` contained the
+    # accept and the feed faults first and named them; its evidence, its
+    # handoff, `tools/twonode_gate.py`'s log documentation and a live board
+    # ASK all read for these two words, so the vocabulary is kept and only
+    # the code path is folded into one.  A served read and a drained
+    # submission are this lane's and are `FAULT`.
+    FAULT_WORDS = {"accept": "ACCEPT-FAULT",
+                   "feed-read": "FEED-FAULT", "feed-poll": "FEED-FAULT"}
+
     def take_fault(self, site, error, conn=None, feed=None, cid=None):
         """Record one fault distinctly and abandon exactly what caused it."""
         named = "cid={}".format(conn.cid if conn is not None else cid) \
             if (conn is not None or cid is not None) \
-            else ("feed={}".format(feed.peer) if feed is not None else "-")
-        # FAULT, never `refused' and never `uncertain': the three outcomes are
-        # answers about an ARTICLE and this is not one.  A log reader, like the
-        # wire, can tell the four apart.
-        print("FAULT {} {} {}: {}".format(
-            site, named, type(error).__name__, error), file=sys.stderr, flush=True)
+            else (feed.peer if feed is not None else "-")
+        # A fault word, never `refused' and never `uncertain': the three
+        # outcomes are answers about an ARTICLE and this is not one.  A log
+        # reader, like the wire, can tell the four apart.  The traceback goes
+        # with it so the diagnosis survives in the server log.
+        print("{} {} {} {}: {}".format(
+            self.FAULT_WORDS.get(site, "FAULT"), site, named,
+            type(error).__name__, error), file=sys.stderr, flush=True)
+        traceback.print_exception(type(error), error, error.__traceback__,
+                                  file=sys.stderr)
+        sys.stderr.flush()
         if self.bridge.poisoned:
             # The ACL2 image IS the server: every decision the owner makes is
             # a call into it.  With the bridge lost there is nothing left to
@@ -1063,6 +1133,16 @@ class Owner:
             session = Session(host, port, 5.0)
         except OSError:
             return False
+        if not session.greeting.startswith(b"20"):
+            # RFC 3977 5.1.1: a server that does not greet has not given us a
+            # session. Without this, a peer that closes at accept -- or
+            # anything forwarding to a peer that is down -- looks like an open
+            # connection, and the feed writes a `(:feed-offer ...)` record and
+            # counts an attempt for an offer that can never be sent. Three of
+            # those reach `*fn-own-feed-retry-bound*` and the entry is
+            # dropped, so a peer that is merely down would cost an article.
+            session.close()
+            return False
         if self.bridge.feed_streamingp(feed.peer):
             session.send(b"MODE STREAM\r\n")
             session.line()
@@ -1099,24 +1179,33 @@ class Owner:
 
     def feed_poll(self):
         now = self.clock.milliseconds()
-        # One guarded unit per feed, not one for the sweep: a fault while
-        # talking to one peer costs that peer's session and no other's.
         for feed in list(self.feeds.values()):
-            self.guard("feed-poll", lambda: self.feed_tick_one(feed, now), feed=feed)
-            if self.stopping:
-                return
-
-    def feed_tick_one(self, feed, now):
-        if feed.session is None:
-            if self.bridge.feed_queue_length(feed.peer) > 0:
-                self.feed_dial(feed)
-            return
-        try:
-            if self.bridge.feed_tick(feed.peer, now) == "offer":
-                self.feed_flush()
-                self.feed_write(feed, self.bridge.feed_command())
-        except OSError:
-            self.feed_drop(feed)
+            # A feed that cannot make progress must not end the node, and
+            # the boundary is one guarded unit PER FEED and not one for the
+            # sweep: a fault while talking to one peer costs that peer's
+            # session and no other's. `take_fault` prints `FEED-FAULT <peer>`
+            # with its traceback -- `w11/twonode-feed`'s vocabulary, kept --
+            # and drops the feed; the entry stays queued and the next dial
+            # retries it. `FEED-FAULT` is a defect signal, not an outcome.
+            try:
+                if feed.session is None:
+                    if (now >= feed.next_dial
+                            and self.bridge.feed_has_queued(feed.peer)):
+                        if not self.feed_dial(feed):
+                            feed.next_dial = now + self.bridge.feed_backoff_ms(
+                                feed.peer)
+                    continue
+                if self.bridge.feed_tick(feed.peer, now) == "offer":
+                    self.feed_flush()
+                    self.feed_write(feed, self.bridge.feed_command())
+            except OSError:
+                self.feed_drop(feed)
+            except (SystemExit, KeyboardInterrupt):
+                raise
+            except BaseException as error:               # noqa: BLE001
+                self.take_fault("feed-poll", error, feed=feed)
+                if self.stopping:
+                    return
 
     def feed_read(self, peer):
         feed = self.feeds.get(peer)

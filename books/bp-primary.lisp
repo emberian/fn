@@ -414,6 +414,58 @@
 (verify-guards fn-bpp-fragment-offset)
 (verify-guards fn-bpp-total-adu-length)
 
+; Accessor-of-constructor, for the five block projections this book withdraws
+; at its end (`fn-bpp-projection-vocabulary`).
+;
+; Why the law is stated over a cons nest and not over `fn-bpp-make-block`.
+; The constructor stays ENABLED: withdrawing it as well would oblige this
+; book to export the tag, the length, the `true-listp` and the five
+; projections it still leaves enabled as five more rules apiece, which is the
+; opaque-record refactor (item 4 of `planning/deputies/bp.md`) and not this
+; lane's.  With the constructor enabled, ACL2 rewrites inside out and a
+; caller's goal never contains `(fn-bpp-flags (fn-bpp-make-block ...))`: by
+; the time the accessor is reached its argument is already the cons nest.
+; Measured 2026-09-21 on `fn-bpn-send-bundle-is-a-bundle`, whose checkpoint
+; is `(INTEGERP (FN-BPP-FLAGS (LIST* :FN-BP-PRIMARY 0 0 PEER ...)))`.
+;
+; Each rule needs an EXPLICIT cons, so none of them can fire on an opaque
+; block -- which is exactly what withdrawing the definition is for.
+(defthm fn-bpp-flags-of-a-built-block
+  (equal (fn-bpp-flags (cons tag (cons flags rest))) flags))
+
+(defthm fn-bpp-crc-type-of-a-built-block
+  (equal (fn-bpp-crc-type (cons tag (cons flags (cons crc-type rest))))
+         crc-type))
+
+(defthm fn-bpp-source-of-a-built-block
+  (equal (fn-bpp-source
+          (cons tag (cons flags (cons crc-type (cons destination
+                                                     (cons source rest))))))
+         source))
+
+(defthm fn-bpp-creation-time-of-a-built-block
+  (equal (fn-bpp-creation-time
+          (cons tag
+                (cons flags
+                      (cons crc-type
+                            (cons destination
+                                  (cons source
+                                        (cons report-to
+                                              (cons creation-time rest))))))))
+         creation-time))
+
+(defthm fn-bpp-sequence-of-a-built-block
+  (equal (fn-bpp-sequence
+          (cons tag
+                (cons flags
+                      (cons crc-type
+                            (cons destination
+                                  (cons source
+                                        (cons report-to
+                                              (cons creation-time
+                                                    (cons sequence rest)))))))))
+         sequence))
+
 (defun fn-bpp-timep (x)
   (declare (xargs :guard t))
   (and (natp x) (<= x *fn-bpc-max-uint*)))
@@ -604,6 +656,12 @@
 (verify-guards fn-bpp-error)
 (verify-guards fn-bpp-result-okp)
 (verify-guards fn-bpp-result-block)
+
+; The same law for the decode result, and for the same reason: `fn-bpp-ok`
+; stays enabled, so a caller's goal contains the cons nest rather than the
+; constructor.
+(defthm fn-bpp-result-block-of-a-built-result
+  (equal (fn-bpp-result-block (cons tag (cons b rest))) b))
 
 (defun fn-bpp-decode (octets)
   (declare (xargs :guard t))
@@ -851,3 +909,37 @@
   '((:d fn-bpp-primary-identity-value) (:d fn-bpp-primary-identity)))
 
 (in-theory (disable fn-bpp-identity-vocabulary))
+
+; -----------------------------------------------------------------------------
+; Export theory: the projections.
+;
+; These six are the `enabled_projection` lint's six entries for this book.
+; A projection whose `:definition` ships enabled is unfolded out of a
+; downstream goal before any rule stated over it can match, so a book above
+; that states a theorem about `(fn-bpp-flags p)` is reasoning about a term
+; that has already become `(nth 1 p)`.  Measured 2026-09-20, that is the
+; whole reason `books/bp-node` could not verify `fn-bpn-receive`'s guard:
+; the obligation is `fn-bpp-fragmentp`'s `(natp flags)` on the primary of a
+; decoded bundle, and every fact available was about `fn-bpp-blockp` or
+; `(fn-bpp-flags p)` while the goal said `(integerp (nth 1 p))`.
+;
+; What replaces the unfolding, above: the accessor-of-constructor laws
+; beside the accessors (an explicit cons is the only thing they match, so a
+; block that arrived from a decoder stays opaque), and the shape conjuncts
+; `fn-bpp-blockp` already carries in projection vocabulary.
+;
+; The other five block projections (`fn-bpp-destination`,
+; `fn-bpp-report-to`, `fn-bpp-lifetime`, `fn-bpp-fragment-offset`,
+; `fn-bpp-total-adu-length`) stay enabled: the lint does not name them
+; because no book above states a theorem over them, and withdrawing them
+; without their own accessor-of-constructor laws would only move the
+; problem.  Withdrawing the constructor too -- the opaque-record refactor,
+; item 4 of `planning/deputies/bp.md` -- is what makes that worth doing in
+; one step.
+
+(deftheory fn-bpp-projection-vocabulary
+  '((:d fn-bpp-flags) (:d fn-bpp-crc-type) (:d fn-bpp-source)
+    (:d fn-bpp-creation-time) (:d fn-bpp-sequence)
+    (:d fn-bpp-result-block)))
+
+(in-theory (disable fn-bpp-projection-vocabulary))

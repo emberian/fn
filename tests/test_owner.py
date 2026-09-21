@@ -3,6 +3,7 @@ import os
 import select
 import signal
 import socket
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -170,7 +171,32 @@ def assert_bytes(sock, expected):
         raise AssertionError("expected {!r}, received {!r}".format(expected, received))
 
 
-class OwnerTests(unittest.TestCase):
+def read_line(sock):
+    """One CRLF-terminated status line."""
+    data = b""
+    while not data.endswith(b"\r\n"):
+        chunk = sock.recv(1)
+        if not chunk:
+            break
+        data += chunk
+    return data.decode("ascii", "replace").strip()
+
+
+def read_block(sock):
+    """A multi-line block up to its terminating dot (RFC 3977 section 3.1.1)."""
+    data = b""
+    while not data.endswith(b"\r\n.\r\n"):
+        chunk = sock.recv(4096)
+        if not chunk:
+            break
+        data += chunk
+    return [line for line in data.decode("ascii", "replace").split("\r\n")
+            if line and line != "."]
+
+
+class OwnerFixture(unittest.TestCase):
+    """A store, an owner process and the store CLI: the fixture, no tests."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="fn-owner-")
         self.store = Path(self.temp.name) / "store"
@@ -197,6 +223,8 @@ class OwnerTests(unittest.TestCase):
         self.owner = OwnerProcess(self.store, self.control, **kwargs).start()
         return self.owner
 
+
+class OwnerTests(OwnerFixture):
     def test_two_readers_keep_their_pins_across_a_post_until_advanced(self):
         owner = self.start_owner()
         first = owner.connect()
@@ -307,6 +335,8 @@ def self_signed(directory):
     """A throwaway certificate for the TLS listener test, or None."""
     cert = Path(directory) / "fn-test.pem"
     key = Path(directory) / "fn-test.key"
+    if shutil.which("openssl") is None:
+        return None
     result = subprocess.run(
         ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
          "-keyout", str(key), "-out", str(cert), "-days", "1",
@@ -314,7 +344,14 @@ def self_signed(directory):
          "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1"],
         capture_output=True)
     if result.returncode != 0 or not cert.exists() or not key.exists():
-        return None
+        # openssl is installed and refused.  Until 2026-09-21 this returned
+        # None here too and the test skipped saying "openssl is not
+        # available", which was not the predicate: an openssl too old for
+        # `-addext`, a full disk and a broken `req` all read as an absent
+        # dependency.  A tool that is present and fails is a failure.
+        raise RuntimeError(
+            "openssl is installed and would not make a test certificate: {}"
+            .format(result.stderr.decode("utf-8", "replace")[-500:]))
     return cert, key
 
 
@@ -334,7 +371,7 @@ class OwnerTlsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             material = self_signed(directory)
             if material is None:
-                self.skipTest("openssl is not available to make a test certificate")
+                self.skipTest("openssl is not on PATH, so no test certificate can be made")
             cert, key = material
             store = Path(directory) / "store"
             control = Path(directory) / "control.sock"
@@ -377,7 +414,7 @@ class OwnerTlsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             material = self_signed(directory)
             if material is None:
-                self.skipTest("openssl is not available to make a test certificate")
+                self.skipTest("openssl is not on PATH, so no test certificate can be made")
             cert, key = material
             store = Path(directory) / "store"
             control = Path(directory) / "control.sock"
@@ -414,7 +451,7 @@ FAULT_LINE = (b"403 internal fault; this connection is closed "
               b"and the server continues\r\n")
 
 
-class OwnerSurvivesAFaultTests(unittest.TestCase):
+class OwnerSurvivesAFaultTests(OwnerFixture):
     """One connection's host fault must not end the service (w11/owner-survival).
 
     Until 2026-09-21 an exception raised anywhere under `Owner.serve' unwound
@@ -436,34 +473,13 @@ class OwnerSurvivesAFaultTests(unittest.TestCase):
                b"Newsgroups: fn.letters\r\n\r\nHello, news.\r\n.\r\n")
 
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="fn-owner-fault-")
-        self.store = Path(self.temp.name) / "store"
-        self.control = Path(self.temp.name) / "owner.sock"
-        self.payload = Path(self.temp.name) / "article"
-        self.store_command("init")
+        # OwnerFixture's store, plus one article so a read-back has something
+        # to be read back against.
+        super().setUp()
         self.payload.write_bytes(b"Message-ID: <seed@example.invalid>\r\n"
                                  b"Subject: seed\r\n\r\nSeed body\r\n")
         self.store_command("post", "--message-id", "<seed@example.invalid>",
                            "--payload", str(self.payload), "--group", "fn.letters")
-        self.owner = None
-
-    def tearDown(self):
-        if self.owner is not None:
-            self.owner.stop()
-        self.temp.cleanup()
-
-    def store_command(self, command, *args, expected=0):
-        result = subprocess.run(
-            [sys.executable, "tools/run_store.py", "--store", str(self.store), command,
-             *map(str, args)], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if result.returncode != expected:
-            self.fail("store {} returned {}\nstdout={}\nstderr={}".format(
-                command, result.returncode, result.stdout, result.stderr))
-        return result
-
-    def start_owner(self, **kwargs):
-        self.owner = OwnerProcess(self.store, self.control, **kwargs).start()
-        return self.owner
 
     @staticmethod
     def read_until_eof(sock):
@@ -543,3 +559,83 @@ class OwnerSurvivesAFaultTests(unittest.TestCase):
         recorded = owner.stop_reading_stderr()
         self.owner = None
         self.assertIn("FAULT drain cid=", recorded)
+
+class TransitPortTests(OwnerFixture):
+    """The role of an inbound connection is the peer table's, not the client's.
+
+    specs/peering.md 1.1: a connection whose source address matches a
+    configured record's `auth-source-address` row opens as transit
+    (`fn-own-open-peer` -> `fn-served-open-peer`), and every other connection
+    opens as a reader (`fn-own-open` -> `fn-served-open`).  The decision is
+    ACL2's -- `fn-owner-peer-for-address` reads the record -- and the host
+    only passes it the source address it got from the socket.
+
+    Without this, node B answers every transit offer `502 transit is not
+    permitted on this connection`, which is the model correctly answering a
+    READER question, and no article can cross between two fn nodes in either
+    direction.
+    """
+
+    def peer_record(self, name="b", address="127.0.0.1", port=119):
+        """One `peer add`, the shape tools/twonode_gate.py writes."""
+        self.store_command("peer", "add", name,
+                           "--path-identity", "{}.gate.example.invalid".format(name),
+                           "--nntp", "127.0.0.1:{}".format(port),
+                           "--inbound-groups", "fn.*",
+                           "--outbound-groups", "fn.*",
+                           "--streaming",
+                           "--source-address", address)
+
+    def probe(self, owner, msgid="<transit-probe@example.invalid>"):
+        """What this connection is told it may do, and what an offer draws."""
+        sock = owner.connect()
+        try:
+            sock.sendall(b"CAPABILITIES\r\n")
+            status = read_line(sock)
+            capabilities = read_block(sock) if status.startswith("101") else []
+            sock.sendall("IHAVE {}\r\n".format(msgid).encode())
+            offer = read_line(sock)
+        finally:
+            sock.close()
+        return capabilities, offer
+
+    def test_a_reader_connection_is_refused_the_transit_commands(self):
+        """The control: with no peer record, 127.0.0.1 is an ordinary client."""
+        owner = self.start_owner()
+        unused_capabilities, offer = self.probe(owner)
+        self.assertTrue(offer.startswith("502"), offer)
+
+    def test_a_connection_from_a_configured_peer_address_opens_as_transit(self):
+        self.peer_record(address="127.0.0.1")
+        owner = self.start_owner()
+        unused_capabilities, offer = self.probe(owner)
+        # 335 is "send it".  What this asserts is the accept decision: the
+        # answer is no longer the reader's 502, so the session the book is
+        # stepping is fn-served-open-peer's.  The transfer decision itself is
+        # fn-peer-decide-transfer's and is not probed here.
+        self.assertTrue(offer.startswith("335"), offer)
+
+    def test_a_record_for_a_different_address_does_not_open_transit(self):
+        """The tooth for the address: a peer table is not a blanket permit."""
+        self.peer_record(address="10.99.99.99")
+        owner = self.start_owner()
+        unused_capabilities, offer = self.probe(owner)
+        self.assertTrue(offer.startswith("502"), offer)
+
+    def test_the_capability_block_does_not_yet_name_the_transit_commands(self):
+        """A recorded defect, asserted as it IS and not as it should be.
+
+        RFC 3977 section 5.2: CAPABILITIES lists what THIS connection may do.
+        On a transit connection the book answers `IHAVE` with 335 and still
+        renders the reader block, so a peer that probes before it offers is
+        told the wrong thing.  The assertion below is the current behaviour;
+        when books/served renders the transit commands for a peer session it
+        fails, and that is the point -- a silent capability gap is what a
+        harness reading CAPABILITIES would report as "no transit surface".
+        """
+        self.peer_record(address="127.0.0.1")
+        owner = self.start_owner()
+        capabilities, offer = self.probe(owner)
+        self.assertTrue(offer.startswith("335"), offer)
+        self.assertNotIn("IHAVE", capabilities)
+        self.assertNotIn("STREAMING", capabilities)

@@ -181,7 +181,8 @@
                                  out-backoff auth-kind auth-octets)
   ; The typed record the operator's words denote, or nil.  `port' 0 selects a
   ; BP transport whose eid is `host-octets'; an empty inbound or outbound
-  ; group pattern selects the absent half.
+  ; group pattern selects the absent half; an inbound bound of 0 selects
+  ; *fn-record-max-payload*, the largest article this store can hold.
   (declare (xargs :mode :program))
   (let ((name (fn-store-octets->string name-octets))
         (path (fn-store-octets->string path-octets))
@@ -199,7 +200,17 @@
                   (list :bp endpoint))
                 (if (equal ingroups "")
                     nil
-                  (list ingroups (nfix in-max-octets) (nfix in-inflight)))
+                  ; An unsaid inbound bound (0) is the record layer's own
+                  ; ceiling.  `fn-cfg-peer-inboundp' refuses anything above
+                  ; *fn-record-max-payload*, so a default typed into the CLI
+                  ; would be a second owner of that number -- and the one
+                  ; that was there (1048576, 32 times the ceiling) refused
+                  ; every `peer add' made with the defaults.
+                  (list ingroups
+                        (if (posp in-max-octets)
+                            in-max-octets
+                          *fn-record-max-payload*)
+                        (nfix in-inflight)))
                 (if (equal outgroups "")
                     nil
                   (list outgroups (and out-streaming t) (nfix out-max-queue)
@@ -257,6 +268,38 @@
           (value :refused))
       (fn-store-cfg-peer-delta-record (list (fn-cfg-set-peer-delta p))
                                       monotonic wall state))))
+
+; The node's own policy slots (`fn policy set|get`).  The one peering needs
+; is "path-identity": `fn-peer-local-identity` (books/peer-inbound.lisp)
+; reads exactly this slot, and RFC 5537 section 3.5 loop suppression is
+; INERT while it is unset -- an unset slot reads as the empty string, and
+; `fn-path-names-p` never matches the empty identity, so a node cannot
+; recognise its own name in a Path.  Measured on the two-node gate,
+; 2026-09-20: both nodes accepted an article whose Path named them, because
+; nothing on this tree could ever write the slot.  `fn-store-prov-post`
+; reads the same slot and substituted "local" for it.
+;
+; The delta, its admissibility and the record octets are `books/config`'s,
+; through the same `fn-cnode-record-acceptablep` `peer add` and
+; `group create` use.
+(defun fn-store-cfg-set-policy (slot-octets id-octets monotonic wall state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((slot (fn-store-octets->string slot-octets))
+        (id (fn-store-octets->string id-octets)))
+    (if (or (equal slot :bad) (equal id :bad) (equal slot ""))
+        (let ((state (f-put-global 'fn-store-cfg-last-reason :policy-slot state)))
+          (value :refused))
+      (fn-store-cfg-peer-delta-record (list (fn-cfg-set-policy slot id))
+                                      monotonic wall state))))
+
+(defun fn-store-cfg-policy (slot-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((slot (fn-store-octets->string slot-octets)))
+    (if (equal slot :bad)
+        (value nil)
+      (value (fn-record-string-octets
+              (fn-cfg-policy (fn-cfg-value (f-get-global 'fn-store-cfg state))
+                             slot))))))
 
 (defun fn-store-cfg-remove-peer (name-octets monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
@@ -482,6 +525,90 @@
                  (fn-node-acceptance
                   (fn-sn-node (f-get-global 'fn-store-sn state)))))
                t nil))))
+
+; -----------------------------------------------------------------------------
+; The served statement query (decision D21)
+;
+; THE HOST LINE THE ASSURANCE RULE ASKS FOR.  fn-store-sn-statement below
+; calls fn-sn-statement-lookup (books/store-node.lisp) on the value of the
+; 'fn-store-sn global, and that function reads the carried index and nothing
+; else: it does not walk the store, does not re-parse an article and does not
+; verify a signature.  What licenses reading the index instead of the lace
+; projection is fn-sn-statement-lookup-is-the-lace-lookup
+; (books/store-node-invariants.lisp).  Its hypothesis, fn-sn-indexedp, holds
+; of this global because fn-sn-initial-is-indexed establishes it at
+; fn-store-sn-reset and every transition this file applies to the global --
+; fn-sn-io, fn-sn-prepare, fn-sn-finish, fn-sn-refuse-reservation,
+; fn-sn-known-abort, fn-sn-recover and fn-sn-set-keyring -- is proved to
+; preserve it.
+
+; The verification context.  A node that holds no key verifies no statement,
+; so an unconfigured store answers every statement query with "absent" rather
+; than with a guess: that is the fail-closed floor of specs/reconfiguration.md
+; section 1.6, at the statement layer.  Installing a keyring recomputes the
+; index over the whole store, which is correct -- a new keyring gives a new
+; set of verified statements -- and is a reconfiguration event, not a served
+; path.  The validity decision is ACL2's fn-prin-keyringp, called here; this
+; file does not re-decide it.
+(defun fn-store-sn-keyring-of-pairs (pairs)
+  (declare (xargs :mode :program))
+  (if (consp pairs)
+      (let ((entry (car pairs)))
+        (if (and (true-listp entry) (equal (len entry) 2))
+            (let ((rest (fn-store-sn-keyring-of-pairs (cdr pairs))))
+              (if (equal rest :bad)
+                  :bad
+                (cons (cons (car entry) (car (cdr entry))) rest)))
+          :bad))
+    (if (null pairs) nil :bad)))
+
+(defun fn-store-sn-set-keyring (pairs state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((keyring (fn-store-sn-keyring-of-pairs pairs)))
+    (if (or (equal keyring :bad) (not (fn-prin-keyringp keyring)))
+        (value :invalid)
+      (let ((state (f-put-global
+                    'fn-store-sn
+                    (fn-sn-set-keyring (f-get-global 'fn-store-sn state)
+                                       keyring)
+                    state)))
+        (value :configured)))))
+
+(defun fn-store-sn-keyring-size (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (len (fn-sn-keyring (f-get-global 'fn-store-sn state)))))
+
+; The query.  Absent is nil; present is the statement's canonical octets.
+(defun fn-store-sn-statement (id-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (not (fn-octet-listp id-octets))
+      (value nil)
+    (let ((statement (fn-sn-statement-lookup
+                      (f-get-global 'fn-store-sn state) id-octets)))
+      (value (if statement (fn-stmt-encode statement) nil)))))
+
+; The equivocation question, answered from the index's third list.  It is a
+; DISCOVERY AID with a proved agreement to the lace
+; (fn-sn-equivocatorp-is-the-lace-equivocator), never an independent
+; authority.
+(defun fn-store-sn-equivocator (creator-octets incarnation state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (or (not (fn-octet-listp creator-octets)) (not (natp incarnation)))
+      (value :invalid)
+    (value (if (fn-sn-equivocatorp (f-get-global 'fn-store-sn state)
+                                   creator-octets incarnation)
+               :equivocator
+             :single))))
+
+; The number of bindings the index holds.  This is the served-path cost
+; witness: fn-stx-index-lookup-cost-is-index-bounded bounds a lookup by this
+; number, which grows by at most one per accepted article
+; (fn-stx-index-grows-by-at-most-one-binding), where the lace projection it
+; replaces is linear in the whole store.
+(defun fn-store-sn-index-size (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (len (fn-stx-index-bindings
+               (fn-sn-index (f-get-global 'fn-store-sn state))))))
 
 ; The staging sweep (books/store-sweep.lisp).  Python enumerates the staging
 ; directory and names what the live process still holds; which of those names

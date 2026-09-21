@@ -155,24 +155,20 @@ class FnCliTests(unittest.TestCase):
         return result
 
     def start_service(self):
-        """Start the service, or skip on the one known in-flight breakage.
+        """Start the service.  A service that does not start fails this test.
 
-        `books/owner.lisp` does not include on this base: `fn-served-open`
-        and `fn-served-make-conn` grew two fields with w4/post and the owner
-        cluster has not caught up (board NOTE, w3/reader-profile to owner;
-        planning/lanes/HANDOFF-w2-mutable-owner.md).  That is the sibling
-        `w5/owner-post` lane's repair, not a defect of `bin/fn`, and this
-        case is ready to run the moment it lands.  Any other failure to
-        start is a real failure of this test.
+        Until 2026-09-21 there was a waiver here: a `ServiceUnavailable`
+        whose text mentioned `books/owner` became a SKIP, for an include
+        break `fn-served-open` and `fn-served-make-conn` caused when they
+        grew two fields with w4/post.  That break is repaired -- every call
+        in every `ld`ed host file agrees with its definition
+        (`python3 tools/harness_check.py --lint acl2-arity`) and
+        `books/owner` certifies -- and the waiver had outlived it.  It was
+        keyed on a substring of a failure message, which is the shape that
+        cost this tree two dead labs for a day, so it is gone rather than
+        re-pointed.
         """
-        try:
-            self.service = Service(self.config).start()
-        except ServiceUnavailable as unavailable:
-            if "books/owner" in str(unavailable):
-                self.skipTest("books/owner does not include on this base; "
-                              "the owner cluster is mid-repair: "
-                              + " ".join(str(unavailable).split())[:400])
-            raise
+        self.service = Service(self.config).start()
         return self.service
 
     # -- the store-side surface, with no owner running --------------------
@@ -284,6 +280,27 @@ class FnCliTests(unittest.TestCase):
             'host = "127.0.0.1"', 'host = "0.0.0.0"'))
         refused = self.fn("run", expected=EXIT_REFUSED)
         self.assertIn(b"is not loopback", refused.stderr)
+
+    def test_peer_add_with_no_size_options_is_accepted(self):
+        """The operator's first `fn peer add`, which the model used to refuse.
+
+        `--inbound-max-octets` defaulted to 1048576 here and in
+        `tools/run_store.py`; `fn-cfg-peer-inboundp` (books/peer-config.lisp)
+        caps it at `*fn-record-max-payload*`, so the documented default was
+        exit 1 with `peer-record`.  The default is 0 now and
+        `fn-store-cfg-peer-record` resolves it to the model's own ceiling.
+        This case asserts the outcome at the `bin/fn` surface, not the
+        number: `tests/test_store_config.py` reads the ceiling back out of
+        the admitted record and shows the bound still bites above it.
+        """
+        self.fn_init()
+        added = self.fn("peer", "add", "upstream", "--nntp", "news.example.invalid:119",
+                        "--inbound-groups", "fn.*", "--source-address", "192.0.2.1")
+        self.assertTrue(added.stderr.decode().startswith("accepted peer add "), added.stderr)
+        self.assertIn(b"peer added name=upstream", added.stdout)
+        listing = self.fn("peer", "list")
+        self.assertIn(b"name=upstream ", listing.stdout)
+        self.assertIn(b"inbound=fn.* max-octets=", listing.stdout)
 
     def test_a_missing_configuration_is_refused_not_faulted(self):
         result = subprocess.run(

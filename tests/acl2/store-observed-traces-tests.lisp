@@ -226,7 +226,8 @@
 (defconst *fn-so-unrelated*
   (fn-sn-make *fn-so-live-groups* 10
               (fn-sf-make :ready 1 nil (list *fn-so-alien*) nil nil '((0 . 0)) 5)
-              (fn-node-initial-state *fn-so-live-groups* 10)))
+              (fn-node-initial-state *fn-so-live-groups* 10)
+              nil (fn-stx-index-empty)))
 (assert-event (fn-sn-statep *fn-so-unrelated*))
 (assert-event (not (fn-snt-relation *fn-so-unrelated*)))
 (assert-event (fn-sf-crash-imagep (fn-sn-files *fn-so-unrelated*) 1 (list *fn-so-alien*)))
@@ -255,8 +256,11 @@
                                            (list *fn-so-first*)))
 (assert-event (equal (fn-sf-stable-records (fn-sn-files *fn-so-gap-opened*))
                      (list *fn-so-first*)))
-; ...and no more: two dropped records, a dropped FIRST record, and a
-; rolled-back frontier are all refused.
+; ...and no more: two dropped records, a dropped FIRST record, and BOTH
+; rollbacks at once are refused.  The last line was written for D14-b as "a
+; rolled-back frontier is refused"; K2f makes that reading wrong -- a
+; rolled-back frontier alone IS admitted here (below) -- and the line is now
+; the tooth for the EXCLUSIVITY conjunct of the frontier arm.
 (assert-event (not (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-gap-opened*) 4 nil)))
 (assert-event (not (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-gap-opened*) 4
                                                 (list *fn-so-second*))))
@@ -332,6 +336,126 @@
                     (fn-sn-files (fn-sn-open-state *fn-so-empty*)))))
 (assert-event (equal (fn-sf-stable-records
                       (fn-sn-files (fn-sn-open-state *fn-so-empty*))) nil))
+
+
+; -----------------------------------------------------------------------------
+; K2f: the FRONTIER half of the recovery freedom (lane w11/bytestore-k2).
+;
+; The window is entered with a pending :root rename too: Store.advance_frontier
+; issues os.replace (run_store.py:1305), dies at frontier-replaced, and the
+; next process reads the VIEW, so its kernel holds old+1 while the durable
+; name still holds old.  Recovery drains :root only at its FOURTH barrier
+; (fsync_dir(self.root), run_store.py:1216), so a crash before that rolls the
+; frontier back to a value the kernel holds nowhere --
+; fn-sf-frontier-candidate is nil in this window.
+;
+; *fn-so-gap-opened* is the witness: frontier 4, records at txids 0 and 2, so
+; txid 3 is reserved and unconsumed -- exactly the state advance_frontier
+; leaves when its rename has not been fenced.
+(assert-event (fn-sf-frontier-rollback-visiblep (fn-sn-files *fn-so-gap-opened*)))
+(assert-event (equal (fn-sf-frontier-candidate (fn-sn-files *fn-so-gap-opened*)) nil))
+(assert-event (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-gap-opened*) 3
+                                           (list *fn-so-first* *fn-so-second*)))
+; The two predicates differ on the frontier as they do on the records: this
+; is the K2f half of D14-b.
+(assert-event (not (fn-sf-crash-imagep (fn-sn-files *fn-so-gap-opened*) 3
+                                       (list *fn-so-first* *fn-so-second*))))
+; The constructor inhabits the arm and reproduces exactly that image.
+(assert-event (equal (fn-sf-frontier
+                      (fn-sf-crash-frontier-rollback (fn-sn-files *fn-so-gap-opened*)))
+                     3))
+(assert-event (equal (fn-sf-records
+                      (fn-sf-crash-frontier-rollback (fn-sn-files *fn-so-gap-opened*)))
+                     (list *fn-so-first* *fn-so-second*)))
+(assert-event (equal (fn-sf-phase
+                      (fn-sf-crash-frontier-rollback (fn-sn-files *fn-so-gap-opened*)))
+                     :replaying))
+(assert-event (fn-sf-statep
+               (fn-sf-crash-frontier-rollback (fn-sn-files *fn-so-gap-opened*))))
+(assert-event (equal (fn-sf-image-crash (fn-sn-files *fn-so-gap-opened*) 3
+                                        (list *fn-so-first* *fn-so-second*))
+                     (fn-sf-crash-frontier-rollback (fn-sn-files *fn-so-gap-opened*))))
+; ...and the rolled-back image still opens, so the freedom is an image the
+; host cannot tell from the durable one rather than one it would refuse.
+; This is packet 2's payoff at a ground state: recoverability survives the
+; lower frontier because no record holds the txid it gives back.
+(assert-event (fn-sn-open-okp
+               (fn-sn-open-observed *fn-so-live-groups* 10 3
+                                    (list *fn-so-first* *fn-so-second*))))
+(assert-event (fn-sf-history-recoverablep *fn-so-live-groups* 10
+                                          (list *fn-so-first* *fn-so-second*) 3))
+
+; Tooth for the RECORD-LIST conjunct, and it is the conjunct that carries the
+; correspondence.  *fn-so-tight-opened* is the same two records in the same
+; window with frontier 3 -- the reservation txid 2 HAS been consumed by
+; *fn-so-second*, so the rename that made frontier 3 durable is long past and
+; the frontier cannot go back.  The record arm is still open here, so this
+; witness separates the two arms by more than their weakest clause.
+(defconst *fn-so-tight-opened*
+  (fn-sn-open-state
+   (fn-sn-open-observed *fn-so-live-groups* 10 3
+                        (list *fn-so-first* *fn-so-second*))))
+(assert-event (fn-snt-relation *fn-so-tight-opened*))
+(assert-event (fn-sf-recovery-visiblep (fn-sn-files *fn-so-tight-opened*)))
+(assert-event (equal (fn-sf-frontier (fn-sn-files *fn-so-tight-opened*)) 3))
+(assert-event (not (fn-sf-record-listp (list *fn-so-first* *fn-so-second*) 0 0 2)))
+(assert-event (not (fn-sf-frontier-rollback-visiblep
+                    (fn-sn-files *fn-so-tight-opened*))))
+(assert-event (not (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-tight-opened*) 2
+                                                (list *fn-so-first* *fn-so-second*))))
+(assert-event (fn-sf-record-rollback-visiblep (fn-sn-files *fn-so-tight-opened*)))
+(assert-event (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-tight-opened*) 3
+                                           (list *fn-so-first*)))
+
+; Tooth for the PHASE conjunct: five barriers later the rename is fenced
+; (fsync_dir(self.root) is the fourth of them) and the frontier is final.
+(assert-event (not (fn-sf-frontier-rollback-visiblep (fn-sn-files *fn-so-gap-ready*))))
+(assert-event (not (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-gap-ready*) 3
+                                                (list *fn-so-first* *fn-so-second*))))
+
+; Tooth for the SUCCESS conjunct, and it is not the record arm's reason.
+; *fn-so-reserved-crashed* reserves txid 7 (frontier 7 to 8) and then crashes:
+; it is a :replaying state with frontier 8, records at txids 0, 2 and 6, and
+; an acknowledged pair.  Every other conjunct of the frontier gate holds --
+; the record list IS below 7 -- and the arm is still closed, because a crash
+; from :reserved has already observed (:frontier-directory :ok), so
+; fsync_dir(self.root) returned and the rename is durable.  fn-sf-crash is
+; what models a crash there and it keeps the frontier.  This witness also
+; separates the two rollback arms from each other: the record arm is closed
+; here for its own reason (a non-empty success history) and the frontier arm
+; for this one.
+(defconst *fn-so-reserved-crashed*
+  (fn-sn-files (fn-snrt-run *fn-so-acked*
+                            (append *fn-so-reserve* '((:crash :old :absent))))))
+(assert-event (fn-sf-recovery-visiblep *fn-so-reserved-crashed*))
+(assert-event (equal (fn-sf-frontier *fn-so-reserved-crashed*) 8))
+(assert-event (equal (fn-sf-successes *fn-so-reserved-crashed*) '((2 . 6))))
+(assert-event (fn-sf-record-listp (fn-sf-records *fn-so-reserved-crashed*) 0 0 7))
+(assert-event (not (fn-sf-frontier-rollback-visiblep *fn-so-reserved-crashed*)))
+(assert-event (not (fn-sf-record-rollback-visiblep *fn-so-reserved-crashed*)))
+(assert-event (not (fn-sf-recovery-crash-imagep *fn-so-reserved-crashed* 7
+                                                (fn-sf-records *fn-so-reserved-crashed*))))
+(assert-event (fn-sf-recovery-crash-imagep *fn-so-reserved-crashed* 8
+                                           (fn-sf-records *fn-so-reserved-crashed*)))
+
+; Tooth for the POSITIVITY conjunct.  On a frontier of 0 the arm would offer
+; -1, which is not a frontier at all: fn-sf-statep demands
+; fn-record-uint32p.  (fn-sf-record-listp nil 0 0 -1) is true, so the
+; record-list conjunct does not exclude it and posp is not redundant.
+(assert-event (equal (fn-sf-frontier (fn-sn-files (fn-sn-open-state *fn-so-empty*))) 0))
+(assert-event (with-guard-checking :none (fn-sf-record-listp nil 0 0 -1)))
+(assert-event (fn-record-uint32p 3))
+(assert-event (not (fn-record-uint32p -1)))
+(assert-event (not (fn-sf-frontier-rollback-visiblep
+                    (fn-sn-files (fn-sn-open-state *fn-so-empty*)))))
+(assert-event (with-guard-checking :none
+               (not (fn-sf-recovery-crash-imagep
+                     (fn-sn-files (fn-sn-open-state *fn-so-empty*)) -1 nil))))
+
+; The platform twin of the recoverability keystone holds at both rollbacks of
+; this state, and the relation it needs is the one *fn-so-gap-opened* has.
+(assert-event (fn-sf-history-recoverablep *fn-so-live-groups* 10
+                                          (list *fn-so-first*) 4))
 
 ; -----------------------------------------------------------------------------
 ; Why fn-sf-crash-imagep itself was NOT widened: the counterexample, kernel
