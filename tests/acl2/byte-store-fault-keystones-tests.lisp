@@ -85,3 +85,23 @@
       (fn-bs-fsync-dir bs :staging (cons :eio '(:drop)))
       (declare (ignore result))
       (fn-bs-dir-quietp bs1 :transactions)))))
+
+(assert-event
+ (let* ((pair (nth 10 *fn-bsfk-frontier-run*))
+        (bs (car pair))
+        (ks (cdr pair)))
+   (mv-let (result bs1)
+     (fn-bs-fsync-dir bs :root (cons :eio '(:apply :drop)))
+     (and (equal result :eio)
+          (equal (fn-sf-phase ks) :frontier-attempted)
+          (fn-bs-dir-quietp bs1 :root)
+          (fn-sf-fencedp (fn-sf-frontier-dir-result ks :error))))))
+
+(must-fail
+ (assert-event
+  (let* ((pair (nth 10 *fn-bsfk-frontier-run*))
+         (bs (car pair)))
+    (mv-let (result bs1)
+      (fn-bs-fsync-dir bs :transactions (cons :eio nil))
+      (declare (ignore result))
+      (fn-bs-dir-quietp bs1 :root)))))
