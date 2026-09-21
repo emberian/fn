@@ -53,6 +53,13 @@ not load.  Therefore this record makes no owner-book certification claim.  A
 current-main certification of the outer correspondence event is required
 after the store changes are integrated.
 
+Integration comparison against main `220bcb05` also found changed dependency
+sources in `cbor`, `cbor-invariants`, `frame-journal`, `nntp-auth`,
+`peer-config`, `peer-inbound`, `replay`, `statement`, and `store-events`.
+`wire` differs by the subsequent guard-comment correction. The served
+transition and its focused test match the certified source, but this archived
+closure is not a certificate of the current combined dependency tree.
+
 The source-level cost check in `tests/test_native_served_cost.py` passed all
 three tests.  It verifies the production call chain and counts a fixed set of
 spine/scalar selector expressions; it is a static source-scope check, not a
