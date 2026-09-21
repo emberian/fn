@@ -1,7 +1,8 @@
 # Handoff: w11/transit-correct (the decision the wire carries)
 
 Branch `w11/transit-correct`, worktree `build/lanes/w11-transit-correct`,
-from `dev` `0eedafc`, merged with `dev` `fd2eb2d`.
+from `dev` `0eedafc`, merged with `dev` `fd2eb2d` and then `9e4b7ee`.
+Head `3f68944`.
 
 ## Three defects, three different places, and none of them was the model
 
@@ -150,13 +151,16 @@ books/owner.lisp --closure --jobs 8`, remote root
 | run | verdict |
 | --- | --- |
 | `run-20260921T033252Z-6ba2` | 86 of 87 passed; the one failure was `tests/acl2/owner-tests` and it was the TEST's own accessor -- `fn-served-step` returns a result record and the assertion read `(car ...)` of it, which is the connection |
-| `run-20260921T034738Z-5276` | **passed, 0 failures, 87 books, 215.5 s**, on the lane head `873e109`, `source_digests_sha256` unchanged across the run. **This is the certification of record.** It covers `books/peer-inbound` (58.0 s), `books/peer-inbound-invariants`, `books/owner`, `books/owner-invariants` (8.2 s), `books/served`, `books/owner-feed`, `books/peer-feed-invariants`, `tests/acl2/peer-inbound-tests`, `tests/acl2/owner-tests`, `tests/acl2/served-tests`, `tests/acl2/owner-config-tests`, `tests/acl2/nntp-auth-tests` |
+| `run-20260921T034738Z-5276` | passed, 0 failures, 87 books, 215.5 s, on `873e109`, `source_digests_sha256` unchanged |
+| `run-20260921T043029Z-6012` | **passed, 0 failures, 88 books, 198.3 s**, on the MERGED head `3f68944`, `source_digests_sha256` unchanged. **This is the certification of record**, and it is of the head: the second `dev` merge brought `books/owner-fault.lisp` (which sits above `books/owner`) and 72 lines of `host/owner-host.lisp` from other lanes, and that book is in the set and passed. It covers `books/peer-inbound` (58.0 s), `books/peer-inbound-invariants`, `books/owner`, `books/owner-invariants` (8.2 s), `books/served`, `books/owner-feed`, `books/peer-feed-invariants`, `tests/acl2/peer-inbound-tests`, `tests/acl2/owner-tests`, `tests/acl2/served-tests`, `tests/acl2/owner-config-tests`, `tests/acl2/nntp-auth-tests` |
 
 ## The two-node gate, before and after
 
 `tools/twonode_gate.py HEAD --host persvati --jobs 8`, run from this
 worktree. `planning/evidence/twonode-873e109-2026-09-21.md`, 371.0 s, 132
-steps.
+steps, and again on the MERGED head as
+`planning/evidence/twonode-3f68944-2026-09-21.md` with the same five verdicts
+and the same two violations, so the numbers below are of the head.
 
 | | `f49a844` (w11/gate-verdicts) | `873e109` (this lane) |
 | --- | --- | --- |
@@ -202,15 +206,24 @@ tool into `planning/v0-matrix.json` and
 `planning/evidence/v0-matrix-2026-09-21.md`; `make check` validates the rows
 against their sha256.
 
-| | `6fb30ca` (before) | `873e109` (after) |
-| --- | --- | --- |
-| rows | 190 | 192 (`V0-TRANSIT-IDENTITY-A/B` are new) |
-| accepted | 145 | 142 |
-| refused | 29 | 34 |
-| uncertain | 2 | 2 |
-| not exercised | 13 | 13 |
-| not built | 1 | 1 |
-| **disagreed** | **17** | **6** |
+Run twice: on the lane head before the second `dev` merge (`873e109`,
+1370.5 s) and on the merged head (`3f68944`, 1354.3 s, which is the record in
+`planning/v0-matrix.json`).
+
+| | `6fb30ca` (before) | `873e109` | `3f68944` (head) |
+| --- | --- | --- | --- |
+| rows | 190 | 192 | 192 (`V0-TRANSIT-IDENTITY-A/B` are new) |
+| accepted | 145 | 142 | 141 |
+| refused | 29 | 34 | 34 |
+| uncertain | 2 | 2 | 3 |
+| not exercised | 13 | 13 | 13 |
+| not built | 1 | 1 | 1 |
+| **disagreed** | **17** | **6** | **7** |
+
+The seventh on the head is `V0-CRASH-CHECKPOINT`, `uncertain`, `anchor rc=3
+(anchor uncertain: unmodelled-tree)`. It is **not this lane's**: it arrived
+with the second `dev` merge and it did not appear at `873e109`, which is the
+same tree without those 31 commits. Whoever owns the anchor should read it.
 
 Eleven rows moved and every one is this lane's:
 
@@ -224,7 +237,7 @@ Eleven rows moved and every one is this lane's:
 | `V0-CRASH-RESTART` | `rc=1` -- node B still served `<loop-ab@...>`, which it should never have taken | `rc=0` |
 
 **F-TRANSIT is now 26 rows, 16 accepted and 10 refused, and NOT ONE
-disagrees.** The owner feed's own facts in the same run:
+disagrees, in both runs.** The owner feed's own facts in the same run:
 `owner feed ab duplicate: ihave=435 duplicate check=438 takethis=439`, and
 `octets identical to the source=True` in both directions.
 
