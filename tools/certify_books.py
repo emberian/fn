@@ -20,6 +20,7 @@ import platform
 import re
 import secrets
 import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -32,6 +33,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import acl2_slots  # noqa: E402
 import certs  # noqa: E402
+import evidence_manifests  # noqa: E402
 import ledger  # noqa: E402
 
 
@@ -535,6 +537,44 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def record(run_dir: Path, manifest: dict[str, Any]) -> None:
+    """Write the run's manifest and file the durable copy beside it.
+
+    `build/` is ignored, so the run directory this returns to the caller is
+    the one a lane cites and the one a worktree removal or a gate reaper
+    deletes.  The manifest is the claim and is 4 kB to 200 kB; it goes to
+    `planning/evidence/manifests/<run-id>.json`, which is committable.  The
+    log stays here, and the archived copy records where here was.
+    """
+    write_json(run_dir / "manifest.json", manifest)
+    evidence_manifests.archive_run(run_dir, ROOT)
+
+
+def git_facts() -> dict[str, Any]:
+    """The revision this run certified, for a reader who has only the manifest.
+
+    The source digests say WHAT was certified; this says where to find it.
+    A mirrored remote root may not be a repository at all, and then every
+    field is None rather than a failure.
+    """
+    def ask(*args: str) -> str | None:
+        try:
+            result = subprocess.run(["git", "-C", str(ROOT), *args],
+                                    capture_output=True, text=True, check=False,
+                                    timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return result.stdout.strip() if result.returncode == 0 else None
+
+    revision = ask("rev-parse", "HEAD")
+    dirty = ask("status", "--porcelain")
+    return {
+        "git_revision": revision,
+        "git_branch": ask("rev-parse", "--abbrev-ref", "HEAD"),
+        "git_dirty": None if dirty is None else bool(dirty),
+    }
+
+
 def timeout_output(error: subprocess.TimeoutExpired) -> bytes:
     output = error.stdout or b""
     return output if isinstance(output, bytes) else output.encode("utf-8", errors="replace")
@@ -641,6 +681,13 @@ def main() -> int:
     run_dir.mkdir(parents=True, exist_ok=False)
 
     manifest: dict[str, Any] = {
+        # Identity first: a manifest that has left its directory behind must
+        # still say which run it is, on which box, of which revision.
+        "run_id": run_dir.name,
+        "hostname": socket.gethostname(),
+        "tree": str(ROOT),
+        "started_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        **git_facts(),
         "command": [configured],
         "environment": {"ACL2_CUSTOMIZATION": "NONE", "ACL2_BOOK_HASH_ALISTP": "NIL", "ACL2_SYSTEM_BOOKS": None},
         "platform": platform.platform(),
@@ -663,7 +710,7 @@ def main() -> int:
             "ACL2 executable is unavailable. Install the pinned project toolchain "
             "or set FN_ACL2 to an executable ACL2 path."
         )
-        write_json(run_dir / "manifest.json", manifest)
+        record(run_dir, manifest)
         print(manifest["failure"], file=sys.stderr)
         print(f"Certification evidence: {run_dir.relative_to(ROOT)}", file=sys.stderr)
         return 2
@@ -675,7 +722,7 @@ def main() -> int:
         manifest["acl2_executable"] = str(acl2)
         manifest["acl2_executable_sha256"] = digest(acl2)
         manifest["failure"] = str(error)
-        write_json(run_dir / "manifest.json", manifest)
+        record(run_dir, manifest)
         print(manifest["failure"], file=sys.stderr)
         print(f"Certification evidence: {run_dir.relative_to(ROOT)}", file=sys.stderr)
         return 2
@@ -688,7 +735,7 @@ def main() -> int:
     }
     if manifest["local_source_audit"]["findings"]:
         manifest["failure"] = "Local proof source uses a forbidden proof/trust facility."
-        write_json(run_dir / "manifest.json", manifest)
+        record(run_dir, manifest)
         print(manifest["failure"], file=sys.stderr)
         print(f"Certification evidence: {run_dir.relative_to(ROOT)}", file=sys.stderr)
         return 1
@@ -706,7 +753,7 @@ def main() -> int:
     except subprocess.TimeoutExpired as error:
         (run_dir / "version.log").write_bytes(timeout_output(error))
         manifest["failure"] = f"ACL2 version probe timed out after {args.timeout_seconds} seconds."
-        write_json(run_dir / "manifest.json", manifest)
+        record(run_dir, manifest)
         print(manifest["failure"], file=sys.stderr)
         print(f"Certification evidence: {run_dir.relative_to(ROOT)}", file=sys.stderr)
         return 1
@@ -875,7 +922,8 @@ def main() -> int:
         manifest["failure"] = (
             "ACL2 did not produce complete clean certification evidence. See certify.log."
             + (" Books that failed: " + ", ".join(failed) if failed else ""))
-    write_json(run_dir / "manifest.json", manifest)
+    manifest["finished_utc"] = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    record(run_dir, manifest)
 
     if not success:
         print(manifest["failure"], file=sys.stderr)

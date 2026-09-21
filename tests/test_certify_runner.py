@@ -260,6 +260,35 @@ class ParallelScheduleTests(unittest.TestCase):
                 self.assertGreater(manifest["book_wall_seconds"][book], 0)
             self.assertGreater(manifest["certify_wall_seconds"], 0)
 
+    def test_the_run_names_itself_and_is_filed_where_a_reader_can_open_it(self):
+        """The run directory is under `build/`, which no reader ever sees.
+
+        Every certification claim in this tree cited such a directory and
+        none of them resolved (316 cited run ids at dev 5698648). The
+        manifest carries the claim, so it is also written to
+        `planning/evidence/manifests/<run-id>.json`, and it now says which
+        run, which box and which revision it was, none of which a reader
+        could recover from the file alone before.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, self.LAYERED)
+            _, manifest = repository.certify(self.ORDER, jobs=4)
+            run_id = manifest["run_id"]
+            filed = (repository.root / "planning" / "evidence" / "manifests"
+                     / f"{run_id}.json")
+            self.assertTrue(filed.is_file(), "the manifest was not archived")
+            kept = json.loads(filed.read_text())
+        self.assertTrue(run_id.startswith("certify-"))
+        self.assertEqual(kept["run_id"], run_id)
+        self.assertEqual(kept["requested_books"], manifest["requested_books"])
+        self.assertEqual(kept["certificate_digests_sha256"],
+                         manifest["certificate_digests_sha256"])
+        self.assertTrue(kept["hostname"])
+        self.assertIn("git_revision", kept)
+        self.assertTrue(kept["started_utc"] <= kept["finished_utc"])
+        # The copy says where the log it does not carry was left.
+        self.assertTrue(kept["archived_from"].endswith(run_id))
+
     def test_one_job_keeps_the_requested_order_and_the_same_manifest_fields(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = FakeRepository(directory, self.LAYERED)
