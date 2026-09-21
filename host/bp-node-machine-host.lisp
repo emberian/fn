@@ -7,9 +7,6 @@
 (defun fn-bpn-host-machine-initial (config max-jobs max-octets)
   (fn-bpn-initial-machine-state config max-jobs max-octets))
 
-(defun fn-bpn-host-machine-statep (st)
-  (and (fn-bpn-machine-statep st) t))
-
 (defun fn-bpn-host-answer-state (answer)
   (fn-bpn-answer-state answer))
 
@@ -93,4 +90,3 @@
 
 (defun fn-bpn-host-machine-max-jobs () *fn-bpn-machine-max-jobs*)
 (defun fn-bpn-host-machine-max-octets () *fn-bpn-machine-max-octets*)
-(defun fn-bpn-host-machine-max-records () *fn-bpn-machine-max-records*)

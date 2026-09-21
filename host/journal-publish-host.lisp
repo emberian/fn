@@ -3,8 +3,6 @@
 (include-book "../books/journal-publish")
 (include-book "../books/app-journal")
 
-(defun fn-jpub-host-initial (authorityp)
-  (fn-jpub-initial authorityp))
 (defun fn-jpub-host-step (publication event)
   (fn-jpub-step publication event))
 (defun fn-jpub-host-action (publication)
@@ -15,8 +13,6 @@
   (fn-jpub-outcome publication))
 (defun fn-jpub-host-terminalp (publication)
   (if (fn-jpub-terminalp publication) t nil))
-(defun fn-jpub-host-crash-outcome (publication)
-  (fn-jpub-crash-outcome publication))
 (defun fn-jpub-host-authorized-initialp (publication)
   (if (equal publication (fn-jpub-initial t)) t nil))
 

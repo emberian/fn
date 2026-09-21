@@ -116,8 +116,10 @@ Four loaded projections had no caller at the audit baseline in source or native 
 `fn-jpub-host-initial` and `fn-jpub-host-crash-outcome` in
 `host/journal-publish-host.lisp:6-19`, and `fn-bpn-host-machine-statep` and
 `fn-bpn-host-machine-max-records` in `host/bp-node-machine-host.lisp:10-11,79`.
-They are safe candidates for removal after the pending BP publication packet is
-integrated and its final wrapper set is known.  This finding does not include
+They have now been removed after the BP publication packet landed and a fresh
+repository-wide caller search at `ab0b2c2d` still found only their definitions.
+The underlying logical functions remain available to the model and proof books;
+the runtime bridge exposes only used projections. This finding does not include
 wrappers invoked by development bridges through constructed ACL2 symbol names.
 
 The following repeated shapes are intentional: immutable no-replace
@@ -583,3 +585,38 @@ Native administration preserves this format for compatibility; password
 hardening, versioned migration and verification resource limits remain a
 separate authentication-profile task. No cryptographic primitive was changed
 and no proposed suite was silently selected.
+
+### U17: pending STARTTLS prefix executes the parser twice
+
+Source review of candidate `fef3b745` found that
+`fn-served-tls-consumed` calls `fn-served-step` once per input byte. Each step
+executes `fn-wire-statep`, which traverses the retained line and article body.
+`fn-ocfg-read-tls-prefix` then processes the selected prefix again through
+`fn-ocfg-read`. The candidate routes every owner chunk through this path,
+including connections without TLS. This introduces repeated whole-input
+validation and duplicate parsing despite reusing the same semantic functions.
+No latency measurement or deployed regression is claimed: the candidate has
+not landed.
+
+The TLS lane owns a single traversal returning the consumed count, final
+served state and effects, with correspondence to the existing served
+transition and one lift into the configured owner. Reusing the established
+byte transition preserves one semantic owner; the count must be accumulated
+during that traversal rather than discovered by replaying it. Socket peek and
+exact consumption remain a separate physical correspondence obligation.
+
+### Pending feed integration findings
+
+Candidate `3ecbc4cb` also had three concrete caller defects beyond U15's
+table scan. The raw receive allocated/read the generic socket ceiling before
+checking the smaller ACL2 feed ceiling; a bad greeting or MODE response
+produced `:refused` that the wrapper promoted to a shared-owner fault; and
+the stop path closed descriptors still cached by a worker. The feed lane owns
+bounded receive before consumption, connection-local handshake rejection and
+worker-owned final close.
+
+Forwarding `:refused` alone is insufficient: the raw reply path flushes the
+last FNFD batch for that outcome, but handshake refusal creates no fresh
+batch. A negative greeting after another peer's nonempty journal batch must
+not republish those records. These are source findings awaiting the repaired
+caller and native two-peer integration witness, not closed runtime claims.
