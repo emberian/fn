@@ -7,9 +7,10 @@ node, operator CLI and runtime helpers; Python remains development tooling.
 
 Post-reboot orientation: [recovery status and next cycles](recovery-2026-09-21.md)
 records surviving main/lane work, the development-test memory incident and the
-remaining pillars. Previous local workers stopped; recover remote results before
-restarting jobs. Current priority is test-process containment and native service
-composition, with the full selected release scope retained.
+remaining pillars. Recovered remote results are now archived. Process-group
+containment is integrated, with bounded cleanup after leader death. Current
+priority is frozen native service qualification alongside continued wide
+implementation, with the full selected release scope retained.
 
 The user has now selected a [wide capability cycle](wide-capability-cycle-2026-09-21.md):
 parallel service/peering, BP/DTN, preservation, identity and crash-correspondence
@@ -36,11 +37,18 @@ with scoped witnesses and a [source-pinned Linux image run](evidence/native-cont
 That image does not qualify later whole-main changes.
 Transaction namespace recovery now uses bounded observation and ACL2-issued
 sequence/name pairs, with a source-matched developer Store image witness.
-The corrected native outbound-feed and credential-administration components
-are integrated; feed activation and public principal CLI composition remain
-with their owning lanes.
-Native group/capacity administration and production/developer startup separation
-are also integrated as components; the public admin join remains outside main.
+The native outbound feed is now activated through public owner lifecycle hooks;
+public principal, group/capacity and peer administration are joined. STARTTLS,
+connection fault isolation, ACL2 peer address selection, BP authored-wire
+publication and maintained application-state projections are also integrated.
+Configuration namespace recovery now preserves all observed entries during
+sorting. The joined source awaits a fresh native image and runtime matrix;
+these integrations are not a claim that the combined service passes.
+
+The next parallel batch extends the single ordered Store history with retention
+and identity events, durable key snapshots, checkpoint-based compaction and
+physical crash correspondence. These changes remain in capability lanes until
+their ordinary publication/recovery paths and obligations are composed.
 
 The frozen combined source is `03eb3ba3`, with retained persvati job
 `run-20260921T095031Z-5cf4`. Certification, both same-origin image builds, scoped runtime suites and the
