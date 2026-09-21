@@ -638,6 +638,68 @@ class HostNamesLintTests(unittest.TestCase):
                             "(defun fn-b () (fn-a))\n"),
         })), [])
 
+    def test_explicit_raw_load_sees_the_common_lisp_vocabulary(self):
+        tree = tree_from({
+            "host/native/build.lisp": (
+                '(in-package "ACL2")\n'
+                '(defttag :native-test)\n'
+                '(progn! (set-raw-mode t) (load "host/native/raw.lisp"))\n'),
+            "host/native/raw.lisp": (
+                '(in-package "ACL2")\n'
+                '(defun fnn-raw-tail (x) (fifth x))\n'),
+        })
+        self.assertEqual(ledger.raw_host_paths(tree), {"host/native/raw.lisp"})
+        self.assertEqual(ledger.host_names(tree), [])
+
+    def test_raw_typo_and_missing_fnn_helper_are_not_whitelisted(self):
+        found = ledger.host_names(tree_from({
+            "host/native/build.lisp": (
+                '(in-package "ACL2")\n'
+                '(defttag :native-test)\n'
+                '(progn! (set-raw-mode t) (load "host/native/raw.lisp"))\n'),
+            "host/native/raw.lisp": (
+                '(in-package "ACL2")\n'
+                '(defun fnn-raw-bad (x) (fivth x))\n'
+                '(defun fnn-raw-missing () (fnn-not-present))\n'),
+        }))
+        self.assertEqual([(entry["name"], entry["source"]) for entry in found],
+                         [("fivth", None), ("fnn-not-present", None)])
+        self.assertTrue(all("raw Common Lisp load" in entry["reason"]
+                            for entry in found))
+
+    def test_acl2_wrapper_does_not_inherit_raw_visibility_or_helpers(self):
+        found = ledger.host_names(tree_from({
+            "host/native/build.lisp": (
+                '(in-package "ACL2")\n'
+                '(defttag :native-test)\n'
+                '(progn! (set-raw-mode t) (load "host/native/raw.lisp"))\n'),
+            "host/native/raw.lisp": (
+                '(in-package "ACL2")\n'
+                '(defun fnn-raw-helper () t)\n'),
+            "host/wrapper.lisp": (
+                '(in-package "ACL2")\n'
+                '(defun fn-wrapper (x) (list (fifth x) (fnn-raw-helper)))\n'),
+        }))
+        self.assertEqual([(entry["host"], entry["name"], entry["source"])
+                          for entry in found],
+                         [("host/wrapper.lisp", "fifth", None),
+                          ("host/wrapper.lisp", "fnn-raw-helper",
+                           "host/native/raw.lisp")])
+
+    def test_raw_mode_without_an_active_trust_tag_is_not_a_raw_surface(self):
+        tree = tree_from({
+            "host/native/build.lisp": (
+                '(in-package "ACL2")\n'
+                '(progn! (set-raw-mode t) (load "host/native/unloaded.lisp"))\n'),
+            "host/native/unloaded.lisp": (
+                '(in-package "ACL2")\n'
+                '(defun fnn-unloaded (x) (fifth x))\n'),
+        })
+        self.assertEqual(ledger.raw_host_paths(tree), set())
+        found = ledger.host_names(tree)
+        self.assertEqual([(entry["host"], entry["name"]) for entry in found],
+                         [("host/native/unloaded.lisp", "fifth")])
+
     def test_a_macro_argument_is_syntax_and_a_cond_test_is_not_a_call(self):
         self.assertEqual(ledger.host_names(tree_from({
             "host/a.lisp": ('(in-package "ACL2")\n'

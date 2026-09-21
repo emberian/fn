@@ -1,0 +1,37 @@
+; Common Lisp names used by the explicit raw-load surface.
+;
+; tools/ledger.py grants this vocabulary only to a host file named by `(load
+; "...")` after `(set-raw-mode t)` in a build `progn!`.  It is deliberately
+; separate from acl2-builtins.txt: an ACL2 `ld` wrapper must not acquire raw
+; Common Lisp visibility merely because a native adapter is present.
+;
+; This is the current source-derived, runtime-checked set of names that the
+; raw native modules use and that acl2-builtins.txt does not already provide.
+; Checked with SBCL 2.6.8: each symbol is a Common Lisp function, macro,
+; special operator, or bound variable.  Add a new name only after checking
+; that it is supplied by the saved image's raw Common Lisp runtime.
+;
+; One name per line, lower case; `;` starts a comment.
+*features*
+butlast
+code-char
+copy-list
+ecase
+elt
+encode-universal-time
+eighth
+fifth
+find
+get-universal-time
+intern
+last
+ninth
+realp
+remove-duplicates
+rest
+seventh
+sixth
+sleep
+string-downcase
+string-upcase
+tenth

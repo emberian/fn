@@ -781,7 +781,7 @@ class Tree:
                  hosts: "dict[str, HostFile] | None" = None) -> None:
         self.books = books
         self.roots = roots
-        # The `ld`ed files, which no certification reads: see `host_names`.
+        # ACL2 `ld` wrappers and explicit raw `load` adapters: see host_names.
         self.hosts: dict[str, HostFile] = {} if hosts is None else hosts
         self.functions: dict[str, Function] = {}
         self.theorems: dict[str, Theorem] = {}
@@ -1412,18 +1412,27 @@ def include_hygiene(tree: "Tree") -> list[dict]:
 # --------------------------------------------------------------------------
 #
 # The fourth lint, and the only one that reads files no certification ever
-# touches.  `host/*.lisp` and `host/native/*.lisp` are `ld`ed by the bridges
-# at start-up, never certified, so an undefined name in them is found by a
-# bridge crashing: `host/checkpoint-host.lisp` kept naming `*fn-store-groups*`
-# after the compiled group table deleted it, and every `Acl2Store`
-# constructor died with a Translate error until a later lane noticed.  This
-# lint reads the host files the way the book lints read books and reports a
-# name that is defined nowhere the host file can see.
+# touches.  ACL2 wrapper files are `ld`ed by bridges at start-up; native build
+# scripts also `load` raw Common Lisp adapters inside their explicit raw-mode
+# region.  An undefined name in either surface is found when that start-up
+# load fails: `host/checkpoint-host.lisp` kept naming `*fn-store-groups*` after
+# the compiled group table deleted it, and every `Acl2Store` constructor died
+# with a Translate error until a later lane noticed.  This lint reads the host
+# files the way the book lints read books and reports a name that is defined
+# nowhere the host file can see.
 #
 # What a host file can see: its own definitions, the definitions of every
 # host file it `ld`s, the definitions of every book reachable through its
 # `include-book` forms (transitively, the same include graph the other lints
 # use), and `tools/acl2-builtins.txt`.
+#
+# A native build script has one narrower surface: a `(load "...")` reached
+# after `(set-raw-mode t)` inside an explicit `progn!` runs in the host Common
+# Lisp, under the build's raw-Lisp trust boundary.  Those load targets also
+# see the deliberately separate, audited `tools/raw-common-lisp-builtins.txt`.
+# The trust tag permits raw execution; it does not make every host file, or
+# every misspelled raw symbol, visible.  In particular, a normal ACL2 wrapper
+# cannot inherit this vocabulary merely because it sits beside a raw adapter.
 #
 # Deliberately conservative, because this is a WARN over unparsed code:
 # a `local` book definition counts as visible, `loop` bodies and
@@ -1433,6 +1442,7 @@ def include_hygiene(tree: "Tree") -> list[dict]:
 # noise that a lane learns to skip.
 
 BUILTINS = ROOT / "tools/acl2-builtins.txt"
+RAW_COMMON_LISP_BUILTINS = ROOT / "tools/raw-common-lisp-builtins.txt"
 
 # Heads that define a name in the file being read.  The name is `form[1]`,
 # or the head of `form[1]` when that is a list (`(defstruct (name opts) ...)`).
@@ -1745,11 +1755,74 @@ def load_hosts() -> dict[str, HostFile]:
 
 
 def acl2_builtins() -> set[str]:
-    if not BUILTINS.is_file():
+    return builtin_names(BUILTINS)
+
+
+def raw_common_lisp_builtins() -> set[str]:
+    """The small Common Lisp vocabulary the explicit raw-load surface uses."""
+    return builtin_names(RAW_COMMON_LISP_BUILTINS)
+
+
+def builtin_names(path: Path) -> set[str]:
+    """The lower-case symbols in one reviewed runtime vocabulary file."""
+    if not path.is_file():
         return set()
     return {line.split(";", 1)[0].strip().lower()
-            for line in BUILTINS.read_text(encoding="utf-8").splitlines()
+            for line in path.read_text(encoding="utf-8").splitlines()
             if line.strip() and not line.lstrip().startswith(";")}
+
+
+def raw_load_references(form: object, raw: bool = False) -> list[str]:
+    """The literal `load` targets executed in an explicit raw-mode region.
+
+    This is intentionally structural rather than a path convention.  A
+    `host/native/` file is raw only when a build form enables raw mode and
+    loads it; ordinary ACL2 wrappers retain ACL2's vocabulary.  `progn!` is
+    sequential, so a later `(set-raw-mode nil)` turns the scope off again.
+    """
+    if not isinstance(form, list) or not form:
+        return []
+    name = head(form)
+    if name in ("quote", "quasiquote"):
+        return []
+    if name in ("progn", "progn!"):
+        found: list[str] = []
+        enabled = raw
+        for item in form[1:]:
+            if (head(item) == "set-raw-mode" and len(item) >= 2
+                    and isinstance(item[1], Sym)):
+                enabled = str(item[1]) == "t"
+                continue
+            found.extend(raw_load_references(item, enabled))
+        return found
+    found = []
+    if raw and name == "load" and len(form) >= 2 and isinstance(form[1], str):
+        found.append(form[1])
+    for item in form[1:]:
+        found.extend(raw_load_references(item, raw))
+    return found
+
+
+def raw_host_paths(tree: "Tree") -> set[str]:
+    """Host files explicitly loaded in raw mode while a trust tag is active."""
+    paths: set[str] = set()
+    for host in tree.hosts.values():
+        base = Path(host.path).parent
+        trusted = False
+        for form, _line in host.forms:
+            if head(form) == "defttag":
+                trusted = (len(form) >= 2 and isinstance(form[1], Sym)
+                           and str(form[1]) != "nil")
+                continue
+            if not trusted:
+                continue
+            for reference in raw_load_references(form):
+                for candidate in (resolve((base / reference).as_posix()),
+                                  resolve(reference)):
+                    if candidate in tree.hosts:
+                        paths.add(candidate)
+                        break
+    return paths
 
 
 def host_visible(host: HostFile, tree: "Tree") -> set[str]:
@@ -1804,6 +1877,8 @@ def book_closure_definitions(tree: "Tree", relative: str) -> set[str]:
 def host_names(tree: "Tree") -> list[dict]:
     """Names a host file uses that nothing it loads defines."""
     builtins = acl2_builtins()
+    raw_builtins = raw_common_lisp_builtins()
+    raw_hosts = raw_host_paths(tree)
     macros = macro_names(tree)
     elsewhere: dict[str, str] = {}
     for book in sorted(tree.books.values(), key=lambda b: b.path):
@@ -1820,6 +1895,9 @@ def host_names(tree: "Tree") -> list[dict]:
             continue
         collect_references(host, macros)
         visible = host_visible(host, tree) | builtins
+        raw = host.path in raw_hosts
+        if raw:
+            visible |= raw_builtins
         reported: set[str] = set()
         for name, line in host.references:
             key = name.lower()
@@ -1827,9 +1905,14 @@ def host_names(tree: "Tree") -> list[dict]:
                 continue
             reported.add(key)
             source = elsewhere.get(key)
+            vocabularies = "tools/acl2-builtins.txt"
+            runtime = "the ACL2 bridge"
+            if raw:
+                vocabularies += " or tools/raw-common-lisp-builtins.txt"
+                runtime = "the raw Common Lisp load"
             reason = ("undefined: nothing in this tree defines it and it is "
-                      "not in tools/acl2-builtins.txt, so the bridge that "
-                      "loads this file fails at start-up")
+                      f"not in {vocabularies}, so {runtime} of this file "
+                      "fails at start-up")
             if source is not None:
                 reason = (f"defined in {source}, which this file neither "
                           "includes nor `ld`s: it resolves only because "
@@ -2154,11 +2237,15 @@ def ledger_markdown(ledger: dict) -> str:
         "theory withdrawal: such an include enables every rule of that book in",
         "the includer and in everything above it. `books/bp-ingress.lisp` took",
         "one for a single guard hint and turned a six-minute proof into an",
-        "1800 s timeout. *Host names* counts symbols used in `host/*.lisp` and",
-        "`host/native/*.lisp` -- files the bridges `ld` and no certification",
-        "reads -- that nothing those files include, `ld` or inherit from",
-        "`tools/acl2-builtins.txt` defines: the shape of the",
-        "`*fn-store-groups*` reference that survived the group table and broke",
+        "1800 s timeout. *Host names* counts symbols used in ACL2 `ld` wrappers",
+        "and native raw-load adapters -- files no certification reads -- that",
+        "nothing those files include, `ld`, or inherit from",
+        "`tools/acl2-builtins.txt` defines. A module named by an explicit",
+        "`(load ...)` after `(set-raw-mode t)` sees the separate, reviewed",
+        "`tools/raw-common-lisp-builtins.txt` vocabulary. That raw mode is",
+        "inside the native build's trust boundary; the tag does not grant raw",
+        "visibility to ACL2 wrappers or silence an unknown raw name: the shape",
+        "of the `*fn-store-groups*` reference that survived the group table and broke",
         "every `Acl2Store` start-up. *Hand-written record* counts books",
         "whose records are written out event by event instead of generated",
         "by `fn-defrecord` (`books/defrecord.lisp`): a shape predicate and",
