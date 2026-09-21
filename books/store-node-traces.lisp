@@ -734,6 +734,71 @@
                              
                             fn-snt-crash-preserves-relation)))))
 
+; The PLATFORM twin (D14-b, and K2f).  Every image the platform may leave --
+; the two namespace choices, the record rollback and the frontier rollback --
+; is replayable at its own frontier, so the observed reopen path succeeds on
+; all of them.  The reliance-predicate theorem above is UNCHANGED and is this
+; one's special case (fn-sf-crash-imagep-implies-recovery-crash-imagep); the
+; host's reopen gate (fn-own-reopen, owner.lisp:911) still takes the narrow
+; premise, which is the whole of D14-b.
+;
+; The record arm is fn-snt-history-recoverable-of-but-last.  The frontier arm
+; is fn-snt-history-recoverable-under-record-bound at the rolled-back value,
+; and its fn-sf-record-listp hypothesis is exactly the gate that
+; fn-sf-frontier-rollback-visiblep carries -- the same conjunct that makes
+; the rolled-back image a kernel state makes it replayable.
+(defthm fn-snt-recovery-admissible-crash-image-is-recoverable
+  (implies (and (fn-snt-relation s)
+                (fn-sf-recovery-crash-imagep (fn-sn-files s) frontier records))
+           (fn-sf-history-recoverablep (fn-sn-groups s) (fn-sn-capacity s)
+                                       records frontier))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-structural-state
+                 fn-snt-typed-store-components
+                 fn-snt-related-records-true-list
+                 fn-snt-admissible-crash-image-is-recoverable
+                 (:instance fn-snt-admissible-crash-image-is-recoverable
+                            (frontier (fn-sf-frontier (fn-sn-files s)))
+                            (records (fn-sf-records (fn-sn-files s))))
+                 (:instance fn-snt-recoverable-prefix-facts
+                            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
+                            (history (fn-sf-records (fn-sn-files s)))
+                            (frontier (fn-sf-frontier (fn-sn-files s))))
+                 (:instance fn-snt-history-recoverable-of-but-last
+                            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
+                            (records (fn-sf-records (fn-sn-files s)))
+                            (frontier (fn-sf-frontier (fn-sn-files s))))
+                 (:instance fn-snt-history-recoverable-under-record-bound
+                            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
+                            (records (fn-sf-records (fn-sn-files s)))
+                            (bound (1- (fn-sf-frontier (fn-sn-files s)))))
+                 ; cited by :use and not left to forward chaining: the
+                 ; trigger (fn-sf-frontier-rollback-visiblep ...) only
+                 ; appears once fn-sf-recovery-crash-imagep opens during
+                 ; this goal's own simplification, which is after forward
+                 ; chaining has run.
+                 (:instance fn-sf-frontier-rollback-visiblep-unfolds
+                            (s (fn-sn-files s))))
+           ; fn-sf-crash-imagep stays OPEN (the book's default): the
+           ; identity image of a related state is admissible by it, and that
+           ; instance of the narrow theorem is what the two rollback arms
+           ; are then derived from.
+           :in-theory (e/d (fn-sf-recovery-crash-imagep fn-sf-crash-imagep)
+                           (fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
+                            fn-sf-replay-node fn-sf-record-listp
+                            fn-snt-pending-linkp fn-snt-idle-phasep
+                            fn-sn-completion-enabledp fn-sf-record-phasep
+                            fn-sn-crash fn-sf-crash
+                            fn-sf-image-frontier-choice fn-sf-image-record-choice
+                            fn-snt-relation-implies-structural-state
+                            fn-snt-typed-store-components
+                            fn-snt-related-records-true-list
+                            fn-snt-admissible-crash-image-is-recoverable
+                            fn-snt-recoverable-prefix-facts
+                            fn-snt-history-recoverable-of-but-last
+                            fn-snt-history-recoverable-under-record-bound
+                            fn-sf-frontier-rollback-visiblep-unfolds)))))
+
 ; -----------------------------------------------------------------------------
 ; Export theory.  Withdrawn: the relation and its pending link (proof
 ; relations, never executed), the dispatcher, and under a name the typed,

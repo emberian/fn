@@ -1031,6 +1031,14 @@
         {
           "name": "fn-sf-image-crash-preserves-state",
           "kind": "theorem"
+        },
+        {
+          "name": "fn-sf-crash-frontier-rollback-preserves-state",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-sf-crash-frontier-rollback-image-is-recovery-admissible",
+          "kind": "theorem"
         }
       ]
     },
@@ -1084,6 +1092,35 @@
         },
         {
           "name": "fn-frame-store-decode-of-host-framing",
+          "kind": "theorem"
+        }
+      ]
+    },
+    {
+      "id": "PRF-036",
+      "events": [
+        {
+          "name": "fn-snt-replayed-history-node-is-idle",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-snt-history-recoverable-prefix",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-snt-history-recoverable-of-but-last",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-snt-history-recoverable-under-record-bound",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-snt-recovery-admissible-crash-image-is-recoverable",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-sn-recovery-admissible-image-reopens",
           "kind": "theorem"
         }
       ]
