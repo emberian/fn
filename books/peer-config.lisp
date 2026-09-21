@@ -135,7 +135,19 @@
 
 (defun fn-cfg-peer-transportp (x)
   (declare (xargs :guard t))
-  (or (and (true-listp x) (equal (len x) 3) (equal (car x) :nntp)
+  (or (and (true-listp x) (equal (len x) 5) (equal (car x) :nntp)
+           (equal (cadr x) 1)
+           (fn-cfg-labelp (caddr x))
+           (fn-record-uint32p (cadddr x))
+           (let ((security (car (cddddr x))))
+             (or (equal security '(:clear))
+                 (and (true-listp security) (equal (len security) 4)
+                      (equal (car security) :tls)
+                      (member-equal (cadr security) '(:implicit :starttls))
+                      (fn-cfg-labelp (caddr security))
+                      (fn-cfg-labelp (cadddr security))))))
+      ; Legacy durable peers decode as explicit cleartext.
+      (and (true-listp x) (equal (len x) 3) (equal (car x) :nntp)
            (fn-cfg-labelp (car (cdr x)))
            (fn-record-uint32p (car (cdr (cdr x)))))
       (and (true-listp x) (equal (len x) 2) (equal (car x) :bp)
@@ -220,9 +232,21 @@
     (append
      (list (fn-cfg-row-make name "path-identity" (fn-cfg-peer-path-identity p) 0))
      (if (equal (fn-cfg-ag-car transport) :nntp)
-         (list (fn-cfg-row-make name "transport-nntp"
-                                (fn-cfg-ag-car (fn-cfg-ag-cdr transport))
-                                (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport)))))
+         (if (equal (len transport) 5)
+             (let ((security (car (cddddr transport))))
+               (append
+                (list (fn-cfg-row-make name "transport-nntp" (caddr transport)
+                                       (cadddr transport))
+                      (fn-cfg-row-make name "transport-security"
+                                       (cond ((equal security '(:clear)) "clear")
+                                             ((equal (cadr security) :implicit) "implicit")
+                                             (t "starttls")) 1))
+                (if (equal security '(:clear)) nil
+                  (list (fn-cfg-row-make name "transport-server-name" (caddr security) 0)
+                        (fn-cfg-row-make name "transport-trust-anchor" (cadddr security) 0)))))
+           (list (fn-cfg-row-make name "transport-nntp"
+                                  (fn-cfg-ag-car (fn-cfg-ag-cdr transport))
+                                  (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport))))))
        (list (fn-cfg-row-make name "transport-bp"
                               (fn-cfg-ag-car (fn-cfg-ag-cdr transport)) 0)))
      (if inbound
@@ -261,6 +285,9 @@
   (let* ((pid (fn-cfg-peer-slot rows "path-identity"))
          (tn (fn-cfg-peer-slot rows "transport-nntp"))
          (tb (fn-cfg-peer-slot rows "transport-bp"))
+         (ts (fn-cfg-peer-slot rows "transport-security"))
+         (tname (fn-cfg-peer-slot rows "transport-server-name"))
+         (ta (fn-cfg-peer-slot rows "transport-trust-anchor"))
          (ig (fn-cfg-peer-slot rows "inbound-groups"))
          (ii (fn-cfg-peer-slot rows "inbound-inflight"))
          (og (fn-cfg-peer-slot rows "outbound-groups"))
@@ -271,7 +298,15 @@
          (p (fn-cfg-peer-make
              name
              (if pid (fn-cfg-row-c pid) "")
-             (cond (tn (list :nntp (fn-cfg-row-c tn) (fn-cfg-row-n tn)))
+             (cond (tn (if (null ts)
+                           (list :nntp (fn-cfg-row-c tn) (fn-cfg-row-n tn))
+                         (list :nntp 1 (fn-cfg-row-c tn) (fn-cfg-row-n tn)
+                               (cond ((equal (fn-cfg-row-c ts) "clear") '(:clear))
+                                     ((and tname ta (equal (fn-cfg-row-c ts) "implicit"))
+                                      (list :tls :implicit (fn-cfg-row-c tname) (fn-cfg-row-c ta)))
+                                     ((and tname ta (equal (fn-cfg-row-c ts) "starttls"))
+                                      (list :tls :starttls (fn-cfg-row-c tname) (fn-cfg-row-c ta)))
+                                     (t nil)))))
                    (tb (list :bp (fn-cfg-row-c tb)))
                    (t nil))
              (if (and ig ii)

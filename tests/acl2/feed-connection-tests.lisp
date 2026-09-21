@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/feed-connection")
 
-(defconst *fc-stream* (fn-fc-initial-state t 7))
+(defconst *fc-stream* (fn-fc-initial-state t 7 :clear))
 (assert-event (fn-fc-statep *fc-stream*))
 
 ; Greeting split at CR/LF: no feed connection or command before the line.
@@ -24,7 +24,20 @@
 
 ; The configured non-streaming profile becomes ready immediately after either
 ; RFC 3977 greeting.  It never emits the MODE action.
-(defconst *fc-legacy* (fn-fc-initial-state nil 8))
+(defconst *fc-legacy* (fn-fc-initial-state nil 8 :clear))
+
+(defconst *fc-starttls* (fn-fc-initial-state t 9 :starttls))
+(defconst *fc-starttls-offer* (fn-fc-step *fc-starttls* '(50 48 48 13 10)))
+(assert-event (equal (fn-fc-kind *fc-starttls-offer*) :starttls))
+(assert-event (equal (fn-fc-starttls-command) '(83 84 65 82 84 84 76 83 13 10)))
+(defconst *fc-starttls-382*
+  (fn-fc-step (fn-fc-next-state *fc-starttls-offer*) '(51 56 50 13 10)))
+(assert-event (equal (fn-fc-kind *fc-starttls-382*) :tls))
+(assert-event (equal (fn-fc-kind (fn-fc-after-tls (fn-fc-next-state *fc-starttls-382*)))
+                     :mode))
+(assert-event (equal (fn-fc-kind
+                      (fn-fc-step (fn-fc-next-state *fc-starttls-offer*)
+                                  '(53 56 48 13 10))) :refused))
 (defconst *fc-legacy-ready* (fn-fc-step *fc-legacy* '(50 48 49 13 10)))
 (assert-event (equal (fn-fc-kind *fc-legacy-ready*) :ready))
 

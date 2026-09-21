@@ -12,9 +12,10 @@
 
 (defconst *fn-fc-mode-stream-command*
   '(77 79 68 69 32 83 84 82 69 65 77 13 10))
+(defconst *fn-fc-starttls-command* '(83 84 65 82 84 84 76 83 13 10))
 
-(defun fn-fc-make-state (input streamingp phase conn)
-  (list input streamingp phase conn))
+(defun fn-fc-make-state (input streamingp phase conn security)
+  (list input streamingp phase conn security))
 (defun fn-fc-input (x) (if (consp x) (car x) nil))
 (defun fn-fc-streamingp (x)
   (if (and (consp x) (consp (cdr x))) (cadr x) nil))
@@ -24,19 +25,22 @@
   (if (and (consp x) (consp (cdr x)) (consp (cddr x)) (consp (cdddr x)))
       (cadddr x)
     nil))
+(defun fn-fc-security (x) (if (and (true-listp x) (equal (len x) 5)) (nth 4 x) :clear))
 
 (defun fn-fc-phasep (x)
-  (member-equal x '(:greeting :mode :ready :closed)))
+  (member-equal x '(:greeting :starttls :tls :mode :ready :closed)))
 
 (defun fn-fc-statep (x)
-  (and (true-listp x) (equal (len x) 4)
+  (and (true-listp x) (equal (len x) 5)
        (fn-fwi-statep (fn-fc-input x))
        (booleanp (fn-fc-streamingp x))
        (fn-fc-phasep (fn-fc-phase x))
-       (natp (fn-fc-conn x))))
+       (natp (fn-fc-conn x))
+       (member-equal (fn-fc-security x) '(:clear :implicit :starttls))))
 
-(defun fn-fc-initial-state (streamingp conn)
-  (fn-fc-make-state (fn-fwi-initial-state) streamingp :greeting conn))
+(defun fn-fc-initial-state (streamingp conn security)
+  (fn-fc-make-state (fn-fwi-initial-state) streamingp
+                    (if (equal security :implicit) :tls :greeting) conn security))
 
 (defun fn-fc-result (kind st line)
   (list kind st line))
@@ -47,7 +51,8 @@
   (if (and (consp x) (consp (cdr x)) (consp (cddr x))) (caddr x) nil))
 
 (defun fn-fc-with-input-phase (st input phase)
-  (fn-fc-make-state input (fn-fc-streamingp st) phase (fn-fc-conn st)))
+  (fn-fc-make-state input (fn-fc-streamingp st) phase (fn-fc-conn st)
+                    (fn-fc-security st)))
 
 (defun fn-fc-greetingp (line)
   "RFC 3977 section 5.1.1's two server greeting codes, exactly."
@@ -66,13 +71,36 @@
         (fn-wire-ag-car (fn-wire-outbound-octets rendered))
       nil)))
 
+(defun fn-fc-starttls-command ()
+  (let ((rendered (fn-wire-outbound-command-line
+                   *fn-fc-starttls-command* *fn-nntp-max-initial-line-octets*)))
+    (if (fn-wire-outbound-okp rendered)
+        (fn-wire-ag-car (fn-wire-outbound-octets rendered)) nil)))
+
+(defun fn-fc-after-tls (st)
+  "A host may report this event only after authenticated TLS succeeds."
+  (if (and (fn-fc-statep st) (equal (fn-fc-phase st) :tls))
+      (if (equal (fn-fc-security st) :implicit)
+          (fn-fc-result :need-input (fn-fc-with-input-phase st (fn-fwi-initial-state)
+                                                            :greeting) nil)
+        (if (fn-fc-streamingp st)
+            (fn-fc-result :mode (fn-fc-with-input-phase st (fn-fwi-initial-state) :mode) nil)
+          (fn-fc-result :ready (fn-fc-with-input-phase st (fn-fwi-initial-state) :ready) nil)))
+    (fn-fc-result :invalid st nil)))
+
 (defun fn-fc-from-line (st input line)
   (case (fn-fc-phase st)
     (:greeting
      (if (fn-fc-greetingp line)
-         (if (fn-fc-streamingp st)
+         (if (equal (fn-fc-security st) :starttls)
+             (fn-fc-result :starttls (fn-fc-with-input-phase st input :starttls) nil)
+           (if (fn-fc-streamingp st)
              (fn-fc-result :mode (fn-fc-with-input-phase st input :mode) nil)
-           (fn-fc-result :ready (fn-fc-with-input-phase st input :ready) nil))
+             (fn-fc-result :ready (fn-fc-with-input-phase st input :ready) nil)))
+       (fn-fc-result :refused (fn-fc-with-input-phase st input :closed) nil)))
+    (:starttls
+     (if (equal (fn-own-feed-response-code line) 382)
+         (fn-fc-result :tls (fn-fc-with-input-phase st input :tls) nil)
        (fn-fc-result :refused (fn-fc-with-input-phase st input :closed) nil)))
     (:mode
      (if (fn-fc-mode-okp line)
@@ -141,8 +169,9 @@
   (cons (cons peer st) (fn-fc-table-remove peer table)))
 
 (defthm fn-fc-initial-state-is-state
-  (implies (and (booleanp streamingp) (natp conn))
-           (fn-fc-statep (fn-fc-initial-state streamingp conn)))
+  (implies (and (booleanp streamingp) (natp conn)
+                (member-equal security '(:clear :implicit :starttls)))
+           (fn-fc-statep (fn-fc-initial-state streamingp conn security)))
   :hints (("Goal" :in-theory (enable fn-fc-initial-state fn-fc-statep
                                      fn-fc-make-state fn-fc-phasep))))
 
@@ -180,6 +209,8 @@
 (verify-guards fn-fc-greetingp)
 (verify-guards fn-fc-mode-okp)
 (verify-guards fn-fc-mode-command)
+(verify-guards fn-fc-starttls-command)
+(verify-guards fn-fc-after-tls)
 (verify-guards fn-fc-from-line)
 (verify-guards fn-fc-step)
 (verify-guards fn-fc-lost)

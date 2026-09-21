@@ -36,13 +36,17 @@
          (fn-record-string-octets "fn.*")
          (fn-record-string-octets "fn.*")
          (fn-record-string-octets "192.0.2.44")
-         (fn-record-string-octets "true"))))
+         (fn-record-string-octets "true")
+         (fn-record-string-octets "starttls")
+         (fn-record-string-octets "news.example")
+         (fn-record-string-octets "/etc/fn/peer-ca.pem"))))
 (assert-event (equal (fn-native-admin-result-status *fn-na-peer-add*) :accepted))
 (assert-event (equal (fn-native-admin-result-kind *fn-na-peer-add*) :set-peer))
 (assert-event (fn-cfg-peerp (fn-native-admin-result-peer *fn-na-peer-add*)))
 (assert-event
  (equal (fn-cfg-peer-transport (fn-native-admin-result-peer *fn-na-peer-add*))
-        '(:nntp "192.0.2.44" 1119)))
+        '(:nntp 1 "192.0.2.44" 1119
+                (:tls :starttls "news.example" "/etc/fn/peer-ca.pem"))))
 (assert-event
  (equal (fn-cfg-peer-auth (fn-native-admin-result-peer *fn-na-peer-add*))
         '(:source-address "192.0.2.44")))

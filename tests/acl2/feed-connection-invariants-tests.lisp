@@ -3,8 +3,8 @@
 (include-book "../../books/feed-connection-invariants")
 (include-book "std/testing/must-fail" :dir :system)
 
-(defconst *fci-one* (fn-fc-initial-state t 7))
-(defconst *fci-two* (fn-fc-initial-state nil 8))
+(defconst *fci-one* (fn-fc-initial-state t 7 :starttls))
+(defconst *fci-two* (fn-fc-initial-state nil 8 :clear))
 (defconst *fci-table-one*
   (fn-fc-table-put "one" *fci-one* (fn-fc-table-initial-state)))
 (defconst *fci-table-two*

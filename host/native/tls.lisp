@@ -24,6 +24,9 @@
 (defconstant +fnn-tls-error-zero-return+ 6)
 (defconstant +fnn-tls-ctrl-set-min-proto-version+ 123)
 (defconstant +fnn-tls-version-1-2+ #x0303)
+(defconstant +fnn-tls-verify-peer+ 1)
+(defconstant +fnn-tls-ctrl-set-tlsext-hostname+ 55)
+(defconstant +fnn-tls-tlsext-nametype-host-name+ 0)
 
 (define-condition fnn-tls-error (error)
   ((detail :initarg :detail :reader fnn-tls-error-detail))
@@ -73,6 +76,7 @@
   (code sb-alien:unsigned-long))
 (sb-alien:define-alien-routine ("TLS_server_method" fnn-%tls-server-method)
     (* t))
+(sb-alien:define-alien-routine ("TLS_client_method" fnn-%tls-client-method) (* t))
 (sb-alien:define-alien-routine ("SSL_CTX_new" fnn-%ssl-ctx-new)
     (* t)
   (method (* t)))
@@ -98,6 +102,10 @@
     ("SSL_CTX_check_private_key" fnn-%ssl-ctx-check-private-key)
     sb-alien:int
   (context (* t)))
+(sb-alien:define-alien-routine ("SSL_CTX_set_verify" fnn-%ssl-ctx-set-verify)
+    sb-alien:void (context (* t)) (mode sb-alien:int) (callback (* t)))
+(sb-alien:define-alien-routine ("SSL_CTX_load_verify_locations" fnn-%ssl-ctx-load-verify-locations)
+    sb-alien:int (context (* t)) (cafile sb-alien:c-string) (capath sb-alien:c-string))
 (sb-alien:define-alien-routine ("SSL_new" fnn-%ssl-new)
     (* t)
   (context (* t)))
@@ -110,6 +118,13 @@
 (sb-alien:define-alien-routine ("SSL_accept" fnn-%ssl-accept)
     sb-alien:int
   (ssl (* t)))
+(sb-alien:define-alien-routine ("SSL_connect" fnn-%ssl-connect) sb-alien:int (ssl (* t)))
+(sb-alien:define-alien-routine ("SSL_set1_host" fnn-%ssl-set1-host)
+    sb-alien:int (ssl (* t)) (hostname sb-alien:c-string))
+(sb-alien:define-alien-routine ("SSL_ctrl" fnn-%ssl-ctrl)
+    sb-alien:long (ssl (* t)) (command sb-alien:int) (larg sb-alien:long) (parg (* t)))
+(sb-alien:define-alien-routine ("SSL_get_verify_result" fnn-%ssl-get-verify-result)
+    sb-alien:long (ssl (* t)))
 (sb-alien:define-alien-routine ("SSL_get_error" fnn-%ssl-get-error)
     sb-alien:int
   (ssl (* t)) (result sb-alien:int))
@@ -268,6 +283,59 @@ configured server context and never a protected client session."
         (fnn-%ssl-ctx-free pointer)
         (error condition)))))
 
+(defun fnn-tls-open-client-context (trust-anchor-path)
+  "Create a peer-verifying client context rooted only in TRUST-ANCHOR-PATH."
+  (fnn-tls-initialize)
+  (unless (and (stringp trust-anchor-path) (> (length trust-anchor-path) 0))
+    (error 'fnn-tls-config-error :detail "a trust-anchor path is required"))
+  (let* ((method (fnn-%tls-client-method))
+         (pointer (and (not (fnn-tls-null-pointer-p method)) (fnn-%ssl-ctx-new method))))
+    (when (or (fnn-tls-null-pointer-p method) (fnn-tls-null-pointer-p pointer))
+      (error 'fnn-tls-config-error :detail "client context creation failed"))
+    (handler-case
+        (progn
+          (unless (= (fnn-%ssl-ctx-ctrl pointer +fnn-tls-ctrl-set-min-proto-version+
+                                        +fnn-tls-version-1-2+ (fnn-tls-null-pointer)) 1)
+            (error 'fnn-tls-config-error :detail "cannot require TLS 1.2+"))
+          (fnn-%ssl-ctx-set-verify pointer +fnn-tls-verify-peer+ (fnn-tls-null-pointer))
+          (unless (= (fnn-%ssl-ctx-load-verify-locations pointer trust-anchor-path nil) 1)
+            (error 'fnn-tls-config-error
+                   :detail (format nil "trust anchor ~a cannot be loaded: ~a"
+                                   trust-anchor-path (fnn-tls-error-stack))))
+          (fnn-tls-context-make :pointer pointer :certificate-path trust-anchor-path))
+      (error (condition) (fnn-%ssl-ctx-free pointer) (error condition)))))
+
+(defun fnn-tls-connect (context fd server-name seconds)
+  "Complete an authenticated client handshake with chain and hostname checks."
+  (unless (and (stringp server-name) (> (length server-name) 0))
+    (error 'fnn-tls-config-error :detail "a TLS server name is required"))
+  (let ((ssl (fnn-%ssl-new (fnn-tls-context-pointer context)))
+        (deadline (fnn-tls-deadline seconds))
+        (sni (fnn-octets (append (map 'list #'char-code server-name) '(0)))))
+    (when (fnn-tls-null-pointer-p ssl)
+      (error 'fnn-tls-handshake-error :detail "SSL_new failed"))
+    (handler-case
+        (progn
+          (unless (and (= (fnn-%ssl-set-fd ssl fd) 1)
+                       (= (fnn-%ssl-set1-host ssl server-name) 1)
+                       (sb-sys:with-pinned-objects (sni)
+                         (= (fnn-%ssl-ctrl ssl +fnn-tls-ctrl-set-tlsext-hostname+
+                                           +fnn-tls-tlsext-nametype-host-name+
+                                           (sb-alien:cast (fnn-tls-pointer sni) (* t))) 1)))
+            (error 'fnn-tls-handshake-error :detail "client TLS parameters failed"))
+          (loop
+            (let ((result (fnn-%ssl-connect ssl)))
+              (when (= result 1)
+                (unless (zerop (fnn-%ssl-get-verify-result ssl))
+                  (error 'fnn-tls-handshake-error :detail "certificate verification failed"))
+                (return (fnn-tls-channel-make :pointer ssl :fd fd)))
+              (let ((disposition (fnn-tls-retry-direction ssl result)))
+                (if (member disposition '(:input :output))
+                    (fnn-tls-wait fd disposition deadline 'fnn-tls-handshake-error)
+                  (fnn-tls-operation-error 'fnn-tls-handshake-error "client handshake"
+                                           disposition))))))
+      (error (condition) (fnn-%ssl-free ssl) (error condition)))))
+
 (defun fnn-tls-close-context (context)
   (when (and context (fnn-tls-context-pointer context))
     (fnn-%ssl-ctx-free (fnn-tls-context-pointer context))
@@ -331,13 +399,13 @@ configured server context and never a protected client session."
         (fnn-%ssl-free ssl)
         (error condition)))))
 
-(defun fnn-tls-read (channel seconds)
+(defun fnn-tls-read (channel seconds &optional (limit +fnn-max-read+))
   "Read decrypted bytes.  SSL_pending is checked before fd readiness so
 plaintext already buffered inside OpenSSL cannot be stranded."
   (let* ((ssl (fnn-tls-channel-pointer channel))
          (fd (fnn-tls-channel-fd channel))
          (deadline (fnn-tls-deadline seconds))
-         (buffer (fnn-make-octets +fnn-max-read+))
+         (buffer (fnn-make-octets limit))
          (initialp t))
     ;; SSL_read retries keep the identical pinned pointer/count for the whole
     ;; operation, including WANT_READ changing to WANT_WRITE.
