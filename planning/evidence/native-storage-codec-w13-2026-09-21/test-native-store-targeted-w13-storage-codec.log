@@ -1,0 +1,12 @@
+test_post_reopen_replays_and_preserves_literal_lisp_bytes (tests.test_store.StoreTests.test_post_reopen_replays_and_preserves_literal_lisp_bytes) ... ok
+test_acl2_transaction_names_continue_after_nonempty_recovery (tests.test_store.StoreTests.test_acl2_transaction_names_continue_after_nonempty_recovery)
+The second final name comes from ACL2 after replaying real history. ... ok
+test_metadata_frames_round_trip_and_reject_truncation (tests.test_store.StoreTests.test_metadata_frames_round_trip_and_reject_truncation)
+P4: config and allocator are ACL2 FNSM frames, not JSON records. ... ok
+test_legacy_json_metadata_is_never_rewritten_on_open (tests.test_store.StoreTests.test_legacy_json_metadata_is_never_rewritten_on_open)
+Format-5-looking metadata is retained for explicit offline migration. ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 2.437s
+
+OK

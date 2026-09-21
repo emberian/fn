@@ -1,0 +1,12 @@
+test_bytewise_partition_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_bytewise_partition_agrees) ... ok
+test_cut_after_a_reply_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_cut_after_a_reply_agrees) ... ok
+test_cut_inside_a_command_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_cut_inside_a_command_agrees) ... ok
+test_framing_rejection_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_framing_rejection_agrees) ... ok
+test_input_after_quit_is_ignored_identically (tests.test_native_served_differential.NativeServedDifferentialTests.test_input_after_quit_is_ignored_identically) ... ok
+test_split_utf8_wildmat_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_split_utf8_wildmat_agrees) ... ok
+test_whole_transcript_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_whole_transcript_agrees) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.352s
+
+OK
