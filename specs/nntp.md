@@ -363,22 +363,29 @@ The digest is the seam's, and the seam is now executable:
 for; the audit's entry is updated rather than deleted, because the reason the
 credential was cleartext is part of the record.
 
-Proved (`books/auth-secret.lisp`): the enrolled secret always checks; a stored
-verifier is never an octet list, so the slot that used to carry a cleartext
-secret cannot carry one; the stored digest is 32 octets whatever the secret is,
-so a stolen configuration reveals neither the secret nor its length; and the
-preimage recovers `(salt, secret)`, so one credential's digest cannot
-authenticate another's secret through a moved boundary. **Not proved, and not
-provable here**: that a wrong secret is rejected. That is second-preimage
-resistance of SHA-256 — A-CRYPTO — and under the seam's local witness it is
-false. `tests/acl2/auth-secret-tests.lisp` exhibits rejection on concrete
-octets under the real attachment; that is a witness, not a theorem.
+Proved (`books/auth-secret.lisp`): the enrolled secret checks; the verifier
+is a structured value rather than an octet list; its digest has a fixed length;
+and the preimage encoding recovers `(salt, secret)`. These shape/encoding facts
+do not establish secrecy of the password or its length, resistance to offline
+guessing, or universal rejection of a different secret. The seam's constant-
+digest witness accepts every secret. Concrete rejection cases in
+`tests/acl2/auth-secret-tests.lisp` remain witnesses for those inputs.
+
+The concrete v1 scheme is a fast salted, tagged SHA-256 verifier, with no tunable
+work factor or memory-hard password derivation. Preserving this format in native
+administration establishes compatibility, not hardened password storage. The
+next authentication profile needs an explicit version/migration contract,
+password-guessing threat model, bounded verification resource policy and a
+reviewed primitive/backend boundary. Argon2id is a candidate for that design:
+[RFC 9106](https://www.rfc-editor.org/rfc/rfc9106.html) specifies memory-hard
+password hashing and parameter selection. No new suite or parameters are selected
+here. This issue is separate from TLS transport protection, native author
+signatures, and the deferred private-group cryptosystem.
 
 **Done 2026-09-20**: `books/nntp-auth.lisp` holds a `fn-authsec-verifierp`
 in `fn-auth-cred-secret`, `fn-auth-credp` recognizes it, and
-`fn-auth-checkp` is `fn-authsec-checkp`. By
-`fn-authsec-verifier-is-not-octets` a cleartext token is not even
-well-formed in that slot. `fn principal set-password` derives the verifier
+`fn-auth-checkp` is `fn-authsec-checkp`. `fn-authsec-verifier-is-not-octets` distinguishes the verifier tuple from
+an octet-list token; it is not a confidentiality theorem. `fn principal set-password` derives the verifier
 through `tools/auth_secret.py` — one ACL2 session over `books/auth-secret`,
 no `hashlib`, and `bin/fn` no longer imports that module. An existing
 credential file in the old format is refused by name

@@ -570,3 +570,16 @@ will validate only the selected bounded connection state. Runtime activation
 also waits for bounded socket reads and worker-owned descriptor cleanup.
 Neither work item is closed by an opaque host flag, an unchecked executable
 branch, or a theorem assuming its own output is already well formed.
+
+
+### U16: verifier shape was reported as password confidentiality
+
+`books/auth-secret.lisp` and the AUTHINFO specification inferred secret
+confidentiality from a fixed-length digest and a structured verifier. Those
+facts do not establish secrecy or guessing resistance. The implementation is
+one salted, tagged SHA-256 verifier, with no password work factor. The claims
+are corrected in source comments and [the specification](../specs/nntp.md#the-stored-authinfo-credential).
+Native administration preserves this format for compatibility; password
+hardening, versioned migration and verification resource limits remain a
+separate authentication-profile task. No cryptographic primitive was changed
+and no proposed suite was silently selected.
