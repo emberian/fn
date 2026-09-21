@@ -18,6 +18,7 @@
 (include-book "../books/crypto-attach")
 (include-book "../books/frame-trailer")
 (include-book "../books/byte-store-frame")
+(include-book "../books/byte-store-txn-name")
 (include-book "../books/article-fields")
 
 (defconst *fn-store-capacity* 1048576)
@@ -47,6 +48,15 @@
 
 (defun fn-store-octets->string (xs)
   (fn-record-octets-string xs))
+
+; The final transaction namespace is an ACL2 value.  The native host consumes
+; the string wrapper; the Python bridge consumes octets so no Lisp string
+; reader or duplicate decimal formatter sits on its persistence path.
+(defun fn-store-txn-name (sequence)
+  (if (natp sequence) (fn-bs-txn-name sequence) ""))
+
+(defun fn-store-txn-name-octets (sequence)
+  (fn-record-string-octets (fn-store-txn-name sequence)))
 
 (defun fn-store-decode-records (octet-records)
   (declare (xargs :mode :program))
