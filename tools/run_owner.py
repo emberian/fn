@@ -1813,6 +1813,9 @@ OWNER_FAULTS = {
         "owner:abort-barrier", action=process_cut_once(93)),
     "response-cut": lambda: ScriptedFaults(
         "owner:response", action=process_cut_once(94)),
+    "store-uncertain": lambda: ScriptedFaults(
+        "record-attempted",
+        StoreIndeterminate("injected ambiguous article publication")),
 }
 
 
@@ -1859,7 +1862,7 @@ def main(argv=None):
     control = None
     faults = NO_FAULTS if args.inject_fault is None else OWNER_FAULTS[args.inject_fault]()
     try:
-        store = Store(args.store, writable=True)
+        store = Store(args.store, writable=True, faults=faults)
         store.acquire()
         bridge = Acl2Owner(args.max_connections)
         records = store.recover(bridge)

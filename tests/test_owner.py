@@ -439,6 +439,20 @@ class SubmissionCrashCutTests(OwnerFixture):
         self.cut("response-cut", 94, "<response@example.invalid>")
         self.recovered_version(3)
 
+    def test_an_ambiguous_store_result_is_reported_then_fences_the_owner(self):
+        owner = self.start_owner(inject_fault="store-uncertain")
+        reply = owner.post("<uncertain@example.invalid>",
+                           self.article("<uncertain@example.invalid>"))
+        self.assertTrue(reply.startswith(b"uncertain:"), reply)
+        self.assertEqual(owner.proc.wait(timeout=30), 3)
+        owner.stop()
+        self.owner = None
+
+        # This process cut happened after link(2), so ordinary process-death
+        # recovery finds the complete article and resolves the retained intent
+        # as a commit. No second mutation occurred in the uncertain image.
+        self.recovered_version(2)
+
 class OwnerTlsTests(unittest.TestCase):
     """RFC 4642 section 2.3's security layer is a HOST facility.
 
