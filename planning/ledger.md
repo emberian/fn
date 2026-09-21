@@ -13,21 +13,21 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 336 |
 | Certification roots in the Makefile | 335 |
 | Books inside the root closure | 335 |
-| `defthm` and `defthmd` events | 6171 |
-| `defun` events | 4601 |
+| `defthm` and `defthmd` events | 6175 |
+| `defun` events | 4609 |
 | Functions with verified guards | 1566 |
 | Functions declared `:verify-guards nil` and never verified | 233 |
-| Functions left at the default with an explicit guard | 2213 |
+| Functions left at the default with an explicit guard | 2221 |
 | Functions left at the default with no guard | 589 |
-| `assert-event` checks | 6415 |
+| `assert-event` checks | 6427 |
 | `must-fail` checks | 129 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 56 |
-| Export-hygiene warnings | 76 |
+| Export-hygiene warnings | 79 |
 | Enabled-projection warnings | 24 |
 | Teeth-form warnings | 4 |
-| Include-hygiene warnings | 115 |
-| Host-names warnings | 322 |
+| Include-hygiene warnings | 116 |
+| Host-names warnings | 325 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -151,15 +151,15 @@ that `make certify` requests.
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
 | `books/byte-store-keystones.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-program-invariants.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
-| `books/byte-store-programs.lisp` | root | 1 | 29 | 0/29/0/0 | 32 | 0 | 0 |
+| `books/byte-store-programs.lisp` | root | 1 | 29 | 0/29/0/0 | 33 | 0 | 0 |
 | `books/byte-store-relation.lisp` | root | 12 | 7 | 0/5/0/2 | 0 | 0 | 0 |
 | `books/byte-store-scan.lisp` | root | 134 | 34 | 0/29/0/5 | 0 | 0 | 1 |
-| `books/byte-store-txn-name.lisp` | root | 27 | 10 | 1/0/9/0 | 0 | 0 | 0 |
+| `books/byte-store-txn-name.lisp` | root | 29 | 11 | 1/0/10/0 | 0 | 0 | 0 |
 | `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 12 | 24 | 24/0/0/0 | 0 | 0 | 0 |
 | `books/checkpoint-codec.lisp` | root | 108 | 32 | 13/0/18/1 | 0 | 0 | 1 |
-| `books/checkpoint-publish.lisp` | root | 63 | 56 | 13/1/42/0 | 0 | 0 | 0 |
+| `books/checkpoint-publish.lisp` | root | 65 | 63 | 13/1/49/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 0 |
@@ -343,7 +343,7 @@ that `make certify` requests.
 | `tests/acl2/cbor-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/cbor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 78 | 0 | 0 |
-| `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 74 | 0 | 0 |
+| `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 85 | 0 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/config-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 0 | 0 |
