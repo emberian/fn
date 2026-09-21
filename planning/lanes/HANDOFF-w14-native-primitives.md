@@ -168,6 +168,10 @@ must barrier the final file and store directory before decoding held FNAN.
 An injected post-rename EIO followed by a new store instance exercises that
 uncertain/recovery path.
 
+Exact source, certification, three-host EIO/restart evidence and limitations
+are archived in
+[`tests/evidence/2026-09-21-native-anchor-replace.md`](../../tests/evidence/2026-09-21-native-anchor-replace.md).
+
 Exact-revision certification, three-host component runs and the common-image
 live acceptance/restart observation are archived in
 [`tests/evidence/2026-09-21-native-anchor-runtime.md`](../../tests/evidence/2026-09-21-native-anchor-runtime.md).

@@ -1,0 +1,125 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/anchor-replace": 0,
+    "tests/acl2/anchor-replace-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w14-native-primitives/build/acl2/certify-20260921T092103Z-35156",
+  "book_failures": {},
+  "book_results": {
+    "books/anchor-replace": "passed",
+    "tests/acl2/anchor-replace-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/anchor-replace": 0.218,
+    "tests/acl2/anchor-replace-tests": 0.528
+  },
+  "cert_cache": {
+    "already_cached": 2,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": true,
+        "book": "books/anchor-replace",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "tests/acl2/anchor-replace-tests",
+        "published": false,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/anchor-replace": "32eb79ffe2aeb5aea342f534867162e6a856fa504326dfc6f1210372f7b37a56",
+    "tests/acl2/anchor-replace-tests": "5e57b05d7d0686150cd9c73d0770563ce6ffa2e3cf6472f1d8c1406678362f64"
+  },
+  "certify_wall_seconds": 0.806,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/anchor-replace": "fbadc58a344192e82c06b2e8693a6b06990aeb52bc1c25c55bfef8fe1cc6e8df",
+    "tests/acl2/anchor-replace-tests": "d58b7c9c8d82d674045ad003a80b59dc997d8eed00f338c0aa76f2949ccac400"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 095848473cc646d074cee8d49b0ca17b 08cf7ea25fcc",
+    "FN_CERTIFY_SUCCESS 095848473cc646d074cee8d49b0ca17b 8b728b01c781"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T09:21:04+00:00",
+  "git_branch": "w14/native-primitives",
+  "git_dirty": true,
+  "git_revision": "d073fa9979cac368567adbd3aa6600e820b92d44",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 095848473cc646d074cee8d49b0ca17b 08cf7ea25fcc",
+    "FN_CERTIFY_SUCCESS 095848473cc646d074cee8d49b0ca17b 8b728b01c781"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "books/anchor-replace",
+    "tests/acl2/anchor-replace-tests"
+  ],
+  "requested_books": [
+    "books/anchor-replace",
+    "tests/acl2/anchor-replace-tests"
+  ],
+  "run_id": "certify-20260921T092103Z-35156",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/anchor-replace": 0.0,
+    "tests/acl2/anchor-replace-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/anchor-replace.lisp": "48e23a2b9235551d4c55b759188d2c01a49d10510b7ebb9ff1b93306342d0ff1",
+    "tests/acl2/anchor-replace-tests.lisp": "081408275b3b81b70456b8ff226f80fdce27572199a81f766af92a472eaf94e9"
+  },
+  "source_digests_sha256_after": {
+    "books/anchor-replace.lisp": "48e23a2b9235551d4c55b759188d2c01a49d10510b7ebb9ff1b93306342d0ff1",
+    "tests/acl2/anchor-replace-tests.lisp": "081408275b3b81b70456b8ff226f80fdce27572199a81f766af92a472eaf94e9"
+  },
+  "start_order": [
+    "books/anchor-replace",
+    "tests/acl2/anchor-replace-tests"
+  ],
+  "started_utc": "2026-09-21T09:21:03+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/w14-native-primitives"
+}

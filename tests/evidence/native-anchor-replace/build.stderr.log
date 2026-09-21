@@ -1,0 +1,6 @@
+build_native_host: error or uncertified-book marker in build/native-host-build.log
+201:ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "books/served" ...): 
+210:Warnings:  Uncertified and Compiled file
+2773:ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "../books/anchor-invariants"
+2779:ACL2 Warning [Uncertified] in ( INCLUDE-BOOK "anchor-record" ...):
+2788:Warnings:  Uncertified and Compiled file
