@@ -333,8 +333,15 @@
 ; substitutes and the two sides become the same term.
 (defun fn-bs-record-of-octets (octets)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-frame-store-decode octets
-                         (fn-frame-digest (fn-frame-protected-prefix octets))))
+  (let* ((frame (fn-frame-store-decode
+                 octets (fn-frame-digest (fn-frame-protected-prefix octets))))
+         (decoded (and (fn-frame-result-okp frame)
+                       (fn-store-event-decode-exact
+                        (fn-frame-result-payload frame)))))
+    (if (and (consp decoded) (equal (car decoded) :ok)
+             (fn-store-event-p (nth 1 decoded)))
+        (nth 1 decoded)
+      nil)))
 
 (defun fn-bs-record-of (s ino)
   (declare (xargs :guard t :verify-guards nil))
@@ -367,8 +374,8 @@
     (let* ((ino (fn-bs-lookup s :transactions (fn-bs-txn-name n)))
            (record (and (fn-bs-inop ino) (fn-bs-record-of s ino)))
            (rest (fn-bs-read-records s (1+ n) count)))
-      (if (or (not (fn-record-p record))
-              (not (equal (fn-record-sequence record) n))
+      (if (or (not (fn-store-event-p record))
+              (not (equal (fn-store-event-sequence record) n))
               (equal rest :fault))
           :fault
         (cons record rest)))))
@@ -1199,8 +1206,8 @@
                 (implies (fn-sf-frontier-new-visiblep ks)
                          (natp (fn-sf-frontier-candidate ks)))
                 (implies (fn-sf-record-present-visiblep ks)
-                         (and (fn-record-p (fn-sf-record-candidate ks))
-                              (equal (fn-record-sequence (fn-sf-record-candidate ks))
+                         (and (fn-store-event-p (fn-sf-record-candidate ks))
+                              (equal (fn-store-event-sequence (fn-sf-record-candidate ks))
                                      (len (fn-sf-records ks)))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sf-statep fn-sf-phase-shapep
@@ -1753,8 +1760,8 @@
                         image (nth 3 (car (fn-bs-ops-for-dir (fn-bs-pending bs)
                                                              :transactions))))
                        (fn-sf-record-candidate ks))
-                (fn-record-p (fn-sf-record-candidate ks))
-                (equal (fn-record-sequence (fn-sf-record-candidate ks))
+                (fn-store-event-p (fn-sf-record-candidate ks))
+                (equal (fn-store-event-sequence (fn-sf-record-candidate ks))
                        (len (fn-bs-durable-names bs :transactions)))))
   :rule-classes nil
   :hints (("Goal"
@@ -1800,8 +1807,8 @@
                    (let* ((ino (fn-bs-lookup s :transactions (fn-bs-txn-name n)))
                           (record (and (fn-bs-inop ino) (fn-bs-record-of s ino)))
                           (rest (fn-bs-read-records s (1+ n) count)))
-                     (if (or (not (fn-record-p record))
-                             (not (equal (fn-record-sequence record) n))
+                     (if (or (not (fn-store-event-p record))
+                             (not (equal (fn-store-event-sequence record) n))
                              (equal rest :fault))
                          :fault
                        (cons record rest)))))
