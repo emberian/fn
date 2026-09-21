@@ -24,6 +24,21 @@ def environment():
 
 
 class NativeOwnerHandlerStructureTests(unittest.TestCase):
+    def test_transit_take_uses_transfer_decision_and_store_outcome(self):
+        # A transit take is a normal queued submission.  Treating the tag as
+        # a fault stopped the whole owner before Store ran; the later reply
+        # then surfaced only a secondary broken pipe.
+        source = (ROOT / "host/native/owner.lisp").read_text()
+        start = source.index("(defun fnn-owner-drain-one")
+        end = source.index("(defun fnn-owner-complete-bound-submission", start)
+        drain = source[start:end]
+        self.assertIn("(eq taken :taken-control)", drain)
+        self.assertNotIn("(not (eq taken :taken))", drain)
+        self.assertIn("'fn-owner-transit-decide", drain)
+        self.assertIn("'fn-owner-transit-evidence", drain)
+        self.assertIn("'fn-owner-transit-outcome", drain)
+        self.assertIn("(eq word :uncertain)", drain)
+
     def test_condition_handlers_and_cleanup_enclose_the_served_body(self):
         # Balanced source alone missed a live failure: handler clauses became
         # cleanup calls, and (e) invoked an undefined function on every EOF.
