@@ -103,9 +103,27 @@ each observation as a `(:store ...)` event.
 
 Clock observations come from `time.monotonic_ns` and `time.time_ns` (DTN
 milliseconds) with the configured `--clock-error-ms` half-width, supplied
-before every post and control command. `fn-own-observe` accepts only a later
-observation of the same clock (`fn-clock-later-observationp`); a wall reading
-that moves the earliest admissible time backwards is rejected and reported.
+before every socket chunk and every control command. `fn-own-observe`
+accepts only a later observation of the same clock
+(`fn-clock-later-observationp`), and it answers with one of three distinct
+words that the host reports and does not compute ([D10-a](../planning/decisions.md)):
+
+| Outcome | When | What the owner keeps |
+| --- | --- | --- |
+| `observed` | a later observation of the same clock, which includes a reading **equal** to the one held | the new reading |
+| `refused` | the monotonic counter went backwards, `has-wall` changed, or a widened error bound moved the earliest admissible true time back | **no clock at all** |
+| `invalid` | the message carried no observation | the reading it had |
+
+A refusal costs the owner its clock because the host has contradicted the
+clock it was reporting, and [the clock spec](time.md) allows a node that
+discovers its clock was wrong to stop being sure. With no clock the owner
+refuses to inject (`441 posting failed; this server has no usable clock
+reading`), refuses to create a group fact, and answers DATE with `503 no
+clock observation supplied`; facts already created keep the stamps they were
+created under. Recovery is one event: with no clock held, the next reading
+is admitted whatever it says. The cost is stated in D10-a, including the
+generated Message-ID a node may re-mint after a backwards correction, which
+the durable path refuses as the duplicate it is.
 
 Host-only, outside the proof: socket I/O, the output backlog bound, the
 control line grammar, the clock readings themselves, and the decision to
