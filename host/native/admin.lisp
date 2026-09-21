@@ -128,8 +128,9 @@ turning a refusal into a physical mutation."
              (multiple-value-bind (record reason) (fnn-admin-reconfigure plan (fnn-admin-clock-plan))
                (unless record
                  (fnn-refuse "administrative configuration refused: ~a" reason))
-               (let* ((names (fnn-config-record-names store))
-                      (config-records (fnn-config-records-from-names store names))
+               (let* ((observation (fnn-config-record-observation store))
+                      (names (mapcar #'car observation))
+                      (config-records (fnn-config-records-from-observation observation))
                       (authorization (fnn-admin-authorize store records config-records record names)))
                  (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
                  ; The durable publisher is the acceptance boundary.  Verify

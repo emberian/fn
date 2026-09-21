@@ -3,11 +3,11 @@
 (include-book "../../books/native-config-observation")
 
 (defconst *fn-nco-test-record-1*
-  (fn-cfg-encode (fn-cfg-record-make 0 0 1 nil (fn-clock-observation 0 0 0 t))))
+  (fn-cfg-encode (fn-cfg-record-make 0 0 1 (list (fn-cfg-set-capacity 1)) (fn-clock-observation 0 0 0 t))))
 (defconst *fn-nco-test-record-2*
-  (fn-cfg-encode (fn-cfg-record-make 1 1 2 nil (fn-clock-observation 1 1 0 t))))
+  (fn-cfg-encode (fn-cfg-record-make 1 1 2 (list (fn-cfg-set-capacity 2)) (fn-clock-observation 1 1 0 t))))
 (defconst *fn-nco-test-record-3*
-  (fn-cfg-encode (fn-cfg-record-make 2 2 3 nil (fn-clock-observation 2 2 0 t))))
+  (fn-cfg-encode (fn-cfg-record-make 2 2 3 (list (fn-cfg-set-capacity 3)) (fn-clock-observation 2 2 0 t))))
 
 (defconst *fn-nco-test-good*
   (list (list "00000002.cfg" *fn-nco-test-record-2*)

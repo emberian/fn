@@ -660,6 +660,37 @@ here.  The host supplies octets and decides nothing about them."
   (fnn-action (fnn-core-state 'fn-store-sn-recover
                               (mapcar #'fnn-octet-list records) frontier
                               (mapcar #'fnn-octet-list config-records))))
+(defun fnn-bridge-config-observation-limit ()
+  "The config reader consumes an ACL2-owned bound before readdir retains names."
+  (fnn-nat (fnn-core 'fn-store-config-observation-limit)))
+
+(defun fnn-bridge-config-observation (observed)
+  "Return ACL2-issued (canonical basename . octets) config history entries.
+
+OBSERVED is a bounded physical list.  The core decodes each octet record,
+derives its generation, checks the writer codec's exact basename, and returns
+only the sorted contiguous plan.  The membership check below validates the
+returned representation; it is not a second filename policy."
+  (let ((value
+          (fnn-core 'fn-store-config-observation
+                    (mapcar (lambda (entry)
+                              (list (fnn-octet-list (fnn-string-octets (car entry)))
+                                    (fnn-octet-list (cdr entry))))
+                            observed))))
+    (unless (and (true-listp value) (= (length value) 3)
+                 (eq (first value) :ok) (null (second value))
+                 (listp (third value)))
+      (fnn-fault "ACL2 refused configuration namespace observation"))
+    (mapcar (lambda (entry)
+              (unless (and (true-listp entry) (= (length entry) 2)
+                           (stringp (first entry))
+                           (fnn-octet-list-p (second entry))
+                           (null (position #\/ (first entry)))
+                           (find (first entry) observed :key #'car :test #'string=))
+                (fnn-fault "ACL2 returned malformed configuration namespace entry"))
+              (cons (first entry) (fnn-octets (second entry))))
+            (third value))))
+
 (defun fnn-bridge-transaction-observation (observed limit)
   "Return ACL2-issued (sequence . filename) pairs for one bounded scan.
 
@@ -941,38 +972,43 @@ this function never formats a generation in raw Lisp."
 (defun fnn-config-record-path (s generation)
   (fnn-join (fnn-config-dir s) (fnn-config-record-name generation)))
 
-(defun fnn-config-record-names (store &optional test-fault-point)
-  "The durable configuration records in generation order; NIL when absent.
+(defun fnn-config-record-observation (store &optional test-fault-point)
+  "One bounded physical config history observation, ordered by ACL2's plan.
 
-Enumeration failure is not absence.  In particular, initialization must not
-turn an unreadable config directory into a generation-one publication or skip
-its final record-file barrier.  TEST-FAULT-POINT is the native fidelity test's
-pre-enumeration control; normal callers pass NIL."
+Every observed name is checked as a regular non-symlink and read under the
+record byte bound before ACL2 decodes its generation and compares the native
+writer codec name.  A malformed/gapped namespace remains a fault; no suffix
+filter turns it into an absent or shorter history."
   (when test-fault-point (fnn-at store test-fault-point))
-  (sort (remove-if-not (lambda (name)
-                         (let ((n (length name)))
-                           (and (> n 4) (string= ".cfg" (subseq name (- n 4))))))
-                       (fnn-list-directory (fnn-config-dir store)))
-        #'string<))
+  (let* ((limit (fnn-bridge-config-observation-limit))
+         (names (handler-case
+                    (sort (fnn-list-directory-bounded (fnn-config-dir store) limit
+                                                      "configuration namespace")
+                          #'string<)
+                  (fnn-os-error () (fnn-fault "cannot enumerate configuration history"))))
+         (observed
+           (mapcar (lambda (name)
+                     (let ((path (fnn-join (fnn-config-dir store) name)))
+                       ;; This is deliberately before the ACL2 call: a
+                       ;; symlink/non-file is a physical observation fault.
+                       (fnn-check-regular path)
+                       (cons name
+                             (fnn-read-regular-bounded path +fnn-config-record-bytes+))))
+                   names)))
+    (fnn-bridge-config-observation observed)))
+
+(defun fnn-config-record-names (store &optional test-fault-point)
+  "Canonical config basenames from one bounded ACL2-bound observation."
+  (mapcar #'car (fnn-config-record-observation store test-fault-point)))
+
+(defun fnn-config-records-from-observation (observation)
+  (unless observation
+    (fnn-fault "refusing store with no durable configuration record"))
+  (mapcar #'cdr observation))
 
 (defun fnn-config-records (store)
-  "The durable configuration record history, oldest first.
-
-A store with no configuration record is a refused store -- a distinct outcome
-from an uncertain persistence observation, and never a compiled-in default.
-The core decides whether the records replay."
-  (fnn-config-records-from-names store (fnn-config-record-names store)))
-
-(defun fnn-config-records-from-names (store names)
-  "Decode the one bounded directory observation supplied by the caller."
-  (let ((names names))
-    (when (null names)
-      (fnn-fault "refusing store with no durable configuration record"))
-    (mapcar (lambda (name)
-              (let ((path (fnn-join (fnn-config-dir store) name)))
-                (fnn-check-regular path)
-                (fnn-read-regular-bounded path +fnn-config-record-bytes+)))
-            names)))
+  "The exact config octets paired with ACL2's canonical contiguous names."
+  (fnn-config-records-from-observation (fnn-config-record-observation store)))
 
 (defun fnn-open-lock (store exclusive create)
   (let ((flags (logior (if exclusive sb-posix:o-rdwr sb-posix:o-rdonly)
