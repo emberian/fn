@@ -43,8 +43,10 @@
     (and (mbe :logic (fn-sn-statep s) :exec t)
          (or (equal (fn-sf-phase files) :record-staged)
              (equal (fn-sf-phase files) :record-data-durable))
-         (fn-sn-record-bindsp
-          (fn-sn-node s) (fn-sf-record-candidate files)))))
+         (let ((record (fn-sf-record-candidate files)))
+           (if (fn-store-retention-event-p record)
+               (consp (fn-replay-apply-retention-event (fn-sn-node s) record))
+             (fn-sn-record-bindsp (fn-sn-node s) record))))))
 
 (verify-guards fn-sn-known-abort-enabledp
   :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))
@@ -73,7 +75,7 @@
   (let* ((record (fn-sf-record-candidate files))
          (aborting (fn-sn-known-abort-file-start files)))
     (fn-sf-abort-completion
-     aborting (fn-record-sequence record) (fn-record-txid record))))
+     aborting (fn-store-event-sequence record) (fn-store-event-txid record))))
 
 (verify-guards fn-sn-known-abort-files
   :hints (("Goal" :in-theory (disable fn-sn-known-abort-file-start))))
@@ -88,9 +90,11 @@
   (if (fn-sn-known-abort-enabledp s)
       (let* ((files (fn-sn-files s))
              (record (fn-sf-record-candidate files))
-             (node (fn-node-complete
-                    (fn-sn-node s) (fn-record-txid record)
-                    (fn-record-generation record) :aborted)))
+             (node (if (fn-store-retention-event-p record)
+                       (fn-sn-node s)
+                     (fn-node-complete
+                      (fn-sn-node s) (fn-record-txid record)
+                      (fn-record-generation record) :aborted))))
         (fn-sn-update s (fn-sn-known-abort-files files) node))
     s))
 
@@ -372,6 +376,7 @@
   (case (car event)
     (:refuse-reservation (fn-sn-refuse-reservation s (cadr event)))
     (:known-abort (fn-sn-known-abort s))
+    (:prepare-retention (fn-sn-prepare-retention s (cadr event)))
     (otherwise (fn-snt-step s event))))
 
 (defun fn-snrt-run (s events)

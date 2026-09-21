@@ -355,6 +355,26 @@
         (value :refused)
       (value :fault))))
 
+(defun fn-owner-prepare-retention
+  (kind id-octets subject-octets evidence-octets charge state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (fn-owner-store state))
+         (node (fn-sn-node s)))
+    (if (or (not (member-equal kind '(:undertake :release)))
+            (not (fn-store-text-octetsp id-octets))
+            (not (fn-store-text-octetsp subject-octets))
+            (not (fn-store-text-octetsp evidence-octets))
+            (not (natp charge)))
+        (value :invalid)
+      (let* ((txid (fn-state-next-txid (fn-node-acceptance node)))
+             (event (fn-store-retention-event-make
+                     kind (len (fn-sf-records (fn-sn-files s))) txid txid
+                     (fn-store-octets->string id-octets)
+                     (fn-store-octets->string subject-octets)
+                     (fn-store-octets->string evidence-octets) charge))
+             (state (fn-owner-step (list :store (list :prepare-retention event)) state)))
+        (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+
 (defun fn-owner-known-abort (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-store state))
@@ -370,7 +390,9 @@
 
 (defun fn-owner-pending-octets (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-opc-pending-octets (fn-owner-ocfg state))))
+  (let ((record (fn-sf-record-candidate
+                 (fn-sn-files (fn-owner-store state)))))
+    (value (if record (fn-store-event-encode record) nil))))
 
 ; Completion is the owner's (:complete) event: fn-sn-finish consumed once,
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).

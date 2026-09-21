@@ -27,7 +27,7 @@
 (in-package "ACL2")
 (include-book "replay")
 ; The codecs cluster withdraws the record and codec definitions at export
-; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+; (2026-09-19); the proofs here open fn-store-event-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
 
 (defconst *fn-sf-max-uint* 4294967295)
@@ -198,16 +198,14 @@
 
 (defun fn-sf-record-pair (record)
   (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (cons (fn-record-sequence record) (fn-record-txid record))
-       :exec (cons (fn-ag-car record)
-                   (fn-ag-car (fn-ag-cdr record)))))
+  (cons (fn-store-event-sequence record) (fn-store-event-txid record)))
 
 ; Internal guard domain for the txid fold.  It adds no semantic validity rule;
 ; the stronger ordered record-list predicate remains the storage invariant.
 (defun fn-sf-record-valuesp (records)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp records)
-      (and (fn-record-p (car records))
+      (and (fn-store-event-p (car records))
            (fn-sf-record-valuesp (cdr records)))
     (null records)))
 
@@ -216,7 +214,7 @@
                               (natp lower))
                   :verify-guards nil))
   (if (consp records)
-      (fn-sf-next-lower (cdr records) (1+ (fn-record-txid (car records))))
+      (fn-sf-next-lower (cdr records) (1+ (fn-store-event-txid (car records))))
     lower))
 
 ; Sequence numbers are contiguous.  Acceptance txids are strictly increasing,
@@ -226,24 +224,24 @@
                   :verify-guards nil))
   (if (consp records)
       (let ((record (car records)))
-        (and (fn-record-p record)
-             (equal (fn-record-sequence record) sequence)
-             (<= lower (fn-record-txid record))
-             (< (fn-record-txid record) frontier)
-             (equal (fn-record-generation record) (fn-record-txid record))
+        (and (fn-store-event-p record)
+             (equal (fn-store-event-sequence record) sequence)
+             (<= lower (fn-store-event-txid record))
+             (< (fn-store-event-txid record) frontier)
+             (equal (fn-store-event-generation record) (fn-store-event-txid record))
              (fn-sf-record-listp (cdr records) (1+ sequence)
-                                 (1+ (fn-record-txid record)) frontier)))
+                                 (1+ (fn-store-event-txid record)) frontier)))
     (null records)))
 
 (defun fn-sf-candidatep (record records frontier)
   (declare (xargs :guard (and (fn-sf-record-valuesp records)
                               (natp frontier))
                   :verify-guards nil))
-  (and (fn-record-p record)
-       (equal (fn-record-sequence record) (len records))
-       (equal (1+ (fn-record-txid record)) frontier)
-       (<= (fn-sf-next-lower records 0) (fn-record-txid record))
-       (equal (fn-record-generation record) (fn-record-txid record))))
+  (and (fn-store-event-p record)
+       (equal (fn-store-event-sequence record) (len records))
+       (equal (1+ (fn-store-event-txid record)) frontier)
+       (<= (fn-sf-next-lower records 0) (fn-store-event-txid record))
+       (equal (fn-store-event-generation record) (fn-store-event-txid record))))
 
 (defun fn-sf-record-has-pairp (pair records)
   (declare (xargs :guard t :verify-guards nil))
@@ -850,32 +848,32 @@
             (true-listp records))))
 
 ; The record fields the kernel arithmetic touches, typed once so the guard
-; proofs below never open fn-record-p.
+; proofs below never open fn-store-event-p.
 (local
  (defthm fn-sfg-record-is-a-true-list
-   (implies (fn-record-p record) (true-listp record))
-   :hints (("Goal" :in-theory (enable fn-record-p)))))
+   (implies (fn-store-event-p record) (true-listp record))
+   :hints (("Goal" :in-theory (enable fn-store-event-p)))))
 (local
  (defthm fn-sfg-record-sequence-is-natural
-   (implies (fn-record-p record) (natp (fn-record-sequence record)))
+   (implies (fn-store-event-p record) (natp (fn-store-event-sequence record)))
    :rule-classes (:rewrite :forward-chaining :type-prescription)
-   :hints (("Goal" :in-theory (enable fn-record-p)))))
+   :hints (("Goal" :in-theory (enable fn-store-event-p)))))
 (local
  (defthm fn-sfg-record-txid-is-natural
-   (implies (fn-record-p record) (natp (fn-record-txid record)))
+   (implies (fn-store-event-p record) (natp (fn-store-event-txid record)))
    :rule-classes (:rewrite :forward-chaining :type-prescription)
-   :hints (("Goal" :in-theory (enable fn-record-p)))))
+   :hints (("Goal" :in-theory (enable fn-store-event-p)))))
 (local
  (defthm fn-sfg-record-generation-is-natural
-   (implies (fn-record-p record) (natp (fn-record-generation record)))
+   (implies (fn-store-event-p record) (natp (fn-store-event-generation record)))
    :rule-classes (:rewrite :forward-chaining :type-prescription)
-   :hints (("Goal" :in-theory (enable fn-record-p)))))
+   :hints (("Goal" :in-theory (enable fn-store-event-p)))))
 (local
  (defthm fn-sfg-next-lower-is-natural
    (implies (and (fn-sf-record-valuesp records) (natp lower))
             (natp (fn-sf-next-lower records lower)))
    :hints (("Goal" :induct (fn-sf-next-lower records lower)
-            :in-theory (disable fn-record-p fn-record-txid)))))
+            :in-theory (disable fn-store-event-p fn-store-event-txid)))))
 
 (local
  (defthm fn-sfg-record-list-implies-values
@@ -907,8 +905,8 @@
 (verify-guards fn-sf-next-lower)
 (verify-guards fn-sf-record-listp)
 (verify-guards fn-sf-candidatep
- :hints (("Goal" :in-theory (disable fn-record-p fn-record-sequence
-                                     fn-record-txid fn-record-generation))))
+ :hints (("Goal" :in-theory (disable fn-store-event-p fn-store-event-sequence
+                                     fn-store-event-txid fn-store-event-generation))))
 (verify-guards fn-sf-record-has-pairp)
 (verify-guards fn-sf-success-listp)
 (verify-guards fn-sf-frontier-phasep)

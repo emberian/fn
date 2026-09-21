@@ -65,11 +65,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/retention-tests \
 	books/node \
 	books/node-invariants \
+	books/node-retention-transitions \
 	tests/acl2/node-tests \
 	books/node-traces \
 	books/records \
 	books/records-invariants \
 	books/records-canonicality \
+	books/store-events \
+	tests/acl2/store-events-tests \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
 	books/provenance-codec \
@@ -78,6 +81,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-invariants \
 	books/replay \
 	books/replay-invariants \
+	tests/acl2/store-event-replay-tests \
 	tests/acl2/replay-tests \
 	books/config-records \
 	books/node-config \

@@ -134,6 +134,85 @@ class NativeBpApplicationTests(unittest.TestCase):
             bridge.close()
             store.close()
 
+    def prepare_sender_obligation(self):
+        sender_store = self.temp / "sender-store"
+        workflow = self.temp / "sender-workflow"
+        initialized = self.invoke("store", sender_store, "init", "fn.test")
+        self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+        payload = self.temp / "sender-article"
+        payload.write_bytes(self.article)
+        posted = self.invoke(
+            "store", sender_store, "post", self.msgid.decode("ascii"),
+            payload, "-", "-", "fn.test",
+        )
+        self.assertEqual(posted.returncode, 0, posted.stderr.decode())
+        workflow_init = self.invoke(
+            "app-journal", "workflow-init", sender_store, workflow,
+            "dtn://sender/", "dtn://receiver/", "native-policy",
+            "dtn://receiver/", "3600000", "origin-native", "wire-auth",
+        )
+        self.assertEqual(workflow_init.returncode, 0, workflow_init.stderr.decode())
+        enqueued = self.invoke(
+            "app-journal", "workflow-enqueue", sender_store, workflow,
+            "1", "0", "work-native-bp", self.msgid.decode("ascii"),
+            "forward-native-bp", "dtn://receiver/", "native-policy",
+            "terms-native",
+        )
+        self.assertEqual(enqueued.returncode, 0, enqueued.stderr.decode())
+        undertaken = self.invoke(
+            "bp-obligation", "undertake", sender_store, workflow,
+            "work-native-bp", "3",
+        )
+        self.assertEqual(undertaken.returncode, 0, undertaken.stderr.decode())
+        return sender_store, workflow
+
+    def test_application_receipt_releases_forward_pin_only_after_durable_record(self):
+        sender_store, workflow = self.prepare_sender_obligation()
+        before = self.invoke(
+            "bp-obligation", "status", sender_store, workflow, "work-native-bp",
+        )
+        self.assertEqual(before.returncode, 0, before.stderr.decode())
+        self.assertIn(b"pinned=yes", before.stdout)
+
+        receiver, port = self.start_receiver()
+        sender = self.start_sender(port)
+        try:
+            sender_out, sender_err = sender.communicate(timeout=180)
+            receiver_out, receiver_err = receiver.communicate(timeout=180)
+            self.assertEqual(sender.returncode, 0, sender_err.decode())
+            self.assertEqual(receiver.returncode, 0, receiver_err.decode())
+            self.assertIn(b"BP application accepted", receiver_out)
+            self.assertIn(b"BP summary accepted=1", sender_out)
+        finally:
+            if receiver.poll() is None:
+                receiver.kill()
+                receiver.wait(timeout=10)
+            if sender.poll() is None:
+                sender.kill()
+                sender.wait(timeout=10)
+            receiver.stdout.close()
+            receiver.stderr.close()
+            sender.stdout.close()
+            sender.stderr.close()
+
+        receipts = sorted((self.sender_spool / "receive-evidence").glob("*.adu"))
+        self.assertEqual(len(receipts), 1)
+        fault_env = dict(self.env)
+        fault_env["FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE"] = "1"
+        uncertain = self.invoke(
+            "bp-obligation", "receipt", sender_store, workflow, receipts[0],
+            "2", "0", "trusted-local-observation-v0", env=fault_env,
+        )
+        self.assertEqual(uncertain.returncode, 3, uncertain.stderr.decode())
+        self.assertIn(b"publication is uncertain", uncertain.stderr)
+
+        recovered = self.invoke(
+            "bp-obligation", "status", sender_store, workflow, "work-native-bp",
+        )
+        self.assertEqual(recovered.returncode, 0, recovered.stderr.decode())
+        self.assertIn(b"status=receipted", recovered.stdout)
+        self.assertIn(b"pinned=no", recovered.stdout)
+
     def test_lost_receipt_restart_replays_without_second_acceptance(self):
         receiver, port = self.start_receiver(pause=True)
         sender = self.start_sender(port)

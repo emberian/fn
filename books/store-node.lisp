@@ -244,6 +244,23 @@
                 (fn-sf-statep fn-node-statep fn-node-pending-matchesp
                  fn-sn-pending-record fn-sn-prepare-node)))))
 
+; Retention events use the same reserved transaction and file publication
+; machine.  Their node effect is deliberately deferred until fn-sn-finish:
+; before the directory barrier the candidate is known absent or uncertain,
+; so the live canonical ledger must not advertise a release yet.
+(defun fn-sn-prepare-retention (s event)
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sn-statep s) :exec t)
+           (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+           (fn-store-retention-event-p event)
+           (consp (fn-replay-apply-retention-event (fn-sn-node s) event)))
+      (let ((files (fn-sf-prepare-record (fn-sn-files s) event
+                                         (fn-sn-groups s) (fn-sn-capacity s))))
+        (if (equal (fn-sf-phase files) :record-staged)
+            (fn-sn-update s files (fn-sn-node s))
+          s))
+    s))
+
 (defun fn-sn-find-record (pair records)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp records)
@@ -263,7 +280,10 @@
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (and (mbe :logic (fn-sn-statep s) :exec t)
        (equal (fn-sf-phase (fn-sn-files s)) :completing)
-       (fn-sn-record-bindsp (fn-sn-node s) (fn-sn-completion-record s))
+       (let ((record (fn-sn-completion-record s)))
+         (if (fn-store-retention-event-p record)
+             (consp (fn-replay-apply-retention-event (fn-sn-node s) record))
+           (fn-sn-record-bindsp (fn-sn-node s) record)))
        (equal (fn-sf-completion (fn-sn-files s))
               (fn-sf-record-pair (fn-sn-completion-record s)))))
 
@@ -301,20 +321,24 @@
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (fn-sn-completion-enabledp s)
       (let* ((record (fn-sn-completion-record s))
-             (node (fn-node-complete (fn-sn-node s) (fn-record-txid record)
-                                     (fn-record-generation record) :durable))
+             (retentionp (fn-store-retention-event-p record))
+             (node (if retentionp
+                       (fn-replay-apply-retention-event (fn-sn-node s) record)
+                     (fn-node-complete (fn-sn-node s) (fn-record-txid record)
+                                       (fn-record-generation record) :durable)))
              (files (fn-sf-core-completion
-                     (fn-sn-files s) (fn-record-sequence record)
-                     (fn-record-txid record))))
+                     (fn-sn-files s) (fn-store-event-sequence record)
+                     (fn-store-event-txid record))))
         ; The one site where the index changes, and it changes by at most one
         ; cons (fn-stx-index-grows-by-at-most-one-binding).  No walk of the
         ; store happens here; that is the whole point of carrying it.
         (fn-sn-update-indexed
          s
-         (fn-sf-emit-success files (fn-record-sequence record)
-                             (fn-record-txid record))
+         (fn-sf-emit-success files (fn-store-event-sequence record)
+                             (fn-store-event-txid record))
          node
-         (fn-stx-index-add (fn-sn-index s) (fn-sn-accepted-delta s))))
+         (if retentionp (fn-sn-index s)
+           (fn-stx-index-add (fn-sn-index s) (fn-sn-accepted-delta s)))))
     s))
 
 (verify-guards fn-sn-finish

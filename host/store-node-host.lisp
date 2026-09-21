@@ -492,6 +492,32 @@ reopen predicate, writer-lock observation and observed final namespace."
         (let ((state (f-put-global 'fn-store-sn next state))) (value :refused))
       (value :fault))))
 
+; Prepare a retention delta in the canonical Store transaction namespace.
+; KIND is selected by ACL2 vocabulary; the native host supplies only bounded
+; fields already authored by the workflow decision.
+(defun fn-store-sn-prepare-retention
+  (kind id-octets subject-octets evidence-octets charge state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (f-get-global 'fn-store-sn state))
+         (node (fn-sn-node s)))
+    (if (or (not (member-equal kind '(:undertake :release)))
+            (not (fn-store-text-octetsp id-octets))
+            (not (fn-store-text-octetsp subject-octets))
+            (not (fn-store-text-octetsp evidence-octets))
+            (not (natp charge)))
+        (value :invalid)
+      (let* ((txid (fn-state-next-txid (fn-node-acceptance node)))
+             (event (fn-store-retention-event-make
+                     kind (len (fn-sf-records (fn-sn-files s))) txid txid
+                     (fn-store-octets->string id-octets)
+                     (fn-store-octets->string subject-octets)
+                     (fn-store-octets->string evidence-octets) charge))
+             (next (fn-sn-prepare-retention s event)))
+        (if (equal next s)
+            (value :refused)
+          (let ((state (f-put-global 'fn-store-sn next state)))
+            (value :prepared)))))))
+
 ; This is enabled only before the host has attempted final-name publication.  The proved composition transition resolves the exact
 ; candidate through the file kernel and actual node abort transition.
 ; Link/directory uncertainty remains fenced for observed replay instead.
@@ -512,7 +538,7 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (let ((record (fn-sf-record-candidate
                  (fn-sn-files (f-get-global 'fn-store-sn state)))))
-    (value (if record (fn-record-encode record) nil))))
+    (value (if record (fn-store-event-encode record) nil))))
 
 (defun fn-store-sn-finish (state)
   (declare (xargs :stobjs state :mode :program))

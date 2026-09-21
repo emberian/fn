@@ -36,6 +36,9 @@
 (include-book "books/nntp")
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-workflow-records")
+(include-book "books/bp-release")
+(include-book "books/bp-release-store")
+(include-book "books/bp-outbound")
 (include-book "books/journal-publish")
 (include-book "books/app-journal")
 ; The TCPCLv4 convergence layer: the octet grammar and the session machine the

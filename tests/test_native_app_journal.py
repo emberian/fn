@@ -79,6 +79,12 @@ class NativeApplicationJournalTests(unittest.TestCase):
             "app-journal", "workflow-status", self.store, journal, "work-a"
         )
 
+    def undertake(self, journal, charge, env=None):
+        return self.invoke(
+            "app-journal", "workflow-undertake", self.store, journal,
+            "work-a", str(charge), env=env,
+        )
+
     def records(self, journal):
         return sorted((journal / "records").glob("*.wf"))
 
@@ -93,6 +99,45 @@ class NativeApplicationJournalTests(unittest.TestCase):
         reopened = self.status(journal)
         self.assertEqual(reopened.returncode, 0, reopened.stderr)
         self.assertIn("status=outstanding", reopened.stdout)
+
+    def test_forwarding_capacity_exhaustion_refuses_without_durable_record(self):
+        journal = self.tmp / "workflow-capacity"
+        self.initialize_workflow(journal)
+        accepted = self.enqueue(journal)
+        self.assertEqual(accepted.returncode, 0, accepted.stderr)
+        before = {p.name: p.read_bytes() for p in self.records(journal)}
+
+        refused = self.undertake(journal, 1 << 63)
+        self.assertEqual(refused.returncode, 1, refused.stderr)
+        self.assertIn("obligation is not admissible", refused.stderr)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.records(journal)})
+
+        admitted = self.undertake(journal, 3)
+        self.assertEqual(admitted.returncode, 0, admitted.stderr)
+        self.assertIn("durable undertaking", admitted.stdout)
+        self.assertEqual(len(self.records(journal)), len(before) + 1)
+
+        reopened = self.status(journal)
+        self.assertEqual(reopened.returncode, 0, reopened.stderr)
+        self.assertIn("status=outstanding", reopened.stdout)
+
+    def test_unsigned_receipt_profile_refuses_before_read_or_publication(self):
+        journal = self.tmp / "workflow-auth-profile"
+        receipt = self.tmp / "untrusted-receipt"
+        receipt.write_bytes(b"not an authenticated application receipt")
+        self.initialize_workflow(journal)
+        accepted = self.enqueue(journal)
+        self.assertEqual(accepted.returncode, 0, accepted.stderr)
+        self.assertEqual(self.undertake(journal, 3).returncode, 0)
+        before = {p.name: p.read_bytes() for p in self.records(journal)}
+
+        refused = self.invoke(
+            "app-journal", "workflow-receipt", self.store, journal,
+            receipt, "2", "0", "unsigned-lab",
+        )
+        self.assertEqual(refused.returncode, 1, refused.stderr)
+        self.assertIn("authentication profile is unsupported", refused.stderr)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.records(journal)})
 
     def test_reinitialization_preserves_existing_work_and_bytes(self):
         journal = self.tmp / "already-initialized"

@@ -39,6 +39,10 @@
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-native-app-fast")
 (include-book "books/bp-workflow-records")
+(include-book "books/bp-release")
+(include-book "books/bp-release-store")
+(include-book "books/bp-release-owner")
+(include-book "books/bp-outbound")
 (include-book "books/journal-publish")
 (include-book "books/app-journal")
 ; The TCPCLv4 convergence layer: the octet grammar and the session machine the
@@ -81,6 +85,7 @@
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
 (ld "host/workflow-host.lisp" :ld-error-action :error)
+(ld "host/bp-release-owner-host.lisp" :ld-error-action :error)
 (ld "host/bp-receipt-journal-host.lisp" :ld-error-action :error)
 (ld "host/bp-native-app-host.lisp" :ld-error-action :error)
 (ld "host/journal-publish-host.lisp" :ld-error-action :error)
@@ -146,6 +151,7 @@
         (load "host/native/operator.lisp")
         (load "host/native/checkpoint.lisp")
         (load "host/native/workflow.lisp")
+        (load "host/native/bp-obligation.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")
         (load "host/native/bp.lisp")

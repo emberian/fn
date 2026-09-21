@@ -9,6 +9,7 @@
 
 (defstruct fnn-app-journal
   root records staging lock-fd store domain frontier
+  (owner-mode nil)
   (fenced t))
 
 (defun fnn-app-journal-close (journal)
@@ -102,16 +103,23 @@
   (let ((answer
           (if records
               (if (eq (fnn-app-journal-domain journal) :workflow)
-                  (fnn-core-state 'fn-workflow-install-replay records)
+                  (fnn-core-state
+                   (if (fnn-app-journal-owner-mode journal)
+                       'fn-owner-workflow-install-replay
+                     'fn-workflow-install-replay)
+                   records)
                 (fnn-core-state 'fn-bprj-install records))
             (if (eq (fnn-app-journal-domain journal) :workflow)
-                (fnn-core-state 'fn-workflow-reset)
+                (fnn-core-state
+                 (if (fnn-app-journal-owner-mode journal)
+                     'fn-owner-workflow-reset
+                   'fn-workflow-reset))
               (fnn-core-state 'fn-bprj-reset)))))
     (unless (eq answer :ready)
       (fnn-fault "ACL2 rejected application journal replay"))
     :ready))
 
-(defun fnn-app-open (store root domain)
+(defun fnn-app-open (store root domain &key owner-mode)
   "Open a journal beside an already-open Store; never replace its ACL2 image."
   (fnn-app-require-live-store store)
   (unless (member domain '(:workflow :receipt))
@@ -133,7 +141,7 @@
           (setq journal
                 (make-fnn-app-journal
                  :root absolute :records records :staging staging :store store
-                 :domain domain
+                 :domain domain :owner-mode (and owner-mode t)
                  :frontier (fnn-core 'fn-aj-host-initial domain)
                  :lock-fd (fnn-app-journal-lock absolute domain)))
           (let* ((names (fnn-app-record-names journal))
@@ -153,7 +161,9 @@
           (eq (fnn-core-state 'fn-bprj-valid-config record) t))
       (eq (fnn-core-state
            (if (eq domain :workflow)
-               'fn-workflow-preflight-record
+               (if (fnn-app-journal-owner-mode journal)
+                   'fn-owner-workflow-preflight-record
+                 'fn-workflow-preflight-record)
              'fn-bprj-preflight)
            record)
           :ready))))
@@ -164,7 +174,9 @@
     (let ((answer
             (fnn-core-state
              (if (eq (fnn-app-journal-domain journal) :workflow)
-                 'fn-workflow-apply-record
+                 (if (fnn-app-journal-owner-mode journal)
+                     'fn-owner-workflow-apply-record
+                   'fn-workflow-apply-record)
                'fn-bprj-apply)
              record)))
       (unless (eq answer :ready)
@@ -206,14 +218,23 @@
                    (unless (eq phase expected)
                      (fnn-fault "publication observer preceded ACL2 report"))))))
            (fault-observer
-             (when (string= (or (sb-ext:posix-getenv
-                                 "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE")
-                                "")
-                            "1")
+             (when (or (string= (or (sb-ext:posix-getenv
+                                      "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE")
+                                     "") "1")
+                       (string= (or (sb-ext:posix-getenv
+                                      "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE")
+                                     "") "1"))
                (lambda (label point publication path)
                  (declare (ignore publication))
-                 (when (and (eq label :receipt-decision)
-                            (eq point :directory-barrier))
+                 (when (and (eq point :directory-barrier)
+                            (or (and (eq label :receipt-decision)
+                                     (string= (or (sb-ext:posix-getenv
+                                                   "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE")
+                                                  "") "1"))
+                                (and (eq label :release)
+                                     (string= (or (sb-ext:posix-getenv
+                                                   "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE")
+                                                  "") "1"))))
                    (fnn-os-fail sb-posix:eio path)))))
            (outcome
              (fnn-immutable-publish-effect
@@ -287,6 +308,38 @@
 (defun fnn-workflow-status (journal work-id)
   (declare (ignore journal))
   (fnn-core-state 'fn-workflow-work-status work-id))
+
+(defun fnn-workflow-undertake (journal work-id charge)
+  (let ((record (fnn-core-state 'fn-workflow-undertake-record work-id charge)))
+    (unless (and (consp record) (eq (first record) :undertake))
+      (fnn-refuse "workflow forwarding obligation is not admissible"))
+    (fnn-app-publish journal record)))
+
+(defun fnn-workflow-accept-receipt
+    (journal receipt-path txid generation authorization-profile
+     &optional canonical-release-callback)
+  ;; D09 is open.  Only this explicitly named local trust boundary may supply
+  ;; the policy-authorized observation; arbitrary receipt bytes cannot.
+  (unless (string= authorization-profile "trusted-local-observation-v0")
+    (fnn-refuse "workflow receipt authentication profile is unsupported"))
+  (let* ((octets (fnn-octet-list
+                  (fnn-read-regular-bounded receipt-path 131072)))
+         (intent (fnn-core-state 'fn-workflow-receipt-record
+                                 octets txid generation t)))
+    (unless (and (consp intent) (eq (first intent) :receipt-intent))
+      (fnn-refuse "ACL2 refused application receipt"))
+    (fnn-app-publish journal intent :reserve-resolution t)
+    (fnn-app-publish journal
+                     (list :outcome (second intent) (third intent)
+                           :ordinary :durable))
+    (let* ((receipt-id (fourth intent))
+           (release (fnn-core-state 'fn-workflow-release-record receipt-id)))
+      (unless (and (consp release) (eq (first release) :release))
+        (fnn-fault "committed receipt did not authorize its exact release"))
+      (if canonical-release-callback
+          (funcall canonical-release-callback release)
+        (fnn-app-publish journal release))
+      receipt-id)))
 
 ;;; Receiver operations.  Request context and receipt intent are separate
 ;;; durable facts; only a committed decision makes receipt bytes available
@@ -374,6 +427,26 @@
               work-id (fnn-workflow-status journal work-id))
      +fnn-exit-ok+)))
 
+(defun fnn-command-workflow-undertake
+    (store-root journal-root work-id charge)
+  (fnn-app-call-with-journal
+   store-root journal-root :workflow t
+   (lambda (journal)
+     (fnn-workflow-undertake journal work-id charge)
+     (fnn-out "workflow durable undertaking work=~a charge=~d" work-id charge)
+     +fnn-exit-ok+)))
+
+(defun fnn-command-workflow-receipt
+    (store-root journal-root receipt-path txid generation profile)
+  (fnn-app-call-with-journal
+   store-root journal-root :workflow t
+   (lambda (journal)
+     (let ((receipt-id (fnn-workflow-accept-receipt
+                        journal receipt-path txid generation profile)))
+       (fnn-out "workflow durable release receipt=~a profile=~a"
+                receipt-id profile)
+       +fnn-exit-ok+))))
+
 (defun fnn-command-receipt-init (store-root journal-root values)
   (fnn-app-call-with-journal
    store-root journal-root :receipt t
@@ -430,6 +503,16 @@
       ((string= command "workflow-status")
        (need 3)
        (fnn-command-workflow-status (first args) (second args) (third args)))
+      ((string= command "workflow-undertake")
+       (need 4)
+       (fnn-command-workflow-undertake
+        (first args) (second args) (third args) (parse-integer (fourth args))))
+      ((string= command "workflow-receipt")
+       (need 6)
+       (fnn-command-workflow-receipt
+        (first args) (second args) (third args)
+        (parse-integer (fourth args)) (parse-integer (fifth args))
+        (sixth args)))
       ((string= command "receipt-init")
        (need 5)
        (fnn-command-receipt-init

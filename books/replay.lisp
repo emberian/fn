@@ -14,35 +14,37 @@
 
 (in-package "ACL2")
 (include-book "node-invariants")
-(include-book "records")
-; The codecs cluster withdraws (:d fn-record-p) at export (2026-09-19); the
+(include-book "node-retention-transitions")
+(include-book "store-events")
+; The codecs cluster withdraws (:d fn-store-event-p) at export (2026-09-19); the
 ; loop's guard proof needs only that a record is a true list.  Interim
 ; local fact applied by the store deputy so its closure certifies; the
 ; convergence lane owns the final form.
 (local
  (defthm fn-replay-record-is-a-true-list
-   (implies (fn-record-p record) (true-listp record))
+   (implies (fn-store-event-p record) (true-listp record))
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-record-codec-vocabulary
                                       fn-record-record-vocabulary)))))
 (local
  (defthm fn-replay-record-counters-are-natural
-   (implies (fn-record-p record)
-            (and (natp (fn-record-sequence record))
-                 (natp (fn-record-txid record))
-                 (natp (fn-record-generation record))))
+   (implies (fn-store-event-p record)
+            (and (natp (fn-store-event-sequence record))
+                 (natp (fn-store-event-txid record))
+                 (natp (fn-store-event-generation record))))
    :rule-classes ((:forward-chaining)
                   (:type-prescription :corollary
-                   (implies (fn-record-p record) (natp (fn-record-sequence record))))
+                   (implies (fn-store-event-p record) (natp (fn-store-event-sequence record))))
                   (:type-prescription :corollary
-                   (implies (fn-record-p record) (natp (fn-record-txid record))))
+                   (implies (fn-store-event-p record) (natp (fn-store-event-txid record))))
                   (:type-prescription :corollary
-                   (implies (fn-record-p record) (natp (fn-record-generation record)))))
+                   (implies (fn-store-event-p record) (natp (fn-store-event-generation record)))))
    :hints (("Goal" :in-theory (enable fn-record-codec-vocabulary
                                       fn-record-record-vocabulary)))))
 
-; Convergence (board, codecs CHANGE on records): `fn-record-p' is opaque and exports no forward shape rule; the loop guard needs true-listp from it.
+; Convergence (board, codecs CHANGE on records): `fn-store-event-p' is opaque and exports no forward shape rule; the loop guard needs true-listp from it.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
+(local (in-theory (enable fn-retention-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; Result records
@@ -259,52 +261,121 @@
 ; refusal signal; it is deliberately not a normal partial state.  The guard
 ; on the node is discharged through the two node transitions by their
 ; preservation keystones; the record's proper-list guard is established by the
-; public replay loop through fn-record-p.
+; public replay loop through fn-store-event-p.
+(defun fn-replay-node-with-retention (node retention)
+  (declare (xargs :guard t))
+  (fn-node-make-state (fn-node-acceptance node) retention
+                      (fn-node-stage node) (fn-node-bindings node)))
+
+(defun fn-replay-complete-retention (node retention event)
+  (declare (xargs :guard
+                  (and (fn-node-statep node)
+                       (fn-retain-statep retention)
+                       (fn-store-retention-event-p event)
+                       (fn-node-statep
+                        (fn-replay-node-with-retention node retention)))
+                  :verify-guards nil))
+  ; A retention event consumes its Store transaction id just as article
+  ; completion does.  Advancing here keeps the live node at the durable
+  ; allocator frontier and makes the next mixed event strictly later.
+  (fn-replay-advance-txid
+   (fn-replay-node-with-retention node retention)
+   (1+ (fn-store-event-txid event))))
+
+(defun fn-replay-apply-retention-event (node event)
+  (declare (xargs :guard (and (fn-node-statep node)
+                              (fn-store-retention-event-p event))
+                  :verify-guards nil))
+  (let* ((advanced (fn-replay-advance-txid node (fn-store-event-txid event)))
+         (retention (fn-node-retention advanced))
+         (id (fn-store-event-obligation-id event))
+         (subject (fn-store-event-subject event))
+         (evidence (fn-store-event-evidence event)))
+    (if (or (not (fn-node-statep advanced))
+            (not (equal (fn-state-next-txid (fn-node-acceptance advanced))
+                        (fn-store-event-txid event)))
+            (not (null (fn-node-stage advanced)))
+            (member-equal id (fn-node-binding-ids (fn-node-bindings advanced))))
+        nil
+      (if (equal (fn-store-event-kind event) :undertake)
+          (if (not (fn-retain-admissiblep retention id subject :forward evidence
+                                         (fn-store-event-charge event)))
+              nil
+            (fn-replay-complete-retention
+             advanced (fn-retain-admit retention id subject :forward evidence
+                                       (fn-store-event-charge event)) event))
+        (let ((pin (fn-retain-find-id id (fn-retain-pins retention))))
+          (if (not (fn-retain-matching-releasep pin id subject :forward evidence))
+              nil
+            (fn-replay-complete-retention
+             advanced (fn-retain-release retention id subject :forward evidence)
+             event)))))))
+
 (defun fn-replay-apply-record (node record)
   (declare (xargs :guard (and (fn-node-statep node) (true-listp record))
                   :verify-guards nil))
-  (let ((advanced (fn-replay-advance-txid node (fn-record-txid record))))
-    (if (not (equal (fn-state-next-txid (fn-node-acceptance advanced))
-                    (fn-record-txid record)))
-        nil
-      (let ((prepared
-             (fn-node-prepare advanced
-                              (fn-record-generation record)
-                              (fn-record-msgid record)
-                              (fn-record-payload record)
-                              (fn-record-groups record)
-                              (fn-record-obligation-id record)
-                              (fn-record-content-subject record)
-                              (fn-record-release-evidence record)
-                              (fn-record-charge record))))
-        (if (not (fn-node-pending-matchesp
-                  prepared
-                  (fn-record-txid record)
-                  (fn-record-generation record)))
-            nil
-          (fn-node-complete prepared
-                            (fn-record-txid record)
-                            (fn-record-generation record)
-                            :durable))))))
-
-(verify-guards fn-replay-apply-record)
+  (if (fn-store-retention-event-p record)
+      (fn-replay-apply-retention-event node record)
+    (let ((advanced (fn-replay-advance-txid node (fn-store-event-txid record))))
+      (if (not (equal (fn-state-next-txid (fn-node-acceptance advanced))
+                      (fn-store-event-txid record)))
+          nil
+        (let ((prepared
+               (fn-node-prepare advanced
+                                (fn-store-event-generation record)
+                                (fn-record-msgid record)
+                                (fn-record-payload record)
+                                (fn-record-groups record)
+                                (fn-record-obligation-id record)
+                                (fn-record-content-subject record)
+                                (fn-record-release-evidence record)
+                                (fn-record-charge record))))
+          (if (not (fn-node-pending-matchesp
+                    prepared
+                    (fn-store-event-txid record)
+                    (fn-store-event-generation record)))
+              nil
+            (fn-node-complete prepared
+                              (fn-store-event-txid record)
+                              (fn-store-event-generation record)
+                              :durable)))))))
 
 ; A non-NIL one-record result is the existing node transaction machine's
 ; durable branch, hence remains a valid node.  NIL is intentionally a refusal,
 ; not a partially reconstructed state.
 (defthm fn-replay-apply-record-non-nil-is-node-state
   (implies (and (fn-node-statep node)
-                (fn-record-p record)
+                (fn-store-event-p record)
                 (consp (fn-replay-apply-record node record)))
            (fn-node-statep (fn-replay-apply-record node record)))
-  :hints (("Goal" :in-theory (enable fn-replay-apply-record))))
+  :hints (("Goal"
+           :use ((:instance fn-nrt-node-admit-preserves-statep
+                            (node (fn-replay-advance-txid
+                                   node (fn-store-event-txid record)))
+                            (id (fn-store-event-obligation-id record))
+                            (subject (fn-store-event-subject record))
+                            (kind :forward)
+                            (evidence (fn-store-event-evidence record))
+                            (charge (fn-store-event-charge record)))
+                 (:instance fn-nrt-node-release-preserves-statep
+                            (node (fn-replay-advance-txid
+                                   node (fn-store-event-txid record)))
+                            (id (fn-store-event-obligation-id record))
+                            (subject (fn-store-event-subject record))
+                            (kind :forward)
+                            (evidence (fn-store-event-evidence record))))
+           :in-theory (enable fn-replay-apply-record
+                              fn-replay-apply-retention-event
+                              fn-replay-complete-retention
+                              fn-replay-node-with-retention
+                              fn-nrt-node-with-retention))))
 
 ; Under the carried invariant a one-record result is a node exactly when it is
 ; non-NIL.  This is the equality the replay loop's :exec test relies on; it is
 ; used by :use in the guard proof and is not a rewrite rule.
 (defthm fn-replay-apply-record-statep-iff-consp
   (implies (and (fn-node-statep node)
-                (fn-record-p record))
+                (fn-store-event-p record))
            (iff (fn-node-statep (fn-replay-apply-record node record))
                 (consp (fn-replay-apply-record node record))))
   :rule-classes nil
@@ -313,6 +384,45 @@
            :in-theory (e/d (fn-node-statep fn-node-state-shapep)
                            (fn-replay-apply-record
                             fn-replay-apply-record-non-nil-is-node-state)))))
+
+(defthm fn-replay-retain-pins-typed
+  (implies (fn-retain-statep retention)
+           (fn-retain-obligation-listp
+            (fn-retain-pins retention)))
+  :hints (("Goal"
+           :in-theory (enable fn-retain-statep fn-retain-state-shapep
+                              fn-retain-capacity fn-retain-reserved
+                              fn-retain-pins fn-retain-releases))))
+
+(verify-guards fn-replay-complete-retention)
+(verify-guards fn-replay-apply-retention-event
+  :hints (("Goal"
+           :use ((:instance fn-nrt-node-admit-preserves-statep
+                            (node (fn-replay-advance-txid
+                                   node (fn-store-event-txid event)))
+                            (id (fn-store-event-obligation-id event))
+                            (subject (fn-store-event-subject event))
+                            (kind :forward)
+                            (evidence (fn-store-event-evidence event))
+                            (charge (fn-store-event-charge event)))
+                 (:instance fn-nrt-node-release-preserves-statep
+                            (node (fn-replay-advance-txid
+                                   node (fn-store-event-txid event)))
+                            (id (fn-store-event-obligation-id event))
+                            (subject (fn-store-event-subject event))
+                            (kind :forward)
+                            (evidence (fn-store-event-evidence event)))
+                 (:instance fn-nrt-node-statep-retention
+                            (node (fn-replay-advance-txid
+                                   node (fn-store-event-txid event))))
+                 (:instance fn-replay-retain-pins-typed
+                            (retention
+                             (fn-node-retention
+                              (fn-replay-advance-txid
+                               node (fn-store-event-txid event))))))
+           :in-theory (enable fn-replay-node-with-retention
+                              fn-nrt-node-with-retention))))
+(verify-guards fn-replay-apply-record)
 
 ; The replay loop is total.  It inspects no later record after a fault.  Its
 ; :exec path tests one-record refusal by NIL rather than by the recognizer.
@@ -323,9 +433,9 @@
       (fn-replay-fault node expected-sequence :invalid-initial-node)
     (if (consp records)
         (let ((record (car records)))
-          (if (not (fn-record-p record))
+          (if (not (fn-store-event-p record))
               (fn-replay-fault node expected-sequence :invalid-record)
-            (if (not (equal (fn-record-sequence record) expected-sequence))
+            (if (not (equal (fn-store-event-sequence record) expected-sequence))
                 (fn-replay-fault node expected-sequence :sequence)
               (let ((next (fn-replay-apply-record node record)))
                 (if (mbe :logic (not (fn-node-statep next))
@@ -366,15 +476,15 @@
 
 (defthm fn-replay-nonrecord-faults-with-last-good-node
   (implies (and (fn-node-statep node)
-                (not (fn-record-p record)))
+                (not (fn-store-event-p record)))
            (equal (fn-replay-loop node (cons record records) expected-sequence)
                   (fn-replay-fault node expected-sequence :invalid-record)))
   :hints (("Goal" :in-theory (enable fn-replay-loop))))
 
 (defthm fn-replay-out-of-sequence-faults-with-last-good-node
   (implies (and (fn-node-statep node)
-                (fn-record-p record)
-                (not (equal (fn-record-sequence record) expected-sequence)))
+                (fn-store-event-p record)
+                (not (equal (fn-store-event-sequence record) expected-sequence)))
            (equal (fn-replay-loop node (cons record records) expected-sequence)
                   (fn-replay-fault node expected-sequence :sequence)))
   :hints (("Goal" :in-theory (enable fn-replay-loop))))
@@ -391,7 +501,7 @@
   :hints (("Goal" :induct (fn-replay-loop node records expected-sequence)
            :in-theory (e/d (fn-replay-loop)
                            (fn-node-statep fn-replay-okp fn-replay-faultp
-                            fn-replay-apply-record fn-record-p)))))
+                            fn-replay-apply-record fn-store-event-p)))))
 
 ; Valid configured initial inputs inherit the typed replay-result boundary.
 (defthm fn-replay-result-is-typed-from-valid-configuration
