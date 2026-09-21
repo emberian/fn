@@ -1156,6 +1156,35 @@
       ]
     },
     {
+      "id": "PRF-035",
+      "title": "The frame integrity trailer has one owner, and the host's framing is the model's",
+      "statement": "fn-frame-trailer (books/frame-trailer.lisp) is the only definition of the 32-octet frame integrity trailer in the tree: it is fn-frame-digest, realised by fn-sha256 through books/crypto-attach.lisp, and it answers :bad rather than a digest for an argument that is not an octet list. For any magic, version, kind and payload in fn-frame-inputp, the byte string a host builds by asking ACL2 for the protected prefix, asking ACL2 for the trailer over it and concatenating the two is fn-frame-seal of those fields; and handing that byte string back to fn-frame-decode with the trailer re-derived over the frame's own fn-frame-protected-prefix answers fn-frame-ok of the fields that went in. The same two statements hold for the store instance the bridge executes, over fn-frame-store-protected and fn-frame-store-decode. Collision and preimage resistance are A-CRYPTO and are not claimed: the attachment introduces no axiom and the seam's constraints are shape only.",
+      "milestone": "M2",
+      "requirements": [
+        "ENC-003",
+        "STO-008",
+        "HST-004"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "certified",
+      "note": "Lane w11/one-owner. Keystones fn-frame-protected-plus-trailer-is-seal, fn-frame-decode-of-host-framing and their store instances fn-frame-store-protected-plus-trailer-is-seal and fn-frame-store-decode-of-host-framing, all in books/frame-trailer.lisp. Subject-to-host: the host lines that call fn-frame-trailer are tools/frame_bridge.py FrameSession.trailer (called by seal and digest_of), host/native/io.lisp fnn-trailer (called by fnn-seal and fnn-digest-of) and tools/run_owner.py Acl2Owner.trailer (called by feed_frames and feed_replay_frame); each replaced a separate SHA-256 in that host. Teeth in tests/acl2/frame-trailer-tests.lisp: 25 assert-events, including two FIPS 180-4 vectors, the exact store prefix and trailer octets, the :bad boundary arm, and one violating value per clause (a magic whose third octet is 300 for the shape clause keystone 1 needs, a max-payload of 2 for the bound clause keystone 2 needs, and a non-octet record for the store instance). Byte identity with the deleted host copies was cross-checked outside ACL2 against CPython hashlib.sha256 at 32, 4096, 32768, 262144 and 1048576 octets. NOT closed by this target: fn-frame-digest's collision resistance, and the marshalling cost of sealing a 4 MiB staged inbound bundle through the decimal-octet bridge.",
+      "events": [
+        "fn-frame-protected-plus-trailer-is-seal",
+        "fn-frame-decode-of-host-framing",
+        "fn-frame-store-protected-plus-trailer-is-seal",
+        "fn-frame-store-decode-of-host-framing"
+      ],
+      "evidence": [
+        "books/frame-trailer.lisp",
+        "tests/acl2/frame-trailer-tests.lisp",
+        "planning/evidence/frame-trailer-one-owner-2026-09-21.md"
+      ],
+      "progress_note": "Both books certified with tools/certify_books.py on the laptop (ACL2 8.7, SBCL 2.6.8), evidence dirs above. The four keystones and the 25 assert-events all pass. What the target does NOT establish: collision or preimage resistance of SHA-256 (A-CRYPTO, unchanged by the attachment); and one host trailer copy survives outside the three this lane closed -- tools/run_feed.py:179,184,190, the FNFD client half, which w11/harness-health deletes on its branch, so it was reported rather than edited into a merge conflict."
+    },
+    {
       "id": "PRF-036",
       "title": "Prefix and lower-frontier recoverability of a replayed history",
       "statement": "A history that replays successfully leaves an IDLE node whose next txid only moves forward, so dropping its last record leaves a history recoverable at the same frontier, and a history whose txids are all below a bound is recoverable AT that bound. Those are the two facts fn-sf-history-recoverablep needs beyond a successful replay -- together they are fn-replay-advance-okp -- and on them every image the platform may leave in the recovery window is replayable at its own frontier and the host's reopen entry succeeds on it.",
@@ -1186,35 +1215,6 @@
         "fn-snt-recovery-admissible-crash-image-is-recoverable",
         "fn-sn-recovery-admissible-image-reopens"
       ]
-    },
-    {
-      "id": "PRF-035",
-      "title": "The frame integrity trailer has one owner, and the host's framing is the model's",
-      "statement": "fn-frame-trailer (books/frame-trailer.lisp) is the only definition of the 32-octet frame integrity trailer in the tree: it is fn-frame-digest, realised by fn-sha256 through books/crypto-attach.lisp, and it answers :bad rather than a digest for an argument that is not an octet list. For any magic, version, kind and payload in fn-frame-inputp, the byte string a host builds by asking ACL2 for the protected prefix, asking ACL2 for the trailer over it and concatenating the two is fn-frame-seal of those fields; and handing that byte string back to fn-frame-decode with the trailer re-derived over the frame's own fn-frame-protected-prefix answers fn-frame-ok of the fields that went in. The same two statements hold for the store instance the bridge executes, over fn-frame-store-protected and fn-frame-store-decode. Collision and preimage resistance are A-CRYPTO and are not claimed: the attachment introduces no axiom and the seam's constraints are shape only.",
-      "milestone": "M2",
-      "requirements": [
-        "ENC-003",
-        "STO-008",
-        "HST-004"
-      ],
-      "depends_on": [],
-      "assumptions": [
-        "A-CRYPTO"
-      ],
-      "status": "certified",
-      "note": "Lane w11/one-owner. Keystones fn-frame-protected-plus-trailer-is-seal, fn-frame-decode-of-host-framing and their store instances fn-frame-store-protected-plus-trailer-is-seal and fn-frame-store-decode-of-host-framing, all in books/frame-trailer.lisp. Subject-to-host: the host lines that call fn-frame-trailer are tools/frame_bridge.py FrameSession.trailer (called by seal and digest_of), host/native/io.lisp fnn-trailer (called by fnn-seal and fnn-digest-of) and tools/run_owner.py Acl2Owner.trailer (called by feed_frames and feed_replay_frame); each replaced a separate SHA-256 in that host. Teeth in tests/acl2/frame-trailer-tests.lisp: 25 assert-events, including two FIPS 180-4 vectors, the exact store prefix and trailer octets, the :bad boundary arm, and one violating value per clause (a magic whose third octet is 300 for the shape clause keystone 1 needs, a max-payload of 2 for the bound clause keystone 2 needs, and a non-octet record for the store instance). Byte identity with the deleted host copies was cross-checked outside ACL2 against CPython hashlib.sha256 at 32, 4096, 32768, 262144 and 1048576 octets. NOT closed by this target: fn-frame-digest's collision resistance, and the marshalling cost of sealing a 4 MiB staged inbound bundle through the decimal-octet bridge.",
-      "events": [
-        "fn-frame-protected-plus-trailer-is-seal",
-        "fn-frame-decode-of-host-framing",
-        "fn-frame-store-protected-plus-trailer-is-seal",
-        "fn-frame-store-decode-of-host-framing"
-      ],
-      "evidence": [
-        "books/frame-trailer.lisp",
-        "tests/acl2/frame-trailer-tests.lisp",
-        "planning/evidence/frame-trailer-one-owner-2026-09-21.md"
-      ],
-      "progress_note": "Both books certified with tools/certify_books.py on the laptop (ACL2 8.7, SBCL 2.6.8), evidence dirs above. The four keystones and the 25 assert-events all pass. What the target does NOT establish: collision or preimage resistance of SHA-256 (A-CRYPTO, unchanged by the attachment); and one host trailer copy survives outside the three this lane closed -- tools/run_feed.py:179,184,190, the FNFD client half, which w11/harness-health deletes on its branch, so it was reported rather than edited into a merge conflict."
     },
     {
       "id": "PRF-037",
@@ -1278,6 +1278,20 @@
         "fn-served-open-peer-pins-the-configuration",
         "fn-served-open-greets-200-exactly-when-the-connection-may-post"
       ]
+    },
+    {
+      "id": "PRF-040",
+      "title": "A host fault costs one connection, and the fourth outcome says so",
+      "statement": "fn-own-fault (books/owner-fault.lisp) is the owner's host-fault transition. For any owner and any connection id: the faulted connection is no longer found; every connection with a different id is EQUAL to what it was, so every later step over it has the same input it would have had; a submission in flight for the faulted id, and a pending transaction held by it, are cleared, with no hypothesis that the connection was still open, while a submission in flight for a DIFFERENT id is untouched; the store, the committed view and the completion ledger are unchanged; and the octets the faulted connection receives are RFC 3977 section 3.2.1's 403 and are not the reply octets of fn-nntp-post-outcome for any session and any completion, including that function's own malformed-session 403 -- so the fault is a fourth outcome, distinguishable on the wire from accepted, refused and uncertain.",
+      "milestone": "M3",
+      "requirements": [
+        "HST-005",
+        "NNT-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "note": "Lane w11/owner-survival. CLAIMED as PRF-035 and renumbered to PRF-040 on merging dev: 035 had already gone to w11/one-owner's frame trailer, 036 to w11/bytestore-k2, 037 to w11/checkpoint-validator, 038 to w11/bp-node and 039 to w11/auth-live, all inside one evening. Keystones fn-own-fault-keeps-every-other-connection, fn-own-fault-clears-the-faulted-submission and fn-own-fault-reply-is-not-a-post-outcome (books/owner-fault.lisp), with fn-own-fault-closes-the-faulted-connection, fn-own-fault-keeps-another-connections-submission, fn-own-fault-releases-the-faulted-transaction and fn-own-fault-is-not-a-store-event beside them. Teeth are evaluated in tests/acl2/owner-tests.lisp on the same witness the served POST scenario builds (*own-taken*: connection 4's submission in flight, reader 3 open), including one violating value per hypothesis and the relation holding after a fault. The host side is tests/test_owner.py OwnerSurvivesAFaultTests, which injects an unexpected exception on one connection and asserts the other is still served. OPEN under this target: nothing states that the HOST calls fn-own-fault at every point where it can fault -- the boundary's coverage is a code property, not a theorem -- and tools/run_reader.py has no such boundary at all."
     }
   ]
 }
