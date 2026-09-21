@@ -102,23 +102,44 @@ from another connection to `240` and shows the faulted article is absent.
 `SCN-026` is that scenario; `HST-005` (`specs/host.md`) is the requirement;
 `PRF-040` is the proof target (claimed as PRF-035; five lanes took 035 to 039 the same evening and this one renumbered on merging dev).
 
-## 5. The matrix re-run: 36 rows moved
+## 5. The matrix re-run: 38 rows moved
 
-`python3 tools/v0_matrix.py 941731a --host persvati`, 1449 s. Accepted 111
-to **138**, refused 25 to **34**, not-exercised 29 to **15**, not-built 23
-to **1**, disagreements 10 to **22**, rows an fn client saw 136 to **172**.
-**36 rows moved out of the two non-outcome classes and none moved back.**
+Two runs. `941731a` is this lane before the merge (1449 s) and measures the
+fix alone; `2a7562e` is the merged head (1519 s) and is what
+`planning/v0-matrix.json` records. On the merged head: accepted 111 to
+**139**, refused 25 to **35**, not-exercised 29 to **13**, not-built 23 to
+**1**, disagreements 10 to **23**, rows an fn client saw 136 to **174**.
+**38 rows moved out of the two non-outcome classes and none moved back.**
+
 F-TRANSIT is 24 outcomes where it was 22 `not-built`; an article crosses both
-ways and arrives byte-identical. The 12 new disagreements are first
-observations, not regressions -- a duplicate `IHAVE` drawing `335` instead of
-`435`, `CHECK` of a duplicate drawing `238` instead of `438`, the Path loop
-refusal not reaching the wire, and the matrix's own feed driver raising
-`NameError: name 'article' is not defined`. Section 6 of the evidence has the
-table and the row names. `w11/auth-live` measured the same move independently
-at `6fb30ca`.
+ways and `V0-TRANSIT-IDENTICAL-AB/BA` say it arrives byte-identical. F-FEED
+runs (three of four rows accepted). The 13 new disagreements are first
+observations, not regressions: a duplicate `IHAVE` draws `335` where `435` is
+owed, `CHECK` of a duplicate draws `238` where `438` is owed, the Path loop
+refusal does not reach the wire, and `V0-TRANSIT-INDEPENDENT-A/B` -- the
+run's own control -- now fails because **the outbound feed is live from node
+start**, so "before any feed" is not a state the run ever has. That last one
+is a fidelity defect in the row and belongs to the matrix's owner. Section 6
+of the evidence has the table and every row name. `w11/auth-live` measured
+the same move independently at `6fb30ca`.
+
+## 6. Certification
+
+`books/owner-fault` and `tests/acl2/owner-tests` are certified twice, on the
+pre-merge tree (`build/acl2/certify-20260921T014925Z-66779`, 7.6 s and 8.9 s)
+and on the merged tree (`build/acl2/certify-20260921T032113Z-1748`, 2.4 s and
+3.0 s), ACL2 8.7. Getting the second one needed a workaround worth knowing:
+`tools/certs.py install` mixes certificate pairs from different origin roots
+and ACL2 refuses the mixture. Section 7 of the evidence has the measurement
+(eight origin roots in one worktree) and the way out (take one root's pairs
+whole, do not ask the cache per book).
 
 ## What is open after this lane
 
+* `tools/certs.py install` chooses a best entry per book where a
+  certificate is only valid against a consistent set. Not fixed here;
+  measured, with the ACL2 refusal it causes, in section 7 of the evidence
+  and on the board.
 * `tools/run_reader.py` has no fault boundary at all.
 * No theorem says the host calls `fn-own-fault` at every point where it can
   fault; the boundary's coverage is a code property.

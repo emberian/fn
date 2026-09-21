@@ -183,28 +183,34 @@ expectation dates from when `fn run` started the read-only reader.
 `python3 -m unittest tests.test_fn_cli` now runs 5 tests in 156 s, OK,
 against 337 s and one error before.
 
-## 6. The matrix re-run: 36 rows moved, measured
+## 6. The matrix re-run: 38 rows moved, measured
 
-    python3 tools/v0_matrix.py 941731a --host persvati
+Twice, from two trees. `941731a` is this lane before it merged dev, and is
+the measurement of THIS lane's fix alone; `2a7562e` is the merged head and
+is what `planning/v0-matrix.json` records.
+
+    python3 tools/v0_matrix.py 941731a --host persvati   # 1449 s
+    python3 tools/v0_matrix.py 2a7562e --host persvati   # 1519 s, recorded
     # matrix: planning/v0-matrix.json
     # evidence: planning/evidence/v0-matrix-2026-09-21.md
-    # steps=190 failed=22 not-exercised=16     (1449 s)
+    # steps=190 failed=23 not-exercised=14
 
-| | `c3b99f8` (recorded) | `941731a` (this lane) |
-| --- | --- | --- |
-| accepted | 111 | **138** |
-| refused | 25 | **34** |
-| uncertain | 2 | 2 |
-| not-exercised | 29 | **15** |
-| not-built | 23 | **1** |
-| disagreements | 10 | **22** |
-| rows an fn client saw | 136 | **172** |
+| | `c3b99f8` (recorded) | `941731a` (lane alone) | `2a7562e` (merged) |
+| --- | --- | --- | --- |
+| accepted | 111 | 138 | **139** |
+| refused | 25 | 34 | **35** |
+| uncertain | 2 | 2 | 2 |
+| not-exercised | 29 | 15 | **13** |
+| not-built | 23 | 1 | **1** |
+| disagreements | 10 | 22 | **23** |
+| rows an fn client saw | 136 | 172 | **174** |
 
-**36 rows moved out of `not-built`/`not-exercised` into one of the three
+**38 rows moved out of `not-built`/`not-exercised` into one of the three
 outcomes**, and none moved the other way. The lane's note predicted about 33;
-the number is measured, not predicted, and the extra three are
-`V0-CFG-LIVE`, `V0-CFG-LIVE-REFUSE` and `V0-STX-CROSS`, paired-node rows that
-were blocked by the same death without naming it.
+the number is measured, not predicted. The extra five over that prediction
+are `V0-CFG-LIVE`, `V0-CFG-LIVE-REFUSE` and `V0-STX-CROSS` -- paired-node
+rows blocked by the same death without naming it -- and `V0-FEED-OFFER` and
+`V0-FEED-ONCE`, which needed the merge as well as the fix.
 
 Whole features that ran for the first time: **F-TRANSIT** is 24 rows of
 outcomes where it was 22 `not-built` and 2 blocked -- an article crosses A to
@@ -213,7 +219,7 @@ B and B to A through `IHAVE`, `TAKETHIS`, `CHECK` and `MODE STREAM`, and
 left. **F-CRASH** is 9 rows where it was 6 blocked. **F-PIN**, **`V0-POST-CONCURRENT`**
 and the two live-reconfiguration rows ran.
 
-The 12 new disagreements are all fresh observations of behaviour nothing had
+The 13 new disagreements are all fresh observations of behaviour nothing had
 ever exercised, not regressions -- every one of them is a row that could not
 run before:
 
@@ -224,9 +230,24 @@ run before:
 * `V0-TRANSIT-LOOP-AB/BA` and `-ABSENT-AB/BA`: an article whose `Path`
   already names the receiving node is accepted (`235`) and then served, so
   the RFC 5537 section 3.2.1 loop refusal is not reaching the wire.
-* `V0-FEED-QUEUE`/`V0-FEED-JOURNAL`: the matrix's own feed driver raises
-  `NameError: name 'article' is not defined` -- a defect in
-  `tools/v0_matrix.py`'s driver, not in the node.
+* `V0-FEED-JOURNAL`: `(no feed journal found)`. At `941731a` this row and
+  `V0-FEED-QUEUE` both failed because the matrix's own feed driver raised
+  `NameError: name 'article' is not defined`; dev's `w11/twonode-feed` had
+  already fixed that driver, so on the merged head `V0-FEED-QUEUE`,
+  `V0-FEED-OFFER` and `V0-FEED-ONCE` are accepted and only the journal row
+  is left.
+* `V0-TRANSIT-INDEPENDENT-A/B` went from `accepted` to `refused` on the
+  merged head, and this is the ONE row pair where a lane should look before
+  believing the number. The row is the run's control -- "before any feed,
+  each node serves its own article and 43x for the other's" -- and node A
+  now already holds `<auth-b@…>` and `<socket-b@…>` when it runs. Nothing
+  went wrong: **the owner's outbound feed is live from node start**, so
+  "before any feed" is not a state this run ever has any more, and the
+  control is measuring the feed working rather than the nodes being
+  independent. It is a fidelity defect in the row, not in the node, and it
+  belongs to whoever owns the matrix inventory: the control needs to run
+  before the peer records are written, or to use Message-IDs no other phase
+  posts.
 * `V0-CRASH-RESTART`, `V0-PIN-ADVERTISED-B`: one recovery row and the
   capability-truthfulness row for node B, both first observations.
 
@@ -278,11 +299,22 @@ defect of any book; the shape of the fix is to choose a consistent set --
 one origin per closure, preferring the origin that covers the most of the
 tree -- rather than a best entry per book.
 
-The practical consequence here: the merged tree's `books/owner-fault` could
-not be certified locally afterwards. Its certification at the pre-merge
-content is section 2's, `books/owner-fault.lisp` differs between the two
-only in comments, and the merged closure is what the re-run on persvati
-loaded.
+**The workaround, and the evidence that the diagnosis is right.** Deleting
+every local pair and taking the whole set from ONE root -- persvati's
+`/home/ember/fn-lanes/w11-owner-survival`, the farm run root that certified
+the merged tree -- makes ACL2 accept it, and
+
+    FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py \
+        books/owner-fault tests/acl2/owner-tests
+    # build/acl2/certify-20260921T032113Z-1748
+    # books/owner-fault 2.392 s, tests/acl2/owner-tests 3.023 s, both passed
+
+**so `books/owner-fault` and its teeth are certified on the MERGED tree as
+well as the pre-merge one.** That one-origin set is still not pure -- the
+farm run root itself installs from the same box cache before it certifies,
+so it names four roots -- which says the mixing propagates from the cache
+into every run root, and a lane that wants a clean set has to take one
+tree's pairs whole rather than ask the cache per book.
 
 ## 8. What is still open after this lane
 
