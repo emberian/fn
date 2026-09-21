@@ -1250,6 +1250,11 @@ else echo NONE; fi
                 .format(msgid, self.payload(posted).get("result", "nothing")))
             self.start_node(self.b, tag="restart")
             return
+        # Node A accepted this article by POST and holds it. Without this the
+        # later "node A is unchanged by node B's death" step counts it as an
+        # article only B ever accepted and asserts A does NOT hold it, which
+        # is false the moment the feed starts working.
+        self.a.accepted.append(msgid)
         journal = self.sh(
             "owner feed: A's FNFD journal for B",
             "ls -l {}/feed/ 2>/dev/null | tail -5 || echo NO-FEED-JOURNAL".format(
@@ -1345,10 +1350,14 @@ else echo NONE; fi
         accepted = [one for one in lines if one.startswith(("S< 235", "S< 239"))]
         refused = [one for one in lines if one.startswith(("S< 435", "S< 438",
                                                            "S< 439"))]
+        # One article block per TAKETHIS (RFC 4644 2.5: the article always
+        # follows) and one per IHAVE go-ahead (RFC 3977 6.3.2: 335 is the
+        # send). A `238` is the CHECK answer -- permission, not a send --
+        # and counting it made one correct transfer read as two.
         transfers = [one for one in lines
-                     if one.startswith(("C> TAKETHIS", "S< 335", "S< 238"))]
+                     if one.startswith(("C> TAKETHIS", "S< 335"))]
         self.facts["owner feed restart wire"] = (
-            "offers={} go-aheads-and-takethis={} accepted={} "
+            "offers={} article-blocks={} accepted={} "
             "refused-as-duplicate={} | {}".format(
                 len(offers), len(transfers), len(accepted), len(refused),
                 "; ".join(one[3:] for one in lines
@@ -1371,8 +1380,8 @@ else echo NONE; fi
         # thing the restart-by-offer discipline exists to prevent.
         if len(transfers) > 1:
             self.gaps.append(
-                "owner feed: the tap in front of node B recorded {} go-aheads or "
-                "TAKETHIS commands for {} across node A's kill. K5 says a restart "
+                "owner feed: the tap in front of node B recorded {} article blocks "
+                "for {} across node A's kill. K5 says a restart "
                 "resolves by RE-OFFER and the peer's own history absorbs the one "
                 "retransmission a lost reply can cause; more than one article block "
                 "on the wire is the duplicate transfer it forbids. Recorded: {}"
