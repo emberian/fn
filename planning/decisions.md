@@ -800,25 +800,27 @@ a `PATH` up to 32 nodes deep and `anchor_verdict` ran Ed25519 over the root
 **from the wire**. For a batched response the host held a verdict about one
 message and `fn-anchor-node-accept-observed-is-node-accept`'s hypothesis was
 about another, and nothing anywhere noticed: `anchor_verdict`'s own
-consistency check passed, because it had fed ACL2 the wire root. Every
-captured vector is single-nonce, so this was never observed; it was a property
-of the servers fn happens to query.
+consistency check passed, because it had fed ACL2 the wire root. The captured
+`roughtime-int08h-2026-09-19-later2.json` vector is batched: its PATH contains
+a sibling and its INDX is 1. The mismatch therefore occurred in the existing
+restore test, not only in a hypothetical server response. The
+[anchor-root handoff](lanes/HANDOFF-w11-anchor-root.md) records the measurement.
 
 **Taken.** The root is a tenth field on `fn-anchor` and on both FNAN kinds, so
 `fn-anchor-signed-octets` is the octets that were verified for a batch of any
-size; and `fn-anchor-one-nonce-p` — `(equal (fn-anchor-root a)
-(fn-anchor-leaf-digest (fn-anchor-nonce a)))` — is a conjunct of
-`fn-anchor-verifiedp`, so a response whose tree the model cannot fold is
-refused with `:unverified` rather than admitted under a description that does
-not fit it. **fn therefore refuses a Roughtime server that batches.** Every
-pinned server answers one nonce per response today, so this refuses nothing fn
-has seen; against a batching server `fn anchor` reports `anchor refused:
-unverified` and the node keeps the anchor it had. Refusing honestly beats
-describing wrongly, and the refusal is loud.
+size. `fn-anchor-one-nonce-p` — `(equal (fn-anchor-root a)
+(fn-anchor-leaf-digest (fn-anchor-nonce a)))` — is a separate branch in
+accept, advance and restore. A response whose binding the model cannot
+establish returns **`:uncertain :unmodelled-tree`**, with CLI exit 3, and
+does not become the durable anchor. `fn-anchor-verifiedp` continues to describe
+the signatures and delegation window. A valid signature over an unsupported
+tree is not evidence that the response is invalid. This limits use of actual
+batched int08h responses until the Merkle binding has an executable model.
 
-**And the verdict the host owes is now one value in one place.** The host
-supplies `fn-anchor-seam-verdict`: the two constrained Ed25519 checks and
-`fn-anchor-one-nonce-p`, which are the three things that run through A-CRYPTO.
+**The host supplies two distinct seam observations.** `verdict` corresponds
+to `fn-anchor-signatures-okp` (the Ed25519 checks), and `one-nonce` corresponds
+to `fn-anchor-one-nonce-p` (the SHA-512 leaf comparison). Their correspondence
+assumptions remain explicit; a host boolean is not a cryptographic proof.
 The delegation window is arithmetic on fields the record carries, so ACL2 owns
 it — `fn-anchor-verifiedp-observed` applies `fn-anchor-window-okp` inside the
 entry the host calls. Until now `mint <= midpoint <= maxt` was *half* the
@@ -827,11 +829,10 @@ discharge of that hypothesis, copied at `tools/roughtime.py:258`, with
 and `books/anchor.lisp` had ever disagreed, every anchor keystone would have
 stopped describing the run with no test failing.
 
-**Rejected: a stated hypothesis instead of a refusal.** Carrying
-`fn-anchor-one-nonce-p` as a hypothesis of the keystones rather than a
-conjunct of `fn-anchor-verifiedp` leaves the host free to record a batched
-anchor durably, with the keystones silently not applying to it. That is the
-defect, restated as a caveat.
+**Rejected: a stated hypothesis without an executable gate.** Carrying
+`fn-anchor-one-nonce-p` only as a theorem hypothesis would leave the host
+free to record a batched anchor while the theorem did not apply. The
+uncertain branch enforces the supported binding before durable acceptance.
 
 **Rejected: an `A-*` assumption covering the fold.** There is no fold in the
 logic to hypothesise about, so no theorem could take the assumption — it would

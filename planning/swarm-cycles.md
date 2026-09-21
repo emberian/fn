@@ -1,4 +1,105 @@
-# Three broad development cycles
+# Active development cycles — 2026-09-21
+
+Root has taken over development at `8b474e2`. The feed and transit candidates
+have both landed; their merged certification record is
+[the owner batch manifest](evidence/manifests/certify-20260921T051833Z-3941584.json).
+That is book evidence, not a measurement of the merged running service. The
+older C1–C3 plan below remains design history; its opening implementation
+inventory is not current.
+
+The user reaffirmed wide implementation waves, selective certification and
+coherent batch convergence. v0 means every selected feature usable between two
+peered fn nodes; v1 reaches M6 and beyond. A local pilot does not replace v0.
+Native signatures, exact authored bytes with separate projections, retention
+until authorized release, and NNTP/CLI before web remain the selected directions.
+Private group cryptography remains deferred, with privacy boundaries preserved.
+
+## W12: repair complete operational paths
+
+Each lane owns implementation, its executable contract, meaningful proof/tests,
+and a handoff of remaining obligations. These packets are active work, not
+completion claims. All start from `8b474e2` in isolated `build/lanes/w12-*`
+worktrees. Root owns integration, registry identifiers and current status.
+
+| Lane / worker | Delivered behavior and assurance obligation | Farm |
+| --- | --- | --- |
+| `auth-policy` / Terra | Reader login policy composes with configured transit authorization; capabilities describe reachable commands; live peer and ordinary-client cases exercise the actual dispatcher | persvati |
+| `artifact-set` / Sol | Select a coherent certification artifact set for the actual source/toolchain; build and load it; isolate deployment directories and locks by source tree | hbox |
+| `feed-durability` / Astra | ACL2 owns FNFD envelope/recovery decisions; distinguish torn suffix from corruption, synchronize directory publication, fence the owner after uncertain persistence, and test restart at the changed cuts | hbox |
+| `storage-relation` / Astra | Establish concrete initialization correspondence and preservation under explicit host program inputs; expose false unrestricted K0 cases without assuming the desired conclusion | hbox |
+| `storage-codecs` / Terra | Realize configuration/frontier/name representations in ACL2 and adopt them through storage I/O; prove codec facts needed by the physical relation | persvati |
+| `bp-sequence` / Terra | Persist native BP creation-sequence reservations and recover them without reusing an uncertain allocation; caller-supplied uniqueness is no longer the implementation | persvati |
+| `submission-path` / Sol | Route CLI/control and NNTP through the same acceptance decision; specify and close the article-commit/feed-intent crash gap using durable evidence | persvati |
+| `wire-block` / Terra | ACL2 renders the outbound article block; preserve trailing content and dot transparency through the host-called function and wire tests | hbox |
+
+Terra means `gpt-5.6-terra`, Sol means `gpt-5.6-sol`, and Astra means
+`gpt-6-astra`. These names allocate work; they confer no assurance. Root also
+recovered the user's earlier direction with `cv`; read-only orientation is
+complete and does not count as implementation.
+
+Interfaces shared by lanes are agreed directly with their owners. In particular,
+feed recovery, posting completion and network output must share the same global
+uncertainty fence. Rebuilding feed work from current peer configuration is not
+assumed equivalent to preserving the targets promised at original acceptance.
+Storage relation proofs consume the concrete codec contract; arbitrary program
+bytes are not silently treated as host-generated next-frontier bytes.
+
+## W13: compose the durable services
+
+Start independent packets as W12 supplies their actual prerequisites; do not
+wait for an unrelated whole-tree green gate.
+
+- Carry native BP sequence persistence into the node lifecycle, durable queue,
+  contact scheduling, reception and application receipts. Exercise an evolving
+  receiver store through real outages. Transport ACK, remote archive acceptance
+  and agent execution remain different events.
+- Adopt the live owner configuration and checkpoint validators on running paths,
+  with configuration generations and recovery evidence preserved. Connect the
+  concrete storage relation to the host's operation/cut table.
+- Complete statement admission policy, persisted verification context, membership
+  epochs and reader provenance exposure. Extend the carried index explicitly;
+  do not introduce a served whole-store recognizer.
+- Expand fault injection over the composed acceptance/feed/BP/recovery boundaries,
+  including ambiguous barriers, corrupt complete records and capacity exhaustion.
+  Each process-death cut must name a model transition.
+
+## W14: release completion and sustained operation
+
+- Close the v0 feature matrix on the integrated source: two peered running nodes,
+  selected reader and transit profiles, real BP/convergence-layer behavior,
+  identity/authority, reconfiguration, storage and recovery. Use independent
+  client/BPA implementations where their interoperability is claimed.
+- Carry authorized release, compaction, repair, backup/restore, migration and
+  capacity headroom through long-running and restarted workloads. Retained
+  obligations survive transport expiry; no automatic article expiry is added.
+- Extend M6 contact/clock/transport profiles, then additional human interfaces
+  under D17. Agent coordination consumes durable articles and explicit receipts;
+  delivery does not authorize execution or establish agent task completion.
+
+These cycles organize the frontier; they do not defer an already implemented
+critical recovery/composition defect into future feature work. Release status
+comes from covered contracts and evidence, not a count of roots or tests.
+
+## Execution and integration
+
+Use both `hbox` (isolated state under `/tank/fn/lanes`) and `persvati`.
+Each current lane may certify its owned closure with up to four jobs; root
+coordinates aggregate load and the final frozen batch. Inspect actual process
+RSS/anonymous memory on hbox rather than interpreting its large ARC as proof of
+process exhaustion. Do not repeatedly certify unrelated roots or launch a broad
+check merely because context compacted.
+
+Commit named lane files frequently; intermediate commits may be incomplete.
+Root reviews a coherent batch once, repairs concrete defects, integrates forward,
+and keeps independent work moving. Record exact revision/content, tools,
+invocations, results and limitations. Historical matrix runs remain immutable;
+a current pointer advances only to an actual integrated measurement. Generate
+registry events and ledgers through their tools. Remove clean lane worktrees
+only after their work lands. No public deployment is authorized by this plan.
+
+## Historical plan from 2026-09-18
+
+# Three broad development cycles (historical)
 
 Status: **planned**, based on source checkpoint `2c31913`, 2026-09-18.
 The user requested substantial feature completion together with expanding
