@@ -1144,6 +1144,19 @@
                (car (cddddr transport))
              '(:clear)))))
 
+(defun fn-owner-feed-auth-policy (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cfg-peer-outbound-auth
+          (fn-owner-feed-record peer-octets state))))
+
+(defun fn-owner-feed-profile-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-fap-decode octets))
+
+(defun fn-owner-feed-profile-max-octets ()
+  (declare (xargs :mode :program))
+  *fn-fap-max-octets*)
+
 (defun fn-owner-feed-streamingp (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
   (value (if (fn-cfg-peer-streamingp (fn-owner-feed-record peer-octets state))
@@ -1213,7 +1226,7 @@
       (let ((state (fn-owner-step (list :feed-conn peer conn) state)))
         (value :ok)))))
 
-(defun fn-owner-feed-dial-open (peer-octets conn state)
+(defun fn-owner-feed-dial-open (peer-octets conn user pass allow-clear state)
   "Install greeting/MODE state without treating a TCP socket as a feed.
 
 FN-OWNER-RECOVER installs the carried table invariant, and this is its only
@@ -1237,7 +1250,13 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
                              :clear))
                  (state (f-put-global
                          'fn-owner-feed-inputs
-                         (fn-fc-table-put peer (fn-fc-initial-state streamingp conn security) inputs)
+                         (fn-fc-table-put
+                          peer
+                          (if user
+                              (fn-fc-initial-auth-state streamingp conn security
+                                                        user pass allow-clear)
+                            (fn-fc-initial-state streamingp conn security))
+                          inputs)
                          state)))
             (value (if (equal security :implicit) :await-tls :await-greeting))))))))
 
@@ -1253,6 +1272,11 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
         (case (fn-fc-kind step)
           (:mode (let ((state (f-put-global 'fn-owner-feed-command
                                             (fn-fc-mode-command) state))) (value :mode)))
+          (:auth-user
+           (let ((state (f-put-global 'fn-owner-feed-command
+                                      (fn-fc-auth-user-command
+                                       (fn-fc-next-state step)) state)))
+             (value :auth-user)))
           (:ready (value :ready))
           (:need-input (value :need-input))
           (otherwise (value :invalid)))))))
@@ -1349,6 +1373,16 @@ existing port only after fn-fc has made this connection ready."
                          (value :fault)
                        (let ((state (f-put-global 'fn-owner-feed-command command state)))
                          (value :mode)))))
+                  (:auth-user
+                   (let ((command (fn-fc-auth-user-command (fn-fc-next-state step))))
+                     (if (null command) (value :fault)
+                       (let ((state (f-put-global 'fn-owner-feed-command command state)))
+                         (value :auth-user)))))
+                  (:auth-pass
+                   (let ((command (fn-fc-auth-pass-command (fn-fc-next-state step))))
+                     (if (null command) (value :fault)
+                       (let ((state (f-put-global 'fn-owner-feed-command command state)))
+                         (value :auth-pass)))))
                   (:starttls
                    (let ((command (fn-fc-starttls-command)))
                      (if (null command) (value :fault)
