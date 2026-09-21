@@ -14,6 +14,13 @@
 
 (in-package "ACL2")
 (include-book "../books/tcpcl-session")
+(include-book "../books/tcpcl-spool")
+
+; Directory names and lstat kinds in; a complete recovery plan out.  The raw
+; host validates the whole plan before unlinking anything, then performs only
+; the :remove actions selected here.
+(defun fn-tcl-host-spool-recovery-plan (entries)
+  (fn-tcl-spool-recovery-plan entries))
 
 (defun fn-tcl-host-triple (r)
   (list (fn-tcl-result-session r)

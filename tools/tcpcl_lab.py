@@ -87,10 +87,10 @@ class Lab:
         path.mkdir(parents=True)
         return path
 
-    def spawn(self, args, log: Path):
+    def spawn(self, args, log: Path, env=None):
         handle = open(log, "wb")
         process = subprocess.Popen([self.image, "--fn"] + [str(a) for a in args],
-                                   stdout=handle, stderr=subprocess.STDOUT)
+                                   stdout=handle, stderr=subprocess.STDOUT, env=env)
         process.log = log                                      # type: ignore
         process.handle = handle                                # type: ignore
         return process
@@ -289,25 +289,39 @@ class Lab:
         durable_before = acknowledged.exists() and acknowledged.read_bytes() == small.read_bytes()
 
         # Then a transfer that is cut: the receiver dies between segments.
+        cut_env = dict(os.environ)
+        cut_env["FN_TCPCL_TEST_PAUSE_AFTER_STAGE_DATA"] = "1"
         second = self.spawn(["tcpcl", "listen", 0, 1, spool, "dtn://fn-b/", "-",
-                             4, 1024, 1048576, "-", "-"], root / "listen-2.log")
+                             4, 1024, 1048576, "-", "-"], root / "listen-2.log",
+                            env=cut_env)
         sender = None
         killed_after = 0
+        sender_acks = 0
         try:
             port = self.port_of(second)
             sender = self.spawn(["tcpcl", "send", "127.0.0.1", port, big,
                                  root / "active-spool", "dtn://fn-a/", "-", 4, 1024,
                                  1048576, 0, "-"], root / "send-2.log")
+            # The host pauses at the modeled cut: staged data is durable, its
+            # final name is not published, and the final XFER_ACK remains in
+            # the held queue.  This makes the process-death point independent
+            # of scheduler speed while preserving the original expectation.
             deadline = time.time() + 30
             while time.time() < deadline:
                 seen = self.kinds(self.events(root / "listen-2.log", "passive",
                                               source=None), ":XFER-ACK")
-                if seen >= 3:
+                paused = "TCPCL TEST STAGE-DATA " in (root / "listen-2.log").read_text(
+                    errors="replace")
+                if paused:
                     killed_after = seen
+                    sender_acks = self.kinds(self.events(root / "send-2.log", "active",
+                                                         source=None), ":XFER-ACK")
                     break
                 if second.poll() is not None:
                     break
-                time.sleep(0.02)
+                time.sleep(0.005)
+            if not killed_after:
+                raise RuntimeError("receiver did not reach the staged-data crash cut")
             os.kill(second.pid, signal.SIGKILL)
             second.wait(timeout=30)
         finally:
@@ -339,14 +353,18 @@ class Lab:
                         for n in staged)
         facts = dict(first_rc=done.returncode, reconnect_rc=again.returncode,
                      acks_before_kill=killed_after,
+                     acks_observed_by_sender=sender_acks,
+                     final_ack_withheld=sender_acks < killed_after,
                      durable_before=durable_before,
                      durable_after=(acknowledged.exists()
                                     and acknowledged.read_bytes() == small.read_bytes()),
                      interrupted_absent=not holds_big,
-                     no_partials=[n for n in staged if n.startswith(".")] == [],
+                     no_partials=[n for n in staged
+                                  if n.startswith(".incoming-")] == [],
                      staged=staged)
         ok = (facts["first_rc"] == EXIT_OK and facts["reconnect_rc"] == EXIT_OK
               and facts["acks_before_kill"] >= 3 and facts["durable_before"]
+              and facts["final_ack_withheld"]
               and facts["durable_after"] and facts["interrupted_absent"]
               and facts["no_partials"])
         self.record("crash", ok, **facts)
@@ -424,14 +442,14 @@ class Lab:
         adu_b.write_bytes(bundle(700, 4))
         listener = self.spawn(
             ["bp", "receive", 0, 1, b_journal, "dtn://fn-b/", "-", 3600000, 2, 32,
-             1048576, adu_b, "dtn://fn-a/", 1],
+             1048576, adu_b, "dtn://fn-a/"],
             root / "receive.log")
         try:
             port = self.port_of(listener)
             sender = subprocess.run(
                 [self.image, "--fn", "bp", "send", "127.0.0.1", str(port),
                  str(adu_a), str(a_journal), "dtn://fn-a/", "dtn://fn-b/",
-                 "3600000", "2", "32", "1", "1048576", "1"],
+                 "3600000", "2", "32", "1048576", "1"],
                 capture_output=True, timeout=120)
             send_log = root / "send.log"
             send_log.write_bytes(sender.stdout + sender.stderr)

@@ -17,12 +17,12 @@
 ;;; `fnn-core'.  This file owns the socket, the clock reading and the
 ;;; durability barrier, exactly as host/native/tcpcl.lisp does.
 ;;;
-;;; OPEN, and named rather than papered over: the creation-timestamp sequence
-;;; number is an argument, not a durable frontier.  specs/bp-design.md section
-;;; 1.3 requires `(:bpn-sequence n)' written before any bundle with sequence
-;;; `n' exists, so that a restart cannot reuse a (source, creation time,
-;;; sequence) triple.  This verb does not have that record yet; an operator
-;;; who restarts it must not reuse a sequence.
+;;; The creation-timestamp sequence is a durable FNBS frontier.  ACL2 reserves
+;;; it and frames `(:bpn-sequence next)' before this file writes the staged
+;;; replacement and barriers its directory.  Only after that barrier returns
+;;; does the host call fn-bpn-send with the reserved value.  A damaged or
+;;; uncertain frontier is an uncertain recovery event; it never falls back to
+;;; zero or an operator-supplied number.
 
 (in-package "ACL2")
 
@@ -78,9 +78,96 @@ zero of RFC 9171 section 4.2.6 rather than a monotonic counter."
   (journal nil) (last-adu nil) (last-reason nil))
 
 (defun fnn-bp-journal-dir (root)
-  (handler-case (fnn-mkdir root #o700)
-    (fnn-os-error (e) (unless (eql (fnn-os-errno e) sb-posix:eexist) (error e))))
-  root)
+  ;; FNN-SAFE-DIRECTORY barriers the parent only when it creates ROOT.  The
+  ;; explicit BP barrier below is also required when ROOT already exists: a
+  ;; prior mkdir may have succeeded while its parent fsync failed.  Retrying
+  ;; must re-establish that publication before a child FNBS record can make a
+  ;; later disappearance of ROOT look like a fresh allocator.
+  (handler-case
+      (progn
+        (fnn-safe-directory root t)
+        (if (string= (or (sb-ext:posix-getenv "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER") "")
+                     "1")
+            ;; Test-only fault point for the existing-root recovery cut.  It
+            ;; represents an error from the parent barrier; normal operation
+            ;; always calls FNN-FSYNC-DIR below.
+            (fnn-indeterminate "bp: injected journal root parent barrier failure")
+          (fnn-fsync-dir (fnn-parent root)))
+        root)
+    (fnn-os-error (e)
+      (fnn-indeterminate "bp: journal root parent publication failed: ~a" e))))
+
+(defun fnn-bp-sequence-dir (tally)
+  (let* ((dir (fnn-join (fnn-bp-tally-journal tally) "sequence"))
+         (prior (fnn-lstat dir)))
+    ;; The creation path fsyncs the journal directory; this explicit barrier
+    ;; repeats it on recovery too.  An already existing namespace must have a
+    ;; frontier and is never silently reinitialised.
+    (handler-case
+        (progn
+          (fnn-safe-directory dir t)
+          (fnn-fsync-dir (fnn-parent dir))
+          (values dir (null prior)))
+      (fnn-os-error (e)
+        (fnn-indeterminate "bp: sequence namespace publication failed: ~a" e)))))
+
+(defun fnn-bp-sequence-lock (dir)
+  (let ((fd (fnn-open (fnn-join dir "frontier.lock")
+                      (logior sb-posix:o-rdwr sb-posix:o-creat +fnn-o-nofollow+)
+                      #o600)))
+    (unless (fnn-regular-p (fnn-fstat fd))
+      (fnn-close fd)
+      (fnn-fault "bp: refusing non-regular sequence lock"))
+    (handler-case (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
+      (fnn-os-error (e)
+        (ignore-errors (fnn-close fd))
+        ;; Only nonblocking contention is an ordinary refusal.  A broken
+        ;; descriptor, I/O failure, or another flock errno must remain a
+        ;; fault; this host cannot say the reservation was merely busy.
+        (if (eql (fnn-os-errno e) sb-posix:eagain)
+            (fnn-refuse "bp: sequence frontier is already locked")
+          (fnn-fault "bp: sequence frontier lock failed: ~a" e))))
+    fd))
+
+(defun fnn-bp-reserve-sequence (tally)
+  "Reserve one ACL2-owned creation sequence and make its FNBS frame durable.
+
+The exclusive lock covers recovery, reservation and the durable replace.  It
+is released before socket I/O: a crash after this returns can leave an unused
+sequence.  The ACL2 persistence-cut trace proof required to make an all-crash
+nonreuse claim remains open."
+  (multiple-value-bind (dir freshp) (fnn-bp-sequence-dir tally)
+    (let* ((frontier (fnn-join dir "frontier.fnb"))
+           (lock (fnn-bp-sequence-lock dir)))
+      (unwind-protect
+           (let* ((present (fnn-check-regular frontier))
+                  (raw (if present
+                           (fnn-read-regular-bounded
+                            frontier (fnn-core 'fn-bpn-host-sequence-frame-limit))
+                         (fnn-make-octets 0)))
+                  (recovered (fnn-core 'fn-bpn-host-sequence-recover
+                                       (fnn-octet-list raw) (and present t) freshp)))
+           (unless (eq (fnn-core 'fn-bpn-host-sequence-ready-p recovered) t)
+             (fnn-indeterminate "bp: sequence frontier cannot be recovered"))
+           (let* ((reservation
+                   (fnn-core 'fn-bpn-host-sequence-reserve
+                             (fnn-core 'fn-bpn-host-sequence-frontier recovered))))
+             (unless (eq (fnn-core 'fn-bpn-host-sequence-reservationp reservation) t)
+               (fnn-refuse "bp: sequence frontier is exhausted"))
+             (let ((frame (fnn-core 'fn-bpn-host-sequence-reservation-frame reservation))
+                   (stage (fnn-join dir (format nil ".frontier-~d-~a"
+                                                (sb-posix:getpid) (fnn-random-hex 12)))))
+               (handler-case
+                   (progn
+                     (fnn-write-staged stage (fnn-octets frame))
+                     (fnn-replace stage frontier)
+                     (fnn-fsync-dir dir)
+                     (fnn-core 'fn-bpn-host-sequence-reservation-sequence reservation))
+                 (fnn-os-error (e)
+                   (ignore-errors (fnn-unlink stage))
+                   (fnn-indeterminate "bp: sequence reservation did not complete: ~a" e))))))
+        (ignore-errors (fnn-flock lock +fnn-lock-un+))
+        (fnn-close lock)))))
 
 (defun fnn-bp-record (tally name octets)
   "Write one journal record: data durable, then the name durable."
@@ -146,11 +233,14 @@ may or may not be durable."
 (defun fnn-bp-exit-code (tally conn)
   "Three outcomes, three codes.  Uncertain dominates a refusal, and a refusal
 dominates an acceptance: a run that saw one of each did not succeed."
-  (cond ((plusp (fnn-bp-tally-uncertain tally)) +fnn-exit-uncertain+)
-        ((plusp (fnn-bp-tally-refused tally)) +fnn-exit-refused+)
-        ((and conn (eq (fnn-tclc-outcome conn) :uncertain)) +fnn-exit-uncertain+)
-        ((and conn (eq (fnn-tclc-outcome conn) :refused)) +fnn-exit-refused+)
-        (t +fnn-exit-ok+)))
+  (case (fnn-core 'fn-bpn-host-run-outcome
+                  (fnn-bp-tally-accepted tally)
+                  (fnn-bp-tally-refused tally)
+                  (fnn-bp-tally-uncertain tally)
+                  (and conn (fnn-tclc-outcome conn)))
+    (:accepted +fnn-exit-ok+)
+    (:refused +fnn-exit-refused+)
+    (t +fnn-exit-uncertain+)))
 
 (defun fnn-bp-summary (tally)
   (fnn-out "BP summary accepted=~d refused=~d uncertain=~d"
@@ -161,108 +251,117 @@ dominates an acceptance: a run that saw one of each did not succeed."
 ;;; `bp send'
 
 (defun fnn-command-bp-send (host port adu-path journal node-id peer-eid
-                            lifetime crc-type hop-limit sequence transfer-mru
+                            lifetime crc-type hop-limit transfer-mru
                             expect wall wall-error)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (peer (fnn-bp-eid peer-eid))
          (adu (fnn-octet-list (fnn-read-regular-bounded adu-path transfer-mru)))
          (obs (fnn-bp-observation wall wall-error))
-         (bundle (fnn-core 'fn-bpn-host-send config peer adu sequence obs))
-         (summary (fnn-core 'fn-bpn-host-sent-summary config peer adu sequence obs))
-         (tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
-                                   :journal (fnn-bp-journal-dir journal)))
-         (socket nil))
-    (unless bundle
-      (fnn-refuse "bp: this ADU and configuration are not a bundle this node can author"))
-    (fnn-out "BP authored creation=~d sequence=~d lifetime=~d payload=~d octets=~d"
-             (first summary) (second summary) (third summary) (fourth summary)
-             (length bundle))
-    ;; The bundle this node authored, kept before it is put on a socket, for
-    ;; the same reason the receive path keeps what arrives: an octet string
-    ;; another implementation accepted is only a vector if it was recorded.
-    (fnn-out "BP wire authored path=~a"
-             (fnn-bp-record tally (format nil "authored-~d.wire" sequence)
-                            bundle))
+         (journal-root (fnn-bp-journal-dir journal))
+         (spool-lock (fnn-tcl-spool-acquire journal-root)))
     (unwind-protect
-         (let ((*fnn-tcl-deliver*
-                 (lambda (conn xfer-id octets)
-                   (fnn-bp-deliver tally conn xfer-id octets))))
-           (setq socket (fnn-tcl-connect host port))
-           (let ((conn (fnn-tcl-session
-                        (fnn-socket-fd socket) :active
-                        ;; The convergence layer's expected peer is a
-                        ;; SESSION identity (RFC 9174 section 4.2), not the
-                        ;; bundle's destination: a bundle for
-                        ;; dtn://x/demux may travel over a session with any
-                        ;; node.  Passing the destination here would refuse
-                        ;; every correct session whose peer is not also the
-                        ;; final destination.
-                        (fnn-tcl-params node-id nil +fnn-tcl-keepalive+
-                                        +fnn-tcl-segment-mru+ transfer-mru)
-                        "active" journal
-                        :bundle bundle :expect expect)))
-             (fnn-tcl-summary conn)
-             (fnn-bp-summary tally)
-             (fnn-bp-exit-code tally conn)))
-      (when socket (fnn-socket-shut socket)))))
+         (let* ((tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
+                                          :journal journal-root))
+                (sequence (fnn-bp-reserve-sequence tally))
+                (bundle (fnn-core 'fn-bpn-host-send config peer adu sequence obs))
+                (summary (fnn-core 'fn-bpn-host-sent-summary config peer adu sequence obs))
+                (socket nil))
+           (unless bundle
+             (fnn-refuse "bp: this ADU and configuration are not a bundle this node can author"))
+           (fnn-out "BP authored creation=~d sequence=~d lifetime=~d payload=~d octets=~d"
+                    (first summary) (second summary) (third summary) (fourth summary)
+                    (length bundle))
+           ;; The bundle this node authored, kept before it is put on a socket, for
+           ;; the same reason the receive path keeps what arrives: an octet string
+           ;; another implementation accepted is only a vector if it was recorded.
+           (fnn-out "BP wire authored path=~a"
+                    (fnn-bp-record tally (format nil "authored-~d.wire" sequence)
+                                   bundle))
+           (unwind-protect
+                (let ((*fnn-tcl-deliver*
+                        (lambda (conn xfer-id octets)
+                          (fnn-bp-deliver tally conn xfer-id octets))))
+                  (setq socket (fnn-tcl-connect host port))
+                  (let ((conn (fnn-tcl-session
+                               (fnn-socket-fd socket) :active
+                               ;; The convergence layer's expected peer is a
+                               ;; SESSION identity (RFC 9174 section 4.2), not the
+                               ;; bundle's destination: a bundle for
+                               ;; dtn://x/demux may travel over a session with any
+                               ;; node.  Passing the destination here would refuse
+                               ;; every correct session whose peer is not also the
+                               ;; final destination.
+                               (fnn-tcl-params node-id nil +fnn-tcl-keepalive+
+                                               +fnn-tcl-segment-mru+ transfer-mru)
+                               "active" journal-root
+                               :bundle bundle :expect expect)))
+                    (fnn-tcl-summary conn)
+                    (fnn-bp-summary tally)
+                    (fnn-bp-exit-code tally conn)))
+             (when socket (fnn-socket-shut socket))))
+      (fnn-tcl-spool-release spool-lock))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; `bp receive'
 
 (defun fnn-command-bp-receive (port once journal node-id peer-eid lifetime
                                crc-type hop-limit transfer-mru reply-adu
-                               reply-peer sequence wall wall-error)
+                               reply-peer wall wall-error)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
-         (tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
-                                   :journal (fnn-bp-journal-dir journal)))
-         (reply (when reply-adu
-                  (let* ((peer (fnn-bp-eid (or reply-peer node-id)))
-                         (adu (fnn-octet-list
-                               (fnn-read-regular-bounded reply-adu transfer-mru)))
-                         (obs (fnn-bp-observation wall wall-error))
-                         (octets (fnn-core 'fn-bpn-host-send config peer adu
-                                           sequence obs)))
-                    (unless octets
-                      (fnn-refuse "bp: the reply ADU is not a bundle this node can author"))
-                    octets)))
-         (listener nil)
-         (code +fnn-exit-ok+))
+         (journal-root (fnn-bp-journal-dir journal))
+         (spool-lock (fnn-tcl-spool-acquire journal-root)))
     (unwind-protect
-         (let ((*fnn-tcl-deliver*
-                 (lambda (conn xfer-id octets)
-                   (fnn-bp-deliver tally conn xfer-id octets))))
-           (multiple-value-bind (bound bound-port) (fnn-tcl-listen port)
-             (setq listener bound)
-             (fnn-out "BP LISTENING ~d" bound-port))
-           (fnn-accept-loop
-            listener
-            (lambda (socket)
-              (let ((fd (fnn-socket-fd socket)))
-                (unwind-protect
-                     (handler-case
-                         (let ((conn (fnn-tcl-session
-                                      fd :passive
-                                      (fnn-tcl-params node-id peer-eid
-                                                      +fnn-tcl-keepalive+
-                                                      +fnn-tcl-segment-mru+
-                                                      transfer-mru)
-                                      "passive" journal :bundle reply)))
-                           (fnn-tcl-summary conn)
-                           (setq code (fnn-bp-exit-code tally conn)))
-                       (fnn-store-indeterminate (e)
-                         (fnn-err "bp: ~a" e)
-                         (setq code +fnn-exit-uncertain+))
-                       (fnn-store-error (e)
-                         (fnn-err "bp: ~a" e)
-                         (setq code +fnn-exit-refused+))
-                       ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
-                         (fnn-err "bp: ~a" e)
-                         (setq code +fnn-exit-uncertain+)))
-                  (fnn-socket-shut socket))))
-            once)
-           (fnn-bp-summary tally)
-           code)
-      (when listener (fnn-socket-shut listener)))))
+         (let* ((tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
+                                          :journal journal-root))
+                (reply (when reply-adu
+                         (let* ((peer (fnn-bp-eid (or reply-peer node-id)))
+                                (adu (fnn-octet-list
+                                      (fnn-read-regular-bounded reply-adu transfer-mru)))
+                                (obs (fnn-bp-observation wall wall-error))
+                                (sequence (fnn-bp-reserve-sequence tally))
+                                (octets (fnn-core 'fn-bpn-host-send config peer adu sequence obs)))
+                           (unless octets
+                             (fnn-refuse "bp: the reply ADU is not a bundle this node can author"))
+                           octets)))
+                (listener nil)
+                (code +fnn-exit-ok+))
+           (unwind-protect
+                (let ((*fnn-tcl-deliver*
+                        (lambda (conn xfer-id octets)
+                          (fnn-bp-deliver tally conn xfer-id octets))))
+                  (multiple-value-bind (bound bound-port) (fnn-tcl-listen port)
+                    (setq listener bound)
+                    (fnn-out "BP LISTENING ~d" bound-port))
+                  (fnn-accept-loop
+                   listener
+                   (lambda (socket)
+                     (let ((fd (fnn-socket-fd socket)))
+                       (unwind-protect
+                            (handler-case
+                                (let ((conn (fnn-tcl-session
+                                             fd :passive
+                                             (fnn-tcl-params node-id peer-eid
+                                                             +fnn-tcl-keepalive+
+                                                             +fnn-tcl-segment-mru+
+                                                             transfer-mru)
+                                             "passive" journal-root :bundle reply)))
+                                  (fnn-tcl-summary conn)
+                                  (setq code (fnn-bp-exit-code tally conn)))
+                              (fnn-store-indeterminate (e)
+                                (fnn-err "bp: ~a" e)
+                                (setq code +fnn-exit-uncertain+))
+                              (fnn-store-error (e)
+                                (fnn-err "bp: ~a" e)
+                                (setq code +fnn-exit-refused+))
+                              ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
+                                (fnn-err "bp: ~a" e)
+                                (setq code +fnn-exit-uncertain+)))
+                         (fnn-socket-shut socket))))
+                   once)
+                  (fnn-bp-summary tally)
+                  code)
+             (when listener (fnn-socket-shut listener))))
+      (fnn-tcl-spool-release spool-lock))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; `bp decode' -- a file of octets in, the node's verdict out, no socket.
@@ -291,10 +390,10 @@ dominates an acceptance: a run that saw one of each did not succeed."
 ;;; The positional protocol behind `--fn bp'.  `-' selects the default.
 ;;;
 ;;;   bp send HOST PORT ADU-FILE [JOURNAL NODE-ID PEER-EID LIFETIME CRC-TYPE
-;;;                               HOP-LIMIT SEQUENCE TRANSFER-MRU EXPECT
+;;;                               HOP-LIMIT TRANSFER-MRU EXPECT
 ;;;                               WALL WALL-ERROR]
 ;;;   bp receive PORT [ONCE JOURNAL NODE-ID PEER-EID LIFETIME CRC-TYPE
-;;;                    HOP-LIMIT TRANSFER-MRU REPLY-ADU REPLY-PEER SEQUENCE
+;;;                    HOP-LIMIT TRANSFER-MRU REPLY-ADU REPLY-PEER
 ;;;                    WALL WALL-ERROR]
 ;;;   bp decode FILE [NODE-ID LIFETIME CRC-TYPE HOP-LIMIT TRANSFER-MRU
 ;;;                   WALL WALL-ERROR ADU-OUT]
@@ -319,11 +418,10 @@ dominates an acceptance: a run that saw one of each did not succeed."
         (number 6 +fnn-bp-lifetime+)
         (number 7 +fnn-bp-crc-type+)
         (number 8 +fnn-bp-hop-limit+)
-        (number 9 1)
-        (number 10 +fnn-tcl-transfer-mru+)
-        (number 11 0)
-        (optional-number 12)
-        (number 13 0)))
+        (number 9 +fnn-tcl-transfer-mru+)
+        (number 10 0)
+        (optional-number 11)
+        (number 12 0)))
       ((string= command "receive")
        (need 1)
        (fnn-command-bp-receive
@@ -338,9 +436,8 @@ dominates an acceptance: a run that saw one of each did not succeed."
         (number 8 +fnn-tcl-transfer-mru+)
         (fnn-tcl-arg args 9)
         (fnn-tcl-arg args 10)
-        (number 11 1)
-        (optional-number 12)
-        (number 13 0)))
+        (optional-number 11)
+        (number 12 0)))
       ((string= command "decode")
        (need 1)
        (fnn-command-bp-decode

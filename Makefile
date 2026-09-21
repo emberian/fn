@@ -52,6 +52,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/frame-tests \
 	books/frame-trailer \
 	tests/acl2/frame-trailer-tests \
+	books/tcpcl-spool \
+	tests/acl2/tcpcl-spool-tests \
 	books/identity \
 	books/identity-invariants \
 	tests/acl2/identity-tests \
@@ -144,6 +146,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-bundle-tests \
 	books/bp-node \
 	tests/acl2/bp-node-tests \
+	books/bp-node-records \
+	tests/acl2/bp-node-records-tests \
+	tests/acl2/bp-node-host-tests \
+	books/bp-sequence-persistence \
+	tests/acl2/bp-sequence-persistence-tests \
+	books/bp-node-machine \
+	books/bp-node-machine-codec \
+	tests/acl2/bp-node-machine-tests \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
 	tests/acl2/bp-fragment-tests \
