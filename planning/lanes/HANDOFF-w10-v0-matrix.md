@@ -179,10 +179,24 @@ Findings about the tree, in the order they stopped being hidden:
    because nothing had crossed for them to be duplicates of.
 7. **A plaintext command after a `382` wedges the connection** and every later
    phase with it.
-8. **A POST through the served path commits the article and never answers the
-   poster.** 340, the article, the dot, then no byte for 300 s, while the
+8. **A POST through the served path committed the article and never answered
+   the poster.** 340, the article, the dot, then no byte for 300 s, while the
    group's count rose by one and the owner answered fresh connections
-   immediately. D13's three outcomes do not reach the wire at all.
+   immediately -- D13's three outcomes not reaching the wire at all. **CLOSED
+   by the clock work (D10-a) that landed while this lane ran**: at `c3b99f8`
+   all ten POST rows are outcomes, 340/240/read-back/fresh-read all accepted
+   and the duplicate refused with 441, and `V0-POST-CLOCK` confirms the
+   duplicate cost the node nothing (`DATE` still answers 111). Recorded here
+   because the matrix is what found it and the two states are in the same
+   evidence file's history.
+8b. **The credential `fn principal set-password` writes is rejected by the
+   server.** `AUTHINFO USER matrix` answers 381 and `AUTHINFO PASS` answers
+   `481 authentication failed`, on both nodes, with the secret the CLI had
+   just written to `<store>/auth.toml` in the same run. `AUTHINFO` is also
+   not advertised in CAPABILITIES at all, before or after, and `POST` before
+   any login answers 340 -- so nothing on the served path is gated on the
+   login that does not work. Four of the ten disagreements in the recorded
+   run are these.
 9. **`fn principal list` does not show what `fn principal set-password`
    wrote**: `<store>/auth.toml` and `<store>/principals/*.principal` are two
    registries.
@@ -191,6 +205,14 @@ Findings about the tree, in the order they stopped being hidden:
     neither. The forward half passes -- everything advertised is dispatched.
 
 ## The next global step
+
+**The recorded run** is `c3b99f8` on persvati, 1149 s, 190 rows: 111 accepted,
+25 refused, 2 uncertain, 29 not exercised, 23 not built, 10 disagreements, 2
+rows observed by something that is not fn. Reading it: F-NODE, F-OUT, F-GROUP,
+F-READ and F-POST are whole features that work between two peered nodes;
+F-AUTH runs and disagrees; F-TRANSIT is 22 rows of `not-built` behind one
+`IHAVE` that got no answer because node B had already died; F-FEED, F-CRASH
+and F-BP are behind that same death and the image build.
 
 One theorem, then one harness. **`books/peer-inbound` is the frontier**: every
 book it includes has a certificate, and above it sit `books/served` (now
