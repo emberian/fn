@@ -92,7 +92,7 @@ class NativeBpApplicationTests(unittest.TestCase):
              "dtn://receiver/", "dtn://sender/", "dtn://receiver/",
              "native-policy", "dtn://receiver/", "1", "8"],
             cwd=ROOT, env=env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.PIPE, bufsize=0,
         )
         ready = select.select([process.stdout], [], [], 180)[0]
         self.assertTrue(ready, "BP application receiver did not announce")
@@ -138,10 +138,10 @@ class NativeBpApplicationTests(unittest.TestCase):
                         break
                 if receiver.poll() is not None:
                     break
-            self.assertTrue(
-                saw_decision,
-                receiver.stderr.read().decode("utf-8", "replace"),
-            )
+            if not saw_decision:
+                receiver.kill()
+                receiver.wait(timeout=30)
+                self.fail(receiver.stderr.read().decode("utf-8", "replace"))
             receiver.kill()
             receiver.wait(timeout=30)
             sender.wait(timeout=60)
