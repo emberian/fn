@@ -31,21 +31,17 @@ limit. The command prints separate algorithm-tagged hexadecimal components
 only after verifying the newly produced pair through the ACL2 profile. It
 stores no keys and defines no custody or recovery authority.
 
-`fn-hsig-subject-body-injective` proves that equality of two valid authored
-subject bodies implies equality of their principal, ordered Ed25519 and
-ML-DSA-65 key set, and exact source octets. The proof projects the fixed-width
-fields and the source from the bytes; there are no optional profile fields or
-normalization variants. `fn-hsig-signed-preimage-injective` instantiates the
-tagged-preimage theorem with the exact hybrid domain tag and those bodies.
-Both results concern byte framing below the signature primitives. They make no
-claim about signature unforgeability, hash collisions, library correctness, or
-key custody.
-The book and its concrete hypothesis counterexamples have
-[source-matched hbox certification](../planning/evidence/hybrid-injectivity-certification-2026-09-21.md).
-The initial failed attempt used older CBOR source and is retained separately.
+The live owner also accepts two bounded local-control operations on its
+operator-authorized Unix socket. `hybrid-enroll` appends a kind-3 snapshot
+containing one supplied principal and its ordered Ed25519/ML-DSA-65 public
+keys. `hybrid-author` names that immutable generation and supplies exact
+source and detached signatures. The owner resolves the snapshot while holding
+its serialization mutex, verifies both components, asks ACL2 to construct the
+legacy article record and atomic kind-4 verdict, and publishes only that one
+ACL2 event through the existing Store writer. Missing, unknown, or substituted
+generations are refusals; there is no direct-Store fallback.
 
-Books: `books/crypto-seam.lisp`, `books/hybrid-signature.lisp`,
-`books/hybrid-signature-invariants.lisp`, `books/principal.lisp`,
+Books: `books/crypto-seam.lisp`, `books/hybrid-signature.lisp`, `books/principal.lisp`,
 `books/principal-invariants.lisp`; tests `tests/acl2/crypto-seam-tests.lisp`,
 `tests/acl2/principal-tests.lisp`. The [decision packet](../planning/decision-packet-d09-d11.md)
 carries the proposals this profile assumes.
