@@ -191,11 +191,12 @@ class NativeCheckpointTests(unittest.TestCase):
             else:
                 self.fail(f"process did not stop at {point}")
             os.kill(process.pid, signal.SIGKILL)
-            process.wait(timeout=5)
         finally:
             if process.poll() is None:
                 process.kill()
-                process.wait(timeout=5)
+            # Reap the process and close both pipes.  wait() alone leaves the
+            # Popen-owned file objects open and obscures real warning output.
+            process.communicate(timeout=5)
 
     def test_process_death_at_every_native_checkpoint_cut_reopens(self):
         candidate_expectations = {
