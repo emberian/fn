@@ -631,6 +631,14 @@
     nil))
 
 (local
+ (defthm fn-ocfg-pin-find-reconstructs-its-entry
+   (implies (fn-ocfg-pin-find id pins)
+            (equal (cons id (cdr (fn-ocfg-pin-find id pins)))
+                   (fn-ocfg-pin-find id pins)))
+   :hints (("Goal" :induct pins
+            :in-theory (enable (:d fn-ocfg-pin-find))))))
+
+(local
  (defthm fn-ocfg-pin-find-of-sync-pins
    (implies (fn-own-find-conn id conns)
             (equal (fn-ocfg-pin-find id
