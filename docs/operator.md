@@ -142,6 +142,11 @@ configured port, and accepts a local Unix control socket (`[control] path`,
 by default `<store>/control.sock`) for posting and administration. Exactly
 one `fn run` may hold a store.
 
+The control socket is an operator endpoint created with mode 0600. Its holder
+may administer the node; `[posting] enabled = false` disables article posting,
+not operator configuration changes. Do not give an agent this socket merely
+to grant posting access; use its separately configured NNTP posting principal.
+
 - systemd: install [`packaging/fn.service`](../packaging/fn.service) as
   `/etc/systemd/system/fn.service`, then
   `systemctl daemon-reload && systemctl enable --now fn`.
