@@ -76,7 +76,7 @@ dependency order, each ending with an evidence record:
 
 **The gate over all six waves is one executable matrix.** `tools/v0_matrix.py`
 stands up two peered fn nodes on a farm box, drives every feature between them,
-and writes `planning/v0-matrix.json` plus an evidence record
+and writes [`planning/v0-matrix.json`](v0-matrix.json) plus an evidence record
 under `planning/evidence/`. It carries one row per feature observation with five
 verdicts that are never collapsed into pass/fail: `accepted`, `refused` and
 `uncertain` are D13's three outcomes and each is a real observation, so a
