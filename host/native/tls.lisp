@@ -50,17 +50,32 @@
 (defvar *fnn-tls-initialize-lock*
   (sb-thread:make-mutex :name "fn native TLS initialization"))
 
+(defun fnn-tls-configured-library-pair ()
+  "Return the operator-selected matched libcrypto/libssl pair, if any."
+  (let ((prefix (sb-ext:posix-getenv "FN_OPENSSL_PREFIX")))
+    (when prefix
+      (when (or (zerop (length prefix)) (find (code-char 0) prefix))
+        (error 'fnn-tls-unavailable :detail "invalid FN_OPENSSL_PREFIX"))
+      (let ((directory (string-right-trim "/" prefix)))
+        (if (member :darwin *features*)
+            (list (format nil "~a/lib/libcrypto.3.dylib" directory)
+                  (format nil "~a/lib/libssl.3.dylib" directory))
+          (list (format nil "~a/lib/libcrypto.so.3" directory)
+                (format nil "~a/lib/libssl.so.3" directory)))))))
+
 (defun fnn-tls-library-candidates ()
-  (cond
-    ((member :darwin *features*)
-     '(("/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib"
+  (let ((configured (fnn-tls-configured-library-pair)))
+    (append (and configured (list configured))
+            (cond
+              ((member :darwin *features*)
+               '(("/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib"
         "/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib")
        ("/usr/local/opt/openssl@3/lib/libcrypto.3.dylib"
         "/usr/local/opt/openssl@3/lib/libssl.3.dylib")
        ("libcrypto.3.dylib" "libssl.3.dylib")))
-    ((member :linux *features*)
-     '(("libcrypto.so.3" "libssl.so.3")))
-    (t nil)))
+              ((member :linux *features*)
+               '(("libcrypto.so.3" "libssl.so.3")))
+              (t nil)))))
 
 (sb-alien:define-alien-routine ("OpenSSL_version_num" fnn-%openssl-version-num)
     sb-alien:unsigned-long)

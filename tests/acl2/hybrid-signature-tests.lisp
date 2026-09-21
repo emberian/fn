@@ -17,29 +17,33 @@
 
 ; Reachable, non-degenerate witness for the host-called decision.
 (assert-event (fn-hsig-authorize *hs-principal* *hs-keys* *hs-source*
-                                 *hs-signatures* :verified :verified))
+                                 *hs-signatures* *hs-ml-key*
+                                 :verified :verified))
 
 ; One bad component, absence, unknown observation and classical-only fallback.
 (assert-event (not (fn-hsig-authorize *hs-principal* *hs-keys* *hs-source*
-                                      *hs-signatures* :refused :verified)))
+                                      *hs-signatures* *hs-ml-key* :refused :verified)))
 (assert-event (not (fn-hsig-authorize *hs-principal* *hs-keys* *hs-source*
-                                      *hs-signatures* :verified :refused)))
+                                      *hs-signatures* *hs-ml-key* :verified :refused)))
 (assert-event (not (fn-hsig-authorize *hs-principal* *hs-keys* *hs-source*
-                                      *hs-signatures* :verified :unsupported)))
+                                      *hs-signatures* *hs-ml-key* :verified :unsupported)))
 (assert-event (not (fn-hsig-authorize *hs-principal* *hs-keys* *hs-source*
                                       (list (cons :ed25519 *hs-ed-sig*))
-                                      :verified :verified)))
+                                      *hs-ml-key* :verified :verified)))
+(assert-event (not (fn-hsig-authorize
+                    *hs-principal* *hs-keys* *hs-source* *hs-signatures*
+                    (make-list 1952 :initial-element 35) :verified :verified)))
 
 ; Stripping, swapping and profile confusion fail before primitive verdicts.
 (assert-event (not (fn-hsig-authorize *hs-principal*
                                       (list (cons :ml-dsa-65 *hs-ml-key*)
                                             (cons :ed25519 *hs-ed-key*))
                                       *hs-source* *hs-signatures*
-                                      :verified :verified)))
+                                      *hs-ml-key* :verified :verified)))
 (assert-event (not (fn-hsig-authorize *hs-principal* *hs-keys* *hs-source*
                                       (list (cons :ml-dsa-65 *hs-ml-sig*)
                                             (cons :ed25519 *hs-ed-sig*))
-                                      :verified :verified)))
+                                      *hs-ml-key* :verified :verified)))
 
 ; Exact authored bytes and enrolled keyset are visible in the signed subject.
 (assert-event
@@ -60,9 +64,9 @@
    (implies (and (fn-hsig-subject-p principal keys source)
                  (fn-hsig-signatures-p signatures)
                  (equal ed :verified))
-            (fn-hsig-authorize principal keys source signatures ed ml))))
+            (fn-hsig-authorize principal keys source signatures observed ed ml))))
 (must-fail
  (defthm hybrid-without-signature-shape
    (implies (and (fn-hsig-subject-p principal keys source)
                  (equal ed :verified) (equal ml :verified))
-            (fn-hsig-authorize principal keys source signatures ed ml))))
+            (fn-hsig-authorize principal keys source signatures observed ed ml))))

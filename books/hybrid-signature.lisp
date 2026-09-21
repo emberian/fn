@@ -7,6 +7,7 @@
 
 (in-package "ACL2")
 (include-book "crypto-seam")
+(include-book "article")
 
 (local (in-theory (enable fn-cbor-codec-vocabulary
                           fn-record-invariants-vocabulary)))
@@ -19,7 +20,6 @@
 (defconst *fn-hsig-ed25519-signature-octets* 64)
 (defconst *fn-hsig-ml-dsa-65-public-key-octets* 1952)
 (defconst *fn-hsig-ml-dsa-65-signature-octets* 3309)
-(defconst *fn-hsig-max-authored-source-octets* 16384)
 (defconst *fn-hsig-domain-tag*
   '(102 110 45 97 117 116 104 111 114 101 100 45 115 111 117 114 99 101
     45 104 121 98 114 105 100 45 118 49)) ; fn-authored-source-hybrid-v1
@@ -55,7 +55,7 @@
   (and (fn-hsig-exact-octets-p principal 32)
        (fn-hsig-keyset-p keys)
        (fn-cbor-octet-listp source)
-       (<= (len source) *fn-hsig-max-authored-source-octets*)))
+       (<= (len source) *fn-article-max-octets*)))
 
 (defun fn-hsig-subject-body (principal keys source)
   (declare (xargs :guard (fn-hsig-subject-p principal keys source)))
@@ -100,23 +100,33 @@
 ; This is the authorization subject the native host calls after it has asked
 ; both primitive libraries to verify the single ACL2-produced preimage.
 (defun fn-hsig-authorize (principal keys source signatures
+                                    observed-ml-public-key
                                     ed25519-observation ml-dsa-65-observation)
   (declare (xargs :guard t))
   (and (fn-hsig-subject-p principal keys source)
        (fn-hsig-signatures-p signatures)
+       (equal observed-ml-public-key
+              (fn-cbor-ag-cdr (fn-cbor-ag-car (fn-cbor-ag-cdr keys))))
        (equal ed25519-observation :verified)
        (equal ml-dsa-65-observation :verified)))
 
-(defthm fn-hsig-authorization-requires-both-components
-  (implies (fn-hsig-authorize principal keys source signatures ed ml)
+(defthm fn-hsig-authorization-requires-both-components-by-definition
+  (implies (fn-hsig-authorize principal keys source signatures observed ed ml)
            (and (equal ed :verified) (equal ml :verified)))
   :rule-classes nil)
 
-(defthm fn-hsig-authorization-binds-complete-profile
-  (implies (fn-hsig-authorize principal keys source signatures ed ml)
+(defthm fn-hsig-authorization-binds-complete-profile-by-definition
+  (implies (fn-hsig-authorize principal keys source signatures observed ed ml)
            (and (fn-hsig-subject-p principal keys source)
                 (fn-hsig-keyset-p keys)
                 (fn-hsig-signatures-p signatures)))
+  :rule-classes nil)
+
+(defthm fn-hsig-authorization-binds-observed-ml-key-by-definition
+  (implies (fn-hsig-authorize principal keys source signatures observed ed ml)
+           (equal observed
+                  (fn-cbor-ag-cdr
+                   (fn-cbor-ag-car (fn-cbor-ag-cdr keys)))))
   :rule-classes nil)
 
 (in-theory (disable (:d fn-hsig-exact-octets-p)
