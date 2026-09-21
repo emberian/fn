@@ -154,12 +154,19 @@ Per book, second run: `books/wildmat` 3.0 s, `-utf8-invariants` 6.7 s,
 over the three wildmat test books: 108 assert-events, 108 witnesses,
 **0 findings**.
 
-Certified on the laptop afterwards, over sources committed after the second
-submit: `tests/acl2/wildmat-tests` (`certify-20260921T011346Z-7541`, the last
-INN comparison row), `books/wildmat-parser-invariants`
-(`...011743Z-14492`, `fn-wildmat-successful-parse-text-parsedp`), and its two
-includers `tests/acl2/wildmat-parser-invariants-tests` and
-`tests/acl2/wildmat-teeth-tests` (`...011753Z-14645`).
+Two sources landed after the second submit — the last INN comparison row in
+`tests/acl2/wildmat-tests`, and `fn-wildmat-successful-parse-text-parsedp` in
+`books/wildmat-parser-invariants`. Those four roots are certified **on dev
+after the land**, on the laptop, ACL2 8.7:
+`build/acl2/certify-20260921T012357Z-22569` covers
+`books/wildmat-parser-invariants`, `tests/acl2/wildmat-tests`,
+`tests/acl2/wildmat-parser-invariants-tests` and
+`tests/acl2/wildmat-teeth-tests`, over the sources at dev `cbede52`.
+
+Both hbox evidence directories are copied into the main checkout, because the
+lane worktree is removed and `git worktree remove` takes `build/` with it.
+That is worth knowing on its own: a lane that cites an evidence path under its
+own worktree cites a path that stops existing the moment the worktree goes.
 
 ## The one failure, and it is foreign
 

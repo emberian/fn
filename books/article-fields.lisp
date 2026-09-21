@@ -277,16 +277,27 @@
   (declare (xargs :guard (true-listp status) :verify-guards nil))
   (car (cdr (cdr status))))
 
-(defun fn-af-proto-article-check (article)
+; RFC 5537 section 3.6 step 1: the RELAYING agent's check on an article that
+; has ALREADY been injected.  It is section 3.4.1's check without the two
+; refusals that belong to the injecting agent alone.
+;
+; An injecting agent refuses a proto-article carrying `Injection-Info`
+; because adding that field is its own job (section 3.2.3).  A relaying
+; agent that refused the same field would refuse every article any injecting
+; agent has ever produced -- INCLUDING EVERY ARTICLE fn ITSELF POSTS, since
+; `fn-inj-injection-info-line` writes one.  That is what happened: applying
+; the proto-article check on both transit paths made
+; `fn-peer-decide-transfer` answer `:refuse :proto-article` to every offer
+; of an fn-posted article, and made `fn-own-feed-groups-of` answer NIL, so
+; no peer was ever a feed target.  Nothing had ever crossed between two fn
+; nodes and this is why.  Measured 2026-09-20: on a real posted article
+; `fn-af-proto-article-check` answers `(:error :injection-info)`.
+;
+; `Xref` is the same shape of field: RFC 5536 section 3.2.13 makes it a
+; serving agent's, and a relayed article may carry the sender's.
+(defun fn-af-relayed-article-check (article)
   (declare (xargs :guard (fn-article-syntax-p article) :verify-guards nil))
-  ; RFC 5537 section 3.4.1 subset.  A valid supplied Message-ID is retained
-  ; exactly; absence is accepted for a later injector to generate.  Neither
-  ; generated fields nor configuration/admission decisions occur here.
-  (if (consp (fn-article-get-headers article *fn-af-injection-info-name*))
-      '(:error :injection-info)
-    (if (consp (fn-article-get-headers article *fn-af-xref-name*))
-        '(:error :xref)
-      (let ((groups (fn-af-newsgroups-status article))
+  (let ((groups (fn-af-newsgroups-status article))
             (identity (fn-af-message-id-status article)))
         (if (equal (fn-af-status-kind groups) :missing)
             '(:error :newsgroups-missing)
@@ -306,7 +317,21 @@
                         (if (equal (fn-af-status-kind identity) :single)
                             (fn-af-status-field identity)
                           nil)
-                        (fn-af-status-field groups)))))))))))
+                        (fn-af-status-field groups)))))))))
+
+(defun fn-af-proto-article-check (article)
+  (declare (xargs :guard (fn-article-syntax-p article) :verify-guards nil))
+  ; RFC 5537 section 3.4.1 subset.  A valid supplied Message-ID is retained
+  ; exactly; absence is accepted for a later injector to generate.  Neither
+  ; generated fields nor configuration/admission decisions occur here.
+  ; Its VALUE is unchanged by the split above: the two refusals are still
+  ; tested first and in the same order, so no theorem about this function
+  ; moves.
+  (if (consp (fn-article-get-headers article *fn-af-injection-info-name*))
+      '(:error :injection-info)
+    (if (consp (fn-article-get-headers article *fn-af-xref-name*))
+        '(:error :xref)
+      (fn-af-relayed-article-check article))))
 
 (defthm fn-af-message-id-equalp-is-exact
   (implies (and (fn-af-message-idp left) (fn-af-message-idp right))
@@ -351,4 +376,5 @@
 (verify-guards fn-af-status-kind)
 (verify-guards fn-af-status-value)
 (verify-guards fn-af-status-field)
+(verify-guards fn-af-relayed-article-check)
 (verify-guards fn-af-proto-article-check)
