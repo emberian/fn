@@ -11,6 +11,9 @@
 (assert-event
  (equal (symbol-class 'fn-native-auth-parse-lines (w state))
         :common-lisp-compliant))
+(assert-event
+ (equal (symbol-class 'fn-native-auth-login-namep (w state))
+        :common-lisp-compliant))
 
 (defun fn-native-auth-test-lines (lines)
   (if (consp lines)
@@ -111,3 +114,48 @@
              "posting = true"))
           t nil nil nil))
         :credential-shape))
+
+; The table key is the exact unescaped canonical writer subset.  Quote and
+; backslash are valid NNTP token octets but not values bin/fn's toml_quote can
+; emit, so accepting either would give the native reader a second registry
+; grammar that the operator cannot read back.
+(assert-event
+ (equal (fn-native-auth-result-reason
+         (fn-native-auth-load
+          (fn-native-auth-test-lines
+           (list "[login.\"bad\"name\"]"
+                 (concatenate 'string "principal = \"" *fn-native-auth-test-principal* "\"")
+                 (concatenate 'string "salt = \"" *fn-native-auth-test-salt* "\"")
+                 (concatenate 'string "digest = \"" *fn-native-auth-test-digest* "\"")
+                 "posting = false"))
+          t nil nil nil))
+        :table))
+(assert-event
+ (equal (fn-native-auth-result-reason
+         (fn-native-auth-load
+          (fn-native-auth-test-lines
+           (list "[login.\"bad\\name\"]"
+                 (concatenate 'string "principal = \"" *fn-native-auth-test-principal* "\"")
+                 (concatenate 'string "salt = \"" *fn-native-auth-test-salt* "\"")
+                 (concatenate 'string "digest = \"" *fn-native-auth-test-digest* "\"")
+                 "posting = false"))
+          t nil nil nil))
+        :table))
+(assert-event
+ (fn-native-auth-login-namep '(33 126)))
+
+; A conventional newline-terminated file has one line per LF, with no extra
+; line attributed to the parser's terminal empty segment.  Exercise both
+; sides of the exact 1,024-line ceiling.
+(assert-event
+ (equal (fn-native-auth-result-status
+         (fn-native-auth-load
+          (make-list *fn-native-auth-max-lines* :initial-element 10)
+          t nil nil nil))
+        :accepted))
+(assert-event
+ (equal (fn-native-auth-result-reason
+         (fn-native-auth-load
+          (make-list (1+ *fn-native-auth-max-lines*) :initial-element 10)
+          t nil nil nil))
+        :bounds-or-encoding))
