@@ -1,0 +1,386 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+    "launcher_chain_sha256": [
+      "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g",
+  "acl2_executable_sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+  "acl2_exit_codes": {
+    "books/article": 0,
+    "books/cbor": 0,
+    "books/cbor-invariants": 0,
+    "books/crypto-seam": 0,
+    "books/defrecord": 0,
+    "books/hybrid-profile": 0,
+    "books/hybrid-signature": 0,
+    "books/hybrid-signature-invariants": 0,
+    "books/records": 0,
+    "books/records-invariants": 0,
+    "tests/acl2/hybrid-signature-invariants-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "launcher_chain_sha256": [
+        "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+      "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "size": 233686912
+    },
+    "launchers": [
+      {
+        "path": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        "sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+        "size": 279
+      }
+    ],
+    "runtime": {
+      "path": "/tank/fn/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/Users/ember/dev/fn/build/lanes/w28-hybrid-injectivity/build/acl2/certify-20260921T180341Z-2336119",
+  "book_failures": {
+    "books/article": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ],
+    "books/cbor": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ],
+    "books/cbor-invariants": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ],
+    "books/crypto-seam": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ],
+    "books/hybrid-signature": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ],
+    "books/hybrid-signature-invariants": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ],
+    "books/records": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ],
+    "books/records-invariants": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ],
+    "tests/acl2/hybrid-signature-invariants-tests": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ]
+  },
+  "book_results": {
+    "books/article": "failed",
+    "books/cbor": "failed",
+    "books/cbor-invariants": "failed",
+    "books/crypto-seam": "failed",
+    "books/defrecord": "passed",
+    "books/hybrid-profile": "passed",
+    "books/hybrid-signature": "failed",
+    "books/hybrid-signature-invariants": "failed",
+    "books/records": "failed",
+    "books/records-invariants": "failed",
+    "tests/acl2/hybrid-signature-invariants-tests": "failed"
+  },
+  "book_wall_seconds": {
+    "books/article": 0.038,
+    "books/cbor": 0.151,
+    "books/cbor-invariants": 0.149,
+    "books/crypto-seam": 0.038,
+    "books/defrecord": 0.082,
+    "books/hybrid-profile": 0.039,
+    "books/hybrid-signature": 0.038,
+    "books/hybrid-signature-invariants": 0.038,
+    "books/records": 0.037,
+    "books/records-invariants": 0.039,
+    "tests/acl2/hybrid-signature-invariants-tests": 0.036
+  },
+  "cert_cache": {
+    "already_cached": 2,
+    "directory": "/tank/fn/certcache",
+    "not_published": [
+      "books/article",
+      "books/cbor",
+      "books/cbor-invariants",
+      "books/crypto-seam",
+      "books/hybrid-signature",
+      "books/hybrid-signature-invariants",
+      "books/records",
+      "books/records-invariants",
+      "tests/acl2/hybrid-signature-invariants-tests"
+    ],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/hybrid-profile",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "book": "books/cbor",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "book": "books/article",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "book": "books/cbor-invariants",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "already_cached": false,
+        "book": "books/defrecord",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "book": "books/records",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "book": "books/records-invariants",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "book": "books/crypto-seam",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "book": "books/hybrid-signature",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "book": "books/hybrid-signature-invariants",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "book": "tests/acl2/hybrid-signature-invariants-tests",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      }
+    ],
+    "per_book_published": 2,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/defrecord": "892b1a5cc20f18c86382f4ff57c2752816e3ae47f872da5efe3bade9c57f6532",
+    "books/hybrid-profile": "50c2a4d2c2c33dd5051d8e25e1f329c0cf89769650da98572b342a87dab6527e"
+  },
+  "certify_wall_seconds": 0.724,
+  "closure": true,
+  "command": [
+    "/tank/fn/toolchains/w28/acl2-literal-4g"
+  ],
+  "driver_digests_sha256": {
+    "books/article": "d2b248f79b4d2eabed83896883354b46882ab482730b96c386746d215d7f5904",
+    "books/cbor": "68ecad8f8300ffb1475d20f0c8b3a1ab49cb9eba2aa4ce0b089e1f67699ad151",
+    "books/cbor-invariants": "826c276d864e539c17faa5466d08998c09022347b348a2a4cc1721fabbaed128",
+    "books/crypto-seam": "4a63c76c9ba270009a40852a1603b94814cf22ded4c51b3fdf1c36229b6c7447",
+    "books/defrecord": "9b7dc54329d3d0b449afa61dcfebc3e3632581419b42d18f0a008d8134ca8194",
+    "books/hybrid-profile": "545a077442b1535c69558070c0facb4f18c33bebbcb427a6b0cd610768ca89dc",
+    "books/hybrid-signature": "12c1945c991f2a3d54d6d2182b785551aedc9e4f53761b1762a81b99a02738c6",
+    "books/hybrid-signature-invariants": "90063f5bf9e06d0feb98b55c0b569fc4eb5dc9160df779ab5f4f91c6bd5a591d",
+    "books/records": "5e2855424f19f2e47c14d335ace9ddf1f741295a00fc690b90b1725a4f208f38",
+    "books/records-invariants": "3f3aef6bd0d54b684bde6b98c036ea659a8d00a6cb93a8d1bcd1c612d73e1695",
+    "tests/acl2/hybrid-signature-invariants-tests": "5f18473c8ac389a4d901af35c4333a6694d7e9b191091bb12100d8c5bba4c69f"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 e20faf85ba6a",
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 949ba7ded144",
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 855ea5d810a2",
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 bf0ee880713d",
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 d45992d8befd",
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 c995de05ead1",
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 593ea745a8c4",
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 da7bff86d266",
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 03abd9f2907a",
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 78c108f649e5"
+  ],
+  "failure": "ACL2 did not produce complete clean certification evidence. See certify.log. Books that failed: books/cbor, books/article, books/cbor-invariants, books/records, books/records-invariants, books/crypto-seam, books/hybrid-signature, books/hybrid-signature-invariants, tests/acl2/hybrid-signature-invariants-tests",
+  "failure_markers": [
+    "ACL2 Error"
+  ],
+  "finished_utc": "2026-09-21T18:03:42+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 e20faf85ba6a",
+    "FN_CERTIFY_SUCCESS c891d98622f0fc773912bfa3b94ff950 433b650ef7cb"
+  ],
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "662e8ef911ffe2cef222a48b8a279a01f86a4557dcf1fc00bc8002c8d8dfacb4",
+  "requested_before_filter": [
+    "books/hybrid-signature-invariants",
+    "tests/acl2/hybrid-signature-invariants-tests"
+  ],
+  "requested_books": [
+    "books/hybrid-profile",
+    "books/cbor",
+    "books/article",
+    "books/cbor-invariants",
+    "books/defrecord",
+    "books/records",
+    "books/records-invariants",
+    "books/crypto-seam",
+    "books/hybrid-signature",
+    "books/hybrid-signature-invariants",
+    "tests/acl2/hybrid-signature-invariants-tests"
+  ],
+  "run_id": "certify-20260921T180341Z-2336119",
+  "runner_sha256": "cb79d3bea9e5a531e33e44c882f8f615d4c0258db2c4f7361746ff1e2416c7d6",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/article": 0.0,
+    "books/cbor": 0.0,
+    "books/cbor-invariants": 0.0,
+    "books/crypto-seam": 0.0,
+    "books/defrecord": 0.0,
+    "books/hybrid-profile": 0.0,
+    "books/hybrid-signature": 0.0,
+    "books/hybrid-signature-invariants": 0.0,
+    "books/records": 0.0,
+    "books/records-invariants": 0.0,
+    "tests/acl2/hybrid-signature-invariants-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "dadf56e1c14ab9a5ca4920a7d4b8759468b8190a9cf3201cea9d92f0207c270e",
+    "books/cbor.lisp": "cbc8e9f5ca3560c656273d24029437b5e9e88980da22a84d559088ab04ac0bc0",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/hybrid-profile.lisp": "7e2f6086ee92ac982c1ecbca907c8dfb0d5d1381b2cd2edca43fbbd74ad9d9c3",
+    "books/hybrid-signature-invariants.lisp": "8355ac1ca0a5aeacbf78722eb393f6d7d7923af646cea46be2fb9bee64fc3ac8",
+    "books/hybrid-signature.lisp": "3754723a986d0363e58c7f0a0ce47a035733424be6c49a7e152790882cc4c8ff",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "tests/acl2/hybrid-signature-invariants-tests.lisp": "6443109da068a0808f9719c1b9bca78c295462869f4be928be0980587e3a497d"
+  },
+  "source_digests_sha256_after": {
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "dadf56e1c14ab9a5ca4920a7d4b8759468b8190a9cf3201cea9d92f0207c270e",
+    "books/cbor.lisp": "cbc8e9f5ca3560c656273d24029437b5e9e88980da22a84d559088ab04ac0bc0",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/hybrid-profile.lisp": "7e2f6086ee92ac982c1ecbca907c8dfb0d5d1381b2cd2edca43fbbd74ad9d9c3",
+    "books/hybrid-signature-invariants.lisp": "8355ac1ca0a5aeacbf78722eb393f6d7d7923af646cea46be2fb9bee64fc3ac8",
+    "books/hybrid-signature.lisp": "3754723a986d0363e58c7f0a0ce47a035733424be6c49a7e152790882cc4c8ff",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "tests/acl2/hybrid-signature-invariants-tests.lisp": "6443109da068a0808f9719c1b9bca78c295462869f4be928be0980587e3a497d"
+  },
+  "start_order": [
+    "books/hybrid-profile",
+    "books/cbor",
+    "books/article",
+    "books/cbor-invariants",
+    "books/defrecord",
+    "books/records",
+    "books/records-invariants",
+    "books/crypto-seam",
+    "books/hybrid-signature",
+    "books/hybrid-signature-invariants",
+    "tests/acl2/hybrid-signature-invariants-tests"
+  ],
+  "started_utc": "2026-09-21T18:03:41+00:00",
+  "status": "failed",
+  "timeout_seconds": 1200,
+  "tree": "/Users/ember/dev/fn/build/lanes/w28-hybrid-injectivity"
+}
