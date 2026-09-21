@@ -20,7 +20,7 @@
 (defconstant +fnn-feed-poll-seconds+ 1/20)
 
 (defstruct (fnn-feed-link (:constructor %make-fnn-feed-link))
-  peer peer-octets socket fd (ready nil) (next-dial 0))
+  peer peer-octets socket fd tls-context tls-channel (ready nil) (next-dial 0))
 
 (defstruct (fnn-feed-runtime (:constructor %make-fnn-feed-runtime))
   service links lock worker (stopping nil) limit)
@@ -122,7 +122,8 @@ closed by this worker, preserving the one-closer rule."
      (let ((queued (fnn-owner-core 'fn-owner-feed-has-queued peer-octets))
            (host (fnn-owner-core 'fn-owner-feed-host peer-octets))
            (port (fnn-owner-core 'fn-owner-feed-port peer-octets))
-           (backoff (fnn-owner-core 'fn-owner-feed-backoff-ms peer-octets)))
+           (backoff (fnn-owner-core 'fn-owner-feed-backoff-ms peer-octets))
+           (security (fnn-owner-core 'fn-owner-feed-security peer-octets)))
        (unless (member queued '(t nil))
          (fnn-fault "feed core returned malformed queued predicate"))
        (unless (fnn-octet-list-p host)
@@ -131,9 +132,12 @@ closed by this worker, preserving the one-closer rule."
          (fnn-fault "feed core returned malformed peer port"))
        (unless (and (integerp backoff) (>= backoff 0))
          (fnn-fault "feed core returned malformed peer backoff"))
+       (unless (and (consp security)
+                    (member (car security) '(:clear :tls)))
+         (fnn-fault "feed core returned malformed security policy"))
        (values queued (fnn-octets-string (fnn-octets host)) port backoff
                (fnn-feed-checked-connect-timeout
-                (fnn-core 'fn-owner-feed-connect-timeout)))))))
+                (fnn-core 'fn-owner-feed-connect-timeout)) security)))))
 
 (defun fnn-feed-connect-core (service peer-octets fd)
   "Start ACL2's greeting/MODE phase; this does not make a feed live."
@@ -142,7 +146,42 @@ closed by this worker, preserving the one-closer rule."
    (lambda ()
      (fnn-feed-checked-word
       (fnn-owner-action 'fn-owner-feed-dial-open peer-octets fd)
-      '(:await-greeting) 'fn-owner-feed-dial-open))))
+      '(:await-greeting :await-tls) 'fn-owner-feed-dial-open))))
+
+(defun fnn-feed-tls-established-core (service link)
+  (fnn-owner-serialized
+   service nil
+   (lambda ()
+     (let ((word (fnn-feed-checked-word
+                  (fnn-owner-action 'fn-owner-feed-tls-established
+                                    (fnn-feed-link-peer-octets link))
+                  '(:mode :ready :need-input) 'fn-owner-feed-tls-established)))
+       (values word (if (eq word :mode)
+                        (fnn-owner-octets-global 'fn-owner-feed-command)
+                      (fnn-make-octets 0)))))))
+
+(defun fnn-feed-enable-tls (runtime link security)
+  (unless (and (equal (car security) :tls) (= (length security) 4))
+    (fnn-fault "TLS transition without a TLS peer policy"))
+  (let* ((server-name (third security)) (anchor (fourth security))
+         (context (fnn-tls-open-client-context anchor)))
+    (let ((channel (fnn-tls-connect context (fnn-feed-link-fd link) server-name 10)))
+      (setf (fnn-feed-link-tls-context link) context
+            (fnn-feed-link-tls-channel link) channel)
+      (multiple-value-bind (word command)
+          (fnn-feed-tls-established-core (fnn-feed-runtime-service runtime) link)
+        (when (> (length command) 0) (fnn-tls-send-all channel command 10))
+        (when (eq word :ready) (setf (fnn-feed-link-ready link) t))))))
+
+(defun fnn-feed-send (link octets)
+  (if (fnn-feed-link-tls-channel link)
+      (fnn-tls-send-all (fnn-feed-link-tls-channel link) octets 10)
+    (fnn-send-all (fnn-feed-link-fd link) octets 10)))
+
+(defun fnn-feed-recv (link limit)
+  (if (fnn-feed-link-tls-channel link)
+      (fnn-tls-read (fnn-feed-link-tls-channel link) 0 limit)
+    (fnn-recv (fnn-feed-link-fd link) 0 limit)))
 
 (defun fnn-feed-tick (service link now)
   "One ACL2 tick.  Its command, if any, is copied only after FNFD append."
@@ -171,7 +210,7 @@ closed by this worker, preserving the one-closer rule."
                   (fnn-owner-action 'fn-owner-feed-reply-chunk
                                     (fnn-feed-link-peer-octets link)
                                     (fnn-octet-list octets) now)
-                  '(:mode :ready :send :quiet :refused :connection-refused :need-input :closed :invalid :fault)
+                  '(:starttls :tls :mode :ready :send :quiet :refused :connection-refused :need-input :closed :invalid :fault)
                   'fn-owner-feed-reply-chunk)))
        (when (eq word :fault)
          (fnn-fault "feed reply framer state is malformed"))
@@ -181,7 +220,7 @@ closed by this worker, preserving the one-closer rule."
        (when (member word '(:send :quiet :refused))
          (fnn-owner-feed-flush service))
        (values word
-               (if (member word '(:mode :send))
+               (if (member word '(:starttls :mode :send))
                    (let ((command (fnn-owner-octets-global 'fn-owner-feed-command)))
                      (when (zerop (length command))
                        (fnn-fault "feed connection/reply authorized an empty command"))
@@ -225,6 +264,12 @@ has made the kernel free to reuse it."
         (setf (fnn-feed-link-socket link) nil
               (fnn-feed-link-fd link) nil
               (fnn-feed-link-ready link) nil)))
+    (when (fnn-feed-link-tls-channel link)
+      (ignore-errors (fnn-tls-close-channel (fnn-feed-link-tls-channel link)))
+      (setf (fnn-feed-link-tls-channel link) nil))
+    (when (fnn-feed-link-tls-context link)
+      (ignore-errors (fnn-tls-close-context (fnn-feed-link-tls-context link)))
+      (setf (fnn-feed-link-tls-context link) nil))
     (when socket (ignore-errors (fnn-socket-shut socket)))))
 
 (defun fnn-feed-drop-link (runtime link now backoff)
@@ -248,7 +293,7 @@ the shared link table."
   (when (and (not (fnn-feed-stoppingp runtime))
              (null (fnn-feed-link-socket link))
              (<= (fnn-feed-link-next-dial link) now))
-    (multiple-value-bind (queued host port backoff timeout)
+    (multiple-value-bind (queued host port backoff timeout security)
         (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                             (fnn-feed-link-peer-octets link))
       (when queued
@@ -260,9 +305,12 @@ the shared link table."
                   (fnn-feed-connect-core (fnn-feed-runtime-service runtime)
                                          (fnn-feed-link-peer-octets link) fd)
                   (setq published (fnn-feed-publish-socket runtime link socket fd))
+                  (when (and published (equal (car security) :tls)
+                             (equal (cadr security) :implicit))
+                    (fnn-feed-enable-tls runtime link security))
                   (unless published
                     (fnn-socket-shut socket))))
-            ((or fnn-os-error sb-bsd-sockets:socket-error) ()
+            ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error) ()
               (when (and socket (not published)) (fnn-socket-shut socket))
               ;; A failed open has no outgoing bytes, but it is still the
               ;; named peer-loss observation that advances the ACL2 backoff.
@@ -280,26 +328,32 @@ ACL2 framer."
       (multiple-value-bind (word command)
           (fnn-feed-reply-step service link input now)
         (when (> (length command) 0)
-          (fnn-send-all (fnn-feed-link-fd link) command 10))
+          (fnn-feed-send link command))
         (when (fnn-feed-stoppingp runtime) (return))
         (case word
           (:need-input
            (when eofp
-             (multiple-value-bind (ignored host port backoff timeout)
+             (multiple-value-bind (ignored host port backoff timeout security)
                  (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
-               (declare (ignore ignored host port timeout))
+               (declare (ignore ignored host port timeout security))
                (fnn-feed-drop-link runtime link now backoff)))
            (return))
           ((:closed :invalid :connection-refused)
-           (multiple-value-bind (ignored host port backoff timeout)
+           (multiple-value-bind (ignored host port backoff timeout security)
                (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
-             (declare (ignore ignored host port timeout))
+             (declare (ignore ignored host port timeout security))
              (fnn-feed-drop-link runtime link now backoff))
            (return))
           (:ready
            (setf (fnn-feed-link-ready link) t)
            (setq input nil))
-          ((:mode :send :quiet)
+          (:tls
+           (multiple-value-bind (ignored host port backoff timeout security)
+               (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
+             (declare (ignore ignored host port backoff timeout))
+             (fnn-feed-enable-tls runtime link security))
+           (setq input nil))
+          ((:starttls :mode :send :quiet)
            ;; The next call receives the framer's already-retained suffix,
            ;; not a concatenation constructed in raw Lisp.
            (setq input nil)))))))
@@ -313,23 +367,22 @@ ACL2 framer."
                 (fnn-feed-tick (fnn-feed-runtime-service runtime) link now)
               (declare (ignore word))
               (when (> (length command) 0)
-                (fnn-send-all (fnn-feed-link-fd link) command 10))))
+                (fnn-feed-send link command))))
           (unless (fnn-feed-stoppingp runtime)
             ;; The ACL2-projected limit sizes this buffer before read(2); a
             ;; peer cannot make the host allocate a larger coalesced batch.
-            (let ((incoming (fnn-recv (fnn-feed-link-fd link) 0
-                                      (fnn-feed-runtime-limit runtime))))
+            (let ((incoming (fnn-feed-recv link (fnn-feed-runtime-limit runtime))))
               (cond ((eq incoming :timeout) nil)
                     ((zerop (length incoming))
                      (fnn-feed-consume runtime link nil t now))
                     (t (fnn-feed-consume runtime link incoming nil now))))))
-      ((or fnn-os-error sb-bsd-sockets:socket-error) ()
+      ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error) ()
         (if (fnn-feed-stoppingp runtime)
             (fnn-feed-close-link runtime link)
-          (multiple-value-bind (ignored host port backoff timeout)
+          (multiple-value-bind (ignored host port backoff timeout security)
               (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                                   (fnn-feed-link-peer-octets link))
-            (declare (ignore ignored host port timeout))
+            (declare (ignore ignored host port timeout security))
             (fnn-feed-drop-link runtime link now backoff)))))))
 
 (defun fnn-feed-worker (runtime)

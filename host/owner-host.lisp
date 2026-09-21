@@ -1089,15 +1089,26 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((transport (fn-cfg-peer-transport (fn-owner-feed-record peer-octets state))))
     (value (if (and (consp transport) (equal (car transport) :nntp))
-               (fn-record-string-octets (fn-cfg-ag-car (fn-cfg-ag-cdr transport)))
+               (fn-record-string-octets
+                (if (equal (len transport) 5) (caddr transport)
+                  (fn-cfg-ag-car (fn-cfg-ag-cdr transport))))
              nil))))
 
 (defun fn-owner-feed-port (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((transport (fn-cfg-peer-transport (fn-owner-feed-record peer-octets state))))
     (value (if (and (consp transport) (equal (car transport) :nntp))
-               (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport))))
+               (nfix (if (equal (len transport) 5) (cadddr transport)
+                       (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport)))))
              0))))
+
+(defun fn-owner-feed-security (peer-octets state)
+  "ACL2-owned outbound security tuple; old records are clear by definition."
+  (declare (xargs :stobjs state :mode :program))
+  (let ((transport (fn-cfg-peer-transport (fn-owner-feed-record peer-octets state))))
+    (value (if (and (equal (car transport) :nntp) (equal (len transport) 5))
+               (car (cddddr transport))
+             '(:clear)))))
 
 (defun fn-owner-feed-streamingp (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
@@ -1185,11 +1196,32 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
             (value :fault)
           (let* ((streamingp (fn-cfg-peer-streamingp
                                (fn-own-feed-entry-record entry)))
+                 (transport (fn-cfg-peer-transport (fn-own-feed-entry-record entry)))
+                 (security (if (equal (len transport) 5)
+                               (let ((s (car (cddddr transport))))
+                                 (if (equal s '(:clear)) :clear (cadr s)))
+                             :clear))
                  (state (f-put-global
                          'fn-owner-feed-inputs
-                         (fn-fc-table-put peer (fn-fc-initial-state streamingp conn) inputs)
+                         (fn-fc-table-put peer (fn-fc-initial-state streamingp conn security) inputs)
                          state)))
-            (value :await-greeting)))))))
+            (value (if (equal security :implicit) :await-tls :await-greeting))))))))
+
+(defun fn-owner-feed-tls-established (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((peer (fn-store-octets->string peer-octets))
+         (inputs (f-get-global 'fn-owner-feed-inputs state))
+         (step (and (not (equal peer :bad))
+                    (fn-fc-after-tls (fn-fc-table-lookup peer inputs)))))
+    (if (null step) (value :invalid)
+      (let ((state (f-put-global 'fn-owner-feed-inputs
+                                 (fn-fc-table-put peer (fn-fc-next-state step) inputs) state)))
+        (case (fn-fc-kind step)
+          (:mode (let ((state (f-put-global 'fn-owner-feed-command
+                                            (fn-fc-mode-command) state))) (value :mode)))
+          (:ready (value :ready))
+          (:need-input (value :need-input))
+          (otherwise (value :invalid)))))))
 
 (defun fn-owner-feed-read-limit ()
   "ACL2-owned upper bound for one native feed socket-read observation."
@@ -1283,6 +1315,12 @@ existing port only after fn-fc has made this connection ready."
                          (value :fault)
                        (let ((state (f-put-global 'fn-owner-feed-command command state)))
                          (value :mode)))))
+                  (:starttls
+                   (let ((command (fn-fc-starttls-command)))
+                     (if (null command) (value :fault)
+                       (let ((state (f-put-global 'fn-owner-feed-command command state)))
+                         (value :starttls)))))
+                  (:tls (value :tls))
                   (:ready
                    (mv-let (erp word state)
                      (fn-owner-feed-connect peer-octets
