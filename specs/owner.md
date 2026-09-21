@@ -15,19 +15,25 @@ partial-output tracking stay with their own packets.
 The native adapter is `host/native/owner.lisp`, loaded by the common saved
 image. It calls the same `host/owner-host.lisp` entries over one exclusively
 owned Store and persists the shared submission's FNFD intent/resolution before
-releasing the corresponding effects. Its runtime validation batch is pending;
-the Python-host evidence below does not certify this adapter.
+releasing the corresponding effects. The frozen `03eb3ba3` default/DTN
+image batch has scoped native runtime evidence in
+[the integration report](../planning/evidence/native-owner-integrated-2026-09-21.md).
+Later native control changes have separate
+[source-pinned evidence](../planning/evidence/native-control-accept-shutdown-2026-09-21.md);
+neither result is a complete native deployment gate. The Python-host evidence
+below does not certify this adapter.
 
 `fnn-owner-serialized` holds the service mutex across a semantic operation and
 installs a global stop before releasing it on uncertain persistence or a core
 fault. Later open/read/close mutations check the same stop under that mutex.
-Shutdown calls socket shutdown before closing the listener: Linux close from
-another thread did not reliably wake its blocking accept. It wakes connected
-clients and joins their workers before closing shared
+Owner and control listeners share a bounded nonblocking accept observer;
+SIGTERM sets a monotonic request that an ordinary owner thread consumes.
+Shutdown wakes connected clients without closing descriptors underneath their
+workers, then joins those workers before closing shared
 journals or the Store. `tests/test_native_owner.py` contains the two-client
 postpublication injection: the ambiguous article may recover, but the second
-client must not obtain a fresh posting grant. That test is not passing evidence
-until run against the recorded integrated image.
+client must not obtain a fresh posting grant. Its passing frozen-image scope
+is recorded in the integration report above.
 
 This global boundary applies to uncertain shared state and core failure. It
 does not replace HST-005's connection-local fault isolation contract: an
@@ -62,6 +68,14 @@ the socket node itself, assumes the configured parent directory excludes an
 independent attacker that can replace entries. Stop hooks use shutdown only to
 wake connection owners, which perform the final close before the close hook
 releases the lease. The control adapter never opens the Store.
+
+HST-002 also requires bounded active control clients, one absolute receive
+deadline per frame and linear input accumulation, including one-byte reads.
+These resource obligations are not yet met by the integrated transport, which
+resets its timeout per read and copies its retained prefix repeatedly. The
+assigned followup must enforce ACL2-projected limits before thread creation
+and byte consumption; a socket backlog is not an active-client bound. SCN-015
+tracks these cases separately from the completed endpoint/lifecycle witnesses.
 
 ## What the owner is
 

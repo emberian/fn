@@ -18,6 +18,9 @@ The listener's admitted loopback addresses now come from an ACL2 projection.
 Native AUTHINFO loads the bounded ACL2 credential profile before bind; its
 scoped login and reader-versus-peer runtime evidence is archived. BP lifecycle
 publication now uses the shared immutable publication machine.
+Native public control/posting and orderly SIGTERM are integrated with separate
+ACL2 closure and exact-raw Darwin runtime evidence. Control transport resource
+bounds remain an assigned followup; the clean combined Linux image is pending.
 
 The frozen combined source is `03eb3ba3`, with retained persvati job
 `run-20260921T095031Z-5cf4`. Certification, both same-origin image builds, scoped runtime suites and the
@@ -32,7 +35,7 @@ remain recorded and are not reclassified by component certificates.
 [Active lane assignments](swarm-cycles.md#current-staffing-and-integration-checkpoint)
 own these complete paths and their source-pinned evidence:
 
-- Native local control/posting, credential administration, outbound NNTP feed I/O and
+- Native control resource bounds, credential administration, outbound NNTP feed I/O and
   group/capacity administration, through the existing ACL2 policy and shared
   serialized owner. Control and BP submission share completion machinery;
   lifecycle hooks and orderly SIGTERM must compose without deadlocks.

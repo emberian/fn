@@ -13,6 +13,14 @@ Moving the second path from Python into Lisp does not remove that problem.
 
 ## Current-source recheck (2026-09-21)
 
+Update through `927c0f62`: U09 public control/posting, U12 orderly shutdown,
+and U14 endpoint lease/worker-owned descriptor cleanup are integrated. The
+[control evidence](evidence/native-control-accept-shutdown-2026-09-21.md)
+includes the reproduced blocking-accept hang and the fixed exact-raw Darwin
+run; its clean combined image remains pending. U09's packaged diagnostic-entry
+cleanup and U18's control resource bounds remain open. The historical source
+comparisons below retain their original baseline references.
+
 This section supersedes the owner and pending-status sentences in the historical
 findings below.  It is a source audit, not new proof or runtime evidence.  The
 source-pinned baseline was `90e0543`, compared with BP publisher `668130de`,
@@ -620,3 +628,19 @@ last FNFD batch for that outcome, but handshake refusal creates no fresh
 batch. A negative greeting after another peer's nonempty journal batch must
 not republish those records. These are source findings awaiting the repaired
 caller and native two-peer integration witness, not closed runtime claims.
+
+### U18: control frame bounds do not yet bound total work or concurrency
+
+Integrated control source `927c0f62` has an ACL2 frame ceiling, but raw
+`fnn-control-append` copies the whole accumulated prefix on every read. A
+one-byte stream therefore causes quadratic copying within that ceiling.
+`fnn-control-read-frame` resets its timeout on each chunk and uses the generic
+receive size even when fewer bytes remain. `fnn-control-launch-client` bounds
+neither active workers nor their aggregate retained input; listen backlog is
+not an active-client limit.
+
+The control lane owns a separate transport repair: ACL2-projected active-client
+limit enforced under the control lock, an absolute frame deadline, remaining-
+budget receive and linear chunk accumulation with one final copy. These are
+HST-002 and SCN-015 implementation obligations. They do not invalidate the
+distinct endpoint-lease, lost-reply or shutdown witnesses already recorded.
