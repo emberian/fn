@@ -1675,3 +1675,27 @@ shared/source-address ambiguity in the current inbound projection, prove
 OpenSSL or certificates correct, or establish peer honesty.  AUTHINFO, a
 principal-bound profile, or mutual TLS remains required to make that stronger
 claim.
+
+## Principal-bound inbound role selection (2026-09-21)
+
+A peer configured with `(:principal id)` starts every inbound connection as a
+reader.  Accept-time address and port observations do not select that peer.
+The reader session retains the pinned node/configuration context, and only a
+successful RFC 4643 AUTHINFO PASS may promote its ACL2 peer-session role.  The
+authenticated credential's 32-byte principal must equal the configured
+lowercase hexadecimal id of exactly one peer record; zero or multiple matches
+leave the connection a reader.  A new connection starts over as a reader.
+
+`[auth] protected_only` applies before this role transition, so USER/PASS on a
+clear channel cannot select a peer.  RFC 4642 STARTTLS resets the authenticated
+subject and any peer role derived from it; an explicit legacy
+`(:source-address addr)` role is not derived from AUTHINFO and remains governed
+by its separately documented address assumption.  Thus no source address,
+source port, or successful server-side TLS handshake is represented as a
+stronger named-peer identity.
+
+AUTHINFO verifies possession of the configured node-account password verifier.
+It does not prove that the peer is honest, bind the connection to an article's
+native author signature, or establish mutual TLS.  Password enrollment and
+verifier storage, TLS confidentiality when protected-only is selected, and the
+host/runtime carrying the ACL2 replies remain in the stated trust boundary.

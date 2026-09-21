@@ -611,6 +611,24 @@
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))
 
+(defun fn-own-reader-context (o id cfg)
+  "Retain ACL2 node/config facts while the connection's role remains reader."
+  (declare (xargs :guard t))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o))))
+    (if (and conn (fn-cfgp cfg))
+        (let* ((as (fn-own-conn-session conn))
+               (next-as
+                (fn-auth-with-base
+                 as (fn-peer-open-session (fn-own-conn-archive conn) nil
+                                          (fn-sn-node (fn-own-store o)) cfg)))
+               (next (fn-own-conn-make
+                      (fn-own-conn-id conn) (fn-own-conn-version conn)
+                      (fn-own-conn-frontier conn) (fn-own-conn-wire conn) next-as
+                      (fn-own-conn-archive conn) (fn-own-conn-config conn)
+                      (fn-own-conn-observation conn))))
+          (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o))))
+      o)))
+
 ; The wire limits of one connection.  RFC 3977 section 3.1's 512 octets
 ; include the CRLF (books/nntp-syntax.lisp).  A configured owner takes the
 ; article/body capacity from its pinned injection configuration, which the
@@ -1752,7 +1770,7 @@
 
 (deftheory fn-own-vocabulary
   '(fn-own-group-factp fn-own-prefix-archive fn-own-store-idlep fn-own-refresh
-    fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-body-limit
+    fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-reader-context fn-own-body-limit
     fn-own-open fn-own-enqueue
     fn-own-conn-live-session
     fn-own-read fn-own-read-step fn-own-advance fn-own-close fn-own-begin

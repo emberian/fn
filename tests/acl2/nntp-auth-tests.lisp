@@ -132,6 +132,20 @@
 (assert-event (fn-auth-credp *au-cred-ro*))
 (assert-event (not (equal *au-principal* *au-principal-ro*)))
 
+(defconst *au-principal-peer-record*
+  (fn-cfg-peer-make
+   "principal-peer" "principal.example.invalid" '(:nntp "127.0.0.1" 119)
+   '("fn.*" 32768 16) nil
+   (list :principal (coerce (fn-id-hex-octets *au-principal*) 'string))))
+(defconst *au-principal-peer-cfg*
+  (fn-config-replay
+   0 510
+   (list (fn-cfg-record-make
+          0 0 1 (append *fn-cfg-default-change*
+                        (list (fn-cfg-set-peer-delta *au-principal-peer-record*)))
+          *fn-cfg-default-stamp*))))
+(assert-event (fn-cfg-peerp *au-principal-peer-record*))
+
 ; Three configurations: open (nothing required, no certificate), required
 ; (authentication required, a certificate configured), and protected-only.
 (defconst *au-open* (fn-auth-open-config))
@@ -152,6 +166,10 @@
 (defconst *au-s-peer-req*
   (fn-auth-open-session (fn-node-acceptance *au-peer-node*) "transit"
                         *au-peer-node* *au-peer-cfg* *au-required* nil))
+(defconst *au-s-principal-reader*
+  (fn-auth-open-session (fn-node-acceptance *au-peer-node*) nil
+                        *au-peer-node* *au-principal-peer-cfg*
+                        *au-required* nil))
 (assert-event (fn-auth-sessionp *au-s-open*))
 (assert-event (fn-auth-sessionp *au-s-req*))
 (assert-event (fn-auth-session-consistentp *au-s-req* *au-archive*))
@@ -159,6 +177,8 @@
 (assert-event (equal (fn-auth-session-tlsp *au-s-req-tls*) t))
 (assert-event (fn-auth-session-consistentp *au-s-peer-req*
                                            (fn-node-acceptance *au-peer-node*)))
+(assert-event (null (fn-peer-session-peer
+                     (fn-auth-session-base *au-s-principal-reader*))))
 
 (defun au-step (as text)
   (fn-auth-step as *au-archive* *au-config* *au-obs* *au-obs*
@@ -220,6 +240,85 @@
 (assert-event (equal (fn-auth-session-subject (au-authed)) *au-principal*))
 (assert-event (fn-auth-sessionp (au-authed)))
 (assert-event (fn-auth-session-consistentp (au-authed) *au-archive*))
+
+(defmacro au-principal-after-user ()
+  '(fn-post-result-session
+    (fn-auth-authinfo *au-s-principal-reader*
+                      (list (fn-nntp-string-octets "USER") *au-name*))))
+(defmacro au-principal-authed ()
+  '(fn-post-result-session
+    (fn-auth-authinfo (au-principal-after-user)
+                      (list (fn-nntp-string-octets "PASS") *au-secret*))))
+(assert-event
+ (equal (fn-peer-session-peer (fn-auth-session-base (au-principal-authed)))
+        "principal-peer"))
+; Reconnect begins with no role even after an earlier connection authenticated.
+(assert-event
+ (null
+  (fn-peer-session-peer
+   (fn-auth-session-base
+    (fn-auth-open-session (fn-node-acceptance *au-peer-node*) nil
+                          *au-peer-node* *au-principal-peer-cfg*
+                          *au-required* nil)))))
+; A different authenticated account remains a reader.
+(defmacro au-other-after-user ()
+  '(fn-post-result-session
+    (fn-auth-authinfo *au-s-principal-reader*
+                      (list (fn-nntp-string-octets "USER")
+                            (fn-nntp-string-octets "guest")))))
+(defmacro au-other-authed ()
+  '(fn-post-result-session
+    (fn-auth-authinfo (au-other-after-user)
+                      (list (fn-nntp-string-octets "PASS")
+                            (fn-nntp-string-octets "guest-pass")))))
+(assert-event
+ (null (fn-peer-session-peer (fn-auth-session-base (au-other-authed)))))
+; Ambiguous principal ownership fails closed as a reader.
+(defconst *au-principal-peer-record-2*
+  (fn-cfg-peer-make
+   "principal-peer-2" "principal2.example.invalid" '(:nntp "127.0.0.1" 120)
+   '("fn.*" 32768 16) nil
+   (list :principal (coerce (fn-id-hex-octets *au-principal*) 'string))))
+(defconst *au-principal-duplicate-cfg*
+  (fn-config-replay
+   0 510
+   (list (fn-cfg-record-make
+          0 0 1 (append *fn-cfg-default-change*
+                        (list (fn-cfg-set-peer-delta *au-principal-peer-record*)
+                              (fn-cfg-set-peer-delta *au-principal-peer-record-2*)))
+          *fn-cfg-default-stamp*))))
+(defmacro au-duplicate-session ()
+  '(fn-auth-open-session (fn-node-acceptance *au-peer-node*) nil
+                         *au-peer-node* *au-principal-duplicate-cfg*
+                         *au-required* nil))
+(defmacro au-duplicate-user ()
+  '(fn-post-result-session
+    (fn-auth-authinfo (au-duplicate-session)
+                      (list (fn-nntp-string-octets "USER") *au-name*))))
+(assert-event
+ (null
+  (fn-peer-session-peer
+   (fn-auth-session-base
+    (fn-post-result-session
+     (fn-auth-authinfo (au-duplicate-user)
+                       (list (fn-nntp-string-octets "PASS") *au-secret*)))))))
+; STARTTLS resets authentication and the role derived from it.
+(assert-event
+ (null
+  (fn-peer-session-peer
+   (fn-auth-session-base
+    (fn-post-result-session (fn-auth-starttls (au-principal-authed) nil))))))
+; protected-only refuses before any role can be derived.
+(assert-event
+ (null
+  (fn-peer-session-peer
+   (fn-auth-session-base
+    (fn-post-result-session
+     (fn-auth-authinfo
+      (fn-auth-open-session (fn-node-acceptance *au-peer-node*) nil
+                            *au-peer-node* *au-principal-peer-cfg*
+                            *au-protected* nil)
+      (list (fn-nntp-string-octets "USER") *au-name*)))))))
 
 ; A wrong secret is 481, the session stays unauthenticated, and the cached
 ; name is cleared so the password cannot be retried without a fresh USER.

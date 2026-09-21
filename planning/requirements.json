@@ -1286,7 +1286,8 @@
       "proof_targets": [
         "PRF-014",
         "PRF-035",
-        "PRF-047"
+        "PRF-047",
+        "PRF-048"
       ],
       "verification": [
         "proof",

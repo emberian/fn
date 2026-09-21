@@ -509,7 +509,11 @@
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-peer-session-shapep x)
        (fn-post-sessionp (fn-peer-session-base x))
-       (or (null (fn-peer-session-peer x))
+       (or (and (null (fn-peer-session-peer x))
+                (or (and (null (fn-peer-session-node x))
+                         (null (fn-peer-session-cfg x)))
+                    (and (fn-node-statep (fn-peer-session-node x))
+                         (fn-cfgp (fn-peer-session-cfg x)))))
            (and (stringp (fn-peer-session-peer x))
                 (fn-node-statep (fn-peer-session-node x))
                 (fn-cfgp (fn-peer-session-cfg x))))
@@ -530,7 +534,7 @@
 ; their recognizers, here and nowhere per command.
 (defun fn-peer-open-session (archive peer node cfg)
   (declare (xargs :guard t :verify-guards nil))
-  (if (and peer (stringp peer) (fn-node-statep node) (fn-cfgp cfg))
+  (if (and (or (null peer) (stringp peer)) (fn-node-statep node) (fn-cfgp cfg))
       (fn-peer-make-session (fn-post-open-session archive) peer nil 0 node cfg)
     (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil)))
 
