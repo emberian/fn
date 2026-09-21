@@ -229,22 +229,28 @@ contain it.
 
 | Box | Run | Evidence | ACL2 | Jobs | Roots | Wall |
 | --- | --- | --- | --- | --- | --- | --- |
-| hbox | `run-20260921T015356Z-e888` | `build/acl2/certify-20260921T015400Z-1419906` | `/tank/fn/acl2-8.7/saved_acl2` sha256 `64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5`, SBCL 2.6.8 | 8 | **131 of 132**, the one failure foreign and pre-existing | 218.6 s |
+| hbox | **`run-20260921T021436Z-32a0`** (the final tree) | `build/acl2/certify-20260921T021450Z-1440524` | `/tank/fn/acl2-8.7/saved_acl2` sha256 `64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5`, SBCL 2.6.8 | 8 | **131 of 132**, the one failure foreign and pre-existing | 209.3 s |
+| hbox | `run-20260921T015356Z-e888` (before the fork witness) | `build/acl2/certify-20260921T015400Z-1419906` | same | 8 | 131 of 132 | 218.6 s |
 | hbox | `run-20260921T014724Z-9505` (the round before) | `build/acl2/certify-20260921T014734Z-1414858` | same | 8 | 127 of 132; **every book in `books/` passed**, the five reds were test books with a hand-built `fn-sn-make` plus the foreign one | 219.3 s |
 | laptop | local, per root | `certify-20260921T012023Z-18407` (`store-node`), `…T012817Z-29647` (`store-node-invariants`), `…T013339Z-38841` (`store-node-resolution`), `…T013506Z-40800` (`store-observed`), `…T013514Z-40943` (`store-sweep`), `…T013134Z-35686` (`store-node-traces`), `…T013924Z-49733` (`store-node-index-tests`) | `/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2` | 1 | 7 of 7 | — |
 
-**The control, stated separately from the green.** The hbox run's own
-`source_digests_sha256` was re-checked against the working tree afterwards:
-**132 of 132 certified sources byte-identical, 0 changed.** So the
-certification is a claim about the tree as it stands. `dev` was merged
-(`3a2640c`) BEFORE that run, not after.
+**The control, stated separately from the green.** The FINAL hbox run's own
+`source_digests_sha256` (`run-20260921T021436Z-32a0`) was re-checked against
+the working tree afterwards: **132 of 132 certified sources byte-identical,
+0 changed.** So the certification is a claim about the tree as it stands, not
+about an earlier one. `dev` was merged (`3a2640c`) BEFORE that run, not
+after. The earlier run is kept in the table because it is the one that
+identified the four hand-built `fn-sn-make` sites; it is not the evidence for
+the final tree.
 
 Per root, hbox: `books/store-node` 0.72 s, `books/store-node-invariants`
 **73.53 s** (the cluster's own cost, unchanged in shape — the new theorems are
 0.01 to 0.02 s each), `books/store-node-resolution` 1.03 s,
 `books/store-observed` 1.00 s, `books/store-sweep` 1.11 s,
 `books/store-node-traces` 4.61 s, `books/stx-index` 0.78 s,
-`tests/acl2/store-node-index-tests` 0.98 s with 69 `assert-event`s.
+`tests/acl2/store-node-index-tests` 0.98 s with 69 `assert-event`s (final
+run: `books/store-node` 0.69 s, `books/store-node-invariants` 71.46 s,
+`tests/acl2/store-node-index-tests` 0.98 s).
 hbox's cache reported `installed 23, kept 178, uncached 77` before the second
 run and `installed 103, kept 47, uncached 128` before the first; the run's
 passing pairs are published back for the next lane.
