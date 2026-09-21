@@ -93,6 +93,44 @@ and a restart it is 184 octets and its frames are, in order, kind 6
 `:feed-restart`, **kind 1 `:feed-enqueue`**, kind 6 `:feed-restart`. Kind 1
 had never been on disk.
 
+## K5 ran
+
+Gate `2c27ef6` on persvati, 130 steps. Node B stopped; node A accepts
+`<fed-restart@example.invalid>` by POST; **`kill -9` node A**; both nodes
+restart on their pinned ports.
+
+| row | value |
+| --- | --- |
+| A's FNFD journal names the queued article, before the kill | 1 |
+| B receives it after A's restart | `220 0 <fed-restart@example.invalid> article follows`, attempts=1 |
+| octets B serves against octets A serves | identical=True |
+| **B's own store, before the kill and after** | `fn.letters` **6 articles -> 7** |
+| the wire in front of B | `MODE STREAM; CHECK <fed-restart@example.invalid>; TAKETHIS <fed-restart@example.invalid>` |
+| offers / article blocks / accepted / refused-as-duplicate | **1 / 1 / 1 / 0** |
+| A's restart log | `FEED b replayed 11` |
+
+The offer is a `CHECK`, never a blind `TAKETHIS`. "Exactly one copy" is a
+count in the receiver: a reread cannot tell one copy from two, because the
+store refuses the second and the reread looks identical either way. The
+negative the keystone claims -- no duplicate transfer -- is asserted and
+holds.
+
+Two defects in this lane's own teeth were found by that run and are fixed
+rather than accommodated: `S< 238` was being counted as an article block
+(it is permission to send, not a send), and the scenario never recorded
+that node A holds what node A posted, so a later step asserted A did not
+hold it -- an assertion only a working feed could expose as false.
+
+## Open, each with what closes it
+
+| Item | What closes it |
+| --- | --- |
+| `CAPABILITIES` names neither `IHAVE` nor `STREAMING` on a transit connection | `fn-peer-capability-lines` exists, is proved and is **unreachable**: `fn-auth-step` answers `CAPABILITIES` at `books/nntp-auth.lisp:786`, above `fn-peer-step`. `fn-auth-capability-lines` must build on the peer list with the record from `(fn-peer-session-peer (fn-auth-session-base as))`, and `fn-peer-command`'s arm is then removed. The arity change restates the four hint sites at `books/nntp-auth.lisp:932,1272,1281,1290`, and `tests/test_owner.py::test_the_capability_block_does_not_yet_name_the_transit_commands` is the test that says the day it changes. |
+| A second offer in one session draws `335`/`238` rather than `435`/`438` | unchanged from `w11/twonode-feed`: the session pins the node at open. Whoever owns `specs/peering.md` §2.2 decides whether the offer-time history reads the live node. |
+| `--tree` does not change the deploy directory | `tools/deploy_gate.py:485` has no tree in the path while the lock at `:590` does, so two gates at one revision on one host `rm -rf` each other. Putting the tree in the path moves `tests/test_deploy_gate.py:153`, `tests/test_scale_gate.py:232`, `tests/test_twonode_gate.py:119,173` and `docs/interop-inn.md:27`; a guard step before the ship moves the step counts the self-tests pin. |
+| `fn-feed-replay-is-the-live-feed-modulo-inflight` (§4 K5) | the live machine that emits its own journal now exists; the general equation does not. No theorem relates a crash image of the feed file to the live feed. |
+| **A post through the control channel feeds nobody** | `drain` flushes the feed records for the served POST and the transit path, which are the two that reach `fn-own-outcome`. The control channel's `POST` calls `post_article` (`tools/run_store.py:1826`) straight down the durable path and never calls `fn-owner-outcome`, and `fn-own-feed-durable` has exactly two callers, `fn-own-outcome` and `fn-own-transit-outcome` (`books/owner.lisp`). So an article an operator posts through `fn post` on a running node becomes durable and is **never offered to any peer**. Not this lane's, and not observed on a wire here -- it is read off the call graph. What closes it: the control POST goes through the owner's queue and outcome, as a served POST does, rather than round the side of it. |
+
 ## What a successor should not undo
 
 1. **The loss record is an outcome-400, not a restart record.** It is chosen
