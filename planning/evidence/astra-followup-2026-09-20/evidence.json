@@ -1,0 +1,69 @@
+{
+  "reviewed_revision": "664711ef4ff971c83af5306988253980f7ade1fb",
+  "reviewed_tree": "95803994c85789205a88f14ebfabd285202111be",
+  "baseline": "3e1b184",
+  "recorded_utc": "2026-09-21T02:15:33.052607+00:00",
+  "worktree": "/tmp/fn-review-wt-7413733",
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+  "python_executable": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+  "git": "git version 2.54.0 (Apple Git-157)",
+  "make": "GNU Make 4.4.1",
+  "FN_ACL2": null,
+  "commands": [
+    {
+      "command": "make check",
+      "exit_code": 0,
+      "log": "check.log",
+      "scope": "Scaffolding/static checks; dynamic host loading skipped and teeth unevaluated as the log states."
+    },
+    {
+      "command": "python3 -m unittest tests.test_host_boundary tests.test_session_depth tests.test_evidence_manifests tests.test_cite_check tests.test_v0_matrix -v",
+      "exit_code": 0,
+      "log": "tests.log",
+      "observed_test_count": 100,
+      "observed_seconds": 10.48,
+      "scope": "Focused Python tests; not integrated ACL2 certification or a live-node acceptance run."
+    },
+    {
+      "command": "python3 planning/evidence/astra-followup-2026-09-20/probe.py /tmp/fn-review-wt-7413733",
+      "exit_code": 0,
+      "log": "probe.json",
+      "scope": "Actual gate/host methods with simulated boundary responses. No ACL2/socket/device execution."
+    }
+  ],
+  "source_sha256": {
+    "tools/twonode_gate.py": "6e1af821de0627de41c7c72da8aad64e27699c20a09b58e0e141b62e03105302",
+    "tools/deploy_gate.py": "5e761a2eb80c98f5a2156a7055546077c0b4a567b2361bd58be9877e67f70540",
+    "tools/run_owner.py": "b4bab51a8ece1c694915ba3790b6617a016344aed8b810f1dbff592bf14f3894",
+    "tools/frame_bridge.py": "2d2d8d1d5b44ba044cf5ce7bf559a5cf3275f0046a6cd712a0c985da604e13e8",
+    "host/owner-host.lisp": "83f6bbbc7a8f53016ef02742b99e1999d0cd1f2c8513d38c691b48a13767f3c8",
+    "host/native/io.lisp": "b1d6ff7b01c838554ba112749366ed9f18d06d04135c7985456956152886e09d",
+    "books/owner.lisp": "80f1b780db2758308e7e98f77da666617bbfbf240b3311c8ac15ffd5bbc8bba3",
+    "books/owner-feed.lisp": "156a0f343ac61f55d9148bcd263a16c7ced112c5539a7f0750a852aa5e2e2192",
+    "books/peer-feed.lisp": "257517ccb03e39a67b74584dfb4190f4a93f277431f2cdb4534af1827895a817",
+    "books/nntp-auth.lisp": "3607bee31216c75bcad751512735720630a07d58cacbc486dc6784272be19f78",
+    "books/served.lisp": "eb0a1bb1ac777de89dcbb52d982ebd5b26e359c333875fe433352fa219908acd",
+    "books/store-files.lisp": "53e6db6d1405cf5c57ee5b1b28af1080b0f92eb3b7b1b610f6fdf301476ce342",
+    "books/byte-store-scan.lisp": "fdea4be0a9f18d9f45833e5fdc7c505441585919d27cc30bc9c32bceabb63cb7",
+    "books/frame-trailer.lisp": "0886078615817c8fb29aa57fae6aa53fb2c8ac5977cfd01ccf87fc587057223f",
+    "planning/lanes/HANDOFF-w11-bytestore-k2.md": "3597fe0647721bb88fe3dd0bab5649e39573c94471035340b09ae6feb708142d",
+    "planning/lanes/HANDOFF-w11-twonode-feed.md": "6a913921c13d2d74d551e2f2d44b60f15926469fb4f3c31ace6081b596c18ee9",
+    "planning/lanes/HANDOFF-w10-dtn-3.md": "d8f56ad3e015ee41f87b70104059becd3e7b636b3e2d0d551a8821c7ac5e113a",
+    "planning/lanes/HANDOFF-w11-one-owner.md": "f4520f7f09abde15b01d8f0764653e4c77ee6dec796186d4c3a4afe4639a64f5",
+    "planning/evidence/twonode-feed-w11-2026-09-20.md": "32d959fca10ed457c70095dd95ef529ed23ee5d689240117537ea5d2fcba3623",
+    "specs/nntp.md": "327f9570c1cf7270bd921b2ef8083d063c3f2c3fe374593fd990b394508e69b6",
+    "specs/peering.md": "99ddb0a57f8ed9748fc3a755c720407affb6a563925ef556b664c44f0e459b58"
+  },
+  "artifact_sha256": {
+    "check.log": "0d04a18db64524c88cc5a63229ec6376327bccc3a194c728503eb5114c54b9c4",
+    "probe.json": "6f857da552393e35cf2a2f822ba29b9fae6f28877ceb67ce5387ce215f1d9e85",
+    "probe.py": "6bca006097c3838cf8b85457d7169376991a4d479607deb4f1139b376badcd3d",
+    "tests.log": "2c864083e7b1019d74897a25ff8532d7b3a496c7ebb06a1d72505bd25a5841e5"
+  },
+  "limitations": [
+    "No fresh ACL2 certification, live NNTP experiment, or physical power-loss experiment.",
+    "Existing lane certification/lab records are attributed observations, not independently rerun here.",
+    "Concurrent Claude work after the pinned revision is not covered."
+  ]
+}

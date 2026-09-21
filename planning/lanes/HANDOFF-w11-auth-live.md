@@ -42,7 +42,7 @@ in with them.
 `fn-owner-open-peer` can read it. Under the default policy nothing changes,
 because the default IS `(fn-auth-open-config)`.
 
-**PRF-035**, two theorems in `books/served.lisp`, both false of the old
+**PRF-038**, two theorems in `books/served.lisp`, both false of the old
 definition: `fn-served-open-peer-pins-the-configuration`, and the keystone
 `fn-served-peer-and-reader-open-under-the-same-policy`. Teeth in
 `tests/acl2/served-tests.lisp` drive `fn-served-step` over two connections
@@ -93,7 +93,7 @@ root `/home/ember/fn-lanes/w11-auth-live`:
 | run | verdict |
 | --- | --- |
 | `run-20260921T015401Z-ec5c` | **passed**, 0 failures, 196 s (the `acfg` change): `books/served`, `books/owner`, `books/owner-invariants`, `books/owner-config`, `books/nntp-auth`, `books/nntp-auth-invariants`, `books/peer-inbound`, `tests/acl2/owner-tests`, `tests/acl2/served-tests` |
-| `run-20260921T020122Z-d422` | **passed**, `tests/acl2/served-tests` with the PRF-035 teeth, 112 assertions, 0 errors |
+| `run-20260921T020122Z-d422` | **passed**, `tests/acl2/served-tests` with the PRF-038 teeth, 112 assertions, 0 errors |
 | `run-20260921T021107Z-808e` | the greeting change, same roots — see the table below |
 
 ## Open, named, not weakened
