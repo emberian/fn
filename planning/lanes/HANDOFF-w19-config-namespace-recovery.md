@@ -51,12 +51,17 @@ mismatches, and an empty history.  The sorter has occurrence-count,
 cardinality, and membership preservation theorems, so duplicates cannot be
 silently dropped before namespace rejection.
 
-Contained ACL2 source evaluation loaded this exact book and test with proofs
-enabled and completed successfully.  A narrow certification attempt could not
+The earlier contained ACL2 source-evaluation claim is retracted: stdin was
+redirected into `run_command.py`, whose child receives `/dev/null`, so the
+driver and its assertions never reached ACL2. No success marker was observed.
+SBCL reading confirms top-level form structure only, not ACL2 admission or proof.
+A narrow certification attempt could not
 start because the local cache has no matching corrected `journal-publish` or
 `native-admin` certificates; a 50-root no-publish closure was terminated at
 its 180-second containment limit while certifying dependencies, before it
-reached this book.  Neither result is certification evidence.
+reached this book. Neither attempt is certification evidence. The corrected
+source is included in root's frozen `f7190d69` combined gate on persvati;
+its result must be recorded separately when available.
 
 ## Ready contained closure
 
