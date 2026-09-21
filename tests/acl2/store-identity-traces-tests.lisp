@@ -8,13 +8,14 @@
 (include-book "../../books/hybrid-store")
 
 (defconst *sit-groups* '("example"))
-(defconst *sit-principal* (repeat 32 7))
-(defconst *sit-ed-key* (repeat 32 11))
-(defconst *sit-ml-key* (repeat 1952 13))
+(defconst *sit-principal* (make-list 32 :initial-element 7))
+(defconst *sit-ed-key* (make-list 32 :initial-element 11))
+(defconst *sit-ml-key* (make-list 1952 :initial-element 13))
 (defconst *sit-keys* (list (cons :ed25519 *sit-ed-key*)
                            (cons :ml-dsa-65 *sit-ml-key*)))
-(defconst *sit-signatures* (list (cons :ed25519 (repeat 64 17))
-                                 (cons :ml-dsa-65 (repeat 3309 19))))
+(defconst *sit-signatures*
+  (list (cons :ed25519 (make-list 64 :initial-element 17))
+        (cons :ml-dsa-65 (make-list 3309 :initial-element 19))))
 (defconst *sit-source* '(65 13 10))
 (defconst *sit-snapshot*
   (fn-hsig-keyring-snapshot *sit-principal* *sit-keys*))
