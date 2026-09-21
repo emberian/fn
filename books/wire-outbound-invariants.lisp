@@ -197,3 +197,101 @@
                                     (fn-wire-outbound-lines article limit))))
                  (:instance fn-wire-outbound-lines-success-reconstructs-source
                             (octets article))))))
+
+; ---------------------------------------------------------------------------
+; Receiver-side admission facts extracted from the same outbound scanner.
+; They justify the article profile without constraining accepted source lines
+; to the command limit: an accepted source consumes at most its *total* bound,
+; while one leading dot can add one physical octet on the wire.
+
+(defun fn-wire-clean-linesp (lines)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count lines)))
+  (if (consp lines)
+      (and (fn-wire-line-contentp (car lines))
+           (fn-wire-clean-linesp (cdr lines)))
+    (null lines)))
+
+(defthm fn-wire-line-contentp-reverse-octets-aux
+  (implies (and (fn-wire-line-contentp line)
+                (fn-wire-line-contentp accumulator))
+           (fn-wire-line-contentp
+            (fn-wire-reverse-octets-aux line accumulator)))
+  :hints (("Goal"
+           :induct (fn-wire-reverse-octets-aux line accumulator)
+           :in-theory (enable fn-wire-line-contentp
+                              fn-wire-reverse-octets-aux))))
+
+(defthm fn-wire-line-contentp-reverse-octets
+  (implies (fn-wire-line-contentp line)
+           (fn-wire-line-contentp (fn-wire-reverse-octets line)))
+  :hints (("Goal"
+           :use ((:instance fn-wire-line-contentp-reverse-octets-aux
+                            (accumulator nil)))
+           :in-theory (enable fn-wire-reverse-octets fn-wire-line-contentp))))
+
+(defthm fn-wire-clean-linesp-reverse-lines-aux
+  (implies (and (fn-wire-clean-linesp lines)
+                (fn-wire-clean-linesp accumulator))
+           (fn-wire-clean-linesp
+            (fn-wire-reverse-lines-aux lines accumulator)))
+  :hints (("Goal"
+           :induct (fn-wire-reverse-lines-aux lines accumulator)
+           :in-theory (enable fn-wire-clean-linesp
+                              fn-wire-reverse-lines-aux))))
+
+(defthm fn-wire-clean-linesp-reverse-lines
+  (implies (fn-wire-clean-linesp lines)
+           (fn-wire-clean-linesp (fn-wire-reverse-lines lines)))
+  :hints (("Goal"
+           :use ((:instance fn-wire-clean-linesp-reverse-lines-aux
+                            (accumulator nil)))
+           :in-theory (enable fn-wire-reverse-lines fn-wire-clean-linesp))))
+
+(defthm fn-wire-outbound-lines-aux-success-is-clean
+  (implies (and (fn-wire-outbound-okp
+                 (fn-wire-outbound-lines-aux octets fuel line-rev lines-rev))
+                (fn-wire-line-contentp line-rev)
+                (fn-wire-clean-linesp lines-rev))
+           (fn-wire-clean-linesp
+            (fn-wire-outbound-octets
+             (fn-wire-outbound-lines-aux octets fuel line-rev lines-rev))))
+  :hints (("Goal"
+           :induct (fn-wire-outbound-lines-aux octets fuel line-rev lines-rev)
+           :in-theory (e/d (fn-wire-outbound-lines-aux
+                             fn-wire-outbound-okp
+                             fn-wire-outbound-octets
+                             fn-wire-outbound-ok
+                             fn-wire-outbound-refused
+                             fn-wire-line-contentp
+                             fn-wire-clean-linesp)
+                            (fn-wire-reverse-octets-is-revappend
+                             fn-wire-reverse-octets-aux-is-revappend)))))
+
+(defthm fn-wire-outbound-lines-success-is-clean
+  (implies (fn-wire-outbound-okp (fn-wire-outbound-lines octets limit))
+           (fn-wire-clean-linesp
+            (fn-wire-outbound-octets (fn-wire-outbound-lines octets limit))))
+  :hints (("Goal"
+           :use ((:instance fn-wire-outbound-lines-aux-success-is-clean
+                            (fuel (nfix limit)) (line-rev nil) (lines-rev nil)))
+           :in-theory (enable fn-wire-outbound-lines
+                              fn-wire-line-contentp fn-wire-clean-linesp))))
+
+(defthm fn-wire-outbound-lines-aux-success-respects-fuel
+  (implies (fn-wire-outbound-okp
+            (fn-wire-outbound-lines-aux octets fuel line-rev lines-rev))
+           (<= (len octets) (nfix fuel)))
+  :hints (("Goal"
+           :induct (fn-wire-outbound-lines-aux octets fuel line-rev lines-rev)
+           :in-theory (enable fn-wire-outbound-lines-aux
+                              fn-wire-outbound-okp
+                              fn-wire-outbound-ok
+                              fn-wire-outbound-refused))))
+
+(defthm fn-wire-outbound-lines-success-respects-limit
+  (implies (fn-wire-outbound-okp (fn-wire-outbound-lines octets limit))
+           (<= (len octets) (nfix limit)))
+  :hints (("Goal"
+           :use ((:instance fn-wire-outbound-lines-aux-success-respects-fuel
+                            (fuel (nfix limit)) (line-rev nil) (lines-rev nil)))
+           :in-theory (enable fn-wire-outbound-lines))))
