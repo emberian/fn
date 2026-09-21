@@ -296,6 +296,7 @@
                            "restart decodes only after recovery barriers")
     (fnn-anchor-test-check (= (length fields) 10)
                            "restart preserves decoded FNAN fields"))
+  (format t "FN_NATIVE_ANCHOR_REPLACE_EIO_RESTART passed~%")
   (ignore-errors (sb-posix:unlink (fnn-anchor-path store)))
   (ignore-errors (sb-posix:rmdir staging))
   (ignore-errors (sb-posix:rmdir root)))
