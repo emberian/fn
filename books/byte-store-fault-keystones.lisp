@@ -24,6 +24,7 @@
                    (fn-bs-fence-dir bs1 :transactions) :transactions))))
   :rule-classes nil
   :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds)
            :in-theory (enable fn-bs-link fn-bs-dir-quietp
                               fn-bs-fence-dir fn-bs-ops-for-dir
                               fn-bs-ops-for-dir-of-append
@@ -36,5 +37,5 @@
            (fn-sf-fencedp
             (fn-sn-files (fn-sn-io s :record-link :error))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-sn-io fn-sn-file-step fn-sn-update
+  :hints (("Goal" :in-theory (enable fn-sn-statep fn-sn-io fn-sn-file-step fn-sn-update
                                      fn-sf-record-link-result fn-sf-fencedp))))
