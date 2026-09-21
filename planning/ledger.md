@@ -14,12 +14,12 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 333 |
 | Books inside the root closure | 333 |
 | `defthm` and `defthmd` events | 6153 |
-| `defun` events | 4567 |
+| `defun` events | 4569 |
 | Functions with verified guards | 1562 |
 | Functions declared `:verify-guards nil` and never verified | 228 |
-| Functions left at the default with an explicit guard | 2191 |
+| Functions left at the default with an explicit guard | 2193 |
 | Functions left at the default with no guard | 586 |
-| `assert-event` checks | 6363 |
+| `assert-event` checks | 6369 |
 | `must-fail` checks | 125 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 56 |
@@ -195,7 +195,7 @@ that `make certify` requests.
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
 | `books/native-config.lisp` | root | 1 | 57 | 0/0/57/0 | 0 | 0 | 0 |
-| `books/native-operator.lisp` | root | 0 | 23 | 0/0/23/0 | 0 | 0 | 0 |
+| `books/native-operator.lisp` | root | 0 | 25 | 0/0/25/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-auth.lisp` | root | 68 | 50 | 33/3/14/0 | 0 | 0 | 2 |
 | `books/nntp-effects.lisp` | root | 139 | 12 | 0/0/0/12 | 0 | 0 | 1 |
@@ -361,8 +361,8 @@ that `make certify` requests.
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/native-config-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 27 | 0 | 0 |
-| `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
-| `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 21 | 0 | 0 |
+| `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 0 | 0 |
+| `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 25 | 0 | 0 |
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 133 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
 | `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 92 | 0 | 0 |

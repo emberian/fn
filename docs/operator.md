@@ -23,6 +23,36 @@ drop-in replacement for this operator CLI. See the
 parity work and [host contract](../specs/host.md#selected-production-runtime) for
 the runtime boundary.
 
+## Native component entry
+
+The native image now has an ACL2-owned operator entry. For a compatible existing
+store and a supported minimal configuration, its component commands are:
+
+```sh
+packaging/fn-native operator /path/to/fn.toml help
+packaging/fn-native operator /path/to/fn.toml status
+packaging/fn-native operator /path/to/fn.toml recover
+packaging/fn-native operator /path/to/fn.toml run
+```
+
+`help` does not read the configuration file. `run` uses the normalized native
+owner callback. Missing, nonregular or oversized configuration is usage (5);
+a hard read/open failure remains a fault (4). Refused work (1), uncertain
+persistence (3) and successful execution (0) remain distinct. An accepted
+command plan alone is never reported as a successful post.
+
+The [operator integration record](../planning/evidence/native-operator-installed-20260921T0920.md)
+contains source-pinned component execution, including an actual loopback reader.
+The [explicit preflight record](../planning/evidence/native-operator-preflight-2026-09-21.md)
+covers the configuration-free help boundary. The later combined native service
+batch is still under validation. Native `post`, control, authentication and
+outbound feed operation are active implementation work; unsupported profiles
+produce an explicit usage error. The entry above does not yet replace the complete
+operator workflow below, and the low-level `store` diagnostic is not a second
+public posting interface. Native SIGTERM still aborts the process directly;
+orderly native worker shutdown is pending, distinct from the development
+service stop procedure below.
+
 ## Install
 
 The development service needs Python 3.11 or newer (for `tomllib`) and ACL2 8.7 with a certified

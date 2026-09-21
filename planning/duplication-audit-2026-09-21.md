@@ -323,3 +323,25 @@ and an ACL2 pre-rename issue phase, then recovery barriers before reading held
 state. The [anchor report](../tests/evidence/2026-09-21-native-anchor-replace.md)
 separates actual EIO/restart tests from internet interoperability and build gaps.
 The earlier unsafe persistence packet is retained as superseded history.
+
+
+The native operator join is integrated through `67f45a3`, with source-pinned
+component help/status/run and hard-I/O classification evidence. Followup
+`dc57e7c` replaces an invalid-config sentinel with an explicit ACL2 command
+preflight result; the host no longer induces an error to discover whether it
+needs to read configuration. Public posting remains a shared-owner channel
+implementation task. Its pending native entry must not reinstate the old
+standalone-store fallback as an alternate acceptance path.
+
+
+### U12: native process termination bypasses orderly owner shutdown
+
+At `dc57e7c`, the SIGTERM handler in `host/native/io.lisp` calls `fnn-exit`,
+which invokes `sb-ext:exit :abort t`. That bypasses the native owner's
+`unwind-protect` worker-drain and cleanup path. Process death/recovery safety
+is a separate contract from an orderly service stop; the development Python
+service's clean SIGTERM behavior must not be attributed to this adapter.
+A native successor must route a shutdown request safely, without acquiring a
+possibly interrupted mutex in the asynchronous handler, and test SIGTERM
+with active clients followed by independent reopen. Owner convergence tracks
+this after the current guarded feed/build batch.
