@@ -143,6 +143,8 @@
 (assert-event
  (not (fn-native-config-listener-hostp "192.0.2")))
 (assert-event
+ (not (fn-native-config-listener-hostp "192.000.2.44")))
+(assert-event
  (equal (fn-native-config-host-listener-address
          (fn-record-string-octets "127.0.0.1"))
         '(:inet (127 0 0 1))))

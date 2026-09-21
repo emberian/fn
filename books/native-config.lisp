@@ -42,7 +42,8 @@
     (cond
      ((fn-ncfg-ipv4-digitp (car xs))
       (let ((next (+ (* 10 (nfix value)) (- (car xs) 48))))
-        (if (and (< (nfix digits) 3) (<= next 255))
+        (if (and (< (nfix digits) 3) (<= next 255)
+                 (not (and (posp digits) (equal value 0))))
             (fn-ncfg-ipv4-address-aux
              (cdr xs) next (1+ (nfix digits)) parts-rev)
           :bad)))
