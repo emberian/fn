@@ -146,6 +146,47 @@
                               fn-served-step)
            :use ((:instance fn-served-feed-counted-result-is-feed)))))
 
+(defthm fn-served-step-counted-fast-preserves-connp
+  (implies (fn-served-connp conn)
+           (fn-served-connp
+            (fn-served-result-conn
+             (fn-served-counted-result
+              (fn-served-step-counted-fast conn octets)))))
+  :hints (("Goal"
+           :use ((:instance fn-served-step-counted-fast-is-reference)
+                 (:instance fn-served-step-counted-result-is-step)
+                 (:instance fn-served-step-preserves-connp))
+           :in-theory (disable fn-served-step-counted-fast-is-reference
+                               fn-served-step-counted-result-is-step
+                               fn-served-step-preserves-connp
+                               fn-served-step-counted-fast
+                               fn-served-step-counted
+                               fn-served-step
+                               fn-served-connp))))
+
+(defthm fn-served-step-counted-fast-consumed-is-bounded
+  (<= (fn-served-counted-consumed
+       (fn-served-step-counted-fast conn octets))
+      (len octets))
+  :rule-classes :linear
+  :hints (("Goal"
+           :in-theory (enable fn-served-step-counted-fast
+                              fn-served-step-counted-core
+                              fn-served-counted-make
+                              fn-served-counted-consumed)
+           :use ((:instance fn-served-feed-counted-consumed-is-bounded)))))
+
+(defthm fn-served-step-counted-fast-consumed-is-natural
+  (natp (fn-served-counted-consumed
+         (fn-served-step-counted-fast conn octets)))
+  :rule-classes :type-prescription
+  :hints (("Goal"
+           :in-theory (enable fn-served-step-counted-fast
+                              fn-served-step-counted-core
+                              fn-served-counted-make
+                              fn-served-counted-consumed)
+           :use ((:instance fn-served-feed-counted-consumed-is-natural)))))
+
 (defthm fn-served-step-counted-consumed-is-bounded
   (<= (fn-served-counted-consumed
        (fn-served-step-counted conn octets))

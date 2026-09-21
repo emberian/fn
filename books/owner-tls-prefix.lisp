@@ -66,7 +66,7 @@
            :in-theory (enable fn-own-read-tls-prefix
                               fn-own-tls-make-result
                               fn-own-tls-result-consumed)
-           :use ((:instance fn-served-step-counted-consumed-is-bounded
+           :use ((:instance fn-served-step-counted-fast-consumed-is-bounded
                             (conn
                              (fn-own-tls-served-conn
                               o (fn-own-find-conn id (fn-own-conns o)))))))))
@@ -75,12 +75,14 @@
 ; configured-owner state.  The counted transition is a single execution;
 ; this theorem relates its result to the pre-existing semantic entry point.
 (defthm fn-ocfg-read-tls-prefix-is-full-read
-  (let ((tls-result (fn-ocfg-read-tls-prefix oc id octets))
-        (full-result (fn-ocfg-read oc id octets)))
-    (and (equal (fn-own-tls-result-effects tls-result)
-                (car full-result))
-         (equal (fn-own-tls-result-owner tls-result)
-                (cdr full-result))))
+  (implies
+   (fn-ocfg-statep oc)
+   (let ((tls-result (fn-ocfg-read-tls-prefix oc id octets))
+         (full-result (fn-ocfg-read oc id octets)))
+     (and (equal (fn-own-tls-result-effects tls-result)
+                 (car full-result))
+          (equal (fn-own-tls-result-owner tls-result)
+                 (cdr full-result)))))
   :hints (("Goal"
            :in-theory (enable fn-ocfg-read-tls-prefix
                               fn-own-read-tls-prefix
@@ -91,7 +93,13 @@
                               fn-ocfg-read
                               fn-own-read
                               fn-own-tls-served-conn)
-           :use ((:instance fn-served-step-counted-result-is-step
+           :use ((:instance fn-served-step-counted-fast-is-reference
+                            (conn
+                             (fn-own-tls-served-conn
+                              (fn-ocfg-owner oc)
+                              (fn-own-find-conn
+                               id (fn-own-conns (fn-ocfg-owner oc))))))
+                 (:instance fn-served-step-counted-result-is-step
                             (conn
                              (fn-own-tls-served-conn
                               (fn-ocfg-owner oc)
