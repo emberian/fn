@@ -2241,7 +2241,9 @@ connection `fn-reader-reset' opens and projects with
   (push (cons verb handler) *fnn-verbs*)
   verb)
 
-(defun fnn-select-image-profile (name)
+(defun fnn-select-image-profile
+    (&optional (name (or (sb-ext:posix-getenv "FN_NATIVE_PROFILE")
+                         "production")))
   "Select the entry surface once while constructing the saved image.
 
 The default and deployment profile is production.  Developer images opt in

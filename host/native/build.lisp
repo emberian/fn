@@ -113,8 +113,7 @@
         ; one of these two values.  It is serialized into the image: the
         ; restarted process cannot expose diagnostics by changing its
         ; environment.
-        (fnn-select-image-profile
-         (or (sb-ext:posix-getenv "FN_NATIVE_PROFILE") "production"))
+        (fnn-select-image-profile)
         ; OpenSSL 3 is the explicit native STARTTLS trust boundary.  It loads
         ; after io.lisp because its deadline/descriptor helpers are physical
         ; transport primitives, not protocol decisions.
