@@ -8,6 +8,7 @@
 
 (in-package "ACL2")
 (include-book "native-config")
+(include-book "native-admin")
 
 (defconst *fn-nop-max-arguments* 32)
 (defconst *fn-nop-max-argument-octets* 512)
@@ -107,7 +108,7 @@
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "run" "post" "status" "recover")))
+  (member-equal subject '("help" "run" "post" "status" "recover" "group" "capacity")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -117,10 +118,21 @@
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
         ((equal subject "status") "usage: fn operator CONFIG status")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
+        ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
+        ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|run|post|status|recover}")))
+        (t "usage: fn operator CONFIG {help|run|post|status|recover|group|capacity}")))
 
-(defun fn-nop-parse-command (words config)
+(defun fn-nop-parse-administration (command argv config)
+  "Delegate the exact bounded argv vector to the ACL2 durable-admin grammar."
+  (declare (xargs :guard t))
+  (let ((plan (fn-native-admin-plan argv)))
+    (if (equal (fn-native-admin-result-status plan) :accepted)
+        (fn-nop-result :accepted :plan command config plan)
+      (fn-nop-usage (list :administration (fn-native-admin-result-reason plan))
+                    command config argv))))
+
+(defun fn-nop-parse-command (words config argv)
   "The accepted tag means a bounded command *plan* exists; no host effect ran."
   (declare (xargs :guard t))
   (if (not (consp words))
@@ -147,6 +159,8 @@
              (if (null rest)
                  (fn-nop-result :accepted :plan "recover" config (list :recover))
                (fn-nop-usage :unexpected-arguments "recover" config rest)))
+            ((or (equal command "group") (equal command "capacity"))
+             (fn-nop-parse-administration command argv config))
             (t (fn-nop-usage :unsupported-command command config rest))))))
 
 (defun fn-native-operator-command-preflight (argv-octets)
@@ -162,7 +176,7 @@ so malformed argv and help syntax remain ACL2-owned before any host file I/O."
       (fn-nop-usage :argv-bounds nil nil nil)
     (let ((words (fn-nop-argument-texts argv-octets)))
       (if (and (consp words) (equal (car words) "help"))
-          (fn-nop-parse-command words nil)
+          (fn-nop-parse-command words nil argv-octets)
         (list :needs-config)))))
 
 (defun fn-native-operator-preflight-needs-config-p (result)
@@ -187,9 +201,14 @@ is installed into the owner for both served and control submission."
             (if (not (equal (fn-ncfg-first loaded) :accepted))
                 (fn-nop-usage (list :configuration (fn-ncfg-second loaded)) nil nil nil)
               (let ((config (fn-ncfg-second loaded)))
-                (if (not (fn-native-config-operator-availablep config))
-                    (fn-nop-usage :unsupported-profile nil config nil)
-                  (fn-nop-parse-command words config))))))))))
+                (let ((parsed (fn-nop-parse-command words config argv-octets)))
+                  ; Valid configuration is sufficient for offline store actions.
+                  ; Only an accepted RUN plan requires every owner backend.
+                  (if (and (equal (fn-native-operator-result-status parsed) :accepted)
+                           (equal (fn-native-operator-result-command parsed) "run")
+                           (not (fn-native-config-operator-availablep config)))
+                      (fn-nop-usage :unsupported-profile "run" config nil)
+                    parsed))))))))))
 
 (in-theory (disable fn-native-operator-run))
 
@@ -325,6 +344,19 @@ is installed into the owner for both served and control submission."
       (fn-ncfg-nth 3 (fn-native-operator-result-arguments result)))
     nil))
 
+(defun fn-native-operator-result-admin-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (or (equal (fn-native-operator-result-command result) "group")
+           (equal (fn-native-operator-result-command result) "capacity"))))
+
+(defun fn-native-operator-result-admin-plan (result)
+  "The exact ACL2 administrative plan; no raw argv reaches the executor."
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-admin-planp result)
+      (fn-native-operator-result-arguments result)
+    nil))
+
 (defun fn-native-operator-result-native-action (result)
   "The only commands the current raw native module may execute by itself.
 
@@ -338,4 +370,6 @@ callbacks.  Neither is translated into a direct Store call."
           ((equal (fn-native-operator-result-command result) "post") :post)
           ((equal (fn-native-operator-result-command result) "status") :status)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
+          ((or (equal (fn-native-operator-result-command result) "group")
+               (equal (fn-native-operator-result-command result) "capacity")) :admin)
           (t :owner-required))))

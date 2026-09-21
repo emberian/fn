@@ -99,3 +99,13 @@
  (equal (fn-native-operator-host-result-run-tls-key-octets
          *fn-nop-host-tls-run-result*)
         (fn-record-string-octets "/run/fn/key.pem")))
+(defconst *fn-nop-host-admin-result*
+  (fn-native-operator-host-run *fn-nop-host-config*
+                               (list (fn-record-string-octets "group")
+                                     (fn-record-string-octets "create")
+                                     (fn-record-string-octets "fn.host"))))
+(assert-event (equal (fn-native-operator-host-result-native-action *fn-nop-host-admin-result*)
+                     :admin))
+(assert-event (equal (fn-native-admin-result-kind
+                      (fn-native-operator-host-result-admin-plan *fn-nop-host-admin-result*))
+                     :create-group))

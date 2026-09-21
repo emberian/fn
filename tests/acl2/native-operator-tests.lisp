@@ -97,10 +97,27 @@
                       (fn-native-operator-run *fn-nop-minimal-config*
                                               (fn-nop-test-argv '("status" "typo"))))
                      :usage))
+(defconst *fn-nop-group-create*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("group" "create" "fn.letters"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-group-create*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-group-create*) :admin))
+(assert-event (equal (fn-native-admin-result-kind
+                      (fn-native-operator-result-arguments *fn-nop-group-create*))
+                     :create-group))
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("group" "create" "fn.letters"))))
-                     :usage))
+                                              (fn-nop-test-argv '("group" "retire" "fn.letters"))))
+                     :accepted))
+(assert-event (equal (fn-native-admin-result-capacity
+                      (fn-native-operator-result-arguments
+                       (fn-native-operator-run *fn-nop-minimal-config*
+                                               (fn-nop-test-argv '("capacity" "1048576")))))
+                     1048576))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("capacity" "01"))))
+                     5))
 
 ; Native-config owns type/range/repetition refusal before a command plan.
 (assert-event (equal (fn-native-operator-result-status
@@ -123,6 +140,30 @@
                        (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "port = 1119" "port = 1119"))
                        (fn-nop-test-argv '("status"))))
                      :usage))
+
+; A valid config can be unsupported for the running owner while still
+; allowing offline store administration.  Only RUN checks owner availability.
+(defconst *fn-nop-full-unavailable-config*
+  (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""
+                       "[listener]" "tls_cert = \"/etc/fn/cert.pem\"" "tls_key = \"/etc/fn/key.pem\""
+                       "[auth]" "required = true" "protected_only = true"
+                       "[posting]" "enabled = false")))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+                                              (fn-nop-test-argv '("group" "create" "fn.offline"))))
+                     :accepted))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+                                              (fn-nop-test-argv '("status"))))
+                     :accepted))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+                                              (fn-nop-test-argv '("recover"))))
+                     :accepted))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+                                              (fn-nop-test-argv '("run"))))
+                     :unsupported-profile))
 
 ; The service may run with posting disabled, but POST is an explicit refusal.
 (assert-event (equal (fn-native-operator-result-status

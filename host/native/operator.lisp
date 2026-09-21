@@ -151,6 +151,21 @@
          (fnn-operator-status-of-exit-code code) "post" condition)
         code))))
 
+(defun fnn-operator-execute-admin (result)
+  "Execute only the exact accepted ACL2 administrative plan."
+  (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+        (command (fnn-core 'fn-native-operator-host-result-command result))
+        (plan (fnn-core 'fn-native-operator-host-result-admin-plan result)))
+    (handler-case
+        (let ((code (fnn-admin-execute root plan)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command)
+          code)
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                    command condition)
+          code)))))
+
 (defun fnn-operator-execute-store-action (result action)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
     (handler-case
@@ -192,6 +207,7 @@ configuration usage result."
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
           ((:status :recover) (fnn-operator-execute-store-action result action))
+          (:admin (fnn-operator-execute-admin result))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")
            +fnn-exit-usage+)
