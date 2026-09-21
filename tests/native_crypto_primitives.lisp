@@ -44,6 +44,16 @@
    (eq (fnn-crypto-ed25519-observe public empty (subseq signature 1)) :refused)
    "wrong signature width is refused")
   (fnn-crypto-test-check
+   (eq (fnn-crypto-ed25519-observe
+        (make-array 33 :element-type '(unsigned-byte 8)) empty signature)
+       :fault)
+   "public key beyond its hard buffer bound is a host fault")
+  (fnn-crypto-test-check
+   (eq (fnn-crypto-ed25519-observe
+        public empty (make-array 65 :element-type '(unsigned-byte 8)))
+       :fault)
+   "signature beyond its hard buffer bound is a host fault")
+  (fnn-crypto-test-check
    (eq (fnn-crypto-ed25519-observe public "not octets" signature) :fault)
    "malformed message is a host fault, not a signature refusal")
   (fnn-crypto-test-check
@@ -128,6 +138,19 @@
    "captured Roughtime response signature")
   (fnn-crypto-test-check (equalp (fnn-crypto-anchor-leaf nonce) root)
                          "captured one-nonce root"))
+
+;; A restored saved image must not trust :READY, path or version values from
+;; the process that wrote the core.  The separate saved-image test exercises
+;; the real restart; this is the direct startup-hook contract.
+(setq *fnn-crypto-state* :ready
+      *fnn-crypto-library* "serialized stale library"
+      *fnn-crypto-version* "serialized stale version")
+(fnn-crypto-startup)
+(fnn-crypto-test-check
+ (and (eq *fnn-crypto-state* :ready)
+      (not (string= *fnn-crypto-library* "serialized stale library"))
+      (not (string= *fnn-crypto-version* "serialized stale version")))
+ "startup discards serialized facility readiness")
 
 (format t "FN_NATIVE_CRYPTO_TEST passed library=~s version=~s~%"
         *fnn-crypto-library* *fnn-crypto-version*)
