@@ -35,7 +35,7 @@
                                            (fn-frame-result-payload opened))))
         (if (and (fn-frame-parse-okp parsed)
                  (null (fn-frame-parse-rest parsed)))
-            (fn-frame-parse-value parsed) nil))))
+            (fn-frame-parse-value parsed) nil))))))
 
 (defun fn-native-hybrid-control-enroll-encode
     (keyring-generation principal ed-key ml-key)
