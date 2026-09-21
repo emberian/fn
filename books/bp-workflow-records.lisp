@@ -274,7 +274,7 @@
 ; has been committed is no longer outstanding and answers :receipted whether
 ; or not it carries an attempt.
 (defun fn-bp-work-status (work-id works)
- (declare (xargs :guard t))
+ (declare (xargs :guard t :verify-guards t))
  (let* ((work (fn-bp-find-work work-id works))
         (attempt (fn-bp-work-attempt work)))
   (cond ((not (consp work)) :absent)
@@ -290,7 +290,7 @@
 ; separation the boundary needs: a reopen can neither lose a work, nor invent
 ; one, nor reopen a receipted one.
 (defun fn-bp-work-status-after-restart (status)
- (declare (xargs :guard t))
+ (declare (xargs :guard t :verify-guards t))
  (if (fn-bp-transport-statusp status)
      (if (or (fn-bp-retryable-statusp status) (equal status :delivered))
          status
@@ -303,13 +303,23 @@
 ; reopen.  fn-bp-work-ids is the list the image holds at open; the host carries
 ; that list back unread and decides nothing with it.
 (defun fn-bp-work-ids (works)
- (declare (xargs :guard t))
+ (declare (xargs :guard t :verify-guards t))
  (if (consp works)
      (cons (fn-bp-work-id (car works)) (fn-bp-work-ids (cdr works)))
    nil))
 
+; member-equal would put (true-listp recovered) in this book's guards, and
+; nothing else here carries a guard other than t; the list is also an opaque
+; value the host hands back, so it is checked rather than assumed.
+(defun fn-bp-work-id-memberp (work-id ids)
+ (declare (xargs :guard t :verify-guards t))
+ (if (consp ids)
+     (or (equal work-id (car ids))
+         (fn-bp-work-id-memberp work-id (cdr ids)))
+   nil))
+
 (defun fn-bp-work-origin (work-id recovered works)
- (declare (xargs :guard t))
+ (declare (xargs :guard t :verify-guards t))
  (cond ((not (consp (fn-bp-find-work work-id works))) :absent)
-       ((member-equal work-id recovered) :recovered)
+       ((fn-bp-work-id-memberp work-id recovered) :recovered)
        (t :enqueued)))

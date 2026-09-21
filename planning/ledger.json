@@ -289,9 +289,9 @@
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1461,
+      "verified": 1466,
       "declared-off": 191,
-      "default-guarded": 1795,
+      "default-guarded": 1790,
       "default-unguarded": 489
     },
     "suspect_theorems": 46,
@@ -1552,9 +1552,9 @@
       "theorems": 0,
       "functions": 16,
       "guards": {
-        "verified": 10,
+        "verified": 15,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
       "verify_guards_events": 10,

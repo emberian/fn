@@ -7,10 +7,19 @@ restart that re-reads its spool from disk.  It decides nothing about articles,
 acceptance, receipts, retention or local numbers; those all stay in ACL2 behind
 `run_bp_receive` and `run_store`, exactly as with the pinned dtn7-rs BPA.
 
-This is a laboratory scheduling harness, not a BPv7 implementation: there is no
-CBOR, no convergence layer, no routing and no status report.  Use it only when
+This is a laboratory scheduling harness, not a BPv7 implementation: there is
+no convergence layer, no routing and no status report.  Use it only when
 `DTN7_REPO` is unset; a run under it establishes fn-side behaviour across
 contacts, not interoperability.
+
+It does carry one real thing.  fn stages an inbound bundle under the identity
+ACL2 derives from the bundle's own primary block, so a stand-in that handed
+the receiver invented octets would be handing it an invented identity, and the
+duplicate and redelivery behaviour the lab checks would be this file's rather
+than fn's.  Each submitted bundle therefore carries a primary block encoded by
+ACL2 (`bundle_bridge.encode_primary`), and a forwarded copy carries the same
+octets, which is what makes a redelivery under a fresh BID the same bundle.
+Nothing here spells a BPv7 field.
 """
 
 from __future__ import annotations
@@ -26,9 +35,32 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools import run_store, workflow_journal  # noqa: E402
+from tools import bundle_bridge, run_store, workflow_journal  # noqa: E402
 
 MAX_ADU_OCTETS = 65538
+
+# One laboratory instant in the DTN epoch, and a lifetime long enough that no
+# admissible true time falls outside it: expiry in this lab is the scheduler's
+# (`advance`), which drops a queued bundle before any contact carries it, not
+# the receiver's clock decision.  A bundle that does reach a receiver is
+# therefore `:live`, and the lab's expiry case stays the one it means to test.
+LAB_CREATION_TIME = 1000
+LAB_BUNDLE_LIFETIME = 10 ** 15
+LAB_DESTINATION_SSP = b"//fn.lab/inbox"
+LAB_REPORT_SSP = b"//fn.lab/report"
+
+
+def lab_bundle_octets(source: str, sequence: int) -> bytes:
+    """One laboratory bundle's primary block, encoded by ACL2.
+
+    `source` names the sending endpoint and `sequence` its own submission
+    number, so two bundles part exactly when the sender meant them to and a
+    forwarded copy of one bundle does not.
+    """
+    return bundle_bridge.encode_primary(
+        destination=LAB_DESTINATION_SSP, source=f"//{source}/".encode("ascii"),
+        report_to=LAB_REPORT_SSP, creation=LAB_CREATION_TIME,
+        sequence=sequence, lifetime=LAB_BUNDLE_LIFETIME)
 
 
 class MockBpaError(RuntimeError):
@@ -45,12 +77,16 @@ class Bundle:
     # Spool arrival order.  A store-and-forward queue is first in, first out;
     # the slot name is a digest of the BID, so the directory listing is not.
     sequence: int = 0
+    # The bundle's own octets, carried unparsed.  fn derives the identity from
+    # these; this file never reads them.
+    octets: bytes = b""
 
     @staticmethod
-    def from_document(document: dict) -> "Bundle":
+    def from_document(document: dict, octets: bytes = b"") -> "Bundle":
         return Bundle(document["bid"], document["destination"],
                       document["lifetime"], document["age"],
-                      document["payload_sha256"], document.get("sequence", 0))
+                      document["payload_sha256"], document.get("sequence", 0),
+                      octets)
 
 
 def _durable_write(path: Path, data: bytes) -> None:
@@ -97,25 +133,31 @@ class MockBpa:
         self._note("restart", starts=self.starts)
 
     def _write(self, directory: Path, bid: str, adu: bytes, destination: str,
-               lifetime: int, age: int = 0, sequence: int | None = None) -> None:
+               lifetime: int, age: int = 0, sequence: int | None = None,
+               octets: bytes = b"") -> None:
         if sequence is None:
             self.spool += 1
             sequence = self.spool
         document = {"bid": bid, "destination": destination, "lifetime": lifetime,
                     "age": age, "payload_sha256": hashlib.sha256(adu).hexdigest(),
-                    "sequence": sequence}
+                    "sequence": sequence,
+                    "bundle_sha256": hashlib.sha256(octets).hexdigest()}
         slot = directory / _slot(bid)
         slot.mkdir(mode=0o700, exist_ok=True)
         _durable_write(slot / "payload.adu", adu)
+        _durable_write(slot / "bundle.bpv7", octets)
         _durable_write(slot / "bundle.json",
                        json.dumps(document, sort_keys=True).encode("ascii") + b"\n")
 
     def _read(self, directory: Path, slot: str) -> tuple[Bundle, bytes]:
         document = json.loads((directory / slot / "bundle.json").read_text())
         payload = (directory / slot / "payload.adu").read_bytes()
-        bundle = Bundle.from_document(document)
+        octets = (directory / slot / "bundle.bpv7").read_bytes()
+        bundle = Bundle.from_document(document, octets)
         if hashlib.sha256(payload).hexdigest() != bundle.payload_sha256:
             raise MockBpaError(f"spooled bundle {bundle.bid} is damaged")
+        if hashlib.sha256(octets).hexdigest() != document.get("bundle_sha256"):
+            raise MockBpaError(f"spooled bundle {bundle.bid} has damaged octets")
         return bundle, payload
 
     def _entries(self, directory: Path) -> list[tuple[Bundle, bytes, str]]:
@@ -133,7 +175,8 @@ class MockBpa:
             raise MockBpaError("outbound ADU outside the lab profile")
         self.counter += 1
         bid = f"dtn://{self.name}/-{self.counter}"
-        self._write(self.queue, bid, adu, destination, lifetime)
+        self._write(self.queue, bid, adu, destination, lifetime,
+                    octets=lab_bundle_octets(self.name, self.counter))
         self._note("submit", bid=bid, destination=destination, label=label,
                    lifetime=lifetime, octets=len(adu))
         return bid
@@ -145,6 +188,13 @@ class MockBpa:
         for bundle, payload, _slot in self._entries(self.local):
             if bundle.bid == bid:
                 return payload
+        raise MockBpaError(f"no local bundle {bid}")
+
+    def bundle(self, bid: str) -> bytes:
+        """The bundle octets behind one local BID, for fn to identify it by."""
+        for found, _payload, _slot in self._entries(self.local):
+            if found.bid == bid:
+                return found.octets
         raise MockBpaError(f"no local bundle {bid}")
 
     def delete(self, bid: str) -> None:
@@ -175,20 +225,23 @@ class MockBpa:
             age = bundle.age + seconds
             if age > bundle.lifetime:
                 self._write(self.expired, bundle.bid, payload, bundle.destination,
-                            bundle.lifetime, age, bundle.sequence)
+                            bundle.lifetime, age, bundle.sequence, bundle.octets)
                 self._drop_queued(slot)
                 dropped.append(bundle.bid)
                 self._note("expired", bid=bundle.bid, age=age, lifetime=bundle.lifetime)
             else:
                 self._write(self.queue, bundle.bid, payload, bundle.destination,
-                            bundle.lifetime, age, bundle.sequence)
+                            bundle.lifetime, age, bundle.sequence, bundle.octets)
         return dropped
 
     def deliver_into(self, peer: "MockBpa", bundle: Bundle, payload: bytes,
                      bid: str | None = None) -> str:
         peer.counter += 1
         forwarded = bid or f"dtn://{peer.name}/-in-{peer.counter}"
-        peer._write(peer.local, forwarded, payload, bundle.destination, bundle.lifetime)
+        # The forwarded copy carries the SAME bundle octets under a fresh
+        # transport handle: that is what makes a redelivery the same bundle.
+        peer._write(peer.local, forwarded, payload, bundle.destination,
+                    bundle.lifetime, octets=bundle.octets)
         peer._note("delivered", bid=forwarded, from_bid=bundle.bid, via=self.name)
         return forwarded
 
