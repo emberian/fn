@@ -288,3 +288,22 @@
 
 (defattach (fn-bs-txn-name fn-bs-txn-name-impl)
   :hints (("Goal" :use fn-bs-txn-name-impl-injective)))
+
+; Preserve the zero-start scan as the default.  A caller may supply a nonzero
+; lower bound only after validating a selected pack; this function owns the
+; choice between a still-complete namespace and its exact retained suffix.
+(defun fn-bs-txn-observation-selected (names selected-lower)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (natp selected-lower)) :invalid
+    (let ((full (fn-bs-txn-observation-pairs names 0)))
+      (if (not (equal full :invalid)) (list :ok 0 full)
+        (let ((suffix (fn-bs-txn-observation-pairs names selected-lower)))
+          (if (equal suffix :invalid) :invalid
+            (list :ok selected-lower suffix)))))))
+
+(defthm fn-bs-txn-observation-selected-zero-is-default
+  (equal (fn-bs-txn-observation-selected names 0)
+         (if (equal (fn-bs-txn-observation-pairs names 0) :invalid)
+             :invalid
+           (list :ok 0 (fn-bs-txn-observation-pairs names 0))))
+  :hints (("Goal" :in-theory (enable fn-bs-txn-observation-selected))))

@@ -152,9 +152,39 @@
         (setf (fnn-store-fenced store) nil)
         generation))))
 
-(defun fnn-pack-recover-records (store records)
+(defun fnn-pack-prefix-reclaim (store)
+  (fnn-checkpoint-require-mutation-ready store)
+  (let ((lower (fnn-pack-lower-bound store)))
+    (when (= lower 0) (fnn-refuse "selected pack covers no reclaimable prefix"))
+    (let* ((limit (fnn-config-max-transactions store))
+           (observed (sort (fnn-list-directory-bounded
+                            (fnn-transactions store) limit "transaction namespace")
+                           #'string<))
+           (plan (fnn-core 'fn-store-txn-prefix-reclaim-plan
+                           (mapcar (lambda (name)
+                                     (fnn-octet-list (fnn-string-octets name))) observed)
+                           limit lower)))
+      (unless (and (listp plan) (= (length plan) lower)
+                   (every #'stringp plan))
+        (fnn-fault "ACL2 refused transaction prefix reclaim plan"))
+      (setf (fnn-store-fenced store) t)
+      (handler-case
+          (progn
+            (dolist (name plan)
+              (unless (member name observed :test #'string=)
+                (fnn-fault "ACL2 reclaim plan escaped transaction observation"))
+              (fnn-unlink (fnn-join (fnn-transactions store) name))
+              (fnn-checkpoint-test-stop "pack-reclaim-unlink"))
+            (fnn-fsync-dir (fnn-transactions store))
+            (fnn-checkpoint-test-stop "pack-reclaim-directory")
+            (setf (fnn-store-fenced store) nil)
+            plan)
+        (fnn-os-error (e)
+          (fnn-indeterminate "transaction prefix reclamation is uncertain: ~a" e))))))
+
+(defun fnn-pack-selected-raw-and-coverage (store)
   (let ((generation (fnn-pack-selected-generation store)))
-    (unless generation (return-from fnn-pack-recover-records records))
+    (unless generation (return-from fnn-pack-selected-raw-and-coverage (values nil nil)))
     (let ((path (fnn-pack-generation-path store generation)))
       (unless (fnn-check-regular path)
         (fnn-checkpoint-corrupt "selected pack generation ~d is missing" generation))
@@ -162,20 +192,36 @@
                    path (+ (fnn-constant :trailer) 4194304)))
              (coverage (fnn-core 'fn-store-checkpoint-compaction-coverage
                                  (fnn-octet-list raw) (fnn-digest-of raw)
-                                 (length records) (fnn-store-frontier store)))
-             (sequence (and (listp coverage) (eq (first coverage) :ok)
-                            (second coverage)))
-             (answer (and sequence
-                          (fnn-core 'fn-store-checkpoint-compaction-open
-                                    (fnn-octet-list raw) (fnn-digest-of raw)
-                                    (mapcar #'fnn-octet-list (nthcdr sequence records))
-                                    (fnn-store-frontier store)))))
-        (unless (and answer (equal (second answer)
-                                   (mapcar #'fnn-octet-list records)))
-          (fnn-checkpoint-corrupt "selected pack does not reconstruct observed history"))
-        (mapcar #'fnn-as-octets (second answer))))))
+                                 (fnn-config-max-transactions store)
+                                 (fnn-store-frontier store))))
+        (unless (and (listp coverage) (eq (first coverage) :ok)
+                     (integerp (second coverage)) (>= (second coverage) 0))
+          (fnn-checkpoint-corrupt "selected pack coverage is invalid"))
+        (values raw coverage)))))
+
+(defun fnn-pack-lower-bound (store)
+  (multiple-value-bind (raw coverage) (fnn-pack-selected-raw-and-coverage store)
+    (declare (ignore raw))
+    (if coverage (second coverage) 0)))
+
+(defun fnn-pack-recover-records (store records actual-lower)
+  (multiple-value-bind (raw coverage) (fnn-pack-selected-raw-and-coverage store)
+    (unless coverage (return-from fnn-pack-recover-records records))
+    (let* ((sequence (second coverage))
+           (suffix (cond ((= actual-lower sequence) records)
+                         ((= actual-lower 0) (nthcdr sequence records))
+                         (t (fnn-checkpoint-corrupt
+                             "ACL2 namespace lower bound disagrees with selected pack"))))
+           (answer (fnn-core 'fn-store-checkpoint-compaction-open
+                             (fnn-octet-list raw) (fnn-digest-of raw)
+                             (mapcar #'fnn-octet-list suffix)
+                             (fnn-store-frontier store))))
+      (unless (and (listp answer) (eq (first answer) :ok))
+        (fnn-checkpoint-corrupt "selected pack does not reconstruct observed history"))
+      (mapcar #'fnn-as-octets (second answer)))))
 
 (setq *fnn-pack-recover-callback* #'fnn-pack-recover-records)
+(setq *fnn-pack-lower-bound-callback* #'fnn-pack-lower-bound)
 
 (defun fnn-checkpoint-namespace-observation-limit ()
   (let ((limit (fnn-core 'fn-store-checkpoint-namespace-observation-limit)))
@@ -459,6 +505,15 @@
                     generation (length records) (if selectp "yes" "no"))
            +fnn-exit-ok+)
       (fnn-store-close store))))
+(defun fnn-checkpoint-command-pack-reclaim (root)
+  (multiple-value-bind (store records) (fnn-open-live-store root t)
+    (declare (ignore records))
+    (unwind-protect
+         (let ((removed (fnn-pack-prefix-reclaim store)))
+           (fnn-out "reclaimed transaction-prefix=~d" (length removed))
+           +fnn-exit-ok+)
+      (fnn-store-close store))))
+
 (defun fnn-checkpoint-command (command args)
   (cond ((string= command "publish")
          (unless (or (= (length args) 1)
@@ -478,6 +533,10 @@
                      (and (= (length args) 2) (string= (second args) "select")))
            (error 'fnn-usage-error :message "checkpoint pack ROOT [select]"))
          (fnn-checkpoint-command-pack (first args) (= (length args) 2)))
+        ((string= command "pack-reclaim")
+         (unless (= (length args) 1)
+           (error 'fnn-usage-error :message "checkpoint pack-reclaim ROOT"))
+         (fnn-checkpoint-command-pack-reclaim (first args)))
         (t (error 'fnn-usage-error :message
                   (format nil "unknown checkpoint command ~a" command)))))
 
