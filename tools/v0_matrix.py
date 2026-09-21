@@ -1305,7 +1305,8 @@ class V0Matrix(twonode_gate.TwoNodeGate):
 
     def __init__(self, *args, scale=False, inn=False, campaign=True,
                  backend=DEVELOPMENT_BACKEND, native_image=None,
-                 native_configs=None, native_group=GROUPS[0], **kwargs):
+                 native_configs=None, native_group=GROUPS[0],
+                 native_image_source=None, native_runtime=None, **kwargs):
         super().__init__(*args, **kwargs)
         if backend not in BACKENDS:
             raise GateError("unknown execution backend {!r}".format(backend))
@@ -1313,6 +1314,8 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         self.native_image = native_image
         self.native_configs = dict(native_configs or {})
         self.native_group = native_group
+        self.native_image_source = native_image_source
+        self.native_runtime = native_runtime
         self.image_identity = ("development Python entry points from {}".format(self.rev)
                                if backend == DEVELOPMENT_BACKEND else
                                "{} (digest not probed)".format(native_image or "(missing)"))
@@ -3259,30 +3262,161 @@ else echo NONE; fi
         image = shlex.quote(self.native_image)
         step = self.sh("native packaged operator subject", self.cd(r"""
 image={image}
+wrapper=packaging/fn-native
+runtime={runtime}
 test -x "$image" || {{ echo "NATIVE-IMAGE-MISSING $image"; exit 4; }}
-test -x packaging/fn-native || {{ echo NATIVE-WRAPPER-MISSING; exit 4; }}
+test -x "$wrapper" || {{ echo NATIVE-WRAPPER-MISSING; exit 4; }}
+test -s "$image.core" || {{ echo NATIVE-CORE-MISSING $image.core; exit 4; }}
 if command -v sha256sum >/dev/null 2>&1; then
-  digest=$(sha256sum "$image" | awk '{{print $1}}')
+  digest() {{ sha256sum "$1" | awk '{{print $1}}'; }}
 else
-  digest=$(shasum -a 256 "$image" | awk '{{print $1}}')
+  digest() {{ shasum -a 256 "$1" | awk '{{print $1}}'; }}
 fi
-echo "NATIVE-IMAGE-DIGEST $digest"
+echo "NATIVE-LAUNCHER-DIGEST $(digest "$wrapper")"
+echo "NATIVE-IMAGE-DIGEST $(digest "$image")"
+if [ -n "$runtime" ] && [ -x "$runtime" ]; then
+  echo "NATIVE-RUNTIME-DIGEST $(digest "$runtime")"
+else
+  echo "NATIVE-RUNTIME-DIGEST unmeasured"
+fi
+echo "NATIVE-CORE-DIGEST $(digest "$image.core")"
 FN_NATIVE_HOST="$image" packaging/fn-native operator /not-opened help run
-""".format(image=image)), timeout=300, expect=None)
-        marker = next((line for line in step.output.splitlines()
-                       if line.startswith("NATIVE-IMAGE-DIGEST ")), "")
-        if step.rc != 0 or not marker:
+""".format(image=image, runtime=shlex.quote(self.native_runtime or ""))), timeout=300, expect=None)
+        markers = {line.split(" ", 1)[0]: line.split(" ", 1)[1]
+                   for line in step.output.splitlines()
+                   if line.startswith("NATIVE-") and " " in line}
+        if step.rc != 0 or not all(key in markers for key in (
+                "NATIVE-LAUNCHER-DIGEST", "NATIVE-IMAGE-DIGEST", "NATIVE-RUNTIME-DIGEST",
+                "NATIVE-CORE-DIGEST")):
             raise GateError("the packaged native subject did not execute: rc={} {}"
                             .format(step.rc, step.first_line or "no output"))
-        digest = marker.split()[-1]
-        self.image_identity = "{} sha256={}; source correspondence unestablished".format(
-            self.native_image, digest)
+        self.image_identity = (
+            "launcher sha256={}; image sha256={}; declared runtime={}; sidecar core "
+            "sha256={} (static only before a live-owner witness); source correspondence "
+            "unestablished".format(
+                markers["NATIVE-LAUNCHER-DIGEST"], markers["NATIVE-IMAGE-DIGEST"],
+                markers["NATIVE-RUNTIME-DIGEST"],
+                markers["NATIVE-CORE-DIGEST"]))
         self.facts["execution backend"] = self.backend
         self.facts["execution source"] = self.rev
         self.facts["execution image"] = self.image_identity
         self.facts["certificates"] = (
             "not acquired by this slice; it consumes the explicitly named saved image")
         return step
+
+    def native_peering_suite(self):
+        """Run the existing public two-node witness and map only its observations."""
+        image = shlex.quote(self.native_image)
+        source = shlex.quote(self.native_image_source or "")
+        step = self.sh("native public peering/restart witness", self.cd(r"""
+image={image}
+digest() {{
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{{print $1}}'
+  else shasum -a 256 "$1" | awk '{{print $1}}'; fi
+}}
+launcher_before=$(digest packaging/fn-native)
+runtime_before=$(digest "$image")
+core_before=$(digest "$image.core")
+runtime_path={runtime}
+test -x "$runtime_path" || exit 4
+runtime_expected=$(digest "$runtime_path")
+echo "NATIVE-PEERING-EXPECTED-RUNTIME $runtime_expected"
+echo "NATIVE-PEERING-EXPECTED-CORE $core_before"
+FN_NATIVE_HOST="$image" FN_NATIVE_IMAGE_SOURCE_SHA={source} \
+FN_NATIVE_LAUNCHER_SHA256="$runtime_before" FN_NATIVE_CORE_SHA256="$core_before" \
+FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
+  python3 -m unittest \
+    tests.test_native_peering.NativePeeringTests.test_public_native_nodes_exchange_both_ways_and_suppress_duplicate \
+    tests.test_native_peering.NativePeeringTests.test_durable_feed_requeues_after_source_process_death -v
+rc=$?
+launcher_after=$(digest packaging/fn-native)
+runtime_after=$(digest "$image")
+core_after=$(digest "$image.core")
+test "$launcher_before" = "$launcher_after" && test "$runtime_before" = "$runtime_after" \
+  && test "$core_before" = "$core_after" || exit 4
+exit "$rc"
+""".format(image=image, source=source,
+             runtime=shlex.quote(self.native_runtime or ""))), timeout=900, expect=None)
+        witnesses = []
+        for line in step.output.splitlines():
+            if line.startswith("NATIVE-PEERING-WITNESS "):
+                try:
+                    witnesses.append(json.loads(line.split(" ", 1)[1]))
+                except json.JSONDecodeError:
+                    pass
+        transit = next((one for one in witnesses if one.get("kind") == "transit-and-feed"), None)
+        restart = next((one for one in witnesses if one.get("kind") == "requeue-restart"), None)
+        expected = {}
+        for line in step.output.splitlines():
+            if line.startswith("NATIVE-PEERING-EXPECTED-") and " " in line:
+                key, value = line.split(" ", 1)
+                expected[key.rsplit("-", 1)[-1].lower()] = value.strip()
+        observed = "witnesses={} rc={}".format(len(witnesses), step.rc)
+        if step.rc != 0 or transit is None or restart is None:
+            self.blocked(self.TRANSIT_KEYS + self.FEED_KEYS,
+                         "the native public witness did not produce both structured "
+                         "transit/feed and requeue/restart observations ({})"
+                         .format(observed), invocation=step.command)
+            return
+        identities = []
+        for witness in (transit, restart):
+            identities.extend(witness.get("identity", {}).values())
+        if (not identities or not all(
+                one.get("status") == "observed"
+                and one.get("runtime_sha256") == expected.get("runtime")
+                and one.get("core_sha256") == expected.get("core")
+                for one in identities)):
+            self.blocked(self.TRANSIT_KEYS + self.FEED_KEYS,
+                         "the native witness did not confirm every live owner runtime/core "
+                         "against the expected digests ({})".format(observed),
+                         invocation=step.command)
+            return
+        self.image_identity = (
+            "{}; live owners observed via /proc runtime sha256={} and core sha256={}"
+            .format(self.image_identity, expected["runtime"], expected["core"]))
+        for way in ("ab", "ba"):
+            fact = transit.get("transit", {}).get(way, {})
+            if not (fact.get("offer") == "335" and fact.get("transfer") == "235"
+                    and fact.get("identical") is True and fact.get("duplicate") == "435"):
+                self.blocked(self.TRANSIT_KEYS, "malformed native {} transit witness {}"
+                             .format(way, fact), directions=(way,), invocation=step.command)
+                continue
+            self.emit("V0-TRANSIT-OFFER", ACCEPTED, step.command, json.dumps(fact),
+                      direction=way, client=CLIENT_DRIVER,
+                      limit="tests.test_native_peering sent IHAVE and observed 335")
+            self.emit("V0-TRANSIT-TRANSFER", ACCEPTED, step.command, json.dumps(fact),
+                      direction=way, client=CLIENT_DRIVER,
+                      limit="the peer accepted the transferred RFC 3977 block with 235")
+            self.emit("V0-TRANSIT-IDENTICAL", ACCEPTED, step.command, json.dumps(fact),
+                      direction=way, client=CLIENT_DRIVER,
+                      limit="the target-served article octets equal the sent block")
+            self.emit("V0-TRANSIT-DUPLICATE", REFUSED, step.command, json.dumps(fact),
+                      direction=way, client=CLIENT_DRIVER,
+                      limit="a repeated IHAVE received 435")
+        self.blocked(("V0-TRANSIT-MODE-STREAM", "V0-TRANSIT-LOOP",
+                      "V0-TRANSIT-LOOP-ABSENT", "V0-TRANSIT-CHECK-FRESH",
+                      "V0-TRANSIT-TAKETHIS", "V0-TRANSIT-CHECK-DUP",
+                      "V0-TRANSIT-TAKETHIS-DUP"),
+                     "the shared native witness does not drive this transit command "
+                     "or loop/error case", invocation=step.command)
+        feed = transit.get("feed", {})
+        if (restart.get("journal") is True and restart.get("source_killed") is True
+                and restart.get("source_restarted") is True
+                and restart.get("target_identical") is True
+                and all(feed.get(way, {}).get("identical") is True for way in ("ab", "ba"))):
+            self.emit("V0-FEED-QUEUE", ACCEPTED, step.command, json.dumps(restart),
+                      client=CLIENT_DRIVER, limit="the restart witness found FNFD intent")
+            self.emit("V0-FEED-OFFER", ACCEPTED, step.command, json.dumps(feed),
+                      client=CLIENT_DRIVER, limit="the public owner delivered both directions")
+            self.emit("V0-FEED-JOURNAL", ACCEPTED, step.command, json.dumps(restart),
+                      client=CLIENT_DRIVER, limit="intent survived source death and restart")
+        else:
+            self.blocked(("V0-FEED-QUEUE", "V0-FEED-OFFER", "V0-FEED-JOURNAL"),
+                         "malformed native feed/restart witness {} {}".format(feed, restart),
+                         invocation=step.command)
+        self.blocked(("V0-FEED-ONCE",),
+                     "435 answers a manually opened inbound IHAVE; this witness does not "
+                     "observe the owner queue after acknowledgement", invocation=step.command)
 
     def native_config_status(self, node):
         """Exercise the public native offline action for a supplied config."""
@@ -3343,7 +3477,14 @@ FN_NATIVE_HOST="$image" packaging/fn-native operator /not-opened help run
                           "V0-NODE-REINIT-SAFE"), setup_blocker,
                          verdict=NOT_BUILT, owner="native operator init surface",
                          nodes=(node.name,), invocation="packaging/fn-native operator CONFIG")
-            if self.native_config_status(node):
+            if node.name not in self.native_configs:
+                self.blocked(("V0-NODE-STATUS", "V0-NODE-START") + self.POST_KEYS
+                             + self.READ_KEYS,
+                             "no preprovisioned config was supplied for this optional "
+                             "served-node slice; the native peering witness creates its "
+                             "own temporary stores/configs through the public image",
+                             nodes=(node.name,), invocation="tests.test_native_peering")
+            elif self.native_config_status(node):
                 self.configured.add(node.name)
 
         self.blocked(("V0-NODE-LOOPBACK",),
@@ -3376,13 +3517,7 @@ FN_NATIVE_HOST="$image" packaging/fn-native operator /not-opened help run
                     "guessed pre-existing store state",
                     nodes=(node.name,), invocation="matrix.py surface")
 
-        self.blocked(
-            self.FEED_KEYS,
-            "the packaged native owner has no activated outbound feed lifecycle in this "
-            "source/image contract; durable peer configuration alone does not start a "
-            "dialer, so no feed acceptance row was run",
-            verdict=NOT_BUILT, owner="native outbound feed activation",
-            invocation="packaging/fn-native operator CONFIG run")
+        self.phase("native transit/feed/restart", self.native_peering_suite)
 
         for node in self.nodes:
             if node.pid:
@@ -3970,6 +4105,11 @@ def main(argv=None) -> int:
                         help="execution-host path to node B's preprovisioned config")
     parser.add_argument("--native-group", default=GROUPS[0],
                         help="served group already present in both native stores")
+    parser.add_argument("--native-image-source", default=None,
+                        help="externally declared source-content digest for --native-image; "
+                             "without it the native peering witness is not exercised")
+    parser.add_argument("--native-runtime", default=None,
+                        help="execution-host SBCL runtime path used to build/run the native image")
     parser.add_argument("--scale", action="store_true",
                         help="run tools/scale_gate.py for the scale row (hours)")
     parser.add_argument("--inn", action="store_true",
@@ -3996,9 +4136,7 @@ def main(argv=None) -> int:
         if args.server_command:
             parser.error("--server-command cannot replace the packaged native backend")
         missing = [name for name, value in
-                   (("--native-image", args.native_image),
-                    ("--native-config-a", args.native_config_a),
-                    ("--native-config-b", args.native_config_b)) if not value]
+                   (("--native-image", args.native_image),) if not value]
         if missing:
             parser.error("{} requires {}".format(NATIVE_BACKEND, ", ".join(missing)))
 
@@ -4031,9 +4169,12 @@ def main(argv=None) -> int:
                     extra_overlays=overlays[1:],
                     scale=args.scale, inn=args.inn, campaign=args.campaign,
                     backend=args.backend, native_image=args.native_image,
-                    native_configs={"a": args.native_config_a,
-                                    "b": args.native_config_b},
-                    native_group=args.native_group)
+                    native_configs={name: config for name, config in
+                                    (("a", args.native_config_a),
+                                     ("b", args.native_config_b)) if config},
+                    native_group=args.native_group,
+                    native_image_source=args.native_image_source,
+                    native_runtime=args.native_runtime)
     try:
         gate._evidence_name = str(target.resolve().relative_to(repo))
     except ValueError:

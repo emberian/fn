@@ -1,8 +1,8 @@
 """Native execution-backend contract for tools/v0_matrix.py.
 
-These tests do not stand in for a two-node native run.  They pin the harness
+These tests do not stand in for a two-node native run. They pin the harness
 boundary so that such a run cannot silently select a Python server, lose its
-image/source labels, or report the currently inactive feed as exercised.
+image/source labels, or label an unmeasured native feed as accepted.
 """
 import json
 from pathlib import Path
@@ -94,7 +94,26 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
         self.image_identity = "/opt/fn/fn-host sha256=" + "2" * 64
 
     def sh(self, name, script, timeout=600, note="", expect=0):
-        step = Step(name, script, 0, "", 0.0, note, expect)
+        output = ""
+        if name == "native public peering/restart witness":
+            output = "\n".join((
+                "NATIVE-PEERING-EXPECTED-RUNTIME runtime-digest",
+                "NATIVE-PEERING-EXPECTED-CORE core-digest",
+                'NATIVE-PEERING-WITNESS {"kind":"transit-and-feed","transit":'
+                '{"ab":{"offer":"335","transfer":"235","duplicate":"435","identical":true},'
+                '"ba":{"offer":"335","transfer":"235","duplicate":"435","identical":true}},'
+                '"feed":{"ab":{"identical":true},"ba":{"identical":true}},'
+                '"identity":{"a":{"status":"observed","runtime_sha256":"runtime-digest",'
+                '"core_sha256":"core-digest"},"b":{"status":"observed",'
+                '"runtime_sha256":"runtime-digest","core_sha256":"core-digest"}}}',
+                'NATIVE-PEERING-WITNESS {"kind":"requeue-restart","journal":true,'
+                '"source_killed":true,"source_restarted":true,"target_identical":true,'
+                '"identity":{"restart-a":{"status":"observed",'
+                '"runtime_sha256":"runtime-digest","core_sha256":"core-digest"},'
+                '"restart-b":{"status":"observed","runtime_sha256":"runtime-digest",'
+                '"core_sha256":"core-digest"}}}',
+            ))
+        step = Step(name, script, 0, output, 0.0, note, expect)
         self.steps.append(step)
         return step
 
@@ -131,7 +150,28 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
 
 
 class NativeSliceAccountingTests(unittest.TestCase):
-    def test_first_slice_never_claims_the_inactive_feed(self):
+    def missing_witness_gate(self, home):
+        class MissingWitness(HarnessOnlyNativeGate):
+            def sh(self, name, script, timeout=600, note="", expect=0):
+                if name == "native public peering/restart witness":
+                    step = Step(name, script, 0, "ordinary unittest output only", 0.0,
+                                note, expect)
+                    self.steps.append(step)
+                    return step
+                return super().sh(name, script, timeout, note, expect)
+        return MissingWitness(v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40,
+                              "abc1234", "dev", backend=v0_matrix.NATIVE_BACKEND,
+                              native_image="/opt/fn/fn-host",
+                              native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+
+    def test_success_exit_without_structured_witness_is_not_evidence(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.missing_witness_gate(home)
+            gate.execute_native_acceptance()
+            rows = [row for row in gate.rows if row.id.startswith("V0-FEED-")]
+            self.assertTrue(all(row.verdict == v0_matrix.NOT_EXERCISED for row in rows))
+
+    def test_missing_image_source_does_not_suppress_a_measured_witness(self):
         with tempfile.TemporaryDirectory() as home:
             gate = HarnessOnlyNativeGate(
                 v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
@@ -141,13 +181,35 @@ class NativeSliceAccountingTests(unittest.TestCase):
             gate.execute_native_acceptance()
             feed = [row for row in gate.rows if row.id.startswith("V0-FEED-")]
             self.assertEqual(len(feed), len(gate.FEED_KEYS))
-            self.assertTrue(all(row.verdict == v0_matrix.NOT_BUILT for row in feed))
-            self.assertTrue(all(row.owner == "native outbound feed activation"
-                                for row in feed))
+            self.assertEqual({row.id: row.verdict for row in feed}, {
+                "V0-FEED-QUEUE": v0_matrix.ACCEPTED,
+                "V0-FEED-OFFER": v0_matrix.ACCEPTED,
+                "V0-FEED-ONCE": v0_matrix.NOT_EXERCISED,
+                "V0-FEED-JOURNAL": v0_matrix.ACCEPTED,
+            })
             starts = [row for row in gate.rows if row.id.startswith("V0-NODE-START-")]
             self.assertEqual({row.node for row in starts}, {"a", "b"})
             self.assertTrue(all("packaging/fn-native operator" in row.invocation
                                 for row in starts))
+
+    def test_successful_shared_witness_maps_only_the_cases_it_exercises(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = HarnessOnlyNativeGate(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND,
+                native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"},
+                native_image_source="source-manifest")
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            self.assertEqual(rows["V0-TRANSIT-TRANSFER-AB"].verdict,
+                             v0_matrix.ACCEPTED)
+            self.assertEqual(rows["V0-TRANSIT-TRANSFER-BA"].verdict,
+                             v0_matrix.ACCEPTED)
+            self.assertEqual(rows["V0-FEED-JOURNAL"].verdict,
+                             v0_matrix.ACCEPTED)
+            self.assertEqual(rows["V0-TRANSIT-TAKETHIS-AB"].verdict,
+                             v0_matrix.NOT_EXERCISED)
 
 
 if __name__ == "__main__":

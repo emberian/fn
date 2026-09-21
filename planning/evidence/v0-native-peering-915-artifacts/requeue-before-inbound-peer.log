@@ -1,0 +1,18 @@
+test_durable_feed_requeues_after_source_process_death (tests.test_native_peering.NativePeeringTests.test_durable_feed_requeues_after_source_process_death) ... FAIL
+
+======================================================================
+FAIL: test_durable_feed_requeues_after_source_process_death (tests.test_native_peering.NativePeeringTests.test_durable_feed_requeues_after_source_process_death)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/fn-native-peering-915-20260921T145331-2968301/tests/test_native_peering.py", line 318, in test_durable_feed_requeues_after_source_process_death
+    target_article = self.await_article(b, message_id)
+  File "/tmp/fn-native-peering-915-20260921T145331-2968301/tests/test_native_peering.py", line 198, in await_article
+    self.fail("{} did not receive {}".format(node["name"], message_id))
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: restart-b did not receive <native-requeue-after-kill@example.invalid>
+
+----------------------------------------------------------------------
+Ran 1 test in 61.248s
+
+FAILED (failures=1)
+native-peering launcher-sha256=2d8259c22388119793ad3dde525497f9095bdb2489ac01e597b439f3d0ff5c09 core-sha256=eaa5b56c8337b5c6b02eb046ef5ba7cd6c2eaabf59720db664104d0fe5ad08b2 declared-source=eb0051343d388901b48e7f1de281ba3d1f6079cab062f25060b186cf01e3aaa4
