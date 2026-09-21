@@ -275,8 +275,11 @@ against `Slab` 94.8 G of which `SUnreclaim` 89.3 G is ARC, 24 CPUs.
   `host/store-node-host.lisp:27` and is `:70` on the merged tree; and its
   minimal-theory paragraph, which claimed a measurement this book never
   made -- the call-depth measurement is `books/byte-store-scan.lisp`'s and
-  the theory choice here is a precaution taken from it. The final farm run
-  is the board's VERDICT line.
+  the theory choice here is a precaution taken from it.
+* `run-20260921T034800Z-0885`, the same selection on the FINAL tree:
+  **43 roots attempted, 43 certified**, 258.9 s, evidence
+  `build/acl2/certify-20260921T034805Z-1492156`. This is the run the board's
+  VERDICT cites.
 
 `make check`: **0 errors** (238 pre-existing WARN lines). Ledger, `dev`
 before this lane and after: books read 280 to 282, `defthm` 5692 to 5784,

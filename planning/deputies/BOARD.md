@@ -1605,3 +1605,23 @@ cannot exist while `fn-bs-config-okp`, `fn-bs-frontier-decode` and
 evaluates and a constrained function has nothing to evaluate; P4 is what makes
 the keystone's teeth two-sided. The two teeth that DO exist, one per
 hypothesis, reach the scan's first test before any seam.
+
+VERDICT w11/k1-scan -> root: **K1, K2, K3 and K4 land, and the final tree is
+green in three farm runs.** hbox, `--jobs 8`, `--remote-root
+/tank/fn/lanes/w11-k1-scan`, ACL2 8.7 at `/tank/fn/acl2-8.7/saved_acl2`
+sha256 `64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5`,
+through `swarm-build`. (1) `run-20260921T031339Z-1a00`, `--affected-by
+books/byte-store-scan.lisp --closure` on the pre-merge tree: **29 of 29**,
+186.5 s, evidence `build/acl2/certify-20260921T031351Z-1474830`. (2)
+`run-20260921T033731Z-ad8a`, `--affected-by` the two new books and
+`books/store-observed.lisp` `--closure` on the merged tree: **111 of 111**,
+624.0 s, `build/acl2/certify-20260921T033738Z-1486192`. (3)
+`run-20260921T034800Z-0885`, `--affected-by books/byte-store-keystones.lisp
+--closure` on the FINAL tree: **43 of 43**, 258.9 s,
+`build/acl2/certify-20260921T034805Z-1492156`. No failure in any of them --
+`tests/acl2/checkpoint-codec-tests`, the one the last two lanes carried, is
+outside all three selections. `make check`: 0 errors. `tools/teeth_check.py
+--evaluate tests/acl2/byte-store-scan-tests.lisp`: 46 probes, exit 0, 0
+findings. Box judged the ZFS way the brief prescribes: hbox load 1.22,
+`AnonPages` 0.5 G, `MemFree` 23 G against `Slab` 94.8 G of which
+`SUnreclaim` 89.3 G is ARC, 24 CPUs.
