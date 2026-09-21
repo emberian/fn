@@ -14,6 +14,8 @@ import time
 import unittest
 
 
+from tests.native_process import stop_and_diagnostics
+
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 
@@ -193,10 +195,7 @@ class NativeStartTlsTests(unittest.TestCase):
         self.assertTrue(ready, "native TLS owner did not announce its port")
         line = process.stdout.readline()
         if line != "LISTENING {}\n".format(self.port).encode():
-            diagnostic = process.stderr.read().decode("utf-8", "replace")
-            if process.poll() is None:
-                process.terminate()
-            process.wait(timeout=10)
+            diagnostic = stop_and_diagnostics(process)
             self.fail("native TLS owner failed: {!r} {}".format(line, diagnostic))
         return process
 
