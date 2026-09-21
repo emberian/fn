@@ -1,0 +1,72 @@
+{
+  "article_sha256": "51a1df58651010bdd1a177873e45f3cf0929de3d0aa966adfb58dd0d81162a88",
+  "eid_mapping": [
+    {
+      "application_peer_eid": "dtn://fn.lab/inbox",
+      "bp_destination_eid": "ipn:2.1",
+      "label": "request-ltp"
+    }
+  ],
+  "invocation": [
+    "/usr/bin/python3",
+    "tests/ltp/run_fn_ltp_lab.py",
+    "--ion-root",
+    "/tank/fn/ltp",
+    "--run",
+    "/tank/fn/ltp/run/fnlab-20260921T015951Z"
+  ],
+  "ion_prefix": "/tank/fn/ltp/install",
+  "not_demonstrated": [
+    "The primary block fn identified the bundle by is a RECONSTRUCTION, not the block that crossed the link: ION's bp_receive() destroys the bundle before any application runs, so the source EID, creation time and creation sequence come from BpDelivery's report of them and are re-encoded by ACL2. A transport that misreported those three fields would be believed here. Closing this needs the block captured inside fn_ltp_stage.c through the C API.",
+    "No receipt was returned over BP: ION gives the sender no transport handle to bind, so the return leg is out of this packet's scope.",
+    "Trusted local A_POLICY only; no authenticated peer, author signature or BPSec.",
+    "Loopback UDP under LTP; no real space link, delay, asymmetry or contact plan.",
+    "Not interoperability qualification and not a mission profile."
+  ],
+  "primary_block_octets": 37,
+  "primary_block_provenance": {
+    "encoded_by": "ACL2 fn-bpi-host-bundle-prefix (tools/bundle_bridge.encode_primary)",
+    "observed_from_ion": [
+      "source EID",
+      "creation time",
+      "creation sequence"
+    ],
+    "supplied_by_the_lab": [
+      "destination",
+      "report-to",
+      "flags",
+      "CRC type"
+    ]
+  },
+  "primary_block_sha256": "5801045566d9208fc8a36c379060c6cac3f768b2e3196b7220b663fd8ca188b3",
+  "receipt_sha256": "aca4725df9b16fca70ff24bd1cc72b6ba09931d55a4c82da6f11b962a1a029e4",
+  "receiver_outcome": "accepted",
+  "receiver_snapshot": {
+    "articles": 1,
+    "exact_article": true,
+    "pins": 1,
+    "records": 1
+  },
+  "recv_eid": "ipn:2.1",
+  "request_octets": 474,
+  "request_sha256": "bb10478c8d8e1f700d4e8f310e38ce1aa5eb677cbf575fd616db009a9548abe7",
+  "run": "/tank/fn/ltp/run/fnlab-20260921T015951Z",
+  "schema": 1,
+  "send_eid": "ipn:1.1",
+  "sender_local_handle": "ion-unreported:request-ltp",
+  "staged_bid": "ipn:1.1|843271217779|0",
+  "staged_sha256": "bb10478c8d8e1f700d4e8f310e38ce1aa5eb677cbf575fd616db009a9548abe7",
+  "stager_output": "staged ipn:1.1|843271217779|0 474\n",
+  "status": "passed",
+  "steps": {
+    "adu_crossed_ltp_link_byte_identical": true,
+    "fn_acceptance_ran_on_ltp_delivered_adu": true,
+    "fn_request_adu_projected_and_submitted_over_ltp": true,
+    "fn_sender_article_published": true,
+    "staged_copy_deleted_only_after_durable_receipt": true
+  },
+  "versions": {
+    "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+    "python": "3.12.7 (main, Jun 18 2025, 13:16:51) [GCC 14.2.0]"
+  }
+}
