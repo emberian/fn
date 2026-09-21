@@ -167,7 +167,7 @@ transaction id and configuration generation.  No candidate is `:absent`, one
 matching committed candidate is `:found`, and multiple or conflicting candidates
 are `:conflict`; the host never chooses the first record in a directory scan.
 
-The modeled process-death cuts are after request intent, owner/feed intent,
+The executable states distinguish cuts after request intent, owner/feed intent,
 Store publication, feed resolution, request context, receipt intent, receipt
 decision and receipt transmission.  Before Store publication, recovery may
 retry the same pending request.  After Store publication it binds the recovered
@@ -177,6 +177,12 @@ may be prepared again.  A committed decision regenerates identical receipt
 bytes after restart, including when the earlier receipt bundle was sent and
 lost.  Any ambiguous Store, FNFD or FNRJ persistence observation fences the
 whole owner process and emits no accepted receipt.
+
+The native death witness currently covers the committed-decision cut before
+receipt authorship.  The ACL2 context transition and dispatcher theorems are
+local branch projections.  A trace invariant connecting every FNRJ replayed
+intent/context/decision to the evolving canonical owner Store, plus actual host
+correspondence at the remaining cuts, is still open assurance work.
 
 Run a later A–relay–B contact plan with non-overlapping contact windows, and
 carried-media import through the same fn acceptance boundary. The first two-node

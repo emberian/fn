@@ -411,10 +411,11 @@
       (string-append "receipt:" (fn-bpa-request-work-id request))
     ""))
 
-; Keystone equation for the actual strict context transition: after its binding
-; checks, the receiver component is exactly the existing FNRJ transition over
-; the legacy context projection.  The evolving-Store receiver theorems apply to
-; this called subject through this equality.
+; Local projection for the accepted strict-context branch: after its binding
+; checks, the receiver component is the existing FNRJ transition over the
+; legacy context projection.  This equation does not prove the composed replay
+; invariant that connects every recovered context and receipt to the live
+; owner's Store; that stronger trace result remains open.
 (defthm fn-bpaj-context-v2-receiver-is-existing-transition
   (implies
    (and (fn-bpaj-statep joined)
@@ -439,10 +440,8 @@
                  fn-bpaj-context-intent fn-bpaj-context-matches-intentp
                  fn-bpaj-request fn-bprr-apply-record)))))
 
-; A retry reaches the Store exactly under the three facts the host observes:
-; the exact request intent survived replay, its owner epoch is still current,
-; and authoritative Store recovery found no committed candidate.  Dropping
-; any one of these premises changes the dispatch in the witness book.
+; Branch projection for the dispatch definition.  It records the exact facts
+; under which this dispatcher returns :submit; it is not a replay theorem.
 (defthm fn-bpaj-dispatch-intent-absent-retries
   (implies (and (equal (fn-bpaj-request-status joined request-octets) :intent)
                 (equal current-generation
