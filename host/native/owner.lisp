@@ -892,7 +892,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
           (fnn-owner-serialized
            service cid (lambda () (fnn-owner-action 'fn-owner-close cid)))))
       (when channel (fnn-tls-close-channel channel))
-      (fnn-socket-shut socket))))
+      (fnn-socket-shut socket)))
 
 (defun fnn-owner-client-done (service socket)
   (fnn-with-owner (service)
