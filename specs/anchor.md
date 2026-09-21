@@ -59,6 +59,15 @@ exactly them, and passes back a verdict.
 real server sent, and `tests/test_anchor.py` re-checks that equality through
 the live bridge.
 
+`books/anchor-wire.lisp` now owns the bounded deployed RoughTime v1 response
+grammar as well.  It parses the top response and nested CERT, DELE and SREP
+messages, enforces the 4096-octet response bound, strict tag order, cumulative
+offset bounds, required fields and widths, request-nonce equality, and the
+PATH/INDX shape.  Before returning a record it compares the received nested
+DELE and SREP byte strings with the canonical byte strings rebuilt from that
+record.  `host/anchor-wire-host.lisp` returns those ACL2-produced signature
+subjects to a native crypto caller; it does not reconstruct them in raw Lisp.
+
 `root` is a **field, not a derivation**, and that is what makes the
 reconstruction the message that was verified. Until 2026-09-20 `fn-anchor-root`
 was defined as `(fn-anchor-leaf-digest (fn-anchor-nonce a))`, so every theorem
@@ -134,8 +143,10 @@ Every keystone in `books/anchor-invariants.lisp` is conditional on:
   fn pins keys per server and records when each was last seen answering. This
   is a named external trust, not a proved property, and it is the reason D10
   keeps the fresh-namespace alternative alongside it.
-- **Ed25519 and SHA-512.** Used as computed by the host through
-  `tools/crypto_host.py`. `books/anchor.lisp` constrains the verifier to refuse
+- **Ed25519 and SHA-512.** The current Python command computes them through
+  `tools/crypto_host.py` and `tools/roughtime.py`; the no-Python native target
+  provides the same bounded primitive observations in `host/native/crypto.lisp`
+  through libsodium. `books/anchor.lisp` constrains the verifier to refuse
   a wrong-width key or signature and constrains the leaf digest to 64 octets;
   it claims no unforgeability and no collision resistance, and
   `tests/acl2/anchor-teeth-tests.lisp` ends with the concrete witness that
@@ -146,24 +157,26 @@ Every keystone in `books/anchor-invariants.lisp` is conditional on:
   proof; this line used to say `must-fail` and was wrong.)
 - **The pinned keys themselves.** Taken from the published Roughtime ecosystem
   list. Replacing that file replaces the trust.
-- **The leaf digest, which is Python's alone.** `tools/roughtime.py:124`
-  (`_leaf`) computes SHA-512 of the single octet 0 followed by the nonce, and
-  it is the only thing in this tree that decides whether a response covers
+- **The leaf digest, which remains a host observation.** `tools/roughtime.py:124`
+  (`_leaf`) and native `fnn-crypto-anchor-leaf` compute SHA-512 of the single
+  octet 0 followed by the nonce.  That observation
+  is the only input that decides whether a response covers
   *this client's nonce*. `fn-anchor-leaf-digest` is a constrained function
   whose only constraints are "64 octets", and no book attaches a realiser to
   it (the sole `defattach` is a test-only one in
-  `tests/acl2/anchor-teeth-tests.lisp`). The tree holds **no SHA-512 at all**:
-  `books/sha256.lisp` is the only hash in logic, and Roughtime's fold is
-  SHA-512. So "the host's `_leaf` is `fn-anchor-leaf-digest`" is a named
+  `tests/acl2/anchor-teeth-tests.lisp`). ACL2 has **no executable SHA-512**:
+  `books/sha256.lisp` is the only executable hash in logic, and Roughtime's
+  fold is SHA-512. So "the host's leaf observation is
+  `fn-anchor-leaf-digest`" is a named
   trusted correspondence and not a proved one, exactly as "the host's Ed25519
   is `fn-anchor-sig-verify`" is; it is the reading under which
   `Anchor.one_nonce` discharges `fn-anchor-one-nonce-p`.
 
-  **What that trust no longer covers.** The node digest, the path fold, the
-  sibling order, the index bit order, the path depth bound and the
-  `INDX`-fits-`PATH` check are unowned host decisions in
-  `tools/roughtime.py:128,132` (`_node`, `merkle_root`), and a fold that
-  walked the tree the wrong way is still checked by nothing in the logic —
+  **What that trust no longer covers.** The wire parser, path depth bound and
+  `INDX`-fits-`PATH` check are now ACL2-owned in `books/anchor-wire.lisp`.
+  The node digest, path fold, sibling order and index bit order remain unowned
+  host decisions in `tools/roughtime.py:128,132` (`_node`, `merkle_root`), and
+  a fold that walked the tree the wrong way is still checked by nothing in the logic —
   but **fn no longer accepts an anchor that needs them**. A response with a
   non-empty `PATH` fails `fn-anchor-one-nonce-p`, so every transition answers
   `:uncertain :unmodelled-tree`; `merkle_root` is then load-bearing only on
@@ -222,7 +235,10 @@ evidence and proves what follows from it. It does not discharge A-IDENTITY:
 
 ## Host files
 
-`tools/roughtime.py` (client, parser, Merkle path, both signature checks),
+`books/anchor-wire.lisp` (bounded response parser and canonical signed-message
+binding), `host/anchor-wire-host.lisp` (program-mode parser bridge),
+`host/native/crypto.lisp` (native Ed25519/SHA-512 primitive observations),
+`tools/roughtime.py` (current prototype client and Merkle path),
 `tools/roughtime_servers.json` (pinned keys), `tools/crypto_host.py` (the only
 importer of `cryptography` in the tree; absent, it raises rather than
 accepting), `host/anchor-host.lisp` (program-mode marshaling),

@@ -1,0 +1,73 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built August 28, 2026  20:52:14.                                   +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "anchor" ...):  Unable
+to load compiled file for book
+  /Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+Here is the sequence of books with loads of compiled or expansion files
+that have led down to the printing of this message, where the load
+for each is halted during the load for the next:
+
+  /Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor-
+wire.lisp
+
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/anchor-wire" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.55 seconds (prove: 0.00, print: 0.00, other: 0.55)
+ "/Users/ember/dev/fn/build/lanes/w14-native-primitives/books/anchor-wire.lisp"
+ACL2 !>> T
+ACL2 !>>ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-HOST-FIELDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-WIRE-HOST-FIELDS
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-HOST-PARSE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-WIRE-HOST-PARSE
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-WIRE-HOST-MAX-RESPONSE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-WIRE-HOST-MAX-RESPONSE
+ACL2 p!>>ACL2 !>>Bye.
+FN_HOST_CHECK_LD_OK host/anchor-wire-host.lisp
+ NIL
+ACL2 !>FN_HOST_CHECK_LOADED host/anchor-wire-host.lisp
+NIL
+ACL2 !>
