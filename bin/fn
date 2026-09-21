@@ -14,7 +14,8 @@ Nothing here recomputes a value ACL2 computes.  The generation, article
 count, group admission and post outcome printed below are the values the
 store bridge returned; `fn` only names them.
 
-Subcommands: init, run, post, group, capacity, status, recover, anchor.
+Subcommands: init, run, post, group, capacity, statement, principal, policy,
+peer, status, recover, anchor.
 """
 
 import argparse
