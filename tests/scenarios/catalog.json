@@ -115,9 +115,10 @@
         "planning/evidence/wave-realignment-2026-09-19.md",
         "tests/acl2/byte-store-initializer-tests.lisp",
         "tests/acl2/byte-store-txn-name-tests.lisp",
-        "planning/evidence/claude-storage-initializer-response.md"
+        "planning/evidence/claude-storage-initializer-response.md",
+        "planning/evidence/native-initializer-composition-w18-2026-09-21.md"
       ],
-      "execution_scope": "Mixed actual node/file trace retention and observed replay/barrier gates have targeted certification. Forty-seven injection rows, six process-death cuts and sixteen malformed-image cases exercise the adapter. These finite tests do not qualify physical power loss or whole-store rollback. The deploy gate adds one real process-death cut on a farm box (SIGKILL from inside an open POST, recovery, reread); it is one point of the matrix, not the matrix, and a SIGKILL is not a power loss. W13 adds exact fresh-initializer image and transaction-name component evidence. Existing/retry initialization, native execution correspondence and coverage of every syscall/death cut remain open."
+      "execution_scope": "Mixed actual node/file trace retention and observed replay/barrier gates have targeted certification. Forty-seven injection rows, six process-death cuts and sixteen malformed-image cases exercise the adapter. These finite tests do not qualify physical power loss or whole-store rollback. The deploy gate adds one real process-death cut on a farm box (SIGKILL from inside an open POST, recovery, reread); it is one point of the matrix, not the matrix, and a SIGKILL is not a power loss. W13 adds exact fresh-initializer image and transaction-name component evidence. Existing/retry initialization, native execution correspondence and coverage of every syscall/death cut remain open. W18 adds explicit existing-valid and history-fenced retry programs with EEXIST observations, plus source-pinned native repeated-init and SIGKILL/reopen tests. Non-EEXIST publication errors are uncertain. These are selected branch/runtime results, not whole-host or power-loss correspondence; effect-classifier coverage of the new link step and exact EEXIST handler scope remain assigned followups."
     },
     {
       "id": "SCN-004",

@@ -1,18 +1,17 @@
 # Current work: native service composition and consolidation
 
-Integration update (2026-09-21, `cf36789`): native recovery now performs bounded
-staging observation and executes ACL2's cleanup plan; native BP receive evidence
-uses durable identities across sessions; native checkpoint capture, selection and
-validation are integrated. Their source-pinned component tests do not establish
-the combined service. The frozen `76901c1` owner image gate remains independent
-of these later changes. Observed-file allocation and outbound wire composition
-proofs are integrated with their explicit hypotheses. Safe feed filenames and corrected anchor persistence have now joined main;
-the next convergence batch adds logical feed restart and operator callbacks,
-then builds and exercises the combined components. Active successors remove
-remaining filename/admission twins, fix enumeration before allocation, and derive
-incremental store preparation from the maintained relation. Native BP application
-acceptance/receipt composition is still implementation work, not carrier evidence.
-
+Integration update (2026-09-21, `ed2571d`): native owner/operator, safe feed
+filenames and a total FNFD observation budget, cross-session BP evidence,
+checkpoint/anchor persistence, and selected initializer retry paths are on main.
+The live standalone store wrapper now calls the proved prepare refinement,
+removing per-prepare history replay; shared-owner adoption is in progress.
+BP lifecycle namespace recovery uses ACL2 names and a carried frontier, with no
+per-append directory rescan. Its shared publication interpreter adoption is
+under focused convergence. These are component results, not a combined-service
+qualification. The consolidation audit records remaining transaction/config
+namespace duplication and bounds, initializer effect classification, orderly
+shutdown, and caller/invariant obligations. Native BP application acceptance
+and durable receipts remain active implementation work.
 
 W22 frozen batch: `03eb3ba3` adds the actual listener wakeup repair, logical
 feed restart/caller projection, and native operator join to the previous
