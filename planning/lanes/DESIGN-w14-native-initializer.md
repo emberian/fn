@@ -28,9 +28,10 @@ one table cut and selects either `:eio` or `:kill`.  It calls the existing
 `fnn-at` only after the named native syscall returns.  `:kill` sends SIGKILL to
 the native process, so cleanup handlers do not run; the next command is a
 new-process `recover`, not an in-process exception retry.  Targeted tests use
-the pre-lock and config-history-directory cuts, and check a normal fresh init
-followed by an independent-process restart.  The source-map test checks the
-complete label set against the model labels.
+the pre-lock and config-history-directory cuts (which correctly fault before
+frontier publication), plus a post-frontier cut that recovers in an independent
+process.  The source-map test checks the complete label set against the model
+labels.
 
 `fnn-config-record-names` previously converted any directory-enumeration OS
 error to an empty list.  This packet propagates that error.  A separate,
