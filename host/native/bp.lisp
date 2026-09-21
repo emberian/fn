@@ -195,6 +195,11 @@ actually put on the wire are what was kept.  Nothing here interprets them --
 the octets are copied, not parsed -- and a write that does not complete is
 an indeterminate outcome, which is the truth about a transfer whose evidence
 may or may not be durable."
+  ; Test-only exact core/adapter fault.  This runs inside the receive callback
+  ; and the command's production handler, so exit-code evidence exercises the
+  ; real subtype ordering rather than a sibling classifier.
+  (when (string= (or (sb-ext:posix-getenv "FN_BP_TEST_DELIVER_FAULT") "") "1")
+    (fnn-fault "bp: injected receive core fault"))
   (let* ((obs (fnn-bp-observation (fnn-bp-tally-wall tally)
                                   (fnn-bp-tally-wall-error tally)))
          (result (fnn-core 'fn-bpn-host-receive (fnn-bp-tally-config tally)
@@ -347,9 +352,13 @@ dominates an acceptance: a run that saw one of each did not succeed."
                                              "passive" journal-root :bundle reply)))
                                   (fnn-tcl-summary conn)
                                   (setq code (fnn-bp-exit-code tally conn)))
-                              (fnn-store-indeterminate (e)
-                                (fnn-err "bp: ~a" e)
-                                (setq code +fnn-exit-uncertain+))
+                              ; A journal ambiguity or core fault is an owner
+                              ; outcome, not a connection-local verdict.  Let
+                              ; it escape the accept loop so unwind-protect
+                              ; closes the listener and no later socket can
+                              ; mutate this journal in the same process.
+                              (fnn-store-indeterminate (e) (error e))
+                              (fnn-store-fault (e) (error e))
                               (fnn-store-error (e)
                                 (fnn-err "bp: ~a" e)
                                 (setq code +fnn-exit-refused+))
