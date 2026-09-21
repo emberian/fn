@@ -25,6 +25,7 @@
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-workflow-records")
 (include-book "books/journal-publish")
+(include-book "books/app-journal")
 ; The TCPCLv4 convergence layer: the octet grammar and the session machine the
 ; native host's host/native/tcpcl.lisp drives.  books/tcpcl-session includes
 ; books/tcpcl-octets and books/tcpcl-records; all three are Makefile roots.

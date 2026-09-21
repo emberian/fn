@@ -1,6 +1,7 @@
 ; Program bridge for the immutable journal publication phase machine.
 (in-package "ACL2")
 (include-book "../books/journal-publish")
+(include-book "../books/app-journal")
 
 (defun fn-jpub-host-initial (authorityp)
   (fn-jpub-initial authorityp))
@@ -14,3 +15,28 @@
   (if (fn-jpub-terminalp publication) t nil))
 (defun fn-jpub-host-crash-outcome (publication)
   (fn-jpub-crash-outcome publication))
+(defun fn-jpub-host-authorized-initialp (publication)
+  (if (equal publication (fn-jpub-initial t)) t nil))
+
+; Native application journals carry this value from their one bounded recovery
+; scan.  Each append asks ACL2 to authorize the exact next immutable name and
+; its successor frontier; raw Lisp never recomputes capacity or sequence.
+(defun fn-aj-host-initial (domain) (fn-aj-initial domain))
+(defun fn-aj-host-recover (frontier name frame-length kind)
+  (fn-aj-recover-record frontier name frame-length kind))
+(defun fn-aj-host-max-record-length (domain)
+  (fn-aj-max-record-length domain))
+(defun fn-aj-host-next-name (frontier)
+  (if (fn-aj-statep frontier)
+      (fn-aj-record-name (fn-aj-domain frontier) (fn-aj-next frontier))
+    nil))
+(defun fn-aj-host-authorize (frontier kind frame-length reserve lock-owned absent)
+  (fn-aj-authorize frontier kind frame-length reserve lock-owned absent))
+(defun fn-aj-host-operationp (operation)
+  (if (fn-aj-operationp operation) t nil))
+(defun fn-aj-host-operation-name (operation)
+  (fn-aj-operation-name operation))
+(defun fn-aj-host-operation-publication (operation)
+  (fn-aj-operation-publication operation))
+(defun fn-aj-host-operation-successor (operation)
+  (fn-aj-operation-successor operation))

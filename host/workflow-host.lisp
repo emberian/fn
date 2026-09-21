@@ -28,6 +28,13 @@
 (defun fn-workflow-state (state)
  (declare (xargs :stobjs state :mode :program))
  (value (f-get-global 'fn-workflow-state state)))
+
+(defun fn-workflow-reset (state)
+ (declare (xargs :stobjs state :mode :program))
+ (let ((state (f-put-global 'fn-workflow-state nil state)))
+  (let ((state (f-put-global 'fn-workflow-effects nil state)))
+   (let ((state (f-put-global 'fn-workflow-recovered nil state)))
+    (value :ready)))))
 (defun fn-workflow-effects (state)
  (declare (xargs :stobjs state :mode :program))
  (value (f-get-global 'fn-workflow-effects state)))
