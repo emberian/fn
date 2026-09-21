@@ -33,26 +33,14 @@
                                               (fn-nop-test-argv '("recover"))))
                      :accepted))
 
-(defconst *fn-nop-post*
-  (fn-native-operator-run
-   *fn-nop-minimal-config*
-   (fn-nop-test-argv '("post" "--group" "fn.letters" "--message-id"
-                       "<one@example.invalid>" "--payload" "/tmp/one.eml"
-                       "--group" "fn.test" "--charge" "41"))))
-(assert-event (equal (fn-native-operator-result-status *fn-nop-post*) :accepted))
-(assert-event (equal (fn-native-operator-result-arguments *fn-nop-post*)
-                     '(:post "<one@example.invalid>" "/tmp/one.eml"
-                       ("fn.letters" "fn.test") 41)))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("post" "--message-id" "<one@example.invalid>"
+                                           "--payload" "/tmp/one.eml" "--group" "fn.letters"))))
+                     :usage))
 
-; Command teeth: each omitted or repeated/conflicting option loses the plan.
-(assert-event (equal (fn-native-operator-result-status
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("post" "--payload" "/x" "--group" "fn.letters"))))
-                     :usage))
-(assert-event (equal (fn-native-operator-result-status
-                      (fn-native-operator-run *fn-nop-minimal-config*
-                                              (fn-nop-test-argv '("post" "--message-id" "<a@b>" "--message-id" "<c@d>" "--payload" "/x" "--group" "fn.letters"))))
-                     :usage))
+; Command teeth: repeated/conflicting runtime options and unsupported verbs lose a plan.
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run *fn-nop-minimal-config*
                                               (fn-nop-test-argv '("run" "--once" "--once"))))
@@ -71,22 +59,22 @@
                       (fn-native-operator-run
                        (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "port = \"1119\""))
                        (fn-nop-test-argv '("status"))))
-                     :refused))
+                     :usage))
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run
                        (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "port = 70000"))
                        (fn-nop-test-argv '("status"))))
-                     :refused))
+                     :usage))
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run
                        (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[acl2]" "slots = \"4\""))
                        (fn-nop-test-argv '("status"))))
-                     :refused))
+                     :usage))
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run
                        (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "port = 1119" "port = 1119"))
                        (fn-nop-test-argv '("status"))))
-                     :refused))
+                     :usage))
 
 ; A parsed disabled posting profile is explicit unsupported usage until the
 ; owner consumes one ACL2 posting projection for served and control paths.
@@ -95,3 +83,9 @@
                        (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[posting]" "enabled = false"))
                        (fn-nop-test-argv '("run"))))
                      :usage))
+
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run
+                       (fn-nop-test-lines '("[store]" "path = \"/srv/fn\"" "[listener]" "port = \"1119\""))
+                       (fn-nop-test-argv '("status"))))
+                     5))

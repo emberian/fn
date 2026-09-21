@@ -11,7 +11,6 @@
 
 (defconst *fn-nop-max-arguments* 32)
 (defconst *fn-nop-max-argument-octets* 512)
-(defconst *fn-nop-max-charge* 4294967295)
 
 (defun fn-nop-argvp (argv)
   (declare (xargs :guard t))
@@ -64,54 +63,6 @@
   (declare (xargs :guard t))
   (fn-nop-result :usage reason command config arguments))
 
-(defun fn-nop-refused (reason command config arguments)
-  (declare (xargs :guard t))
-  (fn-nop-result :refused reason command config arguments))
-
-(defun fn-nop-decimal-aux (octets value)
-  (declare (xargs :guard t))
-  (if (and (natp value) (consp octets))
-      (if (fn-ncfg-digitp (car octets))
-          (fn-nop-decimal-aux (cdr octets)
-                              (+ (* 10 value) (- (car octets) 48)))
-        :bad)
-    (if (natp value) value :bad)))
-
-(defun fn-nop-charge (text)
-  (declare (xargs :guard t))
-  (let ((octets (fn-record-string-octets text)))
-    (if (and (consp octets) (<= (len octets) 10))
-        (let ((value (fn-nop-decimal-aux octets 0)))
-          (if (and (natp value) (<= value *fn-nop-max-charge*)) value :bad))
-      :bad)))
-
-(defun fn-nop-parse-post (words message-id payload groups charge)
-  "Normalize the public post option grammar without deciding article validity."
-  (declare (xargs :guard t))
-  (if (consp words)
-      (let ((option (car words)) (tail (cdr words)))
-        (if (not (consp tail))
-            :bad
-          (let ((value (car tail)))
-            (cond ((equal option "--message-id")
-                   (if message-id :bad
-                     (fn-nop-parse-post (cdr tail) value payload groups charge)))
-                  ((equal option "--payload")
-                   (if payload :bad
-                     (fn-nop-parse-post (cdr tail) message-id value groups charge)))
-                  ((equal option "--group")
-                   (fn-nop-parse-post (cdr tail) message-id payload
-                                      (cons value groups) charge))
-                  ((equal option "--charge")
-                   (if charge :bad
-                     (let ((parsed (fn-nop-charge value)))
-                       (if (equal parsed :bad) :bad
-                         (fn-nop-parse-post (cdr tail) message-id payload groups parsed)))))
-                  (t :bad)))))
-    (if (and message-id payload (consp groups))
-        (list :post message-id payload (fn-ncfg-reverse groups) charge)
-      :bad)))
-
 (defun fn-nop-parse-run (words once)
   (declare (xargs :guard t))
   (if (consp words)
@@ -142,10 +93,9 @@
                    (fn-nop-usage :invalid-run-options "run" config rest)
                  (fn-nop-result :accepted :plan "run" config arguments))))
             ((equal command "post")
-             (let ((arguments (fn-nop-parse-post rest nil nil nil nil)))
-               (if (equal arguments :bad)
-                   (fn-nop-usage :invalid-post-options "post" config rest)
-                 (fn-nop-result :accepted :plan "post" config arguments))))
+             ; Shared submission is an owner callback.  Do not publish the
+             ; old direct-store payload grammar as a native operator contract.
+             (fn-nop-usage :shared-submission-unavailable "post" config rest))
             ((equal command "status")
              (if (null rest)
                  (fn-nop-result :accepted :plan "status" config (list :status))
@@ -165,14 +115,14 @@ until owner convergence exposes one ACL2 posting projection to served/control."
   (declare (xargs :guard t))
   (cond ((or (not (fn-ncfg-ascii-octetsp config-octets))
              (< *fn-ncfg-max-octets* (len config-octets)))
-         (fn-nop-refused :config-bounds nil nil nil))
+         (fn-nop-usage :configuration-bounds nil nil nil))
         ((or (not (true-listp argv-octets))
              (< *fn-nop-max-arguments* (len argv-octets))
              (not (fn-nop-argvp argv-octets)))
          (fn-nop-usage :argv-bounds nil nil nil))
         (t (let ((loaded (fn-native-config-load config-octets)))
              (if (not (equal (fn-ncfg-first loaded) :accepted))
-                 (fn-nop-refused (fn-ncfg-second loaded) nil nil nil)
+                 (fn-nop-usage (list :configuration (fn-ncfg-second loaded)) nil nil nil)
                (let ((config (fn-ncfg-second loaded)))
                  (if (not (fn-native-config-operator-availablep config))
                      (fn-nop-usage :unsupported-profile nil config nil)
@@ -183,9 +133,10 @@ until owner convergence exposes one ACL2 posting projection to served/control."
 (defun fn-native-operator-result-native-action (result)
   "The only commands the current raw native module may execute by itself.
 
-`run' and `post' retain their normalized plans for owner convergence.  They
-are not translated into direct host calls, which would create another owner of
-submission or lifecycle semantics."
+`run' retains its normalized plan for owner convergence.  `post' is usage
+until that owner exposes its shared-submission callback.  Neither is translated
+into a direct host call, which would create another owner of lifecycle or
+submission semantics."
   (declare (xargs :guard t))
   (if (not (equal (fn-native-operator-result-status result) :accepted))
       :none

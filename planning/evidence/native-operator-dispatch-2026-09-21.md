@@ -10,9 +10,10 @@ It reads bounded configuration and argv octets, calls only
 `fn-native-operator-host-run` and its ACL2 result projections, then executes
 only the ACL2-designated normalized `status` or `recover` plan using the
 existing native store functions. It emits one tagged stderr result after the
-operation returns. `run` and `post` return `usage` rather than creating a
-second service owner or a direct payload-post bypass; owner convergence will
-consume their normalized plans through the named result accessors.
+operation returns. `run` reaches an owner-required normalized plan and `post` is explicit usage
+until the owner supplies a shared-submission callback; neither creates a second
+service owner or a direct payload-post bypass. Owner convergence will consume
+the `run` plan through the named result accessors.
 
 The current saved image does not include this unregistered module: owner
 convergence owns build and service integration. This packet therefore certifies
