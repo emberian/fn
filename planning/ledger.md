@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 285 |
-| Certification roots in the Makefile | 285 |
-| Books inside the root closure | 285 |
-| `defthm` and `defthmd` events | 5827 |
-| `defun` events | 4010 |
-| Functions with verified guards | 1513 |
-| Functions declared `:verify-guards nil` and never verified | 192 |
-| Functions left at the default with an explicit guard | 1807 |
-| Functions left at the default with no guard | 498 |
-| `assert-event` checks | 5965 |
-| `must-fail` checks | 65 |
+| Books read | 291 |
+| Certification roots in the Makefile | 291 |
+| Books inside the root closure | 291 |
+| `defthm` and `defthmd` events | 5862 |
+| `defun` events | 4041 |
+| Functions with verified guards | 1514 |
+| Functions declared `:verify-guards nil` and never verified | 202 |
+| Functions left at the default with an explicit guard | 1816 |
+| Functions left at the default with no guard | 509 |
+| `assert-event` checks | 5994 |
+| `must-fail` checks | 85 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 48 |
-| Export-hygiene warnings | 73 |
+| Export-hygiene warnings | 74 |
 | Enabled-projection warnings | 21 |
 | Teeth-form warnings | 0 |
-| Include-hygiene warnings | 91 |
+| Include-hygiene warnings | 97 |
 | Host-names warnings | 35 |
 | Hand-written-record warnings | 18 |
 
@@ -132,10 +132,13 @@ that `make certify` requests.
 | `books/bp-workflow-replay-status.lisp` | root | 30 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/bp-workflow-transport-invariants.lisp` | root | 32 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bp-workflow.lisp` | root | 0 | 111 | 0/0/111/0 | 0 | 0 | 0 |
+| `books/byte-store-frame.lisp` | root | 11 | 12 | 1/0/9/2 | 0 | 0 | 0 |
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
 | `books/byte-store-keystones.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/byte-store-program-invariants.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/byte-store-programs.lisp` | root | 1 | 29 | 0/29/0/0 | 32 | 0 | 0 |
-| `books/byte-store-scan.lisp` | root | 134 | 32 | 0/27/0/5 | 0 | 0 | 1 |
+| `books/byte-store-relation.lisp` | root | 12 | 7 | 0/5/0/2 | 0 | 0 | 0 |
+| `books/byte-store-scan.lisp` | root | 134 | 34 | 0/29/0/5 | 0 | 0 | 1 |
 | `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 12 | 24 | 24/0/0/0 | 0 | 0 | 0 |
@@ -294,6 +297,9 @@ that `make certify` requests.
 | `tests/acl2/bp-workflow-records-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 101 | 6 | 0 |
 | `tests/acl2/bp-workflow-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-workflow-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 50 | 7 | 0 |
+| `tests/acl2/byte-store-frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
+| `tests/acl2/byte-store-program-invariants-tests.lisp` | root | 0 | 3 | 0/1/0/2 | 9 | 8 | 0 |
+| `tests/acl2/byte-store-relation-tests.lisp` | root | 1 | 5 | 0/0/0/5 | 12 | 12 | 0 |
 | `tests/acl2/byte-store-scan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/byte-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
 | `tests/acl2/cbor-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
@@ -388,7 +394,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpf-cell-of-uncovered-is-gap` | `books/bp-fragment-invariants.lisp` | 129 | branch-of-definition: the hypothesis negates a branch test of fn-bpf-cell-of and the conclusion is that branch's value |
 | `fn-bpf-out-of-bounds-input-allocates-nothing` | `books/bp-fragment-invariants.lisp` | 390 | branch-of-definition: the hypothesis is a branch test of fn-bpf-reassemble and the conclusion is that branch's value |
 | `fn-bpr-context-from-request-is-constructor` | `books/bp-receiver-state-invariants.lisp` | 94 | definition-restated: the conclusion is the body of fn-bpr-context-from-request |
-| `fn-bs-names-outcomes-of-no-ops` | `books/byte-store-scan.lisp` | 298 | branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value |
+| `fn-bs-names-outcomes-of-no-ops` | `books/byte-store-scan.lisp` | 302 | branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value |
 | `fn-clock-drop-permission-is-exactly-expired-by-definition` | `books/clock-invariants.lisp` | 164 | definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-cnode-inadmissible-config-changes-nothing` | `books/node-config.lisp` | 423 | branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value |
 | `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1193 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
