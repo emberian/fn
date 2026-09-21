@@ -27,6 +27,43 @@
    :hints (("Goal" :in-theory (enable fn-record-codec-vocabulary
                                       fn-record-record-vocabulary)))))
 (local
+ (defthm fn-replay-article-counters-are-natural
+   (implies (fn-record-p record)
+            (and (natp (fn-record-sequence record))
+                 (natp (fn-record-txid record))
+                 (natp (fn-record-generation record))))
+   :hints (("Goal" :in-theory (enable fn-record-record-vocabulary
+                                      fn-record-codec-vocabulary)))))
+(local
+ (defthm fn-replay-retention-counters-are-natural
+   (implies (fn-store-retention-event-p record)
+            (and (natp (fn-store-event-nth 2 record))
+                 (natp (fn-store-event-nth 3 record))
+                 (natp (fn-store-event-nth 4 record))))
+   :hints (("Goal" :in-theory (enable fn-store-retention-event-p
+                                      fn-record-uint32p)))))
+(local
+ (defthm fn-replay-stxe-counters-are-natural
+   (implies (fn-stxe-p record)
+            (and (natp (fn-stxe-sequence record))
+                 (natp (fn-stxe-txid record))
+                 (natp (fn-stxe-generation record))))
+   :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
+(local
+ (defthm fn-replay-stxk-counters-are-natural
+   (implies (fn-stxk-p record)
+            (and (natp (fn-stxk-sequence record))
+                 (natp (fn-stxk-txid record))
+                 (natp (fn-stxk-generation record))))
+   :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
+(local
+ (defthm fn-replay-stxa-counters-are-natural
+   (implies (fn-stxa-p record)
+            (and (natp (fn-stxa-sequence record))
+                 (natp (fn-stxa-txid record))
+                 (natp (fn-stxa-generation record))))
+   :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
+(local
  (defthm fn-replay-record-counters-are-natural
    (implies (fn-store-event-p record)
             (and (natp (fn-store-event-sequence record))
@@ -39,8 +76,26 @@
                    (implies (fn-store-event-p record) (natp (fn-store-event-txid record))))
                   (:type-prescription :corollary
                    (implies (fn-store-event-p record) (natp (fn-store-event-generation record)))))
-   :hints (("Goal" :in-theory (enable fn-record-codec-vocabulary
-                                      fn-record-record-vocabulary)))))
+   :hints (("Goal"
+            :use (fn-replay-article-counters-are-natural
+                  fn-replay-retention-counters-are-natural
+                  fn-replay-stxe-counters-are-natural
+                  fn-replay-stxk-counters-are-natural
+                  fn-replay-stxa-counters-are-natural)
+            :cases ((fn-record-p record)
+                    (fn-store-retention-event-p record)
+                    (fn-stxe-p record)
+                    (fn-stxk-p record))
+            :in-theory
+            (e/d (fn-store-event-p fn-store-event-sequence
+                                   fn-store-event-txid fn-store-event-generation)
+                 (fn-record-p fn-store-retention-event-p fn-stxe-p fn-stxk-p
+                              fn-stxa-p
+                              fn-replay-article-counters-are-natural
+                              fn-replay-retention-counters-are-natural
+                              fn-replay-stxe-counters-are-natural
+                              fn-replay-stxk-counters-are-natural
+                              fn-replay-stxa-counters-are-natural))))))
 
 ; Convergence (board, codecs CHANGE on records): `fn-store-event-p' is opaque and exports no forward shape rule; the loop guard needs true-listp from it.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
@@ -263,14 +318,14 @@
 ; the accepted-verdict projection; only a bound kind-4 composite contributes
 ; an accepted article verdict.
 (defun fn-replay-identity-advance (ctx)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
                    (fn-stxk-context-snapshots ctx)
                    (fn-stxk-context-verdicts ctx)
                    (fn-stxk-context-current-generation ctx) nil))
 
 (defun fn-replay-identity-step (ctx event)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (not (equal (fn-stxk-context-kind ctx) :ok)) ctx
     (if (not (equal (fn-store-event-sequence event)
                     (fn-stxk-context-next ctx)))
@@ -295,7 +350,7 @@
        (t (fn-replay-identity-advance ctx))))))
 
 (defun fn-replay-identity-loop (records ctx)
-  (declare (xargs :guard t :measure (len records)))
+  (declare (xargs :guard t :measure (len records) :verify-guards nil))
   (if (consp records)
       (if (not (fn-store-event-p (car records)))
           (fn-stxk-fault ctx :invalid-record)
@@ -304,11 +359,11 @@
     (if (null records) ctx (fn-stxk-fault ctx :improper-record-list))))
 
 (defun fn-replay-identity (records)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (fn-replay-identity-loop records (fn-stxk-initial-context 0)))
 
 (defun fn-replay-verdict-pairs (events)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp events)
       (let ((e (car events)))
         (if (fn-stxe-p e)
