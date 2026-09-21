@@ -68,7 +68,12 @@ class PeerRecordTests(unittest.TestCase):
 class DryRun:
     """One whole gate run against a fake host in a temporary HOME."""
 
-    overlays = ["tests/deploy_gate_fake"]
+    # `tests/tcpcl_lab_fake` is in both overlay lists on purpose: without it
+    # the native image cannot be built on a box with no ACL2, and since
+    # 2026-09-21 the gate records a failed image build as a FAILED step rather
+    # than a not-exercised one.  A dry run with no image would then report a
+    # failure that is the fake's absence, not the gate's finding.
+    overlays = ["tests/deploy_gate_fake", "tests/tcpcl_lab_fake"]
     server_command = None
 
     @classmethod
@@ -207,7 +212,8 @@ class NoTransitTests(DryRun, unittest.TestCase):
 class TransitTests(DryRun, unittest.TestCase):
     """The tree with a transit surface: the four teeth must all bite."""
 
-    overlays = ["tests/deploy_gate_fake", "tests/twonode_gate_fake"]
+    overlays = ["tests/deploy_gate_fake", "tests/tcpcl_lab_fake",
+                "tests/twonode_gate_fake"]
     server_command = PEER_SERVER
 
     @classmethod

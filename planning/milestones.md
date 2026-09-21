@@ -197,7 +197,8 @@ the whole-tree run behind these statuses is
 | A two-node transfer over fn's own CL | **open** | the v0.4 gate condition; no run |
 | S1 statement field codec | **partial** | `books/stx-carrier` certified; `books/stx-verify` open at `fn-stx-decimal-octets-are-printable` |
 | S2 verdict | **open** | cascades off `stx-verify`; PRF-020's subject rule needs K1's transit path |
-| S3 to S6 | **open** | no book exists; SUB-003 to SUB-006 `specified` |
+| S3 laces, index and equivocation | **partial** | `books/stx-lace`, `books/stx-index`, `books/stx-policy`, `books/stx-authority` and `books/stx-epochs` certify (w10/substrate-2). The index has a CARRIER and a HOST LINE since w11/sn-index (D21): `fn-sn-state` carries it and the keyring beside the node, `fn-sn-finish` grows it by one cons, `host/store-node-host.lisp` `fn-store-sn-statement` reads it, and `fn-sn-statement-lookup-is-the-lace-lookup` equates the called function to the projection. PRF-023 stays `in-progress`: `fn-stx-index-slots-agree` has no caller, the keyring is per-invocation and not in the durable configuration history, and `fn-stx-transit-authority-ok` still walks the whole lace per article on the ADMISSION path with no caller |
+| S4 to S6 | **open** | SUB-004 to SUB-006 `specified`; S6's reader verdict has no slot to read (see the design's section 10) |
 | The LTP question decided | **open** | no decision recorded |
 
 ### v0.5 reconfiguration and storage -- fiber record: [fiber-reconfiguration-storage](evidence/fiber-reconfiguration-storage-2026-09-20.md)

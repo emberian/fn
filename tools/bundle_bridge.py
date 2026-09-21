@@ -150,7 +150,41 @@ class BundleBridge:
                             _optional(value[6]), _optional(value[7]))
 
 
-def encode_primary(*, destination: bytes, source: bytes, report_to: bytes,
+def ipn_eid(text: str) -> tuple:
+    """`ipn:<node>.<service>` as the pair of naturals ACL2's EID holds.
+
+    This is marshalling, not a decision: it is the exact inverse of the `ipn`
+    branch of `_eid_text` above, which renders ACL2's structured EID back as
+    RFC 9171 text.  Both directions are here so that neither is spelled twice,
+    and neither of them decides anything -- `fn-bpp-eidp` is what says whether
+    the result is an endpoint ID at all.
+    """
+    if not isinstance(text, str) or not text.startswith("ipn:"):
+        raise BundleRefused("endpoint ID is not in the ipn scheme")
+    node, _, service = text[len("ipn:"):].partition(".")
+    if not node.isdigit() or not service.isdigit():
+        raise BundleRefused("ipn endpoint ID is not <node>.<service>")
+    return ("ipn", int(node), int(service))
+
+
+def _eid_term(store, value) -> str:
+    """One endpoint ID as the ACL2 term `fn-bpp-eidp` recognises.
+
+    `bytes` is a `dtn` scheme-specific part; `("ipn", node, service)` is an
+    `ipn` endpoint.  Nothing here spells a BPv7 field: these are the two
+    constructor shapes of `books/bp-primary.lisp`'s EID, and the encoding of
+    either is `fn-bpp-eid-value`'s.
+    """
+    if isinstance(value, (bytes, bytearray)):
+        return "(cons :dtn '" + store.literal(bytes(value)) + ")"
+    if (isinstance(value, tuple) and len(value) == 3 and value[0] == "ipn"
+            and all(isinstance(part, int) and not isinstance(part, bool)
+                    and part >= 0 for part in value[1:])):
+        return "(list :ipn {} {})".format(value[1], value[2])
+    raise BundleRefused("unsupported endpoint ID form")
+
+
+def encode_primary(*, destination, source, report_to,
                    creation: int, sequence: int, lifetime: int, flags: int = 0,
                    offset=None, total=None, bridge=None) -> bytes:
     """One bundle's primary block, encoded by ACL2, for a laboratory transport.
@@ -161,19 +195,19 @@ def encode_primary(*, destination: bytes, source: bytes, report_to: bytes,
     a BPv7 field -- `fn-bpi-host-bundle-prefix` returns the indefinite-array
     head and the certified primary-block encoding, and the caller appends the
     break stop code standing in for the blocks a lab has none of.
+
+    Each endpoint ID is either a `dtn` scheme-specific part as `bytes` or an
+    `ipn` endpoint as `("ipn", node, service)`; `ipn_eid` parses the text form.
     """
     bridged = session(bridge)
     store = bridged.session.store
-
-    def eid(ssp):
-        return "(cons :dtn '" + store.literal(ssp) + ")"
 
     def optional(value):
         return "nil" if value is None else str(value)
 
     form = ("(fn-bpi-host-bundle-prefix (fn-bpp-make-block {} 0 {} {} {} {} {} {} {} {}))"
-            .format(flags, eid(destination), eid(source), eid(report_to),
-                    creation, sequence, lifetime,
+            .format(flags, _eid_term(store, destination), _eid_term(store, source),
+                    _eid_term(store, report_to), creation, sequence, lifetime,
                     optional(offset), optional(total)))
     return run_store.acl2_octets(store.call(form)) + BREAK_STOP_CODE
 

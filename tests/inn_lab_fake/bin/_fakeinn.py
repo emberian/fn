@@ -221,7 +221,14 @@ def innd(argv):
 
 def nnrpd(argv):
     port = int(argv[argv.index("-p") + 1]) if "-p" in argv else 11120
-    serve(port, True, path("run", "nnrpd.pid"))
+    # Real nnrpd -D writes run/nnrpd-<port>.pid on any port but 119, and
+    # run/nnrpd.pid on 119.  This fake wrote run/nnrpd.pid whatever the port,
+    # so the lab's `cat $P/run/nnrpd-<port>.pid` read nothing and the pid
+    # parse raised -- the setUpClass error of 2026-09-20.  The box is the
+    # authority: planning/evidence/inn-lab-f4e8272-2026-09-20.md step 38 is
+    # `NNRPD-UP pid=629447` out of `cat $P/run/nnrpd-11120.pid`.
+    name = "nnrpd.pid" if port == 119 else "nnrpd-{}.pid".format(port)
+    serve(port, True, path("run", name))
     return 0
 
 
