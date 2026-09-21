@@ -88,6 +88,12 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-ocfg-owner (f-get-global 'fn-owner state)))
 
+(defun fn-owner-config (state)
+  ; The one live configuration.  No host global shadows this value: every
+  ; caller reads the generation replayed into and published by fn-ocfg.
+  (declare (xargs :stobjs state :mode :program))
+  (fn-ocfg-config (fn-owner-ocfg-state state)))
+
 (defun fn-owner-install-ocfg (oc state)
   (declare (xargs :stobjs state :mode :program))
   (f-put-global 'fn-owner oc state))
@@ -125,8 +131,7 @@
 ; The configuration history is replayed first (fn-cnode-config-replay,
 ; books/node-config), exactly as host/store-node-host.lisp fn-store-sn-recover
 ; does; the node opens over the allocation domain and the configured capacity
-; and the live configuration is kept in the same global the store bridge's
-; fn-store-cfg-* entries read.
+; and the live configuration is retained only in fn-owner's fn-ocfg value.
 (defun fn-owner-recover (octet-records frontier config-octet-records max-conns state)
   (declare (xargs :stobjs state :mode :program))
   (let ((records (fn-store-decode-records octet-records))
@@ -145,8 +150,7 @@
             (if (and (equal (fn-sn-open-kind opened) :ok)
                      (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
                             :recovering))
-                (let* ((state (f-put-global 'fn-store-cfg cfg state))
-                       (state (fn-owner-install-ocfg
+                (let* ((state (fn-owner-install-ocfg
                                (fn-ocfg-make
                                 (fn-own-configure
                                  (fn-own-start (fn-sn-open-state opened) max-conns)
@@ -169,6 +173,75 @@
   (let ((state (fn-owner-install-ocfg
                 (fn-ocfg-step (fn-owner-ocfg-state state) event) state)))
     state))
+
+; The live control path is deliberately small for this packet: a configured
+; client asks to create or retire one group.  ACL2 constructs the delta,
+; checks the pinned generation and staged/clock/reservation conditions, and
+; produces the exact record that the host persists.  Python carries only the
+; kind/name request and the resulting octets.
+(defun fn-owner-config-deltas (kind name)
+  (declare (xargs :mode :program))
+  (cond ((equal kind :create-group)
+         (list (fn-cfg-create-group name *fn-cfg-default-policy-id*)))
+        ((equal kind :remove-group) (list (fn-cfg-remove-group name)))
+        (t nil)))
+
+(defun fn-owner-reconfigure (id kind name-octets state)
+  ; :staged leaves exactly one encoded configuration record in the output
+  ; slot.  :refused leaves the named ACL2 refusal reason there.  No state is
+  ; published until fn-owner-reconfigure-complete follows a durable write.
+  (declare (xargs :stobjs state :mode :program))
+  (let ((name (if (fn-store-text-octetsp name-octets)
+                  (fn-store-octets->string name-octets) :bad)))
+    (if (equal name :bad)
+        (let ((state (f-put-global 'fn-owner-config-reason :group-name state)))
+          (value :refused))
+      (let* ((oc (fn-owner-ocfg-state state))
+             (deltas (fn-owner-config-deltas kind name)))
+        (if (null deltas)
+            (let ((state (f-put-global 'fn-owner-config-reason :delta-kind state)))
+              (value :refused))
+          (let* ((reason (fn-ocfg-reconfig-refusal oc id deltas))
+                 (state (fn-owner-step (list :reconfigure id deltas) state))
+                 (staged (fn-ocfg-staged (fn-owner-ocfg-state state))))
+            (if staged
+                (let ((state (f-put-global 'fn-owner-config-octets
+                                             (fn-cfg-encode staged) state))
+                      (state (f-put-global 'fn-owner-config-reason nil state)))
+                  (value :staged))
+              (let ((state (f-put-global 'fn-owner-config-reason reason state)))
+                (value :refused)))))))))
+
+(defun fn-owner-reconfigure-octets (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-config-octets state)))
+
+(defun fn-owner-reconfigure-reason (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-config-reason state)))
+
+(defun fn-owner-reconfigure-complete (generation state)
+  ; This is called only after Store.write_config_record has named the record
+  ; durable.  An uncertain write has no call here and forces recovery.  The
+  ; model publishes fn-ocfg's configuration first; fn-own-configure then
+  ; refreshes only the injection configuration for future posts, preserving
+  ; all connection/session pins already held by fn-ocfg.
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((before (fn-owner-ocfg-state state))
+         (record (fn-ocfg-staged before)))
+    (if (or (not record)
+            (not (equal (fn-cfg-record-generation record) generation)))
+        (value :refused)
+      (let* ((state (fn-owner-step (list :complete) state))
+             (cfg (fn-owner-config state))
+             (state (fn-owner-replace-core
+                     (fn-own-configure (fn-owner-core state)
+                                       (fn-owner-post-config cfg)) state)))
+        (value :durable)))))
+
+(defun fn-owner-config-generation (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cfg-generation (fn-owner-config state))))
 
 ; -----------------------------------------------------------------------------
 ; The transaction path: the same observations run_store.py reports, each one
@@ -194,7 +267,7 @@
         (value :invalid)
       ; A name in the domain but not served at the live generation (a retired
       ; group) is refused by the predicate fn-cnode-prepare applies.
-      (if (not (fn-cnode-selection-servedp (f-get-global 'fn-store-cfg state) groups))
+      (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
           (value :refused)
       (let* ((node (fn-sn-node s))
              (msgid (fn-store-octets->string msgid-octets))
@@ -377,7 +450,7 @@
     (if (equal address :bad)
         (value nil)
       (let ((name (fn-owner-peer-name-for
-                   (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state)))
+                   (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))
                    address)))
         (value (if name (fn-record-string-octets name) nil))))))
 
@@ -394,10 +467,9 @@
              ; by source address alone (fn-owner-peer-name-for below), so on
              ; a box where a configured peer is on loopback that was every
              ; client: the operator's credential reached nothing.
-             (opened (fn-own-open-peer before peer
-                                       (f-get-global 'fn-store-cfg state)
-                                       (fn-owner-auth state)))
-             (state (fn-owner-replace-core (cdr opened) state))
+             (opened (fn-ocfg-open-peer (fn-owner-ocfg-state state) peer
+                                        (fn-owner-auth state)))
+             (state (fn-owner-install-ocfg (cdr opened) state))
              (state (fn-owner-install-effects (car opened) state)))
         (if (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))
             (value id)
@@ -418,7 +490,7 @@
         (value :not-transit)
       (let* ((decision (fn-own-sub-decision sub))
              (node (fn-sn-node (fn-own-store owner)))
-             (cfg (f-get-global 'fn-store-cfg state))
+             (cfg (fn-owner-config state))
              (peer (fn-peer-submission-peer decision))
              (msgid (fn-peer-submission-msgid decision))
              (octets (fn-peer-submission-octets decision))
@@ -630,8 +702,9 @@
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
-      (let* ((result (fn-own-read-step owner id (list :tls-established)))
-             (state (fn-owner-replace-core (cdr result) state))
+      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg-state state)
+                                        id (list :tls-established)))
+             (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
 
@@ -643,8 +716,9 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-core state))
          (id (fn-own-next-id before))
-         (opened (fn-own-open before (fn-owner-auth state)))
-         (state (fn-owner-replace-core (cdr opened) state))
+         (opened (fn-ocfg-open (fn-owner-ocfg-state state)
+                               (fn-owner-auth state)))
+         (state (fn-owner-install-ocfg (cdr opened) state))
          (state (fn-owner-install-effects (car opened) state)))
     (if (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))
         (value id)
@@ -659,8 +733,8 @@
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
-      (let* ((result (fn-own-read owner id octets))
-             (state (fn-owner-replace-core (cdr result) state))
+      (let* ((result (fn-ocfg-read (fn-owner-ocfg-state state) id octets))
+             (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
 
@@ -687,8 +761,8 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
          (knownp (if (fn-own-find-conn id (fn-own-conns owner)) t nil))
-         (result (fn-own-fault owner id))
-         (state (fn-owner-replace-core (cdr result) state))
+         (result (fn-ocfg-fault (fn-owner-ocfg-state state) id))
+         (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state)))
     (value (if knownp :faulted :unknown))))
 
@@ -746,7 +820,7 @@
   ; Rebuild the feed table from the live configuration: at open and after
   ; every :set-peer / :remove-peer delta.
   (declare (xargs :stobjs state :mode :program))
-  (let ((state (fn-owner-step (list :feeds (f-get-global 'fn-store-cfg state))
+  (let ((state (fn-owner-step (list :feeds (fn-owner-config state))
                               state)))
     (value (fn-store-cfg-join-names
             (fn-own-feed-names (fn-own-feeds (fn-owner-core state)))))))
