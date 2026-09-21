@@ -15,7 +15,7 @@ python3 tools/certify_books.py --jobs 1 books/native-config tests/acl2/native-co
 ```
 
 The source-pinned manifest is
-`planning/evidence/native-config-certify-20260921T082423Z-83774.json`. It
+`planning/evidence/manifests/certify-20260921T082423Z-83774.json`. It
 records ACL2 8.7 / SBCL 2.6.8 on macOS, executable SHA-256
 `36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324`, both
 requested roots passed, `ACL2_CUSTOMIZATION=NONE`,

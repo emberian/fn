@@ -9,6 +9,7 @@
   "acl2_version": "ACL2 Version 8.7",
   "acl2_version_probe_exit_code": 0,
   "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/acl2/certify-20260921T082423Z-83774",
   "book_failures": {},
   "book_results": {
     "books/native-config": "passed",

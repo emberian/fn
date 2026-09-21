@@ -16,47 +16,47 @@ Private group cryptography remains deferred, with privacy boundaries preserved.
 
 ## Current staffing and integration checkpoint
 
-D07 now selects a Python-free production runtime. `owner-convergence` (Sol)
-owns native multiplexed owner/config/feed/control adoption after its current
-integration checkpoint; `native-storage-codec` (Sol) owns shared native storage
-I/O; `storage-codecs` (Terra, new native-CLI worktree) inventories and implements
-independent CLI/config/packaging work. The old transaction-codec worktree remains
-owned by `artifact-set` (Sol). Native BP convergence continues independently.
-No new Python service feature closes a production requirement. Python harnesses
-and differential oracles remain development tools. The native migration carries
-the existing model/host correspondence and fault obligations, not a fresh raw-Lisp
-implementation of the decisions already owned by ACL2.
+D07 selects a Python-free production runtime. The integrated native storage
+adapter now consumes ACL2 metadata, frontier, filename and provenance definitions.
+The bounded native configuration profile is integrated through `c322da5`, with
+its default-path repair; its operator/owner consumer still needs integration.
+The packaged operator service remains Python-based development infrastructure.
+No component test closes the full native service or v0 contract.
 
-The user activated an overnight autonomous goal and then requested lower usage:
-use Luna/Terra for appropriate work and reserve Astra for larger review and
-convergence steps. Routine implementation, test repair and farm execution now
-default to Terra; bounded mechanical evidence work goes to Luna. Existing Astra
-proof lanes finish their current coherent checkpoints and hand off continuation.
-Sol owns substantial implementation, proof debugging and cross-lane convergence,
-including the live-config/submission/feed integration batch, native storage
-codec adoption, and transaction-name proof completion. Existing Sol submission
-and BP lifecycle lanes continue. Astra handles periodic cross-project review
-and difficult residual problems; Terra-to-Astra is not the default escalation.
-Root reviews coherent batches rather than each small intermediate change.
+| Active lane / worker | Next complete result |
+| --- | --- |
+| `owner-convergence` / Sol | Native multiplexed owner, control, live configuration and physical feed replay/append; shared submission preserves feed intent and uncertain persistence fences the service. Unify configured article bounds and measure the frozen service. |
+| `submission-path` / Sol | Native BP lifecycle/spool convergence: actual EIO after namespace publication must remain uncertain; mixed duplex outcomes use ACL2's policy; land the frozen repair evidence. |
+| `bp-fidelity-convergence` / Sol | BP sequence recovery/reservation on observed files, with returned-allocation non-reuse across admissible physical crash traces. |
+| `artifact-set` / Sol | Native workflow/receipt journals over the same store state, with a shared ACL2-owned persistence operation and raw I/O interpreter. |
+| `native-storage-codec` / Sol | Native checkpoint capture, selection and recovery adoption; coordinate the shared persistence operation and retain explicit checkpoint/corruption authority. Codec adoption and artifact handoff are landed. |
+| `native-config-impl` / Terra | ACL2-owned safe FNFD peer filenames and explicit legacy handling, adopted by both native and development callers. Config parsing/default normalization is landed. |
+| `storage-codecs` / Terra | Native I/O progress and error taxonomy: zero-progress, partial operations, EINTR, deadlines, core faults and semantic refusals remain distinguishable. |
+| `storage-initializer` / Terra | Actual native initialization failure/death/restart tests and cut fidelity; propagate enumeration errors and investigate staging recovery differences. |
+| `feed-correspondence-terra` / Terra | Adopt the certified total feed output boundary in the actual owner, preserving durable intent when encoding is refused. |
+| `wire-block` / Terra | Outbound source-byte reconstruction, rendered-size and actual wire-driver composition over the host-called renderer. |
+| `recover-user-direction` / Sol | Native freshness-anchor wire parsing/acquisition over ACL2-owned subjects and isolated cryptographic primitives; preserve D22's unsupported-tree outcome. |
+| `integrated-runtime` / Terra | Operator/native duplication audit, then frozen native runtime measurements. Direct-image benchmark evidence is landed; it is not concurrent-owner throughput. |
 
-At `cdbd6b2`, the integrated tree includes W12 auth, physical feed recovery,
-ACL2 outbound framing and coherent proof-artifact acquisition. Terra's
-`integrated-runtime` lane owns the actual combined two-node matrix on hbox;
-Luna's `evidence-sync` lane owns generated ledger/manifest synchronization on
-that frozen source. Neither lane may replace the selected current matrix or
-change a proof/requirement status to make a check pass. Live configuration,
-submission intents, native BP and stronger correspondence proofs continue
-independently. All release and whole-system assurance claims remain gated by
-their actual covered contracts.
+Terra and Luna handle bounded implementation/mechanical work; Sol handles
+substantial implementation, proof debugging and integration. Root Astra reviews
+coherent batches, resolves difficult composition questions, updates registries
+and keeps independent work moving. These are assignments, not assurance levels.
+Use both farms with owned closures; integrated certification follows a frozen
+batch rather than each intermediate commit.
 
-The storage metadata and scoped relation checkpoint landed at `1501492`.
-The `storage-initializer` Terra lane now owns the missing fresh-host syscall
-transcription and its conditional establishment proof; `feed-correspondence`
-continues with Terra from checkpoint `0386ccc`. These replace the completed
-Astra proof lanes. Luna's frozen-source evidence synchronization landed and its
-next bounded task registers the scoped storage roots and PRF-044 evidence.
-The combined runtime lane is investigating a transfer-probe stall; no passing
-matrix or release status follows from its component certification.
+The [consolidation audit](duplication-audit-2026-09-21.md) tracks concrete
+competing decisions and their repairs. A separately proved logical model and
+concrete representation remain intentional; a second host implementation of
+identity, durability or policy does not. New native paths inherit the existing
+assurance obligations instead of starting a less constrained Lisp implementation.
+
+Earlier integration evidence remains source-specific. The W12 Python service
+matrix at `cdbd6b2` recorded authentication-gate and BP-crash disagreements; its
+probe ordering repair did not turn that original run into a pass. PRF-044 covers
+the named conditional storage results and fresh initializer image, with actual
+host/cut correspondence and general recovery still open. The earlier W12 plan
+below is retained as historical task scope, not current staffing.
 
 ## W12: repair complete operational paths
 

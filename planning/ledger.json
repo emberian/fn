@@ -75,6 +75,8 @@
     "books/config-records",
     "books/node-config",
     "tests/acl2/config-tests",
+    "books/native-config",
+    "tests/acl2/native-config-tests",
     "books/store-files",
     "books/store-files-invariants",
     "tests/acl2/store-files-tests",
@@ -299,26 +301,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 295,
-    "books_in_root_closure": 295,
-    "roots": 295,
-    "theorems": 5897,
-    "functions": 4065,
-    "assert_events": 6009,
+    "books": 297,
+    "books_in_root_closure": 297,
+    "roots": 297,
+    "theorems": 5898,
+    "functions": 4123,
+    "assert_events": 6036,
     "must_fails": 90,
     "encapsulates": 19,
     "guards": {
       "verified": 1515,
       "declared-off": 209,
-      "default-guarded": 1825,
-      "default-unguarded": 516
+      "default-guarded": 1882,
+      "default-unguarded": 517
     },
     "suspect_theorems": 48,
     "export_hygiene_warnings": 74,
     "enabled_projection_warnings": 21,
     "teeth_form_warnings": 3,
     "include_hygiene_warnings": 102,
-    "host_names_warnings": 37,
+    "host_names_warnings": 44,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -2911,6 +2913,31 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/native-config.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 57,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 57,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "records"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -6815,6 +6842,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/native-config-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 27,
+      "must_fails": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/native-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-auth-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -10081,6 +10133,55 @@
       {
         "host": "host/native/bp.lisp",
         "line": 359,
+        "name": "fnn-register-verb",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/config.lisp",
+        "line": 11,
+        "name": "fnn-core-state",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/config.lisp",
+        "line": 11,
+        "name": "fnn-read-regular-bounded",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/config.lisp",
+        "line": 11,
+        "name": "fnn-octet-list",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/config.lisp",
+        "line": 11,
+        "name": "fnn-out",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/config.lisp",
+        "line": 11,
+        "name": "fnn-err",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/config.lisp",
+        "line": 11,
+        "name": "fnn-fault",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/config.lisp",
+        "line": 24,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
