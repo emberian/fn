@@ -1381,13 +1381,10 @@
 ; -----------------------------------------------------------------------------
 ; Durable before the effect: the FNFD records a tick and a reply authorize
 ;
-; 335 and 238 are go-aheads, not outcomes: the record they authorize is
-; `(:feed-sent peer msgid attempt)', written before the TAKETHIS or the
-; article block.  Every other code is an outcome record.  A code outside
-; `*fn-feed-outcome-codes*' is journaled as 400, which is exactly what
-; `fn-feed-observe' does with it (`fn-feed-lost') and what
-; `fn-feed-apply-record' replays, so the journal's enumeration stays closed
-; and replay stays faithful to the live machine.
+; Legacy record constructor retained for codec compatibility fixtures. The
+; host-called fn-own-feed-reply-records uses fn-feed-observe-records with the
+; actual feed and observation; this constructor is not its replay theorem
+; subject. In particular these legacy retry/loss outcomes omit timing.
 
 (defun fn-own-feed-reply-records-of (peer msgid attempt code)
   (declare (xargs :guard t))
@@ -1410,12 +1407,9 @@
 ; genuinely in-flight entry is exactly the second transfer K5 forbids: that
 ; peer may have received the article and be about to answer 235.
 ;
-; The record this authorizes is `(:feed-outcome peer msgid attempt 400)',
-; which is the SAME record a 400 on the wire writes and which
-; `fn-feed-apply-record' replays as `fn-feed-queue-requeue-inflight' -- so
-; the journal's enumeration stays closed and a replay of it reaches the
-; queue the live machine reached.  A `(:feed-restart peer)' record would
-; not: `fn-feed-restart' retires the attempt where `fn-feed-lost' counts it.
+; The emitted :feed-lost carries the observation's monotonic tick. It is
+; written even with no in-flight entry because loss still moves the deadline.
+; Restart is distinct: it retires the active attempt without counting a loss.
 
 (defun fn-own-feed-lost-one (peer tbl obs)
   (declare (xargs :guard t))

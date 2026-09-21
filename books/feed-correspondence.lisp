@@ -34,6 +34,12 @@
      fn-feed-journal-entry fn-feed-journal-kind fn-feed-journal-values fn-frame-item)
     (fn-feedp fn-feed-durable-projection fn-feed-with-queue)))))
 
+(defthm fn-feed-valid-numeric-components
+  (implies (fn-feedp f)
+           (and (posp (fn-feed-next-attempt f))
+                (natp (fn-feed-backoff-until f))))
+  :hints (("Goal" :in-theory (enable fn-feedp))))
+
 (defthm fn-feed-tick-records-reconstruct-live
   (implies (fn-feedp f)
            (equal (fn-feed-durable-projection
@@ -70,3 +76,13 @@
      fn-feed-record-peer fn-feed-journal-entry fn-feed-journal-kind
      fn-feed-journal-values fn-frame-item)
     (fn-feedp fn-feed-durable-projection fn-feed-restart)))))
+
+(defthm fn-feed-back-off-uses-only-monotonic-observation
+  (equal (fn-feed-back-off f msgid
+           (fn-clock-observation (nfix (fn-clock-monotonic obs)) 0 0 nil))
+         (fn-feed-back-off f msgid obs))
+  :hints (("Goal" :in-theory (e/d
+    (fn-feed-back-off fn-clock-observation fn-clock-monotonic)
+    (fn-feedp fn-feed-with-queue fn-feed-with-backoff fn-feed-backoff-delay
+     fn-feed-queue-requeue fn-feed-find fn-feed-state-of fn-feed-state-inflightp)))))
+

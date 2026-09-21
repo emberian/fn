@@ -38,7 +38,7 @@
 (assert-event (equal (fn-feed-inflight-count (fn-feed-queue *fn-feed-ct-queued*)) 0))
 (must-fail (assert-event
  (equal (fn-feed-durable-projection *fn-feed-ct-queued*)
-        (fn-feed-durable-projection (fn-feed-lost *fn-feed-ct-queued* *fn-feed-ct-obs*))))))
+        (fn-feed-durable-projection (fn-feed-lost *fn-feed-ct-queued* *fn-feed-ct-obs*)))))
 
 ; Repeated go-ahead after sending is a reachable peer input. It has no live
 ; effect and must not append a second, undriven :feed-sent record.
