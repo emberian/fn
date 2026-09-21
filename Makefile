@@ -179,6 +179,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-records \
 	tests/acl2/bp-node-records-tests \
 	tests/acl2/bp-node-host-tests \
+	books/bp-authored-wire \
+	tests/acl2/bp-authored-wire-tests \
 	books/bp-sequence-persistence \
 	tests/acl2/bp-sequence-persistence-tests \
 	books/bp-node-machine \

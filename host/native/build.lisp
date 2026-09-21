@@ -49,6 +49,7 @@
 (include-book "books/tcpcl-spool")
 (include-book "books/bp-node")
 (include-book "books/bp-node-records")
+(include-book "books/bp-authored-wire")
 (include-book "books/bp-node-machine")
 (include-book "books/bp-node-machine-codec")
 (include-book "books/bp-receive-evidence")
