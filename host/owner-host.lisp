@@ -378,7 +378,23 @@
              (state (f-put-global 'fn-owner-submit-groups
                                   (if transitp nil (fn-inj-decision-groups decision))
                                   state)))
-        (value (if transitp :taken-transit :taken))))))
+        (value (cond (transitp :taken-transit)
+                     ((fn-own-control-submissionp sub) :taken-control)
+                     (t :taken)))))))
+
+; The local CLI submits an already-authored article object.  This is one
+; owner event, not a call around the owner to the store bridge: ACL2 checks
+; the boundary, preserves the supplied octets exactly and queues the same
+; submission record fn-own-take-submission consumes for served POST.
+(defun fn-owner-control-submit (msgid-octets group-octets payload state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (f-get-global 'fn-owner state))
+         (result (fn-own-control-submit-result owner msgid-octets
+                                                group-octets payload))
+         (state (fn-owner-step (list :control-submit msgid-octets
+                                     group-octets payload)
+                               state)))
+    (value result)))
 
 ; -----------------------------------------------------------------------------
 ; The AUTHINFO policy (RFC 4643), set once at start-up and pinned per
@@ -592,6 +608,53 @@
                               (fn-own-feed-effect-peer effects) state)))
     state))
 
+; Project the durable intent before the store is allowed to begin.  The host
+; supplies values ACL2 itself produced (provenance, configuration generation
+; and next transaction id); this function derives the exact object identity,
+; acceptance-time targets and queue-capacity verdict from the in-flight owner
+; submission.  No owner state moves until the frames have reached their
+; per-peer journals.
+(defun fn-owner-submission-intent (evidence generation txid state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (f-get-global 'fn-owner state))
+         (result (fn-own-submission-intent-result owner evidence generation txid))
+         (records (fn-own-submission-intent-records owner evidence generation txid))
+         (state (fn-owner-feed-install-feed records nil state)))
+    (value result)))
+
+; Project commit/abort while the same submission is still in flight.  The
+; caller durably appends these records before invoking fn-owner-outcome (or
+; its control/transit counterpart), so the in-memory feed can never get ahead
+; of the obligation journal.  Uncertain produces no resolution record.
+(defun fn-owner-submission-resolution (word evidence generation txid state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (f-get-global 'fn-owner state))
+         (records (fn-own-submission-resolution-records
+                   owner word evidence generation txid))
+         (state (fn-owner-feed-install-feed records nil state)))
+    (value (cond ((consp records)
+                  (fn-feed-journal-kind (car records)))
+                 ((equal (fn-own-outcome-completion owner word) :uncertain)
+                  :uncertain)
+                 (t :none)))))
+
+; Startup calls this only after the store's authoritative recovery completed.
+; The scanner accumulated exact unresolved intent values in the global.  One
+; call projects one commit/abort frame; replaying that frame removes the exact
+; key.  A partial binding is :uncertain and must fence startup.
+(defun fn-owner-feed-reconcile-next (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((values (car (f-get-global 'fn-owner-feed-intents state))))
+    (if (null values)
+        (value :done)
+      (let* ((owner (f-get-global 'fn-owner state))
+             (record (fn-own-feed-intent-reconcile-record
+                      (fn-sn-node (fn-own-store owner)) values)))
+        (if (null record)
+            (value :uncertain)
+          (let ((state (fn-owner-feed-install-feed (list record) nil state)))
+            (value (fn-feed-journal-kind record))))))))
+
 ; A transit transfer that became durable owes the feed journal the same
 ; `(:feed-enqueue ...)` records a POST does: a relayed article is fed
 ; onward (RFC 5537 sec. 3.6) and the entry must survive the process that
@@ -638,6 +701,18 @@
          (state (fn-owner-install-effects (car result) state))
          (state (fn-owner-feed-install-feed records nil state)))
     (value :fed)))
+
+; The control result is projected before the event consumes the in-flight
+; submission.  The state transition uses fn-own-outcome-completion and
+; fn-own-feed-durable exactly as the served outcome; only wire rendering and
+; connection re-pinning are absent because the control request has no NNTP
+; connection.
+(defun fn-owner-control-outcome (word state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (result (fn-own-control-outcome-result owner word))
+         (state (fn-owner-step (list :control-outcome word) state)))
+    (value result)))
 
 ; The allocation domain the owner's live node carries (every name ever
 ; created): the store bridge's fn-store-cfg-domain reads the global

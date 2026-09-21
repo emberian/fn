@@ -1809,7 +1809,8 @@ CLI_FAULTS = {
 }
 
 
-def durable_post(store, bridge, records_count, msgid, payload, codes, charge):
+def durable_post(store, bridge, records_count, msgid, payload, codes, charge,
+                 evidence=None):
     """The durable acceptance path, shared by the CLI and the served POST.
 
     ACL2 decides: `bridge.prepare` is fn-node-prepare and `store.finish` is the
@@ -1820,7 +1821,10 @@ def durable_post(store, bridge, records_count, msgid, payload, codes, charge):
     current_txid = bridge.next_txid()
     next_frontier = store.advance_frontier(bridge, current_txid)
     obligation, subject, unused_legacy_evidence = metadata(msgid, payload)
-    evidence = bridge.prov_post()
+    # Transit supplies the exact ACL2-derived peer evidence its acceptance
+    # decision used.  Local POST leaves this unset and uses ACL2's local
+    # provenance as before.
+    evidence = bridge.prov_post() if evidence is None else evidence
     action = bridge.prepare(msgid, payload, codes, obligation,
                             subject, evidence, charge)
     if action != "prepared":

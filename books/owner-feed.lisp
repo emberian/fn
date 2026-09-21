@@ -49,6 +49,7 @@
 (include-book "peer-feed-invariants")
 (include-book "peer-config")
 (include-book "article-fields")
+(include-book "identity-invariants")
 
 ; -----------------------------------------------------------------------------
 ; The peer names a configuration value holds
@@ -1139,6 +1140,124 @@
                         (fn-own-feed-path-of octets))
    msgid tick))
 
+; -----------------------------------------------------------------------------
+; Acceptance intents
+;
+; An article record and one journal per peer cannot be committed atomically.
+; The intent is therefore durable first but not offerable.  Its stable key
+; binds the exact object obligation identity, provenance and configuration
+; generation; commit/abort can resolve only that key, so a retry or an older
+; completed obligation sharing a Message-ID is untouched.
+
+(defun fn-own-feed-intent-key (values)
+  (declare (xargs :guard t))
+  (list (fn-frame-item 0 values) (fn-frame-item 1 values)
+        (fn-frame-item 2 values) (fn-frame-item 3 values)
+        (fn-frame-item 4 values) (fn-frame-item 5 values)
+        (fn-frame-item 6 values)))
+
+(defun fn-own-feed-intent-remove (key intents)
+  (declare (xargs :guard t))
+  (if (consp intents)
+      (if (equal key (car intents))
+          (fn-own-feed-intent-remove key (cdr intents))
+        (cons (car intents) (fn-own-feed-intent-remove key (cdr intents))))
+    nil))
+
+(defun fn-own-feed-intent-memberp (key intents)
+  (declare (xargs :guard t))
+  (if (consp intents)
+      (or (equal key (car intents))
+          (fn-own-feed-intent-memberp key (cdr intents)))
+    nil))
+
+(defun fn-own-feed-intent-apply (intents kind values)
+  (declare (xargs :guard t))
+  (let ((key (fn-own-feed-intent-key values)))
+    (cond ((equal kind :feed-intent)
+           (if (fn-own-feed-intent-memberp key intents) intents
+             (cons key intents)))
+          ((or (equal kind :feed-commit) (equal kind :feed-abort))
+           (fn-own-feed-intent-remove key intents))
+          (t intents))))
+
+(defthm fn-own-feed-intent-resolution-keeps-another-key
+  (implies (and (fn-own-feed-intent-memberp other intents)
+                (not (equal other (fn-own-feed-intent-key values))))
+           (fn-own-feed-intent-memberp
+            other (fn-own-feed-intent-apply intents kind values)))
+  :hints (("Goal" :induct (fn-own-feed-intent-remove
+                            (fn-own-feed-intent-key values) intents))))
+
+(defun fn-own-feed-intent-id (msgid octets)
+  (declare
+   (xargs
+    :guard t
+    :guard-hints
+    (("Goal"
+      :use ((:instance fn-id-subject-shape
+                       (digest (fn-frame-digest
+                                (fn-id-subject-preimage octets))))
+            (:instance fn-id-obligation-shape
+                       (digest (fn-frame-digest
+                                (fn-id-obligation-preimage
+                                 msgid (fn-id-subject-of-payload octets))))))
+      :in-theory (enable fn-id-digestp)))))
+  (if (and (fn-cbor-octet-listp msgid)
+           (<= (len msgid) *fn-cbor-max-uint*)
+           (fn-cbor-octet-listp octets)
+           (<= (len octets) *fn-cbor-max-uint*))
+      (fn-id-text
+       (fn-id-obligation-of msgid (fn-id-subject-of-payload octets)))
+    nil))
+
+(defun fn-own-feed-intent-values (peer msgid identity evidence generation txid tick)
+  (declare (xargs :guard t))
+  (list (fn-record-string-octets peer) msgid identity evidence
+        (nfix generation) (nfix txid) (nfix tick)))
+
+(defun fn-own-feed-intent-records (names msgid identity evidence generation txid tick)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (cons (fn-feed-journal-entry
+             :feed-intent
+             (fn-own-feed-intent-values (car names) msgid identity evidence
+                                        generation txid tick))
+            (fn-own-feed-intent-records (cdr names) msgid identity evidence
+                                        generation txid tick))
+    nil))
+
+(defun fn-own-feed-resolution-records (kind names msgid identity evidence
+                                            generation txid tick)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (cons (fn-feed-journal-entry
+             kind (fn-own-feed-intent-values (car names) msgid identity
+                                             evidence generation txid tick))
+            (fn-own-feed-resolution-records kind (cdr names) msgid identity
+                                            evidence generation txid tick))
+    nil))
+
+(defun fn-own-feed-target-capacityp (names tbl msgid)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let ((f (fn-own-feed-find (car names) tbl)))
+        (and (or (consp (fn-feed-find msgid (fn-feed-queue f)))
+                 (< (len (fn-feed-queue f))
+                    (fn-feed-max-queue (fn-feed-limits-of f))))
+             (fn-own-feed-target-capacityp (cdr names) tbl msgid)))
+    t))
+
+(defun fn-own-feed-new-targets (names tbl msgid)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (if (consp (fn-feed-find msgid
+                               (fn-feed-queue
+                                (fn-own-feed-find (car names) tbl))))
+          (fn-own-feed-new-targets (cdr names) tbl msgid)
+        (cons (car names) (fn-own-feed-new-targets (cdr names) tbl msgid)))
+    nil))
+
 (defun fn-own-feed-offer-record (peer msgid attempt tick)
   (declare (xargs :guard t))
   (fn-feed-journal-entry :feed-offer
@@ -1418,6 +1537,12 @@
     fn-own-feed-accept fn-own-feed-tick-peer fn-own-feed-tick
     fn-own-feed-effect-peer fn-own-feed-effect-octets
     fn-own-feed-accept-records fn-own-feed-response-code
+    fn-own-feed-intent-key fn-own-feed-intent-remove
+    fn-own-feed-intent-memberp
+    fn-own-feed-intent-apply fn-own-feed-intent-id
+    fn-own-feed-intent-values fn-own-feed-intent-records
+    fn-own-feed-resolution-records fn-own-feed-target-capacityp
+    fn-own-feed-new-targets
     fn-own-feed-parse-response fn-own-feed-reply-records-of
     fn-own-feed-lost-one fn-own-feed-lost-records-of
     fn-own-feed-tick-peer-records fn-own-feed-tick-records))

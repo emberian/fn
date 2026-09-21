@@ -1153,20 +1153,83 @@
   (declare (xargs :guard t))
   (nfix (fn-clock-monotonic (fn-own-clock o))))
 
+; The acceptance-intent half of the same path.  It is projected while the
+; submission is in flight, before the store transaction begins.  The targets
+; are fixed by the owner's current feed table and exact accepted article;
+; peers that already hold this Message-ID in their durable feed need no new
+; obligation.  Every remaining target must have room before any article
+; commit is attempted, so a full feed cannot turn a durable acceptance into
+; a silently lost obligation.
+(defun fn-own-sub-feed-groups (sub)
+  (declare (xargs :guard t))
+  (let ((d (fn-own-sub-decision sub)))
+    (if (fn-peer-submissionp d)
+        ; Transit is validated as a relayed article and its scope comes from
+        ; that article.  A local/control submission already carries the
+        ; injection decision's groups; using them preserves the exact
+        ; authored bytes, including legacy articles with no Injection-Info.
+        (fn-own-feed-groups-of (fn-own-sub-octets sub))
+      (fn-inj-decision-groups d))))
+
+(defun fn-own-submission-targets (o)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (if (null sub)
+        nil
+      (let* ((tbl (fn-own-feeds o))
+             (msgid (fn-own-sub-msgid sub))
+             (octets (fn-own-sub-octets sub))
+             (targets (fn-own-feed-targets
+                       tbl (fn-own-sub-origin sub)
+                       (fn-own-sub-feed-groups sub)
+                       (fn-own-feed-path-of octets))))
+        (fn-own-feed-new-targets targets tbl msgid)))))
+
+(defun fn-own-submission-intent-result (o evidence generation txid)
+  (declare (xargs :guard t))
+  (let* ((sub (fn-own-inflight o))
+         (identity (and sub
+                        (fn-own-feed-intent-id (fn-own-sub-msgid sub)
+                                               (fn-own-sub-octets sub))))
+         (targets (fn-own-submission-targets o)))
+    (cond ((null sub) :absent)
+          ((or (not (fn-feed-namep identity))
+               (not (fn-feed-namep evidence))
+               (not (natp generation)) (not (natp txid)))
+           :refused)
+          ((not (fn-own-feed-target-capacityp
+                 targets (fn-own-feeds o) (fn-own-sub-msgid sub)))
+           :capacity)
+          (t :ready))))
+
+(defun fn-own-submission-intent-records (o evidence generation txid)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (if (not (equal (fn-own-submission-intent-result
+                     o evidence generation txid) :ready))
+        nil
+      (fn-own-feed-intent-records
+       (fn-own-submission-targets o)
+       (fn-own-sub-msgid sub)
+       (fn-own-feed-intent-id (fn-own-sub-msgid sub) (fn-own-sub-octets sub))
+       evidence generation txid (fn-own-feed-stamp o)))))
+
+
+
 ; The enqueue on a durable acceptance, and the FNFD records that authorize
 ; it.  The host appends the records to <journal>/feed/<peer>.fnfd and only
 ; then may the offer they enable be emitted.
 (defun fn-own-feed-durable (o sub)
   (declare (xargs :guard t))
-  (fn-own-feed-accept (fn-own-feeds o) (fn-own-sub-origin sub)
-                      (fn-own-sub-msgid sub) (fn-own-sub-octets sub)
-                      (fn-own-feed-stamp o)))
+  (fn-own-feed-enqueue-all (fn-own-submission-targets o) (fn-own-feeds o)
+                           (fn-own-sub-msgid sub) (fn-own-feed-stamp o)))
 
 (defun fn-own-feed-durable-records (o sub)
   (declare (xargs :guard t))
-  (fn-own-feed-accept-records (fn-own-feeds o) (fn-own-sub-origin sub)
-                              (fn-own-sub-msgid sub) (fn-own-sub-octets sub)
-                              (fn-own-feed-stamp o)))
+  (fn-own-feed-enqueue-records (fn-own-submission-targets o)
+                               (fn-own-sub-msgid sub)
+                               (fn-own-feed-stamp o)))
+
 
 ; The configuration arm.  The owner reads the peer rows out of the live
 ; configuration value the host supplies -- the same value fn-own-open-peer
@@ -1213,6 +1276,39 @@
             (fn-state-articles
              (fn-node-acceptance (fn-sn-node (fn-own-store o)))))))
     (if (consp a) (fn-article-payload a) nil)))
+
+; Resolve one intent only against a completely recovered authoritative node.
+; The caller supplies no verdict: the binding identifies the exact archived
+; object and its retention pin supplies the exact evidence stored with it.
+; A different complete binding proves this incarnation did not commit; a
+; partial binding/article/pin relation is recovery corruption and remains
+; uncertain instead of losing the obligation.
+(defun fn-own-feed-intent-reconcile-kind (node values)
+  (declare (xargs :guard t))
+  (let* ((msgid (fn-record-octets-string (fn-frame-item 1 values)))
+         (identity (fn-record-octets-string (fn-frame-item 2 values)))
+         (evidence (fn-record-octets-string (fn-frame-item 3 values)))
+         (article (fn-find-article
+                   msgid (fn-state-articles (fn-node-acceptance node))))
+         (binding (fn-node-find-binding msgid (fn-node-bindings node)))
+         (pin (and (consp binding)
+                   (fn-retain-find-id
+                    (fn-node-binding-id binding)
+                    (fn-retain-pins (fn-node-retention node))))))
+    (cond ((and (consp article) (consp binding) (consp pin)
+                (equal (fn-node-binding-id binding) identity)
+                (equal (fn-retain-obligation-evidence pin) evidence))
+           :feed-commit)
+          ((and (null article) (null binding)) :feed-abort)
+          ((and (consp article) (consp binding) (consp pin)) :feed-abort)
+          (t :uncertain))))
+
+(defun fn-own-feed-intent-reconcile-record (node values)
+  (declare (xargs :guard t))
+  (let ((kind (fn-own-feed-intent-reconcile-kind node values)))
+    (if (member-equal kind '(:feed-commit :feed-abort))
+        (fn-feed-journal-entry kind values)
+      nil)))
 
 ; One reply line from one peer.  ACL2 reads the three-digit code
 ; (fn-own-feed-parse-response), maps it (fn-feed-observe) and renders what
@@ -1353,6 +1449,25 @@
            :durable)
           ((member-equal word '(:refused :duplicate)) :refused)
           (t :uncertain))))
+
+; Resolution repeats the complete intent identity.  Durable is projected from
+; the consumed owner completion, never from the host word alone.  A known
+; refusal (including the store's duplicate outcome) aborts this incarnation;
+; an uncertain outcome writes neither record and recovery retains the intent.
+(defun fn-own-submission-resolution-records (o word evidence generation txid)
+  (declare (xargs :guard t))
+  (let* ((sub (fn-own-inflight o))
+         (completion (fn-own-outcome-completion o word))
+         (kind (cond ((equal completion :durable) :feed-commit)
+                     ((equal completion :refused) :feed-abort)
+                     (t nil))))
+    (if (or (null sub) (null kind))
+        nil
+      (fn-own-feed-resolution-records
+       kind (fn-own-submission-targets o) (fn-own-sub-msgid sub)
+       (fn-own-feed-intent-id (fn-own-sub-msgid sub) (fn-own-sub-octets sub))
+       evidence generation txid (fn-own-feed-stamp o)))))
+
 
 ; The outcome reaches exactly the connection whose submission is in flight:
 ; the reply is fn-served-post-outcome over that connection's served state
