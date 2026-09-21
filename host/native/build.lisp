@@ -28,6 +28,10 @@
 ; native host's host/native/tcpcl.lisp drives.  books/tcpcl-session includes
 ; books/tcpcl-octets and books/tcpcl-records; all three are Makefile roots.
 (include-book "books/tcpcl-session")
+(include-book "books/bp-node")
+(include-book "books/bp-node-records")
+(include-book "books/bp-node-machine")
+(include-book "books/bp-node-machine-codec")
 
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
@@ -46,6 +50,8 @@
 ; The ACL2 side of the TCPCLv4 host: every protocol value the convergence
 ; layer needs, so that host/native/tcpcl.lisp computes none of them.
 (ld "host/tcpcl-host.lisp" :ld-error-action :error)
+(ld "host/bp-node-host.lisp" :ld-error-action :error)
+(ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
@@ -57,6 +63,8 @@
         (load "host/native/io.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")
+        (load "host/native/bp.lisp")
+        (load "host/native/bp-service.lisp")
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
         ; and `--noinform' below keeps SBCL's own banner off it too.  The
         ; `model' verb writes reply octets to stdout and nothing else may.
