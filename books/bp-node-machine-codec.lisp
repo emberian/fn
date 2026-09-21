@@ -48,6 +48,7 @@
 
 ; This renderer is on every persist path.  Its executable guard is checked
 ; here rather than relying on the recovery-only functions' guard T contracts.
+(verify-guards fn-bpn-lifecycle-record-name-chars)
 (verify-guards fn-bpn-lifecycle-record-name
   :hints (("Goal"
            :use ((:instance
