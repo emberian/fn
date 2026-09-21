@@ -8,12 +8,13 @@ Python service or feed process participates after startup.
 import hashlib
 import os
 from pathlib import Path
-import select
 import socket
 import subprocess
 import tempfile
 import time
 import unittest
+
+from tests.native_process import wait_for_announcement
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -108,9 +109,7 @@ class NativePeeringTests(unittest.TestCase):
             [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
             cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.processes.append(process)
-        ready = select.select([process.stdout], [], [], 180)[0]
-        self.assertTrue(ready, "{} did not announce its listener".format(node["name"]))
-        line = process.stdout.readline()
+        line = wait_for_announcement(process, b"LISTENING ")
         self.assertEqual(line, "LISTENING {}\n".format(node["port"]).encode(),
                          "{} emitted an unexpected readiness line: {!r}".format(
                              node["name"], line))
@@ -199,10 +198,10 @@ class NativePeeringTests(unittest.TestCase):
     def test_public_native_nodes_exchange_both_ways_and_suppress_duplicate(self):
         a = self.initialize("a", free_port())
         b = self.initialize("b", free_port())
-        self.configure_peer(a, b)
-        self.configure_peer(b, a)
         self.start(a)
         self.start(b)
+        self.configure_peer(a, b)
+        self.configure_peer(b, a)
         self.assertIn(b"IHAVE", self.capabilities(a))
         self.assertIn(b"STREAMING", self.capabilities(a))
         self.assertIn(b"IHAVE", self.capabilities(b))
@@ -225,9 +224,8 @@ class NativePeeringTests(unittest.TestCase):
     def test_durable_feed_requeues_after_source_process_death(self):
         a = self.initialize("restart-a", free_port())
         b = self.initialize("restart-b", free_port())
-        self.configure_peer(a, b)
-        self.configure_peer(b, a)
         self.start(a)
+        self.configure_peer(a, b)
 
         message_id = "<native-requeue-after-kill@example.invalid>"
         self.post(a, message_id, "requeue-after-kill")
