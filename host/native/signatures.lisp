@@ -51,6 +51,10 @@
 (sb-alien:define-alien-routine ("EVP_PKEY_free" fnn-%hsig-pkey-free)
     sb-alien:void (key (* t)))
 (sb-alien:define-alien-routine
+    ("EVP_PKEY_get_raw_public_key" fnn-%hsig-get-raw-public-key) sb-alien:int
+  (key (* t)) (output (* sb-alien:unsigned-char))
+  (output-length (* sb-alien:unsigned-long)))
+(sb-alien:define-alien-routine
     ("EVP_PKEY_CTX_new_from_pkey" fnn-%hsig-context-new) (* t)
   (library-context (* t)) (key (* t)) (properties sb-alien:c-string))
 (sb-alien:define-alien-routine ("EVP_PKEY_CTX_free" fnn-%hsig-context-free)
@@ -159,6 +163,29 @@
         (error 'fnn-hsig-fault :detail "unexpected Ed25519 signature width")))
     signature))
 
+(defun fnn-hsig-ml-dsa-65-public-key (public-key-path)
+  "Return and width-check the raw FIPS 204 public key from a supplied PEM."
+  (fnn-hsig-initialize)
+  (let ((key nil)
+        (output (make-array +fnn-hsig-ml-public-key-octets+
+                            :element-type '(unsigned-byte 8))))
+    (unwind-protect
+         (progn
+           (setq key (fnn-hsig-read-key public-key-path nil))
+           (sb-alien:with-alien ((actual sb-alien:unsigned-long))
+             (setf actual +fnn-hsig-ml-public-key-octets+)
+             (sb-sys:with-pinned-objects (output)
+               (unless (= (fnn-%hsig-get-raw-public-key
+                           key (fnn-hsig-pointer output)
+                           (sb-alien:addr actual)) 1)
+                 (error 'fnn-hsig-fault
+                        :detail "ML-DSA-65 public-key export failed")))
+             (unless (= actual +fnn-hsig-ml-public-key-octets+)
+               (error 'fnn-hsig-fault
+                      :detail "unexpected ML-DSA-65 public-key width"))))
+      (when key (fnn-%hsig-pkey-free key)))
+    output))
+
 (defun fnn-hsig-ml-dsa-65-sign (private-key-path message)
   (fnn-hsig-initialize)
   (let ((text (fnn-crypto-octets message +fnn-hsig-max-message-octets+
@@ -189,13 +216,19 @@
       (when key (fnn-%hsig-pkey-free key)))
     signature))
 
-(defun fnn-hsig-ml-dsa-65-verify (public-key-path message signature)
+(defun fnn-hsig-ml-dsa-65-verify
+    (enrolled-public-key public-key-path message signature)
   (fnn-hsig-initialize)
   (let ((text (fnn-crypto-octets message +fnn-hsig-max-message-octets+
                                  "hybrid signed preimage"))
         (sig (fnn-crypto-octets signature +fnn-hsig-ml-signature-octets+
                                 "ML-DSA-65 signature"))
         (key nil) (context nil) (algorithm nil))
+    (unless (equalp (fnn-crypto-octets
+                     enrolled-public-key +fnn-hsig-ml-public-key-octets+
+                     "enrolled ML-DSA-65 public key")
+                    (fnn-hsig-ml-dsa-65-public-key public-key-path))
+      (return-from fnn-hsig-ml-dsa-65-verify nil))
     (unless (= (length sig) +fnn-hsig-ml-signature-octets+)
       (return-from fnn-hsig-ml-dsa-65-verify nil))
     (unwind-protect
@@ -218,7 +251,8 @@
       (when context (fnn-%hsig-context-free context))
       (when key (fnn-%hsig-pkey-free key)))))
 
-(defun fnn-hsig-observe (ed-public-key ml-public-key-path message signatures)
+(defun fnn-hsig-observe
+    (ed-public-key ml-public-key ml-public-key-path message signatures)
   "Return two distinct primitive observations.  No component can stand in for
 the other, and unsupported ML-DSA is never mapped to :VERIFIED."
   (let ((ed-signature (and (consp signatures) (cdr (car signatures))))
@@ -226,7 +260,8 @@ the other, and unsupported ML-DSA is never mapped to :VERIFIED."
                            (cdr (car (cdr signatures))))))
     (list (fnn-crypto-ed25519-observe ed-public-key message ed-signature)
           (handler-case
-              (if (fnn-hsig-ml-dsa-65-verify ml-public-key-path message ml-signature)
+              (if (fnn-hsig-ml-dsa-65-verify
+                   ml-public-key ml-public-key-path message ml-signature)
                   :verified :refused)
             (fnn-hsig-unsupported () :unsupported)
             (error () :fault)))))
@@ -238,7 +273,8 @@ the other, and unsupported ML-DSA is never mapped to :VERIFIED."
     (unless (and preimage (plusp (length preimage)))
       (return-from fnn-hsig-authorize-profile nil))
     (let* ((ed-public-key (cdr (first keys)))
-           (observations (fnn-hsig-observe ed-public-key ml-public-key-path
-                                           preimage signatures)))
+           (ml-public-key (cdr (second keys)))
+           (observations (fnn-hsig-observe ed-public-key ml-public-key
+                                           ml-public-key-path preimage signatures)))
       (fnn-call 'fn-hsig-host-authorize principal keys source signatures
                 (first observations) (second observations)))))
