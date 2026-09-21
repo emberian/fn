@@ -184,6 +184,17 @@ local branch projections.  A trace invariant connecting every FNRJ replayed
 intent/context/decision to the evolving canonical owner Store, plus actual host
 correspondence at the remaining cuts, is still open assurance work.
 
+Successful FNRJ replay establishes the joined receiver invariant once.  Every
+successful live journal transition preserves it, and the served host calls the
+ACL2 fast projections proved equal to the checked receiver transitions under
+that invariant and the canonical owner's maintained Store invariant.  These
+projections still validate the current external request or journal record, but
+they do not re-decode every retained request or revalidate the whole Store on
+each served action.  Message-ID candidate lookup and retained-context lookup
+remain linear semantic searches; replacing those searches with maintained
+indexes is separate performance work.  The evolving joined replay-to-owner
+Store relation and its full trace correspondence remain open as stated above.
+
 Run a later A–relay–B contact plan with non-overlapping contact windows, and
 carried-media import through the same fn acceptance boundary. The first two-node
 test is not proof of arbitrary topology, liveness, or mission operation.

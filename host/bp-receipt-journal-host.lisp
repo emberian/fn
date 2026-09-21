@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "../books/bp-native-app")
+(include-book "../books/bp-native-app-fast")
 
 (defun fn-bprj-store (state)
  (declare (xargs :stobjs state :mode :program))
@@ -49,13 +49,13 @@
 
 (defun fn-bprj-preflight (record state)
  (declare (xargs :stobjs state :mode :program))
- (value (if (car (fn-bpaj-apply-record
+ (value (if (car (fn-bpaj-apply-record-fast
                   (f-get-global 'fn-bpaj-state state)
                   (fn-bprj-store state) record)) :ready :fault)))
 
 (defun fn-bprj-apply (record state)
  (declare (xargs :stobjs state :mode :program))
- (let ((answer (fn-bpaj-apply-record
+ (let ((answer (fn-bpaj-apply-record-fast
                 (f-get-global 'fn-bpaj-state state)
                 (fn-bprj-store state) record)))
   (if (not (car answer)) (value :fault)
@@ -68,7 +68,8 @@
 (defun fn-bprj-preview-receipt (work-id receipt-id state)
  (declare (xargs :stobjs state :mode :program))
  (let* ((st (f-get-global 'fn-bprj-state state))
-        (next (fn-bpr-prepare-receipt st work-id receipt-id t))
+        (next (fn-bpaj-bpr-prepare-receipt-fast
+               st work-id receipt-id t))
         (pending (fn-bpr-state-pending next)))
   (value (if (and (not (equal next st)) (consp pending))
     (fn-bpa-encode (fn-bpr-receipt-entry-receipt pending)) nil))))
@@ -77,20 +78,22 @@
  (declare (xargs :stobjs state :mode :program))
  (let ((parsed (fn-bpa-decode-exact request-octets)))
   (value (if (fn-record-parse-okp parsed)
-    (fn-bpr-receipt-adu (f-get-global 'fn-bprj-state state)
-                        (fn-record-parse-value parsed)) nil))))
+    (fn-bpaj-bpr-receipt-adu-fast
+     (f-get-global 'fn-bprj-state state)
+     (fn-record-parse-value parsed)) nil))))
 
 ; Native application projections.  These read the same joined replay state the
 ; publication preflight and apply functions above update.
 (defun fn-bprj-request-status (request-octets state)
  (declare (xargs :stobjs state :mode :program))
- (value (fn-bpaj-request-status (f-get-global 'fn-bpaj-state state)
-                                request-octets)))
+ (value (fn-bpaj-request-status-fast
+         (f-get-global 'fn-bpaj-state state) request-octets)))
 
 (defun fn-bprj-request-action (request-octets generation state)
  (declare (xargs :stobjs state :mode :program))
- (value (fn-bpaj-dispatch (f-get-global 'fn-bpaj-state state)
-                           (fn-bprj-store state) request-octets generation)))
+ (value (fn-bpaj-dispatch-fast
+         (f-get-global 'fn-bpaj-state state)
+         (fn-bprj-store state) request-octets generation)))
 
 (defun fn-bprj-config-status (destination policy issuer state)
  (declare (xargs :stobjs state :mode :program))
@@ -118,7 +121,7 @@
 
 (defun fn-bprj-pending-receipt-resolution (state)
  (declare (xargs :stobjs state :mode :program))
- (value (fn-bpaj-pending-receipt-resolution
+ (value (fn-bpaj-pending-receipt-resolution-fast
          (f-get-global 'fn-bpaj-state state))))
 
 (defun fn-bprj-request-work-id (request-octets state)
