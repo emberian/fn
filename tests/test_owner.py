@@ -670,20 +670,11 @@ class TransitPortTests(OwnerFixture):
         unused_capabilities, offer = self.probe(owner)
         self.assertTrue(offer.startswith("502"), offer)
 
-    def test_the_capability_block_does_not_yet_name_the_transit_commands(self):
-        """A recorded defect, asserted as it IS and not as it should be.
-
-        RFC 3977 section 5.2: CAPABILITIES lists what THIS connection may do.
-        On a transit connection the book answers `IHAVE` with 335 and still
-        renders the reader block, so a peer that probes before it offers is
-        told the wrong thing.  The assertion below is the current behaviour;
-        when books/served renders the transit commands for a peer session it
-        fails, and that is the point -- a silent capability gap is what a
-        harness reading CAPABILITIES would report as "no transit surface".
-        """
+    def test_the_capability_block_names_the_effective_transit_commands(self):
+        """RFC 3977 §5.2 names the transit commands this peer may use."""
         self.peer_record(address="127.0.0.1")
         owner = self.start_owner()
         capabilities, offer = self.probe(owner)
         self.assertTrue(offer.startswith("335"), offer)
-        self.assertNotIn("IHAVE", capabilities)
-        self.assertNotIn("STREAMING", capabilities)
+        self.assertIn("IHAVE", capabilities)
+        self.assertIn("STREAMING", capabilities)
