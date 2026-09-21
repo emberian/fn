@@ -34,9 +34,11 @@ configuration:
 
 Every path is bounded to 512 octets, ordinary text to 256, and an anchor name
 to 128. `fn-native-config-operator-availablep` is a separate ACL2 decision
-that refuses use of settings whose native consumer does not exist yet. The
-current image can consume only the store/listener core defaults: TLS, auth,
-non-default posting policy, anchor, log, and `[acl2]` are not silently ignored.
+that refuses use of settings whose native consumer does not exist yet. It
+currently admits only the store/listener core defaults: TLS, auth, non-default
+posting policy, anchor, log, and `[acl2]` are not silently ignored. It does
+not claim that a saved image has already wired a configured owner; build
+integration and that consumer remain separate work.
 
 The owner convergence consumer uses ACL2 projections for store root, listener
 host/port, control path, max connections (32), clock-error bound (1000 ms),
