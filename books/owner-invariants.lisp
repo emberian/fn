@@ -552,6 +552,106 @@
            (fn-own-relation (cdr (fn-own-open o acfg))))
   :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conn-boundedp)))))
 
+; -----------------------------------------------------------------------------
+; The re-pinned node of a peer connection (books/owner.lisp
+; fn-own-conn-live-session, called by fn-own-read)
+;
+; Three facts, and the third is the one the served path's duplicate
+; suppression rests on.  First, a reader connection is untouched.  Second,
+; the re-pin cannot drop a connection: it leaves the reader session
+; identical, so fn-own-conn-boundedp -- the test fn-own-read applies after
+; the step, and the test that silently disabled ADVANCE for a whole wave
+; when a rebuild lost a wrapper -- answers exactly as before.  Third, the
+; node fn-peer-decide-offer is given on a peer connection IS the owner's
+; live node.
+
+(local (defthm fn-own-live-auth-base-of-with-base
+  (equal (fn-auth-session-base (fn-auth-with-base as base)) base)
+  :hints (("Goal" :in-theory (enable (:d fn-auth-with-base))))))
+
+(local (defthm fn-own-live-auth-with-base-is-a-session
+  (implies (and (fn-auth-sessionp as) (fn-peer-sessionp base))
+           (fn-auth-sessionp (fn-auth-with-base as base)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-sessionp fn-auth-with-base)
+                                  (fn-peer-sessionp fn-auth-configp
+                                   fn-nntp-printable-tokenp fn-prin-idp))))))
+
+(local (defthm fn-own-live-auth-sessionp-forward-peer
+  (implies (fn-auth-sessionp as)
+           (fn-peer-sessionp (fn-auth-session-base as)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-auth-sessionp)
+                                  (fn-peer-sessionp fn-auth-configp
+                                   fn-nntp-printable-tokenp fn-prin-idp))))))
+
+(defthm fn-own-conn-live-session-of-a-reader-is-the-session
+  (implies (not (fn-peer-session-peer
+                 (fn-auth-session-base (fn-own-conn-session conn))))
+           (equal (fn-own-conn-live-session o conn) (fn-own-conn-session conn)))
+  :hints (("Goal" :in-theory (enable (:d fn-own-conn-live-session)))))
+
+(defthm fn-own-conn-live-session-is-a-session
+  (implies (and (fn-auth-sessionp (fn-own-conn-session conn))
+                (fn-node-statep (fn-sn-node (fn-own-store o))))
+           (fn-auth-sessionp (fn-own-conn-live-session o conn)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-own-conn-live-session))
+                                  (fn-auth-sessionp fn-peer-sessionp
+                                   fn-auth-with-base fn-peer-with-node
+                                   fn-node-statep)))))
+
+(defthm fn-own-conn-live-session-keeps-the-reader-session
+  (equal (fn-auth-reader-session (fn-own-conn-live-session o conn))
+         (fn-auth-reader-session (fn-own-conn-session conn)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-own-conn-live-session))
+                                  (fn-auth-with-base fn-peer-with-node)))))
+
+(defthm fn-own-live-session-boundedp
+  (implies (and (fn-own-conn-boundedp conn groups)
+                (fn-node-statep (fn-sn-node (fn-own-store o))))
+           (fn-own-conn-boundedp
+            (fn-own-conn-make cid version frontier wire
+                              (fn-own-conn-live-session o conn)
+                              archive config observation)
+            groups))
+  :hints (("Goal" :in-theory (e/d ((:d fn-own-conn-boundedp))
+                                  (fn-auth-sessionp fn-peer-sessionp
+                                   fn-own-conn-live-session
+                                   fn-nntp-session-group fn-nntp-session-current
+                                   fn-node-statep)))))
+
+; The subject-equating theorem AGENTS.md's first assurance rule asks for on
+; the duplicate-offer row.  K3 (fn-peer-history-is-have-at-offer,
+; books/peer-inbound-invariants.lisp) is about fn-peer-decide-offer over a
+; node; the two wire theorems beside it say the reply to IHAVE and CHECK is
+; that decision; this says which node the served path supplies, and it is
+; the owner's own, not the one the connection opened with.  The host line is
+; host/owner-host.lisp fn-owner-chunk -> fn-own-read.
+(defthm fn-own-read-offers-against-the-live-node
+  (implies (fn-peer-session-peer
+            (fn-auth-session-base (fn-own-conn-session conn)))
+           (and (equal (fn-peer-session-node
+                        (fn-auth-session-base (fn-own-conn-live-session o conn)))
+                       (fn-sn-node (fn-own-store o)))
+                (equal (fn-peer-session-peer
+                        (fn-auth-session-base (fn-own-conn-live-session o conn)))
+                       (fn-peer-session-peer
+                        (fn-auth-session-base (fn-own-conn-session conn))))
+                (equal (fn-peer-session-cfg
+                        (fn-auth-session-base (fn-own-conn-live-session o conn)))
+                       (fn-peer-session-cfg
+                        (fn-auth-session-base (fn-own-conn-session conn))))
+                (equal (fn-peer-session-transfer
+                        (fn-auth-session-base (fn-own-conn-live-session o conn)))
+                       (fn-peer-session-transfer
+                        (fn-auth-session-base (fn-own-conn-session conn))))
+                (equal (fn-peer-session-inflight
+                        (fn-auth-session-base (fn-own-conn-live-session o conn)))
+                       (fn-peer-session-inflight
+                        (fn-auth-session-base (fn-own-conn-session conn))))))
+  :hints (("Goal" :in-theory (e/d ((:d fn-own-conn-live-session))
+                                  (fn-auth-with-base fn-peer-with-node)))))
+
+
 ; The peer port's counterpart of the lemma above.  fn-own-step's :open-peer
 ; arm needs it, and there was none: the transition was added with the peer
 ; port and this book has not certified since, so nothing asked.
@@ -931,7 +1031,7 @@
                      (fn-served-step
                       (fn-served-make-conn
                        (fn-own-conn-wire conn)
-                       (fn-own-conn-session conn)
+                       (fn-own-conn-live-session o conn)
                        (fn-node-acceptance
                         (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                            (fn-own-take (fn-own-conn-version conn)
@@ -961,7 +1061,7 @@
                      (fn-served-step
                       (fn-served-make-conn
                        (fn-own-conn-wire conn)
-                       (fn-own-conn-session conn)
+                       (fn-own-conn-live-session final conn)
                        (fn-node-acceptance
                         (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                            (fn-own-take (fn-own-conn-version conn)
