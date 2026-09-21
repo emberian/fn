@@ -430,6 +430,20 @@ check:
 # the comment says the file does not exist and what rests on it.  Mechanical,
 # no ACL2; triage in planning/lanes/HANDOFF-w11-phantom-cites.md.
 	$(PYTHON) tools/cite_check.py --summary --strict
+# Every theorem the registry cites whose subject no host line can reach.
+# AGENTS.md's first assurance rule -- "the theorem subject is the function
+# the host calls" -- was prose with nothing behind it, and the defect it
+# names cost us the most: on 2026-09-21 K3's duplicate suppression was found
+# proved of an offer decision that read the node pinned at `:open', the
+# transit CAPABILITIES list was found proved and answered by the auth layer
+# above it, and `fn-own-feed-durable-records' and `fn-feed-lost' were found
+# with no caller at all.  Each was true, certified and irrelevant to the
+# running server.  41 registry events are orphaned on this tree and are
+# accepted by name, with a reason each, in planning/reach-baseline.json;
+# `--strict' fails on any orphan NOT listed there, so the number can shrink
+# and cannot grow silently.  Deliberately generous about what counts as a
+# subject, so every orphan it reports is real and it misses some.
+	$(PYTHON) tools/reach_check.py --summary --strict
 
 # The integration labs.  Deliberately NOT part of `check`: the quick tier is
 # about two and a half minutes and the box tier is hours, while `check` is
@@ -466,7 +480,7 @@ model-test: certify
 
 tooling-test:
 	$(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
-	    tests.test_ledger tests.test_cite_check \
+	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
 	    tests.test_evidence_manifests -v
 
 test: check certify
