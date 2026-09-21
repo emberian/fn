@@ -1,0 +1,34 @@
+source=5763a3b
+
+[witness run-max-connections-zero]
+argv= ['/opt/homebrew/opt/python@3.14/bin/python3.14', '/Users/ember/dev/fn/bin/fn', '--config', '/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/fn-operator-audit-24twr7t6/fn.toml', 'run', '--max-connections', '0']
+exit= 4
+stderr=
+accepted service store=/tmp/fn-audit-store port=1119 control=/tmp/fn-audit-store/control.sock time=2026-09-21T08:31:24Z
+fn: error: --max-connections must be positive
+fault shutdown code=5 time=2026-09-21T08:31:24Z
+fault run exited with 5
+
+[witness quoted-port]
+argv= ['/opt/homebrew/opt/python@3.14/bin/python3.14', '/Users/ember/dev/fn/bin/fn', '--config', '/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/fn-operator-audit-24twr7t6/bad-port.toml', 'status']
+exit= 1
+stderr=
+Traceback (most recent call last):
+  File "/Users/ember/dev/fn/bin/fn", line 990, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/ember/dev/fn/bin/fn", line 979, in main
+    settings = overrides(load_settings(args.config, must_exist=args.command != "init"), args)
+                         ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ember/dev/fn/bin/fn", line 144, in load_settings
+    return Settings(location, data)
+  File "/Users/ember/dev/fn/bin/fn", line 84, in __init__
+    self.port = int(listener.get("port", DEFAULT_PORT))
+                ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: 'not-a-port'
+
+[witness init-listen-70000]
+bin/fn override port= 70000
+run_owner exit= 5
+run_owner stderr=
+-: error: --port must be from 0 through 65535
