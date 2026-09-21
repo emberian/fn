@@ -75,7 +75,8 @@ zero of RFC 9171 section 4.2.6 rather than a monotonic counter."
 
 (defstruct fnn-bp-tally
   (accepted 0) (refused 0) (uncertain 0) (config nil) (wall nil) (wall-error nil)
-  (journal nil) (last-adu nil) (last-reason nil))
+  (journal nil) (spool-lock nil) (evidence-dir nil) (evidence-state nil)
+  (last-adu nil) (last-reason nil))
 
 (defun fnn-bp-journal-dir (root)
   ;; FNN-SAFE-DIRECTORY barriers the parent only when it creates ROOT.  The
@@ -184,6 +185,122 @@ nonreuse claim remains open."
         (ignore-errors (fnn-unlink stage))
         (fnn-indeterminate "bp: journal record ~a did not complete: ~a" name e)))))
 
+(defun fnn-bp-evidence-entry-kind (path)
+  (let ((st (fnn-lstat path)))
+    (if (and st (fnn-regular-p st) (not (fnn-symlink-p st)))
+        :regular
+      :other)))
+
+(defun fnn-bp-evidence-name (value)
+  (unless (and (stringp value) (> (length value) 0)
+               (null (position #\/ value)))
+    (fnn-fault "bp: ACL2 returned an invalid evidence name"))
+  value)
+
+(defun fnn-bp-evidence-open (tally)
+  "Recover the ACL2-owned immutable receive-evidence namespace.
+
+The shared spool lock is already held.  Legacy root-level passive-X files are
+left untouched and are not allocation records in this namespace."
+  (let* ((directory-name
+          (fnn-bp-evidence-name
+           (fnn-core 'fn-bpn-host-evidence-directory-name)))
+         (dir (fnn-join (fnn-bp-tally-journal tally) directory-name)))
+    (handler-case
+        (progn
+          (fnn-safe-directory dir t)
+          ;; Repeat both barriers on reopen.  Allocation is based only on the
+          ;; complete namespace after these authoritative recovery barriers.
+          (fnn-fsync-dir (fnn-parent dir))
+          (fnn-fsync-dir dir))
+      (fnn-os-error (e)
+        (fnn-indeterminate "bp: evidence namespace recovery failed: ~a" e)))
+    (let* ((names (handler-case (fnn-list-directory dir)
+                    (fnn-os-error (e)
+                      (fnn-indeterminate
+                       "bp: evidence namespace cannot be enumerated: ~a" e))))
+           (limit (fnn-core 'fn-bpn-host-evidence-max-entries)))
+      ;; This is an allocation guard before constructing ACL2 input.  The
+      ;; model repeats the same bound and owns the admission decision.
+      (unless (and (integerp limit) (>= limit 0))
+        (fnn-fault "bp: ACL2 returned an invalid evidence bound"))
+      (when (> (length names) limit)
+        (fnn-fault "bp: receive evidence namespace exceeds its bound"))
+      (let* ((sorted (sort (copy-list names) #'string<))
+             (entries
+              (mapcar (lambda (name)
+                        (cons name
+                              (fnn-bp-evidence-entry-kind
+                               (fnn-join dir name))))
+                      sorted))
+             (recovered (fnn-core 'fn-bpn-host-evidence-recover entries)))
+        (unless (eq (fnn-core 'fn-bpn-host-evidence-readyp recovered) t)
+          (fnn-fault "bp: receive evidence namespace is inconsistent"))
+        (setf (fnn-bp-tally-evidence-dir tally) dir
+              (fnn-bp-tally-evidence-state tally) recovered)
+        tally))))
+
+(defun fnn-bp-evidence-publish-one (tally publication final-name octets)
+  (let* ((root (fnn-bp-tally-journal tally))
+         (dir (fnn-bp-tally-evidence-dir tally))
+         (stage (fnn-join root (format nil ".incoming-~d-~a"
+                                       (sb-posix:getpid) (fnn-random-hex 12))))
+         (final (fnn-join dir final-name)))
+    (fnn-immutable-publish-effect publication stage final dir
+                                  (fnn-octets octets)
+                                  :cleanup-directory root)))
+
+(defun fnn-bp-evidence-publish (tally outcome wire result-octets)
+  "Publish exact wire bytes and their verdict under one ACL2 identity.
+
+The successor is installed only after the wire allocation is durable.  Any
+uncertain result raises fnn-store-indeterminate, which the command lets escape
+the accept loop; no later connection can mutate the journal in this process."
+  (let* ((st (fnn-bp-tally-evidence-state tally))
+         (wire-name
+          (fnn-bp-evidence-name
+           (fnn-core 'fn-bpn-host-evidence-next-wire-name st)))
+         (result-name
+          (fnn-bp-evidence-name
+           (fnn-core 'fn-bpn-host-evidence-next-result-name st outcome)))
+         (dir (fnn-bp-tally-evidence-dir tally))
+         (wire-absent (null (fnn-check-regular (fnn-join dir wire-name))))
+         (result-absent (null (fnn-check-regular (fnn-join dir result-name))))
+         (lock-owned (if (fnn-bp-tally-spool-lock tally) t nil))
+         (operation
+          (fnn-core 'fn-bpn-host-evidence-authorize
+                    st outcome lock-owned wire-absent result-absent)))
+    (unless (eq (fnn-core 'fn-bpn-host-evidence-operationp operation) t)
+      (fnn-refuse "bp: receive evidence admission refused"))
+    ;; Use the names carried by the authorization capability, not the preview.
+    (setq wire-name
+          (fnn-bp-evidence-name
+           (fnn-core 'fn-bpn-host-evidence-operation-wire-name operation))
+          result-name
+          (fnn-bp-evidence-name
+           (fnn-core 'fn-bpn-host-evidence-operation-result-name operation)))
+    (case
+        (fnn-bp-evidence-publish-one
+         tally
+         (fnn-core 'fn-bpn-host-evidence-operation-wire-publication operation)
+         wire-name wire)
+      (:durable
+       ;; The exact bytes now own this identity, even if the sidecar fails.
+       (setf (fnn-bp-tally-evidence-state tally)
+             (fnn-core 'fn-bpn-host-evidence-operation-successor operation)))
+      (:refused (fnn-refuse "bp: receive wire evidence publication refused"))
+      (otherwise
+       (fnn-indeterminate "bp: receive wire evidence publication uncertain")))
+    (case
+        (fnn-bp-evidence-publish-one
+         tally
+         (fnn-core 'fn-bpn-host-evidence-operation-result-publication operation)
+         result-name result-octets)
+      (:durable (fnn-join dir result-name))
+      (:refused (fnn-refuse "bp: receive verdict evidence publication refused"))
+      (otherwise
+       (fnn-indeterminate "bp: receive verdict evidence publication uncertain")))))
+
 (defun fnn-bp-deliver (tally conn xfer-id octets)
   "Decode one completed inbound transfer as a bundle and journal the outcome.
 
@@ -206,32 +323,33 @@ may or may not be durable."
                            octets obs))
          (outcome (fnn-core 'fn-bpn-host-receive-outcome result))
          (reason (fnn-core 'fn-bpn-host-receive-reason result))
-         (adu (fnn-core 'fn-bpn-host-receive-adu result))
-         (tag (fnn-tclc-tag conn)))
-    (fnn-bp-record tally (format nil "~a-~d.wire" tag xfer-id) octets)
+         (adu (fnn-core 'fn-bpn-host-receive-adu result)))
+    (declare (ignore conn))
     (setf (fnn-bp-tally-last-reason tally) reason)
     (ecase outcome
       (:accepted
+       (let ((path (fnn-bp-evidence-publish tally outcome octets adu)))
        (incf (fnn-bp-tally-accepted tally))
        (setf (fnn-bp-tally-last-adu tally) adu)
-       (let ((path (fnn-bp-record tally (format nil "~a-~d.adu" tag xfer-id) adu)))
          (fnn-out "BP accepted xfer=~d adu=~d path=~a"
                   xfer-id (length adu) path)
          path))
       (:refused
-       (incf (fnn-bp-tally-refused tally))
-       (let ((path (fnn-bp-record tally (format nil "~a-~d.refused" tag xfer-id)
-                                  (fnn-octet-list
-                                   (fnn-string-octets
-                                    (format nil "~(~a~)~%" reason))))))
+       (let ((path
+              (fnn-bp-evidence-publish
+               tally outcome octets
+               (fnn-octet-list
+                (fnn-string-octets (format nil "~(~a~)~%" reason))))))
+         (incf (fnn-bp-tally-refused tally))
          (fnn-out "BP refused xfer=~d reason=~(~a~)" xfer-id reason)
          path))
       (:uncertain
-       (incf (fnn-bp-tally-uncertain tally))
-       (let ((path (fnn-bp-record tally (format nil "~a-~d.uncertain" tag xfer-id)
-                                  (fnn-octet-list
-                                   (fnn-string-octets
-                                    (format nil "~(~a~)~%" reason))))))
+       (let ((path
+              (fnn-bp-evidence-publish
+               tally outcome octets
+               (fnn-octet-list
+                (fnn-string-octets (format nil "~(~a~)~%" reason))))))
+         (incf (fnn-bp-tally-uncertain tally))
          (fnn-out "BP uncertain xfer=~d reason=~(~a~)" xfer-id reason)
          path)))))
 
@@ -265,8 +383,10 @@ dominates an acceptance: a run that saw one of each did not succeed."
          (journal-root (fnn-bp-journal-dir journal))
          (spool-lock (fnn-tcl-spool-acquire journal-root)))
     (unwind-protect
-         (let* ((tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
-                                          :journal journal-root))
+         (let* ((tally (fnn-bp-evidence-open
+                        (make-fnn-bp-tally
+                         :config config :wall wall :wall-error wall-error
+                         :journal journal-root :spool-lock spool-lock)))
                 (sequence (fnn-bp-reserve-sequence tally))
                 (bundle (fnn-core 'fn-bpn-host-send config peer adu sequence obs))
                 (summary (fnn-core 'fn-bpn-host-sent-summary config peer adu sequence obs))
@@ -316,8 +436,10 @@ dominates an acceptance: a run that saw one of each did not succeed."
          (journal-root (fnn-bp-journal-dir journal))
          (spool-lock (fnn-tcl-spool-acquire journal-root)))
     (unwind-protect
-         (let* ((tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
-                                          :journal journal-root))
+         (let* ((tally (fnn-bp-evidence-open
+                        (make-fnn-bp-tally
+                         :config config :wall wall :wall-error wall-error
+                         :journal journal-root :spool-lock spool-lock)))
                 (reply (when reply-adu
                          (let* ((peer (fnn-bp-eid (or reply-peer node-id)))
                                 (adu (fnn-octet-list

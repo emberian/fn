@@ -153,12 +153,13 @@ def main(argv=None) -> int:
             fn_receive.wait(timeout=args.settle)
         except subprocess.TimeoutExpired:
             pass
-        accepted = sorted(journal.glob("*.adu"))
-        refused = sorted(journal.glob("*.refused")) + sorted(journal.glob("*.uncertain"))
+        evidence = journal / "receive-evidence"
+        accepted = sorted(evidence.glob("*.adu"))
+        refused = sorted(evidence.glob("*.refused")) + sorted(evidence.glob("*.uncertain"))
         # The octets dtn7 put on the wire, as `bp receive' journalled them
         # before deciding anything.  This is the only artifact of the run
         # that is an INTEROPERABILITY VECTOR: bytes a foreign encoder wrote.
-        wire = sorted(journal.glob("*.wire"))
+        wire = sorted(evidence.glob("*.wire"))
         report["leg1"] = dict(
             direction="dtn7 authors, fn decodes",
             accepted=[p.name for p in accepted],
