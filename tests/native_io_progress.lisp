@@ -157,6 +157,35 @@
                                (lambda () (fnn-transaction-files (store))))
                   "transaction enumeration did not reject the first excess entry")))))
 
+(defun nio-bounded-directory-actual-boundary ()
+  "Exercise readdir(3), not a substituted name list, at the BP evidence bound."
+  (let* ((limit 8192)
+         (root (format nil "/tmp/fn-native-bounded-directory-~d-~d"
+                       (sb-posix:getpid) (get-internal-real-time))))
+    (unwind-protect
+         (progn
+           (fnn-mkdir root #o700)
+           (loop for number below limit do
+             (with-open-file (stream (fnn-join root (format nil "~5,'0d.entry" number))
+                                     :direction :output :if-exists :error)
+               (declare (ignore stream))))
+           (nio-check (= (length (fnn-list-directory-bounded
+                                  root limit "native I/O test namespace"))
+                         limit)
+                      "bounded directory rejected its exact physical limit")
+           (with-open-file (stream (fnn-join root "beyond-limit.entry")
+                                   :direction :output :if-exists :error)
+             (declare (ignore stream)))
+           (nio-check (nio-expects 'fnn-store-fault
+                                   (lambda ()
+                                     (fnn-list-directory-bounded
+                                      root limit "native I/O test namespace")))
+                      "bounded directory retained an entry beyond its physical limit"))
+      (when (probe-file root)
+        (dolist (name (ignore-errors (fnn-list-directory root)))
+          (ignore-errors (fnn-unlink (fnn-join root name))))
+        (ignore-errors (sb-posix:rmdir root))))))
+
 (defun nio-zero-writes-fault ()
   (let ((*fnn-write-syscall* (lambda (&rest ignored)
                                 (declare (ignore ignored))
@@ -372,6 +401,7 @@
 (nio-wrong-condition-is-rejected)
 (nio-store-write-progress)
 (nio-transaction-enumeration-bound-is-exact)
+(nio-bounded-directory-actual-boundary)
 (nio-zero-writes-fault)
 (nio-send-retries-with-one-deadline)
 (nio-zero-send-faults)

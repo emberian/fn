@@ -215,18 +215,19 @@ left untouched and are not allocation records in this namespace."
           (fnn-fsync-dir dir))
       (fnn-os-error (e)
         (fnn-indeterminate "bp: evidence namespace recovery failed: ~a" e)))
-    (let* ((names (handler-case (fnn-list-directory dir)
-                    (fnn-os-error (e)
-                      (fnn-indeterminate
-                       "bp: evidence namespace cannot be enumerated: ~a" e))))
-           (limit (fnn-core 'fn-bpn-host-evidence-max-entries)))
-      ;; This is an allocation guard before constructing ACL2 input.  The
-      ;; model repeats the same bound and owns the admission decision.
+    (let ((limit (fnn-core 'fn-bpn-host-evidence-max-entries)))
+      ;; Fetch and validate the ACL2-owned policy before opening the directory:
+      ;; a hostile namespace must not allocate a complete host list before its
+      ;; admission bound exists.
       (unless (and (integerp limit) (>= limit 0))
         (fnn-fault "bp: ACL2 returned an invalid evidence bound"))
-      (when (> (length names) limit)
-        (fnn-fault "bp: receive evidence namespace exceeds its bound"))
-      (let* ((sorted (sort (copy-list names) #'string<))
+      (let* ((names (handler-case
+                        (fnn-list-directory-bounded
+                         dir limit "bp: receive evidence namespace")
+                      (fnn-os-error (e)
+                        (fnn-indeterminate
+                         "bp: evidence namespace cannot be enumerated: ~a" e))))
+             (sorted (sort (copy-list names) #'string<))
              (entries
               (mapcar (lambda (name)
                         (cons name
