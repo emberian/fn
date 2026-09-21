@@ -104,8 +104,11 @@ witness is still the constant zero digest, and
 keep that visible. Signature verification remains trusted: `fn-sig-verify` and
 `fn-anchor-sig-verify` stay constrained. The native anchor calls the libsodium
 facility in `host/native/crypto.lisp`; `tools/crypto_host.py` belongs to the
-development adapter. That primitive integration does not select D09's native
-article-signature profile, and the digest proof says nothing about signatures.
+development adapter. D09 separately selects mandatory Ed25519 plus ML-DSA-65
+for native author signatures; its implementation is in progress. Both sign a
+domain-separated, length-delimited subject containing the exact authored source
+bytes and the declared profile/principal/keyset. The digest proof says nothing
+about either signature primitive or their integration.
 
 **SHA-512 has not left the boundary, and the freshness anchor names what it
 still trusts.** There is no SHA-512 anywhere in `books/`: `books/sha256.lisp`
@@ -156,7 +159,9 @@ contracts. D17 selects NNTP and command-line clients first; a web reader/compose
 comes later. 9p views, private correspondence and moderation are also later
 interfaces or policy features. D01 fixes the native source boundary: exact
 authored bytes are signed, with mutable NNTP trace and gateway injection records
-in separate projections. Concrete native encoding and key profiles remain open.
+in separate projections. D09 requires both Ed25519 and ML-DSA-65 for native
+authorship. Key custody/recovery authority and portable group authority remain
+open policies; legacy posts keep explicit gateway provenance.
 
 Human/agent identity is a principal with recorded provenance and authorization.
 The `From` header is presentation content, not authentication. The first deployment
