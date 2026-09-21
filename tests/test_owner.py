@@ -3,6 +3,7 @@ import os
 import select
 import signal
 import socket
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -307,6 +308,8 @@ def self_signed(directory):
     """A throwaway certificate for the TLS listener test, or None."""
     cert = Path(directory) / "fn-test.pem"
     key = Path(directory) / "fn-test.key"
+    if shutil.which("openssl") is None:
+        return None
     result = subprocess.run(
         ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
          "-keyout", str(key), "-out", str(cert), "-days", "1",
@@ -314,7 +317,14 @@ def self_signed(directory):
          "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1"],
         capture_output=True)
     if result.returncode != 0 or not cert.exists() or not key.exists():
-        return None
+        # openssl is installed and refused.  Until 2026-09-21 this returned
+        # None here too and the test skipped saying "openssl is not
+        # available", which was not the predicate: an openssl too old for
+        # `-addext`, a full disk and a broken `req` all read as an absent
+        # dependency.  A tool that is present and fails is a failure.
+        raise RuntimeError(
+            "openssl is installed and would not make a test certificate: {}"
+            .format(result.stderr.decode("utf-8", "replace")[-500:]))
     return cert, key
 
 
@@ -334,7 +344,7 @@ class OwnerTlsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             material = self_signed(directory)
             if material is None:
-                self.skipTest("openssl is not available to make a test certificate")
+                self.skipTest("openssl is not on PATH, so no test certificate can be made")
             cert, key = material
             store = Path(directory) / "store"
             control = Path(directory) / "control.sock"
@@ -377,7 +387,7 @@ class OwnerTlsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             material = self_signed(directory)
             if material is None:
-                self.skipTest("openssl is not available to make a test certificate")
+                self.skipTest("openssl is not on PATH, so no test certificate can be made")
             cert, key = material
             store = Path(directory) / "store"
             control = Path(directory) / "control.sock"
