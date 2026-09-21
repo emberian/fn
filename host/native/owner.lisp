@@ -17,6 +17,15 @@
 (defstruct (fnn-owner-feed-journal (:constructor %make-fnn-owner-feed-journal))
   peer path fd phase (replayed 0))
 
+(defvar *fnn-owner-startup-hooks* nil)
+
+(defun fnn-owner-run-startup-hooks (service)
+  "Run ACL2-backed lifecycle adapters after recovery and before listen."
+  (dolist (hook *fnn-owner-startup-hooks*)
+    (unless (eq (funcall hook service) :accepted)
+      (fnn-refuse "owner startup hook refused")))
+  :accepted)
+
 (defun fnn-owner-core (name &rest args)
   (apply #'fnn-core-state name args))
 
@@ -657,6 +666,7 @@ directories because one encoded label can be a prefix of a longer label.
     (unwind-protect
          (progn
            (setq service (fnn-owner-install root max-connections fault))
+           (fnn-owner-run-startup-hooks service)
            (multiple-value-bind (bound bound-port)
                (fnn-listen port :address address :family family)
              (setf listener bound

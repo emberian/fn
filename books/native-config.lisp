@@ -400,7 +400,6 @@ host resolver's intended deployment behavior.
   (declare (xargs :guard t))
   (and (null (fn-native-config-tls-cert config))
        (null (fn-native-config-tls-key config))
-       (not (fn-native-config-auth-requiredp config))
        (not (fn-native-config-auth-protected-onlyp config))
        (equal (fn-native-config-posting-enabledp config) t)
        (equal (fn-native-config-posting-agent config) *fn-ncfg-default-agent*)

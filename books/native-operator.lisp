@@ -200,6 +200,27 @@ until owner convergence exposes one ACL2 posting projection to served/control."
        (fn-native-operator-result-config result))
     0))
 
+(defun fn-native-operator-result-run-auth-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-run-planp result)
+      (fn-record-string-octets
+       (fn-native-config-auth-path (fn-native-operator-result-config result)))
+    nil))
+
+(defun fn-native-operator-result-run-auth-requiredp (result)
+  (declare (xargs :guard t))
+  (and (fn-native-operator-result-run-planp result)
+       (fn-native-config-auth-requiredp
+        (fn-native-operator-result-config result))
+       t))
+
+(defun fn-native-operator-result-run-auth-protected-onlyp (result)
+  (declare (xargs :guard t))
+  (and (fn-native-operator-result-run-planp result)
+       (fn-native-config-auth-protected-onlyp
+        (fn-native-operator-result-config result))
+       t))
+
 (defun fn-native-operator-result-native-action (result)
   "The only commands the current raw native module may execute by itself.
 

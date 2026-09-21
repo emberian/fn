@@ -24,6 +24,7 @@
 (include-book "books/served")
 (include-book "books/nntp-effects")
 (include-book "books/native-config")
+(include-book "books/native-auth-profile")
 (include-book "books/feed-filename")
 (include-book "books/native-operator")
 (include-book "books/bp-receipt-records")
@@ -60,6 +61,7 @@
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
+(ld "host/native-auth-host.lisp" :ld-error-action :error)
 (ld "host/feed-filename-host.lisp" :ld-error-action :error)
 (ld "host/native-operator-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
@@ -96,6 +98,9 @@
         ; all ACL2's fn-native-config-load profile.
         (load "host/native/config.lisp")
         (load "host/native/feed-filename.lisp")
+        ; Bounded credential transport.  ACL2 parses and owns every field;
+        ; this module also defines the composable pre-listen owner hook.
+        (load "host/native/auth.lisp")
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner.lisp")
