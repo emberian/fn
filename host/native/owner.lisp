@@ -66,7 +66,28 @@
   (fnn-join (fnn-store-root store) "feed"))
 
 (defun fnn-owner-feed-path (store peer)
-  (fnn-join (fnn-owner-feed-directory store) (fnn-concat peer ".fnfd")))
+  "Return the leaf directory and journal path selected by the ACL2 codec."
+  (let* ((components (fnn-feed-filename-components peer))
+         (directory (fnn-owner-feed-directory store)))
+    (fnn-safe-directory directory t)
+    (dolist (component (butlast components))
+      (setq directory (fnn-join directory component))
+      (fnn-safe-directory directory t))
+    (values directory (fnn-join directory (car (last components))))))
+
+(defun fnn-owner-feed-sync-namespace (store directory journal)
+  "Fence every created v1 parent before the store's existing parent phase."
+  (fnn-fsync-dir directory)
+  (fnn-owner-feed-phase journal :directory-durable)
+  (let ((feed (fnn-owner-feed-directory store)))
+    (unless (string= directory feed)
+      (let ((parent (fnn-parent directory)))
+        (loop while (not (string= parent feed)) do
+          (fnn-fsync-dir parent)
+          (setq parent (fnn-parent parent))))
+      (fnn-fsync-dir feed)))
+  (fnn-fsync-dir (fnn-store-root store))
+  (fnn-owner-feed-phase journal :parent-durable))
 
 (defun fnn-owner-feed-phase (journal event)
   (let ((next (fnn-core 'fn-feed-journal-phase-step
@@ -95,12 +116,10 @@
 
 (defun fnn-owner-feed-open (store peer)
   "Open, replay and repair one FNFD file through the ACL2 scanner."
-  (let* ((directory (fnn-owner-feed-directory store))
-         (path (fnn-owner-feed-path store peer))
-         (fd nil) (journal nil))
-    (fnn-safe-directory directory t)
+  (let ((fd nil) (journal nil))
     (handler-case
-        (progn
+        (multiple-value-bind (directory path) (fnn-owner-feed-path store peer)
+          (progn
           (setq fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
                                           +fnn-o-nofollow+) #o600))
           (unless (fnn-regular-p (fnn-fstat fd))
@@ -143,12 +162,9 @@
                   (t (fnn-fault "unexpected FNFD scan result: ~a" status))))))
           (fnn-fsync-file fd)
           (fnn-owner-feed-phase journal :content-durable)
-          (fnn-fsync-dir directory)
-          (fnn-owner-feed-phase journal :directory-durable)
-          (fnn-fsync-dir (fnn-store-root store))
-          (fnn-owner-feed-phase journal :parent-durable)
+          (fnn-owner-feed-sync-namespace store directory journal)
           (fnn-posix (path) (sb-posix:lseek fd 0 sb-posix:seek-end))
-          journal)
+          journal))
       (error (e)
         (when fd (ignore-errors (fnn-close fd)))
         (error e)))))
@@ -172,19 +188,72 @@
       (fnn-indeterminate "FNFD append uncertain: ~a (~a)"
                          (fnn-owner-feed-journal-path journal) e))))
 
+(defun fnn-owner-feed-decoded-peer (components location)
+  "Refuse a discovered entry unless ACL2 reconstructs its exact peer label."
+  (multiple-value-bind (peer accepted)
+      (fnn-feed-filename-decode-components components)
+    (unless accepted
+      (fnn-fault "conflicting FNFD filename evidence: ~a" location))
+    peer))
+
+(defun fnn-owner-feed-v1-peers (directory components depth)
+  "Enumerate the bounded v1 tree; every entry is decoded or reported.
+
+COMPONENTS begins with `v1'.  A journal leaf may coexist with child chunk
+directories because one encoded label can be a prefix of a longer label.
+"
+  (let ((peers nil))
+    (fnn-safe-directory directory)
+    (dolist (name (fnn-list-directory directory))
+      (let ((path (fnn-join directory name)))
+        (cond
+          ((string= name "journal.fnfd")
+           (fnn-check-regular path)
+           (let ((peer (fnn-owner-feed-decoded-peer
+                        (append components (list name)) path)))
+             (when (member peer peers :test #'string=)
+               (fnn-fault "duplicate FNFD journal peer: ~a" peer))
+             (push peer peers)))
+          ((fnn-lstat path)
+           (unless (and (< depth 5) (fnn-feed-filename-component-p name))
+             (fnn-fault "invalid FNFD v1 namespace entry: ~a" path))
+           (unless (fnn-directory-p (fnn-lstat path))
+             (fnn-fault "invalid FNFD v1 namespace entry: ~a" path))
+           (let ((nested (fnn-owner-feed-v1-peers path
+                                                   (append components (list name))
+                                                   (1+ depth))))
+             (dolist (peer nested)
+               (when (member peer peers :test #'string=)
+                 (fnn-fault "duplicate FNFD journal peer: ~a" peer))
+               (push peer peers))))
+          (t (fnn-fault "unreadable FNFD v1 namespace entry: ~a" path)))))
+    (unless peers
+      (fnn-fault "empty FNFD v1 namespace: ~a" directory))
+    (nreverse peers)))
+
 (defun fnn-owner-feed-existing-peers (store)
+  "Return every recoverable FNFD peer; conflicting evidence is never skipped."
   (let ((directory (fnn-owner-feed-directory store)) (peers nil))
     (when (fnn-lstat directory)
       (fnn-safe-directory directory)
       (dolist (name (fnn-list-directory directory))
-        (let ((n (length name)))
-          (when (and (> n 5) (string= ".fnfd" (subseq name (- n 5))))
-            (let ((peer (subseq name 0 (- n 5))))
-              (unless (eq (fnn-owner-core
-                           'fn-owner-feed-journal-peer-validp
-                           (fnn-octet-list (fnn-string-octets peer))) t)
-                (fnn-fault "invalid FNFD peer filename: ~a" name))
-              (pushnew peer peers :test #'string=))))))
+        (let ((path (fnn-join directory name)))
+          (cond
+            ((string= name "v1")
+             (unless (fnn-directory-p (fnn-lstat path))
+               (fnn-fault "invalid FNFD v1 namespace: ~a" path))
+             (dolist (peer (fnn-owner-feed-v1-peers path (list name) 0))
+               (when (member peer peers :test #'string=)
+                 (fnn-fault "duplicate FNFD journal peer: ~a" peer))
+               (push peer peers)))
+            ((and (> (length name) 5)
+                  (string= ".fnfd" (subseq name (- (length name) 5))))
+             (fnn-check-regular path)
+             (let ((peer (fnn-owner-feed-decoded-peer (list name) path)))
+               (when (member peer peers :test #'string=)
+                 (fnn-fault "duplicate FNFD journal peer: ~a" peer))
+               (push peer peers)))
+            (t (fnn-fault "conflicting FNFD namespace entry: ~a" path))))))
     (nreverse peers)))
 
 (defun fnn-owner-feed-open-all (service configured)

@@ -17,7 +17,7 @@
 
 (defun fnn-feed-filename-components (peer)
   "ACL2's component vector for PEER, rendered as host-safe ASCII strings."
-  (let* ((peer-octets (fnn-octet-list (fnn-string-octets peer))
+  (let* ((peer-octets (fnn-octet-list (fnn-string-octets peer)))
          (ok (fnn-core 'fn-feed-filename-host-okp peer-octets)))
     (unless (eq ok t)
       (fnn-fault "ACL2 refused FNFD peer filename"))
@@ -51,4 +51,4 @@ obligation.
     (if (or (eq answer :bad) (not (fnn-octet-list-p answer)))
         (values nil nil)
       (let ((peer (fnn-octets-string (fnn-octets answer))))
-        (values peer t))))
+        (values peer t)))))
