@@ -156,6 +156,7 @@
         ; callback is present; it can call the already-loaded private admin
         ; executor for the ACL2-planned group/capacity actions.
         (load "host/native/operator.lisp")
+        (load "host/native/signature-command.lisp")
         (load "host/native/checkpoint.lisp")
         (load "host/native/workflow.lisp")
         (load "host/native/bp-obligation.lisp")
