@@ -85,9 +85,58 @@ txid, validation accepts); and the clause's own tooth, line 8 above.
 | `tests/acl2/checkpoint-publish-tests` | passed | same run |
 | `tests/acl2/checkpoint-tests` | passed | same run |
 
+Those five runs predate the second `git merge dev` (to `186ed0b`), which
+changed `books/store-node-invariants` and so invalidated every certificate in
+that closure, including the checkpoint books'. The authoritative post-merge
+evidence is the whole-tree run below, which re-certified all of them.
+
 `certify-book` stops at the first failure, so before this lane the ~45 events
 of the test book after line 204 had never been attempted. They are attempted
 now and they pass; the tail the deputy brief warns about was empty here.
+
+## The whole tree, post-merge
+
+hbox `run-20260921T020141Z-c3c3`, every Makefile root, `--jobs 8`, remote
+root `/tank/fn/lanes/w11-checkpoint-validator`, tree = `dev` `186ed0b` plus
+this lane's fix (commit `6ad5a80`). Manifest:
+`/tank/fn/lanes/w11-checkpoint-validator/build/acl2/certify-20260921T020148Z-1425543/manifest.json`.
+
+**274 of 276 roots passed.** The two failures are `books/bp-node` and
+`tests/acl2/bp-node-tests` (`ACL2 Error`, no certificate on disk), both owned
+by `w11/bp-node`. All six checkpoint roots passed. 273 pairs were published
+to `~/.cache/fn-certs` and hbox's `/tank/fn/certcache` has them too.
+
+One book of the 277 read is outside the root closure and so is certified by
+nothing: `tests/acl2/store-node-resolution-traces-tests.lisp`, which is not
+in `ACL2_BOOKS` and which no book includes. It is ABSENT from `book_results`
+rather than failed. It arrived in `8209f27`.
+
+## PRF-008, in the same cluster
+
+`teeth_check --report` also flagged PRF-008: all three of its events were
+named in no test book. They are named now, and each has the one hypothesis
+it has (`fn-checkpoint-admissible-splitp`) shown necessary on a concrete
+value, in `tests/acl2/checkpoint-tests.lisp`
+(`build/acl2/certify-20260921T021458Z-14379`):
+
+- `fn-checkpoint-admissible-capture-is-exact`: the capture on the admissible
+  split is asserted equal to the exact `fn-checkpoint-make` the theorem
+  names, not merely `:ok`.
+- `fn-checkpoint-admissible-capture-value-is-valid`: `fn-checkpointp` of
+  that value, already asserted.
+- Tooth for both: a prefix whose record binds generation 1 against txid 0 --
+  the same corruption this lane fixed in the codec -- makes the split
+  inadmissible, the capture not that `fn-checkpoint-make`, and its value not
+  a checkpoint at all.
+- `fn-checkpoint-plus-suffix-equals-full-replay`: the restore/full-replay
+  equality on the admissible split, already asserted. Tooth: with
+  `*cp-stale-txid*` as the suffix the split is inadmissible and the two
+  sides genuinely disagree -- restore refuses the frontier reuse as
+  `:suffix` while full replay of the appended history answers `:ok`. That is
+  the divergence the hypothesis rules out, and it is a safety-relevant one.
+
+Corpus `keystone-without-witness` 22 -> 21; no finding of any class remains
+in this cluster.
 
 `tools/teeth_check.py --evaluate --report tests/acl2/checkpoint-codec-tests.lisp`
 

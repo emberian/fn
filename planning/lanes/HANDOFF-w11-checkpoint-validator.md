@@ -90,7 +90,39 @@ anchored positively now on the accepted decode (line 118).
 
 `python3 tools/certify_books.py --affected-by books/checkpoint-codec.lisp
 --dry-run` names exactly four roots, and all four are above, so no other
-root's verdict can move because of this lane.
+root's verdict can move because of this lane. Those five runs predate the
+second `git merge dev` (`186ed0b`), which changed `books/store-node-invariants`
+and invalidated every certificate in that closure; the authoritative
+post-merge evidence is the whole-tree run below.
+
+**The whole tree, post-merge.** hbox `run-20260921T020141Z-c3c3`, every
+Makefile root, `--jobs 8`, remote root
+`/tank/fn/lanes/w11-checkpoint-validator`, manifest
+`.../build/acl2/certify-20260921T020148Z-1425543/manifest.json`. **274 of
+276 roots passed, and the only two failures are `books/bp-node` and
+`tests/acl2/bp-node-tests`** — the pair `w11/bp-node` owns. So on this
+lane's tree the answer to "does the whole tree certify but for the
+bundle-node pair" is yes. 273 pairs published to `~/.cache/fn-certs` and to
+hbox's `/tank/fn/certcache`.
+
+One book of the 277 read is certified by nothing:
+`tests/acl2/store-node-resolution-traces-tests.lisp` is not in `ACL2_BOOKS`
+and no book includes it, so it is the single book outside the root closure
+that `planning/ledger.md` counts. It arrived in `8209f27`. Posted as a NOTE;
+this lane does not own the call.
+
+**PRF-008, same cluster.** `teeth_check` also flagged that all three PRF-008
+events were named in no test book. They are named now in
+`tests/acl2/checkpoint-tests.lisp`
+(`build/acl2/certify-20260921T021458Z-14379`), each with its one hypothesis
+(`fn-checkpoint-admissible-splitp`) shown necessary on a concrete value: the
+exact-capture equality and `fn-checkpointp` of its value, both broken by a
+bad-generation prefix (the same corruption this lane fixed in the codec);
+and the restore/full-replay equality, broken by `*cp-stale-txid*` as the
+suffix, where restore refuses the frontier reuse as `:suffix` while full
+replay of the appended history answers `:ok`. Corpus
+`keystone-without-witness` 22 → 21; no teeth finding of any class remains in
+this cluster.
 
 `certify-book` stops at the first failure, so before this lane the events of
 the test book after line 204 had never been attempted; they are attempted now
