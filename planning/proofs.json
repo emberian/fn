@@ -905,13 +905,16 @@
       "status": "in-progress",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
-      "note": "`books/stx-index` CERTIFIES (w10/substrate-2). The three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree` are the keystones; `fn-stx-index-agrees-with-lace` is their `:rule-classes nil` corollary and is cited as such, and `fn-stx-recorded-equivocation-agrees-with-lace` is a corollary of that. Not closed: no host line calls `fn-stx-index-lookup` or `fn-stx-index-equivocatorp`, so the theorem-subject rule is not met for the query half. w11/node-index measured why the proposed cure -- a fifth slot on `fn-node-statep` -- is not one: `books/stx-index` includes `stx-lace` includes `node` and `fn-stx-store` IS `(fn-state-articles (fn-node-acceptance node))`, so the slot is a dependency cycle; the conjunct needs a keyring and no state or configuration record in the tree holds one; and it would touch the 26 theorems that CONCLUDE `fn-node-statep` across 13 books while still leaving the query uncalled. The carrier belongs in `fn-sn-statep` (books/store-node.lisp), which the host holds and which is not in stx-index's closure. The PRESERVATION half did gain its subject: `fn-stx-index-invariant-preserved-by-accept` hypothesises `fn-stx-acceptedp`, which `fn-stx-durable-completion-is-an-acceptance` (books/stx-lace.lisp) now proves of the durable branch of `fn-node-complete` -- the only node step of `fn-sn-finish`, the only node step of the host's `fn-store-sn-finish` (host/store-node-host.lisp:402). Before that theorem the hypothesis was an assumption attributed to `books/stx-transit.lisp`, which has never existed. Route: planning/lanes/HANDOFF-w11-node-index.md.",
+      "note": "`books/stx-index` CERTIFIES (w10/substrate-2). The three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree` are the keystones; `fn-stx-index-agrees-with-lace` is their `:rule-classes nil` corollary and is cited as such, and `fn-stx-recorded-equivocation-agrees-with-lace` is a corollary of that. THE SUBJECT GAP IS CLOSED IN BOTH HALVES (w11/sn-index, decision D21). Preservation: `fn-stx-index-invariant-preserved-by-accept` hypothesises `fn-stx-acceptedp`, which `fn-stx-durable-completion-is-an-acceptance` proves of the durable branch of `fn-node-complete`, and `fn-sn-finish-preserves-indexedp` (books/store-node-invariants) is that keystone applied at `fn-sn-finish`, the only node step of the host's `fn-store-sn-finish`. Query: `fn-sn-state` carries the index and the keyring it was computed under as two new fields; `fn-sn-statement-lookup` and `fn-sn-equivocatorp` read the index and nothing else; `host/store-node-host.lisp` `fn-store-sn-statement` and `fn-store-sn-equivocator` call them on the `'fn-store-sn` global, reachable from outside as `run_store.py statement`; and `fn-sn-statement-lookup-is-the-lace-lookup` and `fn-sn-equivocatorp-is-the-lace-equivocator` equate the called function to the projection. Their hypothesis `fn-sn-indexedp` is discharged by a complete reachability chain over every transition that reaches an `f-put-global` of that global. WHY THIS IS NOT YET `certified`: (a) `fn-stx-index-slots-agree` still has no caller -- no served query walks the slot list; (b) A-CRYPTO stands behind every verification, and the only witnesses are under the toy realiser of `tests/acl2/crypto-seam-tests`; (c) the keyring is supplied per invocation and is not carried in the durable configuration history, so a restart forgets it; and (d) `fn-stx-transit-authority-ok` (books/stx-policy) still walks the whole lace per article on the ADMISSION path and has no caller, so D3 is answered at the query and not at admission. Witnesses: `tests/acl2/store-node-index-tests`, a real run of the store transitions from `fn-sn-initial` to `fn-sn-finish` with a signed `FN-Statement` article, with the same run under the empty keyring as the separating witness and a stale-index tooth. Route: planning/lanes/HANDOFF-w11-sn-index.md.",
       "events": [
         "fn-stx-index-bindings-agree",
         "fn-stx-index-slots-agree",
         "fn-stx-index-equivocators-agree",
         "fn-stx-index-invariant-preserved-by-accept",
-        "fn-stx-durable-completion-is-an-acceptance"
+        "fn-stx-durable-completion-is-an-acceptance",
+        "fn-sn-finish-preserves-indexedp",
+        "fn-sn-statement-lookup-is-the-lace-lookup",
+        "fn-sn-equivocatorp-is-the-lace-equivocator"
       ]
     },
     {
@@ -1212,6 +1215,46 @@
         "planning/evidence/frame-trailer-one-owner-2026-09-21.md"
       ],
       "progress_note": "Both books certified with tools/certify_books.py on the laptop (ACL2 8.7, SBCL 2.6.8), evidence dirs above. The four keystones and the 25 assert-events all pass. What the target does NOT establish: collision or preimage resistance of SHA-256 (A-CRYPTO, unchanged by the attachment); and one host trailer copy survives outside the three this lane closed -- tools/run_feed.py:179,184,190, the FNFD client half, which w11/harness-health deletes on its branch, so it was reported rather than edited into a merge conflict."
+    },
+    {
+      "id": "PRF-037",
+      "title": "Checkpoint validation refuses a non-journal prefix",
+      "statement": "Checkpoint validation binds a checkpoint to exactly one prefix and refuses a prefix that is not an ordered journal interval below the checkpoint frontier: fn-cpc-validp implies the checkpoint is fn-checkpoint-capture-value of that prefix at its frontier, and a prefix with any record whose recorded generation is not its transaction id is refused for every checkpoint and configuration offered with it.",
+      "milestone": "M2",
+      "requirements": [
+        "STO-006"
+      ],
+      "depends_on": [
+        "PRF-008"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-cpc-valid-is-capture-value",
+        "fn-cpc-valid-refuses-generation-mismatch"
+      ],
+      "evidence": [
+        "books/checkpoint-codec.lisp",
+        "tests/acl2/checkpoint-codec-tests.lisp",
+        "specs/checkpoint.md",
+        "planning/evidence/checkpoint-validator-2026-09-21.md"
+      ],
+      "progress_note": "fn-cpc-validp accepted a prefix that fn-checkpoint-capture refuses as :history until 2026-09-21, because fn-replay carries a record generation into the node transitions without comparing it with the txid and validation compared only replay results. The journal-interval clause is now in the recognizer. Open, and not claimed here: fn-cpc-validp has no host caller, so these are properties of a sibling API to the served restore path (host/checkpoint-host.lisp calls fn-checkpoint-restore, which tests the condition itself)."
+    },
+    {
+      "id": "PRF-038",
+      "title": "The BPv7 bundle codec inverts, and what fn authors another implementation accepts",
+      "statement": "For every bundle satisfying fn-bpb-bundlep whose encoding is within the caller's transfer bound, fn-bpb-decode of fn-bpb-encode is that same bundle and nothing else (fn-bpb-decode-of-encode), resting on the one-block round trip fn-bpb-decode-block-of-encode-block, the fold over the block sequence fn-bpb-decode-blocks-of-encode-blocks and the primary block's half fn-bpb-scan-primary-of-encode; every accepted input yields a bundle (fn-bpb-decode-yields-bundle) and an input over the bound is refused before any octet is examined (fn-bpb-decode-refuses-overlong-input). Over those, the node's two ends: what fn-bpn-send puts on the wire is a bundle (fn-bpn-send-bundle-is-a-bundle), and a peer that accepts what fn-bpn-send authored recovers exactly the ADU that was sent (fn-bpn-receive-of-send-carries-the-adu), under the receiver's own configuration and transfer limit. The covered scope is a whole bundle with at most *fn-bpb-max-blocks* canonical blocks plus the payload block; fragments, BPSec and status reports are outside it.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-005"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "note": "Lane w11/bp-node, 2026-09-21; the codec keystones are lane w10/dtn-3's. All seven named theorems are in books/bp-bundle-invariants.lisp and books/bp-node.lisp, both certified (hbox run-20260921T005707Z-8672 and run-20260921T021131Z-1eb0). Teeth in tests/acl2/bp-bundle-tests.lisp and tests/acl2/bp-node-tests.lisp, including the 32-block boundary and the refusal one past it, the three distinct outcomes, and a node configured for a 16-octet transfer refusing a bundle a larger node accepts. The EXTERNAL check is *bpb-dtn7-0-21-0*: 132 octets dtn7-rs 0.21.0 authored, which fn decodes and re-encodes byte for byte (planning/evidence/bp-dtn7-w11-2026-09-21.md). OPEN under this target, and recorded rather than weakened: fn-bpb-decode-blocks-are-canonical-by-construction and fn-bpb-accepted-input-is-canonical-by-construction were REMOVED by w10/dtn-3 after a rewriter runaway with three cures measured and none stopping it, so 'every accepted input re-encodes to itself' is NOT proved for a whole bundle -- it holds of dtn7-rs's captured vector by evaluation only. The node's processing machine (fn-bpn-step) does not exist, so T1 to T6 of specs/bp-design.md section 1.6 have no subject and are not claimed here."
     }
   ]
 }

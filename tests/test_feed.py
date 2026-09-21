@@ -1,227 +1,186 @@
 #!/usr/bin/env python3
-"""`tools/run_feed.py` against a fake peer, and across a crash mid-transfer.
+"""`tools/feed_wire.py`: the FNFD file layout and the outgoing article block.
 
-The peer is `tests/twonode_gate_fake/tools/run_peer.py`, a line filter over
-the deploy gate's fake reader that answers IHAVE / CHECK / TAKETHIS.  Its
-replies are that file's, not ACL2's, so a green run here says the feed driver
-speaks RFC 3977 section 6.3.2 and RFC 4644 correctly and journals what it
-decided; it says nothing about a real peer.  The INN scenarios of
-specs/peering.md section 5 are what would.
+This file used to drive `tools/run_feed.py`, a standalone feed client, against
+`tests/twonode_gate_fake/tools/run_peer.py`.  That driver was retired on
+2026-09-21 (`w11/harness-health`): the owner drives the feed, the Python
+three-digit reply split it carried is `fn-own-feed-response-code`, and its
+remaining copies of owner decisions drifted invisibly three times.  Its feed
+cases are not lost -- they are stronger somewhere else.  A crash between
+`sent` and the outcome, resolved by a CHECK and never a blind TAKETHIS, with
+exactly one copy at the far end, is `tools/twonode_gate.py`'s
+`scenario_feed_restart` (K5) against a real fn node and a real journal; the
+offer-once-each case is `scenario_owner_feed`.
 
-The two cases that matter:
+What is left here is what those gates do NOT isolate: the two host-side
+mechanisms `tools/run_owner.py` imports.  Neither needs ACL2, so neither
+skips, which is why they belong in a unit test at all.
 
-  * `test_two_articles_are_offered_once_each`: a two-article feed finishes
-    both, and the FNFD journal holds exactly one accepted outcome per
-    Message-ID.
-  * `test_a_crash_between_sent_and_outcome_resolves_by_check`: the driver is
-    killed at the `(:feed-sent ...)` record boundary, before the peer's
-    response is journaled.  On restart the first command for that article is
-    a CHECK -- never a blind TAKETHIS -- and the peer, which already has the
-    article, answers 438; the peer's store holds exactly one copy.
-
-Every case is skipped, never faked, when ACL2 or the certified feed books are
-not on this tree: `tools/run_feed.py` runs the proved machine or nothing.
+  * the journal's own layout -- a length prefix, a round trip, the bound, and
+    a torn tail ending the record stream rather than raising;
+  * RFC 3977 section 3.1.1 dot stuffing of an outgoing article block, which
+    had no test of any kind while it lived in the retired driver.
 """
 from __future__ import annotations
 
-import json
-import os
-import shutil
 import socket
 import struct
-import subprocess
 import sys
 import tempfile
-import time
+import threading
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tools"))
 
-ACL2 = os.environ.get("FN_ACL2", "acl2")
-HAVE_ACL2 = shutil.which(ACL2) is not None
-HAVE_BOOKS = (ROOT / "books/peer-feed.cert").exists()
-REASON = "needs ACL2 and a certified books/peer-feed"
-
-# The Path must NOT name the peer's own path-identity: the fake peer
-# refuses such an article 437 (RFC 5537 section 3.5, its `take'), which
-# is a loop refusal, not the acceptance every case below asserts.  This
-# is fn's own path on an article fn is offering OUT.
-ARTICLE = ("Path: fn.example.invalid!not-for-mail\r\n"
-           "From: t <t@fn.invalid>\r\n"
-           "Newsgroups: fn.letters\r\n"
-           "Subject: {}\r\n"
-           "Message-ID: {}\r\n"
-           "Date: Sat, 20 Sep 2026 00:00:00 +0000\r\n"
-           "\r\n"
-           "body {}\r\n")
+import feed_wire  # noqa: E402
 
 
-def free_port() -> int:
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
-
-
-class FakePeer:
-    """The two-node gate's fake transit peer, in its own directory."""
-
-    def __init__(self, workdir: Path):
-        self.dir = workdir / "peer"
-        (self.dir / "tools").mkdir(parents=True)
-        for overlay in ("deploy_gate_fake", "twonode_gate_fake"):
-            source = ROOT / "tests" / overlay / "tools"
-            for entry in source.iterdir():
-                shutil.copy(entry, self.dir / "tools" / entry.name)
-        self.store = self.dir / "store"
-        self.store.mkdir()
-        # The fake reader pins its article list at accept
-        # (tests/deploy_gate_fake/tools/run_reader.py `serve'), so the store
-        # file must exist before the first connection: without it `serve'
-        # raises FileNotFoundError in the connection thread, the 201 greeting
-        # is never written, and the client blocks until `--timeout' and
-        # reports `FAULT timed out'.  The shape is that fake store's own
-        # (`run_store.py initialize').
-        (self.store / "store.json").write_text(json.dumps(
-            {"groups": ["fn.letters"], "articles": [], "uncertain": []}))
-        self.proc = subprocess.Popen(
-            [sys.executable, str(self.dir / "tools/run_peer.py"),
-             "--store", str(self.store), "--port", "0",
-             "--path-identity", "peer.example.invalid"],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        line = self.proc.stdout.readline().decode()
-        if not line.startswith("LISTENING "):
-            raise RuntimeError("fake peer did not start: " + line)
-        self.port = int(line.split()[1])
-
-    def holds(self):
-        path = self.store / "store.json"
-        if not path.exists():
-            return []
-        return [a["msgid"] for a in json.loads(path.read_text())["articles"]]
-
-    def stop(self):
-        self.proc.kill()
-        self.proc.wait(timeout=10)
-
-
-def journal_records(path: Path):
-    """The FNFD file's frames, by the host's own 4-octet length prefix."""
-    blob = path.read_bytes() if path.exists() else b""
-    offset, out = 0, []
-    while offset + 4 <= len(blob):
-        (length,) = struct.unpack(">I", blob[offset:offset + 4])
-        offset += 4
-        if offset + length > len(blob):
-            break
-        out.append(blob[offset:offset + length])
-        offset += length
-    return out
-
-
-@unittest.skipUnless(HAVE_ACL2 and HAVE_BOOKS, REASON)
-class FeedTests(unittest.TestCase):
+class JournalTests(unittest.TestCase):
+    """`<store>/feed/<peer>.fnfd`, read back by the same rules that wrote it."""
 
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="fn-feed-")
-        self.work = Path(self.temp.name)
-        self.peer = FakePeer(self.work)
-        self.articles = {}
-        for name in ("a", "b"):
-            msgid = "<{}@fn.invalid>".format(name)
-            path = self.work / (name + ".art")
-            path.write_text(ARTICLE.format(name, msgid, name))
-            self.articles[msgid] = path
-        self.journal = self.work / "journal"
-        self.journal.mkdir()
+        self.temp = tempfile.TemporaryDirectory(prefix="fn-feed-journal-")
+        self.addCleanup(self.temp.cleanup)
+        self.root = self.temp.name
 
-    def tearDown(self):
-        self.peer.stop()
-        self.temp.cleanup()
+    def test_a_peer_gets_its_own_file_named_after_it(self):
+        journal = feed_wire.Journal(self.root, b"inn")
+        self.addCleanup(journal.close)
+        self.assertEqual(Path(journal.path),
+                         Path(self.root) / "feed" / "inn.fnfd")
 
-    def drive(self, fault=None, msgids=None, extra=()):
-        argv = [sys.executable, str(ROOT / "tools/run_feed.py"),
-                "--journal", str(self.journal), "--peer", "inn",
-                "--port", str(self.peer.port), "--deadline", "90"]
-        for msgid, path in self.articles.items():
-            if msgids is None or msgid in msgids:
-                argv += ["--article", "{}={}".format(msgid, path)]
-        if fault:
-            argv += ["--fault", fault]
-        argv += list(extra)
-        return subprocess.run(argv, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, timeout=900)
+    def test_records_read_back_in_order_with_their_lengths(self):
+        journal = feed_wire.Journal(self.root, b"inn")
+        self.addCleanup(journal.close)
+        frames = [b"FNFD" + bytes([0, 0, 0, n]) + bytes(n) for n in (1, 7, 40)]
+        for frame in frames:
+            journal.append(frame)
+        self.assertEqual(list(journal.records()), frames)
+        blob = Path(journal.path).read_bytes()
+        self.assertEqual(struct.unpack(">I", blob[:4])[0], len(frames[0]))
 
-    def outcomes(self):
-        """One decoded FNFD outcome per record, as (msgid, code) pairs."""
-        pairs = []
-        for frame in journal_records(self.journal / "feed/inn.fnfd"):
-            text = frame[len(b"FNFD") + 4:]
-            for msgid in self.articles:
-                if msgid.encode() in text:
-                    pairs.append((msgid, frame))
-        return pairs
-
-    def test_two_articles_are_offered_once_each(self):
-        done = self.drive()
-        self.assertEqual(done.returncode, 0, done.stdout.decode()[-3000:])
-        text = done.stdout.decode()
-        for msgid in self.articles:
-            self.assertIn("FINAL {} :DONE".format(msgid), text)
-        self.assertEqual(sorted(self.peer.holds()), sorted(self.articles))
-        # One accepted outcome per article: 239 appears once per Message-ID.
-        for msgid in self.articles:
-            self.assertEqual(text.count("OUTCOME {} 239".format(msgid)), 1)
-
-    def test_a_crash_between_sent_and_outcome_resolves_by_check(self):
-        one = list(self.articles)[:1]
-        crashed = self.drive(fault="after-sent", msgids=one)
-        self.assertEqual(crashed.returncode, 4, crashed.stdout.decode()[-2000:])
-        before = len(journal_records(self.journal / "feed/inn.fnfd"))
-        self.assertGreaterEqual(before, 3)   # enqueue, offer, sent
-
-        # The peer never saw the article: the kill was before the block.
-        self.assertEqual(self.peer.holds(), [])
-
-        again = self.drive(msgids=one)
-        self.assertEqual(again.returncode, 0, again.stdout.decode()[-3000:])
-        text = again.stdout.decode()
-        self.assertIn("REPLAYED {}".format(before), text)
-        self.assertIn("FINAL {} :DONE".format(one[0]), text)
-        # Exactly one copy at the peer, whichever way the re-offer went.
-        self.assertEqual(self.peer.holds(), one)
-
-    def test_a_crash_after_the_article_is_answered_438_not_a_second_copy(self):
-        one = list(self.articles)[:1]
-        first = self.drive(msgids=one)
-        self.assertEqual(first.returncode, 0, first.stdout.decode()[-2000:])
-        self.assertEqual(self.peer.holds(), one)
-
-        # A second driver over a FRESH journal re-offers the same article; the
-        # peer's own history is what makes that safe (RFC 5537 section 3.3).
-        second = tempfile.TemporaryDirectory(prefix="fn-feed-2-")
-        self.addCleanup(second.cleanup)
-        argv = [sys.executable, str(ROOT / "tools/run_feed.py"),
-                "--journal", second.name, "--peer", "inn",
-                "--port", str(self.peer.port), "--deadline", "90",
-                "--article", "{}={}".format(one[0], self.articles[one[0]])]
-        run = subprocess.run(argv, stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT, timeout=900)
-        self.assertEqual(run.returncode, 0, run.stdout.decode()[-2000:])
-        self.assertIn("OUTCOME {} 438".format(one[0]), run.stdout.decode())
-        self.assertEqual(self.peer.holds(), one)
-
-
-class FramingTests(unittest.TestCase):
-    """What can be checked with no ACL2: the journal file's own layout."""
+    def test_a_record_over_the_bound_is_refused_and_not_written(self):
+        journal = feed_wire.Journal(self.root, b"inn")
+        self.addCleanup(journal.close)
+        journal.append(b"kept")
+        with self.assertRaises(feed_wire.FeedError):
+            journal.append(b"x" * (feed_wire.MAX_RECORD + 1))
+        self.assertEqual(list(journal.records()), [b"kept"])
 
     def test_a_torn_tail_ends_the_record_stream(self):
-        with tempfile.TemporaryDirectory() as temp:
-            path = Path(temp) / "inn.fnfd"
-            path.write_bytes(struct.pack(">I", 4) + b"abcd" +
-                             struct.pack(">I", 99) + b"xy")
-            self.assertEqual(journal_records(path), [b"abcd"])
+        # The crash image: a length prefix whose record is not all there.
+        # Everything written before it stands and nothing raises.
+        path = Path(self.root) / "feed" / "inn.fnfd"
+        path.parent.mkdir(parents=True)
+        path.write_bytes(struct.pack(">I", 4) + b"abcd" +
+                         struct.pack(">I", 99) + b"xy")
+        journal = feed_wire.Journal(self.root, b"inn")
+        self.addCleanup(journal.close)
+        self.assertEqual(list(journal.records()), [b"abcd"])
+
+    def test_a_length_that_claims_more_than_the_bound_ends_the_stream(self):
+        path = Path(self.root) / "feed" / "inn.fnfd"
+        path.parent.mkdir(parents=True)
+        path.write_bytes(struct.pack(">I", 4) + b"abcd" +
+                         struct.pack(">I", feed_wire.MAX_RECORD + 1) +
+                         b"z" * (feed_wire.MAX_RECORD + 1))
+        journal = feed_wire.Journal(self.root, b"inn")
+        self.addCleanup(journal.close)
+        self.assertEqual(list(journal.records()), [b"abcd"])
+
+    def test_an_absent_file_yields_no_records(self):
+        path = Path(self.root) / "feed"
+        path.mkdir()
+        journal = feed_wire.Journal.__new__(feed_wire.Journal)
+        journal.path = str(path / "never-written.fnfd")
+        self.assertEqual(list(journal.records()), [])
+
+
+class Listener:
+    """One loopback connection that greets and then records what it is sent."""
+
+    def __init__(self, greeting=b"200 fake ready\r\n"):
+        self.sock = socket.socket()
+        self.sock.bind(("127.0.0.1", 0))
+        self.sock.listen(1)
+        self.port = self.sock.getsockname()[1]
+        self.received = b""
+        self.thread = threading.Thread(target=self._serve, args=(greeting,),
+                                       daemon=True)
+        self.thread.start()
+
+    def _serve(self, greeting):
+        conn, _ = self.sock.accept()
+        conn.sendall(greeting)
+        conn.settimeout(5.0)
+        try:
+            while True:
+                chunk = conn.recv(4096)
+                if not chunk:
+                    break
+                self.received += chunk
+                if self.received.endswith(b"\r\n.\r\n"):
+                    break
+        except OSError:
+            pass
+        conn.close()
+
+    def stop(self):
+        self.thread.join(timeout=5)
+        self.sock.close()
+
+
+class SessionTests(unittest.TestCase):
+    """The client half: the greeting, the line reader and the dot block."""
+
+    def connected(self, greeting=b"200 fake ready\r\n"):
+        listener = Listener(greeting)
+        self.addCleanup(listener.stop)
+        session = feed_wire.Session("127.0.0.1", listener.port, 5.0)
+        self.addCleanup(session.close)
+        return listener, session
+
+    def test_the_greeting_is_read_before_anything_is_sent(self):
+        _, session = self.connected()
+        self.assertEqual(session.greeting, b"200 fake ready")
+
+    def test_a_line_is_split_at_crlf_and_the_rest_is_buffered(self):
+        listener, session = self.connected(b"203 one\r\n438 two\r\n")
+        self.assertEqual(session.greeting, b"203 one")
+        self.assertEqual(session.line(), b"438 two")
+        listener.stop()
+
+    def test_a_leading_dot_is_doubled_and_the_block_ends_with_a_lone_dot(self):
+        # RFC 3977 section 3.1.1.  A body line that begins with `.` must
+        # reach the peer as `..`, or the peer reads it as the terminator.
+        listener, session = self.connected()
+        session.send_block(b"Subject: t\r\n\r\n.signature\r\nlast\r\n")
+        listener.stop()
+        self.assertTrue(listener.received.endswith(b"\r\n.\r\n"),
+                        listener.received)
+        self.assertIn(b"\r\n..signature\r\n", listener.received)
+        self.assertNotIn(b"\r\n.signature\r\n", listener.received)
+
+    def test_a_bare_lf_article_goes_out_crlf_terminated(self):
+        listener, session = self.connected()
+        session.send_block(b"Subject: t\n\nbody\n")
+        listener.stop()
+        self.assertEqual(listener.received,
+                         b"Subject: t\r\n\r\nbody\r\n.\r\n")
+        # no bare LF survives: every \n on the wire is preceded by \r
+        for index, byte in enumerate(listener.received):
+            if byte == 0x0a:
+                self.assertEqual(listener.received[index - 1], 0x0d)
+
+    def test_a_response_line_over_the_bound_is_refused_and_leaks_nothing(self):
+        listener = Listener(b"2" * (feed_wire.MAX_LINE + 10))
+        self.addCleanup(listener.stop)
+        with self.assertRaises(feed_wire.FeedError):
+            feed_wire.Session("127.0.0.1", listener.port, 5.0)
+        # and the socket it opened is closed: the constructor raised, so no
+        # caller holds the object whose `close` would have been called.
 
 
 if __name__ == "__main__":

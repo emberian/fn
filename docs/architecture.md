@@ -122,7 +122,7 @@ sibling order, the index bit order, the depth bound and the
 accepts depends on them: a response with a non-empty `PATH` is reported
 `:uncertain :unmodelled-tree` and never becomes a durable anchor, so the fold
 is reached only where it returns `_leaf(nonce)` and folds nothing. The cost —
-fn cannot use a batched Roughtime response, and int08h batches — is D21 and
+fn cannot use a batched Roughtime response, and int08h batches — is D22 and
 [the anchor specification](../specs/anchor.md).
 
 **TLS is inside that boundary and the digest is not.** RFC 4642 STARTTLS is

@@ -125,6 +125,144 @@ expressed by analogy with `fn-journal-crash`: no theorem binds an FNWF or FNRJ
 record file to a journal slot, so those cuts are checked against the host
 contract and the model's shape, not against a proved correspondence.
 
+## The integration labs, and `make labs`
+
+Two integration labs were dead on `dev` for a day and every `make check` was
+green for all of it. `receive_bpa_request` gained a required keyword-only
+`bundle` on 2026-09-19; the callers in `tools/` were updated, two in `tests/`
+were not; the four-node lab — the only end-to-end evidence for the
+carried-media and crash-recovery rows of M3 — died at its first receive, and
+`tests/ltp/run_fn_ltp_lab.py` died the same way. A lane recorded a 22-of-22
+run from a branch predating the change, so the evidence record looked current.
+Nothing in the tree ran a lab, so nothing noticed, and the one test that would
+have failed had a skip keyed on a failure message and reported a SKIP.
+
+`python3 tools/labs.py` runs them. Each lab is one row with three outcomes
+kept distinct all the way to the exit code, the way D13 asks everywhere else:
+**passed**, **failed**, and **not-runnable**, the last always carrying what is
+missing and how to get it. A not-runnable lab is never a pass and never
+silent; a lab that exits 0 and leaves no evidence file is a failure, because
+that is the shape the four-node record took while the lab could not start.
+The exit code is 1 only when a lab actually failed; `--require <name>` turns a
+named lab's absence into a failure, which is how a box that is supposed to be
+able to run one says so.
+
+| Lab | Tier | Cost | Needs | What it carries |
+| --- | --- | --- | --- | --- |
+| `four-node` (`tests/bp-dtn7/run_four_node_lab.py`) | quick | ~65 s, one ACL2 | ACL2 and the certificates under its nine host files | 22 assertions over four nodes: non-overlapping contacts, a carried-media hop, a SIGKILLed relay, a lost receipt regenerated, an attempt that expires, a reordered duplicate pair |
+| `tcpcl` (`tools/tcpcl_lab.py`) | local | minutes, once the image exists | `build/fn-host` (`sh tools/build_native_host.sh`, which needs a certified tree) | two fn native hosts over TCPCLv4 on loopback: transfers both ways, a refused MRU, keepalives, a SIGKILL inside a transfer, a whole-bundle ADU, the trace folded back through the image |
+| `ltp` (`tests/ltp/run_fn_ltp_lab.py`) | box | ~2 min on the box that holds ION | the pinned ION build (`tests/ltp/pin.json`; `/tank/fn/ltp` on hbox) with both nodes started | fn's request ADU across a real BP-over-LTP link and back into fn's own acceptance |
+| `deploy` (`tools/deploy_gate.py`) | box | tens of minutes | `--host`, and a certification if the box holds no gate for the tree | one commit on a machine that is not the laptop, serving a real client, SIGKILLed mid-session, reopened through the real recovery path |
+| `twonode` (`tools/twonode_gate.py`) | box | tens of minutes | `--host` | two fn nodes: independence, an `IHAVE` offer A to B, B SIGKILLed mid-transfer and reread |
+| `inn` (`tools/inn_lab.py`) | box | an hour or more | `--host` with the pinned INN (`tests/inn/pin.json`; `/tank/fn/inn/2.7.4` on hbox) | fn against a real InterNetNews: read, `IHAVE`, innfeed's offer, a cut on each side |
+| `scale` (`tools/scale_gate.py`) | box | hours | `--host` | the store size at which a post stops returning and a recover becomes an outage, and what a reader pays per command |
+
+Four more rows are **harness dry runs**, printed in their own section and
+never mixed with the labs: `deploy-dry`, `twonode-dry`, `scale-dry` and
+`inn-dry` drive the real gate scripts through bash on this machine with `HOME`
+redirected, fakes over the entry points and no ssh. They establish that the
+harness parses, sequences, classifies and renders, and **nothing whatever
+about fn**. Together they cost about 75 s and they are what catches a gate
+script that no longer runs — `tests/test_inn_lab.py` was red on `dev` on
+2026-09-21 for exactly that reason, an `IndexError` on an `nnrpd` pid the fake
+never wrote.
+
+```sh
+make labs-quick        # four-node plus the four dry runs, about 2.5 minutes
+make labs              # the above plus every lab runnable off a box
+python3 tools/labs.py --tier box --host hbox --commit dev
+python3 tools/labs.py --list
+python3 tools/labs.py --only four-node --json build/labs/report.json
+```
+
+Nothing here is wired into `make check`. `make check` is seconds and runs
+before every commit; the quick tier is minutes and the box tier is hours, and
+a gate nobody can afford to run is a gate nobody runs. What `make check`
+gained instead is `tools/harness_check.py`, below.
+
+## Two static lints on the harness
+
+`python3 tools/harness_check.py` runs in about a second, needs no ACL2, and is
+part of `make check`.
+
+`signatures` binds every resolvable Python call in `tools/`, `tests/` and
+`bin/` against the definition it names, the way CPython would at the call:
+missing required parameters, unexpected keywords, too many positionals, a
+parameter given twice. It resolves a call only when it can do so exactly — an
+imported module attribute, an imported function, a constructor, or
+`self.<method>` inside a class whose bases are all in the corpus — and counts
+what it declined rather than guessing. On the tree at the time it landed it
+resolved 3195 of 22719 call sites with 19 undecidable (`f(*rest)`,
+`f(**rest)`), and it reports the missing `bundle` at
+`tests/ltp/run_fn_ltp_lab.py` naming `tools/run_bp_receive.py:113` as the
+definition. It fails on any finding.
+
+`acl2-arity` asks the same question of two corpora that no certification
+reads, and reports: the 25 `ld`ed files under `host/`, and **ACL2 forms
+spelled inside Python string literals**. The second is the sharper target and
+the one neither language can see. `d484e9a` gave `fn-served-open` a seventh
+formal and updated both Lisp callers; `tests/test_served_differential.py:57`
+spells that call as text, so all seven of its tests raised `FN-SERVED-OPEN
+takes 7 arguments ... given 6` instead of comparing bytes, and the bridge host
+and `books/served` had no divergence check running for a day. That call now
+ends in `(fn-auth-open-config)`, exactly as `host/reader-host.lisp:137` passes
+it, and the seven tests pass again.
+
+It is deliberately not over `books/`: a book's arity is ACL2's own business,
+`certify-book` refuses a wrong one, and what let the `books/owner` break
+persist was a stale certificate rather than a missing check — which is what
+content-keyed certificates (`docs/proofs.md`) fix. A host file is never
+certified, and a Lisp form in a Python string is not Lisp to anything until it
+reaches ACL2. `tools/host_check.py` answers the host half dynamically and only
+when `FN_ACL2` names an ACL2; this is the always-on static half. Two kinds of
+prose are skipped, each after it produced findings on the real tree: a
+docstring, and a sentence that merely *mentions* a form — `"... the
+authenticated principal's allowance (fn-auth-postingp, RFC 3977 section
+6.3.1.1). The feed was never reached."` parses, so a string counts only when
+every top-level item in it is a form, which prose never is. A form holding a
+`{}` or a `%s` is not decided at all, because a `" ".join(...)` in that slot
+stands for any number of arguments. 918 applications over 25 host files and
+371 readable Python strings, 262 undecided, and three findings left:
+`fn-sched-pos` twice and `fn-feed-observe` once in
+`tests/test_teeth_check.py`, which are synthetic fixtures for the teeth
+checker rather than calls anything makes, and are another lane's to spell
+correctly.
+
+`waivers` flags a skip whose predicate reads a **failure** rather than a
+dependency: a substring of an exception, a non-zero return code, an NNTP
+response code. An environmental skip names something that is missing; a waiver
+names something that is broken, and a waiver with no identifier and no expiry
+outlives its defect in silence. A flagged site may declare itself with a
+`# waiver-ok: <reason>` comment, in the shape `tools/session_depth.py` already
+uses — and a waiver with no reason is not a waiver. The reason must name a
+registry identifier, an expiry, an owner, or a capability this tree has not
+built; every accepted declaration is printed on every run, so they cannot pile
+up unseen. It fails on any undeclared one. The lint reads one hop of
+intra-function assignment and no further: a verdict that reached a guard
+through a helper, a JSON file or another process is beyond a static reader,
+and the sweep below is what those need.
+
+### The skip triage of 2026-09-21
+
+All 32 unittest-level skip sites under `tests/`, and the 35 harness-recorded
+skips under `tools/`, were read once. 33 were environmental and honest (no
+ACL2, no openssl, not darwin, no `DTN7_REPO`, no `python3.12`, no
+`cryptography`, no native image, not a git repository) and say what is
+missing. Nine were capability probes in the gates — a surface this tree has
+not built, recorded with the observed reply. The rest were waivers for a known
+defect, and they are named individually in
+[`planning/lanes/HANDOFF-w11-lab-gate.md`](../planning/lanes/HANDOFF-w11-lab-gate.md).
+
+The structural repair was in `tools/deploy_gate.py`, which `twonode_gate`,
+`scale_gate` and `inn_lab` all subclass. `not_exercised()` builds a step with
+`rc=None`, and `Step.failed` cannot see one, so the gate exits 0; every
+"the server did not restart after recovery", "the lab produced no result",
+"the profile pass printed no JSON" was recorded that way. There is now a
+second recorder, `did_not_complete()` / `Gate.broke()`, for a step that did
+not run because the gate's own subject failed: it records `rc=1` against
+`expect=0`, so it is a failed step and the exit code says so. An absence is
+still an absence; a symptom is now a failure.
+
 ## Tooling unit tests
 
 The tools that decide what gets certified are themselves tested, with no ACL2
@@ -155,6 +293,20 @@ two real ACL2 8.7 logs in `tests/vectors/` -- one form that closed and one
 that did not -- plus the driver it builds and its choice of the less loaded
 farm box. None of this is evidence about ACL2; it is evidence that the
 harness reports what ACL2 did.
+
+`tests/test_gate_reap.py` is the same kind of test for the one tool that
+deletes things: every verdict of `tools/gate_reap.py` is a pure function over
+a gate listing, so the policy (a gate with a process in it is never stale; a
+held box lock keeps everything; a box with no `/proc` keeps everything; the
+newest gates of each tree and any revision git does not know are kept) is
+exercised against listings the test writes, and the removal guards -- a
+non-stale verdict, and six names that could widen an `rm -rf` -- are shown to
+raise with nothing sent to the box. `tests/test_feed.py` covers the two host
+mechanisms `tools/run_owner.py` imports from `tools/feed_wire.py`: the FNFD
+journal's layout, including a torn tail ending the record stream, and RFC 3977
+section 3.1.1 dot stuffing. It used to drive `tools/run_feed.py`, which was
+retired on 2026-09-21; the feed scenarios it held are `tools/twonode_gate.py`'s
+`scenario_owner_feed` and `scenario_feed_restart` against a real fn node.
 
 ## Evidence record
 

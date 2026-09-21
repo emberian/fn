@@ -1516,13 +1516,33 @@
 ; Binding: a decoded checkpoint that validates against a record prefix is the
 ; capture of that prefix
 
+; Guard fact for the journal-interval clause below, local because natp of a
+; field is not a rule any caller should carry (docs/proof-style.md s3).
+(local
+ (defthm fn-cpc-checkpointp-frontier-is-natural
+   (implies (fn-checkpointp x) (natp (fn-checkpoint-frontier x)))
+   :hints (("Goal" :in-theory (enable fn-checkpointp fn-record-uint32p)))))
+
 ; Validation replays the prefix and compares the actual result with the
 ; decoded value.  This is what the host's differential assertion computes.
+;
+; The journal-interval clause is not decoration.  FN-REPLAY carries a record's
+; generation into FN-NODE-PREPARE and FN-NODE-COMPLETE without ever comparing
+; it with the record's txid, so replay of a prefix whose generation field is
+; corrupt returns the same node and sequence as replay of the sound prefix
+; (measured: EQUAL of the two FN-REPLAY results is T on the witness in
+; tests/acl2/checkpoint-codec-tests.lisp).  Without this clause the validator
+; therefore accepted a prefix that FN-CHECKPOINT-CAPTURE refuses as
+; (:ERROR :HISTORY), and the two owners of "is this prefix a journal" answered
+; differently about the same bytes.  FN-CHECKPOINT-CAPTURE tests it as clause
+; :history and FN-CHECKPOINT-RESTORE as clause :suffix; validation is the
+; third member of that family and tests it here.
 (defun fn-cpc-validp (checkpoint groups capacity prefix)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-checkpointp checkpoint)
        (equal groups (fn-checkpoint-groups checkpoint))
        (equal capacity (fn-checkpoint-capacity checkpoint))
+       (fn-sf-record-listp prefix 0 0 (fn-checkpoint-frontier checkpoint))
        (let ((answer (fn-replay groups capacity prefix)))
          (and (fn-replay-okp answer)
               (equal (fn-replay-result-sequence answer)
@@ -1531,16 +1551,20 @@
                      (fn-checkpoint-node checkpoint))))))
 
 (verify-guards fn-cpc-validp
-  :hints (("Goal" :in-theory (disable fn-replay fn-replay-okp fn-checkpointp))))
+  :hints (("Goal" :in-theory (disable fn-replay fn-replay-okp fn-checkpointp
+                                      fn-sf-record-listp))))
 
 ; KEYSTONE: exact binding.  Every field of a validated checkpoint is fixed by
 ; the prefix: the node and sequence by replay, the configuration by the
 ; recognizer's binding of groups and capacity to the node, and the frontier by
 ; the value validated against.  So it is FN-CHECKPOINT-CAPTURE-VALUE of that
 ; prefix at that frontier, and nothing else.
+; The journal-interval hypothesis this theorem used to carry is now a clause
+; of FN-CPC-VALIDP and is deleted from the statement (deputy brief, micro
+; discipline 4): with it restored as a hypothesis nothing in the test book
+; could witness dropping it.
 (defthm fn-cpc-valid-is-capture-value
-  (implies (and (fn-cpc-validp checkpoint groups capacity prefix)
-                (fn-sf-record-listp prefix 0 0 (fn-checkpoint-frontier checkpoint)))
+  (implies (fn-cpc-validp checkpoint groups capacity prefix)
            (equal (fn-checkpoint-capture-value
                    (fn-checkpoint-capture groups capacity prefix
                                           (fn-checkpoint-frontier checkpoint)))
@@ -1556,6 +1580,38 @@
                             fn-state-groups fn-retain-capacity
                             fn-node-acceptance fn-node-retention
                             fn-string-listp fn-no-duplicatesp)))))
+
+; The refusal that the clause buys.  A prefix is a journal only if every one
+; of its records binds the generation it consumed to the txid it consumed, so
+; a single record whose generation does not match its txid is enough to make
+; validation refuse the whole prefix, whatever checkpoint is offered against
+; it and whatever configuration is offered with it.
+(local
+ (defthm fn-cpc-journal-generation-matches
+   (implies (and (fn-sf-record-listp records sequence lower frontier)
+                 (member-equal record records))
+            (equal (fn-record-generation record) (fn-record-txid record)))
+   :rule-classes nil))
+
+; KEYSTONE: the validator refuses a corrupt generation binding.  RULE-CLASSES
+; NIL deliberately: as a rewrite this would be a free-variable rule (RECORD
+; occurs only in the hypotheses) that concludes NIL on a recognizer call, the
+; shape the deputy brief names as a trap.  It is cited and witnessed, not
+; applied by the rewriter.
+(defthm fn-cpc-valid-refuses-generation-mismatch
+  (implies (and (member-equal record prefix)
+                (not (equal (fn-record-generation record)
+                            (fn-record-txid record))))
+           (not (fn-cpc-validp checkpoint groups capacity prefix)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cpc-journal-generation-matches
+                            (records prefix) (sequence 0) (lower 0)
+                            (frontier (fn-checkpoint-frontier checkpoint))))
+           :in-theory (e/d (fn-cpc-validp)
+                           (fn-replay fn-replay-okp fn-checkpointp
+                            fn-sf-record-listp fn-record-generation
+                            fn-record-txid)))))
 
 ; -----------------------------------------------------------------------------
 ; The frame that carries a checkpoint generation and its selection marker.
