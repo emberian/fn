@@ -378,6 +378,21 @@ class Acl2Owner(Acl2Store):
         return self._nat("(fn-owner-feed-backoff-ms '{} state)".format(
             self.literal(peer.encode("utf-8"))))
 
+    def feed_lost(self, peer, monotonic):
+        """The connection to one peer is gone; ACL2 decides what that means.
+
+        `fn-own-feed-lost` applies `fn-feed-lost` to THAT PEER alone: the
+        in-flight entry returns to :queued with one more attempt and a
+        backoff, and the connection is forgotten.  The host reports the
+        event and the time; it does not decide to requeue, and it never
+        reaches for `fn-own-feed-restart-all`, whose per-table settle would
+        resolve another peer's genuinely in-flight entry and cause the
+        second transfer K5 forbids.
+        """
+        return self._symbol_any(
+            "(fn-owner-feed-lost '" + self.literal(peer.encode("utf-8")) +
+            " {} state)".format(int(monotonic)))
+
     def feed_connect(self, peer, conn):
         return self._symbol_any("(fn-owner-feed-connect '{} {} state)".format(
             self.literal(peer.encode("utf-8")),
@@ -689,12 +704,36 @@ class Owner:
         cid, greeting = self.bridge.open_peer(peer) if peer else self.bridge.open()
         if cid is None:
             # The configured bound is reached; the owner installed nothing.
+            # SAY SO.  This refusal writes no greeting and raises nothing, so
+            # before this line a node whose table was full answered every
+            # client with an immediate close and printed not one word: gate
+            # `0ec08bb` recorded 180 of them over 90 s against a node that
+            # was alive, with `ACCEPT-FAULT` absent and no tap session, and
+            # the cause was diagnosed three runs later.  A server that
+            # refuses everything has to be able to say why.
+            print("ACCEPT-REFUSED {}: the owner holds {} of {} connections"
+                  .format(peer or "reader", len(self.bridge.connections()),
+                          self.bridge.max_conns),
+                  file=sys.stderr, flush=True)
             sock.close()
             return
         conn = Connection(sock, cid, peer)
         conn.outbuf = greeting
-        self.connections[sock] = conn
-        self.selector.register(sock, selectors.EVENT_READ | selectors.EVENT_WRITE, conn)
+        try:
+            self.connections[sock] = conn
+            self.selector.register(sock,
+                                   selectors.EVENT_READ | selectors.EVENT_WRITE, conn)
+        except BaseException:
+            # The owner has already installed the connection.  A host that
+            # gives up here without telling ACL2 leaks a slot out of
+            # `fn-own-conns` for the lifetime of the process, and the bound
+            # is what closes every later accept.
+            self.connections.pop(sock, None)
+            try:
+                sock.close()
+            finally:
+                self.bridge.close_connection(cid)
+            raise
 
     def drop(self, conn):
         try:
@@ -768,6 +807,18 @@ class Owner:
         if conn.handshaking and not conn.outbuf and not conn.closing:
             if not self.upgrade(conn):
                 return
+        # The book said this connection ENDS (`fn-served-closingp`: QUIT's
+        # 205, a fatal 400, the transit 436-and-close), and the host has to
+        # act on that once the reply has left the socket.  Before this, a
+        # closing connection was armed for write, never read again and never
+        # dropped: its socket stayed open, its slot stayed in `fn-own-conns`
+        # for the lifetime of the process, and `--max-connections` QUITs
+        # later `fn-own-open` answered NIL to every accept.  Measured on the
+        # laptop at `--max-connections 4`: four QUITs, then every connection
+        # closed at accept with no greeting and no log line.
+        if conn.closing and not conn.outbuf:
+            self.drop(conn)
+            return
         # A peer that does not consume its output is stalled: stop taking its
         # input once the backlog reaches the bound.  It costs the owner one
         # bounded buffer and nothing else; every other connection and the
@@ -1006,6 +1057,20 @@ class Owner:
                 else:
                     word = self.attempt(msgid, payload, groups)
                     reply = self.bridge.outcome(cid, word)
+                # Durable before the effect it authorizes. A durable
+                # acceptance enqueues the article on every outbound peer's
+                # feed (fn-own-feed-durable, inside fn-own-outcome) and owes
+                # the journal one (:feed-enqueue peer msgid tick) record per
+                # target BEFORE the entry is offered (specs/peering.md 3.3).
+                # Nothing wrote it: the queue existed in memory and nowhere
+                # else until its first offer, so an article accepted while a
+                # peer was unreachable did not survive the process that
+                # accepted it -- which is what stopped K5's kill-and-re-offer
+                # from delivering on gate 15ac399. The frames land here,
+                # before the loop writes the 240 to the poster, and INSIDE
+                # the fault boundary: a flush that raises costs this
+                # connection its submission and costs the service nothing.
+                self.feed_flush()
             except (SystemExit, KeyboardInterrupt):
                 raise
             except BaseException as error:   # noqa: BLE001 -- the whole point
@@ -1162,13 +1227,36 @@ class Owner:
         return True
 
     def feed_drop(self, feed):
+        """Give up this peer's socket, and tell the model the connection is lost.
+
+        `feed_connect(peer, None)` alone stops selection and resolves
+        nothing: the entry that was in flight stays :sent, `fn-feed-selection`
+        will not pick it, and only a process restart frees it -- so the feed
+        made no further progress for that peer until the node was restarted
+        (the blocker in front of K5, measured on gate `a5c6792`: node A
+        reconnected every 5 s and offered nothing, seven times over).
+        `fn-own-feed-lost` is the transition for exactly this, and it
+        forgets the connection itself, so it subsumes the nil report.
+        """
         if feed.session is not None:
             try:
                 self.selector.unregister(feed.session.sock)
             except (KeyError, ValueError):
                 pass
         feed.close()
-        self.bridge.feed_connect(feed.peer, None)
+        try:
+            self.bridge.feed_lost(feed.peer, self.clock.milliseconds())
+            self.feed_flush()
+        except Exception as error:                   # noqa: BLE001
+            # `feed_drop` is itself the containment for a feed that went
+            # wrong, so nothing here may raise out of it: an exception
+            # escaping this method ends the node from inside the handler
+            # that exists to keep it alive.  Say it once, by peer name.  A
+            # journal append that failed leaves the entry in flight on
+            # disk, which `fn-own-reopen` settles at the next start.
+            print("FEED-LOST-FAULT {}: {}: {}".format(
+                feed.peer, type(error).__name__, error),
+                file=sys.stderr, flush=True)
 
     def feed_write(self, feed, command):
         """The bytes one feed decision authorized, after its records."""
@@ -1354,6 +1442,18 @@ class Owner:
                         conn = key.data
                         self.guard("served-read", lambda: self.serve(conn, mask),
                                    conn=conn)
+                    else:
+                        # A registration with no connection behind it is a
+                        # leak that spins the loop at full speed for the
+                        # lifetime of the process.  Forget it.  (w11/feed-k5:
+                        # this is what the 90-second accept refusal was --
+                        # QUIT connections were never dropped after their
+                        # final reply and the owner's connection table
+                        # filled.)
+                        try:
+                            self.selector.unregister(key.fileobj)
+                        except (KeyError, ValueError):
+                            pass
                 if self.stopping:
                     break
             if not self.stopping:

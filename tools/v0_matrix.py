@@ -2508,9 +2508,16 @@ else echo NONE; fi
                           limit=limit + "; one re-offer per direction, which is the "
                                         "history answer that makes a restart-by-offer "
                                         "safe, not a proof of exactly-once")
+        # The feed journal is `<store>/feed/<peer>.fnfd`: `Journal(store.root,
+        # peer)` in tools/run_owner.py, which is what `feed_start` replays and
+        # what `feed_flush` appends to. Neither `<run>/journal/feed` nor
+        # `<store>/journal/feed` has ever existed, so this row read `refused`
+        # with "(no feed journal found)" against a node whose journal was
+        # sitting there -- a false negative about the one file the feed's
+        # durability rests on.
         journal = self.sh("feed: the journal on node A", self.cd(
-            "ls -l {}/journal/feed {}/store/journal/feed 2>/dev/null | head -8 "
-            "|| true".format(self.a.dir, self.a.store)), expect=None)
+            "ls -l {}/feed 2>/dev/null | head -8 "
+            "|| true".format(self.a.store)), expect=None)
         found = bool(journal.output.strip())
         self.emit("V0-FEED-JOURNAL", ACCEPTED if found else REFUSED, journal.command,
                   (journal.output.strip().splitlines() or ["(no feed journal found)"])[0],

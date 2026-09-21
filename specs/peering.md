@@ -833,7 +833,7 @@ above, three are earned with the subject substitution named and one is not:
 | --- | --- | --- |
 | `fn-feed-at-most-one-accepted-outcome` | the theorem of that name | **Earned.** Same name, same content. The hypothesis is `fn-feed-drivenp` -- each record admissible in the state the fold had reached -- in place of the design's `fn-feed-journal-okp`, and it is a check over the fold, never the conclusion. |
 | `fn-feed-done-is-never-reoffered` | `fn-feed-done-is-never-selected` with `fn-feed-tick-step-offers-the-selection` and `fn-feed-tick-step-is-silent-without-a-selection` | **Earned over `fn-feed-tick-step`**, the function the host calls once per scheduler tick, not over `fn-ideal-run`, which does not carry the feed. `fn-feed-done-is-never-selected` carries `(fn-feed-selection f obs)` as a hypothesis: without it the statement is FALSE at `msgid` = `NIL` (a feed that selects nothing selects `NIL`, and `NIL` is not `:queued`), and the silent-without-a-selection theorem is the other half of the pair. |
-| `fn-feed-replay-is-the-live-feed-modulo-inflight` | `fn-feed-replay-is-the-fold`, `fn-feed-replay-preserves-feedp`, `fn-feed-replay-preserves-peer` and the ground crash scenario | **Not earned.** All three replay theorems are now proved, but the general equation still needs a live machine that emits its own journal, which no lane has built. |
+| `fn-feed-replay-is-the-live-feed-modulo-inflight` | `fn-feed-replay-is-the-fold`, `fn-feed-replay-preserves-feedp`, `fn-feed-replay-preserves-peer` and the ground crash scenario | **Not earned.** All three replay theorems are proved and the general equation is still open. The live machine that emits its own journal now EXISTS -- `w11/feed-k5` closed the missing `(:feed-enqueue …)` record, and gate `2c27ef6` killed a sender with `kill -9`, replayed eleven records and re-offered by `CHECK` -- but one run of one crash point is a witness, not the equation, and no theorem in this tree relates that journal to that feed. |
 | `fn-feed-restart-resolves-by-offer` | `fn-feed-restart-emits-no-transfer` with `fn-feed-restart-then-tick-offers` | **Earned over `fn-feed-send`** -- the only producer of a TAKETHIS or an article block -- **and `fn-feed-tick-step`**, not over `fn-ideal-restart`. Read the first one narrowly: `fn-feed-restart` also forgets the connection and `fn-feed-send` refuses a feed whose `fn-feed-conn` is not a `natp`, so the settled queue is not what it rests on. The statement that would need the settled queue is the one over the REOPENED feed, which is what the host does next; it is recorded open in the lane handoff. |
 
 The fifth keystone of the book has no row above because §4 does not state it:
@@ -1444,6 +1444,76 @@ offer at all, and neither was an ACL2 decision.
 
 | Item | State |
 | --- | --- |
-| `CAPABILITIES` on a transit connection | **defect, open.** The book renders the reader block on a peer session, so a peer that probes before it offers is told there is no transit surface (RFC 3977 §5.2.2 wants the capability exactly when the command is available). `tests/test_owner.py` asserts the current behaviour so the day it changes is visible. This is the reverse half of NNT-001, which `w10/v0-matrix` also reported. |
+| `CAPABILITIES` on a transit connection | **defect, open.** A peer that probes before it offers is told there is no transit surface (RFC 3977 §5.2.2 wants the capability exactly when the command is available). `tests/test_owner.py` asserts the current behaviour so the day it changes is visible. This is the reverse half of NNT-001, which `w10/v0-matrix` also reported. **The cause is not what this row first said**; see the `w11/feed-k5` status section at the end of this file. |
 | fn does not prepend its own path-identity to a transit article's Path (§3.2.1) | unchanged from wave 10: `fn-peer-injection-arguments` stages the peer's octets verbatim, so on the return leg loop suppression rests on the peer's history answer rather than on Path. |
 | A feed fault ending the service | **contained, and the design question is now answered.** `tools/run_owner.py`'s feed loop no longer lets an unexpected error unwind through `run`; a fault prints `FEED-FAULT <peer>` with its traceback and drops that feed, and three such faults were live on this path and are fixed by name. Whether a host fault should reach the wire as the `403` fourth outcome on a SERVED connection -- the question `w11/twonode-feed` recorded here as undecided -- is decided: it should, and `fn-own-fault` (`books/owner-fault.lisp`, lane `w11/owner-survival`) is the transition. A served read or a drained submission that faults answers RFC 3977 section 3.2.1's `403`, closes that connection, clears the submission it had in flight, and leaves every other connection equal to what it was, all proved; the reply octets are proved distinct from every `fn-nntp-post-outcome` line, so the fault cannot be read as a verdict on an article. An OUTBOUND feed fault still has no wire answer, because there is no connection of ours to answer on: the peer is the server there and dropping the session is the whole of it. |
+
+## Status (wave 11, `w11/feed-k5`, K5 live and the three defects in front of it)
+
+`w11/twonode-feed` left K5's `kill -9` restart-by-offer NOT EXERCISED with
+two named blockers. Both are closed, and a third was underneath them.
+Evidence:
+[`feed-k5-w11-2026-09-21`](../planning/evidence/feed-k5-w11-2026-09-21.md).
+
+### The enqueue record of §3.3 was never written
+
+§3.3's table says `(:feed-enqueue peer msgid tick)` is written *before the
+entry is `:queued`*. No deployment wrote it. `fn-own-feed-durable-records`
+(`books/owner.lisp`) existed and had **no caller**: `fn-own-outcome` folded
+`fn-own-feed-durable` into the new owner, the host installed the served
+effects and not the feed records, and nothing flushed them. So the outbound
+queue lived in memory and nowhere else until its first offer, and an article
+accepted while a peer was unreachable did not survive the process that
+accepted it. That is what stopped K5: on gate `15ac399` node A accepted the
+article with node B down, was killed, restarted, replayed eight records --
+none of them an enqueue -- and never offered it.
+
+`fn-own-outcome-records` and `fn-own-transit-outcome-records` state the
+condition under which the records are owed, in ACL2, once; the host reads
+them off the owner before the outcome moves it and appends the frames before
+the 240 reaches the poster. This is the first deployment in which §3.3's
+record family is complete.
+
+### A lost connection applies `fn-feed-lost`, per peer
+
+§3.2's `fn-feed-lost` had no live caller either: `feed_drop` reported only
+`(:feed-conn peer nil)`, which stops selection and resolves nothing, so an
+entry that was in flight when a socket died stayed `:sent` until the
+process restarted. `fn-own-feed-lost` / `fn-own-feed-lost-one` apply it to
+ONE peer -- `fn-own-feed-lost-one-touches-no-other-peer` is the theorem --
+and the record it authorizes is the `(:feed-outcome peer msgid attempt 400)`
+that a 400 on the wire already writes, so `fn-feed-apply-record` replays it
+to the state the live machine reached. A `(:feed-restart peer)` record would
+not: `fn-feed-restart` retires the attempt where `fn-feed-lost` counts it.
+
+### `CAPABILITIES` on a transit connection: the list is proved and unreachable
+
+
+The row in the wave-11 table above says "the book renders the reader block
+on a peer session". The transit capability list **exists and is proved**:
+`fn-peer-capability-lines` (`books/peer-inbound.lisp`) appends `IHAVE` and
+`STREAMING` for a peer whose record has an inbound half, it has a block-text
+lemma, and `tests/acl2/peer-inbound-tests.lisp` carries five assertions
+about it. It is **unreachable on the composed machine**. The chain is
+`fn-served-dispatch -> fn-auth-step -> fn-peer-step -> fn-nntp-post-step ->
+fn-nntp-step`, and `fn-auth-step` answers `CAPABILITIES` itself (to add
+`STARTTLS` and `AUTHINFO USER`) before it ever delegates, so
+`fn-peer-command`'s `CAPABILITIES` arm never runs.
+
+Measured in one session, gate `15ac399` step 53: the same connection reports
+`capabilities: [VERSION 2, READER, POST, OVER MSGID, HDR, LIST …,
+IMPLEMENTATION]`, then `MODE STREAM` -> `203` and `IHAVE` -> `335`. Two
+capabilities the connection demonstrably has, absent from the list RFC 3977
+§5.2.2 requires to name them.
+
+**The packet, and it is the assurance rules' shape, not a cosmetic one.**
+`fn-auth-capability-lines` must build on `fn-peer-capability-lines` instead
+of `fn-nntp-capability-lines`, taking the peer record from
+`(fn-peer-session-peer (fn-auth-session-base as))` against the session's own
+configuration -- `books/nntp-auth` already includes `books/peer-inbound`
+because it delegates to it -- and `fn-peer-command`'s `CAPABILITIES` arm is
+then removed rather than marked, because with auth above it the branch is
+unreachable in composition either way. Whoever takes it re-certifies the
+closure of `books/nntp-auth` and updates
+`tests/test_owner.py::test_the_capability_block_does_not_yet_name_the_transit_commands`,
+which exists to say the day this changes.
