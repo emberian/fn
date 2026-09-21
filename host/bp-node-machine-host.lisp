@@ -21,6 +21,15 @@
       (fn-bpn-ready-peers (fn-bpn-machine-state-jobs st))
     nil))
 
+(defun fn-bpn-host-existing-sequence (st work attempt generation)
+  (fn-bpn-existing-sequence st (list work attempt generation)))
+
+(defun fn-bpn-host-existing-sequence-p (answer)
+  (and (fn-bpn-existing-sequencep answer) t))
+
+(defun fn-bpn-host-existing-sequence-value (answer)
+  (if (fn-bpn-existing-sequencep answer) (nth 1 answer) nil))
+
 (defun fn-bpn-host-lifecycle-record-frame (record)
   (if (fn-bpn-lifecycle-recordp record)
       (fn-bpn-lifecycle-record-frame record)

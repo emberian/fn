@@ -277,6 +277,19 @@
            (equal (fn-bpn-pending-token (fn-bpn-machine-state-pending st))
                   (fn-bpn-machine-state-next-token st)))))
 
+(defun fn-bpn-existing-sequence (st key)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((job (fn-bpn-find-job key (fn-bpn-machine-state-jobs st))))
+    (if (and (fn-bpn-machine-statep st) (fn-bpn-keyp key) job)
+        (list :existing (fn-bpn-job-sequence job))
+      (list :absent))))
+
+(defun fn-bpn-existing-sequencep (answer)
+  (declare (xargs :guard t))
+  (and (true-listp answer) (equal (len answer) 2)
+       (equal (car answer) :existing)
+       (fn-bpp-timep (nth 1 answer))))
+
 (fn-defrecord fn-bpn-answer
   :tag :fn-bpn-answer
   :constructor (fn-bpn-answer st effects)
