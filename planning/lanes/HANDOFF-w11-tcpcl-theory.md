@@ -224,10 +224,16 @@ scenario separates 16× from ~1×, which is what it was built for; it does not
 measure the guard, and a lane should not quote its ratio as though it did.
 
 **Not measured here: an image built from this branch.** It needs the DTN
-closure certified on a box, and `books/bp-bundle-invariants` and
-`books/bp-node` were still certifying on persvati
-(`run-20260920T234237Z-8081`, `/home/ember/fn-lanes/w11-tcpcl-theory`; the
-other seven roots of that run passed) when this lane closed. Nothing above
+closure certified on a box. persvati `run-20260920T234237Z-8081`
+(`/home/ember/fn-lanes/w11-tcpcl-theory`, `--jobs 4`, 1800 s cap) certified
+seven of its nine roots in the first two minutes — `store-observed-traces`,
+`bp-ingress`, `bp-receipt`, `bp-receipt-records`, `bp-workflow-records`,
+`tcpcl-session`, `bp-bundle` — and then spent the rest of its budget on
+`books/bp-bundle-invariants`, which was still going at 27:48 with its ACL2
+child at 99.9% CPU when this lane closed, so it was computing and not queued
+behind another lane's slot. `books/bp-node` never started. hbox was the
+wrong box for this: it lacked 23 of the closure's 60 books where persvati
+lacked 9. Nothing above
 depends on it: the direct measurement is of the certified book itself, and
 the lab run is of a cheap-guard image. The remaining claim it would settle is
 end-to-end throughput on this exact tree, which no number in this record

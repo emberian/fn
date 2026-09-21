@@ -119,8 +119,14 @@ does not quote its ratio as one.
 ### Not measured
 
 An image built from this branch. It needs the DTN closure certified on a
-box; persvati `run-20260920T234237Z-8081` certified seven of its nine roots
-(`store-observed-traces`, `bp-ingress`, `bp-receipt`, `bp-receipt-records`,
-`bp-workflow-records`, `tcpcl-session`, `bp-bundle`) and was still on
-`bp-bundle-invariants` and `bp-node` when this lane closed. Its pairs are in
-persvati's cache for the next lane.
+box; persvati `run-20260920T234237Z-8081` (`--jobs 4`, 1800 s cap, remote
+root `/home/ember/fn-lanes/w11-tcpcl-theory`) certified seven of its nine
+roots in its first two minutes — `store-observed-traces`, `bp-ingress`,
+`bp-receipt`, `bp-receipt-records`, `bp-workflow-records`, `tcpcl-session`,
+`bp-bundle` — and then spent the rest on `books/bp-bundle-invariants`, still
+running at 27:48 with its ACL2 child at 99.9% CPU when this lane closed, so
+computing rather than queued behind another lane's slot (persvati carried
+twelve ACL2 processes at the time, three of them idle for 18 hours).
+`books/bp-node` never started. The seven passing pairs are in persvati's
+cache for the next lane, which is what `--closure` runs leave behind whether
+or not they finish.
