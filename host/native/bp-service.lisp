@@ -127,15 +127,13 @@
           (when (string= (or (sb-ext:posix-getenv
                               "FN_BP_SERVICE_TEST_FAIL_FIRST_DIR_BARRIER") "")
                          "1")
-            (fnn-indeterminate
-             "bp-service: injected first lifecycle directory barrier failure"))
+            (fnn-os-fail sb-posix:eio dir))
           (fnn-fsync-dir dir)
           (fnn-unlink stage)
           (when (string= (or (sb-ext:posix-getenv
                               "FN_BP_SERVICE_TEST_FAIL_SECOND_DIR_BARRIER") "")
                          "1")
-            (fnn-indeterminate
-             "bp-service: injected second lifecycle directory barrier failure"))
+            (fnn-os-fail sb-posix:eio dir))
           (fnn-fsync-dir dir)
           :durable)
       (fnn-os-error ()

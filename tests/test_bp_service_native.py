@@ -135,9 +135,10 @@ class NativeBpServiceTests(unittest.TestCase):
         sender_log = self.tmp / "sender.log"
         with listener_log.open("wb") as listener_output:
             listener = subprocess.Popen(
-                [str(self.image), "--fn", "tcpcl", "listen", "0", "1",
-                 str(self.tmp / "peer-journal"), "dtn://fn-b/", "-",
-                 "4", "1024", "1048576", str(malformed), "-"],
+                [str(self.image), "--fn", "bp", "receive", "0", "1",
+                 str(self.tmp / "bp-journal"), "dtn://fn-b/", "-",
+                 "3600000", "2", "32", "1048576", str(self.adu),
+                 "dtn://fn-a/", "-", "0"],
                 cwd=ROOT, env=self.env, stdout=listener_output,
                 stderr=subprocess.STDOUT,
             )
@@ -148,7 +149,7 @@ class NativeBpServiceTests(unittest.TestCase):
                 while time.time() < deadline:
                     text = listener_log.read_text(errors="replace")
                     for line in text.splitlines():
-                        if line.startswith("TCPCL LISTENING "):
+                        if line.startswith("BP LISTENING "):
                             port = int(line.rsplit(" ", 1)[1])
                             break
                     if port is not None:
@@ -159,33 +160,43 @@ class NativeBpServiceTests(unittest.TestCase):
                 self.assertIsNotNone(port, "listener did not publish a port")
 
                 with sender_log.open("wb") as sender_output:
+                    sender_env = dict(self.env)
+                    sender_env["FN_TCPCL_TEST_PAUSE_AFTER_STAGE_DATA"] = "1"
                     sender = subprocess.Popen(
-                        [str(self.image), "--fn", "bp", "send", "127.0.0.1",
-                         str(port), str(self.adu), str(self.tmp / "bp-journal"),
-                         "dtn://fn-a/", "dtn://fn-b/", "3600000", "2", "32",
-                         "1048576", "2", "-", "0"],
-                        cwd=ROOT, env=self.env, stdout=sender_output,
+                        [str(self.image), "--fn", "tcpcl", "send", "127.0.0.1",
+                         str(port), str(malformed), str(self.tmp / "peer-journal"),
+                         "dtn://fn-a/", "-", "4", "1024", "1048576", "1", "-"],
+                        cwd=ROOT, env=sender_env, stdout=sender_output,
                         stderr=subprocess.STDOUT,
                     )
                     deadline = time.time() + 20
                     while time.time() < deadline:
-                        if "BP refused xfer=" in sender_log.read_text(errors="replace"):
+                        refused = "BP refused xfer=" in listener_log.read_text(
+                            errors="replace")
+                        held_ack = "TCPCL TEST STAGE-DATA " in sender_log.read_text(
+                            errors="replace")
+                        if refused and held_ack:
                             break
                         if sender.poll() is not None:
                             break
                         time.sleep(0.02)
                     self.assertIn(
-                        "BP refused xfer=", sender_log.read_text(errors="replace"),
+                        "BP refused xfer=", listener_log.read_text(errors="replace"),
                         "the mixed-outcome cut requires a reachable refused article",
                     )
-                    listener.kill()
-                    listener.wait(timeout=10)
-                    sender.wait(timeout=20)
+                    self.assertIn(
+                        "TCPCL TEST STAGE-DATA ",
+                        sender_log.read_text(errors="replace"),
+                        "the peer must still hold the reply's final ACK",
+                    )
+                    listener.wait(timeout=30)
+                    sender.kill()
+                    sender.wait(timeout=10)
 
-                output = sender_log.read_text(errors="replace")
+                output = listener_log.read_text(errors="replace")
                 self.assertIn("BP summary accepted=0 refused=1 uncertain=0", output)
-                self.assertIn("TCPCL active uncertain", output)
-                self.assertEqual(sender.returncode, 3, output)
+                self.assertIn("TCPCL passive uncertain", output)
+                self.assertEqual(listener.returncode, 3, output)
             finally:
                 if listener.poll() is None:
                     listener.kill()
