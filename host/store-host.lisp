@@ -274,6 +274,7 @@
 (defun fn-store-metadata-frontier-next (n)
   (fn-bs-frontier-next n))
 
+
 (defun fn-store-octet-lists->strings (xs)
   (if (consp xs)
       (if (not (fn-cbor-octet-listp (car xs)))
