@@ -307,3 +307,89 @@ is admitted, exported and counted; the way to catch them is to read the
   carries the `natp` of each txid, because the contradiction that discharges
   the step is `txid < bound < txid+1` and linear arithmetic sees that only
   over integers.
+
+## 8. Per-root certification
+
+Laptop (Darwin 25.6.0, ACL2 8.7 at `/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2`,
+sha256 `36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324`),
+one process at a time through `tools/certify_books.py`. Certificates in this
+worktree came from `python3 tools/certs.py install` (`installed 0, kept
+identical local 161, no cached pair 115`) and were rebuilt from
+`books/store-files` up, because a certificate is not relocatable: the first
+attempt failed with `its certificate requires the book
+"/home/ember/fn-lanes/w10-dtn-3/books/store-files-invariants.lisp"`.
+
+| root | state | evidence |
+| --- | --- | --- |
+| `books/store-files` | **certified** | `build/acl2/certify-20260921T010720Z-95694` (4.8 s) |
+| `books/store-files-invariants` | **certified** | same run (10.4 s) |
+| `books/store-node` | **certified** | same run (0.8 s) |
+| `books/store-node-invariants` | **certified** | `build/acl2/certify-20260921T012714Z-28214` |
+| `books/store-files-traces` | **certified** | `build/acl2/certify-20260921T012857Z-30559` (3.2 s) |
+| `books/store-node-traces` | **certified** | same run (13.5 s) |
+| `books/store-node-resolution` | **certified** | same run (3.3 s) |
+| `books/store-observed` | **certified** | same run (3.0 s) |
+| `books/store-observed-traces` | **certified** | same run (1.9 s) |
+| `tests/acl2/store-observed-traces-tests` | **certified**, 137 of 137 `:PASSED` | `build/acl2/certify-20260921T012956Z-31806` |
+
+`tools/teeth_check.py --evaluate` on the test book: **458 probes, prefix ok,
+exit 0, 458 values, 0 findings**. It caught one defect before certification --
+`fn-record-uint32p` was asserted FALSE once and TRUE nowhere
+(`predicate-never-anchored`), so the positivity tooth had no anchor; there is
+now an `(assert-event (fn-record-uint32p 3))` beside it.
+
+Ledger, before this lane and after: `defthm` 5559 to 5580, `defun` 3929 to
+3932, guard-verified 1461 to 1463, `assert-event` 5400 to 5436, SUSPECT 46 to
+46. **The SUSPECT count did not move and that is not a virtue**: the one new
+lemma that deserves the flag, `fn-sf-frontier-rollback-visiblep-unfolds`, was
+flagged (47) while its conclusion spelled the emptiness conjunct exactly as
+the definition does, and stopped being flagged when that conjunct became
+`(equal (fn-sf-successes s) nil)` -- which it had to become, since a `(null
+x)` conclusion generates no rule. The shape detector compares text; a
+`-unfolds` lemma can slip past it by spelling one conjunct differently. Worth
+a tooling fix, and the lemma is named honestly in the meantime.
+
+## 9. The wide run
+
+hbox, `run-20260921T013133Z-f968`, `tools/farm.py submit hbox --jobs 8
+--remote-root /tank/fn/lanes/w11-bytestore-k2 --affected-by
+books/store-files.lisp --closure`, ACL2 8.7 at `/tank/fn/acl2-8.7/saved_acl2`
+sha256 `64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5`,
+through `swarm-build`. Evidence
+`build/acl2/certify-20260921T013143Z-1403371` (fetched into this worktree).
+
+**130 roots attempted, 129 certified, 1 failed**, 721.1 s of book wall time.
+Cache on submit: `installed 74, kept 44, uncached 158`.
+
+Box chosen by measurement, and the coordinator's correction applied: hbox is
+a ZFS box, so `free`'s `used` counts the ARC and under-reports. Measured
+before submitting: hbox load 1.26, `AnonPages` 2.5 G, `MemFree` 26 G against
+`Slab` 90.7 G of which `SUnreclaim` 85.8 G is ARC; persvati load 3.47 with
+61 G available and another lane on it. hbox at `--jobs 8` peaked at four
+`sbcl` processes and 1.9 G RSS.
+
+**The one failure is not this lane's, and the reason the previous lane gave
+for it is wrong.** `tests/acl2/checkpoint-codec-tests` fails at
+`(assert-event (not (fn-cpc-validp *cpc-value* *cpc-groups* 10 (list
+*cpc-r0-bad-generation*))))`. `HANDOFF-w10-kernel-freedom.md` §5 says "its
+include closure is `books/checkpoint-codec` alone, with no path to
+`books/store-files`"; there IS a path -- `checkpoint-codec` includes
+`checkpoint`, which includes `store-node-invariants`. The correct argument is
+about definitions: `fn-cpc-validp` (`books/checkpoint-codec.lisp:1521`) is
+`fn-checkpointp`, `fn-replay` and `fn-replay-okp` and nothing else, an
+`assert-event` evaluates rather than rewrites, and **this lane changed no
+definition those reach** -- its `books/store-node-invariants` edits are
+theorems plus one `local` `defun`, and the two new functions in
+`books/store-files` (`fn-sf-frontier-rollback-visiblep`,
+`fn-sf-crash-frontier-rollback`) are not reachable from `fn-cpc-validp`. The
+previous lane also measured the identical assertion failing under a different
+kernel, in a different tree, in both of its runs.
+
+**Everything else in the closure is green**, including the four roots that
+were red for the kernel lane: `books/owner-invariants`, `books/owner-config`
+and `tests/acl2/owner-tests` (166 of 166 `:PASSED`) all certify now that
+`w11/owner-config` is on `dev`. **That closes the kernel lane's open item**:
+the OWNER half of D14-b's counterexample, written but never run, is certified
+in this tree. So is `books/byte-store-scan` with the new relation clause,
+`books/bp-receiver-evolving-store-invariants` and its test book, and
+`tests/acl2/store-files-tests`, `-teeth-tests` and `store-node-teeth-tests`.

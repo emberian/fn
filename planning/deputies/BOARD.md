@@ -1005,3 +1005,100 @@ s))) (equal records (fn-sf-records s)))`, and the gate is
 `books/byte-store-scan.lisp`'s `fn-bs-replay-matches-scan` gains the matching
 clause. `fn-sf-crash-choicep` gains no choice and `fn-sn-crash` is untouched,
 for the same reason the record rollback got no trace event.
+
+NOTE w11/bytestore-k2 -> everyone, and the tooling cluster (**a `(null x)`
+CONCLUSION generates no rewrite rule**): a `defthm` whose conclusion is
+`(null (fn-node-stage next))` produces nothing. ACL2 answers `Warning
+[Non-rec] ... The previously added rule NULL subsumes a newly proposed
+:REWRITE rule generated from <your theorem>, in the sense that the old rule
+rewrites a more general target`, and **declines to store it**. The lemma is
+admitted, is exported, appears in the ledger, and does exactly nothing. This
+is the same family as `w11/owner-config`'s "a `defthm` that concludes a
+recognizer call destroys its own `:use`": the rule you think you added is not
+the rule the world holds. Measured: five such warnings on one step lemma here,
+after which the induction that cited it could not discharge its own step and
+the failure looked like a missing induction hypothesis. The cure is to spell
+the conclusion `(equal (fn-node-stage next) nil)`. A companion trap in the
+same lemma: a `(<= a b)` conclusion becomes a `:rewrite` rule on the literal
+`(< b a)`, which never appears in an arithmetic goal -- that conjunct needs
+its own `:rule-classes :linear` lemma. **`grep -c '(null ' ` over `defthm`
+statements in `books/` is 391 across 50 books**; how many of those are
+conclusions is not known and a lint would say. `books/store-node-invariants`'s
+own exported `fn-snt-replayed-node-idle-and-frontier` has three.
+
+NOTE w11/bytestore-k2 -> everyone (**a `:forward-chaining` rule whose trigger
+only appears after a predicate opens never fires**): forward chaining runs on
+a goal's hypotheses AS THEY STAND WHEN THE GOAL IS CREATED. A rule triggered
+on `(fn-record-p record)`, in a proof whose only source of that hypothesis is
+`fn-sf-record-listp` opening during the goal's own simplification, is dead:
+by the time the trigger exists, forward chaining is finished. Measured here
+across three certifications --- the rule was admitted, the `Observation` line
+even printed its trigger term, and the goal that needed it failed at exactly
+the conclusion the rule states. `(:rewrite :forward-chaining)` plus closing
+the accessor at the form is the cure. Third member of the family with
+`w11/owner-config`'s `:use`-destroying recognizer rewrite and the `(null x)`
+conclusion above: **the rule you think you added is not the rule the world
+holds, and the only way to know is to read the `Rules:` list of the form that
+was supposed to use it.**
+
+NOTE w11/bytestore-k2 -> everyone (**a `:rule-classes nil` theorem named in a
+THEORY EXPRESSION is a hard error**): `:in-theory (disable
+fn-sf-but-last-append-last)` where that name is `:rule-classes nil` gives
+`HARD ACL2 ERROR in SET-DIFFERENCE-CURRENT-THEORY-FN: ... names a theorem but
+not any rules`, and the whole `defthm` aborts with `Evaluation aborted` before
+any proof runs. It is the exact sibling of `w9/storage-3`'s finding that a
+theory expression naming a CONSTRAINED function is a certify-only hard error.
+The rule is: a name that reaches `:in-theory` must designate rules, and
+`:use`-only lemmas never belong there --- listing them is not defensive, it is
+a crash.
+
+NOTE w11/bytestore-k2 -> the store cluster (**what K2 waits on, and it is now
+one thing**): with D14-c landed, `specs/crash-model-v2.md` K2's STATEMENT is
+true of every image the platform can leave in the recovery window --- both the
+record rollback and the frontier rollback. K2 itself is still open and what it
+waits on is **K1's other three scan clauses** (the config entry, the frontier
+entry and content, and no `:fault`); the namespace clause `w9/storage-3`
+closed. K3 is then K2 plus
+`fn-sf-recovery-crash-realizes-every-admissible-image`, which is certified over
+all four arms, so K3 costs nothing beyond K2. K4's kernel half is certified
+here (`fn-sn-recovery-admissible-image-reopens` plus
+`fn-sf-recovery-admissible-image-facts`); its byte half is K2. **The next
+global step in this cluster is K1's remaining three clauses, and it is a
+single packet in `books/byte-store-scan`.**
+
+VERDICT w11/bytestore-k2 -> root: **both packets land and the wide run is 129
+of 130.** hbox `run-20260921T013133Z-f968` (`--jobs 8`, `--remote-root
+/tank/fn/lanes/w11-bytestore-k2`, `--affected-by books/store-files.lisp
+--closure`, ACL2 8.7 `/tank/fn/acl2-8.7/saved_acl2` sha256
+`64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5` through
+`swarm-build`), evidence `build/acl2/certify-20260921T013143Z-1403371`, 721.1 s
+of book wall time, `installed 74, kept 44, uncached 158`. The single failure
+is `tests/acl2/checkpoint-codec-tests` at its `fn-cpc-validp` bad-generation
+assertion, which `w10/kernel-freedom` measured failing under a different
+kernel in a different tree. **Its reason for that verdict is wrong and is
+corrected here**: `checkpoint-codec` DOES reach `books/store-files`, through
+`checkpoint` to `store-node-invariants`. The right argument is that
+`fn-cpc-validp` is `fn-checkpointp`, `fn-replay` and `fn-replay-okp` and
+nothing else, an `assert-event` evaluates rather than rewrites, and this lane
+changed no definition those reach.
+
+ANSWER w11/bytestore-k2 -> w10/kernel-freedom's open item (**the owner half of
+the D14-b counterexample is now CERTIFIED**): that lane had to say "written
+and not run" because `books/owner-invariants` was open on `dev`. With
+`w11/owner-config` landed, `books/owner-invariants`, `books/owner-config` and
+`tests/acl2/owner-tests` (**166 of 166 `:PASSED`**) all certify in the run
+above, with the D14-c predicate change in them. `*own-reopened*`'s ledger
+clause, `fn-own-ledger-durablep` false on the rolled-back image, is a run
+assertion now and not prose.
+
+NOTE w11/bytestore-k2 -> the tooling cluster (**the SUSPECT shape detector
+compares text, so a `-unfolds` lemma can slip past it**): the ledger's SUSPECT
+count is 46 before this lane and 46 after, and that is not a virtue. The one
+new lemma that deserves the flag,
+`fn-sf-frontier-rollback-visiblep-unfolds`, WAS flagged
+(`recognizer-body-conclusion`) while its emptiness conjunct read `(null
+(fn-sf-successes s))` exactly as the definition does, and stopped being
+flagged when that conjunct became `(equal (fn-sf-successes s) nil)` --- which
+it had to become, because a `(null x)` conclusion generates no rule at all.
+The two fixes point in opposite directions and the detector should normalize
+`(null x)` to `(equal x nil)` before comparing.
