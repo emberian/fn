@@ -378,8 +378,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-policy \
 	books/stx-epochs \
 	books/stx-authority \
+	books/stx-evidence-records \
 	tests/acl2/stx-tests \
 	tests/acl2/stx-transit-tests \
+	tests/acl2/stx-evidence-records-tests \
 	tests/acl2/store-node-index-tests \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
