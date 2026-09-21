@@ -26,6 +26,7 @@
   :hints (("Goal"
            :in-theory (enable fn-bs-link fn-bs-dir-quietp
                               fn-bs-fence-dir fn-bs-ops-for-dir
+                              fn-bs-ops-for-dir-of-append
                               fn-sf-record-link-result fn-sf-fencedp))))
 
 ; The composed host-called observation enters the same fenced kernel phase.
