@@ -1,0 +1,47 @@
+{
+  "lane": "w13/registry-sync",
+  "base_commit": "095dda7882798a44fba8329583706e1207dee4cf",
+  "tool_versions": {
+    "python": "3.14.7",
+    "git": "2.54.0 (Apple Git-157)"
+  },
+  "invocations": [
+    {
+      "command": "python3 tools/ledger.py --write",
+      "exit_status": 0,
+      "log_sha256": "eead15c58d07734e39b43d04237ceada0b746691e5f107f5659a47f0f620a6de"
+    },
+    {
+      "command": "python3 tools/evidence_manifests.py sync --from /Users/ember/dev/fn/build/lanes/w12-storage-relation/build/acl2 --add",
+      "exit_status": 0,
+      "result": "recovered exact cited runs certify-20260921T063239Z-85540 and certify-20260921T063538Z-88136; 201 resolvable and 176 recorded LOST",
+      "log_sha256": "1b026db4cabeb327aeef9ededaf1195e3a2d4e74f7cb8a9266392828c309845d"
+    },
+    {
+      "command": "python3 tools/ledger.py --check",
+      "exit_status": 0,
+      "result": "generated counts, curated events and registry current; 245 lint warnings",
+      "log_sha256": "c0377bca02a7d2c70fe8f8bc2fed79af5dfb3cb349e0c4491becf287b22221a7"
+    },
+    {
+      "command": "python3 tools/evidence_manifests.py check",
+      "exit_status": 0,
+      "result": "201 cited manifests resolvable; 176 remain recorded in LOST.txt",
+      "log_sha256": "2e463682a34db11f27a94cbb12e274fa6db7fb1753942b05a93f0af20cf275c2"
+    },
+    {
+      "command": "make check",
+      "exit_status": 0,
+      "result": "scaffold and structural checks passed; no ACL2 certification or scenario execution",
+      "log_sha256": "d85146e93067fb7a8efd1fc29b01d5ca74ed8609f6065c4110ba7057ea2a416d"
+    }
+  ],
+  "artifacts": {
+    "planning/ledger.json": "6166d627ed60278a8ac102bafd26c9ee066757e54e62ed4bd230aaf6518f7448",
+    "planning/ledger.md": "a7f04db9dad31f9862d6452e9184311eb5eed41956f706a0ea07d557660136ad"
+  },
+  "limitations": [
+    "No ACL2 certification or remote job was run by this registry lane.",
+    "PRF-044 records conditional model evidence; full host initialization, recovery and syscall correspondence remain open."
+  ]
+}
