@@ -1,0 +1,42 @@
+(require :sb-posix)
+(require :sb-bsd-sockets)
+(unless (find-package "ACL2") (make-package "ACL2" :use '("COMMON-LISP")))
+(in-package "ACL2")
+
+(deftype fnn-octets () '(simple-array (unsigned-byte 8) (*)))
+(defconstant +fnn-max-read+ 65536)
+(defun fnn-make-octets (n) (make-array n :element-type '(unsigned-byte 8) :initial-element 0))
+(defun fnn-octets (x) (if (typep x 'fnn-octets) x (coerce x 'fnn-octets)))
+(defvar *fnn-fd-waiter* #'sb-sys:wait-until-fd-usable)
+(defun fnn-now () (get-internal-real-time))
+(defun fnn-seconds-to-deadline (deadline)
+  (max 0 (/ (- deadline (fnn-now)) (float internal-time-units-per-second))))
+
+(load "host/native/tls.lisp")
+
+(let* ((port (parse-integer (sb-ext:posix-getenv "FN_TLS_CLIENT_PORT")))
+       (anchor (sb-ext:posix-getenv "FN_TLS_CLIENT_CA"))
+       (name (sb-ext:posix-getenv "FN_TLS_CLIENT_NAME"))
+       (expect (sb-ext:posix-getenv "FN_TLS_CLIENT_EXPECT"))
+       (socket (make-instance 'sb-bsd-sockets:inet-socket :type :stream :protocol :tcp))
+       (context nil) (channel nil))
+  (unwind-protect
+       (handler-case
+           (progn
+             (sb-bsd-sockets:socket-connect socket #(127 0 0 1) port)
+             (setq context (fnn-tls-open-client-context anchor)
+                   channel (fnn-tls-connect context
+                                            (sb-bsd-sockets:socket-file-descriptor socket)
+                                            name 5))
+             (fnn-tls-send-all channel (fnn-octets '(80 73 78 71 13 10)) 5)
+             (let ((reply (fnn-tls-read channel 5 64)))
+               (unless (and (string= expect "success")
+                            (equalp reply (fnn-octets '(80 79 78 71 13 10))))
+                 (error "unexpected authenticated client result")))
+             (format t "TLS-CLIENT-PASSED~%"))
+         (fnn-tls-error (condition)
+           (unless (string= expect "failure") (error condition))
+           (format t "TLS-CLIENT-REFUSED~%")))
+    (when channel (ignore-errors (fnn-tls-close-channel channel)))
+    (when context (fnn-tls-close-context context))
+    (ignore-errors (sb-bsd-sockets:socket-close socket))))
