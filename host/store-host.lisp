@@ -17,6 +17,7 @@
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")
 (include-book "../books/frame-trailer")
+(include-book "../books/byte-store-frame")
 (include-book "../books/article-fields")
 
 (defconst *fn-store-capacity* 1048576)
@@ -252,6 +253,26 @@
 
 (defun fn-store-format-id ()
   *fn-store-format-id*)
+
+; Durable store metadata.  `tools/run_store.py' calls only these wrappers for
+; config.json and allocation-frontier.json.  Their grammar, bounds, profile
+; table, CBOR frontier encoding, integrity trailer and decoder are all in
+; books/byte-store-frame.lisp; this host file only gives the bridge stable
+; entry-point names.
+(defun fn-store-metadata-config-frame (profile)
+  (fn-bs-config-frame-for-profile profile))
+
+(defun fn-store-metadata-config-decode (octets)
+  (fn-bs-config-decode octets))
+
+(defun fn-store-metadata-frontier-frame (n)
+  (fn-bs-frontier-encode-impl n))
+
+(defun fn-store-metadata-frontier-decode (octets)
+  (fn-bs-frontier-decode-impl octets))
+
+(defun fn-store-metadata-frontier-next (n)
+  (fn-bs-frontier-next n))
 
 (defun fn-store-octet-lists->strings (xs)
   (if (consp xs)

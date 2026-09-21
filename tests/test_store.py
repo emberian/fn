@@ -85,6 +85,27 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(inspected.stdout, b"")
         self.assertIn(b"transactions=1 articles=1", self.invoke("status").stdout)
 
+    def test_metadata_frames_round_trip_and_reject_truncation(self):
+        """P4: config and allocator are ACL2 FNSM frames, not JSON records."""
+        config = (self.path / "config.json").read_bytes()
+        frontier = (self.path / "allocation-frontier.json").read_bytes()
+        self.assertTrue(config.startswith(b"FNSM\x01\x01"))
+        self.assertTrue(frontier.startswith(b"FNSM\x01\x02"))
+        self.invoke("recover")
+
+        (self.path / "allocation-frontier.json").write_bytes(frontier[:-1])
+        refused = self.invoke("recover", expected=run_store.EXIT_FAULT)
+        self.assertIn(b"frontier frame", refused.stderr)
+
+    def test_legacy_json_metadata_is_never_rewritten_on_open(self):
+        """Format-5-looking metadata is retained for explicit offline migration."""
+        legacy = b'{"format":"fn-store-experiment-5"}\n'
+        path = self.path / "config.json"
+        path.write_bytes(legacy)
+        result = self.invoke("recover", expected=run_store.EXIT_FAULT)
+        self.assertIn(b"explicit offline migration", result.stderr)
+        self.assertEqual(path.read_bytes(), legacy)
+
     def test_two_group_post_replays_both_allocations_and_one_pin(self):
         self.post("<two@example.invalid>", b"two", ("fn.letters", "fn.test"))
         with self.recovered_bridge() as bridge:
