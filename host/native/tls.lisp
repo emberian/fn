@@ -91,6 +91,10 @@
     sb-alien:int
   (context (* t)) (path sb-alien:c-string) (filetype sb-alien:int))
 (sb-alien:define-alien-routine
+    ("SSL_CTX_set_default_passwd_cb" fnn-%ssl-ctx-set-default-passwd-cb)
+    sb-alien:void
+  (context (* t)) (callback (* t)))
+(sb-alien:define-alien-routine
     ("SSL_CTX_check_private_key" fnn-%ssl-ctx-check-private-key)
     sb-alien:int
   (context (* t)))
@@ -125,6 +129,15 @@
     sb-alien:long
   (fd sb-alien:int) (buffer (* sb-alien:unsigned-char))
   (count sb-alien:unsigned-long) (flags sb-alien:int))
+
+; Encrypted private keys are outside the native v0 configuration profile.
+; Returning zero makes OpenSSL refuse them without consulting a terminal or
+; consuming the operator's stdin through its default password callback.
+(sb-alien:define-alien-callable fnn-%tls-no-password sb-alien:int
+  ((buffer (* sb-alien:unsigned-char)) (size sb-alien:int)
+   (rwflag sb-alien:int) (userdata (* t)))
+  (declare (ignore buffer size rwflag userdata))
+  0)
 
 (defun fnn-tls-pointer (vector &optional (offset 0))
   (sb-alien:sap-alien (sb-sys:sap+ (sb-sys:vector-sap vector) offset)
@@ -233,11 +246,15 @@ configured server context and never a protected client session."
             (error 'fnn-tls-config-error
                    :detail (format nil "certificate chain ~a cannot be loaded: ~a"
                                    certificate-path (fnn-tls-error-stack))))
+          (fnn-%ssl-ctx-set-default-passwd-cb
+           pointer
+           (sb-alien:cast
+            (sb-alien:alien-callable-function 'fnn-%tls-no-password) (* t)))
           (fnn-%err-clear-error)
           (unless (= (fnn-%ssl-ctx-use-private-key-file
                       pointer private-key-path +fnn-tls-filetype-pem+) 1)
             (error 'fnn-tls-config-error
-                   :detail (format nil "private key ~a cannot be loaded: ~a"
+                   :detail (format nil "private key ~a cannot be loaded; encrypted keys are unsupported: ~a"
                                    private-key-path (fnn-tls-error-stack))))
           (fnn-%err-clear-error)
           (unless (= (fnn-%ssl-ctx-check-private-key pointer) 1)
@@ -322,28 +339,29 @@ plaintext already buffered inside OpenSSL cannot be stranded."
          (deadline (fnn-tls-deadline seconds))
          (buffer (fnn-make-octets +fnn-max-read+))
          (initialp t))
-    (loop
-      (when (and initialp (zerop (fnn-%ssl-pending ssl)))
-        ;; Match the plaintext receive contract while no TLS operation has
-        ;; begun: an idle deadline is not a connection failure.  Once
-        ;; SSL_read has returned WANT_*, its retry stays inside this call so
-        ;; OpenSSL's operation is never restarted with different arguments.
-        (let ((remaining (fnn-seconds-to-deadline deadline)))
-          (when (or (<= remaining 0)
-                    (not (funcall *fnn-fd-waiter* fd :input remaining)))
-            (return :timeout))))
-      (setq initialp nil)
-      (fnn-%err-clear-error)
-      (let ((result
-              (sb-sys:with-pinned-objects (buffer)
-                (fnn-%ssl-read ssl (fnn-tls-pointer buffer) (length buffer)))))
-        (when (> result 0) (return (subseq buffer 0 result)))
-        (let ((disposition (fnn-tls-retry-direction ssl result)))
-          (cond ((eq disposition :closed) (return (fnn-make-octets 0)))
-                ((member disposition '(:input :output))
-                 (fnn-tls-wait fd disposition deadline 'fnn-tls-io-error))
-                (t (fnn-tls-operation-error 'fnn-tls-io-error
-                                            "read" disposition))))))))
+    ;; SSL_read retries keep the identical pinned pointer/count for the whole
+    ;; operation, including WANT_READ changing to WANT_WRITE.
+    (sb-sys:with-pinned-objects (buffer)
+      (loop
+        (when (and initialp (zerop (fnn-%ssl-pending ssl)))
+          ;; Match the plaintext receive contract while no TLS operation has
+          ;; begun: an idle deadline is not a connection failure.  Once
+          ;; SSL_read has returned WANT_*, its retry stays inside this call.
+          (let ((remaining (fnn-seconds-to-deadline deadline)))
+            (when (or (<= remaining 0)
+                      (not (funcall *fnn-fd-waiter* fd :input remaining)))
+              (return :timeout))))
+        (setq initialp nil)
+        (fnn-%err-clear-error)
+        (let ((result
+                (fnn-%ssl-read ssl (fnn-tls-pointer buffer) (length buffer))))
+          (when (> result 0) (return (subseq buffer 0 result)))
+          (let ((disposition (fnn-tls-retry-direction ssl result)))
+            (cond ((eq disposition :closed) (return (fnn-make-octets 0)))
+                  ((member disposition '(:input :output))
+                   (fnn-tls-wait fd disposition deadline 'fnn-tls-io-error))
+                  (t (fnn-tls-operation-error 'fnn-tls-io-error
+                                              "read" disposition)))))))))
 
 (defun fnn-tls-send-all (channel octets seconds)
   "Write all bytes under one deadline.  A WANT retry uses the identical

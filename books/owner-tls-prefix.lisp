@@ -1,34 +1,18 @@
-; fn: the ACL2-owned receive prefix for an owner STARTTLS transition.
+; fn: one-pass configured-owner receive with physical prefix ownership.
 ;
-; The physical adapter observes bytes with MSG_PEEK, calls this transition
-; once, then consumes exactly fn-own-tls-result-consumed bytes.  The owner
-; state and effects are those of fn-ocfg-read on the entire observation;
-; bytes after the count belong to the TLS record layer.
+; The native host calls fn-ocfg-read-tls-prefix once per observed socket
+; region.  It lifts fn-served-step-counted through the same fn-own-finish-read
+; bookkeeping as fn-own-read, so framing, dispatch and owner mutation execute
+; once while the host also receives the exact physical prefix count.
 
 (in-package "ACL2")
 (include-book "owner-config")
 (include-book "served-tls-prefix")
 
-(defun fn-own-tls-served-conn (o conn)
-  (declare (xargs :guard t))
-  (fn-served-make-conn (fn-own-conn-wire conn)
-                       (fn-own-conn-live-session o conn)
-                       (fn-own-conn-archive conn)
-                       (fn-own-conn-config conn)
-                       (fn-own-conn-observation conn)
-                       (fn-own-clock o)))
-
-(defun fn-own-tls-consumed (o id octets)
-  (declare (xargs :guard t))
-  (let ((conn (fn-own-find-conn id (fn-own-conns o))))
-    (if conn
-        (fn-served-tls-consumed (fn-own-tls-served-conn o conn) octets)
-      (len octets))))
-
 ; (:fn-own-tls-result consumed effects configured-owner).
-(defun fn-own-tls-make-result (consumed result)
+(defun fn-own-tls-make-result (consumed effects owner)
   (declare (xargs :guard t))
-  (list :fn-own-tls-result consumed (fn-ag-car result) (fn-ag-cdr result)))
+  (list :fn-own-tls-result consumed effects owner))
 
 (defun fn-own-tls-result-consumed (result)
   (declare (xargs :guard t))
@@ -42,19 +26,54 @@
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr result)))))
 
+(defun fn-own-tls-served-conn (o conn)
+  (declare (xargs :guard t))
+  (fn-served-make-conn (fn-own-conn-wire conn)
+                       (fn-own-conn-live-session o conn)
+                       (fn-own-conn-archive conn)
+                       (fn-own-conn-config conn)
+                       (fn-own-conn-observation conn)
+                       (fn-own-clock o)))
+
+(defun fn-own-read-tls-prefix (o id octets)
+  (declare (xargs :guard t))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o))))
+    (if conn
+        (let* ((counted
+                 (fn-served-step-counted
+                  (fn-own-tls-served-conn o conn) octets))
+               (result
+                 (fn-own-finish-read
+                  o conn (fn-served-counted-result counted))))
+          (fn-own-tls-make-result
+           (fn-served-counted-consumed counted) (car result) (cdr result)))
+      (fn-own-tls-make-result (len octets) nil o))))
+
 (defun fn-ocfg-read-tls-prefix (oc id octets)
   (declare (xargs :guard (fn-wire-octet-listp octets)))
-  (let* ((consumed (fn-own-tls-consumed (fn-ocfg-owner oc) id octets))
-         (result (fn-ocfg-read oc id (take consumed octets))))
-    (fn-own-tls-make-result consumed result)))
+  (let ((result (fn-own-read-tls-prefix (fn-ocfg-owner oc) id octets)))
+    (fn-own-tls-make-result
+     (fn-own-tls-result-consumed result)
+     (fn-own-tls-result-effects result)
+     (fn-ocfg-with-owner oc (fn-own-tls-result-owner result)))))
 
-(defthm fn-own-tls-consumed-is-bounded
-  (<= (fn-own-tls-consumed o id octets) (len octets))
-  :rule-classes :linear)
+(defthm fn-own-read-tls-prefix-consumed-is-bounded
+  (<= (fn-own-tls-result-consumed
+       (fn-own-read-tls-prefix o id octets))
+      (len octets))
+  :rule-classes :linear
+  :hints (("Goal"
+           :in-theory (enable fn-own-read-tls-prefix
+                              fn-own-tls-make-result
+                              fn-own-tls-result-consumed)
+           :use ((:instance fn-served-step-counted-consumed-is-bounded
+                            (conn
+                             (fn-own-tls-served-conn
+                              o (fn-own-find-conn id (fn-own-conns o)))))))))
 
 ; The actual host-call transition returns exactly fn-ocfg-read's effects and
-; configured-owner state.  This is the correspondence that permits the raw
-; socket layer to leave the suffix unread without changing NNTP semantics.
+; configured-owner state.  The counted transition is a single execution;
+; this theorem relates its result to the pre-existing semantic entry point.
 (defthm fn-ocfg-read-tls-prefix-is-full-read
   (let ((tls-result (fn-ocfg-read-tls-prefix oc id octets))
         (full-result (fn-ocfg-read oc id octets)))
@@ -63,20 +82,26 @@
          (equal (fn-own-tls-result-owner tls-result)
                 (cdr full-result))))
   :hints (("Goal"
-           :cases ((fn-own-find-conn id
-                                     (fn-own-conns (fn-ocfg-owner oc))))
-           :use ((:instance fn-served-step-of-tls-consumed-prefix
+           :in-theory (enable fn-ocfg-read-tls-prefix
+                              fn-own-read-tls-prefix
+                              fn-own-tls-make-result
+                              fn-own-tls-result-consumed
+                              fn-own-tls-result-effects
+                              fn-own-tls-result-owner
+                              fn-ocfg-read
+                              fn-own-read
+                              fn-own-tls-served-conn)
+           :use ((:instance fn-served-step-counted-result-is-step
                             (conn
                              (fn-own-tls-served-conn
                               (fn-ocfg-owner oc)
                               (fn-own-find-conn
-                               id (fn-own-conns (fn-ocfg-owner oc)))))))
-           :in-theory (e/d (fn-ocfg-read-tls-prefix
-                            fn-own-tls-make-result
-                            fn-own-tls-result-effects
-                            fn-own-tls-result-owner
-                            fn-own-tls-consumed
-                            fn-ocfg-read
-                            fn-own-read)
-                           (fn-served-step
-                            fn-served-step-of-tls-consumed-prefix)))))
+                               id (fn-own-conns (fn-ocfg-owner oc))))))))))
+
+(in-theory (disable fn-own-tls-make-result
+                    fn-own-tls-result-consumed
+                    fn-own-tls-result-effects
+                    fn-own-tls-result-owner
+                    fn-own-tls-served-conn
+                    fn-own-read-tls-prefix
+                    fn-ocfg-read-tls-prefix))

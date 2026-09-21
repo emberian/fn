@@ -33,6 +33,23 @@ class NativeTlsTransportTest(unittest.TestCase):
         )
         return certificate, private_key
 
+    def _encrypted_certificate(self, directory: Path) -> tuple[Path, Path]:
+        certificate = directory / "encrypted-certificate.pem"
+        private_key = directory / "encrypted-private-key.pem"
+        subprocess.run(
+            [
+                "openssl", "req", "-x509", "-newkey", "rsa:2048",
+                "-keyout", str(private_key), "-out", str(certificate),
+                "-sha256", "-days", "1", "-passout", "pass:not-stdin",
+                "-subj", "/CN=localhost",
+            ],
+            cwd=ROOT,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return certificate, private_key
+
     def test_context_handshake_failure_and_roundtrip(self) -> None:
         sbcl = shutil.which("sbcl")
         openssl = shutil.which("openssl")
@@ -42,11 +59,14 @@ class NativeTlsTransportTest(unittest.TestCase):
             directory = Path(raw)
             certificate, private_key = self._certificate(directory, "server")
             _, wrong_key = self._certificate(directory, "wrong")
+            encrypted_certificate, encrypted_key = self._encrypted_certificate(directory)
             environment = os.environ.copy()
             environment.update(
                 FN_TLS_TEST_CERT=str(certificate),
                 FN_TLS_TEST_KEY=str(private_key),
                 FN_TLS_TEST_WRONG_KEY=str(wrong_key),
+                FN_TLS_TEST_ENCRYPTED_CERT=str(encrypted_certificate),
+                FN_TLS_TEST_ENCRYPTED_KEY=str(encrypted_key),
             )
             process = subprocess.Popen(
                 [sbcl, "--noinform", "--disable-debugger", "--script",
@@ -54,11 +74,15 @@ class NativeTlsTransportTest(unittest.TestCase):
                 cwd=ROOT,
                 env=environment,
                 text=True,
+                stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 bufsize=1,
             )
             assert process.stdout is not None
+            assert process.stdin is not None
+            process.stdin.write("stdin-sentinel\n")
+            process.stdin.flush()
             lines: list[str] = []
             port: int | None = None
             try:
@@ -99,4 +123,3 @@ class NativeTlsTransportTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

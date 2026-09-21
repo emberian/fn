@@ -1,43 +1,148 @@
-; fn: the physical receive prefix at a served STARTTLS transition.
+; fn: one-pass served receive result plus physical prefix ownership.
 ;
-; A socket read may observe the STARTTLS command line and later transport
-; bytes together.  fn-served-step deliberately stops interpreting octets as
-; soon as the session enters :handshaking, but its result did not expose the
-; position where that happened.  A host that had already consumed the whole
-; recv buffer therefore had no way to give the suffix to TLS.
-;
-; This book derives the prefix length by executing the same fn-served-step,
-; one octet at a time.  It is not a second NNTP parser.  The equality theorem
-; below is the correspondence needed by the host: applying the actual served
-; transition to exactly the reported prefix produces the same state and
-; effects as applying it to the complete observed buffer.  The suffix is
-; consequently transport input and never plaintext NNTP input.
+; A socket observation may contain a STARTTLS command line and early TLS
+; bytes.  This fold uses fn-served-feed-byte, the same framing/dispatch byte
+; transition as fn-served-feed, and returns both the ordinary served result
+; and how many observed octets that result consumed before the connection
+; became handshaking or closed.  No parser or served transition runs twice.
 
 (in-package "ACL2")
 (include-book "served")
 
-(defun fn-served-tls-terminalp (conn)
+; (:fn-served-counted consumed served-result).
+(defun fn-served-counted-make (consumed result)
   (declare (xargs :guard t))
-  (fn-served-tls-handshakingp conn))
+  (list :fn-served-counted consumed result))
 
-(defun fn-served-tls-consumed (conn octets)
-  (declare (xargs :guard t :measure (len octets)))
+(defun fn-served-counted-consumed (counted)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr counted)))
+
+(defun fn-served-counted-result (counted)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr counted))))
+
+(defun fn-served-feed-counted (conn octets)
+  (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))
+                  :verify-guards nil
+                  :measure (len octets)))
   (if (or (not (consp octets))
-          (fn-served-tls-terminalp conn))
-      0
-    (+ 1
-       (fn-served-tls-consumed
-        (fn-served-result-conn
-         (fn-served-step conn (list (car octets))))
-        (cdr octets)))))
+          (fn-served-closed-wirep (fn-served-conn-wire conn))
+          (fn-served-tls-handshakingp conn))
+      (fn-served-counted-make 0 (fn-served-make-result conn nil))
+    (let* ((here (fn-served-feed-byte conn (car octets)))
+           (tail (fn-served-feed-counted
+                  (fn-served-result-conn here) (cdr octets)))
+           (tail-result (fn-served-counted-result tail)))
+      (fn-served-counted-make
+       (+ 1 (fn-served-counted-consumed tail))
+      (fn-served-make-result
+        (fn-served-result-conn tail-result)
+        (mbe :logic (append (fn-served-result-effects here)
+                            (fn-served-result-effects tail-result))
+             :exec (fn-ag-append (fn-served-result-effects here)
+                                 (fn-served-result-effects tail-result))))))))
 
-(defthm fn-served-tls-consumed-is-bounded
-  (<= (fn-served-tls-consumed conn octets) (len octets))
-  :rule-classes :linear)
+(defthm fn-served-feed-counted-consumed-is-natural
+  (natp (fn-served-counted-consumed
+         (fn-served-feed-counted conn octets)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct (fn-served-feed-counted conn octets)
+           :in-theory (enable fn-served-feed-counted
+                              fn-served-counted-make
+                              fn-served-counted-consumed))))
 
-(defthm fn-served-tls-consumed-is-natural
-  (natp (fn-served-tls-consumed conn octets))
-  :rule-classes :type-prescription)
+(verify-guards fn-served-feed-counted
+  :hints (("Goal"
+           :in-theory (disable fn-served-feed-byte fn-wire-statep
+                               fn-served-counted-consumed
+                               fn-served-feed-byte-preserves-wire-statep)
+           :use ((:instance fn-served-feed-byte-preserves-wire-statep
+                            (byte (car octets)))))))
+
+(defthm fn-served-feed-counted-result-is-feed
+  (equal (fn-served-counted-result
+          (fn-served-feed-counted conn octets))
+         (fn-served-feed conn octets))
+  :hints (("Goal"
+           :induct (fn-served-feed-counted conn octets)
+           :in-theory (enable fn-served-feed-counted
+                              fn-served-counted-make
+                              fn-served-counted-result
+                              fn-served-counted-consumed
+                              fn-served-feed))))
+
+(defthm fn-served-feed-counted-consumed-is-bounded
+  (<= (fn-served-counted-consumed
+       (fn-served-feed-counted conn octets))
+      (len octets))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-served-feed-counted conn octets)
+           :in-theory (enable fn-served-feed-counted
+                              fn-served-counted-make
+                              fn-served-counted-consumed))))
+
+; Apply fn-served-step's entry guard and close-effect edge once around the
+; counted fold.  This is the native owner's actual logical subject.
+(defun fn-served-step-counted (conn octets)
+  (declare (xargs :guard t))
+  (let ((wire (fn-served-conn-wire conn)))
+    (if (not (fn-wire-statep wire))
+        (fn-served-counted-make 0 (fn-served-make-result conn nil))
+      (let* ((fed (fn-served-feed-counted conn octets))
+             (result (fn-served-counted-result fed))
+             (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
+        (fn-served-counted-make
+         (fn-served-counted-consumed fed)
+         (fn-served-make-result
+          (fn-served-result-conn result)
+          (mbe :logic
+               (append (fn-served-result-effects result)
+                       (if (and (not (fn-served-closed-wirep wire))
+                                (fn-served-closed-wirep wire2))
+                           (list (fn-nntp-close-effect))
+                         nil))
+               :exec
+               (fn-ag-append
+                (fn-served-result-effects result)
+                (if (and (not (fn-served-closed-wirep wire))
+                         (fn-served-closed-wirep wire2))
+                    (list (fn-nntp-close-effect))
+                  nil)))))))))
+
+; The called counted transition returns the exact ordinary served result.
+(defthm fn-served-step-counted-result-is-step
+  (equal (fn-served-counted-result
+          (fn-served-step-counted conn octets))
+         (fn-served-step conn octets))
+  :hints (("Goal"
+           :in-theory (enable fn-served-step-counted
+                              fn-served-counted-make
+                              fn-served-counted-result
+                              fn-served-counted-consumed
+                              fn-served-step)
+           :use ((:instance fn-served-feed-counted-result-is-feed)))))
+
+(defthm fn-served-step-counted-consumed-is-bounded
+  (<= (fn-served-counted-consumed
+       (fn-served-step-counted conn octets))
+      (len octets))
+  :rule-classes :linear
+  :hints (("Goal"
+           :in-theory (enable fn-served-step-counted
+                              fn-served-counted-make
+                              fn-served-counted-consumed)
+           :use ((:instance fn-served-feed-counted-consumed-is-bounded)))))
+
+(defthm fn-served-step-counted-consumed-is-natural
+  (natp (fn-served-counted-consumed
+         (fn-served-step-counted conn octets)))
+  :rule-classes :type-prescription
+  :hints (("Goal"
+           :in-theory (enable fn-served-step-counted
+                              fn-served-counted-make
+                              fn-served-counted-consumed)
+           :use ((:instance fn-served-feed-counted-consumed-is-natural)))))
 
 (local
  (defthm fn-served-tls-take-nthcdr-reconstructs
@@ -46,171 +151,27 @@
    :hints (("Goal" :induct (take n xs)
             :in-theory (enable take nthcdr)))))
 
-; The count partitions the exact observed object: no byte is dropped or
-; duplicated between the plaintext prefix and the TLS suffix.
+; The returned count partitions the physical observation without loss or
+; duplication.  The suffix is transport input, never another NNTP parse.
 (defthm fn-served-tls-prefix-suffix-accounting
-  (equal (append (take (fn-served-tls-consumed conn octets) octets)
-                 (nthcdr (fn-served-tls-consumed conn octets) octets))
-         octets)
+  (let ((count (fn-served-counted-consumed
+                (fn-served-step-counted conn octets))))
+    (equal (append (take count octets) (nthcdr count octets)) octets))
   :hints (("Goal"
            :use ((:instance fn-served-tls-take-nthcdr-reconstructs
-                            (n (fn-served-tls-consumed conn octets))
-                            (xs octets)))
-           :in-theory (disable fn-served-tls-take-nthcdr-reconstructs))))
+                            (n (fn-served-counted-consumed
+                                (fn-served-step-counted conn octets)))
+                            (xs octets))
+                 (:instance fn-served-step-counted-consumed-is-bounded)
+                 (:instance fn-served-step-counted-consumed-is-natural))
+           :in-theory (disable fn-served-tls-take-nthcdr-reconstructs
+                               fn-served-step-counted-consumed-is-bounded
+                               fn-served-step-counted-consumed-is-natural
+                               fn-served-step-counted
+                               fn-served-counted-consumed))))
 
-(local
- (defthm fn-served-step-reconstructs
-   (equal (fn-served-make-result
-           (fn-served-result-conn (fn-served-step conn octets))
-           (fn-served-result-effects (fn-served-step conn octets)))
-          (fn-served-step conn octets))
-   :hints (("Goal" :expand ((fn-served-step conn octets))))))
-
-(local
- (defthm fn-served-step-of-handshaking-connection-full
-   (implies (fn-served-tls-handshakingp conn)
-            (equal (fn-served-step conn octets)
-                   (fn-served-step conn nil)))
-   :hints (("Goal"
-            :use ((:instance fn-served-step-reconstructs)
-                  (:instance fn-served-step-reconstructs (octets nil))
-                  (:instance fn-served-step-of-handshaking-connection-is-a-no-op)
-                  (:instance fn-served-step-of-handshaking-connection-is-a-no-op
-                             (octets nil)))
-            :in-theory (disable fn-served-step
-                                fn-served-tls-handshakingp
-                                fn-served-step-reconstructs
-                                fn-served-step-of-handshaking-connection-is-a-no-op)))))
-
-(local
- (defthm fn-served-step-of-invalid-wire
-   (implies (not (fn-wire-statep (fn-served-conn-wire conn)))
-            (equal (fn-served-step conn octets)
-                   (fn-served-make-result conn nil)))
-   :hints (("Goal" :expand ((fn-served-step conn octets))))))
-
-(local
- (defthm fn-served-tls-append-is-associative
-   (equal (append (append a b) c)
-          (append a (append b c)))))
-
-(local
- (defthm fn-served-tls-feed-of-closed-wire
-   (implies (fn-served-closed-wirep (fn-served-conn-wire conn))
-            (equal (fn-served-feed conn octets)
-                   (fn-served-make-result conn nil)))
-   :hints (("Goal" :expand ((fn-served-feed conn octets))))))
-
-(local
- (defthm fn-served-step-of-atom
-   (implies (not (consp octets))
-            (equal (fn-served-step conn octets)
-                   (fn-served-step conn nil)))
-   :hints (("Goal" :expand ((fn-served-step conn octets)
-                             (fn-served-step conn nil)
-                             (fn-served-feed conn octets)
-                             (fn-served-feed conn nil))))))
-
-; fn-served-step's invalid-wire branch is itself a no-op.  On a valid wire,
-; fn-served-feed-preserves-wire-statep supplies the only invariant the
-; append proof needs.  The stronger exported partition theorem asks for a
-; whole fn-served-connp; the physical prefix correspondence deliberately
-; needs only well-formed input bytes.
-(local
- (defthm fn-served-step-partition-independence-for-octets
-   (equal (fn-served-step conn (append left right))
-          (fn-served-make-result
-           (fn-served-result-conn
-            (fn-served-step
-             (fn-served-result-conn (fn-served-step conn left)) right))
-           (append
-            (fn-served-result-effects (fn-served-step conn left))
-            (fn-served-result-effects
-             (fn-served-step
-              (fn-served-result-conn (fn-served-step conn left))
-              right)))))
-   :hints (("Goal"
-            :do-not-induct t
-            :cases ((fn-wire-statep (fn-served-conn-wire conn))
-                    (fn-served-closed-wirep
-                     (fn-served-conn-wire
-                      (fn-served-result-conn
-                       (fn-served-feed conn left)))))
-            :in-theory (e/d (fn-served-step)
-                            (fn-served-feed fn-wire-statep
-                             fn-served-step-of-invalid-wire
-                             fn-served-feed-preserves-wire-statep))
-            :use ((:instance fn-served-feed-preserves-wire-statep
-                             (octets left))
-                  (:instance fn-served-step-of-invalid-wire
-                             (octets (append left right)))
-                  (:instance fn-served-step-of-invalid-wire
-                             (octets left))
-                  (:instance fn-served-step-of-invalid-wire
-                             (conn (fn-served-result-conn
-                                    (fn-served-step conn left)))
-                             (octets right)))))))
-
-(local
- (defthm fn-served-step-of-cons
-   (equal (fn-served-step conn (cons byte rest))
-          (fn-served-make-result
-           (fn-served-result-conn
-            (fn-served-step
-             (fn-served-result-conn
-              (fn-served-step conn (list byte)))
-             rest))
-           (append
-            (fn-served-result-effects
-             (fn-served-step conn (list byte)))
-            (fn-served-result-effects
-             (fn-served-step
-              (fn-served-result-conn
-               (fn-served-step conn (list byte)))
-              rest)))))
-   :hints (("Goal"
-            :use ((:instance fn-served-step-partition-independence-for-octets
-                             (left (list byte)) (right rest)))
-            :in-theory (disable fn-served-step
-                                fn-served-step-partition-independence-for-octets)))))
-
-; The theorem subject is the function the owner host already calls.  The
-; physical adapter may consume exactly this many octets after MSG_PEEK and
-; then call fn-served-step on them without changing either its connection
-; result or its effects relative to the complete observed buffer.
-(defthm fn-served-step-of-tls-consumed-prefix
-  (equal (fn-served-step
-          conn (take (fn-served-tls-consumed conn octets) octets))
-         (fn-served-step conn octets))
-  :hints (("Goal"
-           :induct (fn-served-tls-consumed conn octets)
-           :in-theory (e/d (fn-served-tls-consumed
-                            fn-served-tls-terminalp
-                            take)
-                           (fn-served-step
-                            fn-served-step-of-cons
-                            fn-served-step-of-handshaking-connection-full
-                            fn-served-step-partition-independence)))
-          ("Subgoal *1/2"
-           :use ((:instance fn-served-step-of-cons
-                            (byte (car octets))
-                            (rest (cdr octets)))
-                 (:instance fn-served-step-of-cons
-                            (byte (car octets))
-                            (rest (take
-                                   (fn-served-tls-consumed
-                                    (fn-served-result-conn
-                                     (fn-served-step conn
-                                                     (list (car octets))))
-                                    (cdr octets))
-                                   (cdr octets))))
-                 )
-           :in-theory (disable fn-served-step
-                               fn-served-step-of-cons
-                               fn-served-step-preserves-connp))
-          ("Subgoal *1/1"
-           :use ((:instance fn-served-step-of-handshaking-connection-full)
-                 (:instance fn-served-step-of-atom))
-           :in-theory (disable fn-served-step
-                               fn-served-step-of-atom
-                               fn-served-step-of-handshaking-connection-full))))
+(in-theory (disable fn-served-counted-make
+                    fn-served-counted-consumed
+                    fn-served-counted-result
+                    fn-served-feed-counted
+                    fn-served-step-counted))
