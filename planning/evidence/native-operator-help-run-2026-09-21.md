@@ -1,6 +1,6 @@
 # Native operator help and normalized-run packet
 
-Source: `w15/native-operator` commit `241a624` (following `68635e1`); the
+Source: `w15/native-operator` commit `3b4c838` (following `68635e1`); the
 hbox source was an isolated `rsync --exclude .git` copy at
 `/tank/fn/gates/w15-native-operator`. `books/native-operator.lisp` SHA-256 is
 `b7cbd65759de565ea84cde99917fff02905efe93ccd0a11e25451b1c9012acd9`.
@@ -36,10 +36,10 @@ python3 tools/certify_books.py --jobs 1 --closure \
   tests/acl2/native-operator-host-tests
 ```
 
-The seven-book closure passed in 5.497 seconds. It exercises config-free help,
+The seven-book closure passed in 5.556 seconds. It exercises config-free help including malformed config octets,
 normalized run projections, quoted nonnumeric port and slots, out-of-range and
 repeated ports, repeated `--once`, unsupported verbs, posting-disabled, and
 explicit unavailable post. Exact inputs and tool versions are in [the
-manifest](manifests/certify-20260921T090343Z-1905874.json). `make check` also
+manifest](manifests/certify-20260921T090808Z-1913741.json). `make check` also
 passed after regenerating the ledger; its existing repository lint warnings are
 not a native-operator verdict.
