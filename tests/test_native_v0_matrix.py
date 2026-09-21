@@ -93,26 +93,29 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
     def probe_native_subject(self):
         self.image_identity = "/opt/fn/fn-host sha256=" + "2" * 64
 
-    def sh(self, name, script, timeout=600, note="", expect=0):
-        output = ""
-        if name == "native public peering/restart witness":
-            output = "\n".join((
-                "NATIVE-PEERING-EXPECTED-RUNTIME runtime-digest",
-                "NATIVE-PEERING-EXPECTED-CORE core-digest",
+    def witness_output(self):
+        return "\n".join((
+                "NATIVE-PEERING-EXPECTED-RUNTIME " + "a" * 64,
+                "NATIVE-PEERING-EXPECTED-CORE " + "b" * 64,
                 'NATIVE-PEERING-WITNESS {"kind":"transit-and-feed","transit":'
                 '{"ab":{"offer":"335","transfer":"235","duplicate":"435","identical":true},'
                 '"ba":{"offer":"335","transfer":"235","duplicate":"435","identical":true}},'
                 '"feed":{"ab":{"identical":true},"ba":{"identical":true}},'
-                '"identity":{"a":{"status":"observed","runtime_sha256":"runtime-digest",'
-                '"core_sha256":"core-digest"},"b":{"status":"observed",'
-                '"runtime_sha256":"runtime-digest","core_sha256":"core-digest"}}}',
+                '"identity":{"a":{"status":"observed","runtime_sha256":"' + "a" * 64 + '",'
+                '"core_sha256":"' + "b" * 64 + '"},"b":{"status":"observed",'
+                '"runtime_sha256":"' + "a" * 64 + '","core_sha256":"' + "b" * 64 + '"}}}',
                 'NATIVE-PEERING-WITNESS {"kind":"requeue-restart","journal":true,'
                 '"source_killed":true,"source_restarted":true,"target_identical":true,'
                 '"identity":{"restart-a":{"status":"observed",'
-                '"runtime_sha256":"runtime-digest","core_sha256":"core-digest"},'
-                '"restart-b":{"status":"observed","runtime_sha256":"runtime-digest",'
-                '"core_sha256":"core-digest"}}}',
+                '"runtime_sha256":"' + "a" * 64 + '","core_sha256":"' + "b" * 64 + '"},'
+                '"restart-b":{"status":"observed","runtime_sha256":"' + "a" * 64 + '",'
+                '"core_sha256":"' + "b" * 64 + '"}}}',
             ))
+
+    def sh(self, name, script, timeout=600, note="", expect=0):
+        output = ""
+        if name == "native public peering/restart witness":
+            output = self.witness_output()
         step = Step(name, script, 0, output, 0.0, note, expect)
         self.steps.append(step)
         return step
@@ -150,6 +153,32 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
 
 
 class NativeSliceAccountingTests(unittest.TestCase):
+    def structured_gate(self, home):
+        return HarnessOnlyNativeGate(
+            v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+            backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+            native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+
+    @staticmethod
+    def replace_witness(gate, alter, *, omit_expected=None):
+        lines = gate.witness_output().splitlines()
+        result = []
+        for line in lines:
+            if omit_expected and line.startswith(omit_expected):
+                continue
+            if line.startswith("NATIVE-PEERING-WITNESS "):
+                witness = json.loads(line.split(" ", 1)[1])
+                alter(witness)
+                line = "NATIVE-PEERING-WITNESS " + json.dumps(witness, sort_keys=True)
+            result.append(line)
+        gate.witness_output = lambda: "\n".join(result)
+
+    @staticmethod
+    def native_peering_rows(gate):
+        keys = gate.TRANSIT_KEYS + gate.FEED_KEYS
+        return [row for row in gate.rows
+                if any(row.id == key or row.id.startswith(key + "-") for key in keys)]
+
     def missing_witness_gate(self, home):
         class MissingWitness(HarnessOnlyNativeGate):
             def sh(self, name, script, timeout=600, note="", expect=0):
@@ -170,6 +199,25 @@ class NativeSliceAccountingTests(unittest.TestCase):
             gate.execute_native_acceptance()
             rows = [row for row in gate.rows if row.id.startswith("V0-FEED-")]
             self.assertTrue(all(row.verdict == v0_matrix.NOT_EXERCISED for row in rows))
+
+    def test_missing_transit_owner_identity_blocks_all_native_peering_rows(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.structured_gate(home)
+            self.replace_witness(gate, lambda witness: witness.get("identity", {}).pop("b", None))
+            gate.execute_native_acceptance()
+            rows = self.native_peering_rows(gate)
+            self.assertTrue(all(row.verdict == v0_matrix.NOT_EXERCISED for row in rows))
+            self.assertTrue(all("each required live owner" in row.blocker for row in rows))
+
+    def test_missing_expected_runtime_hash_blocks_all_native_peering_rows(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.structured_gate(home)
+            self.replace_witness(gate, lambda witness: None,
+                                 omit_expected="NATIVE-PEERING-EXPECTED-RUNTIME")
+            gate.execute_native_acceptance()
+            rows = self.native_peering_rows(gate)
+            self.assertTrue(all(row.verdict == v0_matrix.NOT_EXERCISED for row in rows))
+            self.assertTrue(all("nonempty SHA-256" in row.blocker for row in rows))
 
     def test_missing_image_source_does_not_suppress_a_measured_witness(self):
         with tempfile.TemporaryDirectory() as home:
