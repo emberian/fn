@@ -401,7 +401,7 @@ host resolver's intended deployment behavior.
   (and (null (fn-native-config-tls-cert config))
        (null (fn-native-config-tls-key config))
        (not (fn-native-config-auth-protected-onlyp config))
-       (equal (fn-native-config-posting-enabledp config) t)
+       (booleanp (fn-native-config-posting-enabledp config))
        (equal (fn-native-config-posting-agent config) *fn-ncfg-default-agent*)
        (null (fn-native-config-anchor-server config))
        (null (fn-native-config-log-path config))

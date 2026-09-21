@@ -48,6 +48,14 @@
  (not (fn-native-config-operator-availablep
        (car (cdr *fn-ncfg-native-protected-auth*)))))
 
+(defconst *fn-ncfg-disabled-result*
+  (fn-native-config-load
+   (fn-ncfg-test-lines
+    '("[store]" "path = \"/var/lib/fn/store\""
+      "[posting]" "enabled = false"))))
+(assert-event
+ (fn-native-config-operator-availablep (cadr *fn-ncfg-disabled-result*)))
+
 ; A 512-octet store path is legal itself, but its two derived defaults would
 ; exceed the same path bound.  Supplying bounded auth/control paths explicitly
 ; is the non-degenerate accepted alternative.

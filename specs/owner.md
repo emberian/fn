@@ -38,11 +38,23 @@ scenario still needs native adoption. ACL2's connection-local theorem alone
 does not justify continuing after shared-state corruption, and stopping every
 connection does not discharge that survival requirement.
 
-Safe FNFD filename adoption and the public operator run callback are integrated
-in the `67f45a3` frozen batch, whose combined runtime evidence remains pending.
-Outbound feed/timers, auth/TLS and local control remain implementation work. Configured article bounds
-now derive from the injection configuration; frozen service tests must establish
-that ordinary NNTP and control use the same selected bound.
+Safe FNFD filename adoption and the public operator/auth callback are
+integrated. Outbound feed/timers and TLS remain integration work. The native
+public operator reaches the local control socket
+through `books/native-control.lisp` and `host/native/control.lisp`; its exact
+article enters `fn-owner-control-submit` under `fnn-owner-serialized` and then
+uses the same durable FNFD intent, Store attempt and resolution sequence as a
+served submission. Configured posting disablement is installed in the owner's
+one injection configuration and therefore refuses both ordinary NNTP and
+control admission.
+
+The local transport is one bounded sealed FNCT request and one bounded sealed
+reply per AF_UNIX connection. ACL2 owns the frame grammar, maximum sizes,
+Message-ID/group validation, status classes and exit codes. Raw Lisp reads one
+regular payload file, moves bounded octets, and performs socket lifecycle only.
+Failure before request handoff is refused; loss after handoff is uncertain,
+because the missing reply cannot distinguish durable acceptance from a request
+the owner never observed. The control adapter never opens the Store.
 
 ## What the owner is
 

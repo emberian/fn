@@ -90,3 +90,27 @@
 (defun fn-native-operator-host-result-run-auth-protected-onlyp (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-run-auth-protected-onlyp result))
+
+(defun fn-native-operator-host-result-run-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-control-path-octets result))
+
+(defun fn-native-operator-host-result-run-posting-enabledp (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-posting-enabledp result))
+
+(defun fn-native-operator-host-result-post-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-post-control-path-octets result))
+
+(defun fn-native-operator-host-result-post-msgid-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-post-msgid-octets result))
+
+(defun fn-native-operator-host-result-post-payload-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-post-payload-path-octets result))
+
+(defun fn-native-operator-host-result-post-group-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-post-group-octets result))

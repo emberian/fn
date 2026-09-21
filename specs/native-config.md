@@ -37,10 +37,12 @@ to 128. `fn-native-config-operator-availablep` is a separate ACL2 decision
 that refuses use of settings whose native consumer does not exist yet. The
 native owner now consumes `auth.required` and the selected `auth.path` through
 `books/native-auth-profile.lisp`; TLS, `auth.protected_only`, non-default
-posting policy, anchor, log, and `[acl2]` remain unavailable rather than being
-silently ignored. In particular, the native host does not call an ordinary
-socket protected: protected-only AUTHINFO remains unavailable until a real TLS
-facility can deliver the model's `:tls-established` event.
+posting agent, anchor, log, and `[acl2]` remain unavailable rather than being
+silently ignored. Either Boolean posting policy and the bounded control path
+are consumed by the local owner control service. In particular, the native
+host does not call an ordinary socket protected: protected-only AUTHINFO
+remains unavailable until a real TLS facility can deliver the model's
+`:tls-established` event.
 
 The credential registry is a second bounded ACL2 profile. It accepts at most
 65,536 ASCII octets, 1,024 lines and 128 canonical `[login."NAME"]` tables.
@@ -59,9 +61,9 @@ process is running is not a reload operation in this version; a restart is
 required, and no live-generation claim follows from atomic file replacement.
 
 The owner convergence consumer uses ACL2 projections for store root, listener
-host/port, control path, max connections (32), clock-error bound (1000 ms),
-TLS paths, and authentication policy. The last two numeric values are ACL2
-profile defaults, not values computed by the raw host. `host/native-config-host.lisp`
+host/port, control path, posting enablement, max connections (32), and
+clock-error bound (1000 ms). The last two numeric values are ACL2 profile
+defaults, not values computed by the raw host. `host/native-config-host.lisp`
 exposes `fn-native-config-host-load` and the ACL2-owned byte bound for the
 native wrapper; `host/native/config.lisp` registers the diagnostic protocol
 `config check PROFILE-PATH` when included by the saved-image build.

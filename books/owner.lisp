@@ -757,7 +757,8 @@
 
 (defun fn-own-control-decision (cfg msgid groups octets)
   (declare (xargs :guard t))
-  (if (and (fn-af-message-idp msgid)
+  (if (and (fn-inj-config-allow cfg)
+           (fn-af-message-idp msgid)
            (fn-inj-group-namesp groups)
            (consp groups)
            (fn-octet-listp octets)
