@@ -1,0 +1,17 @@
+revision=12e78af8cdbe3a9f8d825b5edb5c69f31cbf7df0
+image_sha256=7137f75dfbc320bf28c74d208ebfb1d64853673c66e75212c5d1ac9cf1c9c03f
+store=/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp.SZQlWruwAH/store
+initialized /var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp.SZQlWruwAH/store
+init_exit=0
+anchor refused: unknown-anchor-server
+unknown_exit=1
+anchor accepted incarnation=0
+anchor uncertain: unmodelled-tree
+first_live_exit=0
+second_live_exit=3
+anchor_size=     394
+anchor_sha256=474a437bd5c179c4e43d696ba232812ba21973f5855b4c8cce5289ae608dca9f
+anchor uncertain: unmodelled-tree
+replay_1_exit=3
+anchor refused: stale
+replay_2_exit=1

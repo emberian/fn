@@ -1,0 +1,9 @@
+revision=12e78af8cdbe3a9f8d825b5edb5c69f31cbf7df0
+host=nextop.local
+SBCL 2.6.8
+92b5f9cb8aebfec0defe8f61e95109299f2f289fc91144932a9653564e876fdf  books/anchor-servers.lisp
+e25dd673c38a03b5d395e07a8830aab4d384520bd9d3ba6fad2c05fefd9501cc  books/anchor-wire.lisp
+4ee2a19a83d825ecbed8b0f70518411ae4c7597547318e3b8c8d653a3bf83192  host/native/crypto.lisp
+46fe3f0d20071439b94a1bc0ec80da832e2cdc6868da7cb8313f8f2f0392a41e  host/native/anchor.lisp
+2d234bcdb95348b6f4e54a6fc892131ba32b2d296ca4e54d6c4657e2d344f7d9  tests/native_anchor_acquisition.lisp
+FN_NATIVE_ANCHOR_ACQUISITION_TEST passed library="/opt/homebrew/opt/libsodium/lib/libsodium.dylib" version="1.0.22"
