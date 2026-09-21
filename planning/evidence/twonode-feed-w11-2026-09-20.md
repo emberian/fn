@@ -11,17 +11,19 @@ it through the same durable path a POST takes, and a reader on B fetched the
 same octets node A serves. The detailed per-run rows are below; nothing in
 this file is a proof, and none of it is a flight-readiness claim.
 
-## Why it had never happened: four defects, all in code that had run green
+## Why it had never happened: five defects, all in code that had run green
 
 | # | Where | What | How it presented |
 | --- | --- | --- | --- |
 | 1 | `books/article-fields.lisp`, used by `books/peer-inbound.lisp` and `books/owner-feed.lisp` | `fn-af-proto-article-check` is RFC 5537 §3.4.1, the INJECTING agent's check, whose first refusal is a present `Injection-Info`. Both transit paths applied it to an ALREADY-INJECTED article, and every article fn posts carries that field (`fn-inj-injection-info-line`). | `fn-peer-decide-transfer` answered `:refuse :proto-article` to every offer; `fn-own-feed-groups-of` answered `NIL`, so no peer was ever a feed target and the feed dialled nobody. |
 | 2 | `tools/run_store.py`, `bin/fn` | `--inbound-max-octets` defaulted to 1048576, and `fn-cfg-peer-inboundp` caps it at `*fn-record-max-payload*` = 32768. | `peer add` was refused `:peer-record` for every invocation made with the defaults; no peer record could exist. |
-| 3 | `tools/twonode_gate.py` | `FEED_DRIVER`'s `post` phase called an `article()` it never defined, and neither article builder wrote a `Date` (RFC 5536 §3.1.1, enforced by `fn-peer-decide-transfer`). | Every owner-feed post raised `NameError` and was recorded as an article that did not become durable. |
+| 3 | `tools/twonode_gate.py` | `FEED_DRIVER`'s `post` phase called an `article()` it never defined and read its reply with a `Conn.read_line` that does not exist, and neither article builder wrote a `Date` (RFC 5536 §3.1.1, enforced by `fn-peer-decide-transfer`). The gate also wrote its peer records AFTER starting both owners, into stores under a writer lock, for an owner that reads the peer table only at start-up. | Every owner-feed post was recorded as an article that did not become durable -- first because it raised before reaching the wire, then because it raised after. |
+| 5 | `books/peer-inbound.lisp` (the slot), nothing (the writer) | `fn-peer-local-identity` reads the configuration policy slot `path-identity` and NOTHING on this tree could write it; an unset slot reads as the empty string and `fn-path-names-p` never matches it. `*fn-owner-agent*` was a second, hard-coded copy of the same identity. | RFC 5537 §3.5 loop suppression was INERT in every deployment, and two nodes on one gate wrote the same Path. |
 | 4 | `tools/run_owner.py`, `host/owner-host.lisp`, `tools/run_reader.py` | Three type errors on the transit and feed paths, each raised where nothing catches, so the OWNER PROCESS EXITED: octets re-encoded in `transit_decide`; group names as strings where the global holds octets; `acl2_boolean` anchored at the first octet where an error triple prints a leading space. | A peer that transferred an article, or a feed that dialled anybody, ended the service. |
 
 Defect 1 is the one that made the milestone impossible; 2 and 3 made it
-unmeasurable; 4 made every attempt look like a crash.
+unmeasurable; 4 made every attempt look like a crash; 5 made one of the
+properties the milestone is supposed to demonstrate untestable.
 
 ## Run 1: two owners on the laptop, the first crossing
 
@@ -233,6 +235,15 @@ connection is refused `441` whatever the article is. A separate lane owns
 that seam. This harness was already immune -- `FEED_DRIVER`'s `post` opens a
 fresh connection per article and closes it -- so nothing here works around
 it, and nothing here exercises two posts on one connection either.
+
+## The gate's own self-test
+
+`python3 -m unittest tests.test_twonode_gate` on the laptop: **19 tests,
+843.1 s, OK**, both halves of the fake -- the one with no transit surface
+(120 steps, 0 failed, 8 not exercised) and the one with a transit surface
+(117 steps, 0 failed, 5 not exercised). It is slow here only because the
+laptop was carrying four other lanes' ACL2 processes; it is 30 s on a quiet
+machine.
 
 ## Limits of this record
 
