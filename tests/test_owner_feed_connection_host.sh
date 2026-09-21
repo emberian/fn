@@ -1,13 +1,21 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")/.."
-result=$(mktemp "${TMPDIR:-/tmp}/fn-owner-feed-host.XXXXXX")
-trap 'rm -f "$result"' EXIT HUP INT TERM
-ACL2_CUSTOMIZATION=NONE ACL2_SYSTEM_BOOKS= acl2 >"$result" 2>&1 <<'EOF'
-(ld "host/owner-host.lisp" :ld-error-action :error)
-(ld "tests/owner-feed-connection-host.lsp" :ld-error-action :error)
-(cw "FN_OWNER_FEED_CONNECTION_HOST_OK~%")
-(good-bye)
-EOF
-grep -q 'FN_OWNER_FEED_CONNECTION_HOST_OK' "$result"
-printf '%s\n' 'owner feed connection host wrapper test passed'
+
+# Use an explicit caller override when supplied.  The normal ACL2 command is
+# discovered only as a local fallback, so CI/toolchain wrappers are preserved.
+if [ -z "${FN_ACL2:-}" ]; then
+  FN_ACL2=$(command -v acl2 || true)
+  export FN_ACL2
+fi
+if [ -z "${FN_ACL2:-}" ]; then
+  printf '%s\n' 'FN_ACL2 is unset and acl2 was not found on PATH' >&2
+  exit 1
+fi
+
+python3 tests/owner_feed_connection_host_check.py
+if python3 tests/owner_feed_connection_host_check.py tests/owner-feed-connection-host-bad.lsp; then
+  printf '%s\n' 'host witness harness accepted deliberate failing load' >&2
+  exit 1
+fi
+printf '%s\n' 'owner feed connection host wrapper test passed (including failing-load rejection)'
