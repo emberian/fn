@@ -16,12 +16,14 @@
 (defconst *fn-bpn-lifecycle-result-code* 4)
 
 ; Eight-byte token, two bounded identifiers, generation, creation sequence,
-; encoded peer EID and the exact encoded bundle.  The maximum is below the
-; generic frame layer's cap and is the only whole-payload bound the host uses.
+; the durable Bundle Age/monotonic anchor, exact route, encoded peer EID and
+; exact encoded bundle.  The maximum is below the generic frame layer's cap
+; and is the only whole-payload bound the host uses.
 (defconst *fn-bpn-lifecycle-max-payload* 134144)
 
 (defconst *fn-bpn-lifecycle-queued-spec*
-  '(:nat :text :text :nat :nat :text :nat :text :nat :nat :nat :blob :blob))
+  '(:nat :text :text :nat :nat :nat :nat
+    :text :nat :text :nat :nat :nat :blob :blob))
 (defconst *fn-bpn-lifecycle-attempting-spec*
   '(:nat :text :text :nat))
 (defconst *fn-bpn-lifecycle-result-statuses*
@@ -78,6 +80,8 @@
                   (fn-bpn-job-attempt-id job)
                   (fn-bpn-job-generation job)
                   (fn-bpn-job-sequence job)
+                  (car (fn-bpn-job-age-anchor job))
+                  (cdr (fn-bpn-job-age-anchor job))
                   (fn-bpn-nth 1 route) (fn-bpn-nth 2 route)
                   (fn-bpn-nth 3 route) (fn-bpn-nth 4 route)
                   (fn-bpn-nth 5 route) (fn-bpn-nth 6 route)
@@ -116,11 +120,12 @@
 
 (defun fn-bpn-lifecycle-queued-from-values (values)
   (declare (xargs :guard t))
-  (let* ((wire (fn-bpn-nth 12 values))
-         (peer (fn-bpn-peer-from-octets (fn-bpn-nth 11 values)))
-         (route (list :route (fn-bpn-nth 5 values) (fn-bpn-nth 6 values)
-                      (fn-bpn-nth 7 values) (fn-bpn-nth 8 values)
-                      (fn-bpn-nth 9 values) (fn-bpn-nth 10 values)))
+  (let* ((wire (fn-bpn-nth 14 values))
+         (peer (fn-bpn-peer-from-octets (fn-bpn-nth 13 values)))
+         (route (list :route (fn-bpn-nth 7 values) (fn-bpn-nth 8 values)
+                      (fn-bpn-nth 9 values) (fn-bpn-nth 10 values)
+                      (fn-bpn-nth 11 values) (fn-bpn-nth 12 values)))
+         (age-anchor (cons (fn-bpn-nth 5 values) (fn-bpn-nth 6 values)))
          (decoded (if (fn-cbor-octet-listp wire)
                       (fn-bpb-decode wire *fn-bpn-machine-max-job-octets*)
                     (fn-cbor-error :malformed)))
@@ -129,7 +134,7 @@
          (job (fn-bpn-make-job
                (fn-bpn-nth 1 values) (fn-bpn-nth 2 values)
                (fn-bpn-nth 3 values) (fn-bpn-nth 4 values)
-               peer route bundle wire :queued (fn-bpn-nth 0 values)))
+               age-anchor peer route bundle wire :queued (fn-bpn-nth 0 values)))
          (record (list :queued (fn-bpn-nth 0 values) job)))
     (if (fn-bpn-lifecycle-recordp record) record nil)))
 
