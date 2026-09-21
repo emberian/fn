@@ -1,0 +1,4165 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:13:23.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/replay" ...)
+Rules: NIL
+Time:  0.20 seconds (prove: 0.00, print: 0.00, other: 0.20)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/replay.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/store-config" ...)
+Rules: NIL
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/store-config.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/identity" ...)
+Rules: NIL
+Time:  0.26 seconds (prove: 0.00, print: 0.00, other: 0.26)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/identity.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/article-fields" ...)
+Rules: NIL
+Time:  0.03 seconds (prove: 0.00, print: 0.00, other: 0.03)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/article-fields.lisp"
+ACL2 !>
+The event ( INCLUDE-BOOK "books/frame" ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "books/frame" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/store-observed" ...)
+Rules: NIL
+Time:  0.07 seconds (prove: 0.00, print: 0.00, other: 0.07)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/store-observed.lisp"
+ACL2 !>
+The event ( INCLUDE-BOOK "books/store-node-resolution" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "books/store-node-resolution" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/store-observed-traces" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/store-observed-traces.lisp"
+ACL2 !>
+The event ( INCLUDE-BOOK "books/store-node" ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "books/store-node" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/node-config" ...)
+Rules: NIL
+Time:  0.05 seconds (prove: 0.00, print: 0.00, other: 0.04)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/node-config.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/nntp" ...)
+Rules: NIL
+Time:  0.03 seconds (prove: 0.00, print: 0.00, other: 0.03)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/nntp.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/bp-receipt-records" ...)
+Rules: NIL
+Time:  0.02 seconds (prove: 0.00, print: 0.00, other: 0.02)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/bp-receipt-records.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/bp-workflow-records" ...)
+Rules: NIL
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/bp-workflow-records.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/journal-publish" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/journal-publish.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/app-journal" ...)
+Rules: NIL
+Time:  0.12 seconds (prove: 0.00, print: 0.00, other: 0.12)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/app-journal.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/tcpcl-session" ...)
+Rules: NIL
+Time:  0.12 seconds (prove: 0.00, print: 0.00, other: 0.12)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/tcpcl-session.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/tcpcl-spool" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/tcpcl-spool.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/bp-node" ...)
+Rules: NIL
+Time:  0.05 seconds (prove: 0.00, print: 0.00, other: 0.05)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/bp-node.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/bp-node-records" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/bp-node-records.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/bp-node-machine" ...)
+Rules: NIL
+Time:  0.02 seconds (prove: 0.00, print: 0.00, other: 0.02)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/bp-node-machine.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/bp-node-machine-codec" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/bp-node-machine-codec.lisp"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "books/bp-receive-evidence" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/bp-receive-evidence.lisp"
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/replay" ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/replay" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/store-config" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/store-config" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/identity" ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/identity" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/crypto-attach" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/crypto-attach" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/frame-trailer" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/frame-trailer" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/byte-store-frame" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/byte-store-frame" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/byte-store-txn-name" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/byte-store-txn-name" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/article-fields" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/article-fields" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *FN-STORE-CAPACITY* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *FN-STORE-CAPACITY*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *FN-STORE-MAX-TEXT* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *FN-STORE-MAX-TEXT*
+ACL2 !>>
+Summary
+Form:  ( DEFCONST *FN-STORE-MAX-PAYLOAD* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ *FN-STORE-MAX-PAYLOAD*
+ACL2 !>>
+The admission of FN-STORE-TEXT-OCTETSP-TAIL is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT XS).  We observe that the type of 
+FN-STORE-TEXT-OCTETSP-TAIL is described by the theorem 
+(OR (EQUAL (FN-STORE-TEXT-OCTETSP-TAIL XS)
+           T)
+    (EQUAL (FN-STORE-TEXT-OCTETSP-TAIL XS)
+           NIL)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-STORE-TEXT-OCTETSP-TAIL ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-TEXT-OCTETSP-TAIL
+ACL2 !>>
+Since FN-STORE-TEXT-OCTETSP is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-TEXT-OCTETSP is described by the
+theorem 
+(OR (EQUAL (FN-STORE-TEXT-OCTETSP XS) T)
+    (EQUAL (FN-STORE-TEXT-OCTETSP XS) NIL)).
+We used the :type-prescription rule FN-STORE-TEXT-OCTETSP-TAIL.
+
+Summary
+Form:  ( DEFUN FN-STORE-TEXT-OCTETSP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-STORE-TEXT-OCTETSP-TAIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-TEXT-OCTETSP
+ACL2 !>>
+Since FN-STORE-MSGID-OCTETSP is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-MSGID-OCTETSP is described by
+the theorem 
+(OR (EQUAL (FN-STORE-MSGID-OCTETSP XS) T)
+    (EQUAL (FN-STORE-MSGID-OCTETSP XS)
+           NIL)).
+We used the :type-prescription rule FN-AF-MESSAGE-IDP.
+
+Summary
+Form:  ( DEFUN FN-STORE-MSGID-OCTETSP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-AF-MESSAGE-IDP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-MSGID-OCTETSP
+ACL2 !>>
+Since FN-STORE-OCTETS->STRING is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-OCTETS->STRING is described by
+the theorem (STRINGP (FN-STORE-OCTETS->STRING XS)).  We used the :type-
+prescription rule FN-RECORD-OCTETS-STRING.
+
+Summary
+Form:  ( DEFUN FN-STORE-OCTETS->STRING ...)
+Rules: ((:TYPE-PRESCRIPTION FN-RECORD-OCTETS-STRING))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-OCTETS->STRING
+ACL2 !>>
+Since FN-STORE-TXN-NAME is non-recursive, its admission is trivial.
+We could deduce no constraints on the type of FN-STORE-TXN-NAME.
+
+Summary
+Form:  ( DEFUN FN-STORE-TXN-NAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-TXN-NAME
+ACL2 !>>
+Since FN-STORE-TXN-NAME-OCTETS is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-TXN-NAME-OCTETS is described by
+the theorem (TRUE-LISTP (FN-STORE-TXN-NAME-OCTETS SEQUENCE)).  We used
+the :type-prescription rule FN-RECORD-STRING-OCTETS.
+
+Summary
+Form:  ( DEFUN FN-STORE-TXN-NAME-OCTETS ...)
+Rules: ((:TYPE-PRESCRIPTION FN-RECORD-STRING-OCTETS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-TXN-NAME-OCTETS
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-DECODE-RECORDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-DECODE-RECORDS
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-RECORD-SEQUENCE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-RECORD-SEQUENCE
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-RECORD-TXID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-RECORD-TXID
+ACL2 !>>
+Since FN-STORE-ARTICLE-MATCH is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-ARTICLE-MATCH is described by
+the theorem 
+(OR (AND (SYMBOLP (FN-STORE-ARTICLE-MATCH MSGID PAYLOAD GROUPS NODE))
+         (NOT (EQUAL (FN-STORE-ARTICLE-MATCH MSGID PAYLOAD GROUPS NODE)
+                     T))
+         (NOT (EQUAL (FN-STORE-ARTICLE-MATCH MSGID PAYLOAD GROUPS NODE)
+                     NIL)))
+    (EQUAL (FN-STORE-ARTICLE-MATCH MSGID PAYLOAD GROUPS NODE)
+           NIL)).
+
+Summary
+Form:  ( DEFUN FN-STORE-ARTICLE-MATCH ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-ARTICLE-MATCH
+ACL2 !>>
+Since FN-STORE-FRAME-CONSTANTS is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-FRAME-CONSTANTS is described by
+the theorem 
+(AND (CONSP (FN-STORE-FRAME-CONSTANTS))
+     (TRUE-LISTP (FN-STORE-FRAME-CONSTANTS))).
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-CONSTANTS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-CONSTANTS
+ACL2 !>>
+Since FN-STORE-FRAME-RESULT is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-FRAME-RESULT is described by the
+theorem 
+(OR (AND (CONSP (FN-STORE-FRAME-RESULT FRAME))
+         (TRUE-LISTP (FN-STORE-FRAME-RESULT FRAME)))
+    (EQUAL (FN-STORE-FRAME-RESULT FRAME)
+           FRAME)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RESULT ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-RESULT
+ACL2 !>>
+Since FN-STORE-FRAME-RECORD-RESULT is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-RECORD-RESULT
+is described by the theorem 
+(OR (AND (CONSP (FN-STORE-FRAME-RECORD-RESULT FRAME))
+         (TRUE-LISTP (FN-STORE-FRAME-RECORD-RESULT FRAME)))
+    (EQUAL (FN-STORE-FRAME-RECORD-RESULT FRAME)
+           FRAME)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECORD-RESULT ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-RECORD-RESULT
+ACL2 !>>
+Since FN-STORE-FRAME-STORE-PROTECTED is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-STORE-PROTECTED
+is described by the theorem 
+(OR (OR (CONSP (FN-STORE-FRAME-STORE-PROTECTED RECORD))
+        (AND (SYMBOLP (FN-STORE-FRAME-STORE-PROTECTED RECORD))
+             (NOT (EQUAL (FN-STORE-FRAME-STORE-PROTECTED RECORD)
+                         T))
+             (NOT (EQUAL (FN-STORE-FRAME-STORE-PROTECTED RECORD)
+                         NIL))))
+    (EQUAL (FN-STORE-FRAME-STORE-PROTECTED RECORD)
+           RECORD)).
+We used the :type-prescription rule FN-FRAME-STORE-PROTECTED.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-STORE-PROTECTED ...)
+Rules: ((:TYPE-PRESCRIPTION FN-FRAME-STORE-PROTECTED))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-STORE-PROTECTED
+ACL2 !>>
+Since FN-STORE-FRAME-WORKFLOW-PROTECTED is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-WORKFLOW-PROTECTED
+is described by the theorem 
+(OR (CONSP (FN-STORE-FRAME-WORKFLOW-PROTECTED KIND VALUES))
+    (AND (SYMBOLP (FN-STORE-FRAME-WORKFLOW-PROTECTED KIND VALUES))
+         (NOT (EQUAL (FN-STORE-FRAME-WORKFLOW-PROTECTED KIND VALUES)
+                     T))
+         (NOT (EQUAL (FN-STORE-FRAME-WORKFLOW-PROTECTED KIND VALUES)
+                     NIL)))
+    (EQUAL (FN-STORE-FRAME-WORKFLOW-PROTECTED KIND VALUES)
+           NIL)).
+We used the :type-prescription rule FN-FRAME-WORKFLOW-PROTECTED.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-PROTECTED ...)
+Rules: ((:TYPE-PRESCRIPTION FN-FRAME-WORKFLOW-PROTECTED))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-WORKFLOW-PROTECTED
+ACL2 !>>
+Since FN-STORE-FRAME-RECEIPT-PROTECTED is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-RECEIPT-PROTECTED
+is described by the theorem 
+(OR (CONSP (FN-STORE-FRAME-RECEIPT-PROTECTED KIND VALUES))
+    (AND (SYMBOLP (FN-STORE-FRAME-RECEIPT-PROTECTED KIND VALUES))
+         (NOT (EQUAL (FN-STORE-FRAME-RECEIPT-PROTECTED KIND VALUES)
+                     T))
+         (NOT (EQUAL (FN-STORE-FRAME-RECEIPT-PROTECTED KIND VALUES)
+                     NIL)))
+    (EQUAL (FN-STORE-FRAME-RECEIPT-PROTECTED KIND VALUES)
+           NIL)).
+We used the :type-prescription rule FN-FRAME-RECEIPT-PROTECTED.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-PROTECTED ...)
+Rules: ((:TYPE-PRESCRIPTION FN-FRAME-RECEIPT-PROTECTED))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-RECEIPT-PROTECTED
+ACL2 !>>
+The admission of FN-STORE-FRAME-NAMES-OCTETS is trivial, using the
+relation O< (which is known to be well-founded on the domain recognized
+by O-P) and the measure (ACL2-COUNT NAMES).  We observe that the type
+of FN-STORE-FRAME-NAMES-OCTETS is described by the theorem 
+(TRUE-LISTP (FN-STORE-FRAME-NAMES-OCTETS NAMES)).  We used primitive
+type reasoning.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-NAMES-OCTETS ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-NAMES-OCTETS
+ACL2 !>>
+Since FN-STORE-FRAME-SCHEMA is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-FRAME-SCHEMA is described by the
+theorem 
+(AND (CONSP (FN-STORE-FRAME-SCHEMA KIND NAMES-TABLE SPEC-TABLE))
+     (TRUE-LISTP (FN-STORE-FRAME-SCHEMA KIND NAMES-TABLE SPEC-TABLE))).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-SCHEMA ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-SCHEMA
+ACL2 !>>
+Since FN-STORE-FRAME-WORKFLOW-SCHEMA is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-WORKFLOW-SCHEMA
+is described by the theorem 
+(AND (CONSP (FN-STORE-FRAME-WORKFLOW-SCHEMA KIND))
+     (TRUE-LISTP (FN-STORE-FRAME-WORKFLOW-SCHEMA KIND))).
+We used the :type-prescription rule FN-STORE-FRAME-SCHEMA.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-SCHEMA ...)
+Rules: ((:TYPE-PRESCRIPTION FN-STORE-FRAME-SCHEMA))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-WORKFLOW-SCHEMA
+ACL2 !>>
+Since FN-STORE-FRAME-RECEIPT-SCHEMA is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-RECEIPT-SCHEMA
+is described by the theorem 
+(AND (CONSP (FN-STORE-FRAME-RECEIPT-SCHEMA KIND))
+     (TRUE-LISTP (FN-STORE-FRAME-RECEIPT-SCHEMA KIND))).
+We used the :type-prescription rule FN-STORE-FRAME-SCHEMA.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-SCHEMA ...)
+Rules: ((:TYPE-PRESCRIPTION FN-STORE-FRAME-SCHEMA))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-RECEIPT-SCHEMA
+ACL2 !>>
+Since FN-STORE-FRAME-WORKFLOW-KINDS is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-WORKFLOW-KINDS
+is described by the theorem 
+(AND (CONSP (FN-STORE-FRAME-WORKFLOW-KINDS))
+     (TRUE-LISTP (FN-STORE-FRAME-WORKFLOW-KINDS))).
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-KINDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-WORKFLOW-KINDS
+ACL2 !>>
+Since FN-STORE-FRAME-RECEIPT-KINDS is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-RECEIPT-KINDS
+is described by the theorem 
+(AND (CONSP (FN-STORE-FRAME-RECEIPT-KINDS))
+     (TRUE-LISTP (FN-STORE-FRAME-RECEIPT-KINDS))).
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-KINDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-RECEIPT-KINDS
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-LOGICAL-TO-WIRE-VALUES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-LOGICAL-TO-WIRE-VALUES
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WIRE-TO-LOGICAL-VALUES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-WIRE-TO-LOGICAL-VALUES
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-LOGICAL-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-WORKFLOW-LOGICAL-PROTECTED
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-LOGICAL-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-RECEIPT-LOGICAL-PROTECTED
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-LOGICAL-RESULT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-LOGICAL-RESULT
+ACL2 !>>
+Since FN-STORE-FRAME-STORE-ENCODE is non-recursive, its admission is
+trivial.  We observe that the type of FN-STORE-FRAME-STORE-ENCODE is
+described by the theorem 
+(OR (OR (CONSP (FN-STORE-FRAME-STORE-ENCODE RECORD DIGEST))
+        (AND (SYMBOLP (FN-STORE-FRAME-STORE-ENCODE RECORD DIGEST))
+             (NOT (EQUAL (FN-STORE-FRAME-STORE-ENCODE RECORD DIGEST)
+                         T))
+             (NOT (EQUAL (FN-STORE-FRAME-STORE-ENCODE RECORD DIGEST)
+                         NIL))))
+    (EQUAL (FN-STORE-FRAME-STORE-ENCODE RECORD DIGEST)
+           DIGEST)).
+We used the :type-prescription rule FN-FRAME-STORE-ENCODE.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-STORE-ENCODE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-FRAME-STORE-ENCODE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-STORE-ENCODE
+ACL2 !>>
+Since FN-STORE-FRAME-STORE-DECODE is non-recursive, its admission is
+trivial.  We observe that the type of FN-STORE-FRAME-STORE-DECODE is
+described by the theorem 
+(AND (CONSP (FN-STORE-FRAME-STORE-DECODE OCTETS DIGEST))
+     (TRUE-LISTP (FN-STORE-FRAME-STORE-DECODE OCTETS DIGEST))).
+We used the :type-prescription rules FN-FRAME-STORE-DECODE and 
+FN-STORE-FRAME-RESULT.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-STORE-DECODE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-FRAME-STORE-DECODE)
+        (:TYPE-PRESCRIPTION FN-STORE-FRAME-RESULT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-STORE-DECODE
+ACL2 !>>
+Since FN-STORE-FRAME-WORKFLOW-ENCODE is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-WORKFLOW-ENCODE
+is described by the theorem 
+(OR (OR (CONSP (FN-STORE-FRAME-WORKFLOW-ENCODE KIND VALUES DIGEST))
+        (AND (SYMBOLP (FN-STORE-FRAME-WORKFLOW-ENCODE KIND VALUES DIGEST))
+             (NOT (EQUAL (FN-STORE-FRAME-WORKFLOW-ENCODE KIND VALUES DIGEST)
+                         T))
+             (NOT (EQUAL (FN-STORE-FRAME-WORKFLOW-ENCODE KIND VALUES DIGEST)
+                         NIL))))
+    (EQUAL (FN-STORE-FRAME-WORKFLOW-ENCODE KIND VALUES DIGEST)
+           DIGEST)).
+We used the :type-prescription rule FN-FRAME-WORKFLOW-ENCODE.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-ENCODE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-FRAME-WORKFLOW-ENCODE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-WORKFLOW-ENCODE
+ACL2 !>>
+Since FN-STORE-FRAME-WORKFLOW-DECODE is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-WORKFLOW-DECODE
+is described by the theorem 
+(AND (CONSP (FN-STORE-FRAME-WORKFLOW-DECODE OCTETS DIGEST))
+     (TRUE-LISTP (FN-STORE-FRAME-WORKFLOW-DECODE OCTETS DIGEST))).
+We used the :type-prescription rules FN-FRAME-WORKFLOW-DECODE and 
+FN-STORE-FRAME-RECORD-RESULT.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-DECODE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-FRAME-WORKFLOW-DECODE)
+        (:TYPE-PRESCRIPTION FN-STORE-FRAME-RECORD-RESULT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-WORKFLOW-DECODE
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-LOGICAL-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-WORKFLOW-LOGICAL-DECODE
+ACL2 !>>
+Since FN-STORE-FRAME-RECEIPT-ENCODE is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-RECEIPT-ENCODE
+is described by the theorem 
+(OR (OR (CONSP (FN-STORE-FRAME-RECEIPT-ENCODE KIND VALUES DIGEST))
+        (AND (SYMBOLP (FN-STORE-FRAME-RECEIPT-ENCODE KIND VALUES DIGEST))
+             (NOT (EQUAL (FN-STORE-FRAME-RECEIPT-ENCODE KIND VALUES DIGEST)
+                         T))
+             (NOT (EQUAL (FN-STORE-FRAME-RECEIPT-ENCODE KIND VALUES DIGEST)
+                         NIL))))
+    (EQUAL (FN-STORE-FRAME-RECEIPT-ENCODE KIND VALUES DIGEST)
+           DIGEST)).
+We used the :type-prescription rule FN-FRAME-RECEIPT-ENCODE.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-ENCODE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-FRAME-RECEIPT-ENCODE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-RECEIPT-ENCODE
+ACL2 !>>
+Since FN-STORE-FRAME-RECEIPT-DECODE is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-FRAME-RECEIPT-DECODE
+is described by the theorem 
+(AND (CONSP (FN-STORE-FRAME-RECEIPT-DECODE OCTETS DIGEST))
+     (TRUE-LISTP (FN-STORE-FRAME-RECEIPT-DECODE OCTETS DIGEST))).
+We used the :type-prescription rules FN-FRAME-RECEIPT-DECODE and 
+FN-STORE-FRAME-RECORD-RESULT.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-DECODE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-FRAME-RECEIPT-DECODE)
+        (:TYPE-PRESCRIPTION FN-STORE-FRAME-RECORD-RESULT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-RECEIPT-DECODE
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-LOGICAL-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-RECEIPT-LOGICAL-DECODE
+ACL2 !>>
+Since FN-STORE-FRAME-INBOUND-PREFIX is non-recursive, its admission
+is trivial.  We could deduce no constraints on the type of 
+FN-STORE-FRAME-INBOUND-PREFIX.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-INBOUND-PREFIX ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-INBOUND-PREFIX
+ACL2 !>>
+Since FN-STORE-FRAME-INBOUND-OPEN is non-recursive, its admission is
+trivial.  We observe that the type of FN-STORE-FRAME-INBOUND-OPEN is
+described by the theorem 
+(AND (CONSP (FN-STORE-FRAME-INBOUND-OPEN HEAD TOTAL-LENGTH TRAILER DIGEST))
+     (TRUE-LISTP
+          (FN-STORE-FRAME-INBOUND-OPEN HEAD TOTAL-LENGTH TRAILER DIGEST))).
+We used primitive type reasoning and the :type-prescription rule 
+FN-FRAME-INBOUND-OPEN.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-INBOUND-OPEN ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-FRAME-INBOUND-OPEN))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FRAME-INBOUND-OPEN
+ACL2 !>>
+Since FN-STORE-SUBJECT-ID-OF-PAYLOAD is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-SUBJECT-ID-OF-PAYLOAD
+is described by the theorem 
+(OR (CONSP (FN-STORE-SUBJECT-ID-OF-PAYLOAD PAYLOAD))
+    (EQUAL (FN-STORE-SUBJECT-ID-OF-PAYLOAD PAYLOAD)
+           NIL)).
+We used the :type-prescription rule FN-ID-SUBJECT-OF-PAYLOAD.
+
+Summary
+Form:  ( DEFUN FN-STORE-SUBJECT-ID-OF-PAYLOAD ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ID-SUBJECT-OF-PAYLOAD))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SUBJECT-ID-OF-PAYLOAD
+ACL2 !>>
+Since FN-STORE-OBLIGATION-ID-OF is non-recursive, its admission is
+trivial.  We observe that the type of FN-STORE-OBLIGATION-ID-OF is
+described by the theorem 
+(OR (CONSP (FN-STORE-OBLIGATION-ID-OF MSGID SUBJECT))
+    (EQUAL (FN-STORE-OBLIGATION-ID-OF MSGID SUBJECT)
+           NIL)).
+We used the :type-prescription rule FN-ID-OBLIGATION-OF.
+
+Summary
+Form:  ( DEFUN FN-STORE-OBLIGATION-ID-OF ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ID-OBLIGATION-OF))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-OBLIGATION-ID-OF
+ACL2 !>>
+Since FN-STORE-SUBJECT-PREFIX is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-SUBJECT-PREFIX is described by
+the theorem (TRUE-LISTP (FN-STORE-SUBJECT-PREFIX LENGTH)).  We used
+the :type-prescription rule FN-ID-SUBJECT-PREFIX.
+
+Summary
+Form:  ( DEFUN FN-STORE-SUBJECT-PREFIX ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ID-SUBJECT-PREFIX))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SUBJECT-PREFIX
+ACL2 !>>
+Since FN-STORE-SUBJECT-ID is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-SUBJECT-ID is described by the
+theorem 
+(OR (CONSP (FN-STORE-SUBJECT-ID DIGEST))
+    (EQUAL (FN-STORE-SUBJECT-ID DIGEST)
+           NIL)).
+We used the :type-prescription rule FN-ID-SUBJECT.
+
+Summary
+Form:  ( DEFUN FN-STORE-SUBJECT-ID ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ID-SUBJECT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SUBJECT-ID
+ACL2 !>>
+Since FN-STORE-OBLIGATION-PREIMAGE is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-OBLIGATION-PREIMAGE
+is described by the theorem 
+(OR (CONSP (FN-STORE-OBLIGATION-PREIMAGE MSGID SUBJECT))
+    (EQUAL (FN-STORE-OBLIGATION-PREIMAGE MSGID SUBJECT)
+           NIL)).
+We used the :type-prescription rule FN-ID-OBLIGATION-PREIMAGE.
+
+Summary
+Form:  ( DEFUN FN-STORE-OBLIGATION-PREIMAGE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ID-OBLIGATION-PREIMAGE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-OBLIGATION-PREIMAGE
+ACL2 !>>
+Since FN-STORE-OBLIGATION-ID is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-OBLIGATION-ID is described by
+the theorem 
+(OR (CONSP (FN-STORE-OBLIGATION-ID DIGEST))
+    (EQUAL (FN-STORE-OBLIGATION-ID DIGEST)
+           NIL)).
+We used the :type-prescription rule FN-ID-OBLIGATION.
+
+Summary
+Form:  ( DEFUN FN-STORE-OBLIGATION-ID ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ID-OBLIGATION))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-OBLIGATION-ID
+ACL2 !>>
+Since FN-STORE-CHARGE is non-recursive, its admission is trivial. 
+We observe that the type of FN-STORE-CHARGE is described by the theorem
+(AND (INTEGERP (FN-STORE-CHARGE LENGTH)) (<= 0 (FN-STORE-CHARGE LENGTH))).
+We used the :type-prescription rule FN-CHARGE-FOR-PAYLOAD.
+
+Summary
+Form:  ( DEFUN FN-STORE-CHARGE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-CHARGE-FOR-PAYLOAD))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CHARGE
+ACL2 !>>
+Since FN-STORE-MSGID-VALIDP is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-MSGID-VALIDP is described by the
+theorem 
+(OR (EQUAL (FN-STORE-MSGID-VALIDP OCTETS) T)
+    (EQUAL (FN-STORE-MSGID-VALIDP OCTETS)
+           NIL)).
+We used the :type-prescription rule FN-STORE-MSGID-OCTETSP.
+
+Summary
+Form:  ( DEFUN FN-STORE-MSGID-VALIDP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-STORE-MSGID-OCTETSP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-MSGID-VALIDP
+ACL2 !>>
+The admission of FN-STORE-GROUP-NAME-OCTETS is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT GROUPS).  We observe that the type of 
+FN-STORE-GROUP-NAME-OCTETS is described by the theorem 
+(TRUE-LISTP (FN-STORE-GROUP-NAME-OCTETS GROUPS)).  We used primitive
+type reasoning.
+
+Summary
+Form:  ( DEFUN FN-STORE-GROUP-NAME-OCTETS ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-GROUP-NAME-OCTETS
+ACL2 !>>
+Since FN-STORE-IDENTITY-TEXT is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-IDENTITY-TEXT is described by
+the theorem (TRUE-LISTP (FN-STORE-IDENTITY-TEXT IDENTITY)).  We used
+the :type-prescription rule FN-ID-TEXT.
+
+Summary
+Form:  ( DEFUN FN-STORE-IDENTITY-TEXT ...)
+Rules: ((:TYPE-PRESCRIPTION FN-ID-TEXT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-IDENTITY-TEXT
+ACL2 !>>
+Since FN-STORE-FORMAT-ID is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-FORMAT-ID is described by the
+theorem (AND (CONSP (FN-STORE-FORMAT-ID)) (TRUE-LISTP (FN-STORE-FORMAT-ID))).
+
+Summary
+Form:  ( DEFUN FN-STORE-FORMAT-ID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-FORMAT-ID
+ACL2 !>>
+Since FN-STORE-METADATA-CONFIG-FRAME is non-recursive, its admission
+is trivial.  We could deduce no constraints on the type of 
+FN-STORE-METADATA-CONFIG-FRAME.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-CONFIG-FRAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-METADATA-CONFIG-FRAME
+ACL2 !>>
+Since FN-STORE-METADATA-CONFIG-DECODE is non-recursive, its admission
+is trivial.  We could deduce no constraints on the type of 
+FN-STORE-METADATA-CONFIG-DECODE.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-CONFIG-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-METADATA-CONFIG-DECODE
+ACL2 !>>
+Since FN-STORE-METADATA-FRONTIER-FRAME is non-recursive, its admission
+is trivial.  We could deduce no constraints on the type of 
+FN-STORE-METADATA-FRONTIER-FRAME.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-FRONTIER-FRAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-METADATA-FRONTIER-FRAME
+ACL2 !>>
+Since FN-STORE-METADATA-FRONTIER-DECODE is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-METADATA-FRONTIER-DECODE
+is described by the theorem 
+(OR (AND (INTEGERP (FN-STORE-METADATA-FRONTIER-DECODE OCTETS))
+         (<= 0
+             (FN-STORE-METADATA-FRONTIER-DECODE OCTETS)))
+    (EQUAL (FN-STORE-METADATA-FRONTIER-DECODE OCTETS)
+           NIL)).
+We used the :type-prescription rule FN-BS-FRONTIER-DECODE-IMPL-NAT-OR-NIL.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-FRONTIER-DECODE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BS-FRONTIER-DECODE-IMPL-NAT-OR-NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-METADATA-FRONTIER-DECODE
+ACL2 !>>
+Since FN-STORE-METADATA-FRONTIER-NEXT is non-recursive, its admission
+is trivial.  We observe that the type of FN-STORE-METADATA-FRONTIER-NEXT
+is described by the theorem 
+(OR (AND (INTEGERP (FN-STORE-METADATA-FRONTIER-NEXT N))
+         (< 0 (FN-STORE-METADATA-FRONTIER-NEXT N)))
+    (EQUAL (FN-STORE-METADATA-FRONTIER-NEXT N)
+           NIL)).
+We used the :type-prescription rule FN-BS-FRONTIER-NEXT.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-FRONTIER-NEXT ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BS-FRONTIER-NEXT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-METADATA-FRONTIER-NEXT
+ACL2 !>>
+The admission of FN-STORE-OCTET-LISTS->STRINGS is trivial, using the
+relation O< (which is known to be well-founded on the domain recognized
+by O-P) and the measure (ACL2-COUNT XS).  We observe that the type
+of FN-STORE-OCTET-LISTS->STRINGS is described by the theorem 
+(OR (CONSP (FN-STORE-OCTET-LISTS->STRINGS XS))
+    (AND (SYMBOLP (FN-STORE-OCTET-LISTS->STRINGS XS))
+         (NOT (EQUAL (FN-STORE-OCTET-LISTS->STRINGS XS)
+                     T))
+         (NOT (EQUAL (FN-STORE-OCTET-LISTS->STRINGS XS)
+                     NIL)))
+    (EQUAL (FN-STORE-OCTET-LISTS->STRINGS XS)
+           NIL)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-STORE-OCTET-LISTS->STRINGS ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-OCTET-LISTS->STRINGS
+ACL2 !>>
+Since FN-STORE-GROUP-CODES is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-GROUP-CODES is described by the
+theorem 
+(OR (CONSP (FN-STORE-GROUP-CODES NAME-OCTETS DOMAIN-OCTETS))
+    (AND (SYMBOLP (FN-STORE-GROUP-CODES NAME-OCTETS DOMAIN-OCTETS))
+         (NOT (EQUAL (FN-STORE-GROUP-CODES NAME-OCTETS DOMAIN-OCTETS)
+                     T))
+         (NOT (EQUAL (FN-STORE-GROUP-CODES NAME-OCTETS DOMAIN-OCTETS)
+                     NIL)))
+    (EQUAL (FN-STORE-GROUP-CODES NAME-OCTETS DOMAIN-OCTETS)
+           NIL)).
+We used primitive type reasoning and the :type-prescription rule 
+FN-STORE-CODES-FROM-GROUPS.
+
+Summary
+Form:  ( DEFUN FN-STORE-GROUP-CODES ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION FN-STORE-CODES-FROM-GROUPS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-GROUP-CODES
+ACL2 !>>
+Since FN-STORE-POST-BOUNDARY is non-recursive, its admission is trivial.
+We observe that the type of FN-STORE-POST-BOUNDARY is described by
+the theorem 
+(AND
+ (SYMBOLP (FN-STORE-POST-BOUNDARY MSGID
+                                  PAYLOAD-LENGTH GROUP-COUNT CHARGE))
+ (NOT (EQUAL (FN-STORE-POST-BOUNDARY MSGID PAYLOAD-LENGTH GROUP-COUNT CHARGE)
+             T))
+ (NOT (EQUAL (FN-STORE-POST-BOUNDARY MSGID PAYLOAD-LENGTH GROUP-COUNT CHARGE)
+             NIL))).
+We used the :compound-recognizer rules NATP-COMPOUND-RECOGNIZER and
+POSP-COMPOUND-RECOGNIZER.
+
+Summary
+Form:  ( DEFUN FN-STORE-POST-BOUNDARY ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:COMPOUND-RECOGNIZER POSP-COMPOUND-RECOGNIZER))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-POST-BOUNDARY
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/store-observed" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/store-observed" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Summary
+Form:  ( INCLUDE-BOOK "../books/store-sweep" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/store-sweep.lisp"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/store-node-resolution" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/store-node-resolution" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/node-config" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/node-config" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>> "ACL2"
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/replay" ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/replay" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/store-config" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/store-config" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/identity" ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/identity" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/crypto-attach" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/crypto-attach" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/frame-trailer" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/frame-trailer" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/byte-store-frame" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/byte-store-frame" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/byte-store-txn-name" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/byte-store-txn-name" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/article-fields" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/article-fields" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFCONST *FN-STORE-CAPACITY* ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFCONST *FN-STORE-CAPACITY* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFCONST *FN-STORE-MAX-TEXT* ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFCONST *FN-STORE-MAX-TEXT* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFCONST *FN-STORE-MAX-PAYLOAD* ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFCONST *FN-STORE-MAX-PAYLOAD* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-TEXT-OCTETSP-TAIL ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-TEXT-OCTETSP-TAIL ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-TEXT-OCTETSP ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-TEXT-OCTETSP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-MSGID-OCTETSP ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-MSGID-OCTETSP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-OCTETS->STRING ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-OCTETS->STRING ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-TXN-NAME ...) is redundant.  See :DOC redundant-
+events.
+
+Summary
+Form:  ( DEFUN FN-STORE-TXN-NAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-TXN-NAME-OCTETS ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-TXN-NAME-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-DECODE-RECORDS ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-DECODE-RECORDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-RECORD-SEQUENCE ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-RECORD-SEQUENCE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-RECORD-TXID ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-RECORD-TXID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-ARTICLE-MATCH ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-ARTICLE-MATCH ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-CONSTANTS ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-CONSTANTS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RESULT ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RESULT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECORD-RESULT ...) is redundant. 
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECORD-RESULT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-STORE-PROTECTED ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-STORE-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-PROTECTED ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-PROTECTED ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-NAMES-OCTETS ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-NAMES-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-SCHEMA ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-SCHEMA ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-SCHEMA ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-SCHEMA ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-SCHEMA ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-SCHEMA ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-KINDS ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-KINDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-KINDS ...) is redundant. 
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-KINDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-LOGICAL-TO-WIRE-VALUES ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-LOGICAL-TO-WIRE-VALUES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WIRE-TO-LOGICAL-VALUES ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WIRE-TO-LOGICAL-VALUES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-LOGICAL-PROTECTED ...) is
+redundant.  See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-LOGICAL-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-LOGICAL-PROTECTED ...) is
+redundant.  See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-LOGICAL-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-LOGICAL-RESULT ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-LOGICAL-RESULT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-STORE-ENCODE ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-STORE-ENCODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-STORE-DECODE ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-STORE-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-ENCODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-ENCODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-LOGICAL-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-LOGICAL-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-ENCODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-ENCODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-LOGICAL-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-LOGICAL-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-INBOUND-PREFIX ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-INBOUND-PREFIX ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-INBOUND-OPEN ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-INBOUND-OPEN ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-SUBJECT-ID-OF-PAYLOAD ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-SUBJECT-ID-OF-PAYLOAD ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-OBLIGATION-ID-OF ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-OBLIGATION-ID-OF ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-SUBJECT-PREFIX ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-SUBJECT-PREFIX ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-SUBJECT-ID ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-SUBJECT-ID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-OBLIGATION-PREIMAGE ...) is redundant. 
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-OBLIGATION-PREIMAGE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-OBLIGATION-ID ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-OBLIGATION-ID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-CHARGE ...) is redundant.  See :DOC redundant-
+events.
+
+Summary
+Form:  ( DEFUN FN-STORE-CHARGE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-MSGID-VALIDP ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-MSGID-VALIDP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-GROUP-NAME-OCTETS ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-GROUP-NAME-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-IDENTITY-TEXT ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-IDENTITY-TEXT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FORMAT-ID ...) is redundant.  See :DOC redundant-
+events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FORMAT-ID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-METADATA-CONFIG-FRAME ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-CONFIG-FRAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-METADATA-CONFIG-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-CONFIG-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-METADATA-FRONTIER-FRAME ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-FRONTIER-FRAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-METADATA-FRONTIER-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-FRONTIER-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-METADATA-FRONTIER-NEXT ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-FRONTIER-NEXT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-OCTET-LISTS->STRINGS ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-OCTET-LISTS->STRINGS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-GROUP-CODES ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-GROUP-CODES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-POST-BOUNDARY ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-POST-BOUNDARY ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>Bye.
+ :EOF
+ACL2 !>>
+Summary
+Form:  ( INCLUDE-BOOK "../books/peer-config" ...)
+Rules: NIL
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/peer-config.lisp"
+ACL2 !>>
+Summary
+Form:  ( INCLUDE-BOOK "../books/provenance-codec" ...)
+Rules: NIL
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/provenance-codec.lisp"
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-RESET ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-RESET
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-STATE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-STATE
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-DECODE-RECORDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-DECODE-RECORDS
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-RECOVER ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-RECOVER
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-DOMAIN ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-DOMAIN
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-GENERATION ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-GENERATION
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-JOIN-NAMES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-JOIN-NAMES
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-SERVED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-SERVED
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-DOMAIN ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-DOMAIN
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-RECONFIGURE ...)
+Rules: NIL
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+ FN-STORE-CFG-RECONFIGURE
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-PEER-RECORD ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-PEER-RECORD
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-PEER-DELTA-RECORD ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-PEER-DELTA-RECORD
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-SET-PEER ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-SET-PEER
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-SET-POLICY ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-SET-POLICY
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-POLICY ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-POLICY
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-REMOVE-PEER ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-REMOVE-PEER
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-PEER-NAME-LIST ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-PEER-NAME-LIST
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-PEER-NAMES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-PEER-NAMES
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-PEER-ROWS-OF ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-PEER-ROWS-OF
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-PEER-SLOT-TEXT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-PEER-SLOT-TEXT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-PEER-SLOT-NAT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-PEER-SLOT-NAT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-LAST-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-LAST-OCTETS
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-CFG-LAST-REASON ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-CFG-LAST-REASON
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-IO ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-IO
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-PREPARE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-PREPARE
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-REFUSE-RESERVATION ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-REFUSE-RESERVATION
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-KNOWN-ABORT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-KNOWN-ABORT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-PENDING-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-PENDING-OCTETS
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-FINISH ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-FINISH
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-ARTICLE-COUNT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-ARTICLE-COUNT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-NEXT-TXID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-NEXT-TXID
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-EXISTING-ACTION ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-EXISTING-ACTION
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-GROUP-NEXT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-GROUP-NEXT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-PIN-COUNT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-PIN-COUNT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-RESERVED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-RESERVED
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-LOOKUP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-LOOKUP
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-LOOKUP-FOUNDP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-LOOKUP-FOUNDP
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-KEYRING-OF-PAIRS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-KEYRING-OF-PAIRS
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-SET-KEYRING ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-SET-KEYRING
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-KEYRING-SIZE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-KEYRING-SIZE
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-STATEMENT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-STATEMENT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-EQUIVOCATOR ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-EQUIVOCATOR
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-INDEX-SIZE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-INDEX-SIZE
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-JOIN-OCTET-NAMES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-JOIN-OCTET-NAMES
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-SWEEP-STAGING ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-SWEEP-STAGING
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-SWEEP-STAGING-LIST ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-SWEEP-STAGING-LIST
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-SN-STAGING-OBSERVATION-LIMIT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-SN-STAGING-OBSERVATION-LIMIT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-PROV-POST ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-PROV-POST
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-PROV-DESCRIBE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-PROV-DESCRIBE
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-STORE-PROV-FOR-MSGID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-STORE-PROV-FOR-MSGID
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/node-config" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/node-config" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>> "ACL2"
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/replay" ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/replay" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/store-config" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/store-config" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/identity" ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/identity" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/crypto-attach" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/crypto-attach" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/frame-trailer" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/frame-trailer" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/byte-store-frame" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/byte-store-frame" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/byte-store-txn-name" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/byte-store-txn-name" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( INCLUDE-BOOK "../books/article-fields" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/article-fields" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFCONST *FN-STORE-CAPACITY* ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFCONST *FN-STORE-CAPACITY* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFCONST *FN-STORE-MAX-TEXT* ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFCONST *FN-STORE-MAX-TEXT* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFCONST *FN-STORE-MAX-PAYLOAD* ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFCONST *FN-STORE-MAX-PAYLOAD* ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-TEXT-OCTETSP-TAIL ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-TEXT-OCTETSP-TAIL ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-TEXT-OCTETSP ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-TEXT-OCTETSP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-MSGID-OCTETSP ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-MSGID-OCTETSP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-OCTETS->STRING ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-OCTETS->STRING ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-TXN-NAME ...) is redundant.  See :DOC redundant-
+events.
+
+Summary
+Form:  ( DEFUN FN-STORE-TXN-NAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-TXN-NAME-OCTETS ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-TXN-NAME-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-DECODE-RECORDS ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-DECODE-RECORDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-RECORD-SEQUENCE ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-RECORD-SEQUENCE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-RECORD-TXID ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-RECORD-TXID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-ARTICLE-MATCH ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-ARTICLE-MATCH ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-CONSTANTS ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-CONSTANTS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RESULT ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RESULT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECORD-RESULT ...) is redundant. 
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECORD-RESULT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-STORE-PROTECTED ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-STORE-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-PROTECTED ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-PROTECTED ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-NAMES-OCTETS ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-NAMES-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-SCHEMA ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-SCHEMA ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-SCHEMA ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-SCHEMA ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-SCHEMA ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-SCHEMA ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-KINDS ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-KINDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-KINDS ...) is redundant. 
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-KINDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-LOGICAL-TO-WIRE-VALUES ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-LOGICAL-TO-WIRE-VALUES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WIRE-TO-LOGICAL-VALUES ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WIRE-TO-LOGICAL-VALUES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-LOGICAL-PROTECTED ...) is
+redundant.  See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-LOGICAL-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-LOGICAL-PROTECTED ...) is
+redundant.  See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-LOGICAL-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-LOGICAL-RESULT ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-LOGICAL-RESULT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-STORE-ENCODE ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-STORE-ENCODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-STORE-DECODE ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-STORE-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-ENCODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-ENCODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-WORKFLOW-LOGICAL-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-WORKFLOW-LOGICAL-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-ENCODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-ENCODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-RECEIPT-LOGICAL-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-RECEIPT-LOGICAL-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-INBOUND-PREFIX ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-INBOUND-PREFIX ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FRAME-INBOUND-OPEN ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FRAME-INBOUND-OPEN ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-SUBJECT-ID-OF-PAYLOAD ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-SUBJECT-ID-OF-PAYLOAD ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-OBLIGATION-ID-OF ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-OBLIGATION-ID-OF ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-SUBJECT-PREFIX ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-SUBJECT-PREFIX ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-SUBJECT-ID ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-SUBJECT-ID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-OBLIGATION-PREIMAGE ...) is redundant. 
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-OBLIGATION-PREIMAGE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-OBLIGATION-ID ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-OBLIGATION-ID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-CHARGE ...) is redundant.  See :DOC redundant-
+events.
+
+Summary
+Form:  ( DEFUN FN-STORE-CHARGE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-MSGID-VALIDP ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-MSGID-VALIDP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-GROUP-NAME-OCTETS ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-GROUP-NAME-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-IDENTITY-TEXT ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-IDENTITY-TEXT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-FORMAT-ID ...) is redundant.  See :DOC redundant-
+events.
+
+Summary
+Form:  ( DEFUN FN-STORE-FORMAT-ID ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-METADATA-CONFIG-FRAME ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-CONFIG-FRAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-METADATA-CONFIG-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-CONFIG-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-METADATA-FRONTIER-FRAME ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-FRONTIER-FRAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-METADATA-FRONTIER-DECODE ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-FRONTIER-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-METADATA-FRONTIER-NEXT ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-METADATA-FRONTIER-NEXT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-OCTET-LISTS->STRINGS ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-OCTET-LISTS->STRINGS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-GROUP-CODES ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-GROUP-CODES ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>
+The event ( DEFUN FN-STORE-POST-BOUNDARY ...) is redundant.  See :DOC
+redundant-events.
+
+Summary
+Form:  ( DEFUN FN-STORE-POST-BOUNDARY ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>>Bye.
+ :EOF
+ACL2 !>>
+The admission of FN-CFG-HOST-CREATIONS is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT NAMES).  We observe that the type of 
+FN-CFG-HOST-CREATIONS is described by the theorem 
+(TRUE-LISTP (FN-CFG-HOST-CREATIONS NAMES)).  We used primitive type
+reasoning.
+
+Computing the guard conjecture for FN-CFG-HOST-CREATIONS....
+
+The guard conjecture for FN-CFG-HOST-CREATIONS is trivial to prove.
+FN-CFG-HOST-CREATIONS is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-CFG-HOST-CREATIONS ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-CFG-HOST-CREATIONS
+ACL2 !>>
+The admission of FN-CFG-HOST-NON-GROUP-DELTAS is trivial, using the
+relation O< (which is known to be well-founded on the domain recognized
+by O-P) and the measure (ACL2-COUNT DELTAS).  We observe that the type
+of FN-CFG-HOST-NON-GROUP-DELTAS is described by the theorem 
+(TRUE-LISTP (FN-CFG-HOST-NON-GROUP-DELTAS DELTAS)).  We used primitive
+type reasoning.
+
+Computing the guard conjecture for FN-CFG-HOST-NON-GROUP-DELTAS....
+
+The guard conjecture for FN-CFG-HOST-NON-GROUP-DELTAS is trivial to
+prove.  FN-CFG-HOST-NON-GROUP-DELTAS is compliant with Common Lisp.
+
+Summary
+Form:  ( DEFUN FN-CFG-HOST-NON-GROUP-DELTAS ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-CFG-HOST-NON-GROUP-DELTAS
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-CFG-HOST-INITIAL-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-CFG-HOST-INITIAL-OCTETS
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+Summary
+Form:  ( INCLUDE-BOOK "../books/anchor-invariants" ...)
+Rules: NIL
+Time:  0.02 seconds (prove: 0.00, print: 0.00, other: 0.02)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/anchor-invariants.lisp"
+ACL2 !>>
+Summary
+Form:  ( INCLUDE-BOOK "../books/anchor-replace" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ "/home/ember/fn-lanes/w13-owner-integrated-gate/books/anchor-replace.lisp"
+ACL2 !>> T
+ACL2 !>>ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-FIELDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-FIELDS
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-WELLFORMEDP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-WELLFORMEDP
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-SIGNED-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-SIGNED-OCTETS
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-DELEGATION-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-DELEGATION-OCTETS
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-PROTECTED ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-PROTECTED
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-DECODE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-DECODE
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-FRAME-LIMIT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-FRAME-LIMIT
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-REPLACE-START ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-REPLACE-START
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-RECOVER-START ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-RECOVER-START
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-REPLACE-ACTION ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-REPLACE-ACTION
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-REPLACE-STEP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-REPLACE-STEP
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-REPLACE-OUTCOME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-REPLACE-OUTCOME
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-ACCEPT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-ACCEPT
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-ADVANCE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-ADVANCE
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-RESTORE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-RESTORE
+ACL2 p!>>
+Summary
+Form:  ( DEFUN FN-ANCHOR-HOST-PAIR ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-ANCHOR-HOST-PAIR
+ACL2 p!>>ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/bp-workflow-records" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/bp-workflow-records" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/store-node" ...) is redundant. 
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/store-node" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-INSTALL-REPLAY ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-INSTALL-REPLAY
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-STATE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-STATE
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-RESET ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-RESET
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-EFFECTS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-EFFECTS
+ACL2 !>>
+Since FN-WORKFLOW-VALID-CONFIG is non-recursive, its admission is trivial.
+We observe that the type of FN-WORKFLOW-VALID-CONFIG is described by
+the theorem 
+(OR (EQUAL (FN-WORKFLOW-VALID-CONFIG RECORD)
+           T)
+    (EQUAL (FN-WORKFLOW-VALID-CONFIG RECORD)
+           NIL)).
+We used the :type-prescription rule FN-BP-CONFIG-RECORDP.
+
+Summary
+Form:  ( DEFUN FN-WORKFLOW-VALID-CONFIG ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BP-CONFIG-RECORDP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-VALID-CONFIG
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-ENQUEUE-RECORD ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-ENQUEUE-RECORD
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-PREFLIGHT-RECORD ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-PREFLIGHT-RECORD
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-PREFLIGHT-HISTORY ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-PREFLIGHT-HISTORY
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-APPLY-RECORD ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-APPLY-RECORD
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-FENCEDP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-FENCEDP
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-WORK-STATUS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-WORK-STATUS
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-WORK-ORIGIN ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-WORK-ORIGIN
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-WORKFLOW-TAKE-SUBMIT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-WORKFLOW-TAKE-SUBMIT
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/bp-receipt-records" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/bp-receipt-records" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-BPRJ-STORE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPRJ-STORE
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-BPRJ-VALID-CONFIG ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPRJ-VALID-CONFIG
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-BPRJ-RESET ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPRJ-RESET
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-BPRJ-INSTALL ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPRJ-INSTALL
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-BPRJ-PREFLIGHT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPRJ-PREFLIGHT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-BPRJ-APPLY ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPRJ-APPLY
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-BPRJ-PREVIEW-RECEIPT ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPRJ-PREVIEW-RECEIPT
+ACL2 !>>
+Summary
+Form:  ( DEFUN FN-BPRJ-RECEIPT-ADU ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPRJ-RECEIPT-ADU
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/journal-publish" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/journal-publish" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/app-journal" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/app-journal" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Since FN-JPUB-HOST-INITIAL is non-recursive, its admission is trivial.
+We observe that the type of FN-JPUB-HOST-INITIAL is described by the
+theorem 
+(AND (CONSP (FN-JPUB-HOST-INITIAL AUTHORITYP))
+     (TRUE-LISTP (FN-JPUB-HOST-INITIAL AUTHORITYP))).
+We used the :type-prescription rule FN-JPUB-INITIAL.
+
+Summary
+Form:  ( DEFUN FN-JPUB-HOST-INITIAL ...)
+Rules: ((:TYPE-PRESCRIPTION FN-JPUB-INITIAL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-JPUB-HOST-INITIAL
+ACL2 !>>
+Since FN-JPUB-HOST-STEP is non-recursive, its admission is trivial.
+We observe that the type of FN-JPUB-HOST-STEP is described by the theorem
+(OR (AND (CONSP (FN-JPUB-HOST-STEP PUBLICATION EVENT))
+         (TRUE-LISTP (FN-JPUB-HOST-STEP PUBLICATION EVENT)))
+    (EQUAL (FN-JPUB-HOST-STEP PUBLICATION EVENT)
+           PUBLICATION)).
+We used the :type-prescription rule FN-JPUB-STEP.
+
+Summary
+Form:  ( DEFUN FN-JPUB-HOST-STEP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-JPUB-STEP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-JPUB-HOST-STEP
+ACL2 !>>
+Since FN-JPUB-HOST-ACTION is non-recursive, its admission is trivial.
+We observe that the type of FN-JPUB-HOST-ACTION is described by the
+theorem 
+(AND (SYMBOLP (FN-JPUB-HOST-ACTION PUBLICATION))
+     (NOT (EQUAL (FN-JPUB-HOST-ACTION PUBLICATION)
+                 T))
+     (NOT (EQUAL (FN-JPUB-HOST-ACTION PUBLICATION)
+                 NIL))).
+We used the :type-prescription rule FN-JPUB-NEXT-ACTION.
+
+Summary
+Form:  ( DEFUN FN-JPUB-HOST-ACTION ...)
+Rules: ((:TYPE-PRESCRIPTION FN-JPUB-NEXT-ACTION))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-JPUB-HOST-ACTION
+ACL2 !>>
+Since FN-JPUB-HOST-PHASE is non-recursive, its admission is trivial.
+We could deduce no constraints on the type of FN-JPUB-HOST-PHASE.
+
+Summary
+Form:  ( DEFUN FN-JPUB-HOST-PHASE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-JPUB-HOST-PHASE
+ACL2 !>>
+Since FN-JPUB-HOST-OUTCOME is non-recursive, its admission is trivial.
+We could deduce no constraints on the type of FN-JPUB-HOST-OUTCOME.
+
+Summary
+Form:  ( DEFUN FN-JPUB-HOST-OUTCOME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-JPUB-HOST-OUTCOME
+ACL2 !>>
+Since FN-JPUB-HOST-TERMINALP is non-recursive, its admission is trivial.
+We observe that the type of FN-JPUB-HOST-TERMINALP is described by
+the theorem 
+(OR (EQUAL (FN-JPUB-HOST-TERMINALP PUBLICATION)
+           T)
+    (EQUAL (FN-JPUB-HOST-TERMINALP PUBLICATION)
+           NIL)).
+
+Summary
+Form:  ( DEFUN FN-JPUB-HOST-TERMINALP ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-JPUB-HOST-TERMINALP
+ACL2 !>>
+Since FN-JPUB-HOST-CRASH-OUTCOME is non-recursive, its admission is
+trivial.  We observe that the type of FN-JPUB-HOST-CRASH-OUTCOME is
+described by the theorem 
+(AND (SYMBOLP (FN-JPUB-HOST-CRASH-OUTCOME PUBLICATION))
+     (NOT (EQUAL (FN-JPUB-HOST-CRASH-OUTCOME PUBLICATION)
+                 T))
+     (NOT (EQUAL (FN-JPUB-HOST-CRASH-OUTCOME PUBLICATION)
+                 NIL))).
+We used the :type-prescription rule FN-JPUB-CRASH-OUTCOME.
+
+Summary
+Form:  ( DEFUN FN-JPUB-HOST-CRASH-OUTCOME ...)
+Rules: ((:TYPE-PRESCRIPTION FN-JPUB-CRASH-OUTCOME))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-JPUB-HOST-CRASH-OUTCOME
+ACL2 !>>
+Since FN-JPUB-HOST-AUTHORIZED-INITIALP is non-recursive, its admission
+is trivial.  We observe that the type of FN-JPUB-HOST-AUTHORIZED-INITIALP
+is described by the theorem 
+(OR (EQUAL (FN-JPUB-HOST-AUTHORIZED-INITIALP PUBLICATION)
+           T)
+    (EQUAL (FN-JPUB-HOST-AUTHORIZED-INITIALP PUBLICATION)
+           NIL)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-JPUB-HOST-AUTHORIZED-INITIALP ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-JPUB-HOST-AUTHORIZED-INITIALP
+ACL2 !>>
+Since FN-AJ-HOST-INITIAL is non-recursive, its admission is trivial.
+We observe that the type of FN-AJ-HOST-INITIAL is described by the
+theorem 
+(OR (AND (CONSP (FN-AJ-HOST-INITIAL DOMAIN))
+         (TRUE-LISTP (FN-AJ-HOST-INITIAL DOMAIN)))
+    (AND (SYMBOLP (FN-AJ-HOST-INITIAL DOMAIN))
+         (NOT (EQUAL (FN-AJ-HOST-INITIAL DOMAIN) T))
+         (NOT (EQUAL (FN-AJ-HOST-INITIAL DOMAIN)
+                     NIL)))).
+We used the :type-prescription rule FN-AJ-INITIAL.
+
+Summary
+Form:  ( DEFUN FN-AJ-HOST-INITIAL ...)
+Rules: ((:TYPE-PRESCRIPTION FN-AJ-INITIAL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-AJ-HOST-INITIAL
+ACL2 !>>
+Since FN-AJ-HOST-RECOVER is non-recursive, its admission is trivial.
+We observe that the type of FN-AJ-HOST-RECOVER is described by the
+theorem 
+(OR (AND (CONSP (FN-AJ-HOST-RECOVER FRONTIER NAME FRAME-LENGTH KIND))
+         (TRUE-LISTP (FN-AJ-HOST-RECOVER FRONTIER NAME FRAME-LENGTH KIND)))
+    (AND (SYMBOLP (FN-AJ-HOST-RECOVER FRONTIER NAME FRAME-LENGTH KIND))
+         (NOT (EQUAL (FN-AJ-HOST-RECOVER FRONTIER NAME FRAME-LENGTH KIND)
+                     T))
+         (NOT (EQUAL (FN-AJ-HOST-RECOVER FRONTIER NAME FRAME-LENGTH KIND)
+                     NIL)))).
+We used the :type-prescription rule FN-AJ-RECOVER-RECORD.
+
+Summary
+Form:  ( DEFUN FN-AJ-HOST-RECOVER ...)
+Rules: ((:TYPE-PRESCRIPTION FN-AJ-RECOVER-RECORD))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-AJ-HOST-RECOVER
+ACL2 !>>
+Since FN-AJ-HOST-MAX-RECORD-LENGTH is non-recursive, its admission
+is trivial.  We observe that the type of FN-AJ-HOST-MAX-RECORD-LENGTH
+is described by the theorem 
+(AND (INTEGERP (FN-AJ-HOST-MAX-RECORD-LENGTH DOMAIN))
+     (< 1
+        (FN-AJ-HOST-MAX-RECORD-LENGTH DOMAIN))).
+We used the :type-prescription rule FN-AJ-MAX-RECORD-LENGTH.
+
+Summary
+Form:  ( DEFUN FN-AJ-HOST-MAX-RECORD-LENGTH ...)
+Rules: ((:TYPE-PRESCRIPTION FN-AJ-MAX-RECORD-LENGTH))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-AJ-HOST-MAX-RECORD-LENGTH
+ACL2 !>>
+Since FN-AJ-HOST-NEXT-NAME is non-recursive, its admission is trivial.
+We observe that the type of FN-AJ-HOST-NEXT-NAME is described by the
+theorem 
+(OR (EQUAL (FN-AJ-HOST-NEXT-NAME FRONTIER)
+           NIL)
+    (STRINGP (FN-AJ-HOST-NEXT-NAME FRONTIER))).
+We used the :type-prescription rule FN-AJ-RECORD-NAME.
+
+Summary
+Form:  ( DEFUN FN-AJ-HOST-NEXT-NAME ...)
+Rules: ((:TYPE-PRESCRIPTION FN-AJ-RECORD-NAME))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-AJ-HOST-NEXT-NAME
+ACL2 !>>
+Since FN-AJ-HOST-AUTHORIZE is non-recursive, its admission is trivial.
+We observe that the type of FN-AJ-HOST-AUTHORIZE is described by the
+theorem 
+(AND (CONSP (FN-AJ-HOST-AUTHORIZE FRONTIER KIND
+                                  FRAME-LENGTH RESERVE LOCK-OWNED ABSENT))
+     (TRUE-LISTP (FN-AJ-HOST-AUTHORIZE FRONTIER KIND FRAME-LENGTH
+                                       RESERVE LOCK-OWNED ABSENT))).
+We used the :type-prescription rule FN-AJ-AUTHORIZE.
+
+Summary
+Form:  ( DEFUN FN-AJ-HOST-AUTHORIZE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-AJ-AUTHORIZE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-AJ-HOST-AUTHORIZE
+ACL2 !>>
+Since FN-AJ-HOST-OPERATIONP is non-recursive, its admission is trivial.
+We observe that the type of FN-AJ-HOST-OPERATIONP is described by the
+theorem 
+(OR (EQUAL (FN-AJ-HOST-OPERATIONP OPERATION)
+           T)
+    (EQUAL (FN-AJ-HOST-OPERATIONP OPERATION)
+           NIL)).
+We used the :type-prescription rule FN-AJ-OPERATIONP.
+
+Summary
+Form:  ( DEFUN FN-AJ-HOST-OPERATIONP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-AJ-OPERATIONP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-AJ-HOST-OPERATIONP
+ACL2 !>>
+Since FN-AJ-HOST-OPERATION-NAME is non-recursive, its admission is
+trivial.  We could deduce no constraints on the type of 
+FN-AJ-HOST-OPERATION-NAME.
+
+Summary
+Form:  ( DEFUN FN-AJ-HOST-OPERATION-NAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-AJ-HOST-OPERATION-NAME
+ACL2 !>>
+Since FN-AJ-HOST-OPERATION-PUBLICATION is non-recursive, its admission
+is trivial.  We could deduce no constraints on the type of 
+FN-AJ-HOST-OPERATION-PUBLICATION.
+
+Summary
+Form:  ( DEFUN FN-AJ-HOST-OPERATION-PUBLICATION ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-AJ-HOST-OPERATION-PUBLICATION
+ACL2 !>>
+Since FN-AJ-HOST-OPERATION-SUCCESSOR is non-recursive, its admission
+is trivial.  We could deduce no constraints on the type of 
+FN-AJ-HOST-OPERATION-SUCCESSOR.
+
+Summary
+Form:  ( DEFUN FN-AJ-HOST-OPERATION-SUCCESSOR ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-AJ-HOST-OPERATION-SUCCESSOR
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/tcpcl-session" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/tcpcl-session" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/tcpcl-spool" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/tcpcl-spool" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Since FN-TCL-HOST-SPOOL-RECOVERY-PLAN is non-recursive, its admission
+is trivial.  We observe that the type of FN-TCL-HOST-SPOOL-RECOVERY-PLAN
+is described by the theorem 
+(AND (CONSP (FN-TCL-HOST-SPOOL-RECOVERY-PLAN ENTRIES))
+     (TRUE-LISTP (FN-TCL-HOST-SPOOL-RECOVERY-PLAN ENTRIES))).
+We used the :type-prescription rule FN-TCL-SPOOL-RECOVERY-PLAN.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-SPOOL-RECOVERY-PLAN ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-SPOOL-RECOVERY-PLAN))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-SPOOL-RECOVERY-PLAN
+ACL2 !>>
+Since FN-TCL-HOST-TRIPLE is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-TRIPLE is described by the
+theorem 
+(AND (CONSP (FN-TCL-HOST-TRIPLE R)) (TRUE-LISTP (FN-TCL-HOST-TRIPLE R))).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-TRIPLE ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-TRIPLE
+ACL2 !>>
+Since FN-TCL-HOST-PARAMS is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-PARAMS is described by the
+theorem 
+(AND (CONSP (FN-TCL-HOST-PARAMS KEEPALIVE SEGMENT-MRU TRANSFER-MRU
+                                NODE-ID CAN-TLS EXPECTED-PEER))
+     (TRUE-LISTP (FN-TCL-HOST-PARAMS KEEPALIVE SEGMENT-MRU TRANSFER-MRU
+                                     NODE-ID CAN-TLS EXPECTED-PEER))).
+We used the :type-prescription rule FN-TCL-MAKE-PARAMS.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-PARAMS ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-MAKE-PARAMS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-PARAMS
+ACL2 !>>
+Since FN-TCL-HOST-PARAMSP is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-PARAMSP is described by the
+theorem 
+(OR (EQUAL (FN-TCL-HOST-PARAMSP P) T) (EQUAL (FN-TCL-HOST-PARAMSP P) NIL)).
+We used the :type-prescription rule FN-TCL-PARAMSP.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-PARAMSP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-PARAMSP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-PARAMSP
+ACL2 !>>
+Since FN-TCL-HOST-INITIAL is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-INITIAL is described by the
+theorem (TRUE-LISTP (FN-TCL-HOST-INITIAL ROLE LOCAL NOW)).  We used
+the :type-prescription rule FN-TCL-INITIAL-SESSION.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-INITIAL ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-INITIAL-SESSION))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-INITIAL
+ACL2 !>>
+Since FN-TCL-HOST-OPEN is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-OPEN is described by the theorem
+(AND (CONSP (FN-TCL-HOST-OPEN S NOW)) (TRUE-LISTP (FN-TCL-HOST-OPEN S NOW))).
+We used the :type-prescription rule FN-TCL-HOST-TRIPLE.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-OPEN ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-HOST-TRIPLE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-OPEN
+ACL2 !>>
+Since FN-TCL-HOST-DRIVE is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-DRIVE is described by the theorem
+(AND (CONSP (FN-TCL-HOST-DRIVE S BUF NOW))
+     (TRUE-LISTP (FN-TCL-HOST-DRIVE S BUF NOW))).
+We used the :type-prescription rule FN-TCL-HOST-TRIPLE.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-DRIVE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-HOST-TRIPLE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-DRIVE
+ACL2 !>>
+Since FN-TCL-HOST-TICK is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-TICK is described by the theorem
+(AND (CONSP (FN-TCL-HOST-TICK S MONOTONIC))
+     (TRUE-LISTP (FN-TCL-HOST-TICK S MONOTONIC))).
+We used the :type-prescription rule FN-TCL-HOST-TRIPLE.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-TICK ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-HOST-TRIPLE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-TICK
+ACL2 !>>
+Since FN-TCL-HOST-SEND is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-SEND is described by the theorem
+(AND (CONSP (FN-TCL-HOST-SEND S REF OCTETS NOW))
+     (TRUE-LISTP (FN-TCL-HOST-SEND S REF OCTETS NOW))).
+We used the :type-prescription rule FN-TCL-HOST-TRIPLE.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-SEND ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-HOST-TRIPLE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-SEND
+ACL2 !>>
+Since FN-TCL-HOST-PUMP is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-PUMP is described by the theorem
+(AND (CONSP (FN-TCL-HOST-PUMP S NOW)) (TRUE-LISTP (FN-TCL-HOST-PUMP S NOW))).
+We used the :type-prescription rule FN-TCL-HOST-TRIPLE.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-PUMP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-HOST-TRIPLE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-PUMP
+ACL2 !>>
+Since FN-TCL-HOST-TCP-CLOSED is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-TCP-CLOSED is described by
+the theorem 
+(AND (CONSP (FN-TCL-HOST-TCP-CLOSED S))
+     (TRUE-LISTP (FN-TCL-HOST-TCP-CLOSED S))).
+We used the :type-prescription rule FN-TCL-HOST-TRIPLE.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-TCP-CLOSED ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-HOST-TRIPLE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-TCP-CLOSED
+ACL2 !>>
+Since FN-TCL-HOST-TERMINATE is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-TERMINATE is described by the
+theorem 
+(AND (CONSP (FN-TCL-HOST-TERMINATE S NOW))
+     (TRUE-LISTP (FN-TCL-HOST-TERMINATE S NOW))).
+We used the :type-prescription rule FN-TCL-HOST-TRIPLE.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-TERMINATE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-HOST-TRIPLE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-TERMINATE
+ACL2 !>>
+Since FN-TCL-HOST-ENCODE is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-ENCODE is described by the
+theorem 
+(OR (CONSP (FN-TCL-HOST-ENCODE M)) (EQUAL (FN-TCL-HOST-ENCODE M) NIL)).
+We used the :type-prescription rule FN-TCL-ENCODE.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-ENCODE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-TCL-ENCODE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-ENCODE
+ACL2 !>>
+Since FN-TCL-HOST-KIND is non-recursive, its admission is trivial.
+We could deduce no constraints on the type of FN-TCL-HOST-KIND.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-KIND ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-KIND
+ACL2 !>>
+Since FN-TCL-HOST-PHASE is non-recursive, its admission is trivial.
+We could deduce no constraints on the type of FN-TCL-HOST-PHASE.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-PHASE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-PHASE
+ACL2 !>>
+Since FN-TCL-HOST-KEEPALIVE is non-recursive, its admission is trivial.
+We could deduce no constraints on the type of FN-TCL-HOST-KEEPALIVE.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-KEEPALIVE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-KEEPALIVE
+ACL2 !>>
+Since FN-TCL-HOST-TRANSFER-MTU is non-recursive, its admission is trivial.
+We could deduce no constraints on the type of FN-TCL-HOST-TRANSFER-MTU.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-TRANSFER-MTU ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-TRANSFER-MTU
+ACL2 !>>
+Since FN-TCL-HOST-EVENT-DIGEST is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-EVENT-DIGEST is described by
+the theorem 
+(OR (AND (CONSP (FN-TCL-HOST-EVENT-DIGEST E))
+         (TRUE-LISTP (FN-TCL-HOST-EVENT-DIGEST E)))
+    (EQUAL (FN-TCL-HOST-EVENT-DIGEST E) E)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-EVENT-DIGEST ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-EVENT-DIGEST
+ACL2 !>>
+The admission of FN-TCL-HOST-EVENT-DIGESTS is trivial, using the relation
+O< (which is known to be well-founded on the domain recognized by O-P)
+and the measure (ACL2-COUNT EVENTS).  We observe that the type of 
+FN-TCL-HOST-EVENT-DIGESTS is described by the theorem 
+(TRUE-LISTP (FN-TCL-HOST-EVENT-DIGESTS EVENTS)).  We used primitive
+type reasoning.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-EVENT-DIGESTS ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-EVENT-DIGESTS
+ACL2 !>>
+For the admission of FN-TCL-HOST-FOLD we will use the relation O< (which
+is known to be well-founded on the domain recognized by O-P) and the
+measure (LEN STEPS).  The non-trivial part of the measure conjecture
+is
+
+Goal
+(AND (O-P (LEN STEPS))
+     (IMPLIES (CONSP STEPS)
+              (O< (LEN (CDR STEPS)) (LEN STEPS)))).
+Subgoal 2
+Subgoal 1
+Subgoal 1'
+
+Q.E.D.
+
+That completes the proof of the measure theorem for FN-TCL-HOST-FOLD.
+Thus, we admit this function under the principle of definition.  We
+observe that the type of FN-TCL-HOST-FOLD is described by the theorem
+(AND (CONSP (FN-TCL-HOST-FOLD S CARRY STEPS ACC))
+     (TRUE-LISTP (FN-TCL-HOST-FOLD S CARRY STEPS ACC))).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-FOLD ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+        (:DEFINITION LEN)
+        (:DEFINITION NOT)
+        (:DEFINITION O-FINP)
+        (:DEFINITION O-P)
+        (:DEFINITION O<)
+        (:EXECUTABLE-COUNTERPART TAU-SYSTEM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION LEN))
+Time:  0.01 seconds (prove: 0.01, print: 0.00, other: 0.00)
+Prover steps counted:  148
+ FN-TCL-HOST-FOLD
+ACL2 !>>
+Since FN-TCL-HOST-REPLAY is non-recursive, its admission is trivial.
+We observe that the type of FN-TCL-HOST-REPLAY is described by the
+theorem (TRUE-LISTP (FN-TCL-HOST-REPLAY ROLE LOCAL NOW STEPS)).  We
+used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-TCL-HOST-REPLAY ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-TCL-HOST-REPLAY
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/bp-node" ...) is redundant.  See
+:DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/bp-node" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/bp-node-records" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/bp-node-records" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Since FN-BPN-HOST-EID is non-recursive, its admission is trivial. 
+We observe that the type of FN-BPN-HOST-EID is described by the theorem
+(OR (CONSP (FN-BPN-HOST-EID URI)) (EQUAL (FN-BPN-HOST-EID URI) NIL)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EID ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EID
+ACL2 !>>
+Since FN-BPN-HOST-EIDP is non-recursive, its admission is trivial.
+We observe that the type of FN-BPN-HOST-EIDP is described by the theorem
+(OR (EQUAL (FN-BPN-HOST-EIDP E) T) (EQUAL (FN-BPN-HOST-EIDP E) NIL)).
+We used the :type-prescription rule FN-BPP-EIDP.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EIDP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPP-EIDP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EIDP
+ACL2 !>>
+Since FN-BPN-HOST-NODE-IDP is non-recursive, its admission is trivial.
+We observe that the type of FN-BPN-HOST-NODE-IDP is described by the
+theorem 
+(OR (EQUAL (FN-BPN-HOST-NODE-IDP E) T) (EQUAL (FN-BPN-HOST-NODE-IDP E) NIL)).
+We used the :type-prescription rule FN-BPP-PREVIOUS-NODEP.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-NODE-IDP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPP-PREVIOUS-NODEP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-NODE-IDP
+ACL2 !>>
+Since FN-BPN-HOST-CONFIG is non-recursive, its admission is trivial.
+We observe that the type of FN-BPN-HOST-CONFIG is described by the
+theorem 
+(TRUE-LISTP (FN-BPN-HOST-CONFIG NODE-ID LIFETIME
+                                CRC-TYPE HOP-LIMIT TRANSFER-LIMIT)).
+We used the :type-prescription rule FN-BPN-CONFIG.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-CONFIG ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-CONFIG))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-CONFIG
+ACL2 !>>
+Since FN-BPN-HOST-CONFIGP is non-recursive, its admission is trivial.
+We observe that the type of FN-BPN-HOST-CONFIGP is described by the
+theorem 
+(OR (EQUAL (FN-BPN-HOST-CONFIGP C) T) (EQUAL (FN-BPN-HOST-CONFIGP C) NIL)).
+We used the :type-prescription rule FN-BPN-CONFIGP.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-CONFIGP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-CONFIGP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-CONFIGP
+ACL2 !>>
+Since FN-BPN-HOST-OBSERVATION is non-recursive, its admission is trivial.
+We observe that the type of FN-BPN-HOST-OBSERVATION is described by
+the theorem 
+(TRUE-LISTP (FN-BPN-HOST-OBSERVATION MONOTONIC WALL WALL-ERROR HAS-WALL)).
+We used the :type-prescription rule FN-CLOCK-OBSERVATION.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-OBSERVATION ...)
+Rules: ((:TYPE-PRESCRIPTION FN-CLOCK-OBSERVATION))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-OBSERVATION
+ACL2 !>>
+Since FN-BPN-HOST-SEND is non-recursive, its admission is trivial.
+We observe that the type of FN-BPN-HOST-SEND is described by the theorem
+(TRUE-LISTP (FN-BPN-HOST-SEND CONFIG PEER ADU SEQUENCE OBS)).  We used
+the :type-prescription rule FN-BPN-SEND.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-SEND ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-SEND))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-SEND
+ACL2 !>>
+Since FN-BPN-HOST-SENT-SUMMARY is non-recursive, its admission is trivial.
+We observe that the type of FN-BPN-HOST-SENT-SUMMARY is described by
+the theorem 
+(TRUE-LISTP (FN-BPN-HOST-SENT-SUMMARY CONFIG PEER ADU SEQUENCE OBS)).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-SENT-SUMMARY ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-SENT-SUMMARY
+ACL2 !>>
+Since FN-BPN-HOST-SEQUENCE-RECOVER is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-SEQUENCE-RECOVER
+is described by the theorem 
+(AND (CONSP (FN-BPN-HOST-SEQUENCE-RECOVER OCTETS PRESENTP FRESHP))
+     (TRUE-LISTP (FN-BPN-HOST-SEQUENCE-RECOVER OCTETS PRESENTP FRESHP))).
+We used the :type-prescription rule FN-BPN-SEQUENCE-RECOVER.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-SEQUENCE-RECOVER ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-SEQUENCE-RECOVER))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-SEQUENCE-RECOVER
+ACL2 !>>
+Since FN-BPN-HOST-SEQUENCE-READY-P is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-SEQUENCE-READY-P
+is described by the theorem 
+(OR (EQUAL (FN-BPN-HOST-SEQUENCE-READY-P ANSWER)
+           T)
+    (EQUAL (FN-BPN-HOST-SEQUENCE-READY-P ANSWER)
+           NIL)).
+We used the :type-prescription rule FN-BPN-SEQUENCE-RECOVERY-READYP.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-SEQUENCE-READY-P ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-SEQUENCE-RECOVERY-READYP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-SEQUENCE-READY-P
+ACL2 !>>
+Since FN-BPN-HOST-SEQUENCE-FRONTIER is non-recursive, its admission
+is trivial.  We could deduce no constraints on the type of 
+FN-BPN-HOST-SEQUENCE-FRONTIER.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-SEQUENCE-FRONTIER ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-SEQUENCE-FRONTIER
+ACL2 !>>
+Since FN-BPN-HOST-SEQUENCE-RESERVE is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-SEQUENCE-RESERVE
+is described by the theorem 
+(AND (CONSP (FN-BPN-HOST-SEQUENCE-RESERVE FRONTIER))
+     (TRUE-LISTP (FN-BPN-HOST-SEQUENCE-RESERVE FRONTIER))).
+We used the :type-prescription rule FN-BPN-SEQUENCE-RESERVE.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-SEQUENCE-RESERVE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-SEQUENCE-RESERVE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-SEQUENCE-RESERVE
+ACL2 !>>
+Since FN-BPN-HOST-SEQUENCE-RESERVATIONP is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-SEQUENCE-RESERVATIONP
+is described by the theorem 
+(OR (EQUAL (FN-BPN-HOST-SEQUENCE-RESERVATIONP RESERVATION)
+           T)
+    (EQUAL (FN-BPN-HOST-SEQUENCE-RESERVATIONP RESERVATION)
+           NIL)).
+We used the :type-prescription rule FN-BPN-SEQUENCE-RESERVATIONP.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-SEQUENCE-RESERVATIONP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-SEQUENCE-RESERVATIONP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-SEQUENCE-RESERVATIONP
+ACL2 !>>
+Since FN-BPN-HOST-SEQUENCE-RESERVATION-SEQUENCE is non-recursive, its
+admission is trivial.  We could deduce no constraints on the type of
+FN-BPN-HOST-SEQUENCE-RESERVATION-SEQUENCE.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-SEQUENCE-RESERVATION-SEQUENCE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-SEQUENCE-RESERVATION-SEQUENCE
+ACL2 !>>
+Since FN-BPN-HOST-SEQUENCE-RESERVATION-FRAME is non-recursive, its
+admission is trivial.  We could deduce no constraints on the type of
+FN-BPN-HOST-SEQUENCE-RESERVATION-FRAME.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-SEQUENCE-RESERVATION-FRAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-SEQUENCE-RESERVATION-FRAME
+ACL2 !>>
+Since FN-BPN-HOST-SEQUENCE-FRAME-LIMIT is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-SEQUENCE-FRAME-LIMIT
+is described by the theorem 
+(AND (INTEGERP (FN-BPN-HOST-SEQUENCE-FRAME-LIMIT))
+     (< 1 (FN-BPN-HOST-SEQUENCE-FRAME-LIMIT))).
+We used the :type-prescription rule FN-BPN-SEQUENCE-FRAME-LIMIT.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-SEQUENCE-FRAME-LIMIT ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-SEQUENCE-FRAME-LIMIT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-SEQUENCE-FRAME-LIMIT
+ACL2 !>>
+Since FN-BPN-HOST-RECEIVE is non-recursive, its admission is trivial.
+We observe that the type of FN-BPN-HOST-RECEIVE is described by the
+theorem 
+(AND (CONSP (FN-BPN-HOST-RECEIVE CONFIG OCTETS OBS))
+     (TRUE-LISTP (FN-BPN-HOST-RECEIVE CONFIG OCTETS OBS))).
+We used primitive type reasoning.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-RECEIVE ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-RECEIVE
+ACL2 !>>
+Since FN-BPN-HOST-RECEIVE-OUTCOME is non-recursive, its admission is
+trivial.  We could deduce no constraints on the type of 
+FN-BPN-HOST-RECEIVE-OUTCOME.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-RECEIVE-OUTCOME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-RECEIVE-OUTCOME
+ACL2 !>>
+Since FN-BPN-HOST-RECEIVE-REASON is non-recursive, its admission is
+trivial.  We could deduce no constraints on the type of 
+FN-BPN-HOST-RECEIVE-REASON.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-RECEIVE-REASON ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-RECEIVE-REASON
+ACL2 !>>
+Since FN-BPN-HOST-RECEIVE-ADU is non-recursive, its admission is trivial.
+We could deduce no constraints on the type of FN-BPN-HOST-RECEIVE-ADU.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-RECEIVE-ADU ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-RECEIVE-ADU
+ACL2 !>>
+Since FN-BPN-HOST-RECEIVE-LENGTH is non-recursive, its admission is
+trivial.  We could deduce no constraints on the type of 
+FN-BPN-HOST-RECEIVE-LENGTH.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-RECEIVE-LENGTH ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-RECEIVE-LENGTH
+ACL2 !>>
+Since FN-BPN-HOST-RUN-OUTCOME is non-recursive, its admission is trivial.
+We observe that the type of FN-BPN-HOST-RUN-OUTCOME is described by
+the theorem 
+(AND (SYMBOLP (FN-BPN-HOST-RUN-OUTCOME ARTICLE-ACCEPTED ARTICLE-REFUSED
+                                       ARTICLE-UNCERTAIN OPERATIONAL))
+     (NOT (EQUAL (FN-BPN-HOST-RUN-OUTCOME ARTICLE-ACCEPTED ARTICLE-REFUSED
+                                          ARTICLE-UNCERTAIN OPERATIONAL)
+                 T))
+     (NOT (EQUAL (FN-BPN-HOST-RUN-OUTCOME ARTICLE-ACCEPTED ARTICLE-REFUSED
+                                          ARTICLE-UNCERTAIN OPERATIONAL)
+                 NIL))).
+We used the :compound-recognizer rule NATP-COMPOUND-RECOGNIZER.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-RUN-OUTCOME ...)
+Rules: ((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER))
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+ FN-BPN-HOST-RUN-OUTCOME
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+Since FN-BPN-HOST-MACHINE-INITIAL is non-recursive, its admission is
+trivial.  We observe that the type of FN-BPN-HOST-MACHINE-INITIAL is
+described by the theorem 
+(TRUE-LISTP (FN-BPN-HOST-MACHINE-INITIAL CONFIG MAX-JOBS MAX-OCTETS)).
+We used the :type-prescription rule FN-BPN-INITIAL-MACHINE-STATE.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-MACHINE-INITIAL ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-INITIAL-MACHINE-STATE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-MACHINE-INITIAL
+ACL2 !>>
+Since FN-BPN-HOST-MACHINE-STATEP is non-recursive, its admission is
+trivial.  We observe that the type of FN-BPN-HOST-MACHINE-STATEP is
+described by the theorem 
+(OR (EQUAL (FN-BPN-HOST-MACHINE-STATEP ST)
+           T)
+    (EQUAL (FN-BPN-HOST-MACHINE-STATEP ST)
+           NIL)).
+We used the :type-prescription rule FN-BPN-MACHINE-STATEP.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-MACHINE-STATEP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-MACHINE-STATEP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-MACHINE-STATEP
+ACL2 !>>
+Since FN-BPN-HOST-ANSWER-STATE is non-recursive, its admission is trivial.
+We could deduce no constraints on the type of FN-BPN-HOST-ANSWER-STATE.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-ANSWER-STATE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-ANSWER-STATE
+ACL2 !>>
+Since FN-BPN-HOST-ANSWER-EFFECTS is non-recursive, its admission is
+trivial.  We could deduce no constraints on the type of 
+FN-BPN-HOST-ANSWER-EFFECTS.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-ANSWER-EFFECTS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-ANSWER-EFFECTS
+ACL2 !>>
+Since FN-BPN-HOST-READY-PEERS is non-recursive, its admission is trivial.
+We observe that the type of FN-BPN-HOST-READY-PEERS is described by
+the theorem (TRUE-LISTP (FN-BPN-HOST-READY-PEERS ST)).  We used the
+:type-prescription rule FN-BPN-READY-PEERS.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-READY-PEERS ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-READY-PEERS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-READY-PEERS
+ACL2 !>>
+Since FN-BPN-HOST-EXISTING-SEQUENCE is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-EXISTING-SEQUENCE
+is described by the theorem 
+(AND
+    (CONSP (FN-BPN-HOST-EXISTING-SEQUENCE ST WORK ATTEMPT GENERATION))
+    (TRUE-LISTP (FN-BPN-HOST-EXISTING-SEQUENCE ST WORK ATTEMPT GENERATION))).
+We used the :type-prescription rule FN-BPN-EXISTING-SEQUENCE.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EXISTING-SEQUENCE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-EXISTING-SEQUENCE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EXISTING-SEQUENCE
+ACL2 !>>
+Since FN-BPN-HOST-EXISTING-SEQUENCE-P is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-EXISTING-SEQUENCE-P
+is described by the theorem 
+(OR (EQUAL (FN-BPN-HOST-EXISTING-SEQUENCE-P ANSWER)
+           T)
+    (EQUAL (FN-BPN-HOST-EXISTING-SEQUENCE-P ANSWER)
+           NIL)).
+We used the :type-prescription rule FN-BPN-EXISTING-SEQUENCEP.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EXISTING-SEQUENCE-P ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-EXISTING-SEQUENCEP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EXISTING-SEQUENCE-P
+ACL2 !>>
+Since FN-BPN-HOST-EXISTING-SEQUENCE-VALUE is non-recursive, its admission
+is trivial.  We could deduce no constraints on the type of 
+FN-BPN-HOST-EXISTING-SEQUENCE-VALUE.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EXISTING-SEQUENCE-VALUE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EXISTING-SEQUENCE-VALUE
+ACL2 !>>
+Since FN-BPN-HOST-LIFECYCLE-RECORD-FRAME is non-recursive, its admission
+is trivial.  We could deduce no constraints on the type of 
+FN-BPN-HOST-LIFECYCLE-RECORD-FRAME.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-LIFECYCLE-RECORD-FRAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-LIFECYCLE-RECORD-FRAME
+ACL2 !>>
+Since FN-BPN-HOST-LIFECYCLE-RECORD-UNFRAME is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-LIFECYCLE-RECORD-UNFRAME
+is described by the theorem 
+(TRUE-LISTP (FN-BPN-HOST-LIFECYCLE-RECORD-UNFRAME OCTETS)).  We used
+the :type-prescription rule FN-BPN-LIFECYCLE-RECORD-UNFRAME.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-LIFECYCLE-RECORD-UNFRAME ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-LIFECYCLE-RECORD-UNFRAME))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-LIFECYCLE-RECORD-UNFRAME
+ACL2 !>>
+Since FN-BPN-HOST-LIFECYCLE-FRAME-LIMIT is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-LIFECYCLE-FRAME-LIMIT
+is described by the theorem 
+(AND (INTEGERP (FN-BPN-HOST-LIFECYCLE-FRAME-LIMIT))
+     (< 1 (FN-BPN-HOST-LIFECYCLE-FRAME-LIMIT))).
+We used the :type-prescription rule FN-BPN-LIFECYCLE-FRAME-LIMIT.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-LIFECYCLE-FRAME-LIMIT ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-LIFECYCLE-FRAME-LIMIT))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-LIFECYCLE-FRAME-LIMIT
+ACL2 !>>
+Since FN-BPN-HOST-MACHINE-MAX-JOBS is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-MACHINE-MAX-JOBS
+is described by the theorem 
+(AND (INTEGERP (FN-BPN-HOST-MACHINE-MAX-JOBS))
+     (< 1 (FN-BPN-HOST-MACHINE-MAX-JOBS))).
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-MACHINE-MAX-JOBS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-MACHINE-MAX-JOBS
+ACL2 !>>
+Since FN-BPN-HOST-MACHINE-MAX-OCTETS is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-MACHINE-MAX-OCTETS
+is described by the theorem 
+(AND (INTEGERP (FN-BPN-HOST-MACHINE-MAX-OCTETS))
+     (< 1 (FN-BPN-HOST-MACHINE-MAX-OCTETS))).
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-MACHINE-MAX-OCTETS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-MACHINE-MAX-OCTETS
+ACL2 !>>
+Since FN-BPN-HOST-MACHINE-MAX-RECORDS is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-MACHINE-MAX-RECORDS
+is described by the theorem 
+(AND (INTEGERP (FN-BPN-HOST-MACHINE-MAX-RECORDS))
+     (< 1 (FN-BPN-HOST-MACHINE-MAX-RECORDS))).
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-MACHINE-MAX-RECORDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-MACHINE-MAX-RECORDS
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>> "ACL2"
+ACL2 !>>
+The event ( INCLUDE-BOOK "../books/bp-receive-evidence" ...) is redundant.
+See :DOC redundant-events.
+
+Summary
+Form:  ( INCLUDE-BOOK "../books/bp-receive-evidence" ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ :REDUNDANT
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-MAX-RECORDS is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-MAX-RECORDS
+is described by the theorem 
+(AND (INTEGERP (FN-BPN-HOST-EVIDENCE-MAX-RECORDS))
+     (< 1 (FN-BPN-HOST-EVIDENCE-MAX-RECORDS))).
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-MAX-RECORDS ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-MAX-RECORDS
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-MAX-ENTRIES is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-MAX-ENTRIES
+is described by the theorem 
+(AND (INTEGERP (FN-BPN-HOST-EVIDENCE-MAX-ENTRIES))
+     (< 1 (FN-BPN-HOST-EVIDENCE-MAX-ENTRIES))).
+We used the :type-prescription rule FN-BPN-EVIDENCE-MAX-ENTRIES.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-MAX-ENTRIES ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-EVIDENCE-MAX-ENTRIES))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-MAX-ENTRIES
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-DIRECTORY-NAME is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-DIRECTORY-NAME
+is described by the theorem (STRINGP (FN-BPN-HOST-EVIDENCE-DIRECTORY-NAME)).
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-DIRECTORY-NAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-DIRECTORY-NAME
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-RECOVER is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-RECOVER
+is described by the theorem 
+(AND (CONSP (FN-BPN-HOST-EVIDENCE-RECOVER ENTRIES))
+     (TRUE-LISTP (FN-BPN-HOST-EVIDENCE-RECOVER ENTRIES))).
+We used the :type-prescription rule FN-BPN-EVIDENCE-RECOVER.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-RECOVER ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-EVIDENCE-RECOVER))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-RECOVER
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-READYP is non-recursive, its admission is
+trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-READYP is
+described by the theorem 
+(OR (EQUAL (FN-BPN-HOST-EVIDENCE-READYP ST)
+           T)
+    (EQUAL (FN-BPN-HOST-EVIDENCE-READYP ST)
+           NIL)).
+We used the :type-prescription rule FN-BPN-EVIDENCE-STATEP.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-READYP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-EVIDENCE-STATEP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-READYP
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-AUTHORIZE is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-AUTHORIZE
+is described by the theorem 
+(AND
+  (CONSP (FN-BPN-HOST-EVIDENCE-AUTHORIZE ST OUTCOME LOCK-OWNEDP
+                                         WIRE-ABSENTP RESULT-ABSENTP))
+  (TRUE-LISTP (FN-BPN-HOST-EVIDENCE-AUTHORIZE ST OUTCOME LOCK-OWNEDP
+                                              WIRE-ABSENTP RESULT-ABSENTP))).
+We used the :type-prescription rule FN-BPN-EVIDENCE-AUTHORIZE.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-AUTHORIZE ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-EVIDENCE-AUTHORIZE))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-AUTHORIZE
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-NEXT-WIRE-NAME is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-NEXT-WIRE-NAME
+is described by the theorem 
+(OR (EQUAL (FN-BPN-HOST-EVIDENCE-NEXT-WIRE-NAME ST)
+           NIL)
+    (STRINGP (FN-BPN-HOST-EVIDENCE-NEXT-WIRE-NAME ST))).
+We used the :type-prescription rule FN-BPN-EVIDENCE-NEXT-WIRE-NAME.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-NEXT-WIRE-NAME ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-EVIDENCE-NEXT-WIRE-NAME))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-NEXT-WIRE-NAME
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-NEXT-RESULT-NAME is non-recursive, its admission
+is trivial.  We observe that the type of 
+FN-BPN-HOST-EVIDENCE-NEXT-RESULT-NAME is described by the theorem 
+(OR (EQUAL (FN-BPN-HOST-EVIDENCE-NEXT-RESULT-NAME ST OUTCOME)
+           NIL)
+    (STRINGP (FN-BPN-HOST-EVIDENCE-NEXT-RESULT-NAME ST OUTCOME))).
+We used the :type-prescription rule FN-BPN-EVIDENCE-NEXT-RESULT-NAME.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-NEXT-RESULT-NAME ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-EVIDENCE-NEXT-RESULT-NAME))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-NEXT-RESULT-NAME
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-OPERATIONP is non-recursive, its admission
+is trivial.  We observe that the type of FN-BPN-HOST-EVIDENCE-OPERATIONP
+is described by the theorem 
+(OR (EQUAL (FN-BPN-HOST-EVIDENCE-OPERATIONP OPERATION)
+           T)
+    (EQUAL (FN-BPN-HOST-EVIDENCE-OPERATIONP OPERATION)
+           NIL)).
+We used the :type-prescription rule FN-BPN-EVIDENCE-OPERATIONP.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-OPERATIONP ...)
+Rules: ((:TYPE-PRESCRIPTION FN-BPN-EVIDENCE-OPERATIONP))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-OPERATIONP
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-OPERATION-IDENTITY is non-recursive, its
+admission is trivial.  We could deduce no constraints on the type of
+FN-BPN-HOST-EVIDENCE-OPERATION-IDENTITY.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-OPERATION-IDENTITY ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-OPERATION-IDENTITY
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-OPERATION-WIRE-NAME is non-recursive, its
+admission is trivial.  We could deduce no constraints on the type of
+FN-BPN-HOST-EVIDENCE-OPERATION-WIRE-NAME.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-OPERATION-WIRE-NAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-OPERATION-WIRE-NAME
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-OPERATION-RESULT-NAME is non-recursive,
+its admission is trivial.  We could deduce no constraints on the type
+of FN-BPN-HOST-EVIDENCE-OPERATION-RESULT-NAME.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-OPERATION-RESULT-NAME ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-OPERATION-RESULT-NAME
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-OPERATION-WIRE-PUBLICATION is non-recursive,
+its admission is trivial.  We could deduce no constraints on the type
+of FN-BPN-HOST-EVIDENCE-OPERATION-WIRE-PUBLICATION.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-OPERATION-WIRE-PUBLICATION ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-OPERATION-WIRE-PUBLICATION
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-OPERATION-RESULT-PUBLICATION is non-recursive,
+its admission is trivial.  We could deduce no constraints on the type
+of FN-BPN-HOST-EVIDENCE-OPERATION-RESULT-PUBLICATION.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-OPERATION-RESULT-PUBLICATION ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-OPERATION-RESULT-PUBLICATION
+ACL2 !>>
+Since FN-BPN-HOST-EVIDENCE-OPERATION-SUCCESSOR is non-recursive, its
+admission is trivial.  We could deduce no constraints on the type of
+FN-BPN-HOST-EVIDENCE-OPERATION-SUCCESSOR.
+
+Summary
+Form:  ( DEFUN FN-BPN-HOST-EVIDENCE-OPERATION-SUCCESSOR ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-BPN-HOST-EVIDENCE-OPERATION-SUCCESSOR
+ACL2 !>>Bye.
+ :EOF
+ACL2 !>
+TTAG NOTE: Adding ttag :FN-NATIVE-HOST from the top level loop.
+ :FN-NATIVE-HOST
+ACL2 !>
+Summary
+Form:  ( DEFUN FN-NATIVE-ENTRY ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ FN-NATIVE-ENTRY
+ACL2 !>
+Summary
+Form:  ( PROGN! (SET-RAW-MODE T) ...)
+Rules: NIL
+Time:  0.39 seconds (prove: 0.00, print: 0.00, other: 0.39)
+ NIL
+ACL2 !> NIL
+ACL2 !>FN_NATIVE_BUILD_LOADED
+ :LOADED
+ACL2 !>
+Exiting the ACL2 read-eval-print loop.  To re-enter, execute (LP).
+* [undoing binding stack and other enclosing state... done]
+[performing final GC... done]
+[defragmenting immobile space... (inst,code,sym)=836+44163+28235... done]
+[saving current Lisp image into /home/ember/fn-lanes/w13-owner-integrated-gate/build/fn-host-dtn.core:
+writing 196608 bytes from the linkage space at 0xb7ffb00000
+writing 1488896 bytes from the fixedobj space at 0x50000000
+writing 2752 bytes from the static space at 0x520000000000
+writing 205750272 bytes from the dynamic space at 0x1200000000
+writing 32168368 bytes from the read-only space at 0x11fe150000
+writing 37703680 bytes from the text space at 0xb800000000
+done]

@@ -1,0 +1,7 @@
+init_exit 0
+initialized /tmp/fn-owner-gate-amb36vz7/store
+listen LISTENING 58927
+greeting 200 fn-nntp experimental server ready
+quit 205 closing connection
+accepted operator run
+operator_exit 0

@@ -1,0 +1,21 @@
+Linux persvati 6.17.0-40-generic #40-Ubuntu SMP PREEMPT_DYNAMIC Fri Jun 19 16:42:13 UTC 2026 x86_64 GNU/Linux
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+Python 3.13.7
+0b506019ce763c1b6b67546cb939a638609d22e8fa22b500d630ebb7a19f3bec  host/native/owner.lisp
+51763c0c78cd7b001f33d68edfbbef940a0f1a494c3203034c0fc0244d79acc8  host/native/operator.lisp
+1fa323ff0fc74bed88ddcebb3488d736e4f1e0aeb7b13f0881cc7e0c0e540003  host/native/build.lisp
+79bcd7533aaa16aeff1dea6a9c7496c8a629431d0d979d4186417739520f8285  host/native/build-dtn.lisp
+48e33bd67921b853c4fbc937c7f881e69ef2bb489c4506daf19989f905bef96a  books/owner-feed-port.lisp
+cc7adede611241c8aa684af45494f1d2d38e366483aaca3f40b825975d8e595e  tests/acl2/owner-feed-port-tests.lisp
+fc31f35386a12d40061e907b581047cc192f2eb77d1cdf23b7c257bcaa0dba13  tests/test_native_owner.py
+3d82d7e8a79d90dae8dd384b786cfb79246456ebb9d947691ae378773c5fc653  tests/test_native_operator_cli.py
+2bcdae7a9f3f582f327e77296a5d6473e8a041dc84986c0e6404d8c09bce6840  tests/test_native_recovery.py
+ecdfb9742ebcea59bee71220aa3cb9082a57158e885e127020cc4c1969602057  tests/test_native_checkpoint.py
+af97f8ae4a33d88a3552aea926f9ebe4be335e85ceb9a3f4e129790397a225af  tests/test_bp_receive_integrity_native.py
+c3591a66541b9249fd1d940a048b85d3c1518ad7ec42955748d3b0fbe9ae5c4d  tests/test_native_app_journal.py
+9ccc9f67e9c746dd2d14ff4e269969e119af95b6bacdf205fa6016361bbbee5c  tools/build_native_host.sh
+957cad886d86f74d3f9a41421e61bf31e7e9fff04439ddb0e0960f759fb092bf  tools/proof_artifacts.py

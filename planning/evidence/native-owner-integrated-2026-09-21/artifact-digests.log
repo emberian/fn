@@ -1,0 +1,12 @@
+source_revision 03eb3ba34cc150d8cde63de656558f7cb3bd18b8
+remote_origin /home/ember/fn-lanes/w13-owner-integrated-gate
+certification_run run-20260921T095031Z-5cf4
+certification_manifest_sha256 37845b69e98cc15dc4a75117402f678007a447fd25dac01c6127da0732e1c150  planning/evidence/manifests/certify-20260921T095039Z-2322081.json
+01cd62baaff4970ef6589083ddeb9a83e08ce95e09720641fde7284eb5b25b11  build/fn-host
+9a904101f03d56bb9eeb1a747ee9dc20b054998e5923d8e70cb030171850e7a3  build/fn-host.core
+2c6400551af0f08f49ad55b51281c226a0068626aa3abca810903d6505f1d915  build/fn-host-dtn
+31d02f5260cae6010f5d7ad0825c9ba1c3713db6fd183a1f2e937fccf2bc71a7  build/fn-host-dtn.core
+build/fn-host 483 bytes
+build/fn-host.core 293439064 bytes
+build/fn-host-dtn 487 bytes
+build/fn-host-dtn.core 277476696 bytes
