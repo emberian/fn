@@ -578,6 +578,10 @@
            (fnn-owner-service-exit-code service))
       (when listener (fnn-socket-shut listener))
       (when service
+        ;; Cleanup itself is a stop boundary too: wake workers before joining,
+        ;; even when accept unwound for a reason other than an owner fence.
+        (fnn-owner-stop-service service
+                                (fnn-owner-service-exit-code service))
         (fnn-owner-wait-workers service)
         (fnn-owner-feed-close-all service)
         (fnn-store-close (fnn-owner-service-store service))))))
