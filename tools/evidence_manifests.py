@@ -157,6 +157,16 @@ def run_id_of(path: Path) -> str | None:
 ADDED = ("run_id", "archived_from")
 
 
+def _is_remote(origin: str) -> bool:
+    """Does this `archived_from` name another host rather than a local path?
+
+    `<host>:<path>` is remote; a bare absolute path is local.  A Windows
+    drive letter cannot occur here and is not considered.
+    """
+    head, sep, _ = str(origin).partition(":")
+    return bool(sep) and bool(head) and not head.startswith("/")
+
+
 def write_manifest(run_id: str, text: str, source: str = "",
                    root: Path = ROOT) -> str:
     """Put one manifest in the archive.  Returns what happened to it.
@@ -185,8 +195,23 @@ def write_manifest(run_id: str, text: str, source: str = "",
         if ({k: v for k, v in existing.items() if k not in ADDED}
                 == {k: v for k, v in payload.items() if k not in ADDED}):
             # The same run reached the archive twice -- produced here and
-            # later swept off the box it also ran on.  Keep the first copy,
-            # whose `archived_from` is the one the prose was written against.
+            # later swept off the box it also ran on.  Keep one copy, and
+            # make WHICH one deterministic, because two trees that archive
+            # the same run from different places otherwise commit two
+            # different files and git conflicts on them (measured
+            # 2026-09-21, certify-20260921T021134Z-1437596, laptop path
+            # against `hbox:...`).  A remote origin wins: it names the box
+            # the logs are still on, which is what a reader needs, and for
+            # a manifest produced before `hostname`/`tree` were recorded it
+            # is the only provenance there is.
+            if _is_remote(payload.get("archived_from", "")) and not _is_remote(
+                    existing.get("archived_from", "")):
+                merged = dict(existing)
+                merged["archived_from"] = payload["archived_from"]
+                target.write_text(
+                    json.dumps(merged, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8")
+                return "written"
             return "present"
         # Two boxes could in principle mint one run id (UTC second plus pid).
         return "conflict"
