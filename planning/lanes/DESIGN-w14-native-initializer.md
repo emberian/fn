@@ -35,10 +35,11 @@ labels.
 
 `fnn-config-record-names` previously converted any directory-enumeration OS
 error to an empty list.  This packet propagates that error.  A separate,
-pre-enumeration test control drives the **second** initializer enumeration to
-EIO and proves that init faults rather than silently skipping final
-configuration-record barriers.  It is not a byte-model cut and is kept out of
-the exact model-label set.
+pre-enumeration test control removes access to `config/` immediately before
+the **second** initializer `fnn-list-directory` call.  That real call returns
+EACCES and init faults; the former handler would have converted it to NIL and
+silently skipped final configuration-record barriers.  It is not a byte-model
+cut and is kept out of the exact model-label set.
 
 Open: `_safe_directory` existing/read-validation branches; existing
 `writer.lock`; `EEXIST`/load branches of each initial publication; all
