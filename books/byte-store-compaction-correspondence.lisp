@@ -72,3 +72,249 @@
                   (list (list :cut "pack-reclaim-directory"))))
   :hints (("Goal" :in-theory (enable fn-bs-pack-reclaim-program
                                      fn-bs-pack-reclaim-steps))))
+
+; Execute exactly the first LIMIT transitions of a program with successful
+; syscall outcomes.  This is the state at the corresponding process-death
+; cut; unlike fn-bs-run's trace result it gives the zero-step cut a state.
+(defun fn-bs-prefix-state (bs ks steps limit groups capacity)
+  (declare (xargs :guard t :verify-guards nil
+                  :measure (nfix limit)))
+  (if (or (zp limit) (atom steps))
+      bs
+    (mv-let (result bs1 ks1)
+      (fn-bs-step bs ks (car steps) :ok groups capacity)
+      (if (equal result :ok)
+          (fn-bs-prefix-state bs1 ks1 (cdr steps) (1- (nfix limit))
+                              groups capacity)
+        bs1))))
+
+(defun fn-bs-reclaim-steps-avoid-namep (steps name)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp steps)
+      (and (or (not (equal (caar steps) :unlink))
+               (not (equal (nth 2 (car steps)) name)))
+           (fn-bs-reclaim-steps-avoid-namep (cdr steps) name))
+    t))
+
+(defun fn-bs-reclaim-program-shapep (steps)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp steps)
+      (and (let ((step (car steps)))
+             (or (and (equal (car step) :unlink)
+                      (equal (nth 1 step) :transactions))
+                 (equal step (list :cut "pack-reclaim-unlink"))
+                 (equal step (list :fsync-dir :transactions))
+                 (equal step (list :cut "pack-reclaim-directory"))))
+           (fn-bs-reclaim-program-shapep (cdr steps)))
+    t))
+
+(defun fn-bs-pending-reclaim-safe-p (ops name)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp ops)
+      (and (equal (caar ops) :del-entry)
+           (equal (nth 1 (car ops)) :transactions)
+           (not (equal (nth 2 (car ops)) name))
+           (fn-bs-pending-reclaim-safe-p (cdr ops) name))
+    (null ops)))
+
+(defun fn-bs-exact-name-payloadp (before after name)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((ino (fn-bs-lookup before :transactions name)))
+    (and (fn-bs-inop ino)
+         (equal (fn-bs-lookup after :transactions name) ino)
+         (equal (fn-bs-content after ino) (fn-bs-content before ino)))))
+
+(defun fn-bs-crash-preserves-name-payloadp (before at-cut image name)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((ino (fn-bs-lookup before :transactions name)))
+    (and (fn-bs-crash-imagep at-cut image)
+         (equal (fn-bs-durable-entry image :transactions name) ino)
+         (equal (fn-bs-durable-content image ino)
+                (fn-bs-content before ino)))))
+
+(local
+ (defthm assoc-equal-of-fn-bs-del-assoc-other
+   (implies (not (equal a b))
+            (equal (assoc-equal a (fn-bs-del-assoc b xs))
+                   (assoc-equal a xs)))
+   :hints (("Goal" :induct (fn-bs-del-assoc b xs)
+            :in-theory (enable fn-bs-del-assoc)))))
+
+(local
+ (defthm assoc-equal-of-fn-bs-put-assoc
+   (implies key
+            (equal (assoc-equal key (fn-bs-put-assoc key value xs))
+                   (cons key value)))
+   :hints (("Goal" :induct (fn-bs-put-assoc key value xs)
+            :in-theory (enable fn-bs-put-assoc)))))
+
+(local
+ (defthm fn-bs-apply-ops-of-append
+   (equal (fn-bs-apply-ops inodes dirs (append a b))
+          (mv-let (inodes1 dirs1) (fn-bs-apply-ops inodes dirs a)
+            (fn-bs-apply-ops inodes1 dirs1 b)))
+   :hints (("Goal" :induct (fn-bs-apply-ops inodes dirs a)
+            :in-theory (enable fn-bs-apply-ops)))))
+
+(local
+ (defthm fn-bs-unlink-other-name-preserves-lookup
+   (implies (not (equal removed name))
+            (equal (fn-bs-lookup (mv-nth 1 (fn-bs-unlink bs :transactions removed :ok))
+                                 :transactions name)
+                   (fn-bs-lookup bs :transactions name)))
+   :hints (("Goal" :in-theory (enable fn-bs-unlink fn-bs-lookup fn-bs-view
+                                       fn-bs-apply-ops fn-bs-apply-op)))))
+
+(local
+ (defthm fn-bs-unlink-preserves-content
+   (equal (fn-bs-content (mv-nth 1 (fn-bs-unlink bs dir removed :ok)) ino)
+          (fn-bs-content bs ino))
+   :hints (("Goal" :in-theory (enable fn-bs-unlink fn-bs-content fn-bs-view
+                                       fn-bs-apply-ops fn-bs-apply-op)))))
+
+(local
+ (defthm fn-bs-pending-reclaim-safe-of-append-delete
+   (implies (and (fn-bs-pending-reclaim-safe-p ops name)
+                 (not (equal removed name)))
+            (fn-bs-pending-reclaim-safe-p
+             (append ops (list (list :del-entry :transactions removed))) name))
+   :hints (("Goal" :induct (fn-bs-pending-reclaim-safe-p ops name)
+            :in-theory (enable fn-bs-pending-reclaim-safe-p)))))
+
+(local
+ (defthm fn-bs-unlink-other-preserves-reclaim-safe
+   (implies (and (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) name)
+                 (not (equal removed name)))
+            (fn-bs-pending-reclaim-safe-p
+             (fn-bs-pending
+              (mv-nth 1 (fn-bs-unlink bs :transactions removed :ok)))
+             name))
+   :hints (("Goal" :in-theory (enable fn-bs-unlink
+                                       fn-bs-pending-reclaim-safe-p)))))
+
+(local
+ (defthm fn-bs-ops-for-ino-append-delete
+   (equal (fn-bs-ops-for-ino
+           (append ops (list (list :del-entry dir removed))) ino)
+          (fn-bs-ops-for-ino ops ino))
+   :hints (("Goal" :induct (fn-bs-ops-for-ino ops ino)
+            :in-theory (enable fn-bs-ops-for-ino)))))
+
+(local
+ (defthm fn-bs-unlink-preserves-fencedp
+   (equal (fn-bs-fencedp (mv-nth 1 (fn-bs-unlink bs dir removed :ok)) ino)
+          (fn-bs-fencedp bs ino))
+   :hints (("Goal" :in-theory (enable fn-bs-unlink fn-bs-fencedp
+                                       fn-bs-ops-for-ino)))))
+
+(local
+ (defthm fn-bs-ops-for-dir-of-reclaim-safe
+   (implies (fn-bs-pending-reclaim-safe-p ops name)
+            (equal (fn-bs-ops-for-dir ops :transactions) ops))
+   :hints (("Goal" :induct (fn-bs-pending-reclaim-safe-p ops name)
+            :in-theory (enable fn-bs-pending-reclaim-safe-p fn-bs-ops-for-dir)))))
+
+(local
+ (defthm fn-bs-ops-not-for-dir-of-reclaim-safe
+   (implies (fn-bs-pending-reclaim-safe-p ops name)
+            (equal (fn-bs-ops-not-for-dir ops :transactions) nil))
+   :hints (("Goal" :induct (fn-bs-pending-reclaim-safe-p ops name)
+            :in-theory (enable fn-bs-pending-reclaim-safe-p
+                               fn-bs-ops-not-for-dir)))))
+
+(local
+ (defthm fn-bs-fsync-dir-preserves-view-lookup
+   (implies (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) protected)
+            (equal (fn-bs-lookup
+                    (mv-nth 1 (fn-bs-fsync-dir bs :transactions :ok))
+                    :transactions name)
+                   (fn-bs-lookup bs :transactions name)))
+   :hints (("Goal" :in-theory (enable fn-bs-fsync-dir fn-bs-fence-dir
+                                       fn-bs-lookup fn-bs-view)))))
+
+(local
+ (defthm fn-bs-fsync-dir-preserves-view-content
+   (implies (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) protected)
+            (equal (fn-bs-content
+                    (mv-nth 1 (fn-bs-fsync-dir bs :transactions :ok)) ino)
+                   (fn-bs-content bs ino)))
+   :hints (("Goal" :in-theory (enable fn-bs-fsync-dir fn-bs-fence-dir
+                                       fn-bs-content fn-bs-view)))))
+
+(local
+ (defthm fn-bs-fsync-reclaim-safe-leaves-safe
+   (implies (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) name)
+            (fn-bs-pending-reclaim-safe-p
+             (fn-bs-pending
+              (mv-nth 1 (fn-bs-fsync-dir bs :transactions :ok)))
+             name))
+   :hints (("Goal" :in-theory (enable fn-bs-fsync-dir fn-bs-fence-dir
+                                       fn-bs-pending-reclaim-safe-p)))))
+
+(local
+ (defthm fn-bs-reclaim-safe-has-no-inode-ops
+   (implies (fn-bs-pending-reclaim-safe-p ops name)
+            (equal (fn-bs-ops-for-ino ops ino) nil))
+   :hints (("Goal" :induct (fn-bs-pending-reclaim-safe-p ops name)
+            :in-theory (enable fn-bs-pending-reclaim-safe-p
+                               fn-bs-ops-for-ino)))))
+
+(local
+ (defthm fn-bs-fsync-dir-preserves-fencedp
+   (implies (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) protected)
+            (equal (fn-bs-fencedp
+                    (mv-nth 1 (fn-bs-fsync-dir bs :transactions :ok)) ino)
+                   (fn-bs-fencedp bs ino)))
+   :hints (("Goal" :in-theory (enable fn-bs-fsync-dir fn-bs-fence-dir
+                                       fn-bs-fencedp fn-bs-ops-for-ino)))))
+
+(defthm fn-bs-prefix-of-reclaim-preserves-unmentioned-name
+  (implies (and (fn-bs-reclaim-program-shapep steps)
+                (fn-bs-reclaim-steps-avoid-namep steps name)
+                (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) name)
+                (fn-bs-fencedp bs (fn-bs-lookup bs :transactions name))
+                (fn-bs-inop (fn-bs-lookup bs :transactions name)))
+           (fn-bs-exact-name-payloadp
+            bs (fn-bs-prefix-state bs ks steps limit groups capacity) name))
+  :hints (("Goal" :induct (fn-bs-prefix-state bs ks steps limit groups capacity)
+           :in-theory (enable fn-bs-prefix-state
+                              fn-bs-reclaim-program-shapep
+                              fn-bs-reclaim-steps-avoid-namep
+                              fn-bs-exact-name-payloadp
+                              fn-bs-step))))
+
+(defthm fn-bs-pack-reclaim-steps-have-reclaim-shape
+  (fn-bs-reclaim-program-shapep (fn-bs-pack-reclaim-steps names))
+  :hints (("Goal" :induct (fn-bs-pack-reclaim-steps names)
+           :in-theory (enable fn-bs-pack-reclaim-steps
+                              fn-bs-reclaim-program-shapep))))
+
+(defthm fn-bs-pack-reclaim-steps-avoid-an-unplanned-name
+  (implies (not (member-equal name names))
+           (fn-bs-reclaim-steps-avoid-namep
+            (fn-bs-pack-reclaim-steps names) name))
+  :hints (("Goal" :induct (fn-bs-pack-reclaim-steps names)
+           :in-theory (enable fn-bs-pack-reclaim-steps
+                              fn-bs-reclaim-steps-avoid-namep))))
+
+; Semantic preservation for the actual program supplied to fn-bs-run by the
+; native reclaim caller.  SELECTED-LOWER's uncovered suffix supplies NAME;
+; the selected observation establishes that NAME is not in its covered plan.
+(defthm fn-bs-pack-reclaim-program-prefix-preserves-uncovered-payload
+  (let ((plan (fn-bs-pack-reclaim-plan names maximum selected-lower)))
+    (implies (and (not (equal plan :invalid))
+                  (not (member-equal name plan))
+                  (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) name)
+                  (fn-bs-fencedp bs (fn-bs-lookup bs :transactions name))
+                  (fn-bs-inop (fn-bs-lookup bs :transactions name)))
+             (fn-bs-exact-name-payloadp
+              bs
+              (fn-bs-prefix-state
+               bs ks (fn-bs-pack-reclaim-program names maximum selected-lower)
+               limit groups capacity)
+              name)))
+  :hints (("Goal"
+           :use ((:instance fn-bs-prefix-of-reclaim-preserves-unmentioned-name
+                            (steps (fn-bs-pack-reclaim-program
+                                    names maximum selected-lower))))
+           :in-theory (enable fn-bs-pack-reclaim-program))))
