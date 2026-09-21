@@ -3,6 +3,7 @@
   "schema_version": 1,
   "targets": [
     {
+      "id": "PRF-001",
       "events": [
         {
           "kind": "theorem",
@@ -116,10 +117,10 @@
           "kind": "theorem",
           "name": "fn-bprv-system-run-preserves-invariant"
         }
-      ],
-      "id": "PRF-001"
+      ]
     },
     {
+      "id": "PRF-002",
       "events": [
         {
           "kind": "theorem",
@@ -141,10 +142,10 @@
           "kind": "theorem",
           "name": "fn-durable-completion-installs-exact-pending-article"
         }
-      ],
-      "id": "PRF-002"
+      ]
     },
     {
+      "id": "PRF-003",
       "events": [
         {
           "kind": "theorem",
@@ -158,10 +159,10 @@
           "kind": "theorem",
           "name": "fn-recover-preserves-existing-message-id-binding"
         }
-      ],
-      "id": "PRF-003"
+      ]
     },
     {
+      "id": "PRF-004",
       "events": [
         {
           "kind": "theorem",
@@ -187,10 +188,10 @@
           "kind": "theorem",
           "name": "fn-retain-release-preserves-known-identity"
         }
-      ],
-      "id": "PRF-004"
+      ]
     },
     {
+      "id": "PRF-005",
       "events": [
         {
           "kind": "theorem",
@@ -240,10 +241,10 @@
           "kind": "theorem",
           "name": "fn-bpa-success-is-canonical"
         }
-      ],
-      "id": "PRF-005"
+      ]
     },
     {
+      "id": "PRF-006",
       "events": [
         {
           "kind": "theorem",
@@ -298,10 +299,10 @@
           "kind": "theorem",
           "name": "fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items"
         }
-      ],
-      "id": "PRF-006"
+      ]
     },
     {
+      "id": "PRF-007",
       "events": [
         {
           "kind": "theorem",
@@ -463,10 +464,10 @@
           "kind": "theorem",
           "name": "fn-bpr-live-receipt-regenerated-after-restart"
         }
-      ],
-      "id": "PRF-007"
+      ]
     },
     {
+      "id": "PRF-008",
       "events": [
         {
           "kind": "theorem",
@@ -480,10 +481,10 @@
           "kind": "theorem",
           "name": "fn-checkpoint-admissible-capture-value-is-valid"
         }
-      ],
-      "id": "PRF-008"
+      ]
     },
     {
+      "id": "PRF-010",
       "events": [
         {
           "kind": "theorem",
@@ -493,10 +494,10 @@
           "kind": "theorem",
           "name": "fn-index-range-query-correct"
         }
-      ],
-      "id": "PRF-010"
+      ]
     },
     {
+      "id": "PRF-011",
       "events": [
         {
           "kind": "theorem",
@@ -547,10 +548,10 @@
           "kind": "theorem",
           "name": "fn-exchange-admitted-ingest-retains-conflicting-evidence"
         }
-      ],
-      "id": "PRF-011"
+      ]
     },
     {
+      "id": "PRF-012",
       "events": [
         {
           "kind": "theorem",
@@ -648,10 +649,10 @@
           "kind": "theorem",
           "name": "fn-bpr-live-state-is-replay-of-journal"
         }
-      ],
-      "id": "PRF-012"
+      ]
     },
     {
+      "id": "PRF-014",
       "events": [
         {
           "kind": "guarded-function",
@@ -673,10 +674,10 @@
           "kind": "theorem",
           "name": "fn-sn-extended-history-equals-live-completion"
         }
-      ],
-      "id": "PRF-014"
+      ]
     },
     {
+      "id": "PRF-015",
       "events": [
         {
           "kind": "theorem",
@@ -734,10 +735,10 @@
           "kind": "theorem",
           "name": "fn-served-run-effects-are-typed"
         }
-      ],
-      "id": "PRF-015"
+      ]
     },
     {
+      "id": "PRF-016",
       "events": [
         {
           "kind": "theorem",
@@ -849,10 +850,10 @@
           "kind": "theorem",
           "name": "fn-served-step-nntp-steps-is-bounded"
         }
-      ],
-      "id": "PRF-016"
+      ]
     },
     {
+      "id": "PRF-019",
       "events": [
         {
           "kind": "theorem",
@@ -870,10 +871,10 @@
           "kind": "theorem",
           "name": "fn-stx-field-accepted-input-is-canonical"
         }
-      ],
-      "id": "PRF-019"
+      ]
     },
     {
+      "id": "PRF-020",
       "events": [
         {
           "kind": "theorem",
@@ -891,10 +892,10 @@
           "kind": "theorem",
           "name": "fn-stx-verdict-records-its-keyring-generation"
         }
-      ],
-      "id": "PRF-020"
+      ]
     },
     {
+      "id": "PRF-023",
       "events": [
         {
           "kind": "theorem",
@@ -918,10 +919,10 @@
           "name": "fn-stx-durable-completion-is-an-acceptance",
           "note": "The subject-equating theorem AGENTS.md rule 1 asks for, for the preservation half of this target: fn-stx-index-invariant-preserved-by-accept hypothesises fn-stx-acceptedp, and this proves fn-stx-acceptedp of the durable branch of fn-node-complete with the accepted article named. The host line is host/store-node-host.lisp:402 fn-store-sn-finish -> fn-sn-finish (books/store-node.lisp:200) -> that call (:204). It does NOT give the QUERY a subject; fn-stx-index-lookup still has no caller."
         }
-      ],
-      "id": "PRF-023"
+      ]
     },
     {
+      "id": "PRF-025",
       "events": [
         {
           "kind": "theorem",
@@ -932,10 +933,10 @@
           "name": "fn-stx-commits-of-batch-are-verified-and-well-formed",
           "pending_subject": "fn-stx-commits-of-batch has no caller outside books/stx-epochs, and no book outside the stx cluster includes books/stx-epochs at all: there is no reconnection path in the tree to wire it to. Future feature work, not missing evidence for implemented behaviour. Review section 4."
         }
-      ],
-      "id": "PRF-025"
+      ]
     },
     {
+      "id": "PRF-028",
       "events": [
         {
           "kind": "theorem",
@@ -957,10 +958,10 @@
           "name": "fn-ocfg-list-active-lists-the-pinned-served-table",
           "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
         }
-      ],
-      "id": "PRF-028"
+      ]
     },
     {
+      "id": "PRF-030",
       "events": [
         {
           "kind": "theorem",
@@ -998,10 +999,10 @@
           "kind": "theorem",
           "name": "fn-prov-of-wire-of-a-durable-wire"
         }
-      ],
-      "id": "PRF-030"
+      ]
     },
     {
+      "id": "PRF-032",
       "events": [
         {
           "kind": "theorem",
@@ -1039,10 +1040,10 @@
           "kind": "theorem",
           "name": "fn-sf-crash-frontier-rollback-image-is-recovery-admissible"
         }
-      ],
-      "id": "PRF-032"
+      ]
     },
     {
+      "id": "PRF-034",
       "events": [
         {
           "kind": "theorem",
@@ -1072,10 +1073,10 @@
           "kind": "guarded-function",
           "name": "fn-bp-work-origin"
         }
-      ],
-      "id": "PRF-034"
+      ]
     },
     {
+      "id": "PRF-035",
       "events": [
         {
           "kind": "theorem",
@@ -1093,10 +1094,10 @@
           "kind": "theorem",
           "name": "fn-frame-store-decode-of-host-framing"
         }
-      ],
-      "id": "PRF-035"
+      ]
     },
     {
+      "id": "PRF-036",
       "events": [
         {
           "kind": "theorem",
@@ -1122,10 +1123,10 @@
           "kind": "theorem",
           "name": "fn-sn-recovery-admissible-image-reopens"
         }
-      ],
-      "id": "PRF-036"
+      ]
     },
     {
+      "id": "PRF-037",
       "events": [
         {
           "kind": "theorem",
@@ -1137,10 +1138,10 @@
           "name": "fn-cpc-valid-refuses-generation-mismatch",
           "pending_subject": "fn-cpc-validp has no caller in host/, tools/ or any other book; the served restore path is host/checkpoint-host.lisp -> fn-checkpoint-restore (which tests the same journal-interval condition as its :suffix clause) and no theorem equates the two. Review section 4, the theorem-subject rule."
         }
-      ],
-      "id": "PRF-037"
+      ]
     },
     {
+      "id": "PRF-038",
       "events": [
         {
           "kind": "theorem",
@@ -1150,8 +1151,7 @@
           "kind": "theorem",
           "name": "fn-served-open-peer-pins-the-configuration"
         }
-      ],
-      "id": "PRF-038"
+      ]
     }
   ]
 }
