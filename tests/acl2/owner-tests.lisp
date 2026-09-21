@@ -123,6 +123,115 @@
 (assert-event (null (car (fn-own-read *own-c* 2 (fn-own-take 7 *own-group-octets*)))))
 (assert-event (equal (car *own-read-cut*) (car *own-read-c*)))
 
+; -----------------------------------------------------------------------------
+; The transit port's re-pin (fn-own-conn-live-session, called by fn-own-read)
+;
+; A peer connection opened BEFORE an article became durable.  Its session
+; pinned the node at :open and nothing replaced it, so fn-peer-decide-offer
+; -- and with it K3's duplicate suppression -- was answered from a node that
+; could not know about the article, for as long as the connection lived.  A
+; persistent streaming feed lives for the life of the process.
+
+(defconst *own-peer-record*
+  (fn-cfg-peer-make "p" "peer.example" '(:nntp "127.0.0.1" 1119)
+                    '("fn.*" 32768 16) nil '(:source-address "127.0.0.1")))
+(assert-event (fn-cfg-peerp *own-peer-record*))
+(defconst *own-peer-cfg*
+  (fn-config-replay 0 510
+                    (list (fn-cfg-record-make
+                           0 0 1
+                           (append *fn-cfg-default-change*
+                                   (list (fn-cfg-set-policy "path-identity" "own.example")
+                                         (fn-cfg-set-peer-delta *own-peer-record*)))
+                           *fn-cfg-default-stamp*))))
+(assert-event (fn-cfgp *own-peer-cfg*))
+
+(defconst *own-peer-id* (fn-own-next-id *own-b*))
+(defconst *own-peered* (cdr (fn-own-open-peer *own-b* "p" *own-peer-cfg* nil)))
+(assert-event (fn-own-relation *own-peered*))
+(assert-event (fn-own-find-conn *own-peer-id* (fn-own-conns *own-peered*)))
+(defconst *own-peered-begun* (fn-own-step *own-peered* '(:begin 1)))
+(defconst *own-peered-posted*
+  (fn-own-run *own-peered-begun*
+              (own-post-events (own-record 0 0 "<one@example>"))))
+(assert-event (fn-own-relation *own-peered-posted*))
+(defconst *own-peer-conn*
+  (fn-own-find-conn *own-peer-id* (fn-own-conns *own-peered-posted*)))
+
+; The two nodes, and they differ in exactly the article posted after the
+; connection opened.  This is the reachable non-degenerate witness: the
+; stale node is a real node that a real open produced, not a contrivance.
+(assert-event (not (fn-peer-history-hasp
+                    "<one@example>"
+                    (fn-peer-session-node
+                     (fn-auth-session-base (fn-own-conn-session *own-peer-conn*))))))
+(assert-event (fn-peer-history-hasp
+               "<one@example>"
+               (fn-peer-session-node
+                (fn-auth-session-base
+                 (fn-own-conn-live-session *own-peered-posted* *own-peer-conn*)))))
+(assert-event (equal (fn-peer-session-node
+                      (fn-auth-session-base
+                       (fn-own-conn-live-session *own-peered-posted* *own-peer-conn*)))
+                     (fn-sn-node (fn-own-store *own-peered-posted*))))
+; Nothing else about the connection moves.
+(assert-event (equal (fn-peer-session-peer
+                      (fn-auth-session-base
+                       (fn-own-conn-live-session *own-peered-posted* *own-peer-conn*)))
+                     "p"))
+(assert-event (equal (fn-auth-reader-session
+                      (fn-own-conn-live-session *own-peered-posted* *own-peer-conn*))
+                     (fn-auth-reader-session (fn-own-conn-session *own-peer-conn*))))
+; A reader connection is returned unchanged: the re-pin is the transit
+; port's and no reader view moves off its pin.
+(assert-event (equal (fn-own-conn-live-session
+                      *own-peered-posted*
+                      (fn-own-find-conn 0 (fn-own-conns *own-peered-posted*)))
+                     (fn-own-conn-session
+                      (fn-own-find-conn 0 (fn-own-conns *own-peered-posted*)))))
+
+; The wire, through the host line: one fn-own-read of `IHAVE <one@example>'
+; on that connection is the duplicate refusal.  Against the session as it
+; was pinned it is 335 and the peer then sends the whole article for
+; nothing.
+(defconst *own-ihave-octets*
+  (append (fn-nntp-string-octets "IHAVE <one@example>") (list 13 10)))
+(assert-event (equal (fn-served-reply-octets
+                      (car (fn-own-read *own-peered-posted* *own-peer-id*
+                                        *own-ihave-octets*)))
+                     (append (fn-nntp-string-octets "435 duplicate") (list 13 10))))
+(assert-event (equal (fn-served-reply-octets
+                      (fn-served-result-effects
+                       (fn-served-step
+                        (fn-served-make-conn
+                         (fn-own-conn-wire *own-peer-conn*)
+                         (fn-own-conn-session *own-peer-conn*)
+                         (fn-own-conn-archive *own-peer-conn*)
+                         (fn-own-conn-config *own-peer-conn*)
+                         (fn-own-conn-observation *own-peer-conn*)
+                         (fn-own-clock *own-peered-posted*))
+                        *own-ihave-octets*)))
+                     (append (fn-nntp-string-octets
+                              "335 send it; end with <CR-LF>.<CR-LF>")
+                             (list 13 10))))
+; The re-pin does not drop the connection (the failure mode that made
+; ADVANCE a silent no-op for a wave).
+(assert-event (fn-own-find-conn
+               *own-peer-id*
+               (fn-own-conns (cdr (fn-own-read *own-peered-posted* *own-peer-id*
+                                               *own-ihave-octets*)))))
+(assert-event (fn-own-relation
+               (cdr (fn-own-read *own-peered-posted* *own-peer-id*
+                                 *own-ihave-octets*))))
+; CHECK, the streaming half (RFC 4644 2.4).
+(assert-event (equal (fn-served-reply-octets
+                      (car (fn-own-read *own-peered-posted* *own-peer-id*
+                                        (append (fn-nntp-string-octets
+                                                 "CHECK <one@example>")
+                                                (list 13 10)))))
+                     (append (fn-nntp-string-octets "438 <one@example>")
+                             (list 13 10))))
+
 (defconst *own-reply-a* (car (fn-own-read-step *own-c* 0 *own-group-command*)))
 (defconst *own-reply-c* (car (fn-own-read-step *own-c* 2 *own-group-command*)))
 (assert-event (not (equal *own-reply-a* *own-reply-c*)))

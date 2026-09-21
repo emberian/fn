@@ -5,9 +5,16 @@
 ; dispatcher.
 ;
 ;   offer      fn-peer-decide-offer: what the Message-ID and the connection
-;              decide (RFC 5537 sections 3.3, 3.6 step 3); answered at once
-;              from the pinned node snapshot (RFC 4644 section 2.4.2: CHECK
-;              answers are advisory)
+;              decide (RFC 5537 sections 3.3, 3.6 step 3), over the node the
+;              session carries.  books/owner.lisp fn-own-conn-live-session
+;              re-pins that node from the owner's own store before every
+;              fn-own-read, so the answer is about the node as it is now.
+;              RFC 4644 section 2.4.2 makes a CHECK answer advisory, which
+;              permits a later refusal; it does not ask a server to forget
+;              what it holds, and until w11/transit-correct this one did --
+;              the node was the value fn-peer-open-session pinned at :open
+;              and nothing replaced it, so a peer was told 335/238 for an
+;              article it had delivered on that same connection
 ;   transfer   fn-peer-decide-transfer: every check of RFC 5537 section 3.6
 ;              steps 1 to 4 and section 3.7 steps 1 to 3, one cond arm each,
 ;              in the RFC's order, each arm naming its reason
@@ -539,6 +546,25 @@
   (fn-peer-make-session (fn-peer-session-base ps) (fn-peer-session-peer ps)
                         transfer inflight
                         (fn-peer-session-node ps) (fn-peer-session-cfg ps)))
+
+; Re-pin the node the offer decision reads.  `fn-peer-decide-offer' answers
+; from the node the session carries, and only `fn-peer-open-session' ever set
+; it, so every offer on a connection was decided against the node as it stood
+; when the connection opened.  A peer that transferred an article and then
+; offered it again on the SAME connection drew `335'/`238' -- K3's duplicate
+; suppression, which is proved of `fn-peer-decide-offer', never saw the
+; history it is about, because the node it was given did not have it yet.
+; Measured on `tools/v0_matrix.py' at `6fb30ca': `V0-TRANSIT-DUPLICATE-AB/BA'
+; `335' and `V0-TRANSIT-CHECK-DUP-AB/BA' `238' against `435'/`438'.
+; `books/owner.lisp' (`fn-own-conn-live-session', called by `fn-own-read')
+; applies this once per socket read from the owner's own store; the peer
+; record stays pinned, because the owner holds no configuration to re-read.
+(defun fn-peer-with-node (ps node)
+  (declare (xargs :guard t))
+  (fn-peer-make-session (fn-peer-session-base ps) (fn-peer-session-peer ps)
+                        (fn-peer-session-transfer ps)
+                        (fn-peer-session-inflight ps)
+                        node (fn-peer-session-cfg ps)))
 
 ; -----------------------------------------------------------------------------
 ; Replies, exactly per RFC (the two tables of section 2.2)
@@ -1196,6 +1222,55 @@
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp))))))
 
+; Exported for books/owner.lisp (fn-own-conn-live-session): re-pinning the
+; node replaces only that field.  The peer, the transfer, the inflight count
+; and the pinned peer record are kept, so a connection stays the connection
+; it was, and the recognizer is preserved exactly when the new node is a
+; node state --- which the owner's own store is (fn-sn-statep).
+(defthm fn-peer-session-base-of-fn-peer-with-node
+  (equal (fn-peer-session-base (fn-peer-with-node ps node))
+         (fn-peer-session-base ps))
+  :hints (("Goal" :in-theory (enable (:d fn-peer-with-node)))))
+
+(defthm fn-peer-session-peer-of-fn-peer-with-node
+  (equal (fn-peer-session-peer (fn-peer-with-node ps node))
+         (fn-peer-session-peer ps))
+  :hints (("Goal" :in-theory (enable (:d fn-peer-with-node)))))
+
+(defthm fn-peer-session-node-of-fn-peer-with-node
+  (equal (fn-peer-session-node (fn-peer-with-node ps node)) node)
+  :hints (("Goal" :in-theory (enable (:d fn-peer-with-node)))))
+
+(defthm fn-peer-session-transfer-of-fn-peer-with-node
+  (equal (fn-peer-session-transfer (fn-peer-with-node ps node))
+         (fn-peer-session-transfer ps))
+  :hints (("Goal" :in-theory (enable (:d fn-peer-with-node)))))
+
+(defthm fn-peer-session-inflight-of-fn-peer-with-node
+  (equal (fn-peer-session-inflight (fn-peer-with-node ps node))
+         (fn-peer-session-inflight ps))
+  :hints (("Goal" :in-theory (enable (:d fn-peer-with-node)))))
+
+(defthm fn-peer-session-cfg-of-fn-peer-with-node
+  (equal (fn-peer-session-cfg (fn-peer-with-node ps node))
+         (fn-peer-session-cfg ps))
+  :hints (("Goal" :in-theory (enable (:d fn-peer-with-node)))))
+
+(defthm fn-peer-sessionp-of-fn-peer-with-node
+  (implies (and (fn-peer-sessionp ps) (fn-node-statep node))
+           (fn-peer-sessionp (fn-peer-with-node ps node)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp) (:d fn-peer-with-node))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp))))))
+
+(defthm fn-peer-session-consistentp-of-fn-peer-with-node
+  (implies (and (fn-peer-session-consistentp ps archive) (fn-node-statep node))
+           (fn-peer-session-consistentp (fn-peer-with-node ps node) archive))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-session-consistentp))
+                                  ((:d fn-peer-sessionp) (:d fn-peer-with-node)
+                                   (:d fn-post-session-consistentp)
+                                   (:d fn-node-statep))))))
+
 ; -----------------------------------------------------------------------------
 ; Guard verification of the served chain
 ;
@@ -1269,6 +1344,7 @@
     (:d fn-peer-transfer) (:d fn-peer-submissionp) (:d fn-peer-transferp)
     (:d fn-peer-sessionp) (:d fn-peer-session-consistentp)
     (:d fn-peer-open-session) (:d fn-peer-with-base) (:d fn-peer-with-transfer)
+    (:d fn-peer-with-node)
     (:d fn-peer-single) (:d fn-peer-echo-reply) (:d fn-peer-ihave-offer-line)
     (:d fn-peer-check-code) (:d fn-peer-transit-code) (:d fn-peer-offer-code)
     (:d fn-peer-transit-outcome-effects)

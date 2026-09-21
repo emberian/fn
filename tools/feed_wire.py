@@ -114,12 +114,41 @@ class Session:
         self.sock.sendall(octets)
 
     def send_block(self, article: bytes):
-        """RFC 3977 section 3.1.1: dot-stuffed, terminated by a lone dot."""
+        """RFC 3977 section 3.1.1: dot-stuffed, terminated by a lone dot.
+
+        Exactly ONE CRLF comes off the end: it is the terminator of the
+        article's last line, and the block supplies its own.  `rstrip` here
+        removes EVERY trailing CRLF, so an article whose last line is blank
+        --- which is what an article POSTed through the server stores, since
+        the dot block it arrived in carried that line --- reaches the peer
+        one line shorter, and an article with two blank lines at the end
+        reaches it two lines shorter.  RFC 5537 3.6 lets a relaying agent
+        alter Path and Xref and nothing else.
+
+        This is the SECOND time this line has shipped: w11/twonode-feed
+        removed the same `rstrip` from `tools/run_feed.py` on 2026-09-21
+        (measured then as `source_lines: 11, target_lines: 10,
+        only_on_target: [], only_on_source: []` --- one line fewer and not
+        one line different in content), and `c3aacd2` moved the method here
+        when that driver was retired, from the copy that still had it.  The
+        corrected two-node gate at `f49a844` measured the same three
+        numbers again, on `<fed-ab@example.invalid>`, `<fed-ba@...>` and
+        `<fed-streaming@...>` --- the three articles the OWNER feed carries.
+        The hand-driven relay was unaffected because it frames with
+        `tools/twonode_gate.py`'s own `send_block`, which never had the bug.
+
+        The durable fix is not here: the block rendering is framing and
+        AGENTS.md gives framing to ACL2 (`fn-wire-stuff-line` exists;
+        the whole-block renderer and its round trip against `fn-wire-drive`
+        do not).  That is a packet, on the board.
+        """
         body = article.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+        if body.endswith(b"\r\n"):
+            body = body[:-2]
         lines = body.split(b"\r\n")
         stuffed = b"\r\n".join(b"." + one if one.startswith(b".") else one
                                for one in lines)
-        self.sock.sendall(stuffed.rstrip(b"\r\n") + b"\r\n.\r\n")
+        self.sock.sendall(stuffed + b"\r\n.\r\n")
 
     def close(self):
         try:
