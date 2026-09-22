@@ -362,6 +362,15 @@ lane locally with `--no-ff`, run the gate against the pre-merge head
 ORIG_HEAD` and the lane certifies what it changed and what includes it first.
 Behaviour and the invariants over it land together or the merge waits.
 
+**And one habit is read statically.** [`tools/theory_check.py`](../tools/theory_check.py)
+lists every book that opens a theory at its top for every proof in it, and
+flags the ones opening a *codec* theory there (the CBOR, record, statement and
+frame codecs, or any theory named `codec`), which is finding F3 of the same
+review: a goal that only dispatches on a kind then carries the whole codec and
+stops returning. `make check` prints its count; `--strict` fails on any codec
+opening and is not yet wired in, because the count on 2026-09-22 was 74 books
+and the rule in AGENTS.md applies to new and touched books first.
+
 `tools/verdict.py --reuse-gate [REV]` reads a gate directory that already
 exists and builds its per-fiber table from it, shipping nothing and starting
 no ACL2. It reads the shape both kinds of gate share (`certify.log`,
