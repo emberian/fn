@@ -950,8 +950,7 @@ same offer flips from `:want` to `:refuse :out-of-scope` while
 ## 5. INN interop plan
 
 Location on hbox: `/tank/fn/inn`. Every build and test there runs under
-`swarm-build`; INN is small but `make test` is not free, and hbox is
-co-tenant.
+`swarm-build`; INN is small but `make test` is not free.
 
 **Build and pin.** Clone `https://github.com/InterNetNews/inn`, check out
 the newest `2.7.x` tag (2.7.2 or later as of this design; the lane records

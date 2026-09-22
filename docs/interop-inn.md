@@ -20,7 +20,7 @@ one fn commit beside it and tears only that down.
 
 | | value |
 | --- | --- |
-| host | `hbox` (`ssh hbox`), co-tenant with another project's builds |
+| host | `hbox` (`ssh hbox`) |
 | INN | 2.7.4, from the release tarball, sha256 in [`tests/inn/pin.json`](../tests/inn/pin.json) |
 | prefix | `/tank/fn/inn/2.7.4`, owned by the ordinary user; no root, no system path |
 | source | `/tank/fn/inn/src/inn-2.7.4` (unpacked tarball, with `configure.log`, `make.log`, `install.log`) |

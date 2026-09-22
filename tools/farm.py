@@ -22,9 +22,9 @@ requests dependency-ordered recertification at the new origin.  The install is
 the difference between certifying what changed and certifying a whole dependency closure: on 2026-09-20 a lane's
 ``--closure`` run on an empty remote root spent 30 minutes re-certifying the
 substrate for four new books.  ``wait`` blocks on that id, printing progress
-every poll and never spinning; it returns the runner's own exit code.  hbox
-is co-tenant, so its runner is wrapped in ``swarm-build``, which enforces the
-memory cap there.
+every poll and never spinning; it returns the runner's own exit code.  hbox's
+runner is wrapped in ``swarm-build``, which enforces a memory cap there: the
+containment is structural, not courtesy to another tenant (there is none).
 
 **The box cache is seeded by the runner, one book at a time.**  The runner
 publishes each pair as that book certifies, so what the box holds tracks what
