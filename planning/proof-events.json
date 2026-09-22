@@ -1634,6 +1634,52 @@
           "name": "fn-fc-decoded-profile-renders-verbatim-in-every-state"
         }
       ]
+    },
+    {
+      "id": "PRF-053",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-inj-injected-article-names-the-configured-agent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-post-config-agent-is-the-path-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-open-pins-the-owner-config"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-served-post-names-the-pinned-agent"
+        }
+      ]
+    },
+    {
+      "id": "PRF-054",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-olog-served-post-line-says-accepted-iff-durable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-control-post-line-says-the-control-result"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-served-post-line-is-one-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-control-post-line-is-one-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-connection-line-is-one-line"
+        }
+      ]
     }
   ]
 }
