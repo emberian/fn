@@ -210,8 +210,14 @@
 (assert-event (equal (fn-native-admin-publication-reason *fn-na-unlocked-publication*)
                      :lock))
 (assert-event (null (fn-native-admin-publication-jpub *fn-na-unlocked-publication*)))
-; One `must-fail' per hypothesis, the hypothesis dropped and the hints kept.
-; Each is refuted by the unlocked value above (lock-owned = NIL).
+; The witness's publication state is the one the immutable executor admits
+; (`fn-jpub-host-authorized-initialp', host/journal-publish-host.lisp).
+(assert-event (equal (fn-native-admin-publication-jpub *fn-na-publication*)
+                     (fn-jpub-initial t)))
+; One `must-fail' per hypothesis, the hints kept.  Each is refuted by the
+; unlocked value above (lock-owned = NIL, status :refused, jpub NIL).
+; (1) The acceptance hypothesis dropped: a refused result says nothing of
+; the lock.
 (must-fail
  (defthm fn-na-lock-without-acceptance
    (let ((result (fn-native-admin-publication-authorize
@@ -222,13 +228,15 @@
    :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
                                    (fn-cnode-config-replay fn-native-admin-candidate-openp
                                     fn-native-admin-config-name fn-cfg-recordp))))))
+; (2) The publication-state hypothesis replaced by its negation: a result
+; with no jpub, which the executor never runs, may come from an unlocked
+; process.
 (must-fail
  (defthm fn-na-lock-without-a-publication-state
    (let ((result (fn-native-admin-publication-authorize
                   records frontier config-records record lock-owned observed-names)))
-     (and (implies (equal (fn-native-admin-publication-status result) :accepted)
-                   lock-owned)
-          lock-owned))
+     (implies (not (fn-native-admin-publication-jpub result))
+              lock-owned))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
                                    (fn-cnode-config-replay fn-native-admin-candidate-openp

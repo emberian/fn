@@ -627,20 +627,24 @@ shared immutable publication state before raw Lisp may execute an I/O action."
                     :accepted nil generation name (fn-jpub-initial t)))))))))
 
 ;; KEYSTONE.  An administrative configuration record is published only by a
-;; process that observed its own exclusive writer lock.  Raw Lisp executes a
-;; publication only from an `:accepted' result and only with its jpub state
-;; (host/native/admin.lisp `fnn-admin-authorize' refuses anything else, and
-;; `fnn-admin-publish' takes the jpub from this result); both require
-;; LOCK-OWNED, on every accepting path, not only the first branch.  The host
-;; passes `fnn-admin-lock-observation' (the store is writable and its lock
-;; descriptor is live) through `fn-store-cfg-native-admin-authorize'
-;; (host/store-node-host.lisp), which hands LOCK-OWNED on unchanged; both the
-;; offline executor (`fnn-admin-execute') and the live owner's arm
-;; (`fnn-owner-live-admin-serialized') reach publication only through that
-;; call.  A second process over a live owner's store never gets that far:
-;; its nonblocking exclusive lock is refused `already locked' when the store
-;; is opened, the word the query executor also reports.  This theorem is what
-;; makes an unlocked process's publication unreachable even past that point.
+;; process that observed its own exclusive writer lock, on every arm of the
+;; authorization, not only its first branch.  The host subject is
+;; `fn-store-cfg-native-admin-authorize' (host/store-node-host.lisp), a
+;; program-mode byte wrapper that either refuses `:decode' with no
+;; publication state or returns this function's result with LOCK-OWNED
+;; unchanged; host/native/admin.lisp `fnn-admin-authorize' calls it with
+;; `fnn-admin-lock-observation' (the store is writable and its lock
+;; descriptor is live), for both the offline executor (`fnn-admin-execute')
+;; and the live owner's arm (`fnn-owner-live-admin-serialized').  Raw Lisp
+;; mutates only through `fnn-admin-publish', which hands this result's jpub to
+;; `fnn-immutable-publish-effect'; that executor's first action is gated on
+;; `fn-jpub-host-authorized-initialp' (host/native/immutable-publish.lisp),
+;; which holds only of a non-NIL jpub.  So the stage, link and barrier writes
+;; are reachable only under LOCK-OWNED.  A second process over a live owner's
+;; store is refused earlier still, `store is already locked' at the
+;; nonblocking flock in `fnn-open-lock' (host/native/io.lisp), the word the
+;; query executor reports too; this theorem is what keeps publication
+;; unreachable if that open ever admitted an unlocked store.
 ;; Teeth: tests/acl2/native-admin-tests.lisp.
 (defthm fn-native-admin-publication-is-authorized-only-under-the-lock
   (let ((result (fn-native-admin-publication-authorize
