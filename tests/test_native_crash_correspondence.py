@@ -43,6 +43,52 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
         self.assert_ordered(function_body(self.owner, "fnn-owner-publish-prepared"),
                             ["(fnn-publish ", "(fnn-finish "])
 
+    def test_store_post_calls_the_same_three_subjects(self):
+        # The sibling entry the cut table used to be run through.  Its cuts
+        # are the same fnn-at lines as the owner's because both entries call
+        # these three functions; what differs is the ACL2 subject driving them
+        # (the store-node bridge here, fn-owner there), which is why the
+        # campaign now kills the served owner itself (campaign dabebb84, F1).
+        self.assert_ordered(function_body(self.io, "fnn-command-post"),
+                            ["(fnn-post-entry-fault inject)",
+                             "(fnn-open-live-store root t fault)",
+                             "(fnn-advance-frontier store ",
+                             "(fnn-publish store ", "(fnn-finish store)"])
+
+    def test_the_served_owner_is_armed_by_the_same_function(self):
+        # `operator CFG run' reaches fnn-owner-run-normalized
+        # (host/native/control.lisp fnn-control-owner-run-normalized); it and
+        # the developer `owner run' verb hand fnn-owner-run the fault
+        # fnn-post-entry-fault reads, which fnn-owner-install passes to the
+        # store every fnn-at tests.
+        normalized = function_body(self.owner, "fnn-owner-run-normalized")
+        self.assertIn("(fnn-post-entry-fault nil)", normalized)
+        self.assertNotRegex(normalized, r"max-connections\s+nil ")
+        self.assertIn("(fnn-post-entry-fault", function_body(self.owner, "fnn-command-owner"))
+        self.assertIn("(fnn-owner-install root max-connections fault)",
+                      function_body(self.owner, "fnn-owner-run"))
+        self.assertIn("(fnn-open-live-store root t fault)",
+                      function_body(self.owner, "fnn-owner-install"))
+        entry = function_body(self.io, "fnn-post-entry-fault")
+        for reader in ("(fnn-post-test-fault)", "(fnn-recovery-test-fault)",
+                       "+fnn-cli-faults+"):
+            self.assertIn(reader, entry)
+
+    def test_recovery_cuts_run_in_program_order_and_sweep_after_the_barriers(self):
+        from tests.campaign import native_cuts
+        native_cuts.verify_recovery_order()
+        self.assert_ordered(function_body(self.io, "fnn-recover"), [
+            "(fnn-at store :recover-replayed)",
+            "(fnn-observe store :recovery-barrier :ok)",
+            "(fnn-at store :recover-barrier)",
+            "(unless (eq phase :ready)",
+            "(fnn-sweep-staging store)",
+        ])
+        self.assert_ordered(function_body(self.io, "fnn-sweep-staging"), [
+            "(fnn-unlink (fnn-join (fnn-staging store) name))",
+            "(fnn-at store :recovery-stage-unlinked)",
+        ])
+
     def test_native_observation_wrapper_calls_composed_subject(self):
         body = function_body(self.bridge, "fn-store-sn-io")
         self.assertIn("(fn-sn-io ", body)
