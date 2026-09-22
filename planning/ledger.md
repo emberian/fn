@@ -13,21 +13,21 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 406 |
 | Certification roots in the Makefile | 404 |
 | Books inside the root closure | 405 |
-| `defthm` and `defthmd` events | 6786 |
+| `defthm` and `defthmd` events | 6787 |
 | `defun` events | 5282 |
 | Functions with verified guards | 1737 |
 | Functions declared `:verify-guards nil` and never verified | 284 |
 | Functions left at the default with an explicit guard | 2627 |
 | Functions left at the default with no guard | 634 |
-| `assert-event` checks | 7618 |
-| `must-fail` checks | 253 |
+| `assert-event` checks | 7623 |
+| `must-fail` checks | 255 |
 | `encapsulate` events | 21 |
 | Theorems flagged SUSPECT by shape | 63 |
 | Export-hygiene warnings | 90 |
 | Enabled-projection warnings | 27 |
-| Teeth-form warnings | 13 |
+| Teeth-form warnings | 15 |
 | Include-hygiene warnings | 151 |
-| Host-names warnings | 645 |
+| Host-names warnings | 648 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -216,7 +216,7 @@ that `make certify` requests.
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
 | `books/msgid-index.lisp` | root | 20 | 13 | 0/0/13/0 | 0 | 0 | 0 |
-| `books/native-admin.lisp` | root | 13 | 42 | 1/0/41/0 | 0 | 0 | 0 |
+| `books/native-admin.lisp` | root | 14 | 42 | 1/0/41/0 | 0 | 0 | 0 |
 | `books/native-auth-admin.lisp` | root | 6 | 46 | 0/0/46/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 3 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/native-config-observation.lisp` | root | 5 | 17 | 3/0/14/0 | 0 | 0 | 0 |
@@ -415,7 +415,7 @@ that `make certify` requests.
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 2 | 0 |
-| `tests/acl2/native-admin-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 96 | 0 | 0 |
+| `tests/acl2/native-admin-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 101 | 2 | 0 |
 | `tests/acl2/native-auth-admin-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 42 | 0 | 0 |
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
