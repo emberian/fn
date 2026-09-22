@@ -60,9 +60,8 @@
 
 ; The signed composite binds its embedded legacy record byte-for-byte.  The
 ; two :verified observations below stand for the native primitive results.
-(defconst *sit-signed-record*
-  (fn-record-make 1 1 1 "<signed@example.invalid>" *sit-source* *sit-groups*
-                  "signed-obligation" "signed-subject" "signed-release" 3))
+(make-event `(defconst *sit-signed-record* ',(fn-record-make 1 1 1 "<signed@example.invalid>" *sit-source* *sit-groups*
+                  "signed-obligation" "signed-subject" "signed-release" 3)))
 (make-event `(defconst *sit-composite* ',(fn-hsig-authorized-article-event
    1 1 1 1 *sit-snapshot* "<signed@example.invalid>"
    (fn-record-string-octets "signed-subject")
@@ -82,11 +81,10 @@
 
 ; Reopen from the actual durable record list, rather than calling an inner
 ; replay constructor.  Snapshot, historical verdict, and exact source survive.
-(defconst *sit-first-history*
-  (fn-sf-records (fn-sn-files *sit-after-composite*)))
+(make-event `(defconst *sit-first-history* ',(fn-sf-records (fn-sn-files *sit-after-composite*))))
 (make-event `(defconst *sit-first-open* ',(fn-sn-open-observed *sit-groups* 32 2 *sit-first-history*)))
 (assert-event (fn-sn-open-okp *sit-first-open*))
-(defconst *sit-reopened* (fn-sn-open-state *sit-first-open*))
+(make-event `(defconst *sit-reopened* ',(fn-sn-open-state *sit-first-open*)))
 (assert-event (equal (fn-sn-keyring-snapshots *sit-reopened*)
                      (list *sit-enrollment*)))
 (assert-event
@@ -95,19 +93,18 @@
 (assert-event (equal (fn-article-payload
                       (car (fn-stx-store (fn-sn-node *sit-reopened*))))
                      *sit-source*))
-(defconst *sit-reopened-ready* (fn-sit-barriers *sit-reopened* 5))
+(make-event `(defconst *sit-reopened-ready* ',(fn-sit-barriers *sit-reopened* 5)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sit-reopened-ready*)) :ready))
 
 ; Refusal burns allocator txid 2 but consumes no journal sequence.  The next
 ; durable legacy record therefore has sequence 2 and txid 3.
-(defconst *sit-reserved-refusal* (fn-sit-reserve *sit-reopened-ready*))
-(defconst *sit-refused* (fn-sn-refuse-reservation *sit-reserved-refusal* 2))
+(make-event `(defconst *sit-reserved-refusal* ',(fn-sit-reserve *sit-reopened-ready*)))
+(make-event `(defconst *sit-refused* ',(fn-sn-refuse-reservation *sit-reserved-refusal* 2)))
 (assert-event (equal (fn-sf-frontier (fn-sn-files *sit-refused*)) 3))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-refused*)) nil))
 
-(defconst *sit-legacy*
-  (fn-record-make 2 3 3 "<legacy@example.invalid>" '(76 13 10) *sit-groups*
-                  "legacy-obligation" "legacy-subject" "legacy-release" 2))
+(make-event `(defconst *sit-legacy* ',(fn-record-make 2 3 3 "<legacy@example.invalid>" '(76 13 10) *sit-groups*
+                  "legacy-obligation" "legacy-subject" "legacy-release" 2)))
 (make-event `(defconst *sit-after-legacy* ',(fn-sit-commit-legacy *sit-refused* *sit-legacy*)))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-after-legacy*))
                      '((2 . 3))))
@@ -118,10 +115,9 @@
 
 ; A retention event shares the journal and allocator namespaces without
 ; allocating another article.
-(defconst *sit-retention*
-  (fn-store-retention-event-make :undertake 3 4 4
+(make-event `(defconst *sit-retention* ',(fn-store-retention-event-make :undertake 3 4 4
                                  "forward-obligation" "forward-subject"
-                                 "forward-evidence" 5))
+                                 "forward-evidence" 5)))
 (make-event `(defconst *sit-finished* ',(fn-sit-commit-retention *sit-after-legacy* *sit-retention*)))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-finished*))
                      '((2 . 3) (3 . 4))))
@@ -134,10 +130,10 @@
 ; The final reopen is the regression: journal next sequence is 4 while the
 ; allocator frontier is 5.  Recovery must retain both identities, both
 ; articles exactly once, the burned gap, and the retention event.
-(defconst *sit-history* (fn-sf-records (fn-sn-files *sit-finished*)))
+(make-event `(defconst *sit-history* ',(fn-sf-records (fn-sn-files *sit-finished*))))
 (make-event `(defconst *sit-open* ',(fn-sn-open-observed *sit-groups* 32 5 *sit-history*)))
 (assert-event (fn-sn-open-okp *sit-open*))
-(defconst *sit-recovered* (fn-sn-open-state *sit-open*))
+(make-event `(defconst *sit-recovered* ',(fn-sn-open-state *sit-open*)))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-recovered*))
                      nil))
 (assert-event (equal (len (fn-stx-store (fn-sn-node *sit-recovered*))) 2))
@@ -163,16 +159,15 @@
 ; The ordinary node replay accepts its article; the independent identity
 ; replay correctly rejects its missing historical snapshot. The composed
 ; recovery must report a fault, never open an empty node successfully.
-(defconst *sit-orphan-record*
-  (fn-record-make 0 0 0 "<orphan@example.invalid>" *sit-source* *sit-groups*
-                  "orphan-obligation" "orphan-subject" "orphan-release" 3))
+(make-event `(defconst *sit-orphan-record* ',(fn-record-make 0 0 0 "<orphan@example.invalid>" *sit-source* *sit-groups*
+                  "orphan-obligation" "orphan-subject" "orphan-release" 3)))
 (make-event `(defconst *sit-orphan-composite* ',(fn-hsig-authorized-article-event
    0 0 0 1 *sit-snapshot* "<orphan@example.invalid>"
    (fn-record-string-octets "orphan-subject")
    (fn-record-encode-impl *sit-orphan-record*)
    *sit-principal* *sit-keys* *sit-source* *sit-signatures* *sit-ml-key*
    :verified :verified)))
-(defconst *sit-orphan-history* (list *sit-orphan-composite*))
+(make-event `(defconst *sit-orphan-history* ',(list *sit-orphan-composite*)))
 (assert-event (fn-stxa-bindsp *sit-orphan-composite*))
 (assert-event (fn-sn-observed-historyp 1 *sit-orphan-history*))
 (assert-event (fn-sf-history-recoverablep *sit-groups* 32 *sit-orphan-history* 1))
@@ -197,8 +192,7 @@
 ; article arm of the relation is false of.  The witnesses are the same
 ; publications this book already commits, stopped one step earlier, so they
 ; separate the two arms by the candidate's kind and not by a weaker clause.
-(defconst *sit-staged-retention*
-  (fn-sn-prepare-retention (fn-sit-reserve *sit-after-legacy*) *sit-retention*))
+(make-event `(defconst *sit-staged-retention* ',(fn-sn-prepare-retention (fn-sit-reserve *sit-after-legacy*) *sit-retention*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sit-staged-retention*))
                      :record-staged))
 (assert-event
@@ -210,9 +204,8 @@
         :completing))
 (assert-event (fn-snt-relation (fn-sn-finish (fn-sit-publish *sit-staged-retention*))))
 
-(defconst *sit-staged-identity*
-  (fn-sn-prepare-identity (fn-sit-reserve (fn-sn-initial *sit-groups* 32))
-                          *sit-enrollment*))
+(make-event `(defconst *sit-staged-identity* ',(fn-sn-prepare-identity (fn-sit-reserve (fn-sn-initial *sit-groups* 32))
+                          *sit-enrollment*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sit-staged-identity*))
                      :record-staged))
 (assert-event
@@ -225,8 +218,7 @@
 ; staged legacy record IS a `fn-record-p', so the relation takes the pending
 ; link there.  Without this pair the deferred assertions above would not
 ; separate the two arms.
-(defconst *sit-staged-legacy*
-  (fn-sn-prepare (fn-sit-reserve *sit-refused*) *sit-legacy*))
+(make-event `(defconst *sit-staged-legacy* ',(fn-sn-prepare (fn-sit-reserve *sit-refused*) *sit-legacy*)))
 (assert-event
  (fn-record-p (fn-sf-record-candidate (fn-sn-files *sit-staged-legacy*))))
 (assert-event (fn-snt-relation *sit-staged-legacy*))
@@ -236,7 +228,7 @@
 ; of `fn-sn-known-abort' (books/store-node-resolution).  Without it the state
 ; below is `:ready' with a node one transaction id behind its own frontier
 ; and the relation is false of it.
-(defconst *sit-retention-aborted* (fn-sn-known-abort *sit-staged-retention*))
+(make-event `(defconst *sit-retention-aborted* ',(fn-sn-known-abort *sit-staged-retention*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sit-retention-aborted*)) :ready))
 (assert-event
  (equal (fn-state-next-txid (fn-node-acceptance (fn-sn-node *sit-retention-aborted*)))

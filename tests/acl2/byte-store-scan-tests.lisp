@@ -34,14 +34,13 @@
 (make-event `(defconst *bsk-event-retention-frame* ',(fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
                  *fn-frame-store-kind*
                  (fn-store-event-encode *bsk-event-retention*))))
-(defconst *bsk-mixed-event-store*
-  (fn-bs-make 4
+(make-event `(defconst *bsk-mixed-event-store* ',(fn-bs-make 4
               (list (cons 10 *bsk-event-article-frame*)
                     (cons 11 *bsk-event-retention-frame*))
               (list (cons :transactions
                           (list (cons (fn-bs-txn-name 0) 10)
                                 (cons (fn-bs-txn-name 1) 11))))
-              nil 12))
+              nil 12)))
 (assert-event (fn-store-event-p *bsk-event-article*))
 (assert-event (fn-store-event-p *bsk-event-retention*))
 (assert-event
@@ -57,10 +56,9 @@
 (make-event `(defconst *bsk-wrong-event-frame* ',(fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
                  *fn-frame-store-kind*
                  (fn-store-event-encode *bsk-wrong-event-sequence*))))
-(defconst *bsk-wrong-event-store*
-  (fn-bs-make 4 (list (cons 10 *bsk-wrong-event-frame*))
+(make-event `(defconst *bsk-wrong-event-store* ',(fn-bs-make 4 (list (cons 10 *bsk-wrong-event-frame*))
               (list (cons :transactions
-                          (list (cons (fn-bs-txn-name 0) 10)))) nil 11))
+                          (list (cons (fn-bs-txn-name 0) 10)))) nil 11)))
 (assert-event
  (equal (fn-bs-read-records *bsk-wrong-event-store* 0 1) :fault))
 
