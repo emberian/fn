@@ -55,8 +55,18 @@
   :hints (("Goal"
            :use ((:instance fn-prin-preimage-decodes (pk pk1) (token token1))
                  (:instance fn-prin-preimage-decodes (pk pk2) (token token2)))
-           :in-theory (disable fn-prin-preimage fn-stmt-decode-items
-                               fn-prin-preimage-decodes))))
+           ; The codec vocabulary this book opens at the top is what
+           ; `fn-prin-preimage-decodes' needed; this goal needs none of it and
+           ; the bounded codec made it a rewriter loop (call depth 1000 in
+           ; Subgoal 2: `fn-cbor-decode' now opens into `fn-cbor-decode-bounded'
+           ; and `fn-cbor-decode-prechecked', all three definitions being in
+           ; `fn-cbor-codec-vocabulary').  Withdrawing the vocabulary for this
+           ; goal alone leaves the proof to the two decode instances and the
+           ; record shape rules, which is all it ever used.
+           :in-theory (set-difference-theories
+                       (disable fn-prin-preimage fn-stmt-decode-items
+                                fn-prin-preimage-decodes)
+                       (theory 'fn-cbor-codec-vocabulary)))))
 
 ; By definition; the name says exactly what is implied and nothing more.
 (defthm fn-prin-id-unfolds
