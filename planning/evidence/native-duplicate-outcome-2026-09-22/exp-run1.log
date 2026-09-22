@@ -1,0 +1,104 @@
+=== image ===
+-rwxr-xr-x 1 ember ember       521 Sep 21 14:41 /home/ember/fn-gates/freeze-f7190d69/build/images/915d5c729877eddee7dd3f72eadad21cca463d1a/fn-host
+-rw-rw-r-- 1 ember ember 303730928 Sep 21 14:34 /home/ember/fn-gates/freeze-f7190d69/build/images/915d5c729877eddee7dd3f72eadad21cca463d1a/fn-host.core
+eb0051343d388901b48e7f1de281ba3d1f6079cab062f25060b186cf01e3aaa4  /home/ember/fn-gates/freeze-f7190d69/build/images/915d5c729877eddee7dd3f72eadad21cca463d1a/build-source.sha256
+=== store init ===
+initialized /home/ember/fn-gates/w31-duplicate/node/store
+init rc=0
+[store]
+path = "/home/ember/fn-gates/w31-duplicate/node/store"
+[listener]
+host = "127.0.0.1"
+port = 11317
+[control]
+path = "/home/ember/fn-gates/w31-duplicate/node/control.sock"
+=== start owner ===
+owner pid=3330974
+control socket after 1s: srw------- 1 ember ember 0 Sep 21 23:37 /home/ember/fn-gates/w31-duplicate/node/control.sock
+
+=== E1: byte-identical resubmission, ten times, fixed Date ===
+e1 payload digest=f619508034cd85d8
+[E1 submit 1] rc=0 out=accepted operator post ACCEPTED
+[E1 submit 2 (identical bytes)] rc=0 out=accepted operator post DUPLICATE
+[E1 submit 3 (identical bytes)] rc=0 out=accepted operator post DUPLICATE
+[E1 submit 4 (identical bytes)] rc=0 out=accepted operator post DUPLICATE
+[E1 submit 5 (identical bytes)] rc=0 out=accepted operator post DUPLICATE
+[E1 submit 6 (identical bytes)] rc=0 out=accepted operator post DUPLICATE
+[E1 submit 7 (identical bytes)] rc=0 out=accepted operator post DUPLICATE
+[E1 submit 8 (identical bytes)] rc=0 out=accepted operator post DUPLICATE
+[E1 submit 9 (identical bytes)] rc=0 out=accepted operator post DUPLICATE
+[E1 submit 10 (identical bytes)] rc=0 out=accepted operator post DUPLICATE
+digest unchanged: f619508034cd85d8
+
+=== E2: same Message-ID, Date one second later ===
+diff of the two payloads:
+4c4
+< Date: Mon, 22 Sep 2026 03:08:46 +0000
+---
+> Date: Mon, 22 Sep 2026 03:08:47 +0000
+[E2 submit 1] rc=0 out=accepted operator post ACCEPTED
+[E2 submit with Date+1s, try 1] rc=1 out=refused operator post REFUSED
+[E2 submit with Date+1s, try 2] rc=1 out=refused operator post REFUSED
+[E2 submit with Date+1s, try 3] rc=1 out=refused operator post REFUSED
+[E2 submit the original bytes again] rc=0 out=accepted operator post DUPLICATE
+
+=== E3: same Message-ID, different body ===
+[E3 submit 1] rc=0 out=accepted operator post ACCEPTED
+[E3 submit with a different body] rc=1 out=refused operator post REFUSED
+
+=== E4: the driver's own pattern, six trials ===
+each trial regenerates the article with date -u just before each of the two
+submissions, exactly as tools/v0_matrix.py article() does
+[E4 trial 1 submit 1 Date=Tue, 22 Sep 2026 03:37:03 +0000] rc=0 out=accepted operator post ACCEPTED
+[E4 trial 1 submit 2 Date=Tue, 22 Sep 2026 03:37:03 +0000] rc=0 out=accepted operator post DUPLICATE
+E4 trial 1 dates_equal=yes
+[E4 trial 2 submit 1 Date=Tue, 22 Sep 2026 03:37:03 +0000] rc=0 out=accepted operator post ACCEPTED
+[E4 trial 2 submit 2 Date=Tue, 22 Sep 2026 03:37:03 +0000] rc=0 out=accepted operator post DUPLICATE
+E4 trial 2 dates_equal=yes
+[E4 trial 3 submit 1 Date=Tue, 22 Sep 2026 03:37:03 +0000] rc=0 out=accepted operator post ACCEPTED
+[E4 trial 3 submit 2 Date=Tue, 22 Sep 2026 03:37:03 +0000] rc=0 out=accepted operator post DUPLICATE
+E4 trial 3 dates_equal=yes
+[E4 trial 4 submit 1 Date=Tue, 22 Sep 2026 03:37:04 +0000] rc=0 out=accepted operator post ACCEPTED
+[E4 trial 4 submit 2 Date=Tue, 22 Sep 2026 03:37:04 +0000] rc=0 out=accepted operator post DUPLICATE
+E4 trial 4 dates_equal=yes
+[E4 trial 5 submit 1 Date=Tue, 22 Sep 2026 03:37:04 +0000] rc=0 out=accepted operator post ACCEPTED
+[E4 trial 5 submit 2 Date=Tue, 22 Sep 2026 03:37:04 +0000] rc=0 out=accepted operator post DUPLICATE
+E4 trial 5 dates_equal=yes
+[E4 trial 6 submit 1 Date=Tue, 22 Sep 2026 03:37:04 +0000] rc=0 out=accepted operator post ACCEPTED
+[E4 trial 6 submit 2 Date=Tue, 22 Sep 2026 03:37:04 +0000] rc=0 out=accepted operator post DUPLICATE
+E4 trial 6 dates_equal=yes
+
+=== E5: what the node holds ===
+refused operator STATUS store is already locked
+status rc=1
+--- Date lines inside the transaction journal ---
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000000.txn:Date: Mon, 22 Sep 2026 03:08:46 +0000
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000001.txn:Date: Mon, 22 Sep 2026 03:08:46 +0000
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000002.txn:Date: Mon, 22 Sep 2026 03:08:46 +0000
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000003.txn:Date: Tue, 22 Sep 2026 03:37:03 +0000
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000004.txn:Date: Tue, 22 Sep 2026 03:37:03 +0000
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000005.txn:Date: Tue, 22 Sep 2026 03:37:03 +0000
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000006.txn:Date: Tue, 22 Sep 2026 03:37:04 +0000
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000007.txn:Date: Tue, 22 Sep 2026 03:37:04 +0000
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000008.txn:Date: Tue, 22 Sep 2026 03:37:04 +0000
+--- Message-ID lines inside the transaction journal ---
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000000.txn:Message-ID: <e1@example.invalid>
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000001.txn:Message-ID: <e2@example.invalid>
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000002.txn:Message-ID: <e3@example.invalid>
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000003.txn:Message-ID: <e4-1@example.invalid>
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000004.txn:Message-ID: <e4-2@example.invalid>
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000005.txn:Message-ID: <e4-3@example.invalid>
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000006.txn:Message-ID: <e4-4@example.invalid>
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000007.txn:Message-ID: <e4-5@example.invalid>
+      1 /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000008.txn:Message-ID: <e4-6@example.invalid>
+--- the held octets for E1, extracted and compared with the submitted file ---
+E1 lives in /home/ember/fn-gates/w31-duplicate/node/store/transactions/00000000000000000000.txn
+submitted octets len 158 found verbatim in the record at offset 42
+record len 483
+
+=== stop the owner ===
+owner exited after 1s
+=== owner log tail ===
+CONTROL /home/ember/fn-gates/w31-duplicate/node/control.sock
+LISTENING 11317
+accepted operator run

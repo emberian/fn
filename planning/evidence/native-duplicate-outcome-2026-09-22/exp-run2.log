@@ -1,0 +1,19 @@
+owner pid=3339847
+gap dates_equal word rc
+gap=0 dates_equal=NO second=[refused operator post REFUSED] rc=1 first=[accepted operator post ACCEPTED]
+gap=0.25 dates_equal=yes second=[accepted operator post DUPLICATE] rc=0 first=[accepted operator post ACCEPTED]
+gap=0.5 dates_equal=NO second=[refused operator post REFUSED] rc=1 first=[accepted operator post ACCEPTED]
+gap=0.75 dates_equal=NO second=[refused operator post REFUSED] rc=1 first=[accepted operator post ACCEPTED]
+gap=1.0 dates_equal=NO second=[refused operator post REFUSED] rc=1 first=[accepted operator post ACCEPTED]
+gap=1.25 dates_equal=NO second=[refused operator post REFUSED] rc=1 first=[accepted operator post ACCEPTED]
+gap=0 dates_equal=yes second=[accepted operator post DUPLICATE] rc=0 first=[accepted operator post ACCEPTED]
+gap=0.4 dates_equal=NO second=[refused operator post REFUSED] rc=1 first=[accepted operator post ACCEPTED]
+gap=0.8 dates_equal=NO second=[refused operator post REFUSED] rc=1 first=[accepted operator post ACCEPTED]
+gap=1.2 dates_equal=NO second=[refused operator post REFUSED] rc=1 first=[accepted operator post ACCEPTED]
+gap=0.6 dates_equal=NO second=[refused operator post REFUSED] rc=1 first=[accepted operator post ACCEPTED]
+gap=0.9 dates_equal=NO second=[refused operator post REFUSED] rc=1 first=[accepted operator post ACCEPTED]
+owner exited after 1s
+=== status with no owner holding the writer ===
+transactions=12 articles=12 staging-orphans=0 unsigned-legacy-experiment
+accepted operator STATUS
+status rc=0

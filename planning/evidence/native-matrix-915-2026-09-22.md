@@ -85,6 +85,17 @@ and loopback gaps live. They are no longer the harness declining to look:
   outcomes do not stay distinct on the native `post` path. `V0-OUT-REFUSED`
   is the row; the owner is the submission path, not this harness.
 
+  **Resolved, and it was this harness**
+  ([`native-duplicate-outcome-2026-09-22.md`](native-duplicate-outcome-2026-09-22.md)).
+  `article()` re-stamped `Date` from the clock on every call, so the second
+  submission stopped being a resubmission whenever it crossed a second
+  boundary; the node refused the different octets, correctly. Forty-one
+  submissions against this same image put the word at twelve-for-twelve with
+  the octets and never with anything else. The node's answers are
+  deterministic and D13 holds: byte-identical is `DUPLICATE` at exit 0,
+  different octets under a held Message-ID is `REFUSED` at exit 1. The row
+  now submits a deliberate conflict and its `limit` says so.
+
 The 915 image is 210 commits behind `dev`; `principal`, `policy set
 path-identity`, STARTTLS and live administration exist there and need their
 own image before those rows can move.

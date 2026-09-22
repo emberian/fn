@@ -4,6 +4,7 @@ These tests do not stand in for a two-node native run. They pin the harness
 boundary so that such a run cannot silently select a Python server, lose its
 image/source labels, or label an unmeasured native feed as accepted.
 """
+import datetime as dt
 import json
 import os
 from pathlib import Path
@@ -11,6 +12,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 
 
@@ -679,6 +681,112 @@ class Conn:
             self.assertEqual(calls[first + 1], ["sendall", ".\r\n"])
             self.assertEqual(calls[first + 2], ["line", ""])
             self.assertEqual(result["POST BEFORE CLOSE"], "441 posting failed")
+
+
+class TickingClock:
+    """A clock that never gives the same second twice."""
+
+    def __init__(self):
+        self.reads = 0
+
+    def now(self, tz=None):
+        self.reads += 1
+        return dt.datetime(2026, 9, 22, 3, 8, self.reads, tzinfo=tz)
+
+
+class RecordingGate(HarnessOnlyNativeGate):
+    """Keeps every octet the gate would have installed on the node."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pushed = []
+
+    def push_file(self, content, remote, mode="644"):
+        if isinstance(content, str):
+            content = content.encode()
+        self.pushed.append((remote, content))
+
+
+class DuplicateOutcomeTests(unittest.TestCase):
+    """The octets decide the word, so the harness must hold them fixed.
+
+    The two native runs of 2026-09-22 read `V0-OUT-REFUSED` as refused on one
+    node and accepted-as-duplicate on the other, and swapped on the rerun.
+    The node was not the variable: `article()` re-stamped `Date` from the
+    clock on every call, so the second submission of one Message-ID crossed a
+    second boundary about half the time and stopped being a resubmission.
+    """
+
+    def setUp(self):
+        v0_matrix.ARTICLE_STAMPS.clear()
+        self.clock = v0_matrix.dt
+        self.temporary = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        v0_matrix.dt = self.clock
+        v0_matrix.ARTICLE_STAMPS.clear()
+        self.temporary.cleanup()
+
+    def tick(self):
+        clock = TickingClock()
+        v0_matrix.dt = types.SimpleNamespace(datetime=clock, timezone=dt.timezone)
+        return clock
+
+    def test_one_message_id_keeps_one_date_across_a_second_boundary(self):
+        clock = self.tick()
+        first = v0_matrix.article("<x@example.invalid>", "fn.letters", "s", "b")
+        second = v0_matrix.article("<x@example.invalid>", "fn.letters", "s", "b")
+        self.assertEqual(first, second)
+        self.assertEqual(clock.reads, 1)
+        self.assertIn(b"Date: Tue, 22 Sep 2026 03:08:01 +0000", first)
+
+    def test_a_different_message_id_still_gets_its_own_date(self):
+        clock = self.tick()
+        one = v0_matrix.article("<x@example.invalid>", "fn.letters", "s", "b")
+        two = v0_matrix.article("<y@example.invalid>", "fn.letters", "s", "b")
+        self.assertNotEqual(one, two)
+        self.assertEqual(clock.reads, 2)
+
+    def gate(self):
+        return RecordingGate(
+            v0_matrix.LocalHost(Path(self.temporary.name)), ROOT, "a" * 40,
+            "abc1234", "dev", backend=v0_matrix.NATIVE_BACKEND,
+            native_image="/opt/fn/fn-host",
+            native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"},
+            native_group="fn.letters")
+
+    def test_the_resubmission_row_submits_the_octets_the_node_holds(self):
+        self.tick()
+        gate = self.gate()
+        gate.native_outcomes(gate.a)
+        posts = [(path, blob) for path, blob in gate.pushed
+                 if path.endswith(".article")]
+        self.assertEqual(len(posts), 3)
+        (first_path, first), (again_path, again), (other_path, other) = posts
+        # The idempotent duplicate is the SAME octets, not merely the same
+        # Message-ID: this is the assertion the two 2026-09-22 runs failed.
+        self.assertEqual(first, again)
+        self.assertEqual(first_path, again_path)
+        # The refusal is a real conflict: one Message-ID, different octets,
+        # and its own file, so it never overwrites the accepted article.
+        msgid = v0_matrix.ART["a"].encode()
+        self.assertIn(msgid, first)
+        self.assertIn(msgid, other)
+        self.assertNotEqual(first, other)
+        self.assertNotEqual(first_path, other_path)
+        self.assertIn("conflict", other_path)
+
+    def test_the_refusal_row_names_the_octets_and_the_duplicate_is_recorded(self):
+        self.tick()
+        gate = self.gate()
+        gate.native_outcomes(gate.a)
+        row = [r for r in gate.rows if r.id == "V0-OUT-REFUSED-A"][0]
+        self.assertIn("DIFFERENT octets", row.limit)
+        self.assertNotIn("the same submission a second time", row.limit)
+        self.assertIn("conflict", row.invocation)
+        fact = gate.facts["duplicate resubmission a"]
+        self.assertIn("identical octets", fact)
+        self.assertIn("different octets under the same Message-ID", fact)
 
 
 if __name__ == "__main__":
