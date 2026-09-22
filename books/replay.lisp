@@ -318,9 +318,19 @@
 ; validated against its historical snapshot but is deliberately removed from
 ; the accepted-verdict projection; only a bound kind-4 composite contributes
 ; an accepted article verdict.
+; `nfix' on the counter, the same totalization `fn-sn-advance-identity-next'
+; (books/store-node) got in 7740f605, the commit that also asked for this
+; function's guards.  The one caller below reaches this branch for an event
+; that is none of the three identity records, so the counter it advances is
+; not decided by a record recognizer here and `:guard t' leaves
+; (acl2-numberp (fn-stxk-context-next ctx)) with nothing to prove it: the
+; guard conjecture suggests no induction and fails (hbox
+; run-20260922T031236Z-c1fb).  Every reachable context is built by
+; `fn-stxk-initial-context' from 0 and advanced by this function, so `nfix'
+; is the identity on the composed machine.
 (defun fn-replay-identity-advance (ctx)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
+  (fn-stxk-context :ok (1+ (nfix (fn-stxk-context-next ctx)))
                    (fn-stxk-context-snapshots ctx)
                    (fn-stxk-context-verdicts ctx)
                    (fn-stxk-context-current-generation ctx) nil))
