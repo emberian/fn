@@ -515,7 +515,7 @@
                               :durable)))))))))
 
 ; From here down the event recognizers and the composite article decoder are
-; closed.  `fn-record-codec-vocabulary' is enabled for this book (above), so an
+; closed.  `fn-record-shape-vocabulary' is enabled for this book (above), so an
 ; open `fn-record-p', `fn-stxe-p', `fn-stxk-p', `fn-stxa-p' or
 ; `fn-store-retention-event-p' lets a goal that merely dispatches on the event
 ; kind unfold the whole record and statement codec underneath it: measured

@@ -212,7 +212,7 @@
                            (fn-sn-record-bindsp
                             fn-sn-known-abort-files fn-node-complete
                             fn-replay-advance-txid
-                            fn-record-codec-vocabulary
+                            fn-record-shape-vocabulary
                             fn-store-event-p fn-store-retention-event-p
                             fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
@@ -305,7 +305,7 @@
                              fn-sn-update)
                            (fn-sn-known-abort-file-start
                             fn-sf-abort-completion
-                            fn-record-codec-vocabulary
+                            fn-record-shape-vocabulary
                             fn-store-event-p fn-store-retention-event-p
                             fn-stxe-p fn-stxk-p fn-stxa-p
                             fn-replay-apply-record
@@ -327,7 +327,7 @@
            :in-theory (e/d (fn-sn-prepare-retention fn-sn-update)
                            (fn-sn-statep fn-sf-prepare-record
                             fn-replay-apply-retention-event
-                            fn-record-codec-vocabulary
+                            fn-record-shape-vocabulary
                             fn-store-event-p fn-store-retention-event-p
                             fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
@@ -343,7 +343,7 @@
                            (fn-sn-statep fn-sf-prepare-record
                             fn-replay-apply-record
                             fn-replay-identity-step fn-sn-identity-context
-                            fn-record-codec-vocabulary
+                            fn-record-shape-vocabulary
                             fn-store-event-p fn-store-retention-event-p
                             fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
@@ -403,7 +403,7 @@
                              fn-sn-known-abort-enabledp fn-sn-update)
                            (fn-sn-known-abort-files
                             fn-node-complete
-                            fn-record-codec-vocabulary
+                            fn-record-shape-vocabulary
                             fn-store-event-p fn-store-retention-event-p
                             fn-stxe-p fn-stxk-p fn-stxa-p
                             fn-replay-apply-record
@@ -467,7 +467,7 @@
                              fn-sf-history-recoverablep
                              fn-sf-replay-node fn-node-complete
                              fn-sn-completion-enabledp
-                             fn-record-codec-vocabulary
+                             fn-record-shape-vocabulary
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
                              fn-replay-apply-record
@@ -611,7 +611,7 @@
                              fn-sn-finish fn-sn-completion-enabledp
                              fn-sn-record-bindsp fn-sn-completion-record
                              fn-sn-committed-recordp fn-node-complete
-                             fn-record-codec-vocabulary
+                             fn-record-shape-vocabulary
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
                              fn-replay-apply-record

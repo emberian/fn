@@ -225,7 +225,7 @@
   (implies (fn-sn-statep s)
            (fn-sn-statep (fn-sn-finish s)))
   ; The record codec stays closed here.  This book enables
-  ; `fn-record-codec-vocabulary' at the top for its field lemmas, and that
+  ; `fn-record-shape-vocabulary' at the top for its field lemmas, and that
   ; theory carries (:d fn-record-p), (:d fn-record-encode) and
   ; (:d fn-record-decode-exact); `fn-sn-finish' reads the completion record
   ; through four accessors and dispatches on four recognizers, so with the
