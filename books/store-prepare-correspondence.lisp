@@ -77,6 +77,27 @@
                 (fn-sf-statep fn-node-statep fn-node-pending-matchesp
                  fn-sn-pending-record fn-sn-prepare-node)))))
 
+; On an article record the composed store-event accessors are the record's
+; own.  `books/store-node-traces' and `books/store-node-invariants' each keep
+; a copy of this local; this book needs it because `fn-sf-candidatep' orders
+; the composed sequence while the goals here carry the record's own, and with
+; the record accessors open the two reach the goal as `(CAR RECORD)' against
+; `(FN-STORE-EVENT-SEQUENCE RECORD)' and nothing joins them (hbox
+; certify-20260922T163635Z-3095374).
+(local
+ (defthm fn-spc-store-event-fields-of-an-article-record
+   (implies (fn-record-p record)
+            (and (equal (fn-store-event-sequence record)
+                        (fn-record-sequence record))
+                 (equal (fn-store-event-txid record) (fn-record-txid record))
+                 (equal (fn-store-event-generation record)
+                        (fn-record-generation record))))
+   :hints (("Goal" :in-theory (e/d (fn-store-event-sequence
+                                    fn-store-event-txid
+                                    fn-store-event-generation)
+                                   (fn-record-p fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-stxa-p))))))
+
 ; `fn-sf-candidatep' pins the COMPOSED transaction id: since `6ab2c783' and
 ; `4bb7bb3d' a staged candidate is not always an article record, and this book
 ; has not certified since 2026-09-21.  On an article record -- which is what
