@@ -56,6 +56,56 @@
 (assert-event (equal (fn-native-control-status-exit-code :fault) 4))
 (assert-event (equal (fn-native-control-max-active-clients) 16))
 
+; The control surface has two words beyond the three outcomes, and this is
+; the projection that decides what each one costs the caller.  :duplicate is
+; a second submission of octets the node already holds: nothing new was
+; created and nothing was refused, so it is an acceptance and exits 0.
+; :busy is a refusal to act, so it exits 1.  Both words still reach the
+; operator whole -- host/native/operator.lisp's fnn-operator-execute-post
+; passes the status itself as the detail of fnn-operator-emit-status -- so
+; `accepted operator post DUPLICATE' is not `accepted operator post
+; ACCEPTED'.  The 2026-09-22 native matrix saw one submission answer with
+; both words in two runs; the octets differed, not this projection
+; (planning/evidence/native-duplicate-outcome-2026-09-22.md).
+(assert-event (member-equal :duplicate *fn-nctrl-statuses*))
+(assert-event (equal (fn-native-control-status-class :duplicate) :accepted))
+(assert-event (equal (fn-native-control-status-exit-code :duplicate) 0))
+(assert-event (equal (fn-native-control-status-class :busy) :refused))
+(assert-event (equal (fn-native-control-status-exit-code :busy) 1))
+
+; The word has to survive the sealed reply or the operator cannot print it.
+(assert-event
+ (equal (fn-native-control-reply-decode
+         (fn-native-control-reply-encode :duplicate))
+        :duplicate))
+(assert-event
+ (equal (fn-native-control-reply-decode
+         (fn-native-control-reply-encode :refused))
+        :refused))
+
+; Teeth.  Exit 0 is not this function's default: it needs the status to be
+; in the accepted class.  Drop that hypothesis -- ask for any other word in
+; the vocabulary, or a word outside it -- and the conclusion fails.  The
+; three outcomes keep three codes, and the duplicate takes the accepted
+; one rather than a fourth of its own (D13).
+(assert-event (equal (fn-native-control-status-exit-code :bogus) 4))
+(assert-event (equal (fn-native-control-status-class :bogus) :fault))
+(assert-event
+ (not (equal (fn-native-control-status-exit-code :duplicate)
+             (fn-native-control-status-exit-code :refused))))
+(assert-event
+ (not (equal (fn-native-control-status-exit-code :duplicate)
+             (fn-native-control-status-exit-code :uncertain))))
+(assert-event
+ (not (equal (fn-native-control-status-exit-code :duplicate)
+             (fn-native-control-status-exit-code :bogus))))
+(assert-event
+ (equal (fn-native-control-status-exit-code :duplicate)
+        (fn-native-control-status-exit-code :accepted)))
+(assert-event
+ (not (equal (fn-native-control-status-exit-code :refused)
+             (fn-native-control-status-exit-code :uncertain))))
+
 (assert-event
  (equal (fn-native-control-lease-path
          (fn-record-string-octets "/run/fn/control.sock"))
