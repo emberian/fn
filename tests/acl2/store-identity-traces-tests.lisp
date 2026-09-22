@@ -195,3 +195,66 @@
 (assert-event (equal (fn-sf-phase
                       (fn-sn-files (fn-sit-barriers *sit-orphan-recovered* 5)))
                      :fault))
+
+; ---------------------------------------------------------------------------
+; Teeth for the two arms `books/store-node-traces' grew on 2026-09-22.
+;
+; The deferred link (`fn-snt-deferred-linkp'): a reachable record phase whose
+; staged candidate is NOT an article record, which is the shape
+; `fn-sn-prepare-retention' and `fn-sn-prepare-identity' leave and which the
+; article arm of the relation is false of.  The witnesses are the same
+; publications this book already commits, stopped one step earlier, so they
+; separate the two arms by the candidate's kind and not by a weaker clause.
+(defconst *sit-staged-retention*
+  (fn-sn-prepare-retention (fn-sit-reserve *sit-after-legacy*) *sit-retention*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sit-staged-retention*))
+                     :record-staged))
+(assert-event
+ (not (fn-record-p (fn-sf-record-candidate (fn-sn-files *sit-staged-retention*)))))
+(assert-event (fn-snt-relation *sit-staged-retention*))
+(assert-event (fn-snt-relation (fn-sit-publish *sit-staged-retention*)))
+(assert-event
+ (equal (fn-sf-phase (fn-sn-files (fn-sit-publish *sit-staged-retention*)))
+        :completing))
+(assert-event (fn-snt-relation (fn-sn-finish (fn-sit-publish *sit-staged-retention*))))
+
+(defconst *sit-staged-identity*
+  (fn-sn-prepare-identity (fn-sit-reserve (fn-sn-initial *sit-groups* 32))
+                          *sit-enrollment*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sit-staged-identity*))
+                     :record-staged))
+(assert-event
+ (not (fn-record-p (fn-sf-record-candidate (fn-sn-files *sit-staged-identity*)))))
+(assert-event (fn-snt-relation *sit-staged-identity*))
+(assert-event (fn-snt-relation (fn-sit-publish *sit-staged-identity*)))
+(assert-event (fn-snt-relation (fn-sn-finish (fn-sit-publish *sit-staged-identity*))))
+
+; The article arm is still exercised, and by a state of the same machine: a
+; staged legacy record IS a `fn-record-p', so the relation takes the pending
+; link there.  Without this pair the deferred assertions above would not
+; separate the two arms.
+(defconst *sit-staged-legacy*
+  (fn-sn-prepare (fn-sit-reserve *sit-refused*) *sit-legacy*))
+(assert-event
+ (fn-record-p (fn-sf-record-candidate (fn-sn-files *sit-staged-legacy*))))
+(assert-event (fn-snt-relation *sit-staged-legacy*))
+
+; A known abort of a staged retention candidate returns to `:ready' with the
+; live node at the durable frontier, which is the advance `6ab2c783' left out
+; of `fn-sn-known-abort' (books/store-node-resolution).  Without it the state
+; below is `:ready' with a node one transaction id behind its own frontier
+; and the relation is false of it.
+(defconst *sit-retention-aborted* (fn-sn-known-abort *sit-staged-retention*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sit-retention-aborted*)) :ready))
+(assert-event
+ (equal (fn-state-next-txid (fn-node-acceptance (fn-sn-node *sit-retention-aborted*)))
+        (fn-sf-frontier (fn-sn-files *sit-retention-aborted*))))
+(assert-event (fn-snt-relation *sit-retention-aborted*))
+
+; The `:fault' arm (`40bb3f74'): the composed recovery above publishes it,
+; and the relation now has a case for it.  `*sit-orphan-recovered*' is the
+; reachable witness this book already builds; the seed it comes from is the
+; `:replaying' state the same arm is proved from.
+(assert-event
+ (fn-snt-relation (fn-sn-observed-seed *sit-groups* 32 1 *sit-orphan-history*)))
+(assert-event (fn-snt-relation *sit-orphan-recovered*))
