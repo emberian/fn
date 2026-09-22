@@ -4,15 +4,15 @@
 (include-book "../../books/replay")
 (include-book "../../books/hybrid-store")
 
-(defconst *fn-sir-principal* (repeat 32 7))
-(defconst *fn-sir-ed-key* (repeat 32 11))
-(defconst *fn-sir-ml-key* (repeat 1952 13))
+(defconst *fn-sir-principal* (make-list 32 :initial-element 7))
+(defconst *fn-sir-ed-key* (make-list 32 :initial-element 11))
+(defconst *fn-sir-ml-key* (make-list 1952 :initial-element 13))
 (defconst *fn-sir-keys*
   (list (cons :ed25519 *fn-sir-ed-key*)
         (cons :ml-dsa-65 *fn-sir-ml-key*)))
 (defconst *fn-sir-signatures*
-  (list (cons :ed25519 (repeat 64 17))
-        (cons :ml-dsa-65 (repeat 3309 19))))
+  (list (cons :ed25519 (make-list 64 :initial-element 17))
+        (cons :ml-dsa-65 (make-list 3309 :initial-element 19))))
 (defconst *fn-sir-snapshot*
   (fn-hsig-keyring-event 0 0 0 0 *fn-sir-principal* *fn-sir-keys*))
 (defconst *fn-sir-record*
@@ -56,8 +56,8 @@
 (defconst *fn-sir-wrong-snapshot*
   (fn-hsig-keyring-event
    0 0 0 0 *fn-sir-principal*
-   (list (cons :ed25519 (repeat 32 23))
-         (cons :ml-dsa-65 (repeat 1952 29)))))
+   (list (cons :ed25519 (make-list 32 :initial-element 23))
+         (cons :ml-dsa-65 (make-list 1952 :initial-element 29)))))
 (assert-event
  (equal (fn-stxk-context-kind
          (fn-replay-identity (list *fn-sir-wrong-snapshot* *fn-sir-accept*)))
