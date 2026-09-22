@@ -21,8 +21,9 @@ the first two are repaired (28fb4bd0), the other two have candidate repairs
 freeze (hbox: closure, images), treewide-reds (hbox: the roots outside the
 image closure), matrix-driver (local: AUTH, live reconfiguration, loopback and
 nntplib rows, then a run on the new image), green-audit (local:
-`tools/green_check.py`, certified-at-current-digest per book). persvati has
-been unreachable since about 01:50Z.
+`tools/green_check.py`, certified-at-current-digest per book). persvati was
+unreachable from the coordinator's machine from about 01:50Z to 03:00Z (an ARP
+loss on that side; the box never rebooted) and is back in the plan.
 
 Updated 2026-09-21. The goal remains the full selected two-peer v0 and v1/M6
 scope in [milestones](milestones.md#release-shape-v0-and-v1). Component tests
