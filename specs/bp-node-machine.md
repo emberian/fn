@@ -3026,6 +3026,25 @@ named.
    facts; objects only if slice E measures the chunk count at `max-held`
    as unaffordable.
 
+### Answered by review 3 (2026-09-23)
+
+gpt-6's third review, `planning/review-2026-09-23-bp-node-machine-3.md`,
+answers the eight questions above: every recommendation stands, with four
+amendments that the slices carry as contract changes. Q3: a request must not
+acquire a receipt-handoff obligation whose metadata was never reserved; the
+handoff's metadata reservation is an admission contract apart from cleanup
+debt. Q5: the principal partition applies at reception, before the global
+duplicate and conflict checks (§4.1 step 4), with wire bundle identity kept
+apart from the local admitted-claim identity; the held-entry uniqueness
+invariant and the reassembly shortcut respect the same partition. Q6: the
+worst-case envelope is quantified over permitted forwarding observations
+and every mutable encoding change, and the image is checked again at send
+time. Q8: physical usage counts checkpoint chunks and the manifest
+(`checkpoint-records + next-token - generation-base`) or names their
+separate budget. Its §2 to §4 are fixture and definition changes owned by
+slices A1, A2, A3, C1/C2 and E (its §5); the handoff to Codex
+(`planning/handoff-to-codex-2026-09-23.md`) briefs them.
+
 ## 13. Defects in existing code
 
 Found by the review (D1 to D11), while designing (D12 to D17), and by the

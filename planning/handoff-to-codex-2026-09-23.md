@@ -5,8 +5,10 @@ of the night finish; the "State" section is updated when they land. Read
 [how we work](how-we-work.md) and `AGENTS.md` first: they are the rules,
 this file is the work. Everything here is briefed from
 [the trajectory plan](plan-2026-09-22-trajectory.md) §3 and, for DTN,
-[the BP node-machine contract](../specs/bp-node-machine.md) §11; where this
-file and those disagree, those win and this file is wrong.
+[the BP node-machine contract](../specs/bp-node-machine.md) §11 together
+with [gpt-6's third review](review-2026-09-23-bp-node-machine-3.md), whose
+§2 to §5 are contract changes the DTN slices own; where this file and those
+disagree, those win and this file is wrong.
 
 ## State (at handoff)
 
@@ -71,8 +73,14 @@ an offset-zero coherence witness, and the limits table
 raised to the ADU maximum only together with every limit it composes with.
 Books: `bp-fragment`, `bp-fragment-invariants`, new `bp-fragment-fast`, new
 `bp-limits`, their test books. Touches no machine book. Traces N09, N10 from
-the counterexample suite (§11.1) are its teeth. Box: persvati. 2 to 3
-lane-days. Defects D19 and D20 in §13 are its subject.
+the counterexample suite (§11.1) are its teeth. Review 3 §2.2 and §5: the
+re-fragmentation theorem's claimed whole-parent negative witness violates
+the retained extent bound and is withdrawn (prove the implication from the
+remaining premises and drop the redundant clause if it closes); the fast
+reassembler equality stays over all inputs, with malformed-input tests
+showing the native path answers `(:invalid :bounds)` with no guard failure;
+the active-set key carries the principal and the coherence partition. Box:
+persvati. 2 to 3 lane-days. Defects D19 and D20 in §13 are its subject.
 
 ### D1a. The status-report codec
 
@@ -125,8 +133,27 @@ crash cut. The receive path does not merge before A2's replay theorems
 certify, so A2 (records and the replay and recovery theorems, T6 group;
 3 to 4 lane-days) is briefed together with A1 and starts after A1's schema
 batch. Box: hbox. 7 to 9 lane-days for A1. Decisions D-1 to D-16 in §12 are
-taken; the eight questions after them carry recommendations that are the
-defaults, and a different answer from ember changes the section each names.
+taken and the eight questions after them are answered by review 3 (the note
+under them in §12 lists the four amendments). Review 3 §5 is A1's and A2's
+first work: repair the N04 and N05 fixtures (N04's older entry inside the
+131,072-octet profile with the no-fragment flag; N05 split at F=1 refused,
+F=2 completing); make every counterexample row an executable positive that
+asserts the whole antecedent and an exact negative that asserts every
+retained hypothesis, the negated one and the negated conclusion, with
+pending or undefined rows shown open, never green; give T3's second theorem
+its own positive; replace T1's wire-corrupt tooth; define action selection
+and wake invalidation together with dependency versions in every wait
+(§4.3 of the review) and no-repeat per obligation rather than per event
+kind; add a handoff action descriptor or scope the continuation theorem to
+bundles; apply the principal partition at reception before the duplicate
+and conflict checks; for A2, write the FNBS-specific publisher relation
+(review §3.3, six clauses) over the actual byte crash predicate
+`fn-bs-crash-imagep` and byte-level lemmas, state the inherited-prefix and
+epoch-delta convention with the zero-event recovery as a mandatory positive,
+keep authority-selection transitions out of the running-epoch equation, and
+produce the seven physical witnesses of review §3.6 with real encoded FNBS
+records. A3, when it comes, makes an owed handoff retry on its resource
+dependency after a refused enqueue (review §4.2).
 
 ## Packages ready after a named lane lands
 
