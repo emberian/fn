@@ -358,6 +358,14 @@ PLAN = (
     S("V0-POST-CLOCK", "F-POST",
       "a duplicate POST is refused as an article and does not cost the node its clock",
       ("FLR-002", "NNT-005"), ("SCN-002",), ACCEPTED, "node"),
+    # RFC 5536 3.1.2: From is a mailbox-list.  The agents run of 2026-09-22
+    # posted `From: yue` and was answered 240 (books/injection.lisp checked
+    # presence only); the node now refuses it `441 posting failed; From is not
+    # a valid mailbox list` (fn-inj-decide's :from-invalid).
+    S("V0-POST-FROM-MAILBOX", "F-POST",
+      "a POST whose From names no address (`From: yue`) is refused with 441 and "
+      "is not served",
+      ("NNT-005",), ("SCN-002",), REFUSED, "node"),
     S("V0-POST-CONCURRENT", "F-POST",
       "a second reader stays live across another connection's whole POST",
       ("HST-002",), ("SCN-015",), ACCEPTED),
@@ -644,10 +652,13 @@ PLAN = (
       "an article fn took from INN is served with fn's path identity in Path and "
       "without INN's Xref (RFC 5537 3.7 steps 6 and 7)",
       ("REP-001",), ("SCN-023",), ACCEPTED, "single",
-      "specs/peering.md 2.3 renders fn's Path prepend on the way out to a peer and "
-      "says Xref is never stored; the reader path is what this row measures"),
+      "fn updates Path and removes Xref once, when it accepts the transfer, and "
+      "stores what it serves (specs/peering.md 2.3, books/path-update.lisp); the "
+      "reader path is what this row measures, and the outbound render to a "
+      "second peer is not exercised by a lab with one peer"),
     S("V0-INN-OPERATOR-POST", "F-INN",
-      "an article submitted through `operator post` reaches INN through fn's feed",
+      "an article submitted through `operator post` reaches INN through fn's feed, "
+      "injected with fn's Path (IHAVE 335/235)",
       ("REP-001",), ("SCN-023",), ACCEPTED),
 
     # -- F-CLIENT --------------------------------------------------------
@@ -817,6 +828,20 @@ def reply_verdict(status: str) -> str:
     return ACCEPTED if code[0] in "123" else REFUSED
 
 
+def from_mailbox_verdict(posted: str, stat: str) -> str:
+    """V0-POST-FROM-MAILBOX from the POST's final line and a later STAT.
+
+    Accepted when the node took the article (240) or serves it (223), which
+    is the defect of 2026-09-22; refused only when the POST was answered 441
+    AND the Message-ID is not served (430); otherwise the POST line's class.
+    """
+    if posted.startswith("240") or stat.startswith("223"):
+        return ACCEPTED
+    if posted.startswith("441") and stat.startswith("430"):
+        return REFUSED
+    return reply_verdict(posted)
+
+
 def unsupported(status: str) -> bool:
     return (status or "").strip()[:3] in UNSUPPORTED_CODES
 
@@ -915,10 +940,17 @@ def send_block(conn, lines):
     conn.sock.sendall(payload + b".\r\n")
 
 
-def article_lines(msgid, group, subject, body, path=""):
+def article_lines(msgid, group, subject, body, path="",
+                  sender="matrix@example.invalid"):
     head = ["Path: {}!not-for-mail".format(path)] if path else []
-    return head + ["From: matrix@example.invalid", "Subject: " + subject,
+    return head + ["From: " + sender, "Subject: " + subject,
                    "Newsgroups: " + group, "Message-ID: " + msgid, "", body]
+
+
+def sibling_msgid(msgid: str, tag: str) -> str:
+    """`<local.tag@domain>` for `<local@domain>`: a second identifier per run."""
+    local, _, domain = msgid.strip("<>").partition("@")
+    return "<{}.{}@{}>".format(local, tag, domain)
 
 
 def labels(caps):
@@ -1164,6 +1196,24 @@ def postcycle(args):
     login(clock, args, {})
     out["DATE AFTER DUPLICATE"] = clock.cmd("DATE")[0]
     drop(clock)
+
+    # RFC 5536 3.1.2: a From with no address, on its own connection and under
+    # its own Message-ID, then asked for by that Message-ID.
+    unaddressed = sibling_msgid(args.msgid, "from")
+    bad = Conn(args.port, timeout=SOCKET_TIMEOUT)
+    login(bad, args, {})
+    out["FROM POST"] = bad.cmd("POST")[0]
+    if out["FROM POST"].startswith("340"):
+        send_block(bad, article_lines(unaddressed, args.group, "matrix from",
+                                      "Posted by tools/v0_matrix.py.", sender="yue"))
+        out["FROM"] = bad.line()
+    else:
+        out["FROM"] = out["FROM POST"]
+    drop(bad)
+    probe = Conn(args.port, timeout=SOCKET_TIMEOUT)
+    login(probe, args, {})
+    out["FROM ARTICLE"] = probe.cmd("STAT " + unaddressed)[0]
+    drop(probe)
 
     before = out["GROUP BEFORE"].split()
     after = out["GROUP AFTER"].split()
@@ -2481,6 +2531,18 @@ else echo NONE; fi
                         "the owner its clock (D10-a) and DATE then answers 503. This "
                         "row does not INDUCE a clock fault -- it checks that an "
                         "ordinary duplicate did not cause one")
+        refused_from = str(result.get("FROM", ""))
+        served_from = str(result.get("FROM ARTICLE", ""))
+        self.emit("V0-POST-FROM-MAILBOX",
+                  from_mailbox_verdict(refused_from, served_from),
+                  step.command,
+                  "POST of `From: yue` answered '{}'; STAT of its Message-ID "
+                  "answered '{}'".format(refused_from or "(nothing)",
+                                         served_from or "(nothing)"),
+                  node=node.name,
+                  limit="one unaddressed From; the rest of the mailbox-list "
+                        "grammar is books/mailbox.lisp's and its witnesses are "
+                        "tests/acl2/injection-tests.lisp")
         if str(result.get("COMMIT", "")).startswith("240"):
             node.accepted.append(msgid)
 
@@ -3629,12 +3691,14 @@ else echo NONE; fi
     AUTH_KEYS = ("V0-AUTH-ADVERTISED", "V0-AUTH-GATED", "V0-AUTH-LOGIN",
                  "V0-AUTH-WITHDRAWN", "V0-AUTH-POST", "V0-AUTH-WRONG")
     POST_KEYS = ("V0-POST-OPEN", "V0-POST-COMMIT", "V0-POST-READBACK",
-                 "V0-POST-FRESH", "V0-POST-DUPLICATE", "V0-POST-CLOCK")
+                 "V0-POST-FRESH", "V0-POST-DUPLICATE", "V0-POST-CLOCK",
+                 "V0-POST-FROM-MAILBOX")
     CRASH_KEYS = ("V0-CRASH-KILL", "V0-CRASH-SURVIVOR", "V0-CRASH-RECOVER",
                   "V0-CRASH-ACKNOWLEDGED", "V0-CRASH-INTERRUPTED",
                   "V0-CRASH-RESTART")
     NODE_SOCKET_KEYS = ("V0-GROUP-SERVED", "V0-POST-OPEN", "V0-POST-COMMIT",
                         "V0-POST-READBACK", "V0-POST-FRESH", "V0-POST-DUPLICATE",
+                        "V0-POST-FROM-MAILBOX",
                         "V0-AUTH-ADVERTISED", "V0-AUTH-GATED", "V0-AUTH-LOGIN",
                         "V0-AUTH-WITHDRAWN", "V0-AUTH-POST", "V0-AUTH-WRONG",
                         "V0-PIN-DISPATCHED", "V0-PIN-ADVERTISED",

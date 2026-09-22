@@ -1072,5 +1072,102 @@ class InnRowTests(unittest.TestCase):
             self.assertEqual(command[-1], "/tmp/x/inn-lab.md")
 
 
+class FromMailboxTests(unittest.TestCase):
+    """V0-POST-FROM-MAILBOX: RFC 5536 3.1.2, the agents run's `From: yue`.
+
+    The postcycle phase posts an unaddressed From on its own connection under
+    a Message-ID of its own and asks for it back; the verdict is refused only
+    when the POST was answered 441 AND the Message-ID is not served.
+    """
+
+    FAKE_DRIVER = r"""
+import json, os
+
+def note(kind, value=""):
+    with open(os.environ["POST_LOG"], "a", encoding="utf-8") as out:
+        out.write(json.dumps([kind, value]) + "\n")
+
+class Sock:
+    def __init__(self, conn):
+        self.conn = conn
+    def sendall(self, payload):
+        text = payload.decode("ascii")
+        self.conn.last = text
+        note("sendall", text)
+    def close(self):
+        note("close")
+
+class Conn:
+    def __init__(self, port, timeout=30):
+        self.sock = Sock(self)
+        self.greeting = "200 ready"
+        self.last = ""
+    def cmd(self, text, multiline=False):
+        note("cmd", text)
+        if text == "POST":
+            return "340 send article", []
+        if text.startswith("GROUP"):
+            return "211 1 1 1 fn.letters", []
+        if text.startswith("STAT"):
+            return "430 no article with that message-id", []
+        if text.startswith("ARTICLE"):
+            return "220 0 <m@example.invalid> article follows", []
+        if text == "DATE":
+            return "111 20260922212647", []
+        return "500 command not recognized", []
+    def line(self):
+        if "From: yue" in self.last:
+            return "441 posting failed; From is not a valid mailbox list"
+        return "240 article received OK"
+    def close(self):
+        self.sock.close()
+"""
+
+    def run_post(self, directory):
+        (directory / "drive.py").write_text(self.FAKE_DRIVER)
+        (directory / "matrix.py").write_text(v0_matrix.MATRIX_DRIVER)
+        log = directory / "post.log"
+        done = subprocess.run(
+            [sys.executable, "matrix.py", "postcycle", "--port", "1",
+             "--group", "fn.letters", "--msgid", "<m@example.invalid>",
+             "--user", "", "--secret", ""],
+            cwd=directory, env=dict(os.environ, POST_LOG=str(log)), text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        return done, calls
+
+    def test_the_unaddressed_post_is_its_own_article_and_is_asked_for(self):
+        with tempfile.TemporaryDirectory() as name:
+            done, calls = self.run_post(Path(name))
+            self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+            result = json.loads(done.stdout.strip().splitlines()[-1])
+            self.assertTrue(result["COMMIT"].startswith("240"))
+            self.assertEqual(result["FROM"],
+                             "441 posting failed; From is not a valid mailbox list")
+            self.assertTrue(result["FROM ARTICLE"].startswith("430"))
+            blocks = [value for kind, value in calls
+                      if kind == "sendall" and "From: yue" in value]
+            self.assertEqual(len(blocks), 1)
+            self.assertIn("Message-ID: <m.from@example.invalid>\r\n", blocks[0])
+            self.assertIn(["cmd", "STAT <m.from@example.invalid>"], calls)
+            self.assertEqual(v0_matrix.from_mailbox_verdict(result["FROM"],
+                                                             result["FROM ARTICLE"]),
+                             v0_matrix.REFUSED)
+
+    def test_the_verdict_needs_both_the_refusal_and_the_absence(self):
+        verdict = v0_matrix.from_mailbox_verdict
+        self.assertEqual(verdict("441 posting failed", "430 no such article"),
+                         v0_matrix.REFUSED)
+        # The defect: taken, or served.
+        self.assertEqual(verdict("240 article received OK", "223 0 <m>"),
+                         v0_matrix.ACCEPTED)
+        self.assertEqual(verdict("441 posting failed", "223 0 <m>"),
+                         v0_matrix.ACCEPTED)
+        # No answer is no decision.
+        self.assertEqual(verdict("", ""), v0_matrix.UNCERTAIN)
+        self.assertEqual(v0_matrix.PLAN_BY_KEY["V0-POST-FROM-MAILBOX"].expected,
+                         v0_matrix.REFUSED)
+
+
 if __name__ == "__main__":
     unittest.main()
