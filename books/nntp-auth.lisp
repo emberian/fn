@@ -1249,6 +1249,48 @@
                             fn-nntp-command-inputp fn-nntp-tokenize
                             fn-nntp-command-arguments-at-mostp)))))
 
+; KEYSTONE.  The operator's policy is pinned, and the step never moves it.
+;
+; books/served.lisp fn-served-open and fn-served-open-peer pin the
+; operator's AUTHINFO configuration into the session at OPEN, and
+; fn-served-peer-and-reader-open-under-the-same-policy (PRF-039) says both
+; entries pin the same value.  That is a statement about one transition;
+; what makes it a statement about the connection is this one, which says
+; the field those theorems are about is not written by any branch of the
+; step: not by a login, not by the handshake, not by a delegated reader
+; command, and not by a command this book does not answer.  Every decision
+; in this book -- the credential fn-auth-authinfo searches, the two
+; capability labels, the 480 gate and the posting allowance -- reads that
+; field, so with it fixed the policy a client meets on its hundredth
+; command is the one the operator configured before the connection opened.
+;
+; No hypothesis: the non-session branch returns its argument, so it holds
+; there too.  books/nntp-auth-invariants.lisp asked for this by name as the
+; first of the three facts OB-AUTH-FOLD (K2) waits on; the other two are a
+; wire lemma and a reader lemma in books that this one does not own.
+
+(defthm fn-auth-step-preserves-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session
+           (fn-auth-step as archive config observation injection wire-event)))
+         (fn-auth-session-config as))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
+                            fn-auth-tls-eventp fn-auth-tls-established
+                            fn-auth-authinfo fn-auth-starttls
+                            fn-auth-delegate fn-auth-with-base
+                            fn-auth-bind-principal-peer
+                            fn-auth-clear-principal-peer)
+                           (fn-peer-step fn-auth-single fn-auth-find-cred
+                            fn-auth-checkp fn-auth-token-argp
+                            fn-auth-sessionp fn-auth-postingp
+                            fn-nntp-keywordp fn-nntp-single fn-nntp-multi
+                            fn-auth-capability-lines-for-peer
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp)))))
+
 ; The third fact the fold needs: a submission that leaves this step is the
 ; one fn-peer-step produced, so books/peer-inbound.lisp's
 ; fn-peer-step-submission-is-typed is the whole of its typing.  Only the
@@ -1336,6 +1378,77 @@
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
+; A restricted keyword is a keyword token, and so is every token this book
+; compares against a keyword.
+;
+; This pair exists because of the teeth.  The keystone below used to carry
+; `(consp (fn-nntp-tokenize line))' and
+; `(fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))' beside
+; `fn-auth-restricted-keywordp' of the same token, and neither can be
+; violated while the third holds: `fn-auth-restricted-keywordp' is a
+; disjunction of `fn-nntp-keywordp' against ground keyword texts, and
+; `fn-nntp-keywordp' is one `equal' between the token's upcasing and those
+; octets.  A hypothesis no value can violate has no `must-fail' case
+; (AGENTS.md, teeth), so it is removed and the reason is proved here rather
+; than asserted in a comment.
+;
+; The work is one direction of `fn-nntp-upcase-keyword': upcasing maps
+; 97..122 onto 65..90 and fixes everything else, so an upcased token that is
+; a keyword token came from a keyword token.
+
+(local (defthm fn-auth-upcase-keeps-a-rest-byte
+  (implies (fn-nntp-keyword-rest-bytep (fn-nntp-upcase-byte b))
+           (fn-nntp-keyword-rest-bytep b))
+  :hints (("Goal" :in-theory (enable fn-nntp-keyword-rest-bytep
+                                     fn-nntp-keyword-first-bytep
+                                     fn-nntp-upcase-byte)))))
+
+(local (defthm fn-auth-upcase-keyword-is-consp-exactly-when-its-argument-is
+  (equal (consp (fn-nntp-upcase-keyword x)) (consp x))
+  :hints (("Goal" :in-theory (enable fn-nntp-upcase-keyword)))))
+
+(local (defthm fn-auth-upcase-keeps-a-keyword-tail
+  (implies (fn-nntp-keyword-tailp (fn-nntp-upcase-keyword x))
+           (fn-nntp-keyword-tailp x))
+  :hints (("Goal" :in-theory (enable fn-nntp-keyword-tailp
+                                     fn-nntp-upcase-keyword)))))
+
+(local (defthm fn-auth-upcase-keeps-a-keyword-token
+  (implies (fn-nntp-keyword-tokenp (fn-nntp-upcase-keyword x))
+           (fn-nntp-keyword-tokenp x))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-keyword-tokenp
+                                   fn-nntp-upcase-keyword
+                                   fn-nntp-keyword-first-bytep
+                                   fn-nntp-upcase-byte)
+                                  (fn-nntp-keyword-tailp))))))
+
+(local (defthm fn-auth-keyword-match-is-a-keyword-token
+  (implies (and (fn-nntp-keywordp keyword text)
+                (fn-nntp-keyword-tokenp (fn-nntp-string-octets text)))
+           (fn-nntp-keyword-tokenp keyword))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-keywordp)
+                                  (fn-nntp-keyword-tokenp
+                                   fn-nntp-upcase-keyword
+                                   fn-nntp-string-octets))
+           :use ((:instance fn-auth-upcase-keeps-a-keyword-token
+                            (x keyword)))))))
+
+; Exported: every keyword the reader gate refuses is a keyword token, so the
+; two syntactic hypotheses the keystone used to carry are consequences of
+; its last one.  Each of the eighteen texts is a ground keyword token, which
+; the prover checks by evaluation.
+(defthm fn-auth-restricted-keyword-is-a-keyword-token
+  (implies (fn-auth-restricted-keywordp keyword)
+           (fn-nntp-keyword-tokenp keyword))
+  :hints (("Goal" :in-theory (e/d (fn-auth-restricted-keywordp)
+                                  (fn-nntp-keywordp fn-nntp-keyword-tokenp)))))
+
+(local (defthm fn-auth-a-keyword-token-car-has-a-cons
+  (implies (fn-nntp-keyword-tokenp (car x)) (consp x))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-nntp-keyword-tokenp)))))
+
+; -----------------------------------------------------------------------------
 ; KEYSTONE.  No restricted command runs unauthenticated when the
 ; configuration requires authentication.
 ;
@@ -1344,6 +1457,9 @@
 ; was submitted for durable acceptance, the wire was not put into article
 ; mode (so no body can follow), and the session is the one the command
 ; arrived on -- no cursor moved, no group was selected, nothing was cached.
+;
+; Seven hypotheses, and each one has a violating value in
+; tests/acl2/nntp-auth-teeth-tests.lisp.
 
 (defthm fn-auth-gated-command-is-refused-and-not-performed
   (implies (and (fn-auth-sessionp as)
@@ -1351,8 +1467,6 @@
                 (fn-auth-config-requiredp (fn-auth-session-config as))
                 (not (fn-auth-session-subject as))
                 (fn-nntp-command-inputp line)
-                (consp (fn-nntp-tokenize line))
-                (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
                 (fn-auth-restricted-keywordp (car (fn-nntp-tokenize line))))
            (and (null (fn-post-result-submission
@@ -1450,31 +1564,80 @@
                             (args (cdr (fn-nntp-tokenize line))))))))
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE.  The two capability labels appear exactly where their RFCs allow.
+; KEYSTONE.  The two capability labels appear exactly where their RFCs allow,
+; on every connection and not only on a reader's.
 ;
 ; RFC 4642 section 2.1: "MUST NOT be advertised once a TLS layer is active".
 ; RFC 4643 section 2.1: the AUTHINFO arguments are what the server will
-; accept now, and after a 281 it will accept nothing.  Both are stated of
-; fn-auth-capability-lines, which is the list fn-auth-command puts in the
-; 101 block, which is the block fn-served-dispatch emits.
+; accept now, and after a 281 it will accept nothing.
+;
+; The subject is fn-auth-capability-lines-for-peer, because that is the
+; function fn-auth-command calls for the 101 block (the CAPABILITIES arm
+; below, and fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines
+; names that equality).  fn-auth-capability-lines is its `record' = nil
+; instance and the reader-facing pair beneath each keystone is exactly that
+; instance: stating the keystone over the reader entry alone would have left
+; a client the owner resolved to a peer record -- which on one box is every
+; client (PRF-039) -- outside the claim.
+
+(defthm fn-auth-starttls-is-not-advertised-under-tls-on-any-connection
+  (implies tlsp
+           (not (member-equal (fn-nntp-string-octets "STARTTLS")
+                              (fn-auth-capability-lines-for-peer
+                               acfg subject tlsp postingp record))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
+                                   fn-auth-access-capability-lines
+                                   fn-peer-capability-lines
+                                   fn-nntp-capability-lines)
+                                  (fn-auth-config-tls-availablep
+                                   fn-auth-config-protected-onlyp
+                                   fn-auth-config-creds
+                                   fn-cfg-peer-inbound)))))
 
 (defthm fn-auth-starttls-is-not-advertised-under-tls
   (implies tlsp
            (not (member-equal (fn-nntp-string-octets "STARTTLS")
                               (fn-auth-capability-lines acfg subject tlsp
                                                         postingp))))
-  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines) nil))))
+
+(defthm fn-auth-authinfo-is-not-advertised-once-authenticated-on-any-connection
+  (implies subject
+           (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                              (fn-auth-capability-lines-for-peer
+                               acfg subject tlsp postingp record))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
+                                   fn-auth-access-capability-lines
+                                   fn-peer-capability-lines
                                    fn-nntp-capability-lines)
-                                  nil))))
+                                  (fn-auth-config-tls-availablep
+                                   fn-auth-config-protected-onlyp
+                                   fn-auth-config-creds
+                                   fn-cfg-peer-inbound)))))
 
 (defthm fn-auth-authinfo-is-not-advertised-once-authenticated
   (implies subject
            (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                               (fn-auth-capability-lines acfg subject tlsp
                                                         postingp))))
-  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines) nil))))
+
+; The other half of protected-only, on the label rather than on the command:
+; while the channel is the one section 2.3.2 refuses a cleartext mechanism
+; on, the mechanism is not offered either, so a client is never invited to
+; send a secret that would be answered 483.
+(defthm fn-auth-authinfo-is-not-advertised-before-tls-under-protected-only
+  (implies (and (fn-auth-config-protected-onlyp acfg) (not tlsp))
+           (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                              (fn-auth-capability-lines-for-peer
+                               acfg subject tlsp postingp record))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
+                                   fn-auth-access-capability-lines
+                                   fn-peer-capability-lines
                                    fn-nntp-capability-lines)
-                                  nil))))
+                                  (fn-auth-config-tls-availablep
+                                   fn-auth-config-creds
+                                   fn-cfg-peer-inbound)))))
 
 (defthm fn-auth-starttls-is-not-advertised-without-a-certificate
   (implies (not (fn-auth-config-tls-availablep acfg))
@@ -1482,8 +1645,52 @@
                               (fn-auth-capability-lines acfg subject tlsp
                                                         postingp))))
   :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines
+                                   fn-auth-capability-lines-for-peer
+                                   fn-auth-access-capability-lines
+                                   fn-peer-capability-lines
                                    fn-nntp-capability-lines)
                                   nil))))
+
+; The block the step emits is that list, and this equality is what makes the
+; three keystones above claims about what a client sees rather than about a
+; helper beside it (AGENTS.md: the theorem subject is the function the host
+; calls).  It is an unfold of fn-auth-step and fn-auth-command on the
+; CAPABILITIES arm and does no work of its own; it is named for that.
+(defthm fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines
+  (implies (and (fn-auth-sessionp as)
+                (not (fn-auth-session-handshakingp as))
+                (fn-nntp-command-inputp line)
+                (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
+                (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
+                (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "CAPABILITIES")
+                (null (cdr (fn-nntp-tokenize line))))
+           (equal (fn-post-result-effects
+                   (fn-auth-step as archive config observation injection
+                                 (list :command line)))
+                  (fn-nntp-result-effects
+                   (fn-nntp-multi (fn-auth-reader-session as)
+                                  "101 capability list follows"
+                                  (fn-auth-capability-lines-for-peer
+                                   (fn-auth-session-config as)
+                                   (fn-auth-session-subject as)
+                                   (fn-auth-session-tlsp as)
+                                   (and (fn-inj-config-allow config)
+                                        (fn-auth-postingp as))
+                                   (fn-auth-peer-record as))))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
+                            fn-auth-tls-eventp fn-auth-restricted-keywordp
+                            fn-nntp-keywordp)
+                           (fn-peer-step fn-auth-delegate fn-auth-single
+                            fn-auth-authinfo fn-auth-starttls
+                            fn-auth-sessionp fn-auth-postingp
+                            fn-auth-capability-lines-for-peer
+                            fn-auth-peer-record
+                            fn-nntp-multi fn-inj-config-allow
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp)))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE.  382 is emitted at most once per connection, from the one branch
@@ -1679,6 +1886,77 @@
                            (fn-auth-single fn-auth-find-cred fn-auth-checkp
                             fn-auth-token-argp fn-nntp-keywordp
                             fn-nntp-single)))))
+
+; No branch of AUTHINFO submits anything; it is the fact the lift below needs
+; for its "and not performed" conjunct, and it is stated as `not' rather
+; than `null' so the rule survives the prover's normalization of
+; (equal x nil) into (not x).
+(defthm fn-auth-authinfo-carries-no-submission
+  (not (fn-post-result-submission (fn-auth-authinfo as args)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-authinfo)
+                                  (fn-auth-single fn-auth-find-cred
+                                   fn-auth-checkp fn-auth-token-argp
+                                   fn-nntp-keywordp fn-nntp-single)))))
+
+; KEYSTONE.  The 483 over the function the served path calls.
+;
+; The theorem above is about fn-auth-authinfo, which no host line calls.
+; books/served.lisp fn-served-dispatch calls fn-auth-step, and
+; host/owner-host.lisp fn-owner-chunk reaches it through fn-own-read and
+; fn-served-step (the native host's socket read is host/native/owner.lisp
+; fnn-owner-read-chunk over the same entry).  This lift says it of that
+; subject: while the operator's policy is protected-only and the connection
+; carries no TLS layer, an AUTHINFO command line -- USER or PASS, with any
+; arguments, known name or not -- is answered with RFC 4643 section 2.3.2's
+; 483 and nothing else happens: the session is the one the command arrived
+; on, so no name is cached and no subject is installed, and no submission
+; leaves.  The secret is never compared, because the branch that would
+; compare it is not reached.
+;
+; It is stated for the whole AUTHINFO keyword rather than for PASS alone
+; because USER is where a client would otherwise be told 381 and send the
+; secret next.
+;
+; Eight hypotheses, and each one has a violating value in
+; tests/acl2/nntp-auth-teeth-tests.lisp.  `fn-nntp-keyword-tokenp' of the
+; same token is not among them, for the reason the gate keystone above gives:
+; the AUTHINFO match already forces it.
+
+(defthm fn-auth-step-protected-only-refuses-authinfo-before-tls
+  (implies (and (fn-auth-sessionp as)
+                (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-session-subject as))
+                (fn-auth-config-protected-onlyp (fn-auth-session-config as))
+                (not (fn-auth-session-tlsp as))
+                (fn-nntp-command-inputp line)
+                (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
+                (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO"))
+           (and (equal (fn-post-result-effects
+                        (fn-auth-step as archive config observation injection
+                                      (list :command line)))
+                       (fn-auth-single
+                        as
+                        "483 a protected channel is required; use STARTTLS"))
+                (equal (fn-post-result-session
+                        (fn-auth-step as archive config observation injection
+                                      (list :command line)))
+                       as)
+                (null (fn-post-result-submission
+                       (fn-auth-step as archive config observation injection
+                                     (list :command line))))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
+                            fn-auth-tls-eventp fn-auth-restricted-keywordp
+                            fn-nntp-keywordp)
+                           (fn-peer-step fn-auth-delegate fn-auth-single
+                            fn-auth-authinfo fn-auth-starttls
+                            fn-auth-sessionp
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp))
+           :use ((:instance fn-auth-protected-only-refuses-authinfo-before-tls
+                            (args (cdr (fn-nntp-tokenize line))))))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).  The keystones and the

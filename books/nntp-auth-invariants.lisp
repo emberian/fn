@@ -41,11 +41,14 @@
 ;                   (fn-served-result-effects (fn-served-step conn octets)))))
 ;
 ; is NOT proved.  It is an induction over fn-served-feed carrying three
-; facts, and two of them do not exist in this tree:
+; facts; the first is proved and the other two do not exist in this tree:
 ;
 ;   (1) `fn-auth-step-preserves-the-config' -- every branch keeps the
-;       session's pinned configuration.  True by inspection of five
-;       branches; nobody has stated it.  It belongs in books/nntp-auth.
+;       session's pinned configuration.  PROVED 2026-09-22 in
+;       books/nntp-auth.lisp, and with no hypothesis at all rather than the
+;       five-branch inspection this note described, because the non-session
+;       branch returns its argument.  Teeth in
+;       tests/acl2/nntp-auth-teeth-tests.lisp.
 ;   (2) a WIRE lemma: in command mode fn-wire-feed-byte emits only
 ;       (:command ...) events and leaves the mode :command or :closed.
 ;       books/wire-invariants has fn-wire-feed-byte-emits-at-most-one-event
@@ -59,7 +62,7 @@
 ;       about the body -- neither says where a submission can come from.
 ;       It belongs in books/nntp-post.
 ;
-; With those three, K2 is the append law plus K1.  Recorded in
+; With (2) and (3), K2 is the append law plus K1.  Recorded in
 ; planning/proofs.json (PRF-031) as OB-AUTH-FOLD rather than approximated by a
 ; theorem about a branch nobody reaches.
 ;
