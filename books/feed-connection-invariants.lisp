@@ -160,9 +160,10 @@
 ; `fn-fc-statep' left enabled this goal splits it, `fn-fwi-statep' and the
 ; wire octet recognizers on every branch -- 101 subgoals for Goal, 104 for
 ; Subgoal 101, and the book is killed at the 1800 s per-book limit (hbox
-; certify-20260922T025220Z-2602458, persvati certify-20260922T025928Z-2985970,
-; both 2026-09-22; the same source certified in 21.4 s on 2026-09-21 before
-; seven of its dependencies moved).  The `fn-fc-statep' hypothesis is the
+; certify-20260922T025220Z-2602458 and certify-20260922T031240Z-2615431,
+; 1800.041 s in the second; the same source certified in 21.4 s on
+; 2026-09-21, certify-20260921T170420Z-2003857, before seven of its
+; dependencies moved).  The `fn-fc-statep' hypothesis is the
 ; whole fact the put needs about `st', and the entry recognizer asks for
 ; exactly it, so the recognizer stays closed: AGENTS.md, no whole-state
 ; revalidation on a served path.
