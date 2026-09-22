@@ -3799,7 +3799,8 @@ exit "$rc"
         if verdict == ACCEPTED and not shows:
             verdict = REFUSED
         self.emit("V0-AUTH-LIST", verdict, listing.command,
-                  "rc={} lists {}: {}".format(listing.rc, AUTH_USER, shows),
+                  "rc={} {}; lists {}: {}".format(
+                      listing.rc, listing.first_line or "(no output)", AUTH_USER, shows),
                   node=node.name, exit_code=listing.rc, client=CLIENT_CLI,
                   limit="one registry: `set-password` writes and `list` reads the "
                         "credential file the running owner loads at startup; the "
