@@ -21,7 +21,10 @@ the first two are repaired (28fb4bd0), the other two have candidate repairs
 freeze (hbox: closure, images), treewide-reds (hbox: the roots outside the
 image closure), matrix-driver (local: AUTH, live reconfiguration, loopback and
 nntplib rows, then a run on the new image), green-audit (local:
-`tools/green_check.py`, certified-at-current-digest per book). persvati was
+`tools/green_check.py`, certified-at-current-digest per book; landed d667a874:
+dev reads 321 green, 57 red, 20 never and 9 absent at current digests, root
+causes `hybrid-store` and nine test books). The hbox freeze, matrix-provision
+and node-deploy sequences are `tools/runbooks/`. persvati was
 unreachable from the coordinator's machine from about 01:50Z to 03:00Z (an ARP
 loss on that side; the box never rebooted) and is back in the plan.
 
