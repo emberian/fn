@@ -98,7 +98,12 @@ CHECKPOINT_START = re.compile(r"^\*\*\* Key checkpoint.*\*\*\*$")
 MISSING_FOR = re.compile(NO_CERTIFICATE + r' for "([^"]+)"')
 CHECKPOINT_LINES = 24
 # The verdict names, in the order the report presents them.
-KINDS = ("independent", "timeout", "unexplained", "cascade")
+KINDS = ("independent", "timeout", "unexplained", "blocked", "cascade")
+# Create and Complete skip proofs and take seconds a book; only Convert needs
+# a real budget, and that is what `--budget-seconds` bounds.  This is the
+# ceiling for the other two, large enough to be no constraint and small
+# enough that a wave which hangs is a finding rather than a night.
+WAVE_TIMEOUT_SECONDS = 600
 
 
 class TriageError(Exception):
@@ -251,6 +256,14 @@ class Finding:
     checkpoint: str | None = None
     blocked_by: list[str] = field(default_factory=list)
     assumptions: list[str] = field(default_factory=list)
+    # Under `--pcert`, the last provisional wave this book finished.  A book
+    # that reached `convert` has had every one of its proofs done, so a
+    # `blocked` finding hides nothing: it is waiting on a certificate.
+    reached: str | None = None
+
+    @property
+    def proofs_done(self) -> bool:
+        return self.reached in ("convert", "complete")
 
     def as_json(self) -> dict:
         return {
@@ -258,7 +271,8 @@ class Finding:
             "wall_seconds": self.wall_seconds, "acl2_exit_code": self.exit_code,
             "first_error": self.first_error, "error_log_line": self.error_line,
             "key_checkpoint": self.checkpoint, "blocked_by": self.blocked_by,
-            "assuming": self.assumptions,
+            "assuming": self.assumptions, "pcert_reached": self.reached,
+            "proofs_done": self.proofs_done,
         }
 
 
@@ -294,6 +308,40 @@ def classify(book: str, log: str, exit_code: object, round_number: int,
         # own recorded above it.  That is unusual and is not smoothed over.
         finding.first_error = errors[0].text()
         finding.error_line = errors[0].line
+    return finding
+
+
+def classify_pcert(book: str, evidence: Path, manifest: dict, round_number: int,
+                   assumptions: list[str]) -> Finding:
+    """One book's standing after a three-wave provisional run.
+
+    The manifest's `pcert_reached` says which wave the book last finished,
+    and that is the whole difference from a closure run.  A book that reached
+    `convert` proved everything it contains and only lacks a certificate
+    because a book below it lacks one -- `blocked`, and nothing is hidden
+    behind it.  A book whose Convert failed has its own red, whatever is
+    below it.  Only a Create failure can still hide another book's proofs,
+    because Create is the one wave that is dependency-ordered, and that is
+    the one case the substitution loop is still for.
+    """
+    reached = (manifest.get("pcert_reached") or {}).get(book)
+    waves = (manifest.get("book_wave_seconds") or {}).get(book) or {}
+    wall = round(sum(float(value) for value in waves.values()), 3) or None
+    code = (manifest.get("acl2_exit_codes") or {}).get(book)
+    if reached == "convert":
+        finding = Finding(book=book, kind="blocked", round=round_number,
+                          wall_seconds=wall, exit_code=code,
+                          assumptions=list(assumptions), reached=reached)
+        cascades = [error for error in
+                    acl2_errors(wave_log(evidence, book, "complete"))
+                    if error.cascade_of]
+        finding.blocked_by = sorted({error.cascade_of for error in cascades
+                                     if error.cascade_of})
+        return finding
+    wave = "create" if reached is None else "convert"
+    finding = classify(book, wave_log(evidence, book, wave), code,
+                       round_number, wall, assumptions)
+    finding.reached = reached
     return finding
 
 
@@ -422,8 +470,13 @@ def read_manifest(directory: Path) -> dict:
     return manifest
 
 
-def book_log(directory: Path, book: str) -> str:
-    path = directory / (book.replace("/", "--") + ".certify.log")
+def wave_log(directory: Path, book: str, wave: str) -> str:
+    """One provisional wave's own log for one book, or the empty string."""
+    return book_log(directory, book, f".pcert-{wave}")
+
+
+def book_log(directory: Path, book: str, part: str = "") -> str:
+    path = directory / (book.replace("/", "--") + part + ".certify.log")
     try:
         return path.read_text(encoding="utf-8", errors="replace")
     except OSError:
@@ -457,14 +510,17 @@ def apply_substitutions(sources: dict[str, bytes], staging: Path):
 def one_round(host: str, root: Path, roots: list[str], number: int,
               sources: dict[str, bytes], out: Path, *, remote_root: str,
               acl2: str | None, cache: str | None, budget_seconds: int,
-              jobs: int, wait_seconds: int, poll_seconds: int) -> dict:
+              jobs: int, wait_seconds: int, poll_seconds: int,
+              pcert: bool = True) -> dict:
     """Submit one closure certification with these substitutions, and read it."""
     staging = out / "sources"
     into = out / f"round-{number}"
     identifier = farm.submit(
-        host, root, list(roots), jobs, budget_seconds, [],
+        host, root, list(roots), jobs,
+        WAVE_TIMEOUT_SECONDS if pcert else budget_seconds, [],
         remote=Path(remote_root), closure=True, cache=cache, acl2=acl2,
-        no_publish=True, prepare=apply_substitutions(sources, staging))
+        no_publish=True, prepare=apply_substitutions(sources, staging),
+        pcert=pcert, budget_seconds=budget_seconds if pcert else None)
     code = farm.wait(
         host, identifier, root, poll_seconds, wait_seconds, cache,
         collect=lambda box, run, tree, remote, where: farm.fetch_logs(
@@ -484,7 +540,7 @@ def triage(host: str, roots: list[str], *, root: Path = ROOT,
            budget_seconds: int = 300, rounds: int = 4, jobs: int = 8,
            wait_seconds: int = farm.DEFAULT_WAIT_SECONDS,
            poll_seconds: int = farm.POLL_SECONDS,
-           out: Path | None = None) -> dict:
+           out: Path | None = None, pcert: bool = True) -> dict:
     """Run the rounds and return the report, which is the tool's whole output."""
     identifier = run_id()
     out = out or (root / OUT_REL / identifier)
@@ -509,7 +565,7 @@ def triage(host: str, roots: list[str], *, root: Path = ROOT,
         outcome = one_round(
             host, root, roots, number, sources, out, remote_root=remote_root,
             acl2=acl2, cache=cache, budget_seconds=budget_seconds, jobs=jobs,
-            wait_seconds=wait_seconds, poll_seconds=poll_seconds)
+            wait_seconds=wait_seconds, poll_seconds=poll_seconds, pcert=pcert)
         evidence = outcome.pop("evidence")
         manifest = read_manifest(evidence)
         results = manifest.get("book_results") or {}
@@ -517,10 +573,13 @@ def triage(host: str, roots: list[str], *, root: Path = ROOT,
         codes = manifest.get("acl2_exit_codes") or {}
         failed = sorted(book for book, verdict in results.items()
                         if verdict != "passed")
+        provisional = bool(manifest.get("pcert"))
         this_round = []
         for book in failed:
-            finding = classify(book, book_log(evidence, book), codes.get(book),
-                               number, walls.get(book), assumed)
+            finding = (classify_pcert(book, evidence, manifest, number, assumed)
+                       if provisional else
+                       classify(book, book_log(evidence, book), codes.get(book),
+                                number, walls.get(book), assumed))
             this_round.append(finding)
             if finding.kind != "cascade" and book not in findings:
                 findings[book] = finding
@@ -537,8 +596,16 @@ def triage(host: str, roots: list[str], *, root: Path = ROOT,
         performed.append(outcome)
         if not failed:
             break
+        # Only a book that never produced a `.pcert0` can still be hiding
+        # another book's proofs: Create is the one dependency-ordered wave.
+        # A Convert failure hides nothing, so a provisional round has no
+        # second round to run unless Create failed somewhere.  Without
+        # `--pcert` every red hides its dependents and every one is a
+        # candidate.
         wanted = [one.book for one in this_round
                   if one.kind in ("independent", "timeout", "unexplained")
+                  and not (provisional and one.proofs_done)
+                  and not (provisional and one.reached is not None)
                   and one.book not in substitutions
                   and one.book not in untriageable]
         added = 0
@@ -565,6 +632,7 @@ def triage(host: str, roots: list[str], *, root: Path = ROOT,
         "books_in_closure": len(books),
         "budget_seconds": budget_seconds,
         "rounds_requested": rounds,
+        "provisional": pcert,
         "rounds": performed,
         "findings": [findings[book].as_json() for book in sorted(findings)],
         "substitutions": [substitutions[book].as_json()
@@ -587,6 +655,11 @@ def triage(host: str, roots: list[str], *, root: Path = ROOT,
 
 def markdown(report: dict) -> str:
     """The report a lane reads: every independent red, and what it rests on."""
+    mode = ("ACL2 provisional certification: a Create wave, one parallel "
+            "Convert wave that does every book's proofs, and a Complete wave"
+            if report.get("provisional") else
+            "ordinary dependency-ordered certification, one layer of "
+            "independent reds per round")
     lines = [f"# Triage {report['triage_run']} -- {report['host']}", ""]
     lines += [
         "**This is not evidence of certification.** " +
@@ -599,6 +672,8 @@ def markdown(report: dict) -> str:
         f"({', '.join(report['roots'])}), "
         f"per-book budget {report['budget_seconds']} s, remote root "
         f"`{report['remote_root']}`.",
+        "",
+        f"Mode: {mode}.",
         "",
         "## Rounds",
         "",
@@ -628,8 +703,10 @@ def markdown(report: dict) -> str:
         "independent": "Independent reds",
         "timeout": "Timeouts (each is a finding in its own right)",
         "unexplained": "Failed with no ACL2 error and no timeout",
+        "blocked": ("Proved, not certified -- every proof in these books "
+                    "succeeded and a book below them has no certificate"),
     }
-    for kind in ("independent", "timeout", "unexplained"):
+    for kind in ("independent", "timeout", "unexplained", "blocked"):
         entries = by_kind[kind]
         if not entries:
             continue
@@ -647,6 +724,11 @@ def markdown(report: dict) -> str:
                 lines += [f"Key checkpoint (log line {one['error_log_line']} "
                           f"is the error above):", "```",
                           one["key_checkpoint"], "```", ""]
+            if one["blocked_by"]:
+                lines.append("Waiting on: "
+                             + ", ".join(f"`{name}`"
+                                         for name in one["blocked_by"]))
+                lines.append("")
             if one["assuming"]:
                 lines.append("Assuming:")
                 lines += [f"- {sentence}" for sentence in one["assuming"]]
@@ -719,6 +801,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="per-book ACL2 budget (default 300; a book that "
                              "needs more is reported as a timeout finding)")
     parser.add_argument("--rounds", type=int, default=4)
+    parser.add_argument("--no-pcert", dest="pcert", action="store_false",
+                        help="use ordinary certification instead of ACL2's "
+                             "provisional waves; then one round reports one "
+                             "layer of reds and the substitution loop does "
+                             "the rest")
     parser.add_argument("--jobs", type=int, default=8)
     parser.add_argument("--wait-seconds", type=int,
                         default=farm.DEFAULT_WAIT_SECONDS)
@@ -742,7 +829,7 @@ def main(argv: list[str] | None = None) -> int:
             arguments.host, list(arguments.roots), root=root,
             remote_root=arguments.remote_root, acl2=arguments.acl2,
             cache=arguments.cache, budget_seconds=arguments.budget_seconds,
-            rounds=arguments.rounds, jobs=arguments.jobs,
+            rounds=arguments.rounds, jobs=arguments.jobs, pcert=arguments.pcert,
             wait_seconds=arguments.wait_seconds,
             poll_seconds=arguments.poll_seconds,
             out=Path(arguments.out) if arguments.out else None)

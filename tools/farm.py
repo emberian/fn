@@ -331,7 +331,8 @@ def publishes(script: str) -> bool:
 def remote_script(host: str, root: Path, identifier: str, books: list[str],
                   jobs: int, timeout_seconds: int, affected_by: list[str],
                   closure: bool = False, cache: str | None = None,
-                  acl2: str | None = None, no_publish: bool = False) -> str:
+                  acl2: str | None = None, no_publish: bool = False,
+                  pcert: bool = False, budget_seconds: int | None = None) -> str:
     """The submit script: every step that can fail exits with its own code.
 
     `cd X && ... &` backgrounds the whole list, so ssh returned 0 whatever
@@ -340,7 +341,9 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
     that did not exist.  Each guard here is a distinct non-zero exit.
 
     `no_publish` passes `--no-publish` to the runner, which is what stops the
-    per-book publication into the box's cache.
+    per-book publication into the box's cache.  `pcert` runs the closure as
+    ACL2's three provisional waves, whose Convert wave is where the proofs
+    are and what `budget_seconds` bounds.
     """
     settings = host_settings(host, cache, acl2)
     runner = ["python3", "tools/certify_books.py", "--jobs", str(jobs)]
@@ -350,6 +353,10 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         runner.append("--closure")
     if no_publish:
         runner.append("--no-publish")
+    if pcert:
+        runner.append("--pcert")
+    if budget_seconds is not None:
+        runner.extend(["--budget-seconds", str(budget_seconds)])
     runner.extend(books)
     if settings["wrap"]:
         runner = [settings["wrap"]] + runner
@@ -388,7 +395,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
            remote: Path | None = None, closure: bool = False,
            cache: str | None = None, acl2: str | None = None,
            no_publish: bool = False,
-           prepare: Callable[[str, Path], None] | None = None) -> str:
+           prepare: Callable[[str, Path], None] | None = None,
+           pcert: bool = False, budget_seconds: int | None = None) -> str:
     """Mirror, install a coherent input set, and start the detached runner.
 
     `prepare(host, remote)` runs between the mirror and ACL2, on the box's
@@ -413,7 +421,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
           file=sys.stderr)
     script = remote_script(host, remote, identifier, books, jobs,
                            timeout_seconds, affected_by, closure, cache, acl2,
-                           no_publish)
+                           no_publish, pcert, budget_seconds)
     if no_publish and publishes(script):
         raise FarmError(
             f"{host}: {identifier} was asked not to publish and its runner "
@@ -432,6 +440,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
         "affected_by": affected_by,
         "closure": closure,
         "no_publish": no_publish,
+        "pcert": pcert,
+        "budget_seconds": budget_seconds,
         # What the box's cache already held: the run certifies the rest.
         "cache_install": cached,
         "cache": host_settings(host, cache)["cache"],
