@@ -16,17 +16,28 @@ use it. The v0.5/v0.6 lanes stay checkpointed until that node exists.
 The first freeze attempts (hbox, 2026-09-22 02:15Z and 02:29Z) found `dev`
 red in four books no lane had certified at their current digests
 (stx-evidence-records, checkpoint-compaction, hybrid-store, feed-connection);
-the first two are repaired (28fb4bd0), the other two have candidate repairs
-(dbf2e1ab). Four Opus lanes run from dbf2e1ab under `build/lanes/w31-*`:
-freeze (hbox: closure, images), treewide-reds (hbox: the roots outside the
-image closure), matrix-driver (local: AUTH, live reconfiguration, loopback and
-nntplib rows, then a run on the new image), green-audit (local:
-`tools/green_check.py`, certified-at-current-digest per book; landed d667a874:
-dev reads 321 green, 57 red, 20 never and 9 absent at current digests, root
-causes `hybrid-store` and nine test books). The hbox freeze, matrix-provision
-and node-deploy sequences are `tools/runbooks/`. persvati was
-unreachable from the coordinator's machine from about 01:50Z to 03:00Z (an ARP
-loss on that side; the box never rebooted) and is back in the plan.
+the first two are repaired (28fb4bd0), the other two are the freeze lane's.
+Opus lanes run under `build/lanes/w31-*`: freeze (hbox: the image closure,
+then production, developer and DTN images; it writes `IMAGE-READY.txt` in
+its worktree when `build/fn-host` exists), treewide-reds (the roots outside
+the image closure; it has certified `msgid-index` for the first time),
+matrix-driver (landed 8935d992: AUTHINFO, live groups, the wildcard listener
+and an independent client are measurements on the native slice; on 915 the
+credential rows carry that image's exit 5, `V0-CFG-LIVE` is a real refusal
+and the two nntplib rows are the slice's first accepted independent rows; it
+reruns on the new image), agent-client (`tools/fn_client.py`: the way agents
+and humans read and post on the deployed node over STARTTLS and AUTHINFO,
+tested against a fake node), and duplicate-outcome (the matrix found that a
+second submission of one Message-ID answers refused on one node and accepted
+as a duplicate on the other, swapping between runs; the lane finds which
+octets `fn-owner-existing-action` compares and makes the word deterministic).
+green-audit landed earlier (d667a874, `tools/green_check.py` in `make
+check`). Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
+step runs from the laptop: STARTTLS, the 483 before it, login, a post and a
+fresh-connection reread, on the deploy gate's exit scale. The hbox freeze,
+matrix-provision and node-deploy sequences are `tools/runbooks/`. persvati
+was unreachable from the coordinator's machine from about 01:50Z to 03:00Z
+(an ARP loss on that side; the box never rebooted) and is back in the plan.
 
 Updated 2026-09-21. The goal remains the full selected two-peer v0 and v1/M6
 scope in [milestones](milestones.md#release-shape-v0-and-v1). Component tests
