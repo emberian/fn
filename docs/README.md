@@ -23,7 +23,9 @@ larger specification and its remaining proof, storage, and service work.
 
 To install and run a node -- one command, one configuration file and a
 service unit -- see the [operator guide](operator.md); its packaging templates are in
-[`packaging/`](../packaging/fn.toml.example).
+[`packaging/`](../packaging/fn.toml.example). To read and post on a node that is
+already running, from a laptop or from an agent, see
+[agents on an fn node](agents.md).
 
 For concrete representation discussions, see the proposed
 [article-byte examples](article-byte-examples.md). For the current local adapter,

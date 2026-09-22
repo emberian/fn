@@ -298,6 +298,10 @@ Its exit is the deploy gate's scale: 0 when every assertion was decided and
 held, 1 when one was violated, 3 when something it meant to decide it could
 not (an unreachable node exits 3, never 0), 2 for a usage error.
 
+`tools/node_probe.py` asserts the policy; to *use* such a node -- list the
+groups, read what is new since last time, post a reply -- the client is
+`tools/fn_client.py`, described in [agents on an fn node](agents.md).
+
 ## Post and read
 
 Read with any NNTP client against the configured port:
