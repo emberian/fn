@@ -108,6 +108,31 @@ from deploy_gate import (DEFAULT_HOST, EXIT_OK, EXIT_REFUSED,   # noqa: E402
 from twonode_gate import NodeSpec                               # noqa: E402
 
 
+ARTICLE_STAMPS: dict = {}
+
+
+def article_stamp(msgid: str) -> str:
+    """One Date per Message-ID, for the life of the run.
+
+    This used to be `datetime.now()` on every call, so building the same
+    article twice gave different octets whenever the second build crossed a
+    second boundary. An fn node compares a resubmission against the octets it
+    already holds (`fn-store-article-match`, `host/store-host.lisp`, over
+    `fn-article-payload`), so the varying Date made one row -- a second
+    submission of one Message-ID -- answer `DUPLICATE` with exit 0 or
+    `REFUSED` with exit 1 depending on the clock. That reads as a violation
+    of D13 in the node and is a defect of this harness: the two runs of
+    2026-09-22 (03:08Z and 03:21Z) swapped the two nodes' words and nothing
+    else. RFC 5536 section 3.1.3 gives one Message-ID one article, so one
+    Message-ID gets one Date here, and a row that wants different octets
+    under one Message-ID now has to say so.
+    """
+    if msgid not in ARTICLE_STAMPS:
+        ARTICLE_STAMPS[msgid] = dt.datetime.now(dt.timezone.utc).strftime(
+            "%a, %d %b %Y %H:%M:%S +0000")
+    return ARTICLE_STAMPS[msgid]
+
+
 def article(msgid: str, group: str, subject: str, body: str, path: str = "") -> bytes:
     """An article as octets, CRLF, with a Date.
 
@@ -117,8 +142,11 @@ def article(msgid: str, group: str, subject: str, body: str, path: str = "") -> 
     section 3.1.1 makes Date mandatory), which is correct and which made
     every transfer row of the sixth run read as a refusal. Every article the
     matrix offers therefore carries one.
+
+    The same arguments give the same octets every time: the Date comes from
+    `article_stamp`, which is fixed per Message-ID.
     """
-    stamp = dt.datetime.now(dt.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+    stamp = article_stamp(msgid)
     headers = ["Path: {}!not-for-mail".format(path)] if path else []
     headers += ["From: gate@example.invalid",
                 "Subject: {}".format(subject),
@@ -4083,35 +4111,65 @@ exit "$rc"
                          invocation=self.native_operator(node, "peer", "list"))
 
     def native_submit(self, node: NodeSpec, msgid: str, subject: str, body: str,
-                      name: str) -> Step:
-        """One article through the public `post`, to the live owner's control socket."""
-        payload = "{}/{}.article".format(node.dir, msgid.strip("<>").split("@")[0])
+                      name: str, tag: str = "") -> Step:
+        """One article through the public `post`, to the live owner's control socket.
+
+        Two calls with the same Message-ID, subject and body push byte-identical
+        octets (`article_stamp`). `tag` names a deliberate variant and gives it
+        its own file, so a row that submits different octets under one
+        Message-ID neither overwrites the accepted article nor is mistaken for
+        a resubmission of it.
+        """
+        stem = msgid.strip("<>").split("@")[0] + (("-" + tag) if tag else "")
+        payload = "{}/{}.article".format(node.dir, stem)
         self.push_file(article(msgid, self.native_group, subject, body), payload)
         return self.sh(name, self.cd(self.native_operator(
             node, "post", "--message-id", msgid, "--payload", self.Raw(payload),
             "--group", self.native_group)), timeout=900, expect=None)
 
     def native_outcomes(self, node: NodeSpec):
-        """The operator-surface outcomes the production image can show."""
+        """The operator-surface outcomes the production image can show.
+
+        Three submissions of one Message-ID, and the octets are what separates
+        them: the first is new, the second is byte-identical, the third carries
+        a different body. The node answers `ACCEPTED`, the idempotent
+        `DUPLICATE` and `REFUSED`, and those words are a function of the octets
+        alone -- see `planning/evidence/native-duplicate-outcome-2026-09-22.md`
+        for the twelve trials that pinned it on the 915 image.
+        """
         msgid = ART[node.name]
+        subject = "outcome, written on {}".format(node.upper)
+        body = ("Written on node {} by the v0 matrix through the native operator."
+                .format(node.upper))
         accepted = self.native_submit(
-            node, msgid, "outcome, written on {}".format(node.upper),
-            "Written on node {} by the v0 matrix through the native operator."
-            .format(node.upper), "node {} outcome accepted".format(node.upper))
+            node, msgid, subject, body,
+            "node {} outcome accepted".format(node.upper))
         self.from_step("V0-OUT-ACCEPTED", accepted, node=node.name,
                        limit="one article submitted to the live owner over its control "
                              "socket; the exit code is the observation")
         if accepted.rc == EXIT_OK:
             node.accepted.append(msgid)
+        duplicate = self.native_submit(
+            node, msgid, subject, body,
+            "node {} outcome duplicate".format(node.upper))
         refused = self.native_submit(
-            node, msgid, "outcome, written on {}".format(node.upper),
-            "Written on node {} by the v0 matrix through the native operator."
-            .format(node.upper), "node {} outcome refused".format(node.upper))
+            node, msgid, subject,
+            body + " This body was edited after acceptance, under the Message-ID "
+                   "the node already holds.",
+            "node {} outcome refused".format(node.upper), tag="conflict")
         self.from_step("V0-OUT-REFUSED", refused, node=node.name,
                        limit="NOT a lookup: the native operator has no article lookup "
-                             "verb, so the refused outcome observed here is the same "
-                             "submission a second time, refused by the Message-ID "
-                             "binding")
+                             "verb, so the refusal observed here is a second submission "
+                             "of the SAME Message-ID carrying DIFFERENT octets, which "
+                             "the node refuses as a conflicting immutable Message-ID. A "
+                             "byte-identical resubmission is a different observation: "
+                             "it is the idempotent duplicate, reported as accepted with "
+                             "exit 0, and it is the `duplicate resubmission` fact")
+        self.facts["duplicate resubmission {}".format(node.name)] = (
+            "identical octets: rc={} {} / different octets under the same "
+            "Message-ID: rc={} {}".format(
+                duplicate.rc, duplicate.first_line or "no output",
+                refused.rc, refused.first_line or "no output"))
         self.blocked(("V0-OUT-UNCERTAIN",),
                      "the production image has no fault-injection option; an uncertain "
                      "publication is the developer image's cut campaign, not a public "
