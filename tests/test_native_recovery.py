@@ -17,6 +17,11 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", str(ROOT / "build" / "fn-host")))
+# A fault selector is a developer-image selector: a production image refuses
+# to start with FN_NATIVE_RECOVERY_FAULT in its environment (exit 5, host/native/io.lisp
+# `fnn-developer-selector-gate'), so every faulted step runs this image.
+DEVELOPER = Path(os.environ.get(
+    "FN_NATIVE_DEVELOPER_HOST", str(ROOT / "build" / "fn-host-developer")))
 sys.path.insert(0, str(ROOT / "tools"))
 import run_store  # noqa: E402
 import frame_bridge  # noqa: E402
@@ -90,8 +95,16 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         env.pop("FN_NATIVE_RECOVERY_FAULT", None)
         if recovery_fault is not None:
             env["FN_NATIVE_RECOVERY_FAULT"] = recovery_fault
+        image = IMAGE
+        if recovery_fault is not None:
+            if not (DEVELOPER.is_file() and os.access(DEVELOPER, os.X_OK)):
+                self.skipTest(
+                    "build/fn-host-developer (or FN_NATIVE_DEVELOPER_HOST) is "
+                    "required: FN_NATIVE_RECOVERY_FAULT is a developer-image selector and a "
+                    "production image refuses to start with it")
+            image = DEVELOPER
         return subprocess.run(
-            [str(IMAGE), "--fn", "store", str(store), command], cwd=ROOT,
+            [str(image), "--fn", "store", str(store), command], cwd=ROOT,
             env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
 
     def initialized(self, name):
