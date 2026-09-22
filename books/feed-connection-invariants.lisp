@@ -101,13 +101,21 @@
   (equal (fn-fc-table-lookup peer (fn-fc-table-put peer st table)) st)
   :hints (("Goal" :in-theory (enable fn-fc-table-put fn-fc-table-lookup))))
 
+; The same posture as the put below: the entry recognizer asks for
+; `fn-fc-statep' of the entry and that is the whole fact the lookup needs, so
+; the state recognizers stay closed.  With them open this proof took 278-320
+; s of every certification of this book (hbox certify-20260922T060312Z-2712514
+; 319.1 s for the book; nextop certify-20260922T195818Z-16948, 277.9 s for
+; this event alone); closed, it is under a second.
 (defthm fn-fc-table-lookup-is-state
   (implies (and (fn-fc-tablep table)
                 (fn-fc-table-lookup peer table))
            (fn-fc-statep (fn-fc-table-lookup peer table)))
   :hints (("Goal" :induct (fn-fc-table-lookup peer table)
-                  :in-theory (enable fn-fc-tablep fn-fc-table-entryp
-                                     fn-fc-table-lookup))))
+                  :in-theory (e/d (fn-fc-tablep fn-fc-table-entryp
+                                   fn-fc-table-lookup)
+                                  (fn-fc-statep fn-fwi-statep
+                                   fn-wire-octet-listp fn-wire-octetp)))))
 
 (local
  (defthm fn-fc-table-name-member-of-remove
