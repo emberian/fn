@@ -1,8 +1,9 @@
 """tools/node_probe.py against a fake node that speaks just enough NNTP.
 
-The fake wraps its socket in real TLS with a certificate made here, so the
-probe's handshake, its 483-before-TLS assertion, its login and its fresh-
-connection reread are exercised end to end over loopback.  Each test names
+The fake is `tests/fake_node.py`, which wraps its socket in real TLS with a
+certificate openssl writes for the run, so the probe's handshake, its
+483-before-TLS assertion, its login and its fresh-connection reread are
+exercised end to end over loopback.  Each test names
 the one thing about the node it changes and the verdict that change must
 produce; the exit code is asserted on every run because it is the part a
 shell script reads.
@@ -14,163 +15,16 @@ import os
 import pathlib
 import shutil
 import socket
-import ssl
-import subprocess
 import sys
 import tempfile
-import threading
 import unittest
 from unittest import mock
+
+from tests.fake_node import FakeNode, make_pair
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import node_probe  # noqa: E402
-
-
-class FakeNode(threading.Thread):
-    """Serves one connection after another until stopped."""
-
-    def __init__(self, cert, key, protected_only=True, password="right", accept_post=True,
-                 offer_starttls=True):
-        super().__init__(daemon=True)
-        self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        self.context.load_cert_chain(cert, key)
-        self.protected_only = protected_only
-        self.password = password
-        self.accept_post = accept_post
-        self.offer_starttls = offer_starttls
-        self.articles = {}
-        self.listener = socket.socket()
-        self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.listener.bind(("127.0.0.1", 0))
-        self.listener.listen(4)
-        self.port = self.listener.getsockname()[1]
-        self.stopping = False
-        self.seen = []
-
-    def stop(self):
-        self.stopping = True
-        self.listener.close()
-
-    def run(self):
-        while not self.stopping:
-            try:
-                conn, _ = self.listener.accept()
-            except OSError:
-                return
-            try:
-                self.serve(conn)
-            except (OSError, ssl.SSLError):
-                pass
-            finally:
-                try:
-                    conn.close()
-                except OSError:
-                    pass
-
-    def serve(self, conn):
-        conn.settimeout(10)
-        buf = b""
-        tls = False
-        authenticated = False
-
-        def line():
-            nonlocal buf
-            while b"\r\n" not in buf:
-                chunk = conn.recv(4096)
-                if not chunk:
-                    raise OSError("client went away")
-                buf += chunk
-            out, buf = buf.split(b"\r\n", 1)
-            return out.decode()
-
-        def send(text):
-            conn.sendall(text.encode() + b"\r\n")
-
-        send("200 fake node ready")
-        try:
-            while True:
-                cmd = line()
-                self.seen.append(cmd if not cmd.startswith("AUTHINFO PASS") else "AUTHINFO PASS *")
-                words = cmd.split()
-                verb = words[0].upper() if words else ""
-                if verb == "CAPABILITIES":
-                    caps = ["VERSION 2", "READER", "POST"]
-                    if self.offer_starttls and not tls:
-                        caps.append("STARTTLS")
-                    if not authenticated and (tls or not self.protected_only):
-                        caps.append("AUTHINFO USER")
-                    send("101 capabilities")
-                    for cap in caps:
-                        send(cap)
-                    send(".")
-                elif verb == "STARTTLS":
-                    if tls or not self.offer_starttls:
-                        send("502 already or never")
-                        continue
-                    send("382 continue with TLS negotiation")
-                    assert buf == b"", "the fake never takes pipelined octets"
-                    conn = self.context.wrap_socket(conn, server_side=True)
-                    tls = True
-                elif verb == "AUTHINFO":
-                    if self.protected_only and not tls:
-                        send("483 a protected channel is required; use STARTTLS")
-                    elif words[1].upper() == "USER":
-                        send("381 password required")
-                    elif words[1].upper() == "PASS":
-                        if " ".join(words[2:]) == self.password:
-                            authenticated = True
-                            send("281 authentication accepted")
-                        else:
-                            send("481 authentication failed")
-                    else:
-                        send("501 syntax")
-                elif verb == "GROUP":
-                    if not authenticated:
-                        send("480 authentication required")
-                        continue
-                    send("211 %d 1 %d %s" % (len(self.articles), max(len(self.articles), 1), words[1]))
-                elif verb == "POST":
-                    if not authenticated or not self.accept_post:
-                        send("440 posting not permitted")
-                        continue
-                    send("340 send article")
-                    lines = []
-                    while True:
-                        one = line()
-                        if one == ".":
-                            break
-                        lines.append(one[1:] if one.startswith("..") else one)
-                    msgid = [l.split(":", 1)[1].strip() for l in lines
-                             if l.lower().startswith("message-id:")]
-                    self.articles[msgid[0]] = lines
-                    send("240 article received")
-                elif verb == "ARTICLE":
-                    lines = self.articles.get(words[1])
-                    if lines is None:
-                        send("430 no such article")
-                        continue
-                    send("220 0 %s" % words[1])
-                    for one in lines:
-                        send(("." + one) if one.startswith(".") else one)
-                    send(".")
-                elif verb == "QUIT":
-                    send("205 bye")
-                    return
-                else:
-                    send("500 unknown")
-        finally:
-            conn.close()
-
-
-def make_pair(directory):
-    cert, key = directory / "cert.pem", directory / "key.pem"
-    subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256",
-                    "-days", "2", "-subj", "/CN=localhost",
-                    "-addext", "subjectAltName=IP:127.0.0.1,DNS:localhost",
-                    "-keyout", str(key), "-out", str(cert)],
-                   check=True, capture_output=True)
-    return cert, key
 
 
 @unittest.skipUnless(shutil.which("openssl"), "no openssl to make a certificate")
