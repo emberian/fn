@@ -370,6 +370,9 @@ PLAN = (
       ("NNT-006",), ("SCN-014",), ACCEPTED, "node"),
     S("V0-READ-LIST-NEWSGROUPS", "F-READ", "LIST NEWSGROUPS",
       ("NNT-006",), ("SCN-014",), ACCEPTED, "node"),
+    S("V0-READ-LIST-NEWSGROUPS-WILDMAT", "F-READ",
+      "LIST NEWSGROUPS filtered by a wildmat",
+      ("NNT-006",), ("SCN-014",), ACCEPTED, "node"),
     S("V0-READ-LIST-OVERVIEW-FMT", "F-READ", "LIST OVERVIEW.FMT",
       ("NNT-001",), ("SCN-014",), ACCEPTED, "node"),
     S("V0-READ-LIST-ACTIVE-TIMES", "F-READ", "LIST ACTIVE.TIMES",
@@ -412,6 +415,18 @@ PLAN = (
     S("V0-READ-LAST", "F-READ", "LAST moves the cursor back",
       ("NNT-002",), ("SCN-014",), None, "node",
       "the expected outcome depends on where the cursor was"),
+    S("V0-READ-NEWNEWS", "F-READ",
+      "NEWNEWS over a wildmat, since an instant before the store existed",
+      ("NNT-008",), ("SCN-014",), ACCEPTED, "node",
+      "the node under test may hold no article whose Injection-Date or Date "
+      "fn can decode, in which case 230 with an empty block is the correct "
+      "answer and the row records the framing, not a reported identifier"),
+    S("V0-READ-NEWNEWS-FUTURE", "F-READ",
+      "NEWNEWS since a future instant returns the empty block",
+      ("NNT-008",), ("SCN-014",), ACCEPTED, "node"),
+    S("V0-READ-NEWNEWS-SYNTAX", "F-READ",
+      "NEWNEWS with a malformed wildmat is refused with 501",
+      ("NNT-008",), ("SCN-014",), REFUSED, "node"),
     S("V0-READ-DATE", "F-READ", "DATE",
       ("NNT-002",), ("SCN-014",), ACCEPTED, "node"),
     S("V0-READ-HELP", "F-READ", "HELP",
@@ -827,6 +842,8 @@ def surface(args):
     for one in ("LIST ACTIVE", "LIST NEWSGROUPS", "LIST OVERVIEW.FMT",
                 "LIST ACTIVE.TIMES", "LIST HEADERS"):
         out[one] = conn.cmd(one, multiline=True)[0]
+    out["LIST NEWSGROUPS WILDMAT"] = conn.cmd(
+        "LIST NEWSGROUPS {}".format(args.group), multiline=True)[0]
     group = conn.cmd("GROUP " + args.group)
     out["GROUP"] = group[0]
     count, first, last = 0, 0, 0
@@ -849,6 +866,16 @@ def surface(args):
     out["XOVER"] = conn.cmd("XOVER {}-{}".format(n, last or n), multiline=True)[0]
     out["XHDR"] = conn.cmd("XHDR Subject {}".format(n), multiline=True)[0]
     out["XPAT"] = conn.cmd("XPAT Subject {}-{} *".format(n, last or n), multiline=True)[0]
+    # RFC 3977 section 7.4.  Three rows: the whole-history poll, the poll from
+    # an instant in the future (section 7.4.2's empty list is a valid answer),
+    # and a malformed wildmat, which section 3.2.1 makes 501.  A node that
+    # holds no article with a decodable Injection-Date or Date answers the
+    # first with an empty block too, which is why its row records framing.
+    out["NEWNEWS"] = conn.cmd("NEWNEWS {} 19700101 000000 GMT".format(args.group),
+                              multiline=True)[0]
+    out["NEWNEWS FUTURE"] = conn.cmd("NEWNEWS {} 20990101 000000 GMT".format(args.group),
+                                     multiline=True)[0]
+    out["NEWNEWS SYNTAX"] = conn.cmd("NEWNEWS [ 19700101 000000 GMT")[0]
     # The cursor pair, from a known position: STAT the first article, then NEXT
     # and LAST.  With one article NEXT is 421 by RFC 3977 section 6.1.4; the
     # matrix is told the count so it can say which case this run was.
@@ -2362,6 +2389,7 @@ else echo NONE; fi
         ("V0-READ-MODE-READER", "MODE READER"),
         ("V0-READ-LIST-ACTIVE", "LIST ACTIVE"),
         ("V0-READ-LIST-NEWSGROUPS", "LIST NEWSGROUPS"),
+        ("V0-READ-LIST-NEWSGROUPS-WILDMAT", "LIST NEWSGROUPS WILDMAT"),
         ("V0-READ-LIST-OVERVIEW-FMT", "LIST OVERVIEW.FMT"),
         ("V0-READ-LIST-ACTIVE-TIMES", "LIST ACTIVE.TIMES"),
         ("V0-READ-LIST-HEADERS", "LIST HEADERS"),
@@ -2379,6 +2407,9 @@ else echo NONE; fi
         ("V0-READ-XOVER", "XOVER"),
         ("V0-READ-XHDR", "XHDR"),
         ("V0-READ-XPAT", "XPAT"),
+        ("V0-READ-NEWNEWS", "NEWNEWS"),
+        ("V0-READ-NEWNEWS-FUTURE", "NEWNEWS FUTURE"),
+        ("V0-READ-NEWNEWS-SYNTAX", "NEWNEWS SYNTAX"),
         ("V0-READ-DATE", "DATE"),
         ("V0-READ-HELP", "HELP"),
         ("V0-READ-UNKNOWN", "UNKNOWN"),
@@ -4632,40 +4663,14 @@ exit "$rc"
     def document(self, started, elapsed) -> dict:
         execution = self.execution_identity()
         rows = [row.json(self.rev, execution) for row in self.rows]
-        order = {rid: i for i, rid in enumerate(PLANNED_IDS)}
-        rows.sort(key=lambda r: order[r["id"]])
-        summary = {v: sum(1 for r in rows if r["verdict"] == v) for v in VERDICTS}
-        summary["total"] = len(rows)
-        summary["disagreed"] = sum(1 for r in rows if r["agrees"] is False)
-        # A host fault (4) or usage error (5) is not an outcome: its row is
-        # not-exercised with the code as blocker, and it is counted here so
-        # the run's exit code cannot be 0 over a command that crashed.
-        summary["faulted"] = sum(1 for r in rows if r["exit_code"] not in (
-            None, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN))
-        summary["independent"] = sum(1 for r in rows if r["independent"] is True)
-        summary["fn-observed"] = sum(1 for r in rows if r["independent"] is False)
-        clients = {}
-        for row in rows:
-            if row["client"]:
-                clients[row["client"]] = clients.get(row["client"], 0) + 1
-        by_requirement, by_scenario = {}, {}
-        for row in rows:
-            for ident in row["requirements"]:
-                by_requirement.setdefault(ident, []).append(row["id"])
-            for ident in row["scenarios"]:
-                by_scenario.setdefault(ident, []).append(row["id"])
-        features = []
-        for fid, title in FEATURES:
-            mine = [r for r in rows if r["feature"] == fid]
-            features.append({
-                "id": fid, "title": title,
-                "rows": [r["id"] for r in mine],
-                "counts": {v: sum(1 for r in mine if r["verdict"] == v)
-                           for v in VERDICTS},
-                "disagreed": sum(1 for r in mine if r["agrees"] is False),
-            })
-        digest = hashlib.sha256(json.dumps(
-            rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        derived = derive(rows)
+        rows = derived["rows"]
+        summary = derived["summary"]
+        clients = derived["clients"]
+        by_requirement = derived["by_requirement"]
+        by_scenario = derived["by_scenario"]
+        features = derived["features"]
+        digest = derived["rows_digest"]
         return {
             "schema_version": SCHEMA_VERSION,
             "generated_by": self.TOOL,
@@ -4820,6 +4825,97 @@ def render_plan() -> str:
                 spec.title))
         lines.append("")
     return "\n".join(lines)
+
+
+def derive(rows: list) -> dict:
+    """Every counted field of a matrix document, from its rows and nothing else.
+
+    `document` builds a run's file with this, and `add_planned_rows` rebuilds
+    an existing file with it, so a summary, an index or a digest has one owner
+    and no second derivation can disagree with it.
+    """
+    order = {rid: i for i, rid in enumerate(PLANNED_IDS)}
+    rows = sorted(rows, key=lambda r: order[r["id"]])
+    summary = {v: sum(1 for r in rows if r["verdict"] == v) for v in VERDICTS}
+    summary["total"] = len(rows)
+    summary["disagreed"] = sum(1 for r in rows if r["agrees"] is False)
+    # A host fault (4) or usage error (5) is not an outcome: its row is
+    # not-exercised with the code as blocker, and it is counted here so
+    # the run's exit code cannot be 0 over a command that crashed.
+    summary["faulted"] = sum(1 for r in rows if r["exit_code"] not in (
+        None, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN))
+    summary["independent"] = sum(1 for r in rows if r["independent"] is True)
+    summary["fn-observed"] = sum(1 for r in rows if r["independent"] is False)
+    clients = {}
+    for row in rows:
+        if row["client"]:
+            clients[row["client"]] = clients.get(row["client"], 0) + 1
+    by_requirement, by_scenario = {}, {}
+    for row in rows:
+        for ident in row["requirements"]:
+            by_requirement.setdefault(ident, []).append(row["id"])
+        for ident in row["scenarios"]:
+            by_scenario.setdefault(ident, []).append(row["id"])
+    features = []
+    for fid, title in FEATURES:
+        mine = [r for r in rows if r["feature"] == fid]
+        features.append({
+            "id": fid, "title": title,
+            "rows": [r["id"] for r in mine],
+            "counts": {v: sum(1 for r in mine if r["verdict"] == v)
+                       for v in VERDICTS},
+            "disagreed": sum(1 for r in mine if r["agrees"] is False),
+        })
+    return {
+        "rows": rows,
+        "summary": summary,
+        "clients": {k: clients[k] for k in sorted(clients)},
+        "by_requirement": {k: by_requirement[k] for k in sorted(by_requirement)},
+        "by_scenario": {k: by_scenario[k] for k in sorted(by_scenario)},
+        "features": features,
+        "rows_digest": hashlib.sha256(json.dumps(
+            rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+    }
+
+
+PLANNED_AFTER_THE_RUN = (
+    "planned after the recorded run: this row was added to the tool's PLAN "
+    "after the measurement in this file was taken, so no run has reached it "
+    "on any commit. The next matrix run measures it.")
+
+
+def add_planned_rows(doc: dict) -> list:
+    """Give every planned id the file lacks a not-exercised row, in place.
+
+    A planned row a run never reached is a row and not a silence, which is
+    what `V0Matrix.backfill` does inside a run. The same rule holds for a row
+    planned AFTER the recorded run: the file gains a row that says no
+    measurement exists, never a verdict. Every counted field and the digest
+    are re-derived by `derive`, the same code a run uses, so a verdict typed
+    into the file by hand still does not survive.
+    """
+    present = {row.get("id") for row in doc.get("rows", [])}
+    missing = [rid for rid in PLANNED_IDS if rid not in present]
+    if not missing:
+        return []
+    execution = doc.get("execution")
+    revision = doc.get("revision", "")
+    added = []
+    for rid in missing:
+        for spec in PLAN:
+            if rid in spec.ids():
+                break
+        else:  # pragma: no cover - PLANNED_IDS is built from PLAN
+            raise GateError("planned id {} belongs to no spec".format(rid))
+        suffix = rid.rsplit("-", 1)[-1].lower()
+        node = suffix if spec.scope == "node" else None
+        direction = suffix if spec.scope == "direction" else None
+        row = Row(rid, spec, NOT_EXERCISED, "(none)", "(not run)", None,
+                  doc.get("evidence", "planning/evidence/(pending)"), "",
+                  PLANNED_AFTER_THE_RUN, None, node=node, direction=direction)
+        added.append(row.json(revision, execution))
+    doc.update(derive(list(doc.get("rows", [])) + added))
+    return missing
 
 
 def validate(doc) -> list:
@@ -5030,6 +5126,10 @@ def main(argv=None) -> int:
                         help="print the row inventory and run nothing")
     parser.add_argument("--check", action="store_true",
                         help="validate an existing planning/v0-matrix.json and exit")
+    parser.add_argument("--plan-rows", action="store_true",
+                        help="give every newly planned row a not-exercised row "
+                             "in planning/v0-matrix.json and exit; it records "
+                             "that no run has measured them, never a verdict")
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--tree", default="dev", help="gate directory prefix on the host")
     parser.add_argument("--repo", default=str(ROOT))
@@ -5085,6 +5185,22 @@ def main(argv=None) -> int:
         if problems:
             return 1
         print("v0 matrix OK: the rows match their digest, their summary and their indexes.")
+        return 0
+    if args.plan_rows:
+        target = Path(args.json) if args.json else repo / MATRIX_JSON
+        doc = json.loads(target.read_text())
+        added = add_planned_rows(doc)
+        if not added:
+            print("v0 matrix: every planned row is already in the file.")
+            return 0
+        problems = validate(doc)
+        if problems:
+            for problem in problems:
+                print("ERROR: v0 matrix: {}".format(problem), file=sys.stderr)
+            return 1
+        target.write_text(json.dumps(doc, indent=2) + "\n")
+        print("v0 matrix: {} row(s) recorded as not-exercised: {}".format(
+            len(added), ", ".join(added)))
         return 0
     if not args.commit:
         parser.error("a commit is required unless --list or --check is given")

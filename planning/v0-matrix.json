@@ -24,10 +24,11 @@
     "accepted": 141,
     "refused": 34,
     "uncertain": 3,
-    "not-exercised": 13,
+    "not-exercised": 21,
     "not-built": 1,
-    "total": 192,
+    "total": 200,
     "disagreed": 7,
+    "faulted": 0,
     "independent": 2,
     "fn-observed": 176
   },
@@ -198,6 +199,8 @@
         "V0-READ-LIST-ACTIVE-B",
         "V0-READ-LIST-NEWSGROUPS-A",
         "V0-READ-LIST-NEWSGROUPS-B",
+        "V0-READ-LIST-NEWSGROUPS-WILDMAT-A",
+        "V0-READ-LIST-NEWSGROUPS-WILDMAT-B",
         "V0-READ-LIST-OVERVIEW-FMT-A",
         "V0-READ-LIST-OVERVIEW-FMT-B",
         "V0-READ-LIST-ACTIVE-TIMES-A",
@@ -236,6 +239,12 @@
         "V0-READ-NEXT-B",
         "V0-READ-LAST-A",
         "V0-READ-LAST-B",
+        "V0-READ-NEWNEWS-A",
+        "V0-READ-NEWNEWS-B",
+        "V0-READ-NEWNEWS-FUTURE-A",
+        "V0-READ-NEWNEWS-FUTURE-B",
+        "V0-READ-NEWNEWS-SYNTAX-A",
+        "V0-READ-NEWNEWS-SYNTAX-B",
         "V0-READ-DATE-A",
         "V0-READ-DATE-B",
         "V0-READ-HELP-A",
@@ -249,7 +258,7 @@
         "accepted": 50,
         "refused": 4,
         "uncertain": 0,
-        "not-exercised": 0,
+        "not-exercised": 8,
         "not-built": 0
       },
       "disagreed": 0
@@ -2657,6 +2666,66 @@
       "owner": null
     },
     {
+      "id": "V0-READ-LIST-NEWSGROUPS-WILDMAT-A",
+      "feature": "F-READ",
+      "feature_title": "the reader profile on each node",
+      "title": "LIST NEWSGROUPS filtered by a wildmat",
+      "node": "a",
+      "direction": null,
+      "requirements": [
+        "NNT-006"
+      ],
+      "scenarios": [
+        "SCN-014"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-READ-LIST-NEWSGROUPS-WILDMAT-B",
+      "feature": "F-READ",
+      "feature_title": "the reader profile on each node",
+      "title": "LIST NEWSGROUPS filtered by a wildmat",
+      "node": "b",
+      "direction": null,
+      "requirements": [
+        "NNT-006"
+      ],
+      "scenarios": [
+        "SCN-014"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
       "id": "V0-READ-LIST-OVERVIEW-FMT-A",
       "feature": "F-READ",
       "feature_title": "the reader profile on each node",
@@ -3684,6 +3753,186 @@
       "log": "planning/evidence/v0-matrix-2026-09-21.md",
       "limit": "the expected outcome depends on where the cursor was; served by `fn` on port 43151; the group held 6 article(s) when this ran, and with one article 421/422 is the correct answer",
       "blocker": null,
+      "owner": null
+    },
+    {
+      "id": "V0-READ-NEWNEWS-A",
+      "feature": "F-READ",
+      "feature_title": "the reader profile on each node",
+      "title": "NEWNEWS over a wildmat, since an instant before the store existed",
+      "node": "a",
+      "direction": null,
+      "requirements": [
+        "NNT-008"
+      ],
+      "scenarios": [
+        "SCN-014"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "the node under test may hold no article whose Injection-Date or Date fn can decode, in which case 230 with an empty block is the correct answer and the row records the framing, not a reported identifier",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-READ-NEWNEWS-B",
+      "feature": "F-READ",
+      "feature_title": "the reader profile on each node",
+      "title": "NEWNEWS over a wildmat, since an instant before the store existed",
+      "node": "b",
+      "direction": null,
+      "requirements": [
+        "NNT-008"
+      ],
+      "scenarios": [
+        "SCN-014"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "the node under test may hold no article whose Injection-Date or Date fn can decode, in which case 230 with an empty block is the correct answer and the row records the framing, not a reported identifier",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-READ-NEWNEWS-FUTURE-A",
+      "feature": "F-READ",
+      "feature_title": "the reader profile on each node",
+      "title": "NEWNEWS since a future instant returns the empty block",
+      "node": "a",
+      "direction": null,
+      "requirements": [
+        "NNT-008"
+      ],
+      "scenarios": [
+        "SCN-014"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-READ-NEWNEWS-FUTURE-B",
+      "feature": "F-READ",
+      "feature_title": "the reader profile on each node",
+      "title": "NEWNEWS since a future instant returns the empty block",
+      "node": "b",
+      "direction": null,
+      "requirements": [
+        "NNT-008"
+      ],
+      "scenarios": [
+        "SCN-014"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-READ-NEWNEWS-SYNTAX-A",
+      "feature": "F-READ",
+      "feature_title": "the reader profile on each node",
+      "title": "NEWNEWS with a malformed wildmat is refused with 501",
+      "node": "a",
+      "direction": null,
+      "requirements": [
+        "NNT-008"
+      ],
+      "scenarios": [
+        "SCN-014"
+      ],
+      "verdict": "not-exercised",
+      "expected": "refused",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-READ-NEWNEWS-SYNTAX-B",
+      "feature": "F-READ",
+      "feature_title": "the reader profile on each node",
+      "title": "NEWNEWS with a malformed wildmat is refused with 501",
+      "node": "b",
+      "direction": null,
+      "requirements": [
+        "NNT-008"
+      ],
+      "scenarios": [
+        "SCN-014"
+      ],
+      "verdict": "not-exercised",
+      "expected": "refused",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
       "owner": null
     },
     {
@@ -5794,6 +6043,8 @@
       "V0-READ-LIST-ACTIVE-B",
       "V0-READ-LIST-NEWSGROUPS-A",
       "V0-READ-LIST-NEWSGROUPS-B",
+      "V0-READ-LIST-NEWSGROUPS-WILDMAT-A",
+      "V0-READ-LIST-NEWSGROUPS-WILDMAT-B",
       "V0-READ-LIST-ACTIVE-TIMES-A",
       "V0-READ-LIST-ACTIVE-TIMES-B",
       "V0-READ-GROUP-A",
@@ -5817,6 +6068,14 @@
     ],
     "NNT-007": [
       "V0-CFG-LIVE"
+    ],
+    "NNT-008": [
+      "V0-READ-NEWNEWS-A",
+      "V0-READ-NEWNEWS-B",
+      "V0-READ-NEWNEWS-FUTURE-A",
+      "V0-READ-NEWNEWS-FUTURE-B",
+      "V0-READ-NEWNEWS-SYNTAX-A",
+      "V0-READ-NEWNEWS-SYNTAX-B"
     ],
     "OBJ-001": [
       "V0-TRANSIT-IDENTICAL-AB",
@@ -6010,6 +6269,8 @@
       "V0-READ-LIST-ACTIVE-B",
       "V0-READ-LIST-NEWSGROUPS-A",
       "V0-READ-LIST-NEWSGROUPS-B",
+      "V0-READ-LIST-NEWSGROUPS-WILDMAT-A",
+      "V0-READ-LIST-NEWSGROUPS-WILDMAT-B",
       "V0-READ-LIST-OVERVIEW-FMT-A",
       "V0-READ-LIST-OVERVIEW-FMT-B",
       "V0-READ-LIST-ACTIVE-TIMES-A",
@@ -6048,6 +6309,12 @@
       "V0-READ-NEXT-B",
       "V0-READ-LAST-A",
       "V0-READ-LAST-B",
+      "V0-READ-NEWNEWS-A",
+      "V0-READ-NEWNEWS-B",
+      "V0-READ-NEWNEWS-FUTURE-A",
+      "V0-READ-NEWNEWS-FUTURE-B",
+      "V0-READ-NEWNEWS-SYNTAX-A",
+      "V0-READ-NEWNEWS-SYNTAX-B",
       "V0-READ-DATE-A",
       "V0-READ-DATE-B",
       "V0-READ-HELP-A",
@@ -6180,5 +6447,5 @@
       "V0-BP-REPLAY"
     ]
   },
-  "rows_digest": "ea114a0c5c6ca78659aef9820d9d3cb1f80f24d72c6dbcf9e18ec1ba71485a63"
+  "rows_digest": "1d6873facd1bdfe4ab62cadb8dfe82f36edc930aafc055bdc6031a999cc761a7"
 }

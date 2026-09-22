@@ -11,6 +11,7 @@
 (in-package "ACL2")
 (include-book "nntp-invariants")
 (include-book "nntp-legacy")
+(include-book "nntp-newnews")
 (include-book "nntp-overview")
 
 ; The five books of the nntp cluster withdraw their definitions at their
@@ -1149,6 +1150,38 @@
                                    fn-nntp-observed-year
                                    fn-nntp-keywordp)))))
 
+; NEWNEWS renders stored identifiers, which books/nntp-newnews.lisp proves
+; clean with no hypothesis at all (every reported article is a candidate, and
+; a candidate is projectable).  The 503 budget refusal is a single line, so
+; the block obligation is the same one either way.
+(defthm fn-nntp-newnews-block-is-block-text
+  (fn-nntp-block-textp
+   (fn-nntp-parse-1 (fn-nntp-newnews-scan groups threshold articles fuel)))
+  :hints (("Goal" :use fn-nntp-newnews-lines-are-clean
+           :in-theory (disable fn-nntp-newnews-lines-are-clean
+                               fn-nntp-newnews-scan fn-nntp-parse-1))))
+
+(defthm fn-nntp-effects-newnews-response
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-newnews-response session archive env args)))
+  ; The two result accessors stay closed, so that the block-text lemma above
+  ; matches the term the response builds; opened, its `parse-1` becomes a
+  ; `cadr` and the rule cannot fire.  The budget equivalence is withdrawn for
+  ; the same reason: left enabled it rewrites the branch test into a count
+  ; inequality that this theorem does not need and cannot use.
+  :hints (("Goal" :in-theory (e/d (fn-nntp-newnews-response)
+                                  (fn-nntp-newnews-scan fn-nntp-single
+                                   fn-nntp-parse-1 fn-nntp-parse-okp
+                                   fn-nntp-newnews-scan-answers-exactly-within-the-budget
+                                   fn-nntp-filter-groups-by-wildmat
+                                   fn-wildmat-parse
+                                   fn-nntp-newgroups-date-parse
+                                   fn-nntp-newgroups-time-parse
+                                   fn-nntp-civil-dtn-ms
+                                   fn-nntp-observed-year
+                                   fn-nntp-keywordp)))))
+
 ; -----------------------------------------------------------------------------
 ; XPAT (RFC 2980 section 2.9).  Its block is a sublist of HDR's, but the
 ; effect typing is proved directly from the cleanliness theorem the legacy
@@ -1277,6 +1310,7 @@
                  fn-nntp-list-response fn-nntp-next-or-last
                  fn-nntp-retrieval fn-nntp-single
                  fn-nntp-over-response fn-nntp-newgroups-response
+                 fn-nntp-newnews-response
                  fn-nntp-xpat-response
                  fn-nntp-token-string)))))
 

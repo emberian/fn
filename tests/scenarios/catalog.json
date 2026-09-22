@@ -428,17 +428,20 @@
         "NNT-003",
         "NNT-007",
         "NNT-004",
-        "NNT-006"
+        "NNT-006",
+        "NNT-008"
       ],
       "steps": [
         "Exercise advertised forms with a real reader and independent transcripts.",
         "Partition CRLF, dot terminators, and articles across socket chunks.",
-        "Exercise empty/missing groups, IDs, cursors, ranges, wildmat, failed selection, and oversized input."
+        "Exercise empty/missing groups, IDs, cursors, ranges, wildmat, failed selection, and oversized input.",
+        "Poll with NEWNEWS over a wildmat and a date, with and without the GMT token and with both year forms, against a store whose articles carry Injection-Date, Date, and neither."
       ],
       "expected": [
         "Capability claims match the audited profile.",
         "Cursor/errors follow the checklist.",
-        "Socket partitions do not change meaning; rejected body tails do not become commands."
+        "Socket partitions do not change meaning; rejected body tails do not become commands.",
+        "NEWNEWS names only the matching groups' articles newer than the requested instant; a request over the parse budget is refused 503 whole; syntax and want-of-information refusals stay distinct."
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -455,7 +458,9 @@
         "books/served.lisp",
         "tests/acl2/served-tests.lisp",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/nntp-newnews.lisp",
+        "tests/acl2/nntp-newnews-tests.lisp"
       ],
       "execution_scope": "Implemented reader session/cursor and effect shape have general proofs; exact ACL2 bridge input partitions and real reconnects have targeted tests. Full READER/POST and complete RFC byte-response conformance remain open. Framing and cursor coverage moved from the host to books/served, which states chunk-partition independence of the function the host calls. The capabilities leg is REFUTED as it stands: the deploy gate found POST answered with 340 while CAPABILITIES omits POST (RFC 3977 section 5.2.2)."
     },

@@ -46,7 +46,8 @@
       (fn-nntp-keywordp keyword "HDR")
       (fn-nntp-keywordp keyword "XHDR")
       (fn-nntp-keywordp keyword "XPAT")
-      (fn-nntp-keywordp keyword "NEWGROUPS")))
+      (fn-nntp-keywordp keyword "NEWGROUPS")
+      (fn-nntp-keywordp keyword "NEWNEWS")))
 
 (defun fn-nntp-session-command (session env keyword args)
   (cond
@@ -119,6 +120,12 @@
    ((fn-nntp-keywordp keyword "XPAT") (fn-nntp-xpat-response session archive args))
    ((fn-nntp-keywordp keyword "NEWGROUPS")
     (fn-nntp-newgroups-response session archive env args))
+   ; RFC 3977 section 7.4.  Like NEWGROUPS it reads the environment, for the
+   ; century of a two-digit year, and like NEWGROUPS it reads the archive --
+   ; the articles here, the configured groups there -- so it belongs to this
+   ; arm and not to fn-nntp-session-command.
+   ((fn-nntp-keywordp keyword "NEWNEWS")
+    (fn-nntp-newnews-response session archive env args))
    (t (fn-nntp-retrieval session archive :stat args))))
 
 (defun fn-nntp-command (session archive env tokens)

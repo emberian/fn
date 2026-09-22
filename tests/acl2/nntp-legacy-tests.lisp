@@ -180,12 +180,12 @@
 (assert-event
  (equal (lg-reply *lg-env* "CAPABILITIES")
         (lg-block "101 capability list follows"
-                  '("VERSION 2" "READER" "OVER MSGID" "HDR"
+                  '("VERSION 2" "READER" "OVER MSGID" "HDR" "NEWNEWS"
                     "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT"
                     "IMPLEMENTATION fn-nntp-lab"))))
 (defconst *lg-help-lines*
   '("CAPABILITIES HELP QUIT MODE DATE POST"
-    "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS"
+    "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS"
     "ARTICLE HEAD BODY STAT"
     "OVER XOVER HDR XHDR XPAT"))
 (assert-event (equal (lg-reply *lg-env* "HELP")
@@ -196,7 +196,8 @@
 ; but left in the help text fails here.
 (defconst *lg-help-keywords*
   '("CAPABILITIES" "HELP" "QUIT" "MODE" "DATE" "POST" "GROUP" "LISTGROUP"
-    "LIST" "NEXT" "LAST" "NEWGROUPS" "ARTICLE" "HEAD" "BODY" "STAT" "OVER"
+    "LIST" "NEXT" "LAST" "NEWGROUPS" "NEWNEWS" "ARTICLE" "HEAD" "BODY"
+    "STAT" "OVER"
     "XOVER" "HDR" "XHDR" "XPAT"))
 (defun lg-all-dispatchedp (keywords)
   (if (consp keywords)
