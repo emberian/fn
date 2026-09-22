@@ -218,6 +218,20 @@
    :hints (("Goal" :in-theory (enable fn-sn-set-keyring
                                        fn-sn-completion-record)))))
 
+; Reconfiguration keeps the snapshot list and the identity cursor, so it
+; keeps the identity replay context `6e992351' and `4bb7bb3d' made
+; `fn-sn-completion-enabledp' consult.
+(local
+ (defthm fn-spc-set-keyring-keeps-identity-context
+   (equal (fn-sn-identity-context (fn-sn-set-keyring s keyring))
+          (fn-sn-identity-context s))
+   :hints (("Goal" :in-theory (e/d (fn-sn-set-keyring fn-sn-identity-context)
+                                   (fn-stx-index-of-store))))))
+
+; The five event recognizers and the three appliers stay closed: since
+; `6ab2c783' and `4bb7bb3d' this equality is a dispatch on the completion
+; record's kind and nothing here looks inside it, while with them open the
+; goal unfolds the record and statement codec on every arm.
 (local
  (defthm fn-spc-set-keyring-keeps-completion-enabledp
    (implies (fn-sn-statep s)
@@ -229,8 +243,22 @@
                   fn-spc-set-keyring-keeps-completion-record)
             :in-theory (e/d (fn-sn-completion-enabledp)
                             (fn-sn-set-keyring fn-sn-statep
-                             fn-sn-record-bindsp))))))
+                             fn-sn-record-bindsp
+                             fn-record-codec-vocabulary
+                             fn-record-record-vocabulary
+                             fn-store-event-p fn-store-retention-event-p
+                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-replay-apply-record
+                             fn-replay-apply-retention-event
+                             fn-replay-apply-identity-neutral
+                             fn-replay-composite-record
+                             fn-replay-identity-step))))))
 
+; The deferred link and the completing link are OPEN here and the codec is
+; closed: reconfiguration changes the keyring and the index and nothing the
+; two links read, so each side reduces to the same term, and with the codec
+; open the links unfold it (books/store-node-traces carries the same
+; measurement).
 (defthm fn-spc-set-keyring-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-set-keyring s keyring)))
@@ -242,6 +270,15 @@
                             fn-sn-set-keyring
                             fn-sf-history-recoverablep fn-sf-replay-node
                             fn-snt-pending-linkp fn-sn-completion-enabledp
+                            fn-record-codec-vocabulary
+                            fn-record-record-vocabulary
+                            fn-store-event-p fn-store-retention-event-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-replay-apply-record
+                            fn-replay-apply-retention-event
+                            fn-replay-apply-identity-neutral
+                            fn-replay-composite-record
+                            fn-replay-identity-step
                             fn-snt-relation-implies-structural-state
                             fn-spc-set-keyring-preserves-state)))))
 
