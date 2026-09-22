@@ -247,6 +247,15 @@ class LastGreenSourceTests(unittest.TestCase):
         self.assertIsInstance(answer, str)
         self.assertIn("never green", answer)
 
+    def test_the_plan_reads_off_this_tree_with_no_farm_and_no_acl2(self):
+        """`--dry-run`: what a round would substitute, before spending one."""
+        lines = triage.plan(self.root, ["books/c"])
+        self.assertIn("3 books under 1 root;", lines[0])
+        said = "\n".join(lines)
+        self.assertIn("triage: books/b: assuming books/b at its last green",
+                      said)
+        self.assertNotIn("books/a", said)  # green at its digest; nothing owed
+
     def test_a_green_digest_no_commit_holds_is_reported_as_such(self):
         self.runs["certify-20260921T090000Z-1"].sources["books/b.lisp"] = "f" * 64
         answer = triage.substitution_for(self.root, self.audit, self.runs,
