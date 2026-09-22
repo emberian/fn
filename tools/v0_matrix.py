@@ -4301,6 +4301,16 @@ exit "$rc"
                            self.native_principals, node)
                 self.phase("native auth gate {}".format(node.name),
                            self.native_auth_gate, node)
+            elif node.name in self.native_configs:
+                # A supplied configuration the offline operator could not open
+                # is a named reason, not the end-of-run sweep's silence.
+                self.blocked(("V0-AUTH-PASSWORD", "V0-AUTH-LIST", "V0-AUTH-GATED"),
+                             "node {}'s supplied configuration did not open cleanly for "
+                             "the pre-start public status action, so this run wrote no "
+                             "credential into its registry".format(node.upper),
+                             nodes=(node.name,),
+                             invocation=self.native_operator(
+                                 node, "principal", "set-password", AUTH_USER))
         if all(n.name in self.configured for n in self.nodes):
             self.phase("native peer records", self.native_peer_records)
 

@@ -547,6 +547,29 @@ class NativeSliceAccountingTests(unittest.TestCase):
             self.assertIn("exited 5", rows["V0-AUTH-PASSWORD-A"].blocker)
             self.assertIn("set-password", rows["V0-AUTH-LOGIN-A"].blocker)
 
+    def test_a_config_that_does_not_open_names_the_credential_rows_reason(self):
+        class UnopenableConfig(HarnessOnlyNativeGate):
+            def native_config_status(self, node):
+                if node.name == "b":
+                    self.emit("V0-NODE-STATUS", v0_matrix.UNCERTAIN,
+                              self.native_operator(node, "status"),
+                              "uncertain operator status", node=node.name,
+                              exit_code=3, client=v0_matrix.CLIENT_CLI)
+                    return False
+                return super().native_config_status(node)
+        with tempfile.TemporaryDirectory() as home:
+            gate = UnopenableConfig(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            for rid in ("V0-AUTH-PASSWORD-B", "V0-AUTH-LIST-B", "V0-AUTH-GATED-B"):
+                self.assertEqual(rows[rid].verdict, v0_matrix.NOT_EXERCISED, rid)
+                self.assertIn("did not open cleanly", rows[rid].blocker, rid)
+            # Node A is unaffected: one node's configuration is not the other's.
+            self.assertEqual(rows["V0-AUTH-PASSWORD-A"].verdict, v0_matrix.ACCEPTED)
+
     def test_successful_shared_witness_maps_only_the_cases_it_exercises(self):
         with tempfile.TemporaryDirectory() as home:
             gate = HarnessOnlyNativeGate(
