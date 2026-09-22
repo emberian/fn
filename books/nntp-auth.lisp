@@ -459,6 +459,28 @@
         (fn-auth-principal-peer-name hex (cdr rows)))
     nil))
 
+; What AUTHINFO may assume of the peer name it reads out of the configured
+; rows.  `fn-cfgp' makes the peers a `fn-cfg-row-listp', every row's first
+; field is a `fn-cfg-labelp' and every label is an ASCII string, so a name
+; that was found is a string -- which is what `fn-peer-sessionp' asks of a
+; peer connection (books/peer-inbound.lisp).  Stated here because this book
+; does not open the configuration record anywhere else.
+(local
+ (defthm fn-auth-cfgp-gives-peer-rows
+   (implies (fn-cfgp cfg)
+            (fn-cfg-row-listp (fn-cfg-peers (fn-cfg-value cfg))))
+   :hints (("Goal" :in-theory (enable fn-cfgp fn-cfg-valuep)))))
+
+(local
+ (defthm fn-auth-principal-peer-name-is-a-string
+   (implies (and (fn-cfg-row-listp rows)
+                 (fn-auth-principal-peer-name hex rows))
+            (stringp (fn-auth-principal-peer-name hex rows)))
+   :hints (("Goal" :induct (fn-auth-principal-peer-name hex rows)
+            :in-theory (enable fn-auth-principal-peer-name fn-cfg-row-listp
+                               fn-cfg-rowp fn-cfg-labelp fn-cfg-row-a
+                               fn-record-ascii-stringp)))))
+
 (defun fn-auth-bind-principal-peer (as principal)
   "Promote a contextual reader only for one unambiguous configured principal."
   (declare (xargs :guard t))
