@@ -166,6 +166,7 @@
    ((equal reason :message-id-invalid) "441 posting failed; Message-ID is not a valid identifier")
    ((equal reason :from-missing) "441 posting failed; From is required")
    ((equal reason :from-duplicate) "441 posting failed; From appears more than once")
+   ((equal reason :from-invalid) "441 posting failed; From is not a valid mailbox list")
    ((equal reason :subject-missing) "441 posting failed; Subject is required")
    ((equal reason :subject-duplicate) "441 posting failed; Subject appears more than once")
    ((equal reason :date-duplicate) "441 posting failed; Date appears more than once")

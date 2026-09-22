@@ -800,6 +800,17 @@ the current connection."
                                          (fnn-octet-list subject))))
                    (transit-reason
                      (when transitp (fnn-owner-core 'fn-owner-transit-reason)))
+                   ;; The payload the transfer decision staged is the one
+                   ;; fn-owner-take left and the metadata above digested:
+                   ;; fn-peer-relayed-octets of the received article.  A
+                   ;; difference is a core fault, never a store attempt.
+                   (transit-checked
+                     (when (and transitp (eq transit-kind :want))
+                       (unless (equalp payload
+                                       (fnn-owner-octets-global
+                                        'fn-owner-transit-payload))
+                         (fnn-fault "owner transit payload differs from the staged one"))
+                       t))
                    ;; Transit memberships are computed by the ACL2 transfer
                    ;; decision above and installed in this same global.
                    (groups (fnn-owner-submit-groups))
@@ -815,6 +826,7 @@ the current connection."
                      (fnn-owner-action 'fn-owner-submission-intent
                                        (fnn-octet-list evidence)
                                        generation txid))))
+            (declare (ignorable transit-checked))
             (if (and transitp (not (eq transit-kind :want)))
                 (progn
                   (fnn-owner-action 'fn-owner-transit-outcome
@@ -850,7 +862,12 @@ the current connection."
 
 The interface callback is the sole admission event.  Local control and BP
 applications then share this exact durable intent, Store attempt, resolution
-and control-outcome sequence."
+and control-outcome sequence.
+
+PAYLOAD is :INJECTED for the operator's submission: the octets stored are the
+ones ACL2 injected (books/owner.lisp fn-own-operator-submit), read back from
+the owner after the take, never the payload the host read from the file.
+Every other caller submits exact authored octets and names them."
   (let ((submitted (funcall submit-callback)))
     (unless (member submitted '(:submitted :busy :refused))
       (fnn-fault "owner bound submit returned ~a" submitted))
@@ -859,6 +876,8 @@ and control-outcome sequence."
     (let ((taken (fnn-owner-action 'fn-owner-take)))
       (unless (eq taken :taken-control)
         (fnn-fault "owner bound take returned ~a" taken))
+      (when (eq payload :injected)
+        (setq payload (fnn-owner-octets-global 'fn-owner-submit-octets)))
       (unless (and (equalp msgid
                            (fnn-owner-octets-global 'fn-owner-submit-msgid))
                    (equalp payload
@@ -943,7 +962,17 @@ exactly one submission is affected even if the owner survives it."
         (fnn-store-fault-message store) nil))
 
 (defun fnn-owner-control-submit-serialized (service msgid groups payload)
-  "Queue and drain one exact authored article through the shared owner writer."
+  "Inject, queue and drain the operator's article through the shared owner writer.
+
+`fn operator CONFIG post' hands the owner a proto-article.  The owner injects
+it (books/owner.lisp fn-own-operator-submit: Path, Injection-Date and
+Injection-Info under the owner's posting configuration and clock) exactly as
+it injects a served POST, so the article crosses to a peer that requires a
+Path; until 2026-09-22 the payload was stored as read and INN refused it 437
+(planning/evidence/inn-lab-dabebb84-2026-09-22.md).  One clock reading is
+taken for this submission first, as fnn-owner-handle-chunk takes one per
+read; a refused reading leaves the owner clock-less and the submission is
+refused, not injected under a stale time (D10-a)."
   (fnn-owner-serialized
    service nil
    (lambda ()
@@ -954,14 +983,15 @@ exactly one submission is affected even if the owner survives it."
                   (generation
                     (fnn-nat (fnn-owner-core 'fn-owner-config-generation)))
                   (txid (fnn-nat (fnn-owner-core 'fn-owner-next-txid))))
+              (fnn-owner-advance-clock)
               (fnn-owner-complete-bound-submission
                service
                (lambda ()
-                 (fnn-owner-action 'fn-owner-control-submit
+                 (fnn-owner-action 'fn-owner-operator-submit
                                    (fnn-octet-list msgid)
                                    (mapcar #'fnn-octet-list groups)
                                    (fnn-octet-list payload)))
-               msgid payload groups evidence generation txid))
+               msgid :injected groups evidence generation txid))
          (when armed (fnn-owner-control-disarm-fault store)))))))
 
 (defun fnn-owner-handle-chunk (service cid incoming)

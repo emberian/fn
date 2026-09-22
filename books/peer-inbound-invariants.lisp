@@ -364,6 +364,68 @@
   :hints (("Goal" :in-theory (e/d (fn-peer-transit-evidence)
                                   (fn-peer-transit-provenance)))))
 
+; -----------------------------------------------------------------------------
+; What this node stores for an article a peer transferred (RFC 5537 sections
+; 3.6 and 3.7; books/path-update.lisp): the received octets with Path
+; updated and Xref removed, nothing else.  The subject is
+; fn-peer-relayed-octets, which host/owner-host.lisp fn-owner-take calls to
+; fill fn-owner-submit-octets, the octets the native drain digests and stores
+; (host/native/owner.lisp fnn-owner-drain-one), and which
+; fn-peer-injection-arguments stages as the payload fn-node-prepare is given
+; (fn-peer-injection-arguments-payload-unfolds).  Each is the article-level
+; keystone of books/path-update.lisp at the node's own identity and the peer
+; record's expected identity, which is a <path-identity> or none.
+
+; -unfolds: the payload the transfer stages is the relayed octets.  This is
+; the correspondence the native drain checks at run time
+; (fn-owner-transit-payload against fn-owner-submit-octets).
+(defthm fn-peer-injection-arguments-payload-unfolds
+  (equal (nth 2 (fn-peer-injection-arguments node cfg peer msgid octets
+                                             generation id subject))
+         (fn-peer-relayed-octets cfg peer octets))
+  :hints (("Goal" :in-theory (e/d (fn-peer-injection-arguments)
+                                  (fn-peer-relayed-octets)))))
+
+; Removing every Path and Xref field from what arrived and from what is
+; stored leaves the same octets: every other header, in order, the blank
+; line and the body are byte-identical (RFC 5537 section 3.6, last paragraph).
+(defthm fn-peer-relayed-octets-change-only-path-and-xref
+  (equal (fn-pu-strip (fn-peer-relayed-octets cfg peer octets) nil)
+         (fn-pu-strip octets nil))
+  :hints (("Goal" :in-theory (e/d (fn-peer-relayed-octets)
+                                  (fn-pu-relay-article fn-pu-strip
+                                   fn-peer-expected-identity)))))
+
+; A second pass changes nothing: the stored Path already begins with this
+; node's identity and no Xref is left, so relaying a stored article again, or
+; replaying the record that carries it, reproduces it.
+(defthm fn-peer-relayed-octets-are-idempotent
+  (equal (fn-peer-relayed-octets cfg peer
+                                 (fn-peer-relayed-octets cfg peer octets))
+         (fn-peer-relayed-octets cfg peer octets))
+  :hints (("Goal" :in-theory (e/d (fn-peer-relayed-octets)
+                                  (fn-pu-relay-article
+                                   fn-peer-expected-identity)))))
+
+; No Xref is stored (RFC 5537 section 3.7 step 7; specs/peering.md 2.3).
+(defthm fn-peer-relayed-octets-carry-no-xref
+  (fn-pu-xref-freep (fn-peer-relayed-octets cfg peer octets))
+  :hints (("Goal" :in-theory (e/d (fn-peer-relayed-octets)
+                                  (fn-pu-relay-article fn-pu-xref-freep
+                                   fn-peer-expected-identity)))))
+
+; Every Path field of the stored article begins with this node's own
+; <path-identity> and "!" (RFC 5537 section 3.6 step 7, section 3.7 step 6),
+; when the node has one; `policy set path-identity' is what gives it one.
+(defthm fn-peer-relayed-octets-name-this-node-in-every-path
+  (implies (fn-path-identityp (fn-peer-local-identity cfg))
+           (fn-pu-path-markedp (fn-peer-relayed-octets cfg peer octets)
+                               (fn-peer-local-identity cfg)))
+  :hints (("Goal" :in-theory (e/d (fn-peer-relayed-octets)
+                                  (fn-pu-relay-article fn-pu-path-markedp
+                                   fn-peer-expected-identity
+                                   fn-peer-local-identity fn-path-identityp)))))
+
 ; fn-peer-refused-transfer-leaves-the-node is :rule-classes nil, so it
 ; designates no rule and (in-theory (disable ...)) on it is a hard error,
 ; not a no-op.  There is nothing to withdraw; includers cite it by :use.
