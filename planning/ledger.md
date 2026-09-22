@@ -13,11 +13,11 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 402 |
 | Certification roots in the Makefile | 400 |
 | Books inside the root closure | 401 |
-| `defthm` and `defthmd` events | 6583 |
+| `defthm` and `defthmd` events | 6584 |
 | `defun` events | 5183 |
 | Functions with verified guards | 1711 |
-| Functions declared `:verify-guards nil` and never verified | 276 |
-| Functions left at the default with an explicit guard | 2591 |
+| Functions declared `:verify-guards nil` and never verified | 279 |
+| Functions left at the default with an explicit guard | 2588 |
 | Functions left at the default with no guard | 605 |
 | `assert-event` checks | 7054 |
 | `must-fail` checks | 187 |
@@ -164,10 +164,10 @@ that `make certify` requests.
 | `books/byte-store-scan.lisp` | root | 134 | 35 | 1/29/0/5 | 0 | 0 | 1 |
 | `books/byte-store-txn-name.lisp` | root | 30 | 13 | 3/0/10/0 | 0 | 0 | 0 |
 | `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
-| `books/cbor-invariants.lisp` | root | 35 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/cbor-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 14 | 30 | 30/0/0/0 | 0 | 0 | 0 |
 | `books/checkpoint-codec.lisp` | root | 108 | 32 | 13/0/18/1 | 0 | 0 | 1 |
-| `books/checkpoint-compaction.lisp` | root | 5 | 19 | 0/12/7/0 | 0 | 0 | 0 |
+| `books/checkpoint-compaction.lisp` | root | 5 | 19 | 0/15/4/0 | 0 | 0 | 0 |
 | `books/checkpoint-publish.lisp` | root | 65 | 63 | 13/1/49/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |

@@ -11,8 +11,11 @@
 (defconst *fn-cc-max-events* 4096)
 (defconst *fn-cc-max-octets* 4194304)
 
+; `zp' carries the guard (natp n); every caller in this book passes a
+; literal index.  Declared `:guard t' until 2026-09-22, which no ACL2 run
+; had ever been asked to verify at this digest.
 (defun fn-cc-nth (n x)
-  (declare (xargs :guard t :measure (nfix n)))
+  (declare (xargs :guard (natp n) :measure (nfix n)))
   (if (zp n) (if (consp x) (car x) nil)
     (fn-cc-nth (1- n) (if (consp x) (cdr x) nil))))
 
@@ -82,12 +85,19 @@
          (list :error :suffix))
         (t (list :ok (append (fn-cc-events summary) suffix) final-frontier))))
 
+; Guard verification is deferred for this whole book, as its author left it
+; (twelve functions above and below carry :verify-guards nil, and the
+; generated ledger counts them).  The three observation functions below were
+; declared verifiable with `:guard t' and are not: `<=' needs a rational
+; boundary and `nth' a true list, which their (unverified) callers do not
+; establish.  They now say so like their siblings.  Verifying this book's
+; guards is the compaction lane's open item, not a claim this book makes.
 ; Every surviving physical record inside the packed interval must be the exact
 ; packed byte string.  Missing covered records are allowed after an interrupted
 ; reclaim; no missing record at or above the boundary is accepted by the
 ; namespace observation.
 (defun fn-cc-observation-agrees (pairs events boundary)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp pairs)
       (let ((pair (car pairs)))
         (and (true-listp pair) (equal (len pair) 2)
@@ -99,7 +109,7 @@
     (null pairs)))
 
 (defun fn-cc-observation-suffix (pairs boundary)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp pairs)
       (if (< (caar pairs) boundary)
           (fn-cc-observation-suffix (cdr pairs) boundary)
@@ -117,7 +127,7 @@
                     frontier))))
 
 (defun fn-cc-partial-observationp (observed prefix suffix boundary)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (and (equal boundary (len prefix))
        (fn-cc-observation-agrees observed prefix boundary)
        (equal (fn-cc-observation-suffix observed boundary) suffix)))

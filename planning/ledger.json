@@ -407,15 +407,15 @@
     "books": 402,
     "books_in_root_closure": 401,
     "roots": 400,
-    "theorems": 6583,
+    "theorems": 6584,
     "functions": 5183,
     "assert_events": 7054,
     "must_fails": 187,
     "encapsulates": 19,
     "guards": {
       "verified": 1711,
-      "declared-off": 276,
-      "default-guarded": 2591,
+      "declared-off": 279,
+      "default-guarded": 2588,
       "default-unguarded": 605
     },
     "suspect_theorems": 61,
@@ -2529,7 +2529,7 @@
       "book": "books/cbor-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 35,
+      "theorems": 36,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -2615,8 +2615,8 @@
       "functions": 19,
       "guards": {
         "verified": 0,
-        "declared-off": 12,
-        "default-guarded": 7,
+        "declared-off": 15,
+        "default-guarded": 4,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
