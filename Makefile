@@ -541,7 +541,7 @@ tooling-test:
 	$(PYTHON) tools/run_command.py --timeout 120 -- $(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
 	    tests.test_evidence_manifests tests.test_green_check \
-	    tests.test_process_supervisor -v
+	    tests.test_process_supervisor tests.test_node_probe -v
 
 test: check certify
 	$(PYTHON) tools/run_simulator.py
