@@ -349,6 +349,36 @@ verdict is about the book's own digest -- comes with `deps_moved`, the closure
 members whose bytes have moved since, because same book over a changed
 dependency is a different key.
 
+**And when the closure is red, one run tells you every reason.**
+[`tools/triage.py`](../tools/triage.py) answers the question a certification
+run cannot: `include-book` refuses an uncertified dependency, so a closure run
+stops at the first failure and every book above it reads "There is no
+certificate on file", which means one run reveals one *layer* of independent
+reds and a ten-deep chain costs ten runs -- the shape that took three lanes,
+thirty-nine runs and nine hours on 2026-09-22 (finding F1 of that day's
+proof-engineering review). A
+triage round certifies the closure on the farm with a short per-book budget,
+reads each failed book's own log and calls it a cascade (ACL2's no-certificate
+error, which wraps at the pretty-printer margin and so is matched on collapsed
+whitespace), a timeout (the budget expired; a finding in its own right, F2),
+an independent red (an ACL2 error of its own, kept with its first error line
+and its key checkpoint) or unexplained; then it writes every independent or
+timed-out book's last green source -- `green_check`'s audit names the run, that
+run's manifest names the digest, `git log --all` holds the bytes -- into the
+*remote* tree only and runs the closure again, so the books that were hiding
+behind it fail on their own account. The report carries each finding's round
+and its assumption stack ("assuming `books/X` at its last green digest ... from
+commit ..."), the timeouts, and the books with no green source to substitute.
+**A triage run is evidence of nothing but that list.** It certifies a tree
+whose sources were substituted: the runner is invoked with `--no-publish` and
+`farm.submit` refuses to start a run whose command line would publish anyway,
+`farm.fetch_logs` brings back the logs and the manifest and touches neither
+cache, no manifest of it is archived, and the report deliberately names no
+certify run id, because naming one would read as a certification claim.
+Because `--closure` implies `certs.py install-set --purge-on-miss` and a
+substituted source matches no cached set, a round is a whole-closure
+certification, not a layer's: the saving is in the number of rounds.
+
 `tools/verdict.py --reuse-gate [REV]` reads a gate directory that already
 exists and builds its per-fiber table from it, shipping nothing and starting
 no ACL2. It reads the shape both kinds of gate share (`certify.log`,
