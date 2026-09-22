@@ -245,7 +245,7 @@
             :in-theory (e/d (fn-sn-completion-enabledp)
                             (fn-sn-set-keyring fn-sn-statep
                              fn-sn-record-bindsp
-                             fn-record-codec-vocabulary
+                             fn-record-shape-vocabulary
                              fn-record-record-vocabulary
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
@@ -269,7 +269,7 @@
                                    (fn-sn-set-keyring
                                     fn-sf-history-recoverablep fn-sf-replay-node
                                     fn-sn-identity-context
-                                    fn-record-codec-vocabulary
+                                    fn-record-shape-vocabulary
                                     fn-record-record-vocabulary
                                     fn-store-event-p fn-store-retention-event-p
                                     fn-stxe-p fn-stxk-p fn-stxa-p
@@ -286,7 +286,7 @@
    :hints (("Goal" :in-theory (e/d (fn-snt-completion-linkp)
                                    (fn-sn-set-keyring fn-sn-completion-record
                                     fn-sf-replay-node fn-node-complete
-                                    fn-record-codec-vocabulary
+                                    fn-record-shape-vocabulary
                                     fn-record-record-vocabulary
                                     fn-store-event-p fn-store-retention-event-p
                                     fn-stxe-p fn-stxk-p fn-stxa-p
@@ -314,7 +314,7 @@
                             fn-snt-pending-linkp fn-snt-deferred-linkp
                             fn-snt-completion-linkp
                             fn-sn-completion-enabledp
-                            fn-record-codec-vocabulary
+                            fn-record-shape-vocabulary
                             fn-record-record-vocabulary
                             fn-store-event-p fn-store-retention-event-p
                             fn-stxe-p fn-stxk-p fn-stxa-p
