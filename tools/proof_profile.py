@@ -317,9 +317,10 @@ def host_load(host: str) -> float:
 
 
 def quieter_host() -> str:
-    """The less loaded farm box.  persvati and hbox are co-tenant with other
-    work (hbox with codex's HOL build), so a profile run goes to whichever is
-    idle rather than to a hard-coded default."""
+    """The less loaded farm box.  Other lanes may be certifying on either
+    box, so a profile run goes to whichever is idle rather than to a
+    hard-coded default.  (Load, not `free`: on hbox the ZFS ARC makes
+    `free` report tens of GB "used" with no process holding them.)"""
     loads = {host: host_load(host) for host in HOSTS}
     ranked = sorted(loads.items(), key=lambda item: item[1])
     print("  ".join(f"{host} load {load}" for host, load in loads.items()),
