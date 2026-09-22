@@ -850,6 +850,7 @@ class InnLab(deploy_gate.DeployGate):
         self.started_pids: dict = {}      # only what this run started is ever killed
         self.held_octets: dict = {}       # what fn served before the SIGTERM
         self.inn_holds: list = []         # Message-IDs innd acknowledged
+        self.tap_text = ""                # the relay's log, read before cleanup
         self.tag = "{}-{}".format(self.rev, dt.datetime.now(
             dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
         self.ids = message_ids(self.tag)
@@ -946,6 +947,7 @@ fi
             polls += 1
             done = self.host.sh("cat {} 2>/dev/null || true".format(self.tap_log), 60)
             text = done.stdout.decode("utf-8", "replace")
+            self.tap_text = text or self.tap_text
             found = find_exchange(text, pair, msgid)
             if (found and found["complete"]) or time.monotonic() - clock > self.feed_wait:
                 break
@@ -1693,10 +1695,14 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         self.facts["innd cut"] = "; ".join(facts)
 
     # -- evidence ---------------------------------------------------------
+    def read_tap(self):
+        """Keep the relay's whole log before cleanup removes the tree it is in."""
+        done = self.host.sh("cat {} 2>/dev/null || true".format(self.tap_log), 60)
+        self.tap_text = done.stdout.decode("utf-8", "replace") or self.tap_text
+
     def transcript(self) -> list:
         """The relay's log as the two conversations it carried, decoded."""
-        done = self.host.sh("cat {} 2>/dev/null || true".format(self.tap_log), 60)
-        text = done.stdout.decode("utf-8", "replace")
+        text = self.tap_text
         lines = []
         for pair, label in (("{}>{}".format(self.tap_out_port, self.inn_port),
                              "fn's feed -> innd"),
@@ -1771,6 +1777,10 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
 
     def cleanup(self):
         """No process of ours left on the box; the INN install stays."""
+        try:
+            self.read_tap()
+        except Exception:               # the record says the relay carried nothing
+            pass
         if "fn" in self.started_pids:
             self.stop_fn("stop the fn owner")
         if "tap" in self.started_pids:
