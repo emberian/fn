@@ -144,6 +144,13 @@
                             (:d fn-stmt-p)
                             (:d fn-stmt-bytes-item-p)
                             (:d fn-sig-signature-p) (:d fn-cbor-valuep)
+                            ; `fn-cbor-valuep-bounded' too: `fn-cbor-valuep'
+                            ; is now its instance at *fn-cbor-max-bytes*, so
+                            ; opening only the outer one leaves Subgoal 9's
+                            ; `(fn-cbor-valuep-bounded (cons :bytes sig)
+                            ; 65535)' unreachable from the signature's own
+                            ; octet-list and 4096 length facts.
+                            (:d fn-cbor-valuep-bounded)
                             fn-cbor-at-mostp-from-length
                             fn-stmt-header-of-items-of-header-items
                             fn-stmt-okp-of-ok fn-stmt-value-of-ok

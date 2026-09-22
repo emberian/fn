@@ -206,19 +206,55 @@
            (append (fn-midx-branch-keys branches) (list key))))
   :hints (("Goal" :induct (fn-midx-branch-put key value branches))))
 
+; `fn-midx-branch-keys-of-branch-put' turns a put into an `append' of one key,
+; and the two list facts that appending one fresh key preserves uniqueness are
+; not in the ground-zero theory this book inherits: without them the theorem
+; below reaches Subgoal *1/3.2', where it has to see that a member of
+; `(append keys (list key))' is a member of one side or the other.  Local: list
+; vocabulary, not a Message-ID fact, and books above reason about the trie.
+(local (defthm fn-midx-member-of-append
+         (iff (member-equal a (append x y))
+              (or (member-equal a x) (member-equal a y)))))
+
+(local (defthm fn-midx-no-duplicatesp-of-append-one
+         (implies (and (no-duplicatesp-equal x)
+                       (not (member-equal a x)))
+                  (no-duplicatesp-equal (append x (list a))))))
+
 (defthm fn-midx-no-duplicatesp-of-branch-put
   (implies (no-duplicatesp-equal (fn-midx-branch-keys branches))
            (no-duplicatesp-equal
             (fn-midx-branch-keys
              (fn-midx-branch-put key value branches)))))
 
+; Stated without the `(fn-midx-branch-get key trie)' hypothesis this book
+; carried until 2026-09-22 (it had never certified, so nothing rested on the
+; weaker form).  A miss returns nil and `fn-midx-unique-branchesp' holds of
+; nil, so the hypothesis only kept the rule from firing on the goals that
+; need it -- in `fn-midx-put-chars-preserves-unique-branches' the prover
+; cannot relieve "the branch is there" and was left holding its negation.
+; `:induct trie' was also rejected: an induct hint must be a term.
 (defthm fn-midx-branch-get-is-subtrie-when-character
   (implies (and (fn-midx-unique-branchesp trie)
-                (characterp key)
-                (fn-midx-branch-get key trie))
+                (characterp key))
            (fn-midx-unique-branchesp (fn-midx-branch-get key trie)))
-  :hints (("Goal" :induct trie
+  :hints (("Goal" :induct (fn-midx-branch-get key trie)
            :in-theory (enable fn-midx-branch-get))))
+
+; Putting a branch preserves branch uniqueness: an existing key is replaced in
+; place and a fresh key is appended, and the put value must itself be a unique
+; trie under a character key or be the terminal value under the value key --
+; which is exactly the shape `fn-midx-unique-branchesp' demands of an entry.
+(defthm fn-midx-branch-put-preserves-unique-branches
+  (implies (and (fn-midx-unique-branchesp branches)
+                (if (characterp key)
+                    (fn-midx-unique-branchesp value)
+                  (equal key *fn-midx-value-key*)))
+           (fn-midx-unique-branchesp
+            (fn-midx-branch-put key value branches)))
+  :hints (("Goal" :induct (fn-midx-branch-put key value branches)
+           :in-theory (enable fn-midx-branch-put fn-midx-unique-branchesp
+                              fn-midx-branch-keys))))
 
 (defthm fn-midx-put-chars-preserves-unique-branches
   (implies (and (fn-midx-unique-branchesp trie)
