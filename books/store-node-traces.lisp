@@ -224,18 +224,36 @@
                   (implies (fn-record-p record) (natp (fn-record-sequence record)))))
   :hints (("Goal" :in-theory (enable fn-record-p fn-record-uint32p))))
 
+; `fn-sn-make' is the six-field constructor, which fills the four fields
+; `6e992351' added to `fn-sn-state' with 0, NIL, NIL and 0.  Rebuilding a
+; state through it therefore loses its keyring generation, its acceptance
+; verdicts, its keyring snapshots and its identity sequence, and the equation
+; was false for any state that carries them; books/store-node-traces has not
+; certified since 2026-09-21 01:20, so it was never proved in the widened
+; shape.  The reconstruction is `fn-sn-make-v2' over all ten fields.
 (defthm fn-snt-state-reconstruction
   (implies (fn-sn-statep s)
-           (equal (fn-sn-make (fn-sn-groups s) (fn-sn-capacity s)
-                              (fn-sn-files s) (fn-sn-node s)
-                              (fn-sn-keyring s) (fn-sn-index s))
+           (equal (fn-sn-make-v2 (fn-sn-groups s) (fn-sn-capacity s)
+                                 (fn-sn-files s) (fn-sn-node s)
+                                 (fn-sn-keyring s) (fn-sn-index s)
+                                 (fn-sn-keyring-generation s)
+                                 (fn-sn-verdicts s)
+                                 (fn-sn-keyring-snapshots s)
+                                 (fn-sn-identity-next s))
                   s))
-  :hints (("Goal" :in-theory (enable len fn-sn-statep fn-sn-shapep fn-sn-make fn-sn-groups
+  :hints (("Goal" :in-theory (enable len fn-sn-statep fn-sn-shapep
+                                     fn-sn-make-v2 fn-sn-groups
                                      fn-sn-capacity fn-sn-files fn-sn-node
-                                     fn-sn-keyring fn-sn-index)
+                                     fn-sn-keyring fn-sn-index
+                                     fn-sn-keyring-generation fn-sn-verdicts
+                                     fn-sn-keyring-snapshots
+                                     fn-sn-identity-next)
            :expand ((len s) (len (cdr s)) (len (cddr s))
                     (len (cdddr s)) (len (cddddr s))
-                    (len (cdr (cddddr s))) (len (cddr (cddddr s))))
+                    (len (cdr (cddddr s))) (len (cddr (cddddr s)))
+                    (len (cdddr (cddddr s))) (len (cddddr (cddddr s)))
+                    (len (cdr (cddddr (cddddr s))))
+                    (len (cddr (cddddr (cddddr s)))))
            :do-not-induct t)))
 
 (defthm fn-snt-typed-store-components
@@ -286,9 +304,15 @@
                                   (fn-sf-candidatep fn-sf-record-listp
                                    fn-sf-success-listp)))))
 
+; `fn-store-event-sequence', not `fn-record-sequence': `fn-sf-record-listp'
+; orders the sequence numbers of store events, and `fn-sf-record-pair' is
+; built from the composed accessors, so the bound has to be stated in the same
+; vocabulary.  Since `6ab2c783' and `4bb7bb3d' a history entry is not always
+; an article record, and this book has not certified since 2026-09-21 01:20.
 (defthm fn-snt-record-pair-after-prefix-absent
   (implies (and (fn-sf-record-listp records sequence lower frontier)
-                (<= (+ sequence (len records)) (fn-record-sequence record)))
+                (<= (+ sequence (len records))
+                    (fn-store-event-sequence record)))
            (not (fn-sf-record-has-pairp (fn-sf-record-pair record) records)))
   :hints (("Goal" :induct (fn-sf-record-listp records sequence lower frontier))))
 
@@ -324,13 +348,53 @@
 ; relation carries (replay at frontier - 1) is replay at the candidate txid.
 ; Stated as the arithmetic fact, :rule-classes nil, so the main proof does not
 ; depend on which way the rewriter orients the candidate equality.
+; An article record is none of the other four store events, by length: ten
+; fields against nine, eight, eight and six (books/defrecord.lisp writes the
+; shape as a `len' check).  That is what lets the composed accessors below be
+; read as the record's own.
+(local
+ (defthm fn-snt-an-article-record-is-no-other-store-event
+   (implies (fn-record-p record)
+            (and (not (fn-store-retention-event-p record))
+                 (not (fn-stxe-p record))
+                 (not (fn-stxk-p record))
+                 (not (fn-stxa-p record))))
+   :hints (("Goal"
+            :in-theory (e/d ((:d fn-record-p) (:d fn-record-shapep)
+                             (:d fn-store-retention-event-p)
+                             (:d fn-stxe-p) (:d fn-stxe-shapep)
+                             (:d fn-stxk-p) (:d fn-stxk-shapep)
+                             (:d fn-stxa-p) (:d fn-stxa-shapep))
+                            ((:d fn-record-encode) (:d fn-record-decode-exact)
+                             (:d fn-stxe-bounded-octetsp)
+                             (:d fn-record-uint32p) (:d fn-record-msgidp)
+                             (:d fn-record-payloadp)
+                             (:d fn-record-groups-validp)
+                             (:d fn-record-metadata-bytes-p)))))))
+
+(local
+ (defthm fn-snt-store-event-fields-of-an-article-record
+   (implies (fn-record-p record)
+            (and (equal (fn-store-event-sequence record)
+                        (fn-record-sequence record))
+                 (equal (fn-store-event-txid record) (fn-record-txid record))
+                 (equal (fn-store-event-generation record)
+                        (fn-record-generation record))))
+   :hints (("Goal" :in-theory (enable fn-store-event-sequence
+                                      fn-store-event-txid
+                                      fn-store-event-generation)))))
+
+; `fn-sf-candidatep' pins the composed transaction id, not the record's own:
+; since 6ab2c783 and 4bb7bb3d a staged history entry is not always an article
+; record.  On an article record the two are the same, by the bridge above.
 (local
  (defthm fn-snt-candidate-is-frontier-predecessor
    (implies (fn-sf-candidatep record records frontier)
-            (equal (+ -1 frontier) (fn-record-txid record)))
+            (equal (+ -1 frontier) (fn-store-event-txid record)))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-sf-candidatep)
                                    (fn-sf-next-lower fn-record-p
+                                    fn-store-event-p
                                     fn-record-sequence fn-record-txid
                                     fn-record-generation))))))
 
@@ -409,12 +473,22 @@
            :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
                                fn-sn-record-bindsp fn-sn-completion-enabledp))))
 
+; The retention arm of the candidate reaches this one: `fn-replay-apply-
+; retention-event' advances the node to the event's transaction id, and the
+; relation wants that node idle there.  `fn-snt-advance-that-lands-was-not-
+; past-it' and `fn-snt-advance-from-idle-is-idle-at-its-txid'
+; (books/store-node-invariants) are the two facts about
+; `fn-replay-advance-txid' that say so.
 (defthm fn-snt-record-directory-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-io s :record-directory result)))
   :hints (("Goal" :use ((:instance fn-sn-io-preserves-state
                                      (operation :record-directory))
                         (:instance fn-snt-typed-record-phase (files (fn-sn-files s)))
+                        (:instance fn-snt-advance-that-lands-was-not-past-it
+                          (node (fn-sn-node s))
+                          (k (fn-store-event-txid
+                              (fn-sf-record-candidate (fn-sn-files s)))))
                         (:instance fn-snt-find-published-candidate
                           (files (fn-sn-files s))
                           (record (fn-sf-record-candidate (fn-sn-files s)))))

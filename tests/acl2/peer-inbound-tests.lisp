@@ -351,11 +351,24 @@
 ; `fn-own-conn-live-session' refreshes a session's node only when the session
 ; has a configuration.  `*pt-ps0-live*' above is the witness with it.
 (assert-event (not (fn-peer-sessionp (fn-peer-with-node *pt-reader* *pt-node1*))))
+; And what the step does with that object is nothing at all.
+; `fn-peer-step's first branch is `(not (fn-peer-sessionp ps))' and it returns
+; the object it was given with no effects and no submission, so a reader
+; refreshed without a configuration is not served rather than served a 502.
+; This assertion said 502 until 2026-09-22 and had never run: this book last
+; certified before `64a80197' (2026-09-21 13:02) made a null peer beside a
+; checked node and a null configuration fail `fn-peer-sessionp'.  The 502 is
+; the answer a REAL reader session gets and it is asserted of `*pt-reader*'
+; further down, where it belongs.
 (assert-event (equal (fn-post-result-effects
                       (fn-peer-step (fn-peer-with-node *pt-reader* *pt-node1*)
                                     (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs*
                                     (pt-cmd "IHAVE <a1@example.invalid>")))
-                     (list (pt-reply "502 transit is not permitted on this connection"))))
+                     nil))
+(assert-event (null (fn-post-result-submission
+                     (fn-peer-step (fn-peer-with-node *pt-reader* *pt-node1*)
+                                   (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs*
+                                   (pt-cmd "IHAVE <a1@example.invalid>")))))
 ; (c) the peer-record hypothesis: a connection whose name is in no peer
 ; table answers :not-a-peer, which is a 435 with a different text and a 438
 ; with the same code for a different reason.
