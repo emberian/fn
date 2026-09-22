@@ -710,7 +710,7 @@
       "title": "Reserve capacity and refuse unaffordable obligations",
       "specification": "specs/retention.md#acceptance-is-a-resource-decision",
       "milestone": "M1",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-004",
         "PRF-016"
@@ -724,10 +724,12 @@
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/retention-invariants.lisp",
+        "tests/acl2/retention-tests.lisp"
       ],
       "implementation_note": "Abstract reservations compose with acceptance; local adapter also refuses configured bounds and tests duplicates at capacity. Physical-space reservation accounting remains open.",
-      "note": "Reservation preservation is certified (fn-retain-admit-preserves-statep), but no keystone states that an unaffordable obligation is refused; the refusal exists in the definitions and nothing names it. Charges are abstract units, not measured physical bytes, which is also why AGENTS.md's twins rule bites here. T11 states the refusal keystone."
+      "note": "T11's keystone, fn-retain-admit-refuses-unaffordable-obligation (books/retention-invariants.lisp), states the refusal: whenever a charge exceeds the room the capacity leaves, fn-retain-admit answers the input state unchanged, with a fn-retain-statep hypothesis proved unnecessary (admission already refuses every non-state through fn-retain-admissiblep's first conjunct). fn-node-prepare (books/node.lisp:185-188), the one function through which every reachable caller (POST via fn-sn-prepare-node, peer transit via fn-peer-decide-transfer, the config and BP-receiver replay paths) proposes an obligation, tests the identical fn-retain-admissiblep call before it would reach fn-retain-admit, so this keystone accounts for its refusal too. Teeth in tests/acl2/retention-tests.lisp: a capacity-10 ledger with 6 reserved refuses a charge of 5 and admits the same obligation at charge 4. Charges remain abstract units, not measured physical bytes, which is why AGENTS.md's twins rule still bites: physical-space reservation accounting is open (implementation_note)."
     },
     {
       "id": "RET-003",

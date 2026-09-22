@@ -167,9 +167,10 @@
         "books/retention.lisp",
         "tests/evidence/2026-09-18-articles.md",
         "tests/evidence/2026-09-18-articles.json",
-        "books/retention-invariants.lisp"
+        "books/retention-invariants.lisp",
+        "tests/acl2/retention-tests.lisp"
       ],
-      "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities. Authorized/committed evidence validation, durable node release, and physical-byte charging remain open."
+      "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities; RET-002's capacity refusal is now a keystone, fn-retain-admit-refuses-unaffordable-obligation, over the same fn-retain-admissiblep test fn-node-prepare's refusal branch uses, with teeth at the capacity-10/charge-5-vs-4 boundary. Authorized/committed evidence validation, durable node release, and physical-byte charging remain open."
     },
     {
       "id": "PRF-005",
