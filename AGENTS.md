@@ -90,6 +90,17 @@ that motivated it. Green is not true; these rules are how a claim earns its name
   sentence.** A bound is stated with its exponent and its distance from the
   measured cost; a "certified" claim names the theorem and its hypothesis
   stack. Report the collision figure, not the second-preimage figure.
+- **Behaviour and its invariants land together.** A branch that changed a
+  book merges when that book and every book that includes it are green at
+  the bytes the merge carries: `tools/green_check.py --changed-since REV
+  --strict` before the push, never `git log`. (Review of 2026-09-22, F4:
+  five commits changed the machine under uncertified invariant books.)
+- **Open a codec in a hint, never at the top of a book.** A book-wide
+  `(in-theory (enable ...-vocabulary))` puts the record and statement codecs
+  into every proof in the book, and a goal that only dispatches on a kind
+  then carries the codec and stops returning. State the shape fact the
+  proof needs, keep the recognizer closed, and enable a codec theory only in
+  the hint of the theorem that decodes. (Review of 2026-09-22, F3.)
 - **Housekeeping.** Function prefixes are registered in
   [`docs/prefixes.md`](docs/prefixes.md); lane worktrees under `build/lanes/`
   are removed when the lane lands; role names used in planning are defined in
