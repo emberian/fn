@@ -69,7 +69,8 @@ class Probe:
 
     # The assertions, in the order a client meets them.
     PROTECTED = ["greeting", "capabilities-offer-starttls", "authinfo-before-tls-refused",
-                 "starttls", "capabilities-withdraw-starttls", "login"]
+                 "starttls", "capabilities-withdraw-starttls", "login",
+                 "post-offered-after-login"]
     POSTING = ["group", "post", "reread-fresh-connection"]
 
     def open_protected(self, phase: str) -> Session | None:
@@ -84,7 +85,14 @@ class Probe:
             self.undecided_after(names, "connect: %s" % exc)
             return None
         try:
-            ok = self.check(names[0], "200", session.greeting)
+            # RFC 3977 section 5.1: 200 when posting is allowed, 201 when it is
+            # not.  A node that requires a login greets 201 and offers POST only
+            # after AUTHINFO (books/served, the greeting keystone), so either is
+            # the right greeting here; whether POST is offered is asserted after
+            # the login below.
+            greeting = session.greeting
+            ok = self.record(names[0], "200 or 201", greeting,
+                             HELD if greeting.startswith(("200 ", "201 ")) else VIOLATED)
             status, caps = session.cmd("CAPABILITIES", multiline=True)
             labels = {c.split()[0].upper() for c in caps if c.strip()}
             ok &= self.record(names[1], "STARTTLS in CAPABILITIES", caps,
@@ -118,6 +126,11 @@ class Probe:
             if not self.check(names[5], "281", status):
                 session.close()
                 return None
+            status, caps = session.cmd("CAPABILITIES", multiline=True)
+            labels = {c.split()[0].upper() for c in caps if c.strip()}
+            ok &= self.record(names[6], "POST offered after login", caps,
+                              HELD if "POST" in labels else VIOLATED,
+                              "RFC 4643 section 2.1: the posting allowance is the principal's")
             return session
         except (OSError, Disconnected) as exc:
             done = {s["step"] for s in self.steps}

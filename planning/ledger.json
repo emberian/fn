@@ -411,19 +411,19 @@
     "books": 406,
     "books_in_root_closure": 405,
     "roots": 404,
-    "theorems": 6762,
-    "functions": 5267,
-    "assert_events": 7500,
-    "must_fails": 237,
+    "theorems": 6786,
+    "functions": 5282,
+    "assert_events": 7618,
+    "must_fails": 253,
     "encapsulates": 21,
     "guards": {
-      "verified": 1734,
+      "verified": 1737,
       "declared-off": 284,
       "default-guarded": 2627,
-      "default-unguarded": 622
+      "default-unguarded": 634
     },
-    "suspect_theorems": 62,
-    "export_hygiene_warnings": 88,
+    "suspect_theorems": 63,
+    "export_hygiene_warnings": 90,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 13,
     "include_hygiene_warnings": 151,
@@ -4152,15 +4152,15 @@
       "book": "books/nntp-auth.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 84,
-      "functions": 54,
+      "theorems": 107,
+      "functions": 58,
       "guards": {
-        "verified": 37,
+        "verified": 40,
         "declared-off": 3,
         "default-guarded": 14,
-        "default-unguarded": 0
+        "default-unguarded": 1
       },
-      "verify_guards_events": 37,
+      "verify_guards_events": 40,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 1,
@@ -4174,6 +4174,7 @@
       "system_includes": [],
       "suspects": [
         "fn-auth-consistent-forward",
+        "fn-auth-session-peer-folds",
         "fn-auth-token-argp-forward"
       ],
       "read_error": null
@@ -4637,7 +4638,7 @@
       "book": "books/owner-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
+      "theorems": 38,
       "functions": 43,
       "guards": {
         "verified": 0,
@@ -9473,18 +9474,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 9,
+      "functions": 19,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 9
+        "default-unguarded": 19
       },
       "verify_guards_events": 0,
-      "assert_events": 141,
-      "must_fails": 23,
-      "defconsts": 46,
-      "defmacros": 2,
+      "assert_events": 236,
+      "must_fails": 38,
+      "defconsts": 88,
+      "defmacros": 13,
       "encapsulates": 0,
       "includes": [
         "../../books/nntp-auth-invariants"
@@ -9737,23 +9738,25 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 2,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 118,
-      "must_fails": 0,
-      "defconsts": 50,
-      "defmacros": 0,
+      "assert_events": 141,
+      "must_fails": 1,
+      "defconsts": 59,
+      "defmacros": 4,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-config"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -11151,9 +11154,17 @@
       ]
     },
     {
+      "theorem": "fn-auth-session-peer-folds",
+      "book": "books/nntp-auth.lisp",
+      "line": 2221,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-auth-session-peer"
+      ]
+    },
+    {
       "theorem": "fn-auth-token-argp-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 743,
+      "line": 796,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp"
       ]
@@ -11431,7 +11442,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 742,
+      "line": 801,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]
@@ -11911,9 +11922,21 @@
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
+        "theorem": "fn-auth-session-peer-of-fn-auth-make-session",
+        "book": "books/nntp-auth.lisp",
+        "line": 491,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-auth-session-peer-of-fn-auth-with-base",
+        "book": "books/nntp-auth.lisp",
+        "line": 496,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines",
         "book": "books/nntp-auth.lisp",
-        "line": 1659,
+        "line": 1715,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -12491,19 +12514,19 @@
       {
         "check": "aut-peer-open-pins-the-open-config",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1067,
+        "line": 1071,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-not-posting",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1171,
+        "line": 1175,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-the-post-command-event",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1212,
+        "line": 1216,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       }
     ],

@@ -24,9 +24,9 @@
     "accepted": 141,
     "refused": 34,
     "uncertain": 3,
-    "not-exercised": 27,
+    "not-exercised": 36,
     "not-built": 1,
-    "total": 206,
+    "total": 215,
     "disagreed": 7,
     "faulted": 0,
     "independent": 2,
@@ -446,13 +446,22 @@
       "id": "F-INN",
       "title": "INN as a third node",
       "rows": [
-        "V0-INN-INTEROP"
+        "V0-INN-INTEROP",
+        "V0-INN-FEED-OUT",
+        "V0-INN-FEED-IN",
+        "V0-INN-DUPLICATE-INN",
+        "V0-INN-DUPLICATE-FN",
+        "V0-INN-LOOP-INN",
+        "V0-INN-LOOP-FN",
+        "V0-INN-RESTART",
+        "V0-INN-SERVING-AGENT",
+        "V0-INN-OPERATOR-POST"
       ],
       "counts": {
         "accepted": 0,
         "refused": 0,
         "uncertain": 0,
-        "not-exercised": 1,
+        "not-exercised": 10,
         "not-built": 0
       },
       "disagreed": 0
@@ -6026,6 +6035,277 @@
       "owner": null
     },
     {
+      "id": "V0-INN-FEED-OUT",
+      "feature": "F-INN",
+      "feature_title": "INN as a third node",
+      "title": "an article POSTed to fn reaches INN through fn's outbound feed (IHAVE 335/235) and nnrpd serves it changed only in Path and Xref",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "REP-001"
+      ],
+      "scenarios": [
+        "SCN-023"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-INN-FEED-IN",
+      "feature": "F-INN",
+      "feature_title": "INN as a third node",
+      "title": "INN's innfeed delivers an article to fn (CHECK 238, TAKETHIS 239) and fn serves it changed at most in Path and Xref",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "REP-001"
+      ],
+      "scenarios": [
+        "SCN-023"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-INN-DUPLICATE-INN",
+      "feature": "F-INN",
+      "feature_title": "INN as a third node",
+      "title": "INN refuses a second IHAVE of the article fn fed it with 435",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "REP-002"
+      ],
+      "scenarios": [
+        "SCN-023"
+      ],
+      "verdict": "not-exercised",
+      "expected": "refused",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-INN-DUPLICATE-FN",
+      "feature": "F-INN",
+      "feature_title": "INN as a third node",
+      "title": "fn refuses a second IHAVE of each article it holds (INN's and its own) with 435",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "REP-002"
+      ],
+      "scenarios": [
+        "SCN-023"
+      ],
+      "verdict": "not-exercised",
+      "expected": "refused",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-INN-LOOP-INN",
+      "feature": "F-INN",
+      "feature_title": "INN as a third node",
+      "title": "INN refuses an article whose Path names it with 437",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "REP-002"
+      ],
+      "scenarios": [
+        "SCN-023"
+      ],
+      "verdict": "not-exercised",
+      "expected": "refused",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-INN-LOOP-FN",
+      "feature": "F-INN",
+      "feature_title": "INN as a third node",
+      "title": "fn refuses an article whose Path names its own path identity, and does not serve it",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "REP-002"
+      ],
+      "scenarios": [
+        "SCN-023"
+      ],
+      "verdict": "not-exercised",
+      "expected": "refused",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-INN-RESTART",
+      "feature": "F-INN",
+      "feature_title": "INN as a third node",
+      "title": "INN's history survives a SIGKILL of innd, and fn's articles survive a SIGTERM, recover and restart byte-identical",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "STO-005",
+        "REP-002"
+      ],
+      "scenarios": [
+        "SCN-023"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-INN-SERVING-AGENT",
+      "feature": "F-INN",
+      "feature_title": "INN as a third node",
+      "title": "an article fn took from INN is served with fn's path identity in Path and without INN's Xref (RFC 5537 3.7 steps 6 and 7)",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "REP-001"
+      ],
+      "scenarios": [
+        "SCN-023"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "specs/peering.md 2.3 renders fn's Path prepend on the way out to a peer and says Xref is never stored; the reader path is what this row measures",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-INN-OPERATOR-POST",
+      "feature": "F-INN",
+      "feature_title": "INN as a third node",
+      "title": "an article submitted through `operator post` reaches INN through fn's feed",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "REP-001"
+      ],
+      "scenarios": [
+        "SCN-023"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
       "id": "V0-CLIENT-NNTPLIB-A",
       "feature": "F-CLIENT",
       "feature_title": "independent newsreader clients",
@@ -6319,7 +6599,11 @@
       "V0-TRANSIT-CHECK-FRESH-BA",
       "V0-TRANSIT-TAKETHIS-AB",
       "V0-TRANSIT-TAKETHIS-BA",
-      "V0-INN-INTEROP"
+      "V0-INN-INTEROP",
+      "V0-INN-FEED-OUT",
+      "V0-INN-FEED-IN",
+      "V0-INN-SERVING-AGENT",
+      "V0-INN-OPERATOR-POST"
     ],
     "REP-002": [
       "V0-TRANSIT-IDENTITY-A",
@@ -6334,7 +6618,12 @@
       "V0-TRANSIT-CHECK-DUP-BA",
       "V0-TRANSIT-TAKETHIS-DUP-AB",
       "V0-TRANSIT-TAKETHIS-DUP-BA",
-      "V0-FEED-ONCE"
+      "V0-FEED-ONCE",
+      "V0-INN-DUPLICATE-INN",
+      "V0-INN-DUPLICATE-FN",
+      "V0-INN-LOOP-INN",
+      "V0-INN-LOOP-FN",
+      "V0-INN-RESTART"
     ],
     "REP-003": [
       "V0-BP-NODE"
@@ -6396,7 +6685,8 @@
       "V0-CRASH-RECOVER",
       "V0-CRASH-ACKNOWLEDGED",
       "V0-CRASH-INTERRUPTED",
-      "V0-CRASH-CAMPAIGN"
+      "V0-CRASH-CAMPAIGN",
+      "V0-INN-RESTART"
     ],
     "STO-006": [
       "V0-CRASH-CHECKPOINT"
@@ -6629,7 +6919,16 @@
       "V0-TRANSIT-CHECK-DUP-BA",
       "V0-TRANSIT-TAKETHIS-DUP-AB",
       "V0-TRANSIT-TAKETHIS-DUP-BA",
-      "V0-INN-INTEROP"
+      "V0-INN-INTEROP",
+      "V0-INN-FEED-OUT",
+      "V0-INN-FEED-IN",
+      "V0-INN-DUPLICATE-INN",
+      "V0-INN-DUPLICATE-FN",
+      "V0-INN-LOOP-INN",
+      "V0-INN-LOOP-FN",
+      "V0-INN-RESTART",
+      "V0-INN-SERVING-AGENT",
+      "V0-INN-OPERATOR-POST"
     ],
     "SCN-024": [
       "V0-TRANSIT-TLS-AB",
@@ -6653,5 +6952,5 @@
       "V0-BP-REPLAY"
     ]
   },
-  "rows_digest": "38368b328eacb58b620d8f5f6e5d0267ce736783d6351449434df2ae487d6cc2"
+  "rows_digest": "38d60c3c85901c68917c1349323cd4b537a4ae64e611dd895e9370f112164460"
 }

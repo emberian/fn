@@ -15,6 +15,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-config")
+(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit: the pin table, the recognizer and the three connection
@@ -489,3 +490,109 @@
                                  (fn-state-groups
                                   (fn-node-acceptance
                                    (fn-sn-node (fn-own-store (fn-ocfg-owner *ocfg-l-pub2*))))))))
+
+; -----------------------------------------------------------------------------
+; fn-ocfg-open-begins-unbound (PRF-049).  Witness, then the hypothesis.
+;
+; The witness is a reconnect: connection 0 opens under a configuration whose
+; peer table binds the login's principal to exactly one peer, logs in through
+; the owner's own read path and becomes that peer; connection 1 then opens on
+; the same owner and is a reader, with no subject and no cached name, while
+; connection 0 is still bound beside it.  Closing connection 0 and opening
+; again gives the same.  The credential is a real enrolment
+; (tests/acl2/nntp-auth-tests.lisp re-derives its verifier under SHA-256).
+
+(defconst *ocfg-r-principal* (make-list 32 :initial-element 7))
+(defconst *ocfg-r-cred*
+  (fn-auth-make-cred (fn-nntp-string-octets "reader") *ocfg-r-principal*
+                     (fn-authsec-verifier
+                      (make-list 16 :initial-element 3)
+                      '(60 237 250 71 154 204 168 180 72 224 241 93 232 185 72 59
+                        73 5 240 237 54 116 175 93 127 219 39 238 113 83 63 194))
+                     t))
+(assert-event (fn-auth-credp *ocfg-r-cred*))
+(defconst *ocfg-r-acfg* (fn-auth-make-config t nil t (list *ocfg-r-cred*)))
+(assert-event (fn-auth-configp *ocfg-r-acfg*))
+(defconst *ocfg-r-peer*
+  (fn-cfg-peer-make "principal-peer" "principal.example.invalid"
+                    '(:nntp "127.0.0.1" 119) '("fn.*" 32768 16) nil
+                    (list :principal (fn-digest-hex *ocfg-r-principal*))))
+(assert-event (fn-cfg-peerp *ocfg-r-peer*))
+(defconst *ocfg-r-cfg*
+  (fn-config-replay
+   0 (fn-cnode-line-ceiling)
+   (list (fn-cfg-record-make 0 0 1
+                             (append *fn-cfg-default-change*
+                                     (list (fn-cfg-set-peer-delta *ocfg-r-peer*)))
+                             *fn-cfg-default-stamp*))))
+(assert-event (fn-cfgp *ocfg-r-cfg*))
+(assert-event (equal (fn-auth-principal-match *ocfg-r-principal* *ocfg-r-cfg*)
+                     "principal-peer"))
+
+(defconst *ocfg-r-0*
+  (fn-ocfg-make (fn-own-start (fn-sn-initial *ocfg-t-groups* 10) 3)
+                *ocfg-r-cfg* nil nil))
+(assert-event (fn-ocfg-statep *ocfg-r-0*))
+(defconst *ocfg-r-1* (cdr (fn-ocfg-open *ocfg-r-0* *ocfg-r-acfg*)))
+(defun ocfg-r-session (oc id)
+  (fn-own-conn-session (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+(assert-event (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocfg-r-1*))))
+(assert-event (null (fn-auth-session-peer (ocfg-r-session *ocfg-r-1* 0))))
+(assert-event (equal (fn-peer-session-cfg (fn-auth-session-base (ocfg-r-session *ocfg-r-1* 0)))
+                     *ocfg-r-cfg*))
+
+; The login, through the owner's read (a macro: the PASS runs the SHA-256
+; attachment, which a `defconst' may not call).
+(defconst *ocfg-r-login*
+  (append (fn-nntp-string-octets "AUTHINFO USER reader") '(13 10)
+          (fn-nntp-string-octets "AUTHINFO PASS correct-horse") '(13 10)))
+(defmacro ocfg-r-bound ()
+  '(cdr (fn-ocfg-read *ocfg-r-1* 0 *ocfg-r-login*)))
+(assert-event (equal (fn-auth-session-peer (ocfg-r-session (ocfg-r-bound) 0))
+                     "principal-peer"))
+(assert-event (equal (fn-auth-session-subject (ocfg-r-session (ocfg-r-bound) 0))
+                     *ocfg-r-principal*))
+
+; The reconnect.
+(defmacro ocfg-r-reopen () '(fn-ocfg-open (ocfg-r-bound) *ocfg-r-acfg*))
+(assert-event (car (ocfg-r-reopen)))
+(assert-event (equal (fn-own-next-id (fn-ocfg-owner (ocfg-r-bound))) 1))
+(assert-event (null (fn-auth-session-peer (ocfg-r-session (cdr (ocfg-r-reopen)) 1))))
+(assert-event (null (fn-auth-session-subject (ocfg-r-session (cdr (ocfg-r-reopen)) 1))))
+(assert-event (null (fn-auth-session-pending (ocfg-r-session (cdr (ocfg-r-reopen)) 1))))
+(assert-event (equal (fn-auth-session-peer (ocfg-r-session (cdr (ocfg-r-reopen)) 0))
+                     "principal-peer"))
+(defmacro ocfg-r-closed-reopen ()
+  '(fn-ocfg-open (fn-ocfg-close (ocfg-r-bound) 0) *ocfg-r-acfg*))
+(assert-event (car (ocfg-r-closed-reopen)))
+(assert-event (null (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner (cdr (ocfg-r-closed-reopen)))))))
+(assert-event (null (fn-auth-session-peer (ocfg-r-session (cdr (ocfg-r-closed-reopen)) 1))))
+(assert-event (null (fn-auth-session-subject (ocfg-r-session (cdr (ocfg-r-closed-reopen)) 1))))
+
+; The hypothesis, the open was accepted: an owner at its connection bound
+; greets nobody and installs nothing, so no connection sits at the identifier
+; and the conclusion's first conjunct is false.
+(defconst *ocfg-r-full* (cdr (fn-ocfg-open *ocfg-t-full1* *ocfg-r-acfg*)))
+(assert-event (null (car (fn-ocfg-open *ocfg-t-full1* *ocfg-r-acfg*))))
+(assert-event (null (fn-own-find-conn (fn-own-next-id (fn-ocfg-owner *ocfg-t-full1*))
+                                      (fn-own-conns (fn-ocfg-owner *ocfg-r-full*)))))
+
+(defmacro ocfg-r-unbound-thm (name hyps)
+  `(defthm ,name
+     (implies (and ,@hyps)
+              (and (fn-own-find-conn
+                    (fn-own-next-id (fn-ocfg-owner oc))
+                    (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg)))))
+                   (not (fn-auth-session-peer
+                         (fn-own-conn-session
+                          (fn-own-find-conn
+                           (fn-own-next-id (fn-ocfg-owner oc))
+                           (fn-own-conns
+                            (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))))
+     :rule-classes nil
+     :hints (("Goal" :do-not-induct t
+              :use ((:instance fn-ocfg-open-begins-unbound))
+              :in-theory (disable fn-ocfg-open fn-own-find-conn
+                                  fn-auth-session-peer)))))
+(ocfg-r-unbound-thm ocfg-r-unbound-full ((car (fn-ocfg-open oc acfg))))
+(local (must-fail (ocfg-r-unbound-thm ocfg-r-unbound-without-acceptance ())))
