@@ -50,7 +50,7 @@ reading stored articles over loopback NNTP.
 | What has been decided? | [Decision register](../planning/decisions.md) |
 | What behavior is required? | [Requirement registry](../planning/requirements.json), with links to the detailed specs |
 | What is to be proved? | [Proof registry](../planning/proofs.json), interpreted by the proof strategy |
-| What should happen next? | [Three swarm cycles](../planning/swarm-cycles.md), with packet dependencies and exits; [milestones](../planning/milestones.md) define the full contracts |
+| What should happen next? | [The trajectory plan](../planning/plan-2026-09-22-trajectory.md) §3 and its phase schedule; [how we work](../planning/how-we-work.md) |
 | Which examples must be exercised? | [Scenario catalog](../tests/scenarios/catalog.json) |
 | Which standards support the design? | [References](references.md) |
 | What evidence exists, and what does it not show? | [Evidence index](../planning/evidence-index.md), one row per record in `tests/evidence/` |
