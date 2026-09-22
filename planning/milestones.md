@@ -4,7 +4,12 @@ Post-reboot status (2026-09-21): see the [recovery matrix](recovery-2026-09-21.m
 for landed components, surviving unmerged packets, exact evidence boundaries
 and the next integration cycles. The release contract below remains unchanged.
 
-Current task (2026-09-21): repair and qualify the wider native service batch
+Current task (2026-09-21 evening): the native v0 matrix, run for the first time
+end to end against the native image, is the worklist; see [current work](now.md)
+and the [native matrix record](evidence/native-matrix-915-2026-09-22.md). The
+earlier current task below is retained as written.
+
+Earlier current task (2026-09-21): repair and qualify the wider native service batch
 under the source-pinned progression in [current work](now.md), alongside the
 durable identity, bounded Store-record, compaction, and authenticated peering
 joins. The earlier
