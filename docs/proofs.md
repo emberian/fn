@@ -384,6 +384,50 @@ have (the review's F5): seconds per attempt against cached certificates,
 instead of a closure run per attempt on the farm. A form ACL2 admits there is
 not a certificate; the event goes into the book and the book certifies.
 
+**And when the closure is red, one run tells you every reason.**
+[`tools/triage.py`](../tools/triage.py) answers the question an ordinary
+certification run cannot. `include-book` refuses an uncertified dependency,
+so a closure run stops at the first failure and every book above it reads
+"There is no certificate on file": one run names one *layer* of independent
+reds, and a ten-deep chain costs ten runs -- the shape that took three lanes,
+thirty-nine runs and nine hours on 2026-09-22 (finding F1 of
+[that day's proof-engineering review](../planning/review-2026-09-22-proof-engineering.md)). So a triage round does not run the closure the
+ordinary way. It runs ACL2's provisional certification
+([`tools/certify_books.py --pcert`](../tools/certify_books.py), `:DOC
+provisional-certification`): a Create wave that skips proofs and writes each
+book's `.pcert0`, **one parallel Convert wave that does every book's proofs**
+-- Convert takes a sub-book's `.pcert0` in place of a certificate, so the
+proofs are not a chain -- and a Complete wave that renames `.pcert1` to
+`.cert` in dependency order. Each failed book is then an independent red (its
+Convert failed, with its first ACL2 error and its key checkpoint), a timeout
+(its Convert hit the budget; a finding in its own right, F2), *blocked* (its
+Convert PASSED, so every proof in it succeeded, and a book below it has no
+certificate -- nothing hides behind such a book), a cascade (its Create
+failed, the one kind that can still hide another book's proofs, because
+Create is the one ordered wave), or unexplained. Measured on a 63-book fn
+closure on persvati at 8 jobs: an ordinary round took 690.8 s and named one
+independent red with fifteen books cascading behind it; one provisional round
+took 317.3 s and named four independent reds and twelve proved-but-blocked
+books with nothing unanswered
+([the record](../planning/evidence/triage-2026-09-22.md)).
+
+For a Create failure, and only for that, triage still has a second
+instrument: substitute the book's last green source -- `green_check`'s audit
+names the run, that run's manifest names the digest, `git log --all` holds
+the bytes -- into the *remote* tree only and run again, recording the
+assumption. It is weaker than it looks, and the same day measured why:
+`books/store-node-traces` at its last green source failed on a *different*
+theorem, because those bytes were green over dependencies this tree no longer
+has. **A triage run is evidence of nothing but its list of reds.** The runner
+is invoked with `--no-publish` and `farm.submit` refuses to start a run whose
+command line would publish anyway; `farm.fetch_logs` brings back the logs and
+the manifest and touches neither cache; no manifest of it is archived; and the
+report names no certify run id, because naming one would read as a
+certification claim. Provisional certification is a discovery instrument for
+the same reason ACL2 says it is: Complete checks sub-books' certificate write
+dates rather than their book-hash, and ACL2's own documentation recommends
+certifying a project's books from scratch without it for maximum trust.
+
 `tools/verdict.py --reuse-gate [REV]` reads a gate directory that already
 exists and builds its per-fiber table from it, shipping nothing and starting
 no ACL2. It reads the shape both kinds of gate share (`certify.log`,
