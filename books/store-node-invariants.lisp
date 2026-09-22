@@ -1349,8 +1349,9 @@
 ; successor of the event's transaction id and publish nothing, so they leave
 ; the node idle at that successor exactly as the article arm does.  Stated of
 ; the advance itself, then of each arm.
-(local
- (defthm fn-snt-advance-from-idle-is-idle-at-its-txid
+; Exported, not local: books/store-node-traces needs it of the same function
+; for the retention arm of the relation it carries.
+(defthm fn-snt-advance-from-idle-is-idle-at-its-txid
    (implies (and (fn-node-statep node)
                  (equal (fn-node-stage node) nil)
                  (equal (fn-state-pending (fn-node-acceptance node)) nil)
@@ -1373,27 +1374,25 @@
                              (recorded-txid k)))
             :in-theory (e/d (fn-replay-advance-txid fn-node-statep fn-statep
                              fn-snx-core-definitions)
-                            (fn-record-codec-vocabulary))))))
+                            (fn-record-codec-vocabulary)))))
 
 ; `fn-replay-advance-txid' returns its argument unchanged unless that argument
 ; is a node, so an advance that IS a node was given one.  The retention arm
 ; needs this of the intermediate node it builds: the arm's own hypothesis is
 ; about the advance, and the rule above is about what the advance was given.
-(local
- (defthm fn-snt-advance-of-a-node-came-from-a-node
+(defthm fn-snt-advance-of-a-node-came-from-a-node
    (implies (fn-node-statep (fn-replay-advance-txid node k))
             (fn-node-statep node))
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (e/d (fn-replay-advance-txid)
-                                   (fn-record-codec-vocabulary))))))
+                                   (fn-record-codec-vocabulary)))))
 
 ; Both arms test that the advance landed exactly on the event's transaction
 ; id.  That test is also what says the node was not already past it, which is
 ; the hypothesis the rule above needs: either the advance moved, and
 ; `fn-replay-advance-txid' moves only from at-or-before `k', or it did not
 ; move and the node was already exactly at `k'.
-(local
- (defthm fn-snt-advance-that-lands-was-not-past-it
+(defthm fn-snt-advance-that-lands-was-not-past-it
    (implies (and (fn-node-statep node)
                  (equal (fn-node-stage node) nil)
                  (equal (fn-state-pending (fn-node-acceptance node)) nil)
@@ -1405,7 +1404,7 @@
             (<= (fn-state-next-txid (fn-node-acceptance node)) k))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-replay-advance-txid)
-                                   (fn-record-codec-vocabulary))))))
+                                   (fn-record-codec-vocabulary)))))
 
 (local
  (defthm fn-snt-identity-neutral-from-idle-is-idle-at-successor
