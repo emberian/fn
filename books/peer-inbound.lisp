@@ -1297,15 +1297,30 @@
          (fn-peer-session-cfg ps))
   :hints (("Goal" :in-theory (enable (:d fn-peer-with-node)))))
 
+; The configuration hypothesis is the host's own branch condition, not a
+; negated branch test inside `fn-peer-with-node', which has no branch:
+; `fn-own-conn-live-session' (books/owner) refreshes a session's node only
+; under `(if (fn-peer-session-cfg ps) ...)', because an ordinary reader
+; connection is returned unchanged.  Without it the theorem is false:
+; `fn-peer-with-node' keeps the configuration, so a reader session whose
+; configuration is NIL becomes a checked node beside a null configuration and
+; satisfies neither reader shape of `fn-peer-sessionp'.  The conjecture
+; reduced to (NOT (FN-NODE-STATEP NODE)) under exactly those hypotheses
+; (hbox certify-20260922T060312Z-2712514, 2026-09-22).  Under `fn-peer-sessionp'
+; a non-NIL configuration is `fn-cfgp' and the node is `fn-node-statep' in
+; both remaining shapes, which is what makes the result a session.
 (defthm fn-peer-sessionp-of-fn-peer-with-node
-  (implies (and (fn-peer-sessionp ps) (fn-node-statep node))
+  (implies (and (fn-peer-sessionp ps) (fn-peer-session-cfg ps)
+                (fn-node-statep node))
            (fn-peer-sessionp (fn-peer-with-node ps node)))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp) (:d fn-peer-with-node))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp))))))
 
 (defthm fn-peer-session-consistentp-of-fn-peer-with-node
-  (implies (and (fn-peer-session-consistentp ps archive) (fn-node-statep node))
+  (implies (and (fn-peer-session-consistentp ps archive)
+                (fn-peer-session-cfg ps)
+                (fn-node-statep node))
            (fn-peer-session-consistentp (fn-peer-with-node ps node) archive))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-session-consistentp))
                                   ((:d fn-peer-sessionp) (:d fn-peer-with-node)
