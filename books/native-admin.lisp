@@ -129,6 +129,17 @@
 The explicit grammar carries auth-kind/auth-value.  The older grammar is
 decoded as source-address for durable command compatibility."
   (declare (xargs :guard t))
+  ; The proper-list test is FIRST, and it is the same refusal the grammar
+  ; gate below already returns for a `words' that is not one -- the gate's
+  ; own first conjunct is `(true-listp words)', so this changes no value.
+  ; It has to be first because `db2e182a' widened the grammar and the
+  ; `let*' now reads `(nth 8 words)' to decide which grammar it is, ahead of
+  ; that gate, and `nth' is guarded by a proper list.  `(equal (len words)
+  ; 13)' does not give one: `len' counts the conses of an improper list too,
+  ; which is the shape the guard conjecture stopped on (books/native-admin
+  ; has not certified since `db2e182a').
+  (if (not (true-listp words))
+      (fn-native-admin-result :refused :syntax nil nil 0 nil nil)
   (let* ((count (len words))
          (v2p (and (member-equal count '(13 16))
                    (member-equal (nth 8 words) '("source-address" "principal"))))
@@ -198,7 +209,7 @@ decoded as source-address for durable command compatibility."
           (if (fn-cfg-peerp peer)
               (fn-native-admin-result :accepted nil :set-peer nil 0 peer nil)
             (fn-native-admin-result :refused :peer-record nil nil 0 nil nil)))
-      (fn-native-admin-result :refused :syntax nil nil 0 nil nil))))
+      (fn-native-admin-result :refused :syntax nil nil 0 nil nil)))))
 
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
