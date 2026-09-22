@@ -508,6 +508,23 @@
                                    (:d fn-cfg-peer-of-rows))
                                   ((:d fn-cfg-peerp))))))
 
+; The authentication half a peer record always carries.  `fn-cfg-peer-authp'
+; is a two-element list, so the field is a cons; books/nntp-auth.lisp reads
+; its `car' to decide whether a bound peer role came from (:principal ...),
+; and that `car' is a guard obligation in a `:guard t' function which cannot
+; open the record to discharge it.
+(defthm fn-cfg-peerp-auth-field
+  (implies (fn-cfg-peerp p)
+           (and (consp (fn-cfg-peer-auth p))
+                (true-listp (fn-cfg-peer-auth p))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d ((:d fn-cfg-peerp) (:d fn-cfg-peer-authp))
+                                  ((:d fn-cfg-labelp) (:d fn-cfg-wildmatp)
+                                   (:d fn-path-identityp)
+                                   (:d fn-cfg-peer-transportp)
+                                   (:d fn-cfg-peer-inboundp)
+                                   (:d fn-cfg-peer-outboundp))))))
+
 (defthm fn-cfg-peerp-inbound-fields
   (implies (and (fn-cfg-peerp p) (fn-cfg-peer-inbound p))
            (and (posp (fn-cfg-peer-inbound-max-octets p))

@@ -110,6 +110,116 @@
                              fn-stxe-p fn-stxk-p fn-stxa-p
                              fn-replay-apply-retention-event))))))
 
+; ---------------------------------------------------------------------------
+; The two conjuncts of `fn-sn-statep' that the identity replay context carries
+; into the state: the keyring snapshot list and the next identity sequence
+; number.  `fn-sn-finish' (through fn-sn-finish-identity) and `fn-sn-recover'
+; (through fn-replay-identity) both hand a context's third and second fields
+; straight to `fn-sn-make-v2', so the invariant on them is whatever the
+; identity machine left there.  Neither field is ever the record codec's
+; business, which is why these are stated rather than reached by unfolding --
+; with the codec open the composed goals grow a term instead of proving.
+;
+; They are stated over `caddr' and `cadr' rather than over
+; `fn-stxk-context-snapshots' and `fn-stxk-context-next' because those two are
+; `mbe' definitions whose :logic bodies are exactly those calls and they are
+; enabled here, so the goals carry the `car'/`cdr' nest and a rule stated over
+; the accessor would have nothing to match.  The `next' facts are stated as
+; the two conjuncts `fn-sn-statep' asks for rather than as `natp' for the same
+; reason.  The theorems below open `fn-stxk-context' and `fn-stxk-fault' (a
+; six-element list and a repack of one) so the contexts reduce to their fields.
+
+(local
+ (defthm fn-sn-keyring-snapshot-listp-of-fn-stxk-apply-snapshot
+   (implies (and (fn-sn-keyring-snapshot-listp (caddr ctx))
+                 (fn-stxk-p e))
+            (fn-sn-keyring-snapshot-listp
+             (caddr (fn-stxk-apply-snapshot ctx e))))
+   :hints (("Goal"
+            :in-theory (e/d (fn-stxk-apply-snapshot fn-stxk-fault
+                             fn-stxk-context fn-sn-keyring-snapshot-listp)
+                            (fn-record-codec-vocabulary
+                             fn-stxk-p fn-stxe-p fn-stxa-p
+                             fn-stxk-find fn-stxk-same-snapshotp))))))
+
+(local
+ (defthm fn-sn-identity-next-of-fn-stxk-apply-snapshot
+   (implies (and (integerp (cadr ctx)) (<= 0 (cadr ctx)))
+            (and (integerp (cadr (fn-stxk-apply-snapshot ctx e)))
+                 (<= 0 (cadr (fn-stxk-apply-snapshot ctx e)))))
+   :hints (("Goal"
+            :in-theory (e/d (fn-stxk-apply-snapshot fn-stxk-fault
+                             fn-stxk-context)
+                            (fn-record-codec-vocabulary
+                             fn-stxk-p fn-stxe-p fn-stxa-p
+                             fn-stxk-find fn-stxk-same-snapshotp))))))
+
+; `fn-stxk-apply-verdict' conses onto the verdicts and never onto the
+; snapshots; it advances the same sequence number the snapshot step does.
+(local
+ (defthm fn-sn-keyring-snapshot-listp-of-fn-stxk-apply-verdict
+   (implies (fn-sn-keyring-snapshot-listp (caddr ctx))
+            (fn-sn-keyring-snapshot-listp
+             (caddr (fn-stxk-apply-verdict ctx e))))
+   :hints (("Goal"
+            :in-theory (e/d (fn-stxk-apply-verdict fn-stxk-fault
+                             fn-stxk-context fn-sn-keyring-snapshot-listp)
+                            (fn-record-codec-vocabulary
+                             fn-stxk-p fn-stxe-p fn-stxa-p
+                             fn-stxk-find fn-stxk-same-snapshotp))))))
+
+(local
+ (defthm fn-sn-identity-next-of-fn-stxk-apply-verdict
+   (implies (and (integerp (cadr ctx)) (<= 0 (cadr ctx)))
+            (and (integerp (cadr (fn-stxk-apply-verdict ctx e)))
+                 (<= 0 (cadr (fn-stxk-apply-verdict ctx e)))))
+   :hints (("Goal"
+            :in-theory (e/d (fn-stxk-apply-verdict fn-stxk-fault
+                             fn-stxk-context)
+                            (fn-record-codec-vocabulary
+                             fn-stxk-p fn-stxe-p fn-stxa-p
+                             fn-stxk-find fn-stxk-same-snapshotp))))))
+
+; One step of the identity replay, over every arm of its dispatch: the two
+; apply functions above, the sequence fault, the composite fault and the
+; `fn-replay-identity-advance' arm for a record the identity machine does not
+; own.
+(local
+ (defthm fn-sn-identity-fields-of-fn-replay-identity-step
+   (implies (and (fn-sn-keyring-snapshot-listp (caddr ctx))
+                 (integerp (cadr ctx)) (<= 0 (cadr ctx)))
+            (and (fn-sn-keyring-snapshot-listp
+                  (caddr (fn-replay-identity-step ctx event)))
+                 (integerp (cadr (fn-replay-identity-step ctx event)))
+                 (<= 0 (cadr (fn-replay-identity-step ctx event)))))
+   :hints (("Goal"
+            :in-theory (e/d (fn-replay-identity-step
+                             fn-replay-identity-advance
+                             fn-stxk-fault fn-stxk-context)
+                            (fn-record-codec-vocabulary
+                             fn-stxk-p fn-stxe-p fn-stxa-p fn-store-event-p
+                             fn-stxk-apply-snapshot fn-stxk-apply-verdict
+                             fn-stxk-find fn-stxk-same-snapshotp))))))
+
+; And the fold `fn-sn-recover' runs over the replayed records.
+(local
+ (defthm fn-sn-identity-fields-of-fn-replay-identity-loop
+   (implies (and (fn-sn-keyring-snapshot-listp (caddr ctx))
+                 (integerp (cadr ctx)) (<= 0 (cadr ctx)))
+            (and (fn-sn-keyring-snapshot-listp
+                  (caddr (fn-replay-identity-loop records ctx)))
+                 (integerp (cadr (fn-replay-identity-loop records ctx)))
+                 (<= 0 (cadr (fn-replay-identity-loop records ctx)))))
+   :hints (("Goal"
+            :induct (fn-replay-identity-loop records ctx)
+            :in-theory (e/d (fn-replay-identity-loop fn-stxk-fault
+                             fn-stxk-context)
+                            (fn-record-codec-vocabulary
+                             fn-stxk-p fn-stxe-p fn-stxa-p fn-store-event-p
+                             fn-replay-identity-step
+                             fn-stxk-apply-snapshot fn-stxk-apply-verdict
+                             fn-stxk-find fn-stxk-same-snapshotp))))))
+
 (defthm fn-sn-finish-preserves-state
   (implies (fn-sn-statep s)
            (fn-sn-statep (fn-sn-finish s)))
@@ -134,20 +244,39 @@
                             (generation
                              (fn-record-generation (fn-sn-completion-record s)))
                             (completion-status :durable)))
-           :in-theory (disable fn-record-codec-vocabulary
-                               fn-stxe-p fn-stxk-p fn-stxa-p
-                               fn-replay-apply-record
-                               fn-replay-apply-retention-event
-                               fn-node-complete
-                               fn-sf-core-completion
-                               fn-sf-emit-success))))
+           :in-theory (e/d (fn-stxk-context fn-stxk-fault)
+                           (fn-record-codec-vocabulary
+                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-replay-apply-record
+                            fn-replay-apply-retention-event
+                            fn-node-complete
+                            fn-sf-core-completion
+                            fn-sf-emit-success)))))
 
 ; Keystone for the host-called acceptance subject.  host/store-node-host.lisp
-; `fn-store-sn-finish' calls fn-sn-finish; on its enabled durable branch the
-; cheap retrieval query returns exactly the verdict computed over the
-; accepted record under the then-current keyring generation.
+; `fn-store-sn-finish' calls fn-sn-finish; on its enabled durable acceptance
+; branch the cheap retrieval query returns exactly the verdict computed over
+; the accepted record under the then-current keyring generation.
+;
+; The three hypotheses after the enabling one ARE that branch.  `fn-sn-finish'
+; dispatches on `retentionp' and on `identityp', and only its third arm calls
+; `fn-sn-update-accepted', which is the one site that installs a
+; `(msgid . verdict)' pair.  Until 2026-09-22 this theorem carried only
+; `fn-sn-completion-enabledp' and claimed the equation on all three arms; it
+; was submitted on 2026-09-21 (6e992351) into a book that has not certified
+; since 2026-09-21 01:20, so it was never proved, and on the retention arm it
+; is false: that arm keeps `(fn-sn-verdicts s)' exactly, while the right-hand
+; side is a `fn-stx-make-verdict' triple that is never NIL
+; (fn-stx-verdict-of-octets, books/stx-lace.lisp).  The branch the sentence
+; above always named is now the branch the statement names.  What the other
+; two arms do to this query is stated next; nothing here says a retention or
+; identity completion records an acceptance verdict, because it does not.
 (defthm fn-sn-finish-records-the-acceptance-verdict
-  (implies (fn-sn-completion-enabledp s)
+  (implies (and (fn-sn-completion-enabledp s)
+                (not (fn-store-retention-event-p (fn-sn-completion-record s)))
+                (not (fn-stxe-p (fn-sn-completion-record s)))
+                (not (fn-stxk-p (fn-sn-completion-record s)))
+                (not (fn-stxa-p (fn-sn-completion-record s))))
            (equal
             (fn-sn-verdict-lookup
              (fn-sn-finish s)
@@ -157,8 +286,33 @@
              (fn-sn-keyring s)
              (fn-sn-keyring-generation s))))
   :hints (("Goal"
-           :in-theory (enable fn-sn-verdict-lookup
-                              fn-sn-verdict-lookup-list))))
+           :in-theory (e/d (fn-sn-verdict-lookup fn-sn-verdict-lookup-list)
+                           (fn-record-codec-vocabulary
+                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-replay-apply-record
+                            fn-replay-apply-retention-event
+                            fn-node-complete
+                            fn-sf-core-completion
+                            fn-sf-emit-success)))))
+
+; The retention arm of the same dispatch, which is what the hypotheses above
+; exclude: it advances the identity sequence and reindexes, and it does not
+; touch the acceptance evidence, so this query answers exactly as it did
+; before the completion, for every Message-ID.
+(defthm fn-sn-finish-of-a-retention-event-keeps-the-verdicts
+  (implies (fn-store-retention-event-p (fn-sn-completion-record s))
+           (equal (fn-sn-verdict-lookup (fn-sn-finish s) msgid)
+                  (fn-sn-verdict-lookup s msgid)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sn-verdict-lookup fn-sn-verdict-lookup-list
+                            fn-sn-advance-identity-next fn-sn-update-indexed)
+                           (fn-record-codec-vocabulary
+                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-replay-apply-record
+                            fn-replay-apply-retention-event
+                            fn-node-complete
+                            fn-sf-core-completion
+                            fn-sf-emit-success)))))
 
 ; Key rotation changes current trust and its generation, but it cannot
 ; rewrite the acceptance observation that the retrieval path exposes.
@@ -178,11 +332,17 @@
            (fn-node-statep (fn-sf-replay-node groups capacity records frontier)))
   :hints (("Goal" :in-theory (disable fn-sf-replay-node))))
 
+; The successes conjunct is what `fn-sn-recover' needs to see that the file
+; state it builds to refuse a composed recovery is built out of one state's
+; own history: `fn-sf-recover' carries the emitted successes across both of
+; its arms exactly as it carries the records and the frontier.
 (defthm fn-sn-file-recovery-retains-history
   (and (equal (fn-sf-records (fn-sf-recover files groups capacity))
               (fn-sf-records files))
        (equal (fn-sf-frontier (fn-sf-recover files groups capacity))
-              (fn-sf-frontier files))))
+              (fn-sf-frontier files))
+       (equal (fn-sf-successes (fn-sf-recover files groups capacity))
+              (fn-sf-successes files))))
 
 (defthm fn-sn-file-recovery-produces-valid-replay
   (implies (and (fn-sf-statep files)
@@ -192,6 +352,23 @@
            (fn-node-statep (fn-sf-replay-node groups capacity
                               (fn-sf-records files) (fn-sf-frontier files))))
   :hints (("Goal" :in-theory (disable fn-sf-replay-node))))
+
+; `fn-sn-recover' refuses the composed recovery by rebuilding the file state
+; in :fault out of the history it just replayed (books/store-node.lisp, added
+; by 40bb3f74 on 2026-09-21, which did not update this book).  That rebuild is
+; the else-branch of `fn-sf-recover' written out at the composed level, so it
+; is a file state whenever its argument is: the :fault arm of
+; `fn-sf-phase-shapep' asks only that the two candidates and the completion
+; are absent, and the frontier, the records and the successes cross unchanged.
+; `fn-sf-statep' is withdrawn in this book, so the conjecture below has no way
+; to see that without the rule.
+(local
+ (defthm fn-sf-statep-of-the-composed-recovery-fault
+   (implies (fn-sf-statep files)
+            (fn-sf-statep (fn-sf-make :fault (fn-sf-frontier files) nil
+                                      (fn-sf-records files) nil nil
+                                      (fn-sf-successes files) 0)))
+   :hints (("Goal" :in-theory (enable fn-sf-statep fn-sf-phase-shapep)))))
 
 (defthm fn-sn-recover-preserves-state
   (implies (fn-sn-statep s)
@@ -255,64 +432,192 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-sn-completion-enabledp))))
 
+; THE THREE ARMS OF `fn-sn-finish'.  Until 2026-09-21 this function had one
+; arm and the theorems below said so.  `6ab2c783' (12:43) gave it a retention
+; arm whose node is `fn-replay-apply-retention-event', and `4bb7bb3d' (13:24)
+; an identity arm whose node is `fn-replay-apply-record'; this book has not
+; certified since 2026-09-21 01:20, so neither commit's consequences were ever
+; proved here and these statements have been false on the two new arms since.
+; Each one below now names the arm it is about.  What the other two arms do is
+; not weakened away: `fn-sn-completion-enabledp' already carries the condition
+; each arm must meet (books/store-node.lisp), and the success keystone below
+; keeps that conjunct at full strength for all three.
 (defthm fn-sn-finish-is-actual-durable-completion
-  (implies (fn-sn-completion-enabledp s)
+  (implies (and (fn-sn-completion-enabledp s)
+                (not (fn-store-retention-event-p (fn-sn-completion-record s)))
+                (not (fn-stxe-p (fn-sn-completion-record s)))
+                (not (fn-stxk-p (fn-sn-completion-record s)))
+                (not (fn-stxa-p (fn-sn-completion-record s))))
            (equal (fn-sn-node (fn-sn-finish s))
                   (fn-node-complete (fn-sn-node s)
                     (fn-record-txid (fn-sn-completion-record s))
                     (fn-record-generation (fn-sn-completion-record s))
                     :durable)))
+  ; The record codec stays closed, as it does for `fn-sn-finish-preserves-
+  ; state': with it open the three-arm dispatch unfolds the codec on every
+  ; branch and this goal split into 5121 subgoals (hbox
+  ; certify-20260922T080951Z-2784602).  On the arm named above the node
+  ; component is the `fn-node-complete' call itself, so nothing here needs to
+  ; look inside a record.
   :hints (("Goal" :in-theory (disable fn-sn-completion-enabledp
-                                      fn-sn-completion-record))))
+                                      fn-sn-completion-record
+                                      fn-record-codec-vocabulary
+                                      fn-stxe-p fn-stxk-p fn-stxa-p
+                                      fn-replay-apply-record
+                                      fn-replay-apply-retention-event
+                                      fn-node-complete
+                                      fn-sf-core-completion
+                                      fn-sf-emit-success))))
 
 (defthm fn-sn-finish-installs-exact-article-and-archive-pin
-  (implies (fn-sn-completion-enabledp s)
+  (implies (and (fn-sn-completion-enabledp s)
+                (not (fn-store-retention-event-p (fn-sn-completion-record s)))
+                (not (fn-stxe-p (fn-sn-completion-record s)))
+                (not (fn-stxk-p (fn-sn-completion-record s)))
+                (not (fn-stxa-p (fn-sn-completion-record s))))
            (fn-sn-committed-recordp (fn-sn-node (fn-sn-finish s))
                                     (fn-sn-completion-record s)))
   :hints (("Goal" :use (fn-sn-finish-is-actual-durable-completion
                          (:instance fn-sn-actual-durable-completion-installs-record
                           (node (fn-sn-node s))
                           (record (fn-sn-completion-record s))))
+           ; The codec stays closed: the four branch hypotheses this shares
+           ; with the theorem it uses are `fn-stxe-p', `fn-stxk-p',
+           ; `fn-stxa-p' and `fn-store-retention-event-p' calls, and with the
+           ; codec open they unfold on both sides instead of cancelling.
            :in-theory (disable fn-sn-finish fn-sn-committed-recordp
-                               fn-sn-record-bindsp fn-sn-completion-record))))
+                               fn-sn-record-bindsp fn-sn-completion-record
+                               fn-record-codec-vocabulary
+                               fn-stxe-p fn-stxk-p fn-stxa-p
+                               fn-replay-apply-record
+                               fn-replay-apply-retention-event
+                               fn-replay-identity-step
+                               fn-sn-identity-context
+                               fn-node-complete
+                               fn-sf-core-completion fn-sf-emit-success))))
 
 (defthm fn-sn-finish-acknowledges-exact-pair
   (implies (fn-sn-completion-enabledp s)
            (equal (fn-sf-successes (fn-sn-files (fn-sn-finish s)))
                   (append (fn-sf-successes (fn-sn-files s))
                           (list (fn-sf-completion (fn-sn-files s))))))
+  ; All three arms of `fn-sn-finish' hand the same file state on: the core
+  ; completion and the emitted success are computed once, above the dispatch,
+  ; from the composed `fn-store-event-sequence' and `fn-store-event-txid' --
+  ; which is what this `:use' instantiates.  The record codec stays closed for
+  ; the same reason it does two theorems above: the dispatch would otherwise
+  ; unfold it on every arm.
   :hints (("Goal"
            :use ((:instance fn-sf-core-completion-preserves-state
                     (s (fn-sn-files s))
-                    (sequence (fn-record-sequence (fn-sn-completion-record s)))
-                    (txid (fn-record-txid (fn-sn-completion-record s)))))
+                    (sequence (fn-store-event-sequence
+                               (fn-sn-completion-record s)))
+                    (txid (fn-store-event-txid (fn-sn-completion-record s)))))
            :in-theory (e/d (fn-sf-core-completion fn-sf-emit-success)
-                            (fn-sn-record-bindsp fn-sn-completion-record)))))
+                            (fn-sn-record-bindsp fn-sn-completion-record
+                             fn-record-codec-vocabulary
+                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-replay-apply-record
+                             fn-replay-apply-retention-event
+                             fn-node-complete)))))
 
+; The success keystone.  Its first conjunct is the one that carries the
+; safety property and it is stated for all three arms at full strength: no
+; acknowledgement appears unless the completion was enabled, and
+; `fn-sn-completion-enabledp' is what makes each arm's node transition actual
+; (the retention arm demands a non-nil `fn-replay-apply-retention-event', the
+; identity arm a non-nil `fn-replay-apply-record' under an :ok identity
+; context, the acceptance arm `fn-sn-record-bindsp').  The article-specific
+; conclusions hold on the acceptance arm, which is where an article record is
+; what was completed; see the note above `fn-sn-finish-is-actual-durable-
+; completion'.
 (defthm fn-sn-new-success-requires-actual-matching-durable-node-completion
   (implies (not (equal (fn-sf-successes (fn-sn-files (fn-sn-finish s)))
                        (fn-sf-successes (fn-sn-files s))))
            (and (fn-sn-completion-enabledp s)
-                (fn-sn-record-bindsp (fn-sn-node s) (fn-sn-completion-record s))
-                (equal (fn-sn-node (fn-sn-finish s))
-                       (fn-node-complete (fn-sn-node s)
-                         (fn-record-txid (fn-sn-completion-record s))
-                         (fn-record-generation (fn-sn-completion-record s))
-                         :durable))
-                (fn-sn-committed-recordp (fn-sn-node (fn-sn-finish s))
-                                         (fn-sn-completion-record s))))
+                (implies
+                 (and (not (fn-store-retention-event-p
+                            (fn-sn-completion-record s)))
+                      (not (fn-stxe-p (fn-sn-completion-record s)))
+                      (not (fn-stxk-p (fn-sn-completion-record s)))
+                      (not (fn-stxa-p (fn-sn-completion-record s))))
+                 (and (fn-sn-record-bindsp (fn-sn-node s)
+                                           (fn-sn-completion-record s))
+                      (equal (fn-sn-node (fn-sn-finish s))
+                             (fn-node-complete (fn-sn-node s)
+                               (fn-record-txid (fn-sn-completion-record s))
+                               (fn-record-generation
+                                (fn-sn-completion-record s))
+                               :durable))
+                      (fn-sn-committed-recordp (fn-sn-node (fn-sn-finish s))
+                                               (fn-sn-completion-record s))))))
   :hints (("Goal" :use (fn-sn-finish-is-actual-durable-completion
                          fn-sn-finish-installs-exact-article-and-archive-pin
                          fn-sn-finish-disabled-is-no-op)
            :cases ((fn-sn-completion-enabledp s))
-           :in-theory (disable fn-sn-finish fn-sn-completion-record
+           :in-theory (disable fn-record-codec-vocabulary
+                               fn-stxe-p fn-stxk-p fn-stxa-p
+                               fn-replay-apply-record
+                               fn-replay-apply-retention-event
+                               fn-replay-identity-step
+                               fn-sn-identity-context
+                               fn-node-complete
+                               fn-sf-core-completion fn-sf-emit-success
+                               fn-sn-finish fn-sn-completion-record
                                fn-sn-record-bindsp fn-sn-committed-recordp))))
 
 ; A matching live proposal has exactly the same durable meaning as a record
 ; interpreted by replay.  This is equality of the entire node: watermarks,
 ; memberships, articles, retention accounting, archive pins, bindings and txid.
+; An article record is none of the other four store events, by length alone:
+; `fn-record' has ten fields, a retention event nine, `fn-stxe' and `fn-stxa'
+; eight and `fn-stxk' six (books/defrecord.lisp writes the shape as a `len'
+; check).  `fn-replay-apply-record' tests the other four first, so this is
+; what says a record reaches its article arm.
+(local
+ (defthm fn-sn-an-article-record-is-no-other-store-event
+   (implies (fn-record-p record)
+            (and (not (fn-store-retention-event-p record))
+                 (not (fn-stxe-p record))
+                 (not (fn-stxk-p record))
+                 (not (fn-stxa-p record))))
+   :hints (("Goal"
+            :in-theory (e/d ((:d fn-record-p) (:d fn-record-shapep)
+                             (:d fn-store-retention-event-p)
+                             (:d fn-stxe-p) (:d fn-stxe-shapep)
+                             (:d fn-stxk-p) (:d fn-stxk-shapep)
+                             (:d fn-stxa-p) (:d fn-stxa-shapep))
+                            ((:d fn-record-encode) (:d fn-record-decode-exact)
+                             (:d fn-stxe-bounded-octetsp)
+                             (:d fn-record-uint32p) (:d fn-record-msgidp)
+                             (:d fn-record-payloadp)
+                             (:d fn-record-groups-validp)
+                             (:d fn-record-metadata-bytes-p)))))))
+
+; And on that arm the composed accessors are the record's own.
+(local
+ (defthm fn-sn-store-event-fields-of-an-article-record
+   (implies (fn-record-p record)
+            (and (equal (fn-store-event-kind record) :article)
+                 (equal (fn-store-event-sequence record)
+                        (fn-record-sequence record))
+                 (equal (fn-store-event-txid record) (fn-record-txid record))
+                 (equal (fn-store-event-generation record)
+                        (fn-record-generation record))))
+   :hints (("Goal" :in-theory (enable fn-store-event-kind
+                                      fn-store-event-sequence
+                                      fn-store-event-txid
+                                      fn-store-event-generation)))))
+
+; The hypothesis `(fn-record-p record)' is the arm of `fn-replay-apply-record'
+; this equation is about.  That function grew a retention arm (6ab2c783) and
+; an identity arm (4bb7bb3d) on 2026-09-21 and this book has not certified
+; since, so the unrestricted statement was never proved: on the retention arm
+; the left side is `fn-replay-apply-retention-event' and the right side still
+; names `fn-node-complete'.  Both callers below already carry the hypothesis.
 (defthm fn-sn-replay-is-actual-live-durable-completion
-  (implies (and (fn-replay-advance-okp node (fn-record-txid record))
+  (implies (and (fn-record-p record)
+                (fn-replay-advance-okp node (fn-record-txid record))
                 (fn-node-pending-matchesp
                  (fn-sn-prepare-node node record)
                  (fn-record-txid record) (fn-record-generation record)))
@@ -706,15 +1011,74 @@
 ; fn-install-pending conses, and the index grows by the delta of exactly that
 ; article -- at most one cons, never a walk.  The subject is fn-sn-finish,
 ; which host/store-node-host.lisp line 402 (fn-store-sn-finish) calls.
+; The two arms of `fn-sn-finish' that are NOT an acceptance publish no
+; article, so the index the state carries is still the index of its store.
+; `fn-replay-advance-txid' rebuilds the acceptance record around the same
+; article list; `fn-replay-node-with-retention' replaces the retention half
+; and keeps the acceptance record whole; and the identity-neutral step is two
+; advances.  Each is stated over `fn-stx-store', which this proof holds
+; closed, so the equation reaches the invariant without opening the store.
+(local
+ (defthm fn-sn-store-of-node-with-retention
+   (equal (fn-stx-store (fn-replay-node-with-retention node retention))
+          (fn-stx-store node))
+   :hints (("Goal" :in-theory (enable fn-stx-store
+                                      fn-replay-node-with-retention)))))
+
+(local
+ (defthm fn-sn-store-of-advance-txid
+   (equal (fn-stx-store (fn-replay-advance-txid node recorded-txid))
+          (fn-stx-store node))
+   :hints (("Goal" :in-theory (enable fn-stx-store fn-replay-advance-txid)))))
+
+(local
+ (defthm fn-sn-store-of-complete-retention
+   (equal (fn-stx-store (fn-replay-complete-retention node retention event))
+          (fn-stx-store node))
+   :hints (("Goal" :in-theory (e/d (fn-replay-complete-retention)
+                                   (fn-stx-store fn-replay-advance-txid
+                                    fn-replay-node-with-retention))))))
+
+(local
+ (defthm fn-sn-store-of-retention-event
+   (implies (fn-replay-apply-retention-event node event)
+            (equal (fn-stx-store (fn-replay-apply-retention-event node event))
+                   (fn-stx-store node)))
+   :hints (("Goal" :in-theory (e/d (fn-replay-apply-retention-event)
+                                   (fn-stx-store fn-replay-advance-txid
+                                    fn-replay-complete-retention
+                                    fn-record-codec-vocabulary
+                                    fn-store-retention-event-p
+                                    fn-retain-admissiblep fn-retain-admit
+                                    fn-retain-release))))))
+
+(local
+ (defthm fn-sn-store-of-identity-neutral
+   (implies (fn-replay-apply-identity-neutral node event)
+            (equal (fn-stx-store (fn-replay-apply-identity-neutral node event))
+                   (fn-stx-store node)))
+   :hints (("Goal" :in-theory (e/d (fn-replay-apply-identity-neutral)
+                                   (fn-stx-store fn-replay-advance-txid
+                                    fn-record-codec-vocabulary))))))
+
 (defthm fn-sn-finish-preserves-indexedp
   (implies (fn-sn-indexedp s)
            (fn-sn-indexedp (fn-sn-finish s)))
   :hints (("Goal"
-           :in-theory (e/d (fn-sn-completion-enabledp fn-sn-record-bindsp)
+           ; `fn-stx-index-invariantp' is opened so the two non-acceptance
+           ; arms reduce to the store equations above; the store, the index
+           ; and the replay steps stay closed so the equations are what the
+           ; goal sees.
+           :in-theory (e/d (fn-sn-completion-enabledp fn-sn-record-bindsp
+                            fn-stx-index-invariantp)
                            (fn-sf-core-completion fn-sf-emit-success
                             fn-node-statep fn-node-complete
                             fn-stx-index-of-store fn-stx-store
-                            fn-stx-index-invariantp fn-stx-index-add
+                            fn-stx-index-add
+                            fn-replay-apply-retention-event
+                            fn-replay-apply-identity-neutral
+                            fn-replay-advance-txid
+                            fn-record-codec-vocabulary
                             fn-sn-completion-record fn-node-pending-matchesp))
            :use ((:instance fn-sn-finish-preserves-state)
                  (:instance fn-stx-durable-completion-is-an-acceptance

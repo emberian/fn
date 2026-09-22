@@ -1040,7 +1040,11 @@
                                    (:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp))))))
 
-(local (defthm fn-peer-session-consistentp-of-make-session
+; Exported with the peer constructor rule below it, for the same caller: a
+; session built here is consistent exactly when it is a session and the POST
+; base it was built from was already consistent, which is what
+; books/nntp-auth.lisp carries through AUTHINFO.
+(defthm fn-peer-session-consistentp-of-make-session
   (equal (fn-peer-session-consistentp
           (fn-peer-make-session base peer transfer inflight node cfg) archive)
          (and (fn-peer-sessionp
@@ -1049,7 +1053,7 @@
               t))
   :hints (("Goal" :in-theory (e/d (fn-peer-session-consistentp)
                                   ((:d fn-peer-sessionp)
-                                   (:d fn-post-session-consistentp)))))))
+                                   (:d fn-post-session-consistentp))))))
 
 ; Withdrawn from here down: the two lemmas above are the only way into it,
 ; and the forward-chaining rule cannot trigger while it opens.
@@ -1149,7 +1153,11 @@
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp)))))))
 
-(local (defthm fn-peer-sessionp-of-make-session-peer
+; Exported, not local: books/nntp-auth.lisp builds a peer session of exactly
+; this shape when AUTHINFO promotes a contextual reader to the one configured
+; peer its principal names (fn-auth-bind-principal-peer, 64a80197), and it
+; cannot open `fn-peer-sessionp' to see that the result is a session.
+(defthm fn-peer-sessionp-of-make-session-peer
   (implies (and (fn-post-sessionp base)
                 (stringp peer)
                 (fn-node-statep node)
@@ -1160,7 +1168,7 @@
             (fn-peer-make-session base peer transfer inflight node cfg)))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
-                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+                                   (:d fn-node-statep) (:d fn-cfgp))))))
 
 (local (in-theory (disable (:d fn-peer-sessionp))))
 
