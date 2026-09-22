@@ -818,6 +818,7 @@
                 events)))
     (implies (and (fn-snt-relation s)
                   (fn-sf-crash-imagep (fn-sn-files s) frontier records)
+                  (fn-sn-observed-identity-okp records)
                   (member-equal pair (fn-sf-successes (fn-sn-files s))))
              (fn-sf-record-has-pairp pair (fn-sf-records (fn-sn-files final)))))
   :hints (("Goal"
