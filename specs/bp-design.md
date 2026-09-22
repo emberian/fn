@@ -238,6 +238,17 @@ is what closes it.
 
 ### 1.5 The processing machine: `books/bp-node.lisp`
 
+**Superseded 2026-09-22 by [the node machine design](bp-node-machine.md)
+(T12a, phase 0).** That document states the machine as it will be written in
+phase 2 against what exists today: `fn-bpn-step` and its state do exist, in
+`books/bp-node-machine.lisp`, as the outbound lifecycle with PRF-046's three
+keystones, and the design completes them into one bundle list with retention
+constraints, reception through the machine, dispatch from a routing table,
+reassembly, status reports as bundles this node authors, discard, restart
+re-anchoring and K6. §1.5, §1.5.1 and §1.6 below are kept as the wave-4
+target they were and are not edited further; where they and the new
+document differ, the new document is the contract.
+
 State:
 
 ```lisp
