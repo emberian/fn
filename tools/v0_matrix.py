@@ -3701,17 +3701,21 @@ exit "$rc"
         payload = "{}/capacity.article".format(scratch)
         self.push_file(article(msgid, self.native_group, "over the capacity", "x" * 4096),
                        payload)
-        over = self.sh("node {} post beyond the capacity".format(node.upper),
-                       self.cd(self.native_command(
-                           self.Raw(config), "post", "--message-id", msgid,
-                           "--payload", self.Raw(payload), "--group", self.native_group)),
-                       timeout=900, expect=None)
-        self.from_step("V0-CAP-REFUSE", over, node=node.name,
-                       limit="the capacity was set to 1 (rc={}) on a scratch store served "
-                             "by an owner of its own on port {}; the article's own charge "
-                             "is what has to exceed it, and the charge is ACL2's".format(
-                                 tight.rc, port))
-        self.stop_server(tag, run=scratch)
+        try:
+            over = self.sh("node {} post beyond the capacity".format(node.upper),
+                           self.cd(self.native_command(
+                               self.Raw(config), "post", "--message-id", msgid,
+                               "--payload", self.Raw(payload), "--group",
+                               self.native_group)), timeout=900, expect=None)
+            self.from_step("V0-CAP-REFUSE", over, node=node.name,
+                           limit="the capacity was set to 1 (rc={}) on a scratch store "
+                                 "served by an owner of its own on port {}; the "
+                                 "article's own charge is what has to exceed it, and "
+                                 "the charge is ACL2's".format(tight.rc, port))
+        finally:
+            # The scratch owner holds a port on a box this gate shares, so it
+            # is stopped even if the row above raised.
+            self.stop_server(tag, run=scratch)
 
     # -- F-AUTH on the packaged native image --------------------------------
     #
@@ -3925,6 +3929,16 @@ exit "$rc"
                          nodes=(node.name,),
                          invocation=self.native_command(self.Raw(config), "run"))
             return
+        # From here the scratch owner is running, so every exit goes through
+        # `stop_server`: a row that raised must not leave an owner holding a
+        # port on a box this gate shares.
+        try:
+            self.native_auth_gate_rows(node, port, one)
+        finally:
+            self.stop_server(tag, run=scratch)
+
+    def native_auth_gate_rows(self, node: NodeSpec, port: int, one: str):
+        """V0-AUTH-GATED, against the auth-required owner `native_auth_gate` started."""
         step = self.matrix("auth", "--port {} --group {} --user {} --secret-file {} "
                            "--msgid '{}'".format(
                                port, shlex.quote(self.native_group), AUTH_USER, one,
@@ -3953,7 +3967,6 @@ exit "$rc"
                           node.upper, port,
                           result.get("AUTHINFO PASS", "(no reply)"),
                           result.get("POST AFTER", "(not attempted)")))
-        self.stop_server(tag, run=scratch)
 
     def native_config_store(self, node: NodeSpec) -> str:
         """The store path a supplied configuration declares, read as text.
