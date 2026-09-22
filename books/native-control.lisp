@@ -144,22 +144,27 @@
                    (fn-record-parse-rest tail)))))))))))
 
 (defun fn-nctrl-admin-argv-decode (octets)
-  (declare (xargs :guard t))
+  ; `zp' of the decoded count needs the count to be a natural.  The bounded
+  ; record codec (2026-09-21) no longer yields that by opening, and the
+  ; `natp' rewrite rule does not match the (integerp ...) and (<= 0 ...)
+  ; halves the guard conjecture asks for, so the domain lemma from
+  ; books/records is used closed, with the parser accessors disabled.
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal"
+                    :use ((:instance fn-record-read-uint-success-domain
+                                     (octets octets)))
+                    :in-theory (disable fn-record-read-uint
+                                        fn-record-parse-okp
+                                        fn-record-parse-value
+                                        fn-record-parse-rest)))))
   (if (not (fn-cbor-octet-listp octets))
       (fn-record-parse-error :arguments)
     (let ((counted (fn-record-read-uint octets)))
       (if (not (fn-record-parse-okp counted))
           (fn-record-parse-error :arguments)
         (let ((count (fn-record-parse-value counted)))
-          ; `(not (posp count))' rather than `(zp count)': they are the same
-          ; predicate on every object -- both say "not a positive integer" --
-          ; and `posp' is `:guard t' while `zp' owes a natural.  The bounded
-          ; CBOR profile of 2026-09-21 left no rule saying the value a
-          ; successful `fn-record-read-uint' carries is one, so the guard
-          ; conjecture stopped on `(fn-record-parse-value (fn-record-read-uint
-          ; octets))' being non-negative; books/native-control has not
-          ; certified since.  No value changes.
-          (if (or (not (posp count)) (< *fn-native-admin-max-arguments* count))
+          (if (or (zp count) (< *fn-native-admin-max-arguments* count))
               (fn-record-parse-error :arguments)
             (let ((parsed (fn-nctrl-admin-words-decode
                            count (fn-record-parse-rest counted))))
@@ -190,8 +195,13 @@
           (fn-nctrl-seal *fn-nctrl-request-kind* payload))))))
 
 (defun fn-native-control-admin-encode (argv)
+  ; The argv budget is one bound, applied on both sides: `fn-native-admin-plan'
+  ; refuses more than *fn-native-admin-max-arguments* with :argv and
+  ; `fn-nctrl-admin-argv-decode' refuses the count, so an encoder without it
+  ; emits a frame its own decoder must refuse.
   (declare (xargs :guard t))
-  (if (or (not (fn-native-admin-argvp argv)) (not (consp argv)))
+  (if (or (not (fn-native-admin-argvp argv)) (not (consp argv))
+          (< *fn-native-admin-max-arguments* (len argv)))
       :bad
     (let ((payload (fn-nctrl-admin-argv-encode argv)))
       (if payload (fn-nctrl-seal *fn-nctrl-admin-kind* payload) :bad))))

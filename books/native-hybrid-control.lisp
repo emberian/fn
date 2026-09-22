@@ -14,17 +14,13 @@
   (if (fn-native-admin-decimalp text)
       (fn-native-admin-decimal-value (coerce text 'list)) nil))
 
-; The kind is checked here as `fn-nctrl-seal' (books/native-control) checks
-; its own: `fn-frame-protected' is guarded by `fn-cbor-octetp' on it, and
-; nothing in this gate said so, which is what the guard conjecture stopped
-; on.  Both callers pass a constant (`*fn-nhctrl-enroll-kind*' 4 and
-; `*fn-nhctrl-author-kind*' 5), so no frame this book can build changes; a
-; kind outside an octet now refuses instead of framing a value the header
-; cannot encode.
 (defun fn-nhctrl-seal (kind specs values)
-  (declare (xargs :guard t))
-  (if (not (and (fn-cbor-octetp kind)
-                (fn-frame-spec-listp specs)
+  ; `fn-frame-protected' frames the kind as one octet, so the octet is this
+  ; function's precondition, not a fact about specs and values: the guard
+  ; conjecture asked for (<= KIND 255) under the spec/value hypotheses alone.
+  ; Both callers below pass a literal kind constant.
+  (declare (xargs :guard (fn-cbor-octetp kind)))
+  (if (not (and (fn-frame-spec-listp specs)
                 (fn-frame-values-okp specs values))) :bad
     (let ((payload (fn-frame-fields-octets specs values)))
       (if (< *fn-nhctrl-max-payload* (len payload)) :bad
@@ -33,7 +29,19 @@
           (append protected (fn-frame-trailer protected)))))))
 
 (defun fn-nhctrl-open-values (octets kind specs)
-  (declare (xargs :guard t))
+  ; `fn-frame-fields-parse' needs the opened payload to be octets.  That is
+  ; `fn-frame-decode-payload-octets' (books/frame-fields) at this call's own
+  ; digest and cap; the instance is supplied closed, since the rule does not
+  ; fire on the guard conjecture's case split.
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal" :do-not-induct t
+                    :use ((:instance fn-frame-decode-payload-octets
+                                     (octets octets)
+                                     (digest (fn-frame-trailer
+                                              (fn-frame-protected-prefix
+                                               octets)))
+                                     (max-payload *fn-nhctrl-max-payload*)))))))
   (if (not (and (fn-cbor-octet-listp octets)
                 (fn-frame-spec-listp specs))) nil
     (let ((opened (fn-frame-decode octets
@@ -64,7 +72,11 @@
   (declare (xargs :guard t))
   (let ((v (fn-nhctrl-open-values octets *fn-nhctrl-enroll-kind*
                                   *fn-nhctrl-enroll-spec*)))
-    (if (and (equal (len v) 4)
+    ; The vector is decided before any `nth' of it, the way
+    ; `fn-native-control-request-decode' decides its own: length alone is not
+    ; a proper list, and `nth' needs one under a verified guard.
+    (if (and (true-listp v)
+             (equal (len v) 4)
              (fn-record-uint32p (nth 0 v))
              (fn-hsig-exact-octets-p (nth 1 v) 32)
              (fn-hsig-exact-octets-p (nth 2 v) 32)
@@ -87,7 +99,8 @@
   (declare (xargs :guard t))
   (let ((v (fn-nhctrl-open-values octets *fn-nhctrl-author-kind*
                                   *fn-nhctrl-author-spec*)))
-    (if (and (equal (len v) 5)
+    (if (and (true-listp v)
+             (equal (len v) 5)
              (fn-record-uint32p (nth 0 v))
              (fn-cbor-at-mostp (nth 1 v) *fn-article-max-octets*)
              (consp (nth 1 v))

@@ -107,14 +107,38 @@
           (fn-nop-refused :posting-disabled "post" config arguments)
         (fn-nop-result :accepted :plan "post" config arguments)))))
 
+(defun fn-nop-parse-init-groups (words groups)
+  "The groups a new store is to serve, in the order the operator named them.
+
+There is no default here and none below it: a node's served groups are an
+operator decision, and an `init' that named none would have to be given one
+by the raw initializer, which would be a second owner of that choice.  A
+bare `init' is therefore a usage error, not a store with two guessed groups."
+  (declare (xargs :guard t :measure (len words)))
+  (if (atom words)
+      (let ((names (fn-ncfg-reverse groups)))
+        (if (and (consp names) (fn-record-groupsp names)) names :bad))
+    (if (<= *fn-record-max-groups* (len groups))
+        :bad
+      (fn-nop-parse-init-groups (cdr words) (cons (car words) groups)))))
+
+(defun fn-nop-parse-init (words config)
+  (declare (xargs :guard t))
+  (let ((groups (fn-nop-parse-init-groups words nil)))
+    (if (equal groups :bad)
+        (fn-nop-usage :invalid-init-groups "init" config words)
+      (fn-nop-result :accepted :plan "init" config (list :init groups)))))
+
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "run" "post" "status" "recover" "group" "capacity" "peer" "policy" "principal")))
+  (member-equal subject '("help" "init" "run" "post" "status" "recover" "group" "capacity" "peer" "policy" "principal")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
   (declare (xargs :guard t))
-  (cond ((equal subject "run") "usage: fn operator CONFIG run [--once]")
+  (cond ((equal subject "init")
+         "usage: fn operator CONFIG init GROUP [GROUP...]")
+        ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "post")
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
         ((equal subject "status") "usage: fn operator CONFIG status")
@@ -122,22 +146,27 @@
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "peer")
-         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME")
+         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME | peer list")
         ((equal subject "policy")
          "usage: fn operator CONFIG policy set path-identity IDENTITY")
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list|set-password NAME [--principal HEX] [--posting|--no-posting]}")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|run|post|status|recover|group|capacity|peer|policy|principal}")))
+        (t "usage: fn operator CONFIG {help|init|run|post|status|recover|group|capacity|peer|policy|principal}")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
+  ; The argv here is the raw host vector `fn-native-operator-run' was handed,
+  ; so this boundary stays total: `fn-ncfg-rest' is the tail of a cons and nil
+  ; of anything else, which is what `cdr' means in the logic and what `cdr'
+  ; cannot be called on under a verified guard (the conjecture asked for
+  ; (implies (not (consp argv)) (not argv))).
   (declare (xargs :guard t))
-  (let ((plan (fn-native-auth-admin-parse-argv (cdr argv))))
+  (let ((plan (fn-native-auth-admin-parse-argv (fn-ncfg-rest argv))))
     (if (equal (fn-native-auth-admin-plan-status plan) :accepted)
         (fn-nop-result :accepted :plan "principal" config (list plan))
       (fn-nop-usage (list :principal (fn-native-auth-admin-plan-reason plan))
-                    "principal" config (cdr argv)))))
+                    "principal" config (fn-ncfg-rest argv)))))
 
 (defun fn-nop-parse-administration (command argv config)
   "Delegate the exact bounded argv vector to the ACL2 durable-admin grammar."
@@ -166,6 +195,7 @@
                (if (equal arguments :bad)
                    (fn-nop-usage :invalid-run-options "run" config rest)
                  (fn-nop-result :accepted :plan "run" config arguments))))
+            ((equal command "init") (fn-nop-parse-init rest config))
             ((equal command "post") (fn-nop-parse-post rest config))
             ((equal command "status")
              (if (null rest)
@@ -363,6 +393,73 @@ is installed into the owner for both served and control submission."
       (fn-ncfg-nth 3 (fn-native-operator-result-arguments result)))
     nil))
 
+; -----------------------------------------------------------------------------
+; `init': stand the configured store up through the operator.
+;
+; The plan carries the store root the configuration names and the groups the
+; operator named.  Whether that store already exists is a physical question,
+; so raw Lisp answers it -- but only by reporting which of the names below it
+; found, and ACL2 turns that observation into the tagged outcome.  The one
+; guarantee the observation buys is that no lock is taken to make it:
+; `writer.lock' is one of the names, so a store a live owner holds is refused
+; on its presence rather than on a failed flock.
+
+(defconst *fn-nop-store-markers*
+  '("config.json" "writer.lock" "allocation-frontier.json" "transactions"
+    "config"))
+
+(defun fn-nop-marker-octets (names)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (cons (fn-record-string-octets (car names))
+            (fn-nop-marker-octets (cdr names)))
+    nil))
+
+(defun fn-native-operator-init-marker-octets ()
+  "The store entries whose presence means an initialised store is already there."
+  (declare (xargs :guard t))
+  (fn-nop-marker-octets *fn-nop-store-markers*))
+
+(defun fn-native-operator-result-init-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (equal (fn-native-operator-result-command result) "init")))
+
+(defun fn-native-operator-result-init-store-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-init-planp result)
+      (fn-record-string-octets
+       (fn-native-config-store (fn-native-operator-result-config result)))
+    nil))
+
+(defun fn-native-operator-result-init-group-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-init-planp result)
+      (fn-native-operator-post-group-octets
+       (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-native-operator-init-outcome (result observed)
+  "The tagged outcome for one accepted init plan and one store observation.
+
+OBSERVED is the sublist of `fn-native-operator-init-marker-octets' that raw
+Lisp found beside the configured store root.  A non-empty observation is a
+refusal: an existing store is adopted by `run' and repaired by `recover', and
+this command creates one.  It is deliberately not an uncertainty -- nothing
+was written -- and not a usage error, because the command line was well
+formed and the operator asked for something the node declined to do."
+  (declare (xargs :guard t))
+  (cond ((not (fn-native-operator-result-init-planp result))
+         (fn-nop-usage :not-an-init-plan "init"
+                       (fn-native-operator-result-config result) nil))
+        ((consp observed)
+         (fn-nop-refused :store-exists "init"
+                         (fn-native-operator-result-config result)
+                         (fn-native-operator-result-arguments result)))
+        (t (fn-nop-result :accepted :initialize "init"
+                          (fn-native-operator-result-config result)
+                          (fn-native-operator-result-arguments result)))))
+
 (defun fn-native-operator-result-admin-planp (result)
   (declare (xargs :guard t))
   (and (equal (fn-native-operator-result-status result) :accepted)
@@ -373,15 +470,18 @@ is installed into the owner for both served and control submission."
 
 (defun fn-native-operator-result-admin-plan (result)
   "The exact ACL2 administrative plan; no raw argv reaches the executor."
+  ; The arguments field is whatever the plan put there, so the total
+  ; accessors of books/native-config read it: `car' of it cannot run under a
+  ; verified guard, and these three read a result the host may hand back.
   (declare (xargs :guard t))
   (if (fn-native-operator-result-admin-planp result)
-      (car (fn-native-operator-result-arguments result))
+      (fn-ncfg-first (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-native-operator-result-admin-argv (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-admin-planp result)
-      (cadr (fn-native-operator-result-arguments result))
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-native-operator-result-principal-planp (result)
@@ -392,7 +492,7 @@ is installed into the owner for both served and control submission."
 (defun fn-native-operator-result-principal-plan (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-principal-planp result)
-      (car (fn-native-operator-result-arguments result))
+      (fn-ncfg-first (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-native-operator-result-principal-auth-path-octets (result)
@@ -406,11 +506,15 @@ is installed into the owner for both served and control submission."
   "The only commands the current raw native module may execute by itself.
 
 `run' and `post' retain normalized plans for the owner and local-control
-callbacks.  Neither is translated into a direct Store call."
+callbacks.  Neither is translated into a direct Store call.  `init' is an
+offline store action like `status' and `recover': it names the store the
+configuration declares and the groups the operator named, and its refusal
+when that store already exists is `fn-native-operator-init-outcome'."
   (declare (xargs :guard t))
   (if (not (equal (fn-native-operator-result-status result) :accepted))
       :none
     (cond ((equal (fn-native-operator-result-command result) "help") :help)
+          ((equal (fn-native-operator-result-command result) "init") :init)
           ((equal (fn-native-operator-result-command result) "run") :run)
           ((equal (fn-native-operator-result-command result) "post") :post)
           ((equal (fn-native-operator-result-command result) "status") :status)

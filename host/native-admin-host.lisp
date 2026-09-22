@@ -12,6 +12,15 @@
 (defun fn-native-admin-host-capacity (result) (fn-native-admin-result-capacity result))
 (defun fn-native-admin-host-peer (result) (fn-native-admin-result-peer result))
 (defun fn-native-admin-host-value (result) (fn-native-admin-result-value result))
+(defun fn-native-admin-host-queryp (result) (fn-native-admin-result-queryp result))
+(defun fn-native-admin-host-peer-report (state)
+  ; The `peer list' report over the configuration the store just replayed.
+  ; The rows are the replayed value's own; this bridge selects no peer,
+  ; orders nothing, and renders no field: books/native-admin.lisp does all
+  ; three and raw Lisp only writes the octets out.
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-native-admin-peer-report
+          (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
 (defun fn-native-admin-host-owner-reconfigure (id plan state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((kind (fn-native-admin-result-kind plan))

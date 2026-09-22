@@ -528,9 +528,20 @@ class WaitTests(unittest.TestCase):
 
     def test_progress_parsing_ignores_unrelated_output(self):
         fields = farm.parse_progress(
-            "Warning: something\nSTATUS running\nMARKERS 12\nTAIL a b c\n")
+            "Warning: something\nSTATUS running\nMARKERS 12\nSTARTED 40\nTAIL a b c\n")
         self.assertEqual(fields["STATUS"], "running")
         self.assertEqual(fields["MARKERS"], "12")
+        self.assertEqual(fields["STARTED"], "40")
+
+    def test_progress_counts_markers_in_the_run_directory_not_the_farm_log(self):
+        # Until 2026-09-22 the script grepped the farm log, which carries no
+        # per-book marker, so every progress line read "0 books certified".
+        script = farm.progress_script(Path("/remote/root"), "run-x")
+        self.assertIn("build/acl2/certify-*/", script)
+        self.assertIn("grep -l FN_CERTIFY_SUCCESS", script)
+        self.assertIn("*.certify.log", script)
+        self.assertIn("STARTED", script)
+        self.assertNotIn("grep -c FN_CERTIFY_SUCCESS build/farm", script)
 
 
 class StatusTests(unittest.TestCase):

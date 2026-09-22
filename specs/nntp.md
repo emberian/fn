@@ -2,7 +2,7 @@
 
 Status: the selected reader profile is implemented and advertised, and POST is
 advertised exactly on the connections that may use it. `books/nntp.lisp` always
-advertises `VERSION 2`, `READER`, `OVER MSGID`, `HDR` and
+advertises `VERSION 2`, `READER`, `OVER MSGID`, `HDR`, `NEWNEWS` and
 `LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT`. Every clause RFC 3977
 appendix B assigns to those labels is marked proved or tested in
 [the clause matrix](nntp-audit.md#the-reader-clause-matrix); none is open.
@@ -20,7 +20,8 @@ greeting read the injection configuration alone and promised 200 where POST
 answered 480. `fn-served-open-greets-200-exactly-when-the-connection-may-post`
 and `fn-served-open-greeting-agrees-with-the-post-label` (PRF-039) are the
 statement of it. The read-only reader profile pins a configuration that
-disallows posting, so it greets with 201 and advertises no POST. IHAVE, NEWNEWS and MODE-READER remain unadvertised. D05's checklist
+disallows posting, so it greets with 201 and advertises no POST. IHAVE and
+MODE-READER remain unadvertised. D05's checklist
 is the matrix. See [implementation status](../docs/implementation.md).
 
 ## Planned surface
@@ -35,8 +36,9 @@ is the matrix. See [implementation status](../docs/implementation.md).
 | Compatibility behavior | MODE READER, according to the actual advertised mode |
 | Clock and creation facts | DATE and NEWGROUPS consume an explicit `fn-clock-observationp` and a persisted `fn-nntp-group-factp` list; neither is invented by the reader |
 | Header access | HDR, LIST HEADERS |
+| Polling | NEWNEWS (§7.4), under the work budget below |
 | Legacy spellings (RFC 2980) | XOVER (§2.8), XHDR (§2.6), LIST ACTIVE.TIMES (§2.1.3) |
-| Later optional capabilities | IHAVE, NEWNEWS, XPAT, streaming, authentication/compression extensions as selected |
+| Later optional capabilities | IHAVE, XPAT, streaming, authentication/compression extensions as selected |
 
 NNT-001: advertise only complete supported bundles and variants. Build a checklist
 of every applicable RFC branch, argument form, response, and state effect.
@@ -104,9 +106,94 @@ than as a second implementation:
 reads, so §7.6.4's "the results SHOULD be consistent" is true by construction.
 Its third field is the plain text `unattributed`: a configuration record
 records who may reconfigure the node, not a mailbox to attribute a group to,
-and fn does not fabricate one. `LIST NEWSGROUPS` renders an empty
-description for the same reason -- the group table has no description field
-until R5 adds one.
+and fn does not fabricate one. `LIST NEWSGROUPS` renders the fixed marker
+`(no description)` for the same reason: the group table
+(`books/config-records.lisp`) carries names, policy ids and created/retired
+stamps and no description, so nothing group-specific is invented and the
+marker is a statement about the server, not about the group. §7.6.6 permits
+the description to be omitted or passed on as held, and it is **not** the
+empty string: Python `nntplib` strips the line and then requires a name,
+white space and text, so a bare `name TAB` drops the group from
+`descriptions()` entirely (measured against `tests/interop_nntplib.py`,
+2026-09-20). OPEN: a per-group description field in the durable
+configuration record, which R5 would add; until then this row is a stated
+local limitation and not a claim that fn has descriptions.
+
+## Polling: NEWNEWS
+
+RFC 3977 §7.4 answers `NEWNEWS wildmat date time [GMT]` with 230 and the
+Message-IDs of the articles in matching groups that arrived since the given
+instant. `fn-nntp-newnews-response` (`books/nntp-responses.lisp`) is what
+`fn-nntp-archive-command` calls for it, and
+`fn-nntp-step-dispatches-newnews-to-the-newnews-response`
+(`books/nntp-newnews.lisp`) is that sentence as a theorem. The served path
+reaches it through `fn-served-dispatch` → `fn-auth-step` → `fn-peer-step` →
+`fn-nntp-post-step` → `fn-nntp-step`.
+
+**Which instant.** fn's committed article record carries message-id, payload,
+groups, memberships and pin, and no arrival stamp: the store records none, so
+there is no locally witnessed acceptance time for NEWNEWS to read. The instant
+compared is the one inside the article's own retained octets — `Injection-Date`,
+and where that is absent `Date` — which is the field and the fallback order RFC
+5537 §§3.6 and 3.7 fix for staleness and which `books/path.lisp` already reads.
+For an article this node injected, `books/injection.lisp` wrote that stamp from
+the node's own clock; for an article a peer fed, it is the injecting agent's
+claim and nothing stronger, and a `NEWNEWS` answer is therefore not evidence of
+when fn received anything. LIMITATION: an article whose date-time fn cannot
+decode exactly — no such field, an RFC 5322 comment in the field body, or a
+form outside §3.3 — is **not** reported. §7.4.2 makes the list a set the client
+may see more than once and permits it to be empty, so the omission stays inside
+the response; it is recorded here rather than hidden. OPEN: a durable
+acceptance stamp beside the article, which would make NEWNEWS a statement about
+this node.
+
+**The bound, and its scope.** One `NEWNEWS` costs one pass over the committed
+article list — the same pass `GROUP`, `LISTGROUP` and `OVER` already pay,
+testing each article's own membership list and parsing nothing — plus at most
+`*fn-nntp-newnews-parse-budget*` = 256 article parses, one for each article
+available at a number in a matching group. Pessimistically that is
+`O(A·G' + min(C,256)·P)`, where `A` is the committed article count, `G'` the
+number of configured groups the wildmat matched, `C` the number of committed
+articles available in those groups, and `P` the per-article parse envelope of
+[the public work bound](article-work.md). A request with `C > 256` is refused
+with §3.2.1's 503 — the code that section assigns to a server that "only
+handles a subset of legitimate cases" — and parses **nothing at all**, because
+the refusal is decided walking down the article list and every parse happens on
+the way back up. `fn-nntp-newnews-scan-answers-exactly-within-the-budget`
+proves the refusal is decided by an independent count of the candidates against
+the fuel and by nothing else;
+`fn-nntp-newnews-scan-reports-at-most-the-budget` bounds the answer; and
+`fn-nntp-newnews-refusal-is-the-only-other-outcome` fixes the two outcomes, so
+no partial list can reach a 230 block. OPEN: the `A·G'` term is the whole-list
+walk this profile pays everywhere; the per-group index of
+`books/nntp-index.lisp` would replace it with the matched entries alone, and it
+is not on the dispatcher's path today.
+
+**What cannot be reported.** `fn-nntp-newnews-scan-reports-only-witnessed-lines`
+is the scoping property: every rendered line is the stored identifier of a
+committed article that is available at a number in a group the wildmat matched
+and whose own stamp is at or after the requested instant. A `NEWNEWS` cannot
+name an article of a group its wildmat did not match, and cannot name an
+article whose identifier this profile could not render, because an
+unrenderable identifier fails the availability test that makes an article a
+candidate at all. The command changes no session state
+(`fn-nntp-newnews-response-preserves-session`).
+
+NNT-008: answer NEWNEWS from the article's own injection stamp, scoped by the
+wildmat, under an explicit per-command parse budget whose exhaustion is a
+refusal and not a shorter list. The instant is `Injection-Date` and, where it
+is absent, `Date`; the store records no arrival stamp, so neither this command
+nor its specification claims one. The budget refusal is RFC 3977 §3.2.1's 503
+and it parses nothing. An article whose date-time fn cannot decode is omitted,
+and that omission is stated, not silent.
+
+**Three outcomes.** 230 with the block is the answer; 501 is the syntax
+refusal (wrong arity, a fourth token that is not `GMT`, a malformed wildmat, a
+date or time outside §7.3.2's forms and ranges); 503 is the refusal for want
+of something — a two-digit year with no wall-clock reading, or a request over
+the work budget. The three are distinct on the wire, in
+`tests/acl2/nntp-newnews-tests.lisp` and in the `V0-READ-NEWNEWS*` rows of the
+native matrix.
 
 ## Overview projection
 

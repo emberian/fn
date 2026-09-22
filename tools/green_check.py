@@ -13,6 +13,11 @@ nobody asked it.
     python3 tools/green_check.py --table     # every book, red first, then never
     python3 tools/green_check.py --json      # the same records, machine-readable
     python3 tools/green_check.py --strict    # exit 1 on a book red at its digest
+    python3 tools/green_check.py --changed-since dev --strict
+                                             # the merge gate: the books this
+                                             # branch changed, every book that
+                                             # includes one, and each one's
+                                             # verdict; exit 1 unless all green
 
 WHAT IT MEASURES.  Every root in the Makefile's `ACL2_BOOKS` and every book
 in those roots' local include closure, read through the one closure walker
@@ -64,6 +69,7 @@ from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -298,6 +304,76 @@ def audit(root: Path = ROOT, roots: list[str] | None = None) -> dict:
     }
 
 
+def changed_books(root: Path, rev: str) -> list[str]:
+    """The books and test books whose bytes differ from `rev`'s merge base.
+
+    Working tree against the merge base, so an uncommitted edit counts: the
+    question is what a merge would carry, and a lane's tree is what it has.
+    """
+    base = subprocess.run(["git", "merge-base", rev, "HEAD"], cwd=root,
+                          capture_output=True, text=True, check=True).stdout.strip()
+    names = subprocess.run(["git", "diff", "--name-only", base, "--",
+                            "books", "tests/acl2"], cwd=root,
+                           capture_output=True, text=True, check=True).stdout.split()
+    return sorted(name[:-5] for name in names if name.endswith(".lisp"))
+
+
+def dependents(root: Path, report: dict, changed: list[str]) -> dict[str, list[str]]:
+    """Every audited book whose include closure reaches a changed book.
+
+    Read through the one closure walker the runner uses, so "depends on" here
+    is exactly what `include-book` will ask a certificate for.
+    """
+    wanted = set(changed)
+    found: dict[str, list[str]] = {}
+    for book in report["books_by_verdict"]:
+        if book in wanted:
+            continue
+        reached = sorted(wanted & set(certs.closure(root, book)))
+        if reached:
+            found[book] = reached
+    return found
+
+
+def gate(report: dict, changed: list[str], deps: dict[str, list[str]]) -> dict:
+    """The merge gate's answer: each changed book and dependent with its verdict.
+
+    Finding F4 of planning/review-2026-09-22-proof-engineering.md: on
+    2026-09-21 five commits changed the machine under invariant books nobody
+    recertified, and `git log` read as green.  A branch that touched a book
+    merges when that book and everything that includes it are green at the
+    bytes the merge will carry, or it waits.  A book not in the audit's
+    closure (a test book no root names) is reported as `unaudited`, which is
+    not green.
+    """
+    verdicts = report["books_by_verdict"]
+
+    def verdict(book: str) -> str:
+        entry = verdicts.get(book)
+        return entry["verdict"] if entry else "unaudited"
+
+    rows = [{"book": book, "role": "changed", "verdict": verdict(book), "via": []}
+            for book in changed]
+    rows += [{"book": book, "role": "dependent", "verdict": verdict(book), "via": via}
+             for book, via in sorted(deps.items())]
+    not_green = [row["book"] for row in rows if row["verdict"] != "green"]
+    return {"schema": "fn-green-gate-v1", "changed": changed,
+            "dependents": len(deps), "rows": rows, "not_green": not_green}
+
+
+def gate_lines(answer: dict) -> list[str]:
+    lines = [f"green-gate: {len(answer['changed'])} changed books, "
+             f"{answer['dependents']} books include one; "
+             f"{len(answer['not_green'])} not green at the bytes a merge would carry."]
+    width = max((len(row["book"]) for row in answer["rows"]), default=4)
+    for row in answer["rows"]:
+        via = (" <- " + " ".join(row["via"])) if row["via"] else ""
+        lines.append(f"  {row['verdict']:9} {row['role']:9} {row['book']:{width}}{via}")
+    if not answer["rows"]:
+        lines.append("  no book or test book differs from the merge base")
+    return lines
+
+
 def worklist(report: dict) -> list[str]:
     """The books the certification lanes owe a run, red first."""
     return [book for book, entry in report["books_by_verdict"].items()
@@ -348,7 +424,13 @@ def main(argv: list[str] | None = None) -> int:
                         help="the whole audit as one JSON object")
     parser.add_argument("--strict", action="store_true",
                         help="exit 1 when a book is RED at its current digest "
-                             "in a run newer than any green for those bytes")
+                             "in a run newer than any green for those bytes; "
+                             "with --changed-since, exit 1 unless every changed "
+                             "book and every book that includes one is green")
+    parser.add_argument("--changed-since", metavar="REV", default=None,
+                        help="the merge gate: the books this tree changed since "
+                             "its merge base with REV, the books that include "
+                             "them, and each one's verdict")
     args = parser.parse_args(argv)
 
     try:
@@ -356,6 +438,20 @@ def main(argv: list[str] | None = None) -> int:
     except (certs.UnreadableBook, ValueError, OSError) as error:
         print(f"green-check: cannot read this tree: {error}", file=sys.stderr)
         return 2
+
+    if args.changed_since:
+        try:
+            changed = changed_books(ROOT, args.changed_since)
+        except subprocess.CalledProcessError as error:
+            print(f"green-check: git cannot resolve {args.changed_since}: "
+                  f"{error.stderr.strip()}", file=sys.stderr)
+            return 2
+        answer = gate(report, changed, dependents(ROOT, report, changed))
+        if args.json:
+            print(json.dumps(answer, indent=1, sort_keys=True))
+        else:
+            print("\n".join(gate_lines(answer)))
+        return 1 if args.strict and answer["not_green"] else 0
 
     if args.json:
         print(json.dumps(report, indent=1, sort_keys=True))

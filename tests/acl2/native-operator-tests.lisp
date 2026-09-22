@@ -161,29 +161,64 @@
                        (fn-nop-test-argv '("status"))))
                      :usage))
 
-; A valid config can be unsupported for the running owner while still
-; allowing offline store administration.  Only RUN checks owner availability.
-(defconst *fn-nop-full-unavailable-config*
+; Offline store administration does not consult owner availability; only RUN
+; does.  The full protected profile below carries the paired TLS paths, so
+; since 9223873c (`adopt STARTTLS in native owner') the saved image CAN
+; consume it and RUN is an accepted plan: the assertion here expected
+; :unsupported-profile and was written against the availability rule that
+; commit replaced, in the same book whose TLS block above already says so.
+; The claim it was written for -- protected-only credentials with no TLS
+; context are not a runnable profile -- is asserted below of
+; `fn-native-config-operator-availablep', the function that decides it, and
+; of the composed run.
+(defconst *fn-nop-full-protected-config*
   (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""
                        "[listener]" "tls_cert = \"/etc/fn/cert.pem\"" "tls_key = \"/etc/fn/key.pem\""
                        "[auth]" "required = true" "protected_only = true"
                        "[posting]" "enabled = false")))
+(defconst *fn-nop-protected-without-tls-config*
+  (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""
+                       "[auth]" "required = true" "protected_only = true"
+                       "[posting]" "enabled = false")))
 (assert-event (equal (fn-native-operator-result-status
-                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+                      (fn-native-operator-run *fn-nop-full-protected-config*
                                               (fn-nop-test-argv '("group" "create" "fn.offline"))))
                      :accepted))
 (assert-event (equal (fn-native-operator-result-status
-                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+                      (fn-native-operator-run *fn-nop-full-protected-config*
                                               (fn-nop-test-argv '("status"))))
                      :accepted))
 (assert-event (equal (fn-native-operator-result-status
-                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+                      (fn-native-operator-run *fn-nop-full-protected-config*
                                               (fn-nop-test-argv '("recover"))))
                      :accepted))
-(assert-event (equal (fn-native-operator-result-reason
-                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+; The deciding function, on both profiles.
+(assert-event (fn-native-config-operator-availablep
+               (fn-ncfg-second
+                (fn-native-config-load *fn-nop-full-protected-config*))))
+(assert-event (not (fn-native-config-operator-availablep
+                    (fn-ncfg-second
+                     (fn-native-config-load
+                      *fn-nop-protected-without-tls-config*)))))
+; And the composed run, which reads that decision.
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-full-protected-config*
                                               (fn-nop-test-argv '("run"))))
+                     :accepted))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-run *fn-nop-full-protected-config*
+                                              (fn-nop-test-argv '("run"))))
+                     :plan))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-run
+                       *fn-nop-protected-without-tls-config*
+                       (fn-nop-test-argv '("run"))))
                      :unsupported-profile))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-protected-without-tls-config*
+                       (fn-nop-test-argv '("run"))))
+                     :usage))
 
 ; The service may run with posting disabled, but POST is an explicit refusal.
 (assert-event (equal (fn-native-operator-result-status
@@ -254,3 +289,148 @@
                       (fn-native-operator-run '(999)
                                               (fn-nop-test-argv '("help" "policy"))))
                      :accepted))
+
+; -----------------------------------------------------------------------------
+; `init': the node stood up through the operator, with one binary.
+
+(defconst *fn-nop-init*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("init" "fn.letters" "fn.test"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-init*) :accepted))
+(assert-event (equal (fn-native-operator-result-command *fn-nop-init*) "init"))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-init*) :init))
+; The store is the configuration's, the groups are the operator's, and the
+; raw initializer receives both from here rather than choosing either.
+(assert-event (equal (fn-native-operator-result-init-store-octets *fn-nop-init*)
+                     (fn-record-string-octets "/srv/fn")))
+(assert-event (equal (fn-native-operator-result-init-group-octets *fn-nop-init*)
+                     (list (fn-record-string-octets "fn.letters")
+                           (fn-record-string-octets "fn.test"))))
+
+; Teeth, one hypothesis at a time: a bare `init` names no group and is a
+; usage error rather than a store with a guessed group table; a word that
+; `fn-record-group-namep` does not admit is a usage error; a repeated name is
+; one too, because the group table the store admits holds no duplicate; and
+; more names than the record codec carries is one as well.  The predicate is
+; the store's own -- the same one `group create` applies -- so this command
+; does not own a second idea of what a group may be called.
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("init"))))
+                     5))
+; `fn-record-group-namep` bounds a name at *fn-record-max-group-name* octets.
+(defconst *fn-nop-overlong-group* "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg")
+(assert-event (equal (length *fn-nop-overlong-group*)
+                     (+ 1 *fn-record-max-group-name*)))
+(assert-event (not (fn-record-group-namep *fn-nop-overlong-group*)))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv
+                        (list "init" *fn-nop-overlong-group*))))
+                     :usage))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("init" "fn.test" "fn.test"))))
+                     :usage))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv
+                        (cons "init"
+                              '("g01" "g02" "g03" "g04" "g05" "g06" "g07" "g08"
+                                "g09" "g10" "g11" "g12" "g13" "g14" "g15" "g16"
+                                "g17")))))
+                     :usage))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv
+                        (cons "init"
+                              '("g01" "g02" "g03" "g04" "g05" "g06" "g07" "g08"
+                                "g09" "g10" "g11" "g12" "g13" "g14" "g15" "g16")))))
+                     :accepted))
+(assert-event (equal (fn-native-operator-result-init-group-octets
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("init"))))
+                     nil))
+
+; The physical observation and what ACL2 makes of it.  `writer.lock` is one
+; of the names, so a store a live owner holds is refused on its presence and
+; no lock is attempted to find that out.
+(assert-event (consp (fn-native-operator-init-marker-octets)))
+(assert-event (member-equal (fn-record-string-octets "writer.lock")
+                            (fn-native-operator-init-marker-octets)))
+(assert-event (member-equal (fn-record-string-octets "config.json")
+                            (fn-native-operator-init-marker-octets)))
+
+(defconst *fn-nop-init-fresh* (fn-native-operator-init-outcome *fn-nop-init* nil))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-init-fresh*) :accepted))
+(assert-event (equal (fn-native-operator-result-reason *fn-nop-init-fresh*) :initialize))
+(assert-event (equal (fn-native-operator-exit-code *fn-nop-init-fresh*) 0))
+
+(defconst *fn-nop-init-existing*
+  (fn-native-operator-init-outcome
+   *fn-nop-init* (list (fn-record-string-octets "writer.lock"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-init-existing*) :refused))
+(assert-event (equal (fn-native-operator-result-reason *fn-nop-init-existing*) :store-exists))
+(assert-event (equal (fn-native-operator-exit-code *fn-nop-init-existing*) 1))
+; Any one marker is enough; the refusal is not a count of them.
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-init-outcome
+                       *fn-nop-init*
+                       (list (fn-record-string-octets "config.json"))))
+                     1))
+; Teeth: the initializer is unreachable from a plan that is not an accepted
+; init plan, whatever a raw caller hands the outcome function.
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-init-outcome
+                       (fn-native-operator-run *fn-nop-minimal-config*
+                                               (fn-nop-test-argv '("status")))
+                       nil))
+                     5))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-init-outcome
+                       (fn-native-operator-run *fn-nop-minimal-config*
+                                               (fn-nop-test-argv '("init")))
+                       nil))
+                     5))
+; Three outcomes, three codes, from one command (D13).
+(assert-event
+ (equal (list (fn-native-operator-exit-code *fn-nop-init-fresh*)
+              (fn-native-operator-exit-code *fn-nop-init-existing*)
+              (fn-native-operator-exit-code
+               (fn-native-operator-run *fn-nop-minimal-config*
+                                       (fn-nop-test-argv '("init")))))
+        '(0 1 5)))
+
+; -----------------------------------------------------------------------------
+; `peer list` rides the same administrative plan the other peer verbs do.
+
+(defconst *fn-nop-peer-list*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("peer" "list"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-peer-list*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-peer-list*) :admin))
+(assert-event (fn-native-admin-result-queryp
+               (fn-native-operator-result-admin-plan *fn-nop-peer-list*)))
+(assert-event (not (fn-native-admin-result-queryp
+                    (fn-native-operator-result-admin-plan
+                     (fn-native-operator-run
+                      *fn-nop-minimal-config*
+                      (fn-nop-test-argv '("peer" "remove" "far")))))))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run
+                       *fn-nop-minimal-config*
+                       (fn-nop-test-argv '("peer" "list" "far"))))
+                     5))
+
+; Help names both new subjects, and only from the ACL2 subject table.
+(assert-event (fn-nop-help-subjectp "init"))
+(assert-event (equal (fn-nop-help-text "init")
+                     "usage: fn operator CONFIG init GROUP [GROUP...]"))
+(assert-event (equal (fn-native-operator-result-arguments
+                      (fn-native-operator-run nil (fn-nop-test-argv '("help" "init"))))
+                     '(:help "init" "usage: fn operator CONFIG init GROUP [GROUP...]")))
+(assert-event (not (fn-nop-help-subjectp "initialise")))

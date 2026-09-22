@@ -12,6 +12,11 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+# The process-death cut after a control submission is selected by an
+# environment variable that only a developer image honours; a production image
+# faults on it (host/native/control.lisp, `fnn-control-stop-cut-armed-p').
+DEVELOPER = Path(os.environ.get(
+    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
 
 
 def environment():
@@ -29,6 +34,38 @@ def free_port():
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         return probe.getsockname()[1]
+
+
+class NativeControlCutGateTests(unittest.TestCase):
+    """The process-death cut after a control submission is developer-only.
+
+    It said so in a docstring and read FN_NATIVE_CONTROL_TEST_STOP anyway, so
+    a production image honoured a process-death cut chosen by whoever could
+    set the environment.  This is always active: it needs no image, and the
+    gate is the one thing a source check can hold.
+    """
+
+    def test_the_stop_cut_is_gated_on_the_saved_image_profile(self):
+        source = (ROOT / "host/native/control.lisp").read_text(encoding="ascii")
+        self.assertIn('(sb-ext:posix-getenv "FN_NATIVE_CONTROL_TEST_STOP")',
+                      source)
+        gate = source.index("(defun fnn-control-stop-cut-armed-p ()")
+        cut = source.index("(defun fnn-control-test-after-submit", gate)
+        body = source[gate:cut]
+        self.assertIn("(unless (fnn-developer-image-p)", body)
+        self.assertIn("requires a developer image", body)
+        # Every mention of the variable is inside the gate, so the cut asks
+        # the gate rather than the environment and cannot be armed around it.
+        self.assertNotIn("FN_NATIVE_CONTROL_TEST_STOP", source[:gate])
+        self.assertNotIn("FN_NATIVE_CONTROL_TEST_STOP", source[cut:])
+
+    def test_a_refused_variable_reaches_the_caller_as_a_fault(self):
+        source = (ROOT / "host/native/control.lisp").read_text(encoding="ascii")
+        start = source.index("(defun fnn-control-handle-client")
+        body = source[start:]
+        self.assertIn("(handler-case (progn (fnn-control-test-after-submit status) status)",
+                      body)
+        self.assertIn("(fnn-store-fault () :fault)", body)
 
 
 @unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
@@ -62,12 +99,12 @@ class NativeControlTests(unittest.TestCase):
                 b"Message-ID: " + message_id.encode("ascii") +
                 b"\r\n\r\nexact payload bytes\r\n")
 
-    def start_owner(self, extra_env=None):
+    def start_owner(self, extra_env=None, image=None):
         env = environment()
         if extra_env:
             env.update(extra_env)
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
+            [str(image or IMAGE), "--fn", "operator", str(self.config), "run"],
             cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             bufsize=0)
         seen_control = False
@@ -260,7 +297,14 @@ class NativeControlTests(unittest.TestCase):
             restarted.stderr.close()
 
     def test_lost_reply_after_submission_is_uncertain_and_recovers(self):
-        owner = self.start_owner({"FN_NATIVE_CONTROL_TEST_STOP": "after-submit"})
+        if not (DEVELOPER.is_file() and os.access(DEVELOPER, os.X_OK)):
+            raise unittest.SkipTest(
+                "build/fn-host-developer is required: the cut that stops the "
+                "owner between a durable submission and its reply is a "
+                "developer-image cut, and the production image refuses the "
+                "variable that selects it")
+        owner = self.start_owner({"FN_NATIVE_CONTROL_TEST_STOP": "after-submit"},
+                                 image=DEVELOPER)
         message_id = "<native-control-lost@example.invalid>"
         payload = self.article(message_id)
         payload_path = self.root / "lost.eml"

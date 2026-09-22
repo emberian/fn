@@ -1,0 +1,352 @@
+"""The operator verbs that stand a node up, read its peers, and lose an outcome.
+
+Three subjects:
+
+* `operator CONFIG init [GROUP...]` -- the store the configuration names,
+  created through the public verb, refused when it already exists, and refused
+  without opening or taking the writer lock when a live owner holds it.
+* `operator CONFIG peer list` -- the peer records the durable configuration
+  holds, rendered by ACL2 and only written out here.
+* the developer-only uncertain outcome -- one control submission whose durable
+  result its caller cannot learn, so that the three outcomes are all
+  observable at the operator boundary (D13).
+
+The source checks are always active.  The executable witnesses need the saved
+images; when one is absent the witness skips and says which image it wanted,
+rather than a source inspection being reported as runtime evidence.
+"""
+import fcntl
+import os
+from pathlib import Path
+import select
+import signal
+import socket
+import subprocess
+import tempfile
+import unittest
+
+
+ROOT = Path(__file__).resolve().parent.parent
+IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+DEVELOPER = Path(os.environ.get(
+    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+
+EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_FAULT, EXIT_USAGE = 0, 1, 3, 4, 5
+
+
+def environment():
+    env = dict(os.environ)
+    env["ACL2_CUSTOMIZATION"] = "NONE"
+    env.pop("ACL2_SYSTEM_BOOKS", None)
+    env.pop("FN_HOST", None)
+    env.pop("FN_NATIVE_CONTROL_FAULT", None)
+    env.pop("FN_NATIVE_CONTROL_TEST_STOP", None)
+    return env
+
+
+def executable(image):
+    return image.is_file() and os.access(image, os.X_OK)
+
+
+def free_port():
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
+class NativeOperatorVerbCompositionTests(unittest.TestCase):
+    """What the source has to say, whether or not an image was built."""
+
+    def setUp(self):
+        self.model = (ROOT / "books" / "native-operator.lisp").read_text(encoding="ascii")
+        self.admin = (ROOT / "books" / "native-admin.lisp").read_text(encoding="ascii")
+        self.host = (ROOT / "host" / "native" / "operator.lisp").read_text(encoding="ascii")
+        self.owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="ascii")
+        self.admin_host = (ROOT / "host" / "native" / "admin.lisp").read_text(encoding="ascii")
+
+    def test_init_outcome_is_acl2s_and_the_host_only_observes(self):
+        # The plan, the marker names and the outcome are all ACL2's; the host
+        # contributes lstat and nothing else.
+        self.assertIn("(defun fn-native-operator-init-outcome (result observed)", self.model)
+        self.assertIn("(defconst *fn-nop-store-markers*", self.model)
+        self.assertIn('"writer.lock"', self.model)
+        self.assertIn("'fn-native-operator-host-init-marker-octets", self.host)
+        self.assertIn("'fn-native-operator-host-init-outcome", self.host)
+        self.assertIn("(:init (fnn-operator-execute-init result))", self.host)
+        # The observation opens nothing: no lock call inside it.
+        observe = self.host.index("(defun fnn-operator-init-observed")
+        execute = self.host.index("(defun fnn-operator-execute-run", observe)
+        body = self.host[observe:execute]
+        self.assertIn("(fnn-lstat", body)
+        for forbidden in ("fnn-open-lock", "fnn-flock", "fnn-open-live-store", "fnn-acquire"):
+            self.assertNotIn(forbidden, body)
+
+    def test_peer_list_is_a_query_and_the_host_asks_acl2_which(self):
+        self.assertIn("(defun fn-native-admin-result-queryp (result)", self.admin)
+        self.assertIn(":list-peers", self.admin)
+        self.assertIn("(defun fn-native-admin-peer-report (peers)", self.admin)
+        self.assertIn("'fn-native-admin-host-queryp plan", self.host)
+        self.assertIn("(queryp (fnn-admin-query root plan))", self.host)
+        # The read-only executor opens the store non-writable and publishes
+        # nothing; the ACL2 report is written out, not rebuilt.
+        query = self.admin_host.index("(defun fnn-admin-query (root plan)")
+        execute = self.admin_host.index("(defun fnn-admin-execute (root plan)", query)
+        body = self.admin_host[query:execute]
+        self.assertIn("(fnn-open-live-store root nil)", body)
+        self.assertIn("'fn-native-admin-host-peer-report", body)
+        for forbidden in ("fnn-admin-publish", "fnn-admin-reconfigure", "fnn-control-admin"):
+            self.assertNotIn(forbidden, body)
+
+    def test_uncertain_fault_is_gated_on_the_saved_image_profile(self):
+        self.assertIn('(sb-ext:posix-getenv "FN_NATIVE_CONTROL_FAULT")', self.owner)
+        gate = self.owner.index("(defun fnn-owner-control-test-fault ()")
+        arm = self.owner.index("(defun fnn-owner-control-arm-fault", gate)
+        body = self.owner[gate:arm]
+        self.assertIn("(unless (fnn-developer-image-p)", body)
+        self.assertIn("requires a developer image", body)
+        # It selects an existing named model cut rather than inventing one.
+        self.assertIn("+fnn-cli-faults+", body)
+        self.assertNotIn("FN_NATIVE_CONTROL_FAULT",
+                         (ROOT / "host" / "native" / "operator.lisp").read_text(encoding="ascii"))
+
+    def test_the_uncertain_word_is_acl2s_control_vocabulary(self):
+        control = (ROOT / "books" / "native-control.lisp").read_text(encoding="ascii")
+        self.assertIn(":accepted :duplicate :refused :busy :uncertain :fault", control)
+        self.assertIn("(equal status :uncertain) :uncertain", control)
+        owner_book = (ROOT / "books" / "owner.lisp").read_text(encoding="ascii")
+        self.assertIn("(defun fn-own-control-outcome-result (o word)", owner_book)
+
+
+class NativeOperatorVerbFixture(unittest.TestCase):
+    """A scratch directory and the two commands every witness below runs."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-verbs-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.store = self.root / "store"
+        self.config = self.root / "fn.toml"
+        self.config.write_text(
+            '[store]\npath = "{}"\n'.format(self.store), encoding="ascii")
+
+    def operator(self, *words, image=None, env=None, timeout=180):
+        return subprocess.run(
+            [str(image or IMAGE), "--fn", "operator", str(self.config), *words],
+            cwd=ROOT, env=env or environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=timeout, check=False)
+
+
+@unittest.skipUnless(executable(IMAGE), "build/fn-host is required")
+class NativeOperatorInitTests(NativeOperatorVerbFixture):
+    def test_init_creates_the_configured_store_and_then_refuses_it(self):
+        created = self.operator("init", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.assertIn(b"initialized", created.stdout)
+        self.assertIn(b"accepted operator init", created.stderr)
+        for entry in ("config.json", "writer.lock", "allocation-frontier.json",
+                      "transactions", "config"):
+            self.assertTrue((self.store / entry).exists(), entry)
+
+        status = self.operator("status")
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
+        self.assertIn(b"transactions=0", status.stdout)
+
+        again = self.operator("init", "fn.test")
+        self.assertEqual(again.returncode, EXIT_REFUSED, again.stderr.decode())
+        self.assertIn(b"refused operator init STORE-EXISTS", again.stderr.upper())
+
+    def test_a_locked_store_is_refused_without_the_lock_being_touched(self):
+        self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
+        lock = os.open(str(self.store / "writer.lock"), os.O_RDWR)
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            refused = self.operator("init", "fn.test")
+            # The refusal names the store's existence, not a failed
+            # acquisition: nothing tried to take this lock.
+            self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+            self.assertIn(b"STORE-EXISTS", refused.stderr.upper())
+            self.assertNotIn(b"already locked", refused.stderr)
+            # And a command that does open the store says so, which is what
+            # makes the line above a distinction and not a coincidence.
+            status = self.operator("status")
+            self.assertEqual(status.returncode, EXIT_REFUSED, status.stderr.decode())
+            self.assertIn(b"already locked", status.stderr)
+        finally:
+            os.close(lock)
+
+    def test_init_without_a_group_is_usage_and_writes_nothing(self):
+        bare = self.operator("init")
+        self.assertEqual(bare.returncode, EXIT_USAGE, bare.stderr.decode())
+        self.assertFalse(self.store.exists())
+        bad = self.operator("init", "Not A Group")
+        self.assertEqual(bad.returncode, EXIT_USAGE, bad.stderr.decode())
+        self.assertFalse(self.store.exists())
+        duplicate = self.operator("init", "fn.test", "fn.test")
+        self.assertEqual(duplicate.returncode, EXIT_USAGE, duplicate.stderr.decode())
+        self.assertFalse(self.store.exists())
+
+    def test_help_names_init(self):
+        helped = self.operator("help", "init")
+        self.assertEqual(helped.returncode, EXIT_OK, helped.stderr.decode())
+        self.assertEqual(helped.stdout.decode(),
+                         "usage: fn operator CONFIG init GROUP [GROUP...]\n")
+
+
+@unittest.skipUnless(executable(IMAGE), "build/fn-host is required")
+class NativeOperatorPeerListTests(NativeOperatorVerbFixture):
+    def setUp(self):
+        super().setUp()
+        self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
+
+    def test_an_added_peer_reads_back_in_the_grammar_that_wrote_it(self):
+        empty = self.operator("peer", "list")
+        self.assertEqual(empty.returncode, EXIT_OK, empty.stderr.decode())
+        self.assertEqual(empty.stdout, b"")
+
+        added = self.operator("peer", "add", "far", "far.example.invalid",
+                              "192.0.2.44", "1119", "fn.*", "-", "192.0.2.44",
+                              "true")
+        self.assertEqual(added.returncode, EXIT_OK, added.stderr.decode())
+
+        listed = self.operator("peer", "list")
+        self.assertEqual(listed.returncode, EXIT_OK, listed.stderr.decode())
+        lines = listed.stdout.decode("ascii").splitlines()
+        self.assertEqual(len(lines), 1, listed.stdout)
+        self.assertEqual(
+            lines[0],
+            "far path-identity=far.example.invalid address=192.0.2.44 "
+            "port=1119 security=clear inbound=fn.* outbound=- "
+            "auth=source-address:192.0.2.44")
+
+        removed = self.operator("peer", "remove", "far")
+        self.assertEqual(removed.returncode, EXIT_OK, removed.stderr.decode())
+        after = self.operator("peer", "list")
+        self.assertEqual(after.returncode, EXIT_OK, after.stderr.decode())
+        self.assertEqual(after.stdout, b"")
+
+    def test_listing_a_locked_store_refuses_and_publishes_nothing(self):
+        self.assertEqual(
+            self.operator("peer", "add", "far", "far.example.invalid",
+                          "192.0.2.44", "1119", "fn.*", "-", "192.0.2.44",
+                          "true").returncode, EXIT_OK)
+        before = sorted(p.name for p in (self.store / "config").iterdir())
+        lock = os.open(str(self.store / "writer.lock"), os.O_RDWR)
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            refused = self.operator("peer", "list")
+            self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+            self.assertIn(b"already locked", refused.stderr)
+            self.assertEqual(refused.stdout, b"")
+        finally:
+            os.close(lock)
+        self.assertEqual(sorted(p.name for p in (self.store / "config").iterdir()),
+                         before)
+
+    def test_peer_list_takes_no_argument(self):
+        extra = self.operator("peer", "list", "far")
+        self.assertEqual(extra.returncode, EXIT_USAGE, extra.stderr.decode())
+
+
+@unittest.skipUnless(
+    executable(IMAGE) and executable(DEVELOPER),
+    "build/fn-host and build/fn-host-developer are both required: the "
+    "uncertain outcome is a developer-image cut and the production image "
+    "refuses the variable that selects it")
+class NativeOperatorUncertainOutcomeTests(NativeOperatorVerbFixture):
+    def setUp(self):
+        super().setUp()
+        self.control = self.root / "control.sock"
+        self.port = free_port()
+        self.config.write_text(
+            '[store]\npath = "{}"\n'
+            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
+            encoding="ascii")
+        self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
+
+    @staticmethod
+    def article(message_id):
+        return (b"From: author@example.invalid\r\n"
+                b"Newsgroups: fn.test\r\n"
+                b"Subject: an outcome nobody learns\r\n"
+                b"Date: Mon, 21 Sep 2026 09:00:00 +0000\r\n"
+                b"Message-ID: " + message_id.encode("ascii") +
+                b"\r\n\r\nexact payload bytes\r\n")
+
+    def start_owner(self, image, extra_env=None):
+        env = environment()
+        if extra_env:
+            env.update(extra_env)
+        process = subprocess.Popen(
+            [str(image), "--fn", "operator", str(self.config), "run"],
+            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            bufsize=0)
+        self.addCleanup(self.reap, process)
+        for _ in range(4):
+            self.assertTrue(select.select([process.stdout], [], [], 180)[0],
+                            "the owner did not become ready")
+            line = process.stdout.readline()
+            if line.startswith(b"LISTENING "):
+                return process
+            if process.poll() is not None:
+                self.fail("owner failed: {}".format(
+                    process.stderr.read().decode("utf-8", "replace")))
+        self.fail("the owner's readiness output was malformed")
+
+    def reap(self, process):
+        if process.poll() is None:
+            process.send_signal(signal.SIGKILL)
+            process.wait(timeout=10)
+        for stream in (process.stdout, process.stderr):
+            if stream and not stream.closed:
+                stream.close()
+
+    def post(self, message_id, image=None):
+        path = self.root / (message_id.strip("<>").replace("@", "-") + ".eml")
+        path.write_bytes(self.article(message_id))
+        return self.operator("post", "--message-id", message_id,
+                             "--payload", str(path), "--group", "fn.test",
+                             image=image, timeout=120)
+
+    def test_a_lost_durable_outcome_exits_three_and_recover_resolves_it(self):
+        owner = self.start_owner(
+            DEVELOPER, {"FN_NATIVE_CONTROL_FAULT": "postpublish"})
+        message_id = "<native-operator-uncertain@example.invalid>"
+        unsure = self.post(message_id)
+        self.assertEqual(unsure.returncode, EXIT_UNCERTAIN, unsure.stderr.decode())
+        self.assertIn(b"uncertain operator post", unsure.stderr)
+        # The owner fenced itself on the same observation and released the
+        # store; that is what makes the recovery below reach it at all.
+        self.assertEqual(owner.wait(timeout=60), EXIT_UNCERTAIN,
+                         owner.stderr.read().decode("utf-8", "replace"))
+
+        recovered = self.operator("recover")
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr.decode())
+        self.assertIn(b"recovered transactions=", recovered.stdout)
+
+        # The three outcomes, from one command, at one boundary (D13).  The
+        # article itself is asserted in neither direction here: an
+        # indeterminate outcome is evidence about the report.
+        second = self.start_owner(DEVELOPER)
+        accepted = self.post("<native-operator-accepted@example.invalid>")
+        self.assertEqual(accepted.returncode, EXIT_OK, accepted.stderr.decode())
+        self.assertEqual(
+            sorted({EXIT_OK, EXIT_UNCERTAIN}),
+            sorted({accepted.returncode, unsure.returncode}))
+        second.send_signal(signal.SIGTERM)
+        self.assertEqual(second.wait(timeout=60), EXIT_OK,
+                         second.stderr.read().decode("utf-8", "replace"))
+
+    def test_the_production_image_refuses_the_selector(self):
+        owner = self.start_owner(IMAGE, {"FN_NATIVE_CONTROL_FAULT": "postpublish"})
+        answered = self.post("<native-operator-production@example.invalid>")
+        # The production image has no such cut.  It does not quietly ignore
+        # the variable and it does not honour it: the submission is a fault.
+        self.assertEqual(answered.returncode, EXIT_FAULT, answered.stderr.decode())
+        self.assertIn(b"fault operator post", answered.stderr)
+        self.assertEqual(owner.wait(timeout=60), EXIT_FAULT,
+                         owner.stderr.read().decode("utf-8", "replace"))
+
+
+if __name__ == "__main__":
+    unittest.main()

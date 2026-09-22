@@ -1707,6 +1707,39 @@
         "tests/acl2/feed-connection-tests.lisp"
       ],
       "pending_subject": "Certify named keystones for AUTHINFO ordering and the host-called loss-to-requeue composition; filesystem ownership and mode checks remain native integration evidence."
+    },
+    {
+      "id": "PRF-052",
+      "title": "NEWNEWS is scoped by its wildmat and bounded by an explicit parse budget (W32)",
+      "statement": "fn-nntp-newnews-scan-reports-only-witnessed-lines: every line a NEWNEWS answer carries is the stored identifier of a committed article that is available at a number in a group the wildmat matched and whose own decoded injection stamp is at or after the requested instant, so a NEWNEWS cannot name an article of a group its wildmat did not match. fn-nntp-newnews-lines-are-clean: every such line carries no CR, LF or NUL, with no hypothesis, because fn-nntp-newnews-candidate-is-projectable makes a candidate's identifier renderable. fn-nntp-newnews-scan-answers-exactly-within-the-budget: the scan answers exactly when an independent count of the candidates over the same article list is at most the fuel, so the refusal is a property of the request and the store and not of the order the scan met them in; fn-nntp-newnews-scan-reports-at-most-the-budget bounds the answer by the fuel; fn-nntp-newnews-refusal-is-the-only-other-outcome fixes the two outcomes, so no partial list can reach a 230 block. fn-nntp-step-dispatches-newnews-to-the-newnews-response is the subject clause: a well-formed NEWNEWS line on an open, projected session is answered by fn-nntp-newnews-response over that line's own argument tokens. Covered scope: one reader session over a pinned committed archive; the served path reaches fn-nntp-step through fn-served-dispatch, fn-auth-step, fn-peer-step and fn-nntp-post-step. NOT covered: that the injection stamp is when this node received the article -- the store records no arrival stamp, the stamp is the injecting agent's claim, and articles whose date-time cannot be decoded are omitted; and that the refusal costs no parse, which is read off the definition's evaluation order and is not a cost theorem.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-008"
+      ],
+      "depends_on": [
+        "PRF-015"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "note": "Landed by lane w32/reader-polling. Certified on persvati with ACL2 Version 8.7 at /home/ember/fn-gates/toolchains/w25/acl2-literal (toolchain identity 1b4169e9...964286), run certify-20260922T143750Z-672012: 77 books in the closure of books/nntp-newnews, books/served and the six nntp test books, all passed, 770 s wall at 6 jobs. A green manifest is one host and one toolchain identity, not a certificate in this tree.",
+      "evidence": [
+        "books/nntp-newnews.lisp",
+        "tests/acl2/nntp-newnews-tests.lisp",
+        "planning/evidence/manifests/certify-20260922T143750Z-672012.json",
+        "specs/nntp.md",
+        "specs/nntp-audit.md"
+      ],
+      "events": [
+        "fn-nntp-newnews-candidate-is-projectable",
+        "fn-nntp-newnews-lines-are-clean",
+        "fn-nntp-newnews-scan-reports-only-witnessed-lines",
+        "fn-nntp-newnews-scan-answers-exactly-within-the-budget",
+        "fn-nntp-newnews-scan-reports-at-most-the-budget",
+        "fn-nntp-newnews-refusal-is-the-only-other-outcome",
+        "fn-nntp-step-dispatches-newnews-to-the-newnews-response",
+        "fn-nntp-newnews-response-preserves-session",
+        "fn-nntp-effects-newnews-response"
+      ]
     }
   ]
 }

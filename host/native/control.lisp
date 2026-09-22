@@ -118,12 +118,30 @@
       (fnn-fault "ACL2 refused a local-control reply status"))
     (fnn-octets reply)))
 
+(defun fnn-control-stop-cut-armed-p ()
+  "Whether FN_NATIVE_CONTROL_TEST_STOP arms the developer process-death cut.
+
+The gate is the saved image's profile, as FN_NATIVE_POST_FAULT's is
+(host/native/io.lisp `fnn-post-test-fault') and FN_NATIVE_CONTROL_FAULT's is:
+a production image FAULTS on the variable rather than honouring it, and the
+profile is serialized at build time, so a restart-time environment cannot
+change it (`fnn-select-image-profile').  Calling the cut developer-only in a
+docstring and then reading the variable anyway left a production node one
+environment variable away from stopping itself between a durable submission
+and its reply -- a process-death cut selected by whoever can set the
+environment, in the image the operator deploys."
+  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_CONTROL_TEST_STOP")))
+    (when raw
+      (unless (fnn-developer-image-p)
+        (fnn-fault "FN_NATIVE_CONTROL_TEST_STOP requires a developer image"))
+      (unless (string= raw "after-submit")
+        (fnn-fault "unknown FN_NATIVE_CONTROL_TEST_STOP cut: ~a" raw))
+      t)))
+
 (defun fnn-control-test-after-submit (status)
   "Developer-only deterministic process-death cut after owner completion."
-  (when (and (member status '(:accepted :duplicate :refused))
-             (string= (or (sb-ext:posix-getenv
-                           "FN_NATIVE_CONTROL_TEST_STOP") "")
-                      "after-submit"))
+  (when (and (fnn-control-stop-cut-armed-p)
+             (member status '(:accepted :duplicate :refused)))
     (fnn-out "CONTROL-SUBMITTED")
     (sb-posix:kill (sb-posix:getpid) sb-posix:sigstop)))
 
@@ -178,11 +196,18 @@
              (error (condition)
                (fnn-owner-fault-service service nil condition)
                :fault))))
-    (fnn-control-test-after-submit status)
     ;; A peer that disappears here creates no uncertainty for the owner: the
     ;; status already records its durable observation.  The client, which did
     ;; not receive it, conservatively reports :uncertain.
-    (fnn-control-send-reply socket status)))
+    (fnn-control-send-reply
+     socket
+     (handler-case (progn (fnn-control-test-after-submit status) status)
+       ;; A production image refuses the variable that selects the cut, and
+       ;; the caller learns that refusal the same way it learns
+       ;; FN_NATIVE_CONTROL_FAULT's: as :fault, which
+       ;; `fn-native-control-status-class' projects to exit 4.  The owner is
+       ;; not stopped, because nothing about its state went wrong.
+       (fnn-store-fault () :fault)))))
 
 (defun fnn-control-client-done (control socket)
   (fnn-with-control (control)

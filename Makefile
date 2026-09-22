@@ -308,6 +308,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp \
 	books/nntp-overview \
 	books/nntp-legacy \
+	books/nntp-newnews \
 	books/nntp-invariants \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
@@ -338,6 +339,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-index-tests \
 	tests/acl2/nntp-reader-profile-tests \
 	tests/acl2/nntp-legacy-tests \
+	tests/acl2/nntp-newnews-tests \
 	books/bp-release \
 	books/bp-release-invariants \
 	tests/acl2/bp-release-tests \
@@ -503,6 +505,7 @@ check:
 # every archived manifest and every edited book would stale it.  Mechanical,
 # no ACL2, about three seconds.
 	$(PYTHON) tools/green_check.py --summary
+	$(PYTHON) tools/theory_check.py --summary
 
 # The integration labs.  Deliberately NOT part of `check`: the quick tier is
 # about two and a half minutes and the box tier is hours, while `check` is
@@ -541,7 +544,7 @@ tooling-test:
 	$(PYTHON) tools/run_command.py --timeout 120 -- $(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
 	    tests.test_evidence_manifests tests.test_green_check \
-	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client -v
+	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts -v
 
 test: check certify
 	$(PYTHON) tools/run_simulator.py

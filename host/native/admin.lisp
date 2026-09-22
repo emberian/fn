@@ -150,6 +150,28 @@ result as a refusal or uncertainty."
            (fnn-owner-feed-refresh-configuration service)
            :accepted))))))
 
+(defun fnn-admin-query (root plan)
+  "Execute one read-only ACL2 configuration query against ROOT.
+
+`fn-native-admin-result-queryp' is what selects this executor, so the host
+does not decide which plan kinds are safe to read.  The store is opened
+non-writable, which takes the shared writer lock and publishes nothing: a
+live owner therefore refuses this command the way it refuses `status', and
+this path can neither mutate the configuration nor take the lock from it."
+  (unless (fnn-admin-plan-acceptedp plan)
+    (fnn-refuse "administrative request refused: ~a" (fnn-admin-plan-reason plan)))
+  (multiple-value-bind (store ignored-records) (fnn-open-live-store root nil)
+    (declare (ignore ignored-records))
+    (unwind-protect
+         (let ((report (fnn-core-state 'fn-native-admin-host-peer-report)))
+           (unless (fnn-octet-list-p report)
+             (fnn-fault "ACL2 returned a malformed peer listing"))
+           (when report
+             (write-sequence (fnn-octets report) *fnn-stdout*)
+             (finish-output *fnn-stdout*))
+           +fnn-exit-ok+)
+      (fnn-store-close store))))
+
 (defun fnn-admin-execute (root plan)
   "Private callback for the one public native operator entry.
 PLAN is the exact ACL2 `fn-native-admin-plan' result; no command words reach

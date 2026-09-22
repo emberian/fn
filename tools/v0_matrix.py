@@ -370,6 +370,9 @@ PLAN = (
       ("NNT-006",), ("SCN-014",), ACCEPTED, "node"),
     S("V0-READ-LIST-NEWSGROUPS", "F-READ", "LIST NEWSGROUPS",
       ("NNT-006",), ("SCN-014",), ACCEPTED, "node"),
+    S("V0-READ-LIST-NEWSGROUPS-WILDMAT", "F-READ",
+      "LIST NEWSGROUPS filtered by a wildmat",
+      ("NNT-006",), ("SCN-014",), ACCEPTED, "node"),
     S("V0-READ-LIST-OVERVIEW-FMT", "F-READ", "LIST OVERVIEW.FMT",
       ("NNT-001",), ("SCN-014",), ACCEPTED, "node"),
     S("V0-READ-LIST-ACTIVE-TIMES", "F-READ", "LIST ACTIVE.TIMES",
@@ -412,6 +415,18 @@ PLAN = (
     S("V0-READ-LAST", "F-READ", "LAST moves the cursor back",
       ("NNT-002",), ("SCN-014",), None, "node",
       "the expected outcome depends on where the cursor was"),
+    S("V0-READ-NEWNEWS", "F-READ",
+      "NEWNEWS over a wildmat, since an instant before the store existed",
+      ("NNT-008",), ("SCN-014",), ACCEPTED, "node",
+      "the node under test may hold no article whose Injection-Date or Date "
+      "fn can decode, in which case 230 with an empty block is the correct "
+      "answer and the row records the framing, not a reported identifier"),
+    S("V0-READ-NEWNEWS-FUTURE", "F-READ",
+      "NEWNEWS since a future instant returns the empty block",
+      ("NNT-008",), ("SCN-014",), ACCEPTED, "node"),
+    S("V0-READ-NEWNEWS-SYNTAX", "F-READ",
+      "NEWNEWS with a malformed wildmat is refused with 501",
+      ("NNT-008",), ("SCN-014",), REFUSED, "node"),
     S("V0-READ-DATE", "F-READ", "DATE",
       ("NNT-002",), ("SCN-014",), ACCEPTED, "node"),
     S("V0-READ-HELP", "F-READ", "HELP",
@@ -827,6 +842,8 @@ def surface(args):
     for one in ("LIST ACTIVE", "LIST NEWSGROUPS", "LIST OVERVIEW.FMT",
                 "LIST ACTIVE.TIMES", "LIST HEADERS"):
         out[one] = conn.cmd(one, multiline=True)[0]
+    out["LIST NEWSGROUPS WILDMAT"] = conn.cmd(
+        "LIST NEWSGROUPS {}".format(args.group), multiline=True)[0]
     group = conn.cmd("GROUP " + args.group)
     out["GROUP"] = group[0]
     count, first, last = 0, 0, 0
@@ -849,6 +866,16 @@ def surface(args):
     out["XOVER"] = conn.cmd("XOVER {}-{}".format(n, last or n), multiline=True)[0]
     out["XHDR"] = conn.cmd("XHDR Subject {}".format(n), multiline=True)[0]
     out["XPAT"] = conn.cmd("XPAT Subject {}-{} *".format(n, last or n), multiline=True)[0]
+    # RFC 3977 section 7.4.  Three rows: the whole-history poll, the poll from
+    # an instant in the future (section 7.4.2's empty list is a valid answer),
+    # and a malformed wildmat, which section 3.2.1 makes 501.  A node that
+    # holds no article with a decodable Injection-Date or Date answers the
+    # first with an empty block too, which is why its row records framing.
+    out["NEWNEWS"] = conn.cmd("NEWNEWS {} 19700101 000000 GMT".format(args.group),
+                              multiline=True)[0]
+    out["NEWNEWS FUTURE"] = conn.cmd("NEWNEWS {} 20990101 000000 GMT".format(args.group),
+                                     multiline=True)[0]
+    out["NEWNEWS SYNTAX"] = conn.cmd("NEWNEWS [ 19700101 000000 GMT")[0]
     # The cursor pair, from a known position: STAT the first article, then NEXT
     # and LAST.  With one article NEXT is 421 by RFC 3977 section 6.1.4; the
     # matrix is told the count so it can say which case this run was.
@@ -1376,12 +1403,19 @@ class V0Matrix(twonode_gate.TwoNodeGate):
     def __init__(self, *args, scale=False, inn=False, campaign=True,
                  backend=DEVELOPMENT_BACKEND, native_image=None,
                  native_configs=None, native_group=GROUPS[0],
-                 native_image_source=None, native_runtime=None, **kwargs):
+                 native_image_source=None, native_runtime=None,
+                 native_developer_image=None, **kwargs):
         super().__init__(*args, **kwargs)
         if backend not in BACKENDS:
             raise GateError("unknown execution backend {!r}".format(backend))
         self.backend = backend
         self.native_image = native_image
+        # The developer image, when the operator supplied one.  It is the
+        # subject of exactly one row: the uncertain outcome is a cut the
+        # production image refuses rather than honours, so measuring it needs
+        # an owner built with the developer profile.  Nothing else in this
+        # slice runs on it.
+        self.native_developer_image = native_developer_image
         self.native_configs = dict(native_configs or {})
         self.native_group = native_group
         self.native_image_source = native_image_source
@@ -1389,6 +1423,9 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         self.image_identity = ("development Python entry points from {}".format(self.rev)
                                if backend == DEVELOPMENT_BACKEND else
                                "{} (digest not probed)".format(native_image or "(missing)"))
+        # What the init/uncertain phase observed per node, for the D13 fact
+        # the outcomes phase records.
+        self.native_uncertain: dict = {}
         self.native_post_ids = {
             name: "<native-matrix-{}-{}@example.invalid>".format(
                 uuid.uuid4().hex[:12], name) for name in ("a", "b")
@@ -1541,7 +1578,7 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         were.
         """
 
-    def native_command(self, config, *words) -> str:
+    def native_command(self, config, *words, image=None, env=None) -> str:
         """The packaged public native command against one named configuration.
 
         `env` in front: the gate starts a node as `nohup <command> &`, and
@@ -1551,8 +1588,10 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         """
         def word(one):
             return one if isinstance(one, self.Raw) else shlex.quote(one)
-        return "env FN_NATIVE_HOST={} packaging/fn-native operator {} {}".format(
-            shlex.quote(self.native_image), word(config),
+        return "env {}FN_NATIVE_HOST={} packaging/fn-native operator {} {}".format(
+            "".join("{}={} ".format(name, shlex.quote(value))
+                    for name, value in sorted((env or {}).items())),
+            shlex.quote(image or self.native_image), word(config),
             " ".join(word(one) for one in words))
 
     def cli(self, node, args) -> str:
@@ -2362,6 +2401,7 @@ else echo NONE; fi
         ("V0-READ-MODE-READER", "MODE READER"),
         ("V0-READ-LIST-ACTIVE", "LIST ACTIVE"),
         ("V0-READ-LIST-NEWSGROUPS", "LIST NEWSGROUPS"),
+        ("V0-READ-LIST-NEWSGROUPS-WILDMAT", "LIST NEWSGROUPS WILDMAT"),
         ("V0-READ-LIST-OVERVIEW-FMT", "LIST OVERVIEW.FMT"),
         ("V0-READ-LIST-ACTIVE-TIMES", "LIST ACTIVE.TIMES"),
         ("V0-READ-LIST-HEADERS", "LIST HEADERS"),
@@ -2379,6 +2419,9 @@ else echo NONE; fi
         ("V0-READ-XOVER", "XOVER"),
         ("V0-READ-XHDR", "XHDR"),
         ("V0-READ-XPAT", "XPAT"),
+        ("V0-READ-NEWNEWS", "NEWNEWS"),
+        ("V0-READ-NEWNEWS-FUTURE", "NEWNEWS FUTURE"),
+        ("V0-READ-NEWNEWS-SYNTAX", "NEWNEWS SYNTAX"),
         ("V0-READ-DATE", "DATE"),
         ("V0-READ-HELP", "HELP"),
         ("V0-READ-UNKNOWN", "UNKNOWN"),
@@ -3676,6 +3719,187 @@ exit "$rc"
     AUTH_GATE_PORTS = {"a": 11292, "b": 11293}
     LOOPBACK_DECLARED_PORT = 11294
 
+    # One loopback port per node for the scratch owner the init/uncertain
+    # phase serves; it must collide with neither supplied configuration nor
+    # the capacity and auth-gate scratch owners above.
+    INIT_OWNER_PORTS = {"a": 11295, "b": 11296}
+
+    def native_init_lifecycle(self, node: NodeSpec):
+        """A whole node, stood up and taken apart by the public operator alone.
+
+        `init` creates the store the configuration names; an owner of its own
+        serves it; one submission's durable outcome is made unknown to its
+        caller; `recover` reopens the store that owner released when it fenced
+        itself; and a second `init` over the store is refused with its history
+        intact.  Every step is one public verb against one configuration --
+        the image's low-level `store ROOT init` entry appears nowhere in this
+        phase, which is the point of it.
+
+        The subject is a scratch node beside the served one.  The uncertain
+        half needs a developer-profile image, because the cut that produces
+        it (`FN_NATIVE_CONTROL_FAULT`, host/native/owner.lisp) is refused by a
+        production image rather than honoured; with no `--native-developer-image`
+        the phase posts an ordinary article instead, so the init and reinit
+        rows are still measured and V0-OUT-UNCERTAIN stays not-built with the
+        image it wanted named.
+        """
+        scratch = "{}/init".format(node.dir)
+        store = "{}/store".format(scratch)
+        config = "{}/fn.toml".format(scratch)
+        port = self.INIT_OWNER_PORTS[node.name]
+        # Every path here is a `$HOME/...` shell expression by construction
+        # (see `Raw`), so none of them is quoted.
+        self.sh("node {} init scratch configuration".format(node.upper), self.cd(
+            "mkdir -p {scratch} && printf '[store]\\npath = \"%s\"\\n[listener]\\n"
+            "host = \"127.0.0.1\"\\nport = {port}\\n[control]\\npath = \"%s\"\\n' "
+            "\"{store}\" \"{scratch}/control.sock\" > {config}".format(
+                scratch=scratch, store=store, port=port, config=config)),
+            timeout=900, expect=None)
+        created = self.sh("node {} operator init".format(node.upper), self.cd(
+            self.native_command(self.Raw(config), "init", self.native_group)),
+            timeout=900, expect=None)
+        self.from_step("V0-NODE-INIT", created, node=node.name,
+                       limit="the store `[store] path` names, created by the public "
+                             "operator verb rather than by the image's low-level "
+                             "`store ROOT init` diagnostic; the groups are the ones "
+                             "this command named and there is no default table, so an "
+                             "`init` with no group is a usage error and not a store "
+                             "nobody chose the contents of. A scratch node beside the "
+                             "served one: nothing here changes what the node serves")
+        self.emit("V0-NODE-CONFIG", NOT_BUILT,
+                  self.native_command(self.Raw(config), "init", self.native_group),
+                  "(not run)", node=node.name,
+                  blocker="the native configuration has no `[acl2] path`: ACL2 is "
+                          "inside the image, so half of this row has no native "
+                          "subject. The `[store] path` half is what the row above "
+                          "consumed, and no native verb writes an fn.toml",
+                  owner="native configuration schema")
+        if created.rc != EXIT_OK:
+            self.blocked(("V0-NODE-REINIT", "V0-NODE-REINIT-SAFE"),
+                         "the operator could not create the scratch store (rc={} {}), "
+                         "so a second init over it would not have been the subject "
+                         "this row names".format(created.rc, created.first_line),
+                         nodes=(node.name,), invocation=created.command)
+            self.blocked(("V0-OUT-UNCERTAIN",),
+                         "the operator could not create the scratch store the "
+                         "uncertain submission needs (rc={} {})".format(
+                             created.rc, created.first_line),
+                         verdict=NOT_BUILT, owner="native operator init surface",
+                         nodes=(node.name,), invocation=created.command)
+            return
+
+        developer = self.native_developer_image
+        tag = "init-{}".format(node.name)
+        command = self.native_command(
+            self.Raw(config), "run", image=developer or self.native_image,
+            env={"FN_NATIVE_CONTROL_FAULT": "postpublish"} if developer else None)
+        started = self.start_server("node {} init owner".format(node.upper),
+                                    command, tag, run=scratch)
+        if not started:
+            self.blocked(("V0-NODE-REINIT", "V0-NODE-REINIT-SAFE"),
+                         "the scratch owner over the freshly initialised store did not "
+                         "reach LISTENING on port {}: {}; without an accepted article "
+                         "the reinit rows would be about an empty store".format(
+                             port, self.server_failure),
+                         nodes=(node.name,), invocation=command)
+            self.blocked(("V0-OUT-UNCERTAIN",),
+                         "the scratch owner that carries the cut did not reach "
+                         "LISTENING on port {}: {}".format(port, self.server_failure),
+                         verdict=NOT_BUILT, owner="native developer cut campaign",
+                         nodes=(node.name,), invocation=command)
+            return
+
+        msgid = "<init-{}@example.invalid>".format(node.name)
+        payload = "{}/init.article".format(scratch)
+        self.push_file(article(msgid, self.native_group, "one durable outcome",
+                               "Submitted on the {} init scratch node by the v0 "
+                               "matrix.".format(node.upper)), payload)
+        try:
+            submitted = self.sh(
+                "node {} submission to the init scratch owner".format(node.upper),
+                self.cd(self.native_command(
+                    self.Raw(config), "post", "--message-id", msgid,
+                    "--payload", self.Raw(payload), "--group", self.native_group)),
+                timeout=900, expect=None)
+        finally:
+            # The fenced owner exits on its own; this is for every other path.
+            self.stop_server(tag, run=scratch)
+        self.native_uncertain[node.name] = submitted.rc
+        if developer:
+            self.from_step(
+                "V0-OUT-UNCERTAIN", submitted, node=node.name,
+                limit="the OWNER is the developer image and carries "
+                      "`FN_NATIVE_CONTROL_FAULT=postpublish`, one entry of the same "
+                      "named cut table `store post --inject-fault` selects from: "
+                      "FNN-STORE-INDETERMINATE after the final publication, so the "
+                      "record is durable and its report is not. The CLIENT is the "
+                      "production image and invents nothing: the word is ACL2's "
+                      "`fn-own-control-outcome-result`, carried as the :UNCERTAIN "
+                      "status of books/native-control.lisp and projected to 3 by "
+                      "`fn-native-control-status-exit-code`. The article is asserted "
+                      "in neither direction afterwards; an indeterminate outcome is "
+                      "evidence about the report. This is not a power loss")
+        else:
+            self.blocked(("V0-OUT-UNCERTAIN",),
+                         "this run supplied no --native-developer-image: the cut that "
+                         "makes one submission's durable outcome unknown to its caller "
+                         "is developer-only and a production image refuses the "
+                         "variable that selects it rather than honouring it "
+                         "(host/native/owner.lisp, `fnn-owner-control-test-fault`). "
+                         "The submission above ran against a production owner and was "
+                         "an ordinary outcome (rc={})".format(submitted.rc),
+                         verdict=NOT_BUILT, owner="native developer cut campaign",
+                         nodes=(node.name,), invocation=command)
+
+        recover = self.sh("node {} recover the init scratch store".format(node.upper),
+                          self.cd(self.native_command(self.Raw(config), "recover")),
+                          timeout=900, expect=None)
+        if "V0-OUT-RECOVER-" + node.upper not in self.emitted:
+            self.from_step("V0-OUT-RECOVER", recover, node=node.name,
+                           limit="recovery of the store the scratch owner released"
+                                 + (" when it fenced itself on the uncertain "
+                                    "publication above" if developer else
+                                    "; no uncertain publication preceded it, because "
+                                    "this run had no developer image"))
+        again = self.sh("node {} second operator init".format(node.upper), self.cd(
+            self.native_command(self.Raw(config), "init", self.native_group)),
+            timeout=900, expect=None)
+        self.from_step("V0-NODE-REINIT", again, node=node.name,
+                       limit="a second `init` over the store the first one made, "
+                             "which by then holds a submission. The refusal is on the "
+                             "presence of the store's own entries -- `config.json`, "
+                             "`writer.lock`, `allocation-frontier.json`, "
+                             "`transactions/`, `config/` -- so no lock is opened to "
+                             "reach it; the next row is whether that is true")
+        after = self.sh("node {} recover after the second init".format(node.upper),
+                        self.cd(self.native_command(self.Raw(config), "recover")),
+                        timeout=900, expect=None)
+        held = recover.first_line or ""
+        kept = after.first_line or ""
+        counted = re.search(r"articles=(\d+)", held)
+        safe = (recover.rc == EXIT_OK and after.rc == EXIT_OK and held == kept
+                and counted is not None and int(counted.group(1)) > 0)
+        if safe:
+            self.emit("V0-NODE-REINIT-SAFE", ACCEPTED,
+                      "{}\n{}".format(again.command, after.command),
+                      "before: {} / after: {}".format(held, kept),
+                      node=node.name, exit_code=after.rc, client=CLIENT_CLI,
+                      limit="the whole recovery line is compared, not only a count: "
+                            "transactions, articles, staging orphans, anchor and "
+                            "checkpoint are all as they were before the refused "
+                            "init. The store held {} article(s), so the comparison "
+                            "separates more than an empty store from itself".format(
+                                counted.group(1)))
+        else:
+            self.emit("V0-NODE-REINIT-SAFE", NOT_EXERCISED,
+                      "{}\n{}".format(again.command, after.command),
+                      "before: {} / after: {}".format(held or "(no output)",
+                                                      kept or "(no output)"),
+                      node=node.name, exit_code=after.rc, client=CLIENT_CLI,
+                      blocker="the two recoveries around the refused init did not "
+                              "both report a store with articles in it, so this run "
+                              "has no non-degenerate before/after to compare")
+
     def native_capacity(self, node: NodeSpec):
         """`capacity` on a scratch store beside the served one, and its refusal."""
         scratch = "{}/capacity".format(node.dir)
@@ -4103,12 +4327,35 @@ exit "$rc"
                     "node {} could not write a peer record for {} (rc={}, {}); the "
                     "transit rows below run without the peer table they name"
                     .format(node.upper, other.upper, add.rc, add.first_line))
-            self.blocked(("V0-PEER-LIST",),
-                         "the packaged native operator has no `peer list` verb; the "
-                         "record's effect is observed by whether the peer's transit "
-                         "is dispatched", verdict=NOT_BUILT,
-                         owner="native peer listing", nodes=(node.name,),
-                         invocation=self.native_operator(node, "peer", "list"))
+            listed = self.sh("node {} lists its peers".format(node.upper),
+                             self.cd(self.native_operator(node, "peer", "list")),
+                             timeout=900, expect=None)
+            # The row is whether the record READS BACK, so an accepted listing
+            # that does not name the peer is a refusal of the row, not of the
+            # command: a listing nobody is in is still a listing.
+            shows = other.path_identity in listed.output
+            self.emit("V0-PEER-LIST",
+                      ACCEPTED if (listed.rc == EXIT_OK and shows)
+                      else REFUSED if listed.rc == EXIT_OK
+                      else exit_verdict(listed.rc), listed.command,
+                      "rc={} names {}: {}".format(listed.rc, other.path_identity, shows),
+                      node=node.name, exit_code=listed.rc, client=CLIENT_CLI,
+                      limit="the record read back out of the durable configuration, in "
+                            "the order `peer add` takes its arguments and rendered by "
+                            "ACL2 (`fn-native-admin-peer-report`, "
+                            "books/native-admin.lisp); the <path-identity> is what is "
+                            "matched, not the one-letter node name. It is a read: the "
+                            "store is opened without the exclusive writer lock and the "
+                            "live owner is never reached, so it runs in this offline "
+                            "window and would refuse while an owner held the store, "
+                            "exactly as `status` does")
+            if listed.rc == EXIT_OK and not shows and add.rc == EXIT_OK:
+                self.limitation(
+                    None,
+                    "node {} accepted `peer add {}` but `peer list` does not name it: "
+                    "the record did not survive the replay ({})".format(
+                        node.upper, other.upper,
+                        listed.first_line or "(no output)"))
 
     def native_submit(self, node: NodeSpec, msgid: str, subject: str, body: str,
                       name: str, tag: str = "") -> Step:
@@ -4170,15 +4417,21 @@ exit "$rc"
             "Message-ID: rc={} {}".format(
                 duplicate.rc, duplicate.first_line or "no output",
                 refused.rc, refused.first_line or "no output"))
+        # The uncertain outcome is `native_init_lifecycle`'s, on a scratch
+        # node of its own: the cut fences the owner that serves it, and this
+        # node's owner is the subject of every other row below.
         self.blocked(("V0-OUT-UNCERTAIN",),
-                     "the production image has no fault-injection option; an uncertain "
-                     "publication is the developer image's cut campaign, not a public "
-                     "operator outcome", verdict=NOT_BUILT,
+                     "the init/uncertain phase did not reach a submission on this "
+                     "node's scratch owner, so nothing here made one submission's "
+                     "durable outcome unknown to its caller",
+                     verdict=NOT_BUILT,
                      owner="native developer cut campaign", nodes=(node.name,),
-                     invocation=self.native_operator(node, "post", "--inject-fault",
-                                                     "postpublish"))
+                     invocation="packaging/fn-native operator SCRATCH-CONFIG post")
         self.facts["three outcomes {}".format(node.name)] = (
-            "accepted={} refused={} uncertain=not-built".format(accepted.rc, refused.rc))
+            "accepted={} refused={} uncertain={} (uncertain is the init scratch "
+            "node's, not this one's)".format(
+                accepted.rc, refused.rc,
+                self.native_uncertain.get(node.name, "not-built")))
 
     def native_seed(self, node: NodeSpec):
         """The streaming article the CHECK/TAKETHIS rows offer."""
@@ -4287,9 +4540,13 @@ exit "$rc"
         recover = self.sh("node {} recover after the stop".format(node.upper),
                           self.cd(self.native_operator(node, "recover")),
                           timeout=900, expect=None)
-        self.from_step("V0-OUT-RECOVER", recover, node=node.name,
-                       limit="recovery of a store the owner released on SIGTERM; no "
-                             "uncertain publication preceded it on this image")
+        # The init/uncertain phase has the better subject for this row -- a
+        # store the owner released by fencing itself on an uncertain
+        # publication -- so this is the fallback, not the measurement.
+        if "V0-OUT-RECOVER-" + node.upper not in self.emitted:
+            self.from_step("V0-OUT-RECOVER", recover, node=node.name,
+                           limit="recovery of a store the owner released on SIGTERM; "
+                                 "no uncertain publication preceded it in this run")
         self.sh("node {} log tail".format(node.upper),
                 "tail -12 {}/server-{}-main.log 2>/dev/null || echo NO-LOG".format(
                     node.dir, node.name), expect=None)
@@ -4328,17 +4585,21 @@ exit "$rc"
         self.push_file(MATRIX_DRIVER, "{}/matrix.py".format(self.run), mode="755")
         self.probe_native_subject()
 
-        setup_blocker = (
-            "the public native operator has no init/reinit command; this native slice "
-            "uses the two explicitly supplied, preprovisioned configurations")
         for node in self.nodes:
             self.sh("node {} native run directory".format(node.upper),
                     "mkdir -p {}".format(node.dir))
-            self.blocked(("V0-NODE-INIT", "V0-NODE-CONFIG", "V0-NODE-REINIT",
-                          "V0-NODE-REINIT-SAFE"), setup_blocker,
-                         verdict=NOT_BUILT, owner="native operator init surface",
-                         nodes=(node.name,), invocation="packaging/fn-native operator CONFIG")
             if node.name not in self.native_configs:
+                # The init rows are measured on a scratch node the operator
+                # stands up itself, but it still needs somewhere to stand it
+                # up: the deployment directory this slice was given.
+                self.blocked(("V0-NODE-INIT", "V0-NODE-CONFIG", "V0-NODE-REINIT",
+                              "V0-NODE-REINIT-SAFE"),
+                             "no preprovisioned configuration was supplied for this "
+                             "optional served-node slice, so the run has no deployment "
+                             "for the operator to stand a scratch node up beside",
+                             verdict=NOT_BUILT, owner="native operator init surface",
+                             nodes=(node.name,),
+                             invocation="packaging/fn-native operator CONFIG init GROUP")
                 self.blocked(("V0-NODE-STATUS", "V0-NODE-START") + self.POST_KEYS
                              + self.READ_KEYS + self.AUTH_KEYS
                              + ("V0-AUTH-PASSWORD", "V0-AUTH-LIST"),
@@ -4359,6 +4620,16 @@ exit "$rc"
                           "from a seed",
                   owner="native principal derivation surface")
         self.phase("loopback refusal", self.native_loopback_refusal)
+
+        # A whole node through the public operator, on a scratch store beside
+        # each supplied one: init, one submission whose outcome may be lost,
+        # recover, and the refused second init.  It runs before the served
+        # owners start, and before `native_stop`, which is why it and not the
+        # stop phase owns V0-OUT-RECOVER when it reaches it.
+        for node in self.nodes:
+            if node.name in self.native_configs:
+                self.phase("native init lifecycle {}".format(node.name),
+                           self.native_init_lifecycle, node)
 
         # Offline administration, while no owner holds the writer lock.  The
         # credential is enrolled here and nowhere later: the native owner
@@ -4632,40 +4903,14 @@ exit "$rc"
     def document(self, started, elapsed) -> dict:
         execution = self.execution_identity()
         rows = [row.json(self.rev, execution) for row in self.rows]
-        order = {rid: i for i, rid in enumerate(PLANNED_IDS)}
-        rows.sort(key=lambda r: order[r["id"]])
-        summary = {v: sum(1 for r in rows if r["verdict"] == v) for v in VERDICTS}
-        summary["total"] = len(rows)
-        summary["disagreed"] = sum(1 for r in rows if r["agrees"] is False)
-        # A host fault (4) or usage error (5) is not an outcome: its row is
-        # not-exercised with the code as blocker, and it is counted here so
-        # the run's exit code cannot be 0 over a command that crashed.
-        summary["faulted"] = sum(1 for r in rows if r["exit_code"] not in (
-            None, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN))
-        summary["independent"] = sum(1 for r in rows if r["independent"] is True)
-        summary["fn-observed"] = sum(1 for r in rows if r["independent"] is False)
-        clients = {}
-        for row in rows:
-            if row["client"]:
-                clients[row["client"]] = clients.get(row["client"], 0) + 1
-        by_requirement, by_scenario = {}, {}
-        for row in rows:
-            for ident in row["requirements"]:
-                by_requirement.setdefault(ident, []).append(row["id"])
-            for ident in row["scenarios"]:
-                by_scenario.setdefault(ident, []).append(row["id"])
-        features = []
-        for fid, title in FEATURES:
-            mine = [r for r in rows if r["feature"] == fid]
-            features.append({
-                "id": fid, "title": title,
-                "rows": [r["id"] for r in mine],
-                "counts": {v: sum(1 for r in mine if r["verdict"] == v)
-                           for v in VERDICTS},
-                "disagreed": sum(1 for r in mine if r["agrees"] is False),
-            })
-        digest = hashlib.sha256(json.dumps(
-            rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        derived = derive(rows)
+        rows = derived["rows"]
+        summary = derived["summary"]
+        clients = derived["clients"]
+        by_requirement = derived["by_requirement"]
+        by_scenario = derived["by_scenario"]
+        features = derived["features"]
+        digest = derived["rows_digest"]
         return {
             "schema_version": SCHEMA_VERSION,
             "generated_by": self.TOOL,
@@ -4820,6 +5065,97 @@ def render_plan() -> str:
                 spec.title))
         lines.append("")
     return "\n".join(lines)
+
+
+def derive(rows: list) -> dict:
+    """Every counted field of a matrix document, from its rows and nothing else.
+
+    `document` builds a run's file with this, and `add_planned_rows` rebuilds
+    an existing file with it, so a summary, an index or a digest has one owner
+    and no second derivation can disagree with it.
+    """
+    order = {rid: i for i, rid in enumerate(PLANNED_IDS)}
+    rows = sorted(rows, key=lambda r: order[r["id"]])
+    summary = {v: sum(1 for r in rows if r["verdict"] == v) for v in VERDICTS}
+    summary["total"] = len(rows)
+    summary["disagreed"] = sum(1 for r in rows if r["agrees"] is False)
+    # A host fault (4) or usage error (5) is not an outcome: its row is
+    # not-exercised with the code as blocker, and it is counted here so
+    # the run's exit code cannot be 0 over a command that crashed.
+    summary["faulted"] = sum(1 for r in rows if r["exit_code"] not in (
+        None, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN))
+    summary["independent"] = sum(1 for r in rows if r["independent"] is True)
+    summary["fn-observed"] = sum(1 for r in rows if r["independent"] is False)
+    clients = {}
+    for row in rows:
+        if row["client"]:
+            clients[row["client"]] = clients.get(row["client"], 0) + 1
+    by_requirement, by_scenario = {}, {}
+    for row in rows:
+        for ident in row["requirements"]:
+            by_requirement.setdefault(ident, []).append(row["id"])
+        for ident in row["scenarios"]:
+            by_scenario.setdefault(ident, []).append(row["id"])
+    features = []
+    for fid, title in FEATURES:
+        mine = [r for r in rows if r["feature"] == fid]
+        features.append({
+            "id": fid, "title": title,
+            "rows": [r["id"] for r in mine],
+            "counts": {v: sum(1 for r in mine if r["verdict"] == v)
+                       for v in VERDICTS},
+            "disagreed": sum(1 for r in mine if r["agrees"] is False),
+        })
+    return {
+        "rows": rows,
+        "summary": summary,
+        "clients": {k: clients[k] for k in sorted(clients)},
+        "by_requirement": {k: by_requirement[k] for k in sorted(by_requirement)},
+        "by_scenario": {k: by_scenario[k] for k in sorted(by_scenario)},
+        "features": features,
+        "rows_digest": hashlib.sha256(json.dumps(
+            rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+    }
+
+
+PLANNED_AFTER_THE_RUN = (
+    "planned after the recorded run: this row was added to the tool's PLAN "
+    "after the measurement in this file was taken, so no run has reached it "
+    "on any commit. The next matrix run measures it.")
+
+
+def add_planned_rows(doc: dict) -> list:
+    """Give every planned id the file lacks a not-exercised row, in place.
+
+    A planned row a run never reached is a row and not a silence, which is
+    what `V0Matrix.backfill` does inside a run. The same rule holds for a row
+    planned AFTER the recorded run: the file gains a row that says no
+    measurement exists, never a verdict. Every counted field and the digest
+    are re-derived by `derive`, the same code a run uses, so a verdict typed
+    into the file by hand still does not survive.
+    """
+    present = {row.get("id") for row in doc.get("rows", [])}
+    missing = [rid for rid in PLANNED_IDS if rid not in present]
+    if not missing:
+        return []
+    execution = doc.get("execution")
+    revision = doc.get("revision", "")
+    added = []
+    for rid in missing:
+        for spec in PLAN:
+            if rid in spec.ids():
+                break
+        else:  # pragma: no cover - PLANNED_IDS is built from PLAN
+            raise GateError("planned id {} belongs to no spec".format(rid))
+        suffix = rid.rsplit("-", 1)[-1].lower()
+        node = suffix if spec.scope == "node" else None
+        direction = suffix if spec.scope == "direction" else None
+        row = Row(rid, spec, NOT_EXERCISED, "(none)", "(not run)", None,
+                  doc.get("evidence", "planning/evidence/(pending)"), "",
+                  PLANNED_AFTER_THE_RUN, None, node=node, direction=direction)
+        added.append(row.json(revision, execution))
+    doc.update(derive(list(doc.get("rows", [])) + added))
+    return missing
 
 
 def validate(doc) -> list:
@@ -5030,6 +5366,10 @@ def main(argv=None) -> int:
                         help="print the row inventory and run nothing")
     parser.add_argument("--check", action="store_true",
                         help="validate an existing planning/v0-matrix.json and exit")
+    parser.add_argument("--plan-rows", action="store_true",
+                        help="give every newly planned row a not-exercised row "
+                             "in planning/v0-matrix.json and exit; it records "
+                             "that no run has measured them, never a verdict")
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--tree", default="dev", help="gate directory prefix on the host")
     parser.add_argument("--repo", default=str(ROOT))
@@ -5061,6 +5401,10 @@ def main(argv=None) -> int:
                         help="execution-host path to node B's preprovisioned config")
     parser.add_argument("--native-group", default=GROUPS[0],
                         help="served group already present in both native stores")
+    parser.add_argument("--native-developer-image", default=None,
+                        help="execution-host path to a developer-profile image; the "
+                             "uncertain-outcome row needs one, because the production "
+                             "image refuses the cut that selects it")
     parser.add_argument("--native-image-source", default=None,
                         help="externally declared source-content digest for --native-image; "
                              "without it the native peering witness is not exercised")
@@ -5085,6 +5429,22 @@ def main(argv=None) -> int:
         if problems:
             return 1
         print("v0 matrix OK: the rows match their digest, their summary and their indexes.")
+        return 0
+    if args.plan_rows:
+        target = Path(args.json) if args.json else repo / MATRIX_JSON
+        doc = json.loads(target.read_text())
+        added = add_planned_rows(doc)
+        if not added:
+            print("v0 matrix: every planned row is already in the file.")
+            return 0
+        problems = validate(doc)
+        if problems:
+            for problem in problems:
+                print("ERROR: v0 matrix: {}".format(problem), file=sys.stderr)
+            return 1
+        target.write_text(json.dumps(doc, indent=2) + "\n")
+        print("v0 matrix: {} row(s) recorded as not-exercised: {}".format(
+            len(added), ", ".join(added)))
         return 0
     if not args.commit:
         parser.error("a commit is required unless --list or --check is given")
@@ -5130,7 +5490,8 @@ def main(argv=None) -> int:
                                      ("b", args.native_config_b)) if config},
                     native_group=args.native_group,
                     native_image_source=args.native_image_source,
-                    native_runtime=args.native_runtime)
+                    native_runtime=args.native_runtime,
+                    native_developer_image=args.native_developer_image)
     try:
         gate._evidence_name = str(target.resolve().relative_to(repo))
     except ValueError:

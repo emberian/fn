@@ -126,7 +126,7 @@ class ReaderSocketTests(unittest.TestCase):
         self.reader.assert_bytes(
             sock,
             b"101 capability list follows\r\nVERSION 2\r\nREADER\r\n"
-            b"OVER MSGID\r\nHDR\r\n"
+            b"OVER MSGID\r\nHDR\r\nNEWNEWS\r\n"
             b"LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT\r\n"
             b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
 
@@ -377,9 +377,49 @@ class ReaderSocketTests(unittest.TestCase):
             sock,
             b"100 help text follows\r\n"
             b"CAPABILITIES HELP QUIT MODE DATE POST\r\n"
-            b"GROUP LISTGROUP LIST NEXT LAST NEWGROUPS\r\n"
+            b"GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS\r\n"
             b"ARTICLE HEAD BODY STAT\r\n"
             b"OVER XOVER HDR XHDR XPAT\r\n.\r\n")
+
+    def test_newnews_transcript_over_a_real_socket(self):
+        """RFC 3977 section 7.4 framing, argument forms and refusals.
+
+        The seeded article carries neither Injection-Date nor Date, so fn can
+        read no injection instant for it and does not report it: section
+        7.4.2's empty block is the correct answer here, and it is also the
+        answer for a wildmat that matches no group.  A reported identifier is
+        the subject of the store-backed test below.  Expected replies are
+        written from sections 7.4.2, 7.3.2 and 3.2.1.
+        """
+        sock = self.reader.connect()
+        self.addCleanup(sock.close)
+        empty = b"230 list of new articles by message-id follows\r\n.\r\n"
+        # The three-argument form, the optional GMT token, the two-digit year
+        # of section 7.3.2 (the served connection has a wall clock), and a
+        # wildmat that matches nothing.
+        sock.sendall(b"NEWNEWS fn.* 19700101 000000 GMT\r\n"
+                     b"NEWNEWS fn.* 19700101 000000\r\n"
+                     b"NEWNEWS fn.letters 700101 000000 GMT\r\n"
+                     b"NEWNEWS no.such.* 19700101 000000 GMT\r\n")
+        for _ in range(4):
+            self.reader.assert_bytes(sock, empty)
+        # Section 3.2.1's 501: too few arguments, a fourth token that is not
+        # GMT, a malformed wildmat, an out-of-range time, and a date that is
+        # neither the six- nor the eight-digit form.
+        sock.sendall(b"NEWNEWS fn.*\r\n"
+                     b"NEWNEWS fn.* 19700101 000000 UTC\r\n"
+                     b"NEWNEWS [ 19700101 000000\r\n"
+                     b"NEWNEWS fn.* 19700101 250000\r\n"
+                     b"NEWNEWS fn.* 1970011 000000\r\n")
+        for _ in range(5):
+            self.reader.assert_bytes(sock, b"501 syntax error\r\n")
+        # The command changes no session state (section 7.4.2 assigns none),
+        # so the selected group and cursor survive it.
+        sock.sendall(b"GROUP fn.letters\r\nNEWNEWS fn.* 19700101 000000\r\nSTAT\r\n")
+        self.reader.assert_bytes(sock, b"211 1 1 1 fn.letters\r\n")
+        self.reader.assert_bytes(sock, empty)
+        self.reader.assert_bytes(
+            sock, b"223 1 <reader@example.invalid> retrieved\r\n")
 
     def test_quit_replies_then_closes(self):
         sock = self.reader.connect()
@@ -481,6 +521,54 @@ class StoreReaderSocketTests(unittest.TestCase):
             args.extend(["--group", group])
         self.store_command("post", *args)
 
+    def test_newnews_reports_only_articles_newer_than_the_requested_instant(self):
+        """RFC 3977 section 7.4 over a store, with real injection instants.
+
+        Three durable articles: one dated 2026, one dated 2020, and one with
+        no date field at all.  The instant fn compares against is the
+        article's own Injection-Date, falling back to Date (RFC 5537 sections
+        3.6 and 3.7), because the store records no arrival stamp beside an
+        article.  Expected replies are written from section 7.4.2.
+        """
+        self.post("<new@example.invalid>",
+                  b"Message-ID: <new@example.invalid>\r\n"
+                  b"Injection-Date: Sat, 19 Sep 2026 12:00:00 +0000\r\n"
+                  b"\r\nfresh\r\n", ("fn.letters",))
+        self.post("<old@example.invalid>",
+                  b"Message-ID: <old@example.invalid>\r\n"
+                  b"Date: Wed, 01 Jan 2020 00:00:00 +0000\r\n"
+                  b"\r\nstale\r\n", ("fn.letters",))
+        self.post("<undated@example.invalid>",
+                  b"Message-ID: <undated@example.invalid>\r\n"
+                  b"\r\nno date\r\n", ("fn.letters",))
+        with ReaderProcess(self.store) as reader:
+            client = reader.connect()
+            # Since 1970: both dated articles, newest-committed first; the
+            # undated one is not reported, which is the stated limitation.
+            client.sendall(b"NEWNEWS fn.* 19700101 000000 GMT\r\n")
+            reader.assert_bytes(
+                client,
+                b"230 list of new articles by message-id follows\r\n"
+                b"<old@example.invalid>\r\n<new@example.invalid>\r\n.\r\n")
+            # Since 2021: only the 2026 article.
+            client.sendall(b"NEWNEWS fn.* 20210101 000000 GMT\r\n")
+            reader.assert_bytes(
+                client,
+                b"230 list of new articles by message-id follows\r\n"
+                b"<new@example.invalid>\r\n.\r\n")
+            # Since 2027: none, and the block is still well formed.
+            client.sendall(b"NEWNEWS fn.* 20270101 000000 GMT\r\n")
+            reader.assert_bytes(
+                client,
+                b"230 list of new articles by message-id follows\r\n.\r\n")
+            # A wildmat that matches no configured group is the empty block,
+            # not an error: section 7.4.2.
+            client.sendall(b"NEWNEWS zz.* 19700101 000000 GMT\r\n")
+            reader.assert_bytes(
+                client,
+                b"230 list of new articles by message-id follows\r\n.\r\n")
+            client.close()
+
     def test_store_snapshot_returns_exact_durable_article_and_holds_lock(self):
         payload = (b"Message-ID: <durable@example.invalid>\r\nSubject: durable\r\n"
                    b"\r\nDurable body\r\n")
@@ -528,7 +616,7 @@ class StoreReaderSocketTests(unittest.TestCase):
             reader.assert_bytes(
                 client,
                 b"101 capability list follows\r\nVERSION 2\r\nREADER\r\n"
-                b"OVER MSGID\r\nHDR\r\n"
+                b"OVER MSGID\r\nHDR\r\nNEWNEWS\r\n"
                 b"LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT\r\n"
                 b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
             client.sendall(b"GROUP fn.letters\r\n")
