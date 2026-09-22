@@ -3571,8 +3571,13 @@ exit "$rc"
         except (ValueError, IndexError):
             return 0
 
+    # One loopback port per node for the scratch owner the capacity refusal
+    # needs; the two preprovisioned nodes carry their own ports in their
+    # configurations and these must not collide with them.
+    CAPACITY_OWNER_PORTS = {"a": 11290, "b": 11291}
+
     def native_capacity(self, node: NodeSpec):
-        """`capacity` on a scratch store beside the served one."""
+        """`capacity` on a scratch store beside the served one, and its refusal."""
         scratch = "{}/capacity".format(node.dir)
         store = "{}/store".format(scratch)
         config = "{}/fn.toml".format(scratch)
@@ -3597,15 +3602,44 @@ exit "$rc"
                        limit="a scratch store beside the served one, initialised through "
                              "the image's store entry, so a refusal here cannot change "
                              "what the node serves")
-        self.blocked(("V0-CAP-REFUSE",),
-                     "native `post` is a submission to a live owner over its control "
-                     "socket, and this slice starts no owner over the scratch store",
-                     nodes=(node.name,),
-                     invocation=self.native_command(self.Raw(config), "post",
-                                                    "--message-id",
-                                                    "<capacity@example.invalid>",
-                                                    "--payload", "...", "--group",
-                                                    self.native_group))
+        # The refusal: native `post` is a submission to a live owner over its
+        # control socket, so the scratch store gets an owner of its own on a
+        # port of its own, and the article whose charge exceeds a capacity of
+        # 1 is offered to it.
+        tight = self.sh("node {} capacity 1".format(node.upper),
+                        self.cd(self.native_command(self.Raw(config), "capacity", "1")),
+                        timeout=900, expect=None)
+        port = self.CAPACITY_OWNER_PORTS[node.name]
+        self.sh("node {} capacity owner config".format(node.upper), self.cd(
+            "printf '[listener]\\nhost = \"127.0.0.1\"\\nport = {port}\\n[control]\\n"
+            "path = \"%s\"\\n' {scratch}/control.sock >> {config}".format(
+                port=port, scratch=scratch, config=config)), expect=None)
+        tag = "capacity-{}".format(node.name)
+        started = self.start_server("node {} capacity owner".format(node.upper),
+                                    self.native_command(self.Raw(config), "run"),
+                                    tag, run=scratch)
+        if not started:
+            self.blocked(("V0-CAP-REFUSE",),
+                         "the scratch owner over the capacity-1 store did not reach "
+                         "LISTENING on port {}: {}".format(port, self.server_failure),
+                         nodes=(node.name,),
+                         invocation=self.native_command(self.Raw(config), "run"))
+            return
+        msgid = "<capacity-{}@example.invalid>".format(node.name)
+        payload = "{}/capacity.article".format(scratch)
+        self.push_file(article(msgid, self.native_group, "over the capacity", "x" * 4096),
+                       payload)
+        over = self.sh("node {} post beyond the capacity".format(node.upper),
+                       self.cd(self.native_command(
+                           self.Raw(config), "post", "--message-id", msgid,
+                           "--payload", self.Raw(payload), "--group", self.native_group)),
+                       timeout=900, expect=None)
+        self.from_step("V0-CAP-REFUSE", over, node=node.name,
+                       limit="the capacity was set to 1 (rc={}) on a scratch store served "
+                             "by an owner of its own on port {}; the article's own charge "
+                             "is what has to exceed it, and the charge is ACL2's".format(
+                                 tight.rc, port))
+        self.stop_server(tag, run=scratch)
 
     def native_peer_records(self):
         """A peer record on each node naming the other, in the operator's grammar."""

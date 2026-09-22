@@ -24,7 +24,7 @@ configuration:
 | Table | Keys | Validation/default |
 | --- | --- | --- |
 | `store` | `path` | Required nonempty path, at most 512 octets. |
-| `listener` | `host`, `port`, `tls_cert`, `tls_key` | Host defaults to `127.0.0.1` and must be `127.0.0.1`, `::1`, or `localhost`; port defaults to 1119 and is 1..65535; TLS paths are paired or absent. |
+| `listener` | `host`, `port`, `tls_cert`, `tls_key` | Host defaults to `127.0.0.1` and is a numeric IPv4 address other than `0.0.0.0`, or one of the aliases `localhost` (the IPv4 loopback) and `::1` (`fn-native-config-listener-hostp`); names are never resolved and the wildcard is refused, so a node binds exactly the address it was given. Port defaults to 1119 and is 1..65535; TLS paths are paired or absent. |
 | `auth` | `required`, `protected_only`, `path` | Booleans default false; path defaults to `<store>/auth.toml`. |
 | `posting` | `enabled`, `agent` | Defaults true and `fn-operator@localhost`. |
 | `anchor` | `server` | Optional bounded server name. |
