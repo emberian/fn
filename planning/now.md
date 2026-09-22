@@ -78,8 +78,13 @@ clock reading per submission, and listens with a backlog of sixteen; no
 book changed; [record](evidence/fn-client-915-2026-09-22.md): a POST over about
 32 KiB stops the owner with a plaintext-read suffix fault, and every
 article in one owner run carries the same Date; the client lane itself
-landed at 13c5ea43 with four client defects fixed), and w32-triage (`tools/triage.py`, review finding F1: every
-independent red of a closure in one report).
+landed at 13c5ea43 with four client defects fixed), and w32-triage (landed: ACL2's provisional certification is the discovery
+mode, `certify_books --pcert` and `tools/triage.py`; one provisional run
+over the 63-book store-node closure named four independent reds with
+nothing hidden where the ordinary loop showed one per round,
+[record](evidence/triage-2026-09-22.md); the four are `store-node-traces`,
+`store-node-resolution`, `store-observed` and `store-prepare-correspondence`,
+all the freeze-3 lane's).
 green-audit landed earlier (d667a874, `tools/green_check.py` in `make
 check`); with the treewide and freeze manifests in the tree it reads dev as 323
 green, 84 red, 0 never and 0 absent at current digests; the reds are the
