@@ -16,8 +16,11 @@ The behaviours it does copy from INN, because the lab asserts them:
   sub-field answers ``437`` (innd/art.c's ``ME.Exclusions``).
 * ``CHECK`` answers ``238`` for an unknown Message-ID and ``438`` for a known
   one; ``MODE STREAM`` answers ``203``.
+* An article with no ``Path`` answers ``437 Missing "Path" header field``;
+  a stored article gets innd's pathhost prepended to its Path and an Xref.
 * ``innfeed`` opens one connection to the port named in ``innfeed.conf``,
-  sends ``MODE STREAM`` and then an offer, and logs whatever comes back.
+  sends ``MODE STREAM`` and then ``CHECK``/``TAKETHIS`` for each article the
+  ``fn`` site's exclusions do not name, and logs whatever comes back.
 """
 import json
 import os
@@ -64,6 +67,28 @@ def exclusions() -> list:
                 if line.startswith("ME/"):
                     return [one for one in
                             line.split(":", 1)[0][len("ME/"):].split(",") if one]
+    except Exception:
+        pass
+    return []
+
+
+def pathhost() -> str:
+    try:
+        with open(path("etc", "inn.conf")) as handle:
+            match = re.search(r"^pathhost:\s*(\S+)", handle.read(), re.M)
+            return match.group(1) if match else "inn.fake.test"
+    except Exception:
+        return "inn.fake.test"
+
+
+def site_exclusions() -> list:
+    """The `fn` site's own exclusions: `fn/<site>,<site>:...` in newsfeeds."""
+    try:
+        with open(path("etc", "newsfeeds")) as handle:
+            for line in handle:
+                name = line.split(":", 1)[0]
+                if name.split("/", 1)[0] == "fn" and "/" in name:
+                    return [one for one in name.split("/", 1)[1].split(",") if one]
     except Exception:
         pass
     return []
@@ -171,19 +196,39 @@ class Session:
         lines = self.block()
         if lines is None:
             return
-        hops = []
+        hops, has_path = [], False
         for one in lines:
             if one.lower().startswith("path:"):
+                has_path = True
                 hops = one.split(":", 1)[1].strip().split("!")
             if one == "":
                 break
         bad = [site for site in exclusions() if site in hops]
+        if not has_path:
+            self.send('437 Missing "Path" header field')
+            return
         state["history"].append(msgid)
         if bad:
             save(state)
             self.send("437 Unwanted site {} in path".format(bad[0]))
             return
-        state["articles"][msgid] = lines
+        # What real innd does to what it stores (RFC 5537 3.7 steps 6, 7): its
+        # own pathhost prepended to Path, and an Xref of its own numbering.
+        host = pathhost()
+        stored, number = [], len(state["articles"]) + 1
+        for index, one in enumerate(lines):
+            if one == "" and not any(x.lower().startswith("xref:") for x in stored):
+                group = next((x.split(":", 1)[1].strip().split(",")[0] for x in stored
+                              if x.lower().startswith("newsgroups:")), "junk")
+                stored.append("Xref: {} {}:{}".format(host, group, number))
+                stored.extend(lines[index:])
+                break
+            if one.lower().startswith("path:"):
+                one = "Path: {}!{}".format(host, one.split(":", 1)[1].strip())
+            if one.lower().startswith("xref:"):
+                continue
+            stored.append(one)
+        state["articles"][msgid] = stored
         save(state)
         self.send("235 Article transferred OK")
 
@@ -280,12 +325,15 @@ def ctlinnd(argv):
 
 
 def innfeed(argv):
-    """One connection to the peer named in innfeed.conf, and what it answered."""
+    """One streaming connection to the peer innfeed.conf names: CHECK, then
+    TAKETHIS for each article innd holds that the peer has not been offered
+    and whose Path does not name the site's exclusions, and the replies."""
     port = peer_port()
     log = open(path("log", "innfeed.log"), "a")
     state = spool()
-    msgid = next(iter(state["articles"]), "<nothing@example.invalid>")
+    offered = state.setdefault("offered", [])
     stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    skip = site_exclusions()
     try:
         sock = socket.create_connection(("127.0.0.1", port), timeout=10)
         conn = sock.makefile("rb")
@@ -294,21 +342,31 @@ def innfeed(argv):
         sock.sendall(b"MODE STREAM\r\n")
         mode = conn.readline().decode("utf-8", "replace").strip()
         log.write("{} innfeed: fn:0 MODE STREAM -> {}\n".format(stamp, mode))
-        verb = "CHECK" if mode.startswith("203") else "IHAVE"
-        sock.sendall("{} {}\r\n".format(verb, msgid).encode())
-        answer = conn.readline().decode("utf-8", "replace").strip()
-        log.write("{} innfeed: fn:0 {} -> {}\n".format(stamp, verb, answer))
-        if not answer[:3] in ("238", "335"):
-            log.write("{} innfeed: fn:0 cxnsleep response unknown: {}\n".format(
-                stamp, answer))
+        for msgid, lines in state["articles"].items():
+            hops = next((x.split(":", 1)[1].strip().split("!") for x in lines
+                         if x.lower().startswith("path:")), [])
+            if msgid in offered or any(site in hops for site in skip):
+                continue
+            offered.append(msgid)
+            sock.sendall("CHECK {}\r\n".format(msgid).encode())
+            answer = conn.readline().decode("utf-8", "replace").strip()
+            log.write("{} innfeed: fn:0 CHECK -> {}\n".format(stamp, answer))
+            if not answer.startswith("238"):
+                continue
+            payload = "".join(("." + x if x.startswith(".") else x) + "\r\n"
+                              for x in lines)
+            sock.sendall("TAKETHIS {}\r\n{}.\r\n".format(msgid, payload).encode())
+            answer = conn.readline().decode("utf-8", "replace").strip()
+            log.write("{} innfeed: fn:0 TAKETHIS -> {}\n".format(stamp, answer))
+        sock.sendall(b"QUIT\r\n")
         sock.close()
     except Exception as error:
         log.write("{} innfeed: fn:0 {}: {}\n".format(
             stamp, type(error).__name__, error))
     log.close()
-    with open(path("log", "innfeed.status"), "w") as handle:
-        handle.write("innfeed from fake INN\n\nPeer fn\n  offered 1\n  accepted 0\n"
-                     "  refused 0\n  deferred 0\n")
+    fresh = spool()
+    fresh["offered"] = offered
+    save(fresh)
     return 0
 
 

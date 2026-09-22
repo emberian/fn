@@ -154,7 +154,7 @@ able to run one says so.
 | `ltp` (`tests/ltp/run_fn_ltp_lab.py`) | box | ~2 min on the box that holds ION | the pinned ION build (`tests/ltp/pin.json`; `/tank/fn/ltp` on hbox) with both nodes started | fn's request ADU across a real BP-over-LTP link and back into fn's own acceptance |
 | `deploy` (`tools/deploy_gate.py`) | box | tens of minutes | `--host`, and a certification if the box holds no gate for the tree | one commit on a machine that is not the laptop, serving a real client, SIGKILLed mid-session, reopened through the real recovery path |
 | `twonode` (`tools/twonode_gate.py`) | box | tens of minutes | `--host` | two fn nodes: independence, an `IHAVE` offer A to B, B SIGKILLed mid-transfer and reread |
-| `inn` (`tools/inn_lab.py`) | box | an hour or more | `--host` with the pinned INN (`tests/inn/pin.json`; `/tank/fn/inn/2.7.4` on hbox) | fn against a real InterNetNews: read, `IHAVE`, innfeed's offer, a cut on each side |
+| `inn` (`tools/inn_lab.py`) | box | about a minute | `--host` with the pinned INN (`tests/inn/pin.json`; `/tank/fn/inn/2.7.4` on hbox) and `--native-image` (D07) | the native fn owner against a real InterNetNews: fn's feed into innd, innfeed into fn, the octets each serves, duplicates and loops both ways, a cut on each side |
 | `scale` (`tools/scale_gate.py`) | box | hours | `--host` | the store size at which a post stops returning and a recover becomes an outage, and what a reader pays per command |
 
 Four more rows are **harness dry runs**, printed in their own section and
