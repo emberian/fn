@@ -407,7 +407,7 @@
     "books": 402,
     "books_in_root_closure": 401,
     "roots": 400,
-    "theorems": 6592,
+    "theorems": 6594,
     "functions": 5183,
     "assert_events": 7054,
     "must_fails": 187,
@@ -4964,7 +4964,7 @@
       "book": "books/peer-inbound.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 58,
+      "theorems": 60,
       "functions": 57,
       "guards": {
         "verified": 6,
@@ -11702,7 +11702,7 @@
       {
         "theorem": "fn-bs-frontier-next-is-successor",
         "book": "books/byte-store-frame.lisp",
-        "line": 347,
+        "line": 353,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
