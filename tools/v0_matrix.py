@@ -681,12 +681,29 @@ def traceback_line(output: str) -> str:
     return "a Python traceback with no recognisable exception line"
 
 
+EXIT_FAULT, EXIT_USAGE = 4, 5
+
+
 def exit_verdict(rc) -> str:
-    """The outcome class of one exit code (D13, docs/operator.md)."""
+    """The outcome class of one exit code (D13, docs/operator.md).
+
+    Only 0, 1 and 3 are outcomes.  A fault (4), a usage error (5) or any
+    other code says the command did not decide, so the row is not-exercised
+    and `emit` names the code as its blocker; reading a fault as "uncertain"
+    would collapse two of the three outcomes the CLI keeps distinct.
+    """
     if rc is None:
         return NOT_EXERCISED
     return {EXIT_OK: ACCEPTED, EXIT_REFUSED: REFUSED,
-            EXIT_UNCERTAIN: UNCERTAIN}.get(rc, UNCERTAIN)
+            EXIT_UNCERTAIN: UNCERTAIN}.get(rc, NOT_EXERCISED)
+
+
+def exit_blocker(rc) -> str:
+    """Why a non-outcome exit code leaves its row not-exercised."""
+    kind = {EXIT_FAULT: "a host fault", EXIT_USAGE: "a usage error"}.get(
+        rc, "a code outside the operator contract")
+    return ("the command exited {}, {}, which is not one of the three outcomes "
+            "(docs/operator.md: 0 accepted, 1 refused, 3 uncertain)".format(rc, kind))
 
 
 # --------------------------------------------------------------------------
@@ -1352,6 +1369,8 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         if verdict not in VERDICTS:
             raise GateError("row {}: verdict {!r} is not one of {}".format(
                 rid, verdict, VERDICTS))
+        if verdict == NOT_EXERCISED and not blocker and exit_code is not None:
+            blocker = exit_blocker(exit_code)
         if verdict in (NOT_EXERCISED, NOT_BUILT) and not blocker:
             raise GateError("row {}: a {} row must name its blocker".format(rid, verdict))
         if verdict in OUTCOMES and client is None:
@@ -1363,12 +1382,30 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         self.emitted.add(rid)
         return row
 
+    def emit_once(self, key, verdict, invocation, observed, **kwargs):
+        """`emit`, unless a phase already measured this row.
+
+        The native peering witness runs on nodes of its own after the matrix
+        has driven transit on A and B; the matrix's own measurement is the
+        row, and the witness fills only what nothing else reached.
+        """
+        spec = PLAN_BY_KEY[key]
+        suffix = ""
+        if spec.scope == "node":
+            suffix = "-" + kwargs["node"].upper()
+        elif spec.scope == "direction":
+            suffix = "-" + kwargs["direction"].upper()
+        if spec.key + suffix in self.emitted:
+            return None
+        return self.emit(key, verdict, invocation, observed, **kwargs)
+
     def from_step(self, key, step: Step, **kwargs) -> Row:
         """A row whose observation is a host command's exit code (D13)."""
         verdict = exit_verdict(step.rc)
         kwargs.setdefault("blocker", None)
         if verdict == NOT_EXERCISED and not kwargs["blocker"]:
-            kwargs["blocker"] = step.note or "the command did not run"
+            kwargs["blocker"] = (exit_blocker(step.rc) if step.rc is not None
+                                 else step.note or "the command did not run")
         observed = "rc={} {}".format(step.rc, step.first_line or "(no output)")
         kwargs.setdefault("client", CLIENT_CLI)
         return self.emit(key, verdict, step.command, observed,
@@ -1435,16 +1472,39 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         config = self.native_configs.get(node.name)
         if not self.native_image or not config:
             raise GateError("native image and both node configs are required")
-        # `env` in front: the gate starts a node as `nohup <command> &`, and
-        # nohup execs its first word, so a bare `VAR=x cmd` is "no such
-        # command" and the server is reported dead in 0.3 s.  This is the
-        # line that kept every native POST/reader row at not-exercised.
+        return self.native_command(config, *words)
+
+    class Raw(str):
+        """A command word that is a shell expression by construction.
+
+        The gate names every remote path under `$HOME/fn-deploy/...` and lets
+        the remote shell expand it; quoting such a word hands the image a
+        literal dollar sign, which is what the 01:37Z run's four fault rows
+        were.
+        """
+
+    def native_command(self, config, *words) -> str:
+        """The packaged public native command against one named configuration.
+
+        `env` in front: the gate starts a node as `nohup <command> &`, and
+        nohup execs its first word, so a bare `VAR=x cmd` is "no such
+        command" and the server is reported dead in 0.3 s.  This is the
+        line that kept every native POST/reader row at not-exercised.
+        """
+        def word(one):
+            return one if isinstance(one, self.Raw) else shlex.quote(one)
         return "env FN_NATIVE_HOST={} packaging/fn-native operator {} {}".format(
-            shlex.quote(self.native_image), shlex.quote(config),
-            " ".join(shlex.quote(word) for word in words))
+            shlex.quote(self.native_image), word(config),
+            " ".join(word(one) for one in words))
 
     def cli(self, node, args) -> str:
-        """The operator surface, `bin/fn`, against this node's configuration."""
+        """The operator surface against this node's configuration.
+
+        `bin/fn` on the development backend; the packaged native operator on
+        the native one, whose `group` and `capacity` words are the same.
+        """
+        if self.backend == NATIVE_BACKEND:
+            return self.native_operator(node, *shlex.split(args))
         return "python3 bin/fn --config {}/fn.toml {}".format(node.dir, args)
 
     def matrix(self, phase, extra, name=None, timeout=300, expect=None) -> Step:
@@ -1760,6 +1820,10 @@ command -v swarm-build >/dev/null && echo swarm-build=yes || echo swarm-build=no
 
     # -- F-GROUP: groups, capacity, peers, live reconfiguration -----------
     def groups_and_capacity(self, node: NodeSpec):
+        self.groups(node)
+        self.capacity(node)
+
+    def groups(self, node: NodeSpec):
         create = self.sh("node {} group create {}".format(node.upper, MATRIX_GROUP),
                          self.cd(self.cli(node, "group create " + MATRIX_GROUP)),
                          timeout=900, expect=None)
@@ -1776,6 +1840,8 @@ command -v swarm-build >/dev/null && echo swarm-build=yes || echo swarm-build=no
                           self.cd(self.cli(node, "group retire fn.not.served")),
                           timeout=900, expect=None)
         self.from_step("V0-GROUP-UNKNOWN", unknown, node=node.name)
+
+    def capacity(self, node: NodeSpec):
         # Capacity runs against a scratch store of its own: a refusal row has to
         # leave the served store's admission untouched.
         scratch = "{}/capacity-store".format(node.dir)
@@ -2193,11 +2259,22 @@ else echo NONE; fi
         if str(result.get("COMMIT", "")).startswith("240"):
             node.accepted.append(msgid)
 
+    def credential(self):
+        """The reader credential the socket phases log in with, if the backend has one.
+
+        The first native slice runs a profile that permits local posting
+        without a credential (see `post_cycle`); an empty user skips AUTHINFO.
+        """
+        if self.backend == NATIVE_BACKEND:
+            return "", ""
+        return AUTH_USER, AUTH_SECRET
+
     def post_concurrent(self):
+        user, secret = self.credential()
         step = self.matrix("concurrent", "--port {} --group {} --msgid '{}' "
                            "--user {} --secret {}".format(
                                self.a.port, GROUPS[0], CONCURRENT_ID,
-                               AUTH_USER, AUTH_SECRET),
+                               shlex.quote(user), shlex.quote(secret)),
             name="a second reader across node A's POST", expect=None)
         result = self.payload(step)
         if not result or "POST" not in result:
@@ -2296,8 +2373,9 @@ else echo NONE; fi
                         "keystone is books/wire-invariants', not this row")
 
     def capability_pins(self, node: NodeSpec):
+        user, secret = self.credential()
         step = self.matrix("pins", "--port {} --group {} --user {} --secret {}".format(
-            node.port, GROUPS[0], AUTH_USER, AUTH_SECRET),
+            node.port, GROUPS[0], shlex.quote(user), shlex.quote(secret)),
                            name="node {} capability pins".format(node.upper),
                            timeout=600, expect=None)
         result = self.payload(step)
@@ -3404,16 +3482,16 @@ exit "$rc"
                 self.blocked(self.TRANSIT_KEYS, "malformed native {} transit witness {}"
                              .format(way, fact), directions=(way,), invocation=step.command)
                 continue
-            self.emit("V0-TRANSIT-OFFER", ACCEPTED, step.command, json.dumps(fact),
+            self.emit_once("V0-TRANSIT-OFFER", ACCEPTED, step.command, json.dumps(fact),
                       direction=way, client=CLIENT_DRIVER,
                       limit="tests.test_native_peering sent IHAVE and observed 335")
-            self.emit("V0-TRANSIT-TRANSFER", ACCEPTED, step.command, json.dumps(fact),
+            self.emit_once("V0-TRANSIT-TRANSFER", ACCEPTED, step.command, json.dumps(fact),
                       direction=way, client=CLIENT_DRIVER,
                       limit="the peer accepted the transferred RFC 3977 block with 235")
-            self.emit("V0-TRANSIT-IDENTICAL", ACCEPTED, step.command, json.dumps(fact),
+            self.emit_once("V0-TRANSIT-IDENTICAL", ACCEPTED, step.command, json.dumps(fact),
                       direction=way, client=CLIENT_DRIVER,
                       limit="the target-served article octets equal the sent block")
-            self.emit("V0-TRANSIT-DUPLICATE", REFUSED, step.command, json.dumps(fact),
+            self.emit_once("V0-TRANSIT-DUPLICATE", REFUSED, step.command, json.dumps(fact),
                       direction=way, client=CLIENT_DRIVER,
                       limit="a repeated IHAVE received 435")
         self.blocked(("V0-TRANSIT-MODE-STREAM", "V0-TRANSIT-LOOP",
@@ -3427,11 +3505,11 @@ exit "$rc"
                 and restart.get("source_restarted") is True
                 and restart.get("target_identical") is True
                 and all(feed.get(way, {}).get("identical") is True for way in ("ab", "ba"))):
-            self.emit("V0-FEED-QUEUE", ACCEPTED, step.command, json.dumps(restart),
+            self.emit_once("V0-FEED-QUEUE", ACCEPTED, step.command, json.dumps(restart),
                       client=CLIENT_DRIVER, limit="the restart witness found FNFD intent")
-            self.emit("V0-FEED-OFFER", ACCEPTED, step.command, json.dumps(feed),
+            self.emit_once("V0-FEED-OFFER", ACCEPTED, step.command, json.dumps(feed),
                       client=CLIENT_DRIVER, limit="the public owner delivered both directions")
-            self.emit("V0-FEED-JOURNAL", ACCEPTED, step.command, json.dumps(restart),
+            self.emit_once("V0-FEED-JOURNAL", ACCEPTED, step.command, json.dumps(restart),
                       client=CLIENT_DRIVER, limit="intent survived source death and restart")
         else:
             self.blocked(("V0-FEED-QUEUE", "V0-FEED-OFFER", "V0-FEED-JOURNAL"),
@@ -3476,12 +3554,223 @@ exit "$rc"
                 nodes=(node.name,), invocation=self.native_operator(node, "run"))
         return status.rc == EXIT_OK
 
-    def execute_native_acceptance(self):
-        """First native slice: packaged run, served POST, and reader profile.
+    # -- the native slice's own phases ---------------------------------------
+    def native_config_port(self, node: NodeSpec) -> int:
+        """The listener port a supplied native configuration declares.
 
-        Native init/admin and outbound-feed activation do not yet have a
-        stable public composition.  They stay explicit non-outcomes instead
-        of falling back to a Python runtime peer or diagnostic native verb.
+        The driver learns a node's port from LISTENING once it runs, and a
+        peer record on the OTHER node has to name it before either starts, so
+        the number is read out of the configuration text here.
+        """
+        config = self.native_configs[node.name]
+        step = self.sh("node {} configured port".format(node.upper),
+                       "sed -n 's/^port *= *\\([0-9][0-9]*\\).*/\\1/p' {} | head -1"
+                       .format(shlex.quote(config)), expect=None)
+        try:
+            return int(step.output.strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            return 0
+
+    def native_capacity(self, node: NodeSpec):
+        """`capacity` on a scratch store beside the served one."""
+        scratch = "{}/capacity".format(node.dir)
+        store = "{}/store".format(scratch)
+        config = "{}/fn.toml".format(scratch)
+        # Every path here is a `$HOME/...` shell expression by construction
+        # (see `Raw`), so none of them is quoted.
+        init = self.sh("node {} capacity scratch store".format(node.upper), self.cd(
+            "mkdir -p {scratch} && env FN_NATIVE_HOST={image} packaging/fn-native store "
+            "{store} init {group} && printf '[store]\\npath = \"%s\"\\n' \"{store}\" > {config}"
+            .format(scratch=scratch, image=shlex.quote(self.native_image),
+                    store=store, group=shlex.quote(self.native_group),
+                    config=config)), timeout=900, expect=None)
+        if init.rc != 0:
+            self.blocked(("V0-CAP-SET", "V0-CAP-REFUSE"),
+                         "the image's store entry did not initialise a scratch store "
+                         "(rc={} {})".format(init.rc, init.first_line), nodes=(node.name,),
+                         invocation=init.command)
+            return
+        cap = self.sh("node {} capacity 64".format(node.upper),
+                      self.cd(self.native_command(self.Raw(config), "capacity", "64")),
+                      timeout=900, expect=None)
+        self.from_step("V0-CAP-SET", cap, node=node.name,
+                       limit="a scratch store beside the served one, initialised through "
+                             "the image's store entry, so a refusal here cannot change "
+                             "what the node serves")
+        self.blocked(("V0-CAP-REFUSE",),
+                     "native `post` is a submission to a live owner over its control "
+                     "socket, and this slice starts no owner over the scratch store",
+                     nodes=(node.name,),
+                     invocation=self.native_command(self.Raw(config), "post",
+                                                    "--message-id",
+                                                    "<capacity@example.invalid>",
+                                                    "--payload", "...", "--group",
+                                                    self.native_group))
+
+    def native_peer_records(self):
+        """A peer record on each node naming the other, in the operator's grammar."""
+        for node in self.nodes:
+            self.blocked(("V0-TRANSIT-IDENTITY",),
+                         "the packaged native operator has no policy verb and the native "
+                         "configuration (books/native-config.lisp) carries no "
+                         "<path-identity> of the node's own; RFC 5537 3.5 loop "
+                         "suppression cannot fire on an unnamed node, and the loop rows "
+                         "measure exactly that",
+                         verdict=NOT_BUILT, owner="native path-identity administration",
+                         nodes=(node.name,),
+                         invocation=self.native_operator(node, "policy", "set",
+                                                         "path-identity",
+                                                         node.path_identity))
+        # Inbound `fn.*`, outbound `-`: the transit rows below offer articles
+        # BY HAND over the driver's socket, and a record with an outbound
+        # pattern makes the native owner's own feed deliver every live post
+        # to the peer first, so the hand-made offer draws 435 and CHECK 438
+        # (measured 01:41Z: eight articles on each node, every one fed).  The
+        # feed itself is the witness's measurement, on nodes of its own.
+        for node, other in ((self.a, self.b), (self.b, self.a)):
+            port = self.native_config_port(other)
+            add = self.sh("node {} peer record for {}".format(node.upper, other.upper),
+                          self.cd(self.native_operator(
+                              node, "peer", "add", other.name, other.path_identity,
+                              "127.0.0.1", str(port), "fn.*", "-", "127.0.0.1",
+                              "true")), timeout=900, expect=None)
+            self.from_step("V0-PEER-ADD", add, node=node.name,
+                           limit="a peer record is configuration, not authorization; "
+                                 "the positional grammar is books/native-operator.lisp's, "
+                                 "the inbound ceiling is the record's own default, and "
+                                 "the outbound pattern is `-` so the hand-driven transit "
+                                 "rows are not pre-empted by the owner's feed")
+            if add.rc != EXIT_OK:
+                self.limitation(
+                    None,
+                    "node {} could not write a peer record for {} (rc={}, {}); the "
+                    "transit rows below run without the peer table they name"
+                    .format(node.upper, other.upper, add.rc, add.first_line))
+            self.blocked(("V0-PEER-LIST",),
+                         "the packaged native operator has no `peer list` verb; the "
+                         "record's effect is observed by whether the peer's transit "
+                         "is dispatched", verdict=NOT_BUILT,
+                         owner="native peer listing", nodes=(node.name,),
+                         invocation=self.native_operator(node, "peer", "list"))
+
+    def native_submit(self, node: NodeSpec, msgid: str, subject: str, body: str,
+                      name: str) -> Step:
+        """One article through the public `post`, to the live owner's control socket."""
+        payload = "{}/{}.article".format(node.dir, msgid.strip("<>").split("@")[0])
+        self.push_file(article(msgid, self.native_group, subject, body), payload)
+        return self.sh(name, self.cd(self.native_operator(
+            node, "post", "--message-id", msgid, "--payload", self.Raw(payload),
+            "--group", self.native_group)), timeout=900, expect=None)
+
+    def native_outcomes(self, node: NodeSpec):
+        """The operator-surface outcomes the production image can show."""
+        msgid = ART[node.name]
+        accepted = self.native_submit(
+            node, msgid, "outcome, written on {}".format(node.upper),
+            "Written on node {} by the v0 matrix through the native operator."
+            .format(node.upper), "node {} outcome accepted".format(node.upper))
+        self.from_step("V0-OUT-ACCEPTED", accepted, node=node.name,
+                       limit="one article submitted to the live owner over its control "
+                             "socket; the exit code is the observation")
+        if accepted.rc == EXIT_OK:
+            node.accepted.append(msgid)
+        refused = self.native_submit(
+            node, msgid, "outcome, written on {}".format(node.upper),
+            "Written on node {} by the v0 matrix through the native operator."
+            .format(node.upper), "node {} outcome refused".format(node.upper))
+        self.from_step("V0-OUT-REFUSED", refused, node=node.name,
+                       limit="NOT a lookup: the native operator has no article lookup "
+                             "verb, so the refused outcome observed here is the same "
+                             "submission a second time, refused by the Message-ID "
+                             "binding")
+        self.blocked(("V0-OUT-UNCERTAIN",),
+                     "the production image has no fault-injection option; an uncertain "
+                     "publication is the developer image's cut campaign, not a public "
+                     "operator outcome", verdict=NOT_BUILT,
+                     owner="native developer cut campaign", nodes=(node.name,),
+                     invocation=self.native_operator(node, "post", "--inject-fault",
+                                                     "postpublish"))
+        self.facts["three outcomes {}".format(node.name)] = (
+            "accepted={} refused={} uncertain=not-built".format(accepted.rc, refused.rc))
+
+    def native_seed(self, node: NodeSpec):
+        """The streaming article the CHECK/TAKETHIS rows offer."""
+        step = self.native_submit(node, STREAM[node.name], "for the streaming offer",
+                                  "Seeded on node {} by the v0 matrix.".format(node.upper),
+                                  "node {} seed {}".format(node.upper, STREAM[node.name]))
+        if step.rc == EXIT_OK:
+            node.accepted.append(STREAM[node.name])
+        else:
+            self.limitation(
+                None,
+                "node {}: seeding {} exited {} ({}); the streaming rows that offer it "
+                "are recorded against that".format(node.upper, STREAM[node.name],
+                                                   step.rc, step.first_line))
+
+    def native_live_reconfiguration(self):
+        self.blocked(("V0-CFG-LIVE",),
+                     "the native owner's control socket carries ACL2-framed submissions "
+                     "(host/native/control.lisp), not the line protocol the matrix's "
+                     "`control` phase speaks, and this image has no public verb that "
+                     "declares a group on a live owner", verdict=NOT_BUILT,
+                     owner="native live administration",
+                     invocation="matrix.py control --socket ... --line 'DECLARE-GROUP ...'")
+        offline = self.sh("offline group create while the owner holds the store",
+                          self.cd(self.cli(self.a, "group create fn.matrix.offline")),
+                          timeout=900, expect=None)
+        self.from_step("V0-CFG-LIVE-REFUSE", offline,
+                       limit="the refusal is the writer lock's; a different server that "
+                             "does not take the writer lock would not produce it")
+
+    def native_stop(self, node: NodeSpec):
+        """SIGTERM from the harness, then the offline operator reopens the store."""
+        self.stop_node(node, tag="main")
+        stopped = self.step_named("stop server node {} (main)".format(node.upper))
+        stop_rc = stopped.rc if stopped is not None else 0
+        release = self.sh("node {} store after the stop".format(node.upper),
+                          self.cd(self.native_operator(node, "status")),
+                          timeout=900, expect=None)
+        self.emit("V0-NODE-STOP",
+                  ACCEPTED if (stop_rc == 0 and release.rc == EXIT_OK)
+                  else exit_verdict(release.rc),
+                  "kill -TERM <owner pid> (harness) ; " + release.command,
+                  "stop rc={}; native status afterwards rc={} {}".format(
+                      stop_rc, release.rc, release.first_line),
+                  node=node.name, exit_code=release.rc,
+                  limit="the stop is the harness's SIGTERM, not an operator verb; the "
+                        "store reopening for the offline operator is the writer lock "
+                        "being gone; no in-flight session was observed across the stop")
+        recover = self.sh("node {} recover after the stop".format(node.upper),
+                          self.cd(self.native_operator(node, "recover")),
+                          timeout=900, expect=None)
+        self.from_step("V0-OUT-RECOVER", recover, node=node.name,
+                       limit="recovery of a store the owner released on SIGTERM; no "
+                             "uncertain publication preceded it on this image")
+        self.sh("node {} log tail".format(node.upper),
+                "tail -12 {}/server-{}-main.log 2>/dev/null || echo NO-LOG".format(
+                    node.dir, node.name), expect=None)
+
+    def native_peer_remove(self):
+        absent = self.sh("peer remove a peer that is not there", self.cd(
+            self.native_operator(self.a, "peer", "remove", "no-such-peer")),
+            timeout=900, expect=None)
+        self.from_step("V0-PEER-ABSENT", absent)
+        real = self.sh("peer remove the configured peer", self.cd(
+            self.native_operator(self.a, "peer", "remove", self.b.name)),
+            timeout=900, expect=None)
+        self.from_step("V0-PEER-REMOVE", real,
+                       limit="run after the owners stopped, so it says nothing about "
+                             "removing a peer from a live service")
+
+    def execute_native_acceptance(self):
+        """The native slice: packaged run, the operator verbs it has, and the sockets.
+
+        Init and live administration do not yet have a public native
+        composition on the images this slice targets.  They stay explicit
+        non-outcomes instead of falling back to a Python runtime peer or a
+        diagnostic native verb.  The order is the development gate's: read-only
+        socket phases before anything that can put an article into the owner's
+        drain, and the capability audit after the transit rows.
         """
         self.configured = set()
         self.preflight()
@@ -3515,6 +3804,15 @@ exit "$rc"
                      "second config solely to test the loopback refusal",
                      invocation="packaging/fn-native operator CONFIG run")
 
+        # Offline administration, while no owner holds the writer lock.
+        for node in self.nodes:
+            if node.name in self.configured:
+                self.phase("native groups {}".format(node.name), self.groups, node)
+                self.phase("native capacity {}".format(node.name),
+                           self.native_capacity, node)
+        if all(n.name in self.configured for n in self.nodes):
+            self.phase("native peer records", self.native_peer_records)
+
         for node in self.nodes:
             if node.name in self.configured:
                 self.start_node(node)
@@ -3524,9 +3822,12 @@ exit "$rc"
         for node in self.nodes:
             if not node.port:
                 blocker = self.node_blocker(node)
-                self.blocked(self.POST_KEYS + self.READ_KEYS, blocker,
-                             nodes=(node.name,), invocation=self.native_operator(node, "run"))
+                self.blocked(self.POST_KEYS + self.READ_KEYS + ("V0-GROUP-SERVED",),
+                             blocker, nodes=(node.name,),
+                             invocation=self.native_operator(node, "run"))
                 continue
+            if self.require_live(node, ("V0-GROUP-SERVED",), nodes=(node.name,)):
+                self.phase("group served {}".format(node.name), self.group_served, node)
             if self.require_live(node, self.POST_KEYS, nodes=(node.name,)):
                 self.phase("native POST {}".format(node.name), self.post_cycle, node)
             if (node.accepted
@@ -3539,18 +3840,57 @@ exit "$rc"
                     "article-number and Message-ID reader rows would otherwise test a "
                     "guessed pre-existing store state",
                     nodes=(node.name,), invocation="matrix.py surface")
+            if self.require_live(node, ("V0-OUT-ACCEPTED", "V0-OUT-REFUSED"),
+                                 nodes=(node.name,)):
+                self.phase("native outcomes {}".format(node.name),
+                           self.native_outcomes, node)
+                self.phase("native seed {}".format(node.name), self.native_seed, node)
+
+        live = [n for n in self.nodes if n.port and self.alive(n)]
+        if len(live) == 2:
+            for source, target, way in ((self.a, self.b, "ab"), (self.b, self.a, "ba")):
+                if self.require_live(target, self.TRANSIT_KEYS, directions=(way,)):
+                    self.phase("transit {}".format(way.upper()),
+                               self.transit_direction, source, target, way)
+            for node in self.nodes:
+                if self.require_live(node, ("V0-PIN-DISPATCHED", "V0-PIN-ADVERTISED"),
+                                     nodes=(node.name,)):
+                    self.phase("capability pins {}".format(node.name),
+                               self.capability_pins, node)
+            for label, method, keys in (
+                    ("concurrency", self.post_concurrent, ("V0-POST-CONCURRENT",)),
+                    ("live reconfiguration", self.native_live_reconfiguration,
+                     ("V0-CFG-LIVE", "V0-CFG-LIVE-REFUSE"))):
+                if all(self.alive(n) for n in self.nodes):
+                    self.phase(label, method)
+                else:
+                    self.blocked(keys, "a server died earlier in this run: {}".format(
+                        "; ".join("node {}: {}".format(k.upper(), v)
+                                  for k, v in self.dead.items()) or "no log"),
+                        invocation="(the server was gone)")
+        else:
+            blocker = "; ".join(
+                ["node {}: {}".format(n.name.upper(), self.node_blocker(n))
+                 for n in self.nodes if not n.port]
+                + ["node {}: {}".format(name.upper(), why)
+                   for name, why in sorted(self.dead.items())]) or (
+                "fewer than two nodes were live when the paired phases would "
+                "have run: {} of 2 live".format(len(live)))
+            self.blocked(("V0-POST-CONCURRENT", "V0-CFG-LIVE", "V0-CFG-LIVE-REFUSE",
+                          "V0-PIN-DISPATCHED", "V0-PIN-ADVERTISED")
+                         + self.TRANSIT_KEYS, blocker)
 
         self.phase("native transit/feed/restart", self.native_peering_suite)
 
         for node in self.nodes:
             if node.pid:
-                self.stop_node(node, tag="main")
-            self.blocked(
-                ("V0-NODE-STOP",),
-                "the native public operator has no orderly stop command or stop-result "
-                "contract; harness process cleanup is not an operator outcome",
-                verdict=NOT_BUILT, owner="native control surface", nodes=(node.name,),
-                invocation="harness process cleanup")
+                self.phase("native stop {}".format(node.name), self.native_stop, node)
+            else:
+                self.blocked(("V0-NODE-STOP", "V0-OUT-RECOVER"),
+                             "the node never started, so there was nothing to stop",
+                             nodes=(node.name,), invocation="harness SIGTERM")
+        if all(n.name in self.configured for n in self.nodes):
+            self.phase("native peer remove", self.native_peer_remove)
         self.backfill()
 
     # -- the whole gate -----------------------------------------------------
@@ -3713,6 +4053,11 @@ exit "$rc"
         summary = {v: sum(1 for r in rows if r["verdict"] == v) for v in VERDICTS}
         summary["total"] = len(rows)
         summary["disagreed"] = sum(1 for r in rows if r["agrees"] is False)
+        # A host fault (4) or usage error (5) is not an outcome: its row is
+        # not-exercised with the code as blocker, and it is counted here so
+        # the run's exit code cannot be 0 over a command that crashed.
+        summary["faulted"] = sum(1 for r in rows if r["exit_code"] not in (
+            None, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN))
         summary["independent"] = sum(1 for r in rows if r["independent"] is True)
         summary["fn-observed"] = sum(1 for r in rows if r["independent"] is False)
         clients = {}
@@ -3772,13 +4117,15 @@ exit "$rc"
             "",
             "{total} rows: {accepted} accepted, {refused} refused, {uncertain} "
             "uncertain, {not_exercised} not exercised, {not_built} not built; "
-            "{disagreed} row(s) did not do what they were designed to do. Every count "
+            "{disagreed} row(s) did not do what they were designed to do, and "
+            "{faulted} exited with a host fault or usage error, which is not an "
+            "outcome and is counted among the not exercised. Every count "
             "here is `{tool}`'s over the rows below, and `{json}` carries the same rows "
             "with their digest.".format(
                 total=summary["total"], accepted=summary[ACCEPTED],
                 refused=summary[REFUSED], uncertain=summary[UNCERTAIN],
                 not_exercised=summary[NOT_EXERCISED], not_built=summary[NOT_BUILT],
-                disagreed=summary["disagreed"], tool=self.TOOL,
+                disagreed=summary["disagreed"], faulted=summary["faulted"], tool=self.TOOL,
                 json=getattr(self, "_matrix_name", MATRIX_JSON)),
             "",
             "",
@@ -3847,13 +4194,15 @@ exit "$rc"
         self.found = unique
         doc = self.document(started, elapsed)
         self.facts["rows"] = ("{total} rows: {a} accepted, {r} refused, {u} uncertain, "
-                              "{n} not exercised, {b} not built, {d} disagreed".format(
+                              "{n} not exercised, {b} not built, {d} disagreed, "
+                              "{f} faulted".format(
                                   total=doc["summary"]["total"],
                                   a=doc["summary"][ACCEPTED], r=doc["summary"][REFUSED],
                                   u=doc["summary"][UNCERTAIN],
                                   n=doc["summary"][NOT_EXERCISED],
                                   b=doc["summary"][NOT_BUILT],
-                                  d=doc["summary"]["disagreed"]))
+                                  d=doc["summary"]["disagreed"],
+                                  f=doc["summary"]["faulted"]))
         super().evidence(path, started, elapsed)
         text = path.read_text()
         marker = "\n## Every command\n"
@@ -4246,6 +4595,9 @@ def main(argv=None) -> int:
     summary = doc["summary"]
     not_run = summary[NOT_EXERCISED] + summary[NOT_BUILT]
     print("matrix: {}".format(json_target))
+    if summary["faulted"]:
+        print("faulted={} (host fault or usage exit codes; not outcomes, counted as "
+              "not exercised, and the run exits 1 over them)".format(summary["faulted"]))
     print("evidence: {}".format(target))
     print("steps={} failed={} not-exercised={}".format(
         summary["total"], summary["disagreed"], not_run))
@@ -4257,7 +4609,7 @@ def main(argv=None) -> int:
     if failure:
         print("gate error: {}".format(failure))
         return 2
-    return 1 if (summary["disagreed"] or problems) else 0
+    return 1 if (summary["disagreed"] or summary["faulted"] or problems) else 0
 
 
 if __name__ == "__main__":

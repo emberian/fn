@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import v0_matrix  # noqa: E402
+from deploy_gate import Step  # noqa: E402
 from v0_matrix import (ACCEPTED, NOT_BUILT, NOT_EXERCISED, OUTCOMES,  # noqa: E402
                        PLAN, PLANNED_IDS, PLAN_BY_KEY, REFUSED, UNCERTAIN,
                        VERDICTS)
@@ -129,9 +130,32 @@ class VocabularyTests(unittest.TestCase):
         self.assertEqual(v0_matrix.exit_verdict(1), REFUSED)
         self.assertEqual(v0_matrix.exit_verdict(3), UNCERTAIN)
         self.assertEqual(v0_matrix.exit_verdict(None), NOT_EXERCISED)
-        # A code outside the vocabulary is not quietly folded into a refusal.
-        self.assertEqual(v0_matrix.exit_verdict(2), UNCERTAIN)
-        self.assertEqual(v0_matrix.exit_verdict(124), UNCERTAIN)
+        # A code outside the vocabulary is not quietly folded into a refusal,
+        # and it is not an uncertain outcome either: a fault (4), a usage
+        # error (5) or a timeout (124) is a command that did not decide.  The
+        # row is not-exercised, its blocker names the code, and `document`
+        # counts it as `faulted` so the run cannot exit 0 over it.
+        for code in (2, 4, 5, 124):
+            self.assertEqual(v0_matrix.exit_verdict(code), NOT_EXERCISED, code)
+            self.assertIn("exited {}".format(code), v0_matrix.exit_blocker(code))
+        self.assertIn("host fault", v0_matrix.exit_blocker(4))
+        self.assertIn("usage error", v0_matrix.exit_blocker(5))
+
+    def test_a_host_fault_is_counted_and_is_not_an_outcome(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = v0_matrix.V0Matrix(v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40,
+                                      "abc1234", "dev")
+            faulted = Step("node A outcome accepted", "fn post", 4,
+                           "fault operator post [Errno 2] no such file", 0.0)
+            row = gate.from_step("V0-OUT-ACCEPTED", faulted, node="a")
+            self.assertEqual(row.verdict, NOT_EXERCISED)
+            self.assertIn("exited 4", row.blocker)
+            gate.backfill()
+            doc = gate.document("2026-09-22T00:00:00Z", 1.0)
+            self.assertEqual(doc["summary"]["faulted"], 1)
+            self.assertEqual(doc["summary"][UNCERTAIN], 0)
+            self.assertEqual(doc["summary"]["disagreed"], 0)
+            self.assertEqual(v0_matrix.validate(doc), [])
 
     def test_the_statement_vocabulary_is_read_as_its_own(self):
         # `fn statement verify`: 0 verified, 3 unverified, 4 absent, 2 no verdict.
