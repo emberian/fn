@@ -46,7 +46,7 @@
         "tests/evidence/2026-09-18-fields-transfer.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Exact Message-ID strings, content subjects and local numbers remain distinct. Article-field extraction validates the RFC identifier grammar, preserves exact octets and reports duplicates explicitly; native identity/signature composition remains open.",
+      "implementation_note": "Exact Message-ID strings, content subjects and local numbers remain distinct. Article-field extraction validates the RFC identifier grammar, preserves exact octets and reports duplicates explicitly; native identity/signature composition remains open. Open (2026-09-22): the duplicate-versus-conflict comparison for a held Message-ID, fn-store-article-match in host/store-host.lisp, is host code with no theorem naming it, while every word downstream of it is ACL2's (planning/evidence/native-duplicate-outcome-2026-09-22.md); moving it under a book and a theorem is a lane after the current freeze.",
       "keystones": [
         "fn-complete-preserves-existing-message-id-binding",
         "fn-recover-preserves-existing-message-id-binding",
