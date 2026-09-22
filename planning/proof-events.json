@@ -1389,6 +1389,47 @@
           "note": "Combines subject-body projection injectivity with crypto-seam tagged-preimage injectivity for the actual fn-hsig-host-preimage signing subject, under two well-formed-subject hypotheses. Certified in run certify-20260921T181329Z-2345431; no claim about signature security."
         }
       ]
+    },
+    {
+      "id": "PRF-052",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-newnews-candidate-is-projectable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-newnews-lines-are-clean"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-newnews-scan-reports-only-witnessed-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-newnews-scan-answers-exactly-within-the-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-newnews-scan-reports-at-most-the-budget"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-newnews-refusal-is-the-only-other-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-step-dispatches-newnews-to-the-newnews-response"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-newnews-response-preserves-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-effects-newnews-response"
+        }
+      ]
     }
   ]
 }

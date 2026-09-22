@@ -418,6 +418,30 @@ class ValidateRefusesTypingTests(unittest.TestCase):
         problems = v0_matrix.validate(doc)
         self.assertTrue(any("generated_by" in p for p in problems), problems)
 
+    def test_a_row_planned_after_the_run_is_added_as_a_non_outcome(self):
+        """A row planned later gains a not-exercised row, never a verdict.
+
+        `--plan-rows` is how a lane that adds a probe to PLAN keeps
+        `planning/v0-matrix.json` complete without claiming a measurement it
+        did not take. Everything it writes is re-derived by `derive`, so the
+        digest, the summary and the indexes are the tool's and not typed.
+        """
+        doc = json.loads(json.dumps(self.doc))
+        dropped = doc["rows"][0]["id"]
+        doc["rows"] = doc["rows"][1:]
+        added = v0_matrix.add_planned_rows(doc)
+        self.assertEqual(added, [dropped])
+        self.assertEqual(v0_matrix.validate(doc), [])
+        row = [r for r in doc["rows"] if r["id"] == dropped][0]
+        self.assertEqual(row["verdict"], NOT_EXERCISED)
+        self.assertIsNone(row["agrees"])
+        self.assertIn("planned after the recorded run", row["blocker"])
+
+    def test_plan_rows_over_a_complete_file_changes_nothing(self):
+        doc = json.loads(json.dumps(self.doc))
+        self.assertEqual(v0_matrix.add_planned_rows(doc), [])
+        self.assertEqual(doc, self.doc)
+
 
 class CommittedMatrixTests(unittest.TestCase):
     """The file in the tree is the one the tool wrote."""

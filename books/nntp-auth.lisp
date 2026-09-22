@@ -695,7 +695,10 @@
       (fn-nntp-keywordp keyword "HDR")
       (fn-nntp-keywordp keyword "XHDR")
       (fn-nntp-keywordp keyword "XPAT")
-      (fn-nntp-keywordp keyword "NEWGROUPS")))
+      (fn-nntp-keywordp keyword "NEWGROUPS")
+      ; NEWNEWS reads the archive and answers with stored identifiers, so it
+      ; is gated exactly as the other archive readers are.
+      (fn-nntp-keywordp keyword "NEWNEWS")))
 
 (defun fn-auth-transit-keywordp (keyword)
   ; The three inbound-transfer verbs are peer policy, not reader policy.
