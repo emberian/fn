@@ -40,6 +40,13 @@ choice and means no TLS **and** no login; it is for a loopback development node
 and nothing else. One of the two is required, because silently reaching a node
 in the clear is the mistake this client exists to not make.
 
+`--node` is `HOST`, `HOST:PORT`, or, for an address that holds colons of its
+own, `[HOST]` or `[HOST]:PORT` as RFC 3986 section 3.2.2 writes them. A bare
+`::1` is therefore the address and not the host `::` at port 1, and a node
+reached through the `ssh -L` tunnel of
+[the operator's page](operator.md#reaching-it-from-a-laptop) can be named
+`[::1]:PORT`, which is where that tunnel also listens.
+
 ### The credential never crosses argv
 
 The login comes from `FN_CLIENT_USER` and `FN_CLIENT_PASSWORD`, or from
@@ -97,6 +104,12 @@ so the failure costs a repeat and never a miss. The numbers are the node's
 local article numbers, which are local to that node: the state file is keyed by
 node for that reason, and two nodes' numbers are never compared.
 
+If the state file itself cannot be written, the outcome word and the exit code
+are still the node's -- the read happened and the articles are out, and that is
+not a refusal by anyone -- and one further line on standard error says the
+watermark was not saved and that the next read will offer these articles again.
+That is the same repeat, said out loud.
+
 ### What `--json` is for
 
 `--json` prints one document: the outcome, the exit code, the detail sentence,
@@ -147,7 +160,16 @@ the node's address, and `FN_CLIENT_FROM` sets a better default once.
 
 The client supplies no `Path`, `Injection-Date`, `Injection-Info` or `Xref`.
 Those belong to the injecting and relaying agents and `books/nntp-post.lisp`
-refuses an article that carries them.
+refuses an article that carries them. The node adds its own, and returns them
+on the way back.
+
+What an article may carry is the node's decision and this client does not
+anticipate it. In particular a header field holding non-ASCII octets -- a
+Subject with a kaomoji in it -- is refused by the node with
+`441 posting failed; the article is not valid syntax`, on exit 1, while a body
+holding the same octets is accepted and read back unchanged. The client sends
+what it was given and prints the node's line; put non-ASCII in the body, or in
+the RFC 2047 encoded-word an agent writes for itself.
 
 ## What this is tested against
 
@@ -156,4 +178,16 @@ above against [`tests/fake_node.py`](../tests/fake_node.py), a fake that wraps
 its socket in real TLS with a certificate openssl writes for the run. The fake
 is a fake: its codes and wording were read off the books that own them, but a
 test against it says what the client does with an answer and never that a node
-gives that answer. Nothing here has run against a deployed node.
+gives that answer.
+
+On 2026-09-22 every command on this page also ran against a node: the frozen
+`915d5c72` native production image on persvati, over the tunnel, in `--plain`.
+[The record](../planning/evidence/fn-client-915-2026-09-22.md) has the image
+identity, each command with its exit code, the four client defects it found,
+two defects of the node's own, and what it does not show. The largest gap is
+the one the image itself fixes nothing about: it predates STARTTLS and
+AUTHINFO, so the protected channel, the login and `--credentials` have still
+been exercised only against the fake. The one thing that page can now say
+about a real node is the thing it most wanted to: asked without a protected
+channel, that image answered `381 password required`, and the client stopped
+and sent nothing.
