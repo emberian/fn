@@ -94,6 +94,15 @@ nothing hidden where the ordinary loop showed one per round,
 [record](evidence/triage-2026-09-22.md); the four are `store-node-traces`,
 `store-node-resolution`, `store-observed` and `store-prepare-correspondence`,
 all the freeze-3 lane's).
+Late afternoon: native-guards landed (the four `native-*` guard reds and
+the operator test, [record](evidence/triage-20260922T160924Z-9c1e/report.md)); the only reds
+left in the native closure are `store-node-traces`, `store-node-resolution`
+and `store-observed`, all freeze-3's. ember answered the plan's eight
+questions (DTN is v0; signatures are v0; the checklist and fiber records
+retire; worktrees go, branches stay and get dispositions; LTP after DTN;
+the acceptance stamp is a v0 step; five lanes, converge every two or three
+batches; peering on one box first) and the plan is being revised to them.
+93 worktrees removed; 8 with uncommitted work stay pending disposition.
 green-audit landed earlier (d667a874, `tools/green_check.py` in `make
 check`); with the treewide and freeze manifests in the tree it reads dev as 323
 green, 84 red, 0 never and 0 absent at current digests; the reds are the
