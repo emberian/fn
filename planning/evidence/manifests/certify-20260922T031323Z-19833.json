@@ -1,0 +1,200 @@
+{
+  "acl2_compatibility": null,
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/acceptance": 0,
+    "books/acceptance-alloc": 0,
+    "books/defrecord": 0,
+    "books/msgid-index": 0,
+    "tests/acl2/msgid-index-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_toolchain": {
+    "launcher": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+    "launcher_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+    "launcher_size": 142,
+    "reason": "shell expansion is outside the recognized launcher subset at /opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2:6",
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "unqualified"
+  },
+  "acl2_toolchain_identity": null,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w31-treewide-reds/build/acl2/certify-20260922T031323Z-19833",
+  "book_failures": {},
+  "book_results": {
+    "books/acceptance": "passed",
+    "books/acceptance-alloc": "passed",
+    "books/defrecord": "passed",
+    "books/msgid-index": "passed",
+    "tests/acl2/msgid-index-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/acceptance": 0.345,
+    "books/acceptance-alloc": 0.129,
+    "books/defrecord": 0.137,
+    "books/msgid-index": 0.175,
+    "tests/acl2/msgid-index-tests": 0.422
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [
+      "books/acceptance-alloc: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/acceptance: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/defrecord: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/msgid-index: no qualified ACL2 launcher/core/runtime fingerprint",
+      "tests/acl2/msgid-index-tests: no qualified ACL2 launcher/core/runtime fingerprint"
+    ],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/acceptance-alloc",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/acceptance-alloc: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/defrecord",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/defrecord: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/acceptance",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/acceptance: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/msgid-index",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/msgid-index: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/msgid-index-tests",
+        "published": false,
+        "verdict": "passed",
+        "why": "tests/acl2/msgid-index-tests: no qualified ACL2 launcher/core/runtime fingerprint"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/acceptance": "9086741927f4d20afb54c23cb37b134e6ed9df3c68e04f1acdb2c714b4925835",
+    "books/acceptance-alloc": "cc76ebf9d986a252b9d9225edc5f8ed77a1a3ffb7b37add6dcab41fa983dab27",
+    "books/defrecord": "55e9ae4f4a33cfe1f02654c97fc61d5cf6f156caee78919d22f8d1345d496519",
+    "books/msgid-index": "a7305b5f9949dc64e4be1629ff7e65637f14bb3d69e336689806af55880ea722",
+    "tests/acl2/msgid-index-tests": "19dde34da09e5470b644f0d23ed137854bdd5a00fc075f50cfd92ccd24771c95"
+  },
+  "certify_wall_seconds": 1.089,
+  "closure": true,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/acceptance": "e9e0f023ff1e6aef4bc97f0dd8ad2383f465df345419e12059b24a3d58dee1e0",
+    "books/acceptance-alloc": "36fd55d2c33009f360ae930c1dff4d769863040698015488831e299e94302c75",
+    "books/defrecord": "809e62d5ada0f277a7701f49c4d078474fbe216aaf92969882029c712624526b",
+    "books/msgid-index": "5571133de5af23db8628007e8c652493ddd29f0d50e795c5a40fbb4018cabd76",
+    "tests/acl2/msgid-index-tests": "61f3eb4aa7bba0c139e8e62f1dcae053fb161aea760c9f4098e0b7e6fa4571e2"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS a98b15abb8bbdee2717c80ec67c7fe58 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS a98b15abb8bbdee2717c80ec67c7fe58 e768a5583691",
+    "FN_CERTIFY_SUCCESS a98b15abb8bbdee2717c80ec67c7fe58 23645b7a2c53",
+    "FN_CERTIFY_SUCCESS a98b15abb8bbdee2717c80ec67c7fe58 ce5258fb1e30",
+    "FN_CERTIFY_SUCCESS a98b15abb8bbdee2717c80ec67c7fe58 2e7a88eac433"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-22T03:13:24+00:00",
+  "git_branch": "w31/treewide-reds",
+  "git_dirty": true,
+  "git_revision": "3f4ab63b6397a26b127e2c07f5c096b80e7afcb7",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 3,
+  "jobs_effective": 3,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS a98b15abb8bbdee2717c80ec67c7fe58 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS a98b15abb8bbdee2717c80ec67c7fe58 e768a5583691",
+    "FN_CERTIFY_SUCCESS a98b15abb8bbdee2717c80ec67c7fe58 23645b7a2c53",
+    "FN_CERTIFY_SUCCESS a98b15abb8bbdee2717c80ec67c7fe58 ce5258fb1e30",
+    "FN_CERTIFY_SUCCESS a98b15abb8bbdee2717c80ec67c7fe58 2e7a88eac433"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "662e8ef911ffe2cef222a48b8a279a01f86a4557dcf1fc00bc8002c8d8dfacb4",
+  "requested_before_filter": [
+    "books/msgid-index",
+    "tests/acl2/msgid-index-tests"
+  ],
+  "requested_books": [
+    "books/defrecord",
+    "books/acceptance-alloc",
+    "books/acceptance",
+    "books/msgid-index",
+    "tests/acl2/msgid-index-tests"
+  ],
+  "run_id": "certify-20260922T031323Z-19833",
+  "runner_sha256": "cb79d3bea9e5a531e33e44c882f8f615d4c0258db2c4f7361746ff1e2416c7d6",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/acceptance": 0.0,
+    "books/acceptance-alloc": 0.0,
+    "books/defrecord": 0.0,
+    "books/msgid-index": 0.0,
+    "tests/acl2/msgid-index-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/msgid-index.lisp": "f15a855de397cd198e274abc3205148f79dcb54588b563041b94a79378c64703",
+    "tests/acl2/msgid-index-tests.lisp": "705e00f442aaacb65ed5d12eaf05e3324c66061292a439a1a4a64b83817064b7"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/msgid-index.lisp": "f15a855de397cd198e274abc3205148f79dcb54588b563041b94a79378c64703",
+    "tests/acl2/msgid-index-tests.lisp": "705e00f442aaacb65ed5d12eaf05e3324c66061292a439a1a4a64b83817064b7"
+  },
+  "start_order": [
+    "books/defrecord",
+    "books/acceptance-alloc",
+    "books/acceptance",
+    "books/msgid-index",
+    "tests/acl2/msgid-index-tests"
+  ],
+  "started_utc": "2026-09-22T03:13:23+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/w31-treewide-reds"
+}
