@@ -358,20 +358,37 @@
                                     fn-cbor-canonical-argumentp)
                                    (fn-cbor-u16-bytes fn-cbor-u32-bytes))))))
 
+; The encoder's value on a bounded natural, stated once with the value
+; recognizer and the encoder opened here and nowhere else.  With
+; `fn-cbor-encode' open in the round-trip lemma below the recognizer test
+; stays unrewritten, the goal splits on it and on `fn-frame-item' in the
+; parse-error arm, and inducts without end (hbox
+; certify-20260922T181346Z-3153839, 1800 s); over this fact the round trip
+; needs neither the encoder nor the frame item open.
+(local
+ (defthm fn-cpc-encode-uint-is-argument
+   (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+            (equal (fn-cbor-encode (cons :uint n))
+                   (fn-cbor-encode-argument 0 n)))
+   :hints (("Goal" :in-theory (e/d (fn-cbor-encode fn-cbor-encode-bounded
+                                    fn-cbor-valuep-bounded)
+                                   (fn-cbor-encode-argument))))))
+
 (defthm fn-cpc-read-uint-of-encoding
   (implies (and (natp n) (<= n *fn-cbor-max-uint*)
                 (fn-cbor-octet-listp more))
            (equal (fn-cpc-read-uint (append (fn-cbor-encode (cons :uint n)) more))
                   (fn-record-parse-ok n more)))
   :hints (("Goal"
+           :do-not-induct t
            :use ((:instance fn-cpc-decode-argument-of-encoding (major 0))
                  (:instance fn-cpc-encode-argument-head-bounds (major 0)))
-           :in-theory (e/d (fn-cpc-read-item fn-cbor-encode fn-cbor-valuep
-                            fn-cbor-decode-unsigned fn-cbor-ok
+           :in-theory (e/d (fn-cpc-read-item fn-cbor-decode-unsigned fn-cbor-ok
                             fn-cbor-result-okp fn-cbor-result-value
                             fn-cbor-result-rest)
-                           (fn-cbor-encode-argument fn-cbor-decode-argument
-                            fn-cbor-canonical-argumentp)))))
+                           (fn-cbor-encode fn-cbor-encode-argument
+                            fn-cbor-decode-argument
+                            fn-cbor-canonical-argumentp fn-frame-item)))))
 
 (local
  (defthm fn-cpc-take-of-append-exact
@@ -382,6 +399,16 @@
  (defthm fn-cpc-nthcdr-of-append-exact
    (implies (true-listp xs)
             (equal (nthcdr (len xs) (append xs more)) more))))
+
+; The same shape fact for a bounded octet string, for the same reason.
+(local
+ (defthm fn-cpc-encode-bytes-is-argument
+   (implies (and (fn-cbor-octet-listp xs) (<= (len xs) *fn-cbor-max-bytes*))
+            (equal (fn-cbor-encode (cons :bytes xs))
+                   (append (fn-cbor-encode-argument 2 (len xs)) xs)))
+   :hints (("Goal" :in-theory (e/d (fn-cbor-encode fn-cbor-encode-bounded
+                                    fn-cbor-valuep-bounded)
+                                   (fn-cbor-encode-argument))))))
 
 (defthm fn-cpc-read-bytes-of-encoding
   (implies (and (fn-cbor-octet-listp xs) (<= (len xs) *fn-cbor-max-bytes*)
@@ -394,17 +421,14 @@
                             (major 2) (n (len xs)) (more (append xs more)))
                  (:instance fn-cpc-encode-argument-head-bounds
                             (major 2) (n (len xs))))
-           :in-theory (e/d (fn-cpc-read-item fn-cbor-encode fn-cbor-valuep
-                            fn-cbor-decode-bytes fn-cbor-ok
-                            fn-cbor-result-okp fn-cbor-result-value
-                            fn-cbor-result-rest
-                            ; books/records.lisp, fn-record-guard-vocabulary:
-                            ; the codecs cluster's own decode-domain lemmas,
-                            ; cited here rather than enabled book-wide.
-                            fn-record-cbor-decode-argument-success-domain
-                            fn-record-cbor-decode-bytes-success-domain)
-                           (fn-cbor-encode-argument fn-cbor-decode-argument
-                            fn-cbor-canonical-argumentp take nthcdr))
+           :in-theory (e/d (fn-cpc-read-item
+                            fn-cbor-decode-bytes fn-cbor-decode-bytes-bounded
+                            fn-cbor-ok fn-cbor-result-okp fn-cbor-result-value
+                            fn-cbor-result-rest)
+                           (fn-cbor-encode fn-cbor-encode-argument
+                            fn-cbor-decode-argument
+                            fn-cbor-canonical-argumentp take nthcdr
+                            fn-frame-item))
            :do-not-induct t)))
 
 ; Tags are small immediates; ACL2 evaluates their encodings to constants, so
@@ -432,9 +456,12 @@
            ; domain lemma, cited rather than re-derived: without it the
            ; proof inducted on OCTETS and generated a false goal
            ; (certify-20260920T041617Z-2375759:2347).
+           ; The encoder stays closed; `fn-cpc-encode-uint-is-argument'
+           ; states its value on the bounded natural the domain lemma gives.
            :use (fn-cpc-read-uint-reencode fn-cpc-read-uint-domain)
-           :in-theory (e/d (fn-cbor-encode fn-cbor-valuep fn-cbor-encode-argument)
-                           (fn-cpc-read-uint-reencode fn-cpc-read-uint-domain
+           :in-theory (e/d (fn-cbor-encode-argument)
+                           (fn-cbor-encode
+                            fn-cpc-read-uint-reencode fn-cpc-read-uint-domain
                             fn-cpc-read-uint))
            :do-not-induct t)))
 
@@ -450,11 +477,12 @@
   (equal (fn-cpc-read-bytes (cons 68 (cons 102 (cons 110 (cons 45 (cons 99 more))))))
          (fn-record-parse-ok *fn-cpc-magic* more))
   :hints (("Goal" :in-theory (e/d (fn-cpc-read-item fn-cbor-decode-bytes
+                                   fn-cbor-decode-bytes-bounded
                                    fn-cbor-decode-argument
                                    fn-cbor-canonical-argumentp fn-cbor-ok
                                    fn-cbor-result-okp fn-cbor-result-value
                                    fn-cbor-result-rest)
-                                  (fn-cbor-encode)))))
+                                  (fn-cbor-encode fn-frame-item)))))
 
 (local
  (defthm fn-cpc-encode-argument-octets
@@ -467,7 +495,9 @@
 (defthm fn-cpc-encode-value-octets
   (implies (fn-cbor-valuep v)
            (fn-cbor-octet-listp (fn-cbor-encode v)))
-  :hints (("Goal" :in-theory (e/d (fn-cbor-encode fn-cbor-valuep)
+  :hints (("Goal" :in-theory (e/d (fn-cbor-encode fn-cbor-valuep
+                                   fn-cbor-encode-bounded
+                                   fn-cbor-valuep-bounded)
                                   (fn-cbor-encode-argument)))))
 
 (defthm fn-cpc-encode-value-true-listp
@@ -477,8 +507,12 @@
 
 ; The encoder's definition is closed from here; its executable counterpart
 ; stays so that the constant tags and the schema magic evaluate.
+; The two encoder shape facts go with it: left on, they rewrite an encoding
+; to its argument head before the round-trip lemmas above can match it.
 (local (in-theory (disable fn-cpc-read-uint fn-cpc-read-bytes
-                           (:definition fn-cbor-encode))))
+                           (:definition fn-cbor-encode)
+                           fn-cpc-encode-uint-is-argument
+                           fn-cpc-encode-bytes-is-argument)))
 
 ; -----------------------------------------------------------------------------
 ; The node value universe and its tree codec
@@ -672,7 +706,9 @@
   (implies (fn-cpc-treep x)
            (fn-cbor-octet-listp (fn-cpc-encode-tree x)))
   :hints (("Goal" :induct (fn-cpc-encode-tree x)
-           :in-theory (enable fn-cbor-encode fn-cbor-valuep))))
+           ; `fn-cpc-encode-value-octets' does the encoder's part; the
+           ; leaves only need to be seen as bounded values.
+           :in-theory (enable fn-cbor-valuep fn-cbor-valuep-bounded))))
 
 (defthm fn-cpc-encode-tree-true-listp
   (true-listp (fn-cpc-encode-tree x))
@@ -682,7 +718,7 @@
  (defthm fn-cpc-encoding-nonempty
    (implies (and (natp n) (<= n *fn-cbor-max-uint*))
             (consp (fn-cbor-encode (cons :uint n))))
-   :hints (("Goal" :in-theory (enable fn-cbor-encode fn-cbor-valuep
+   :hints (("Goal" :in-theory (enable fn-cpc-encode-uint-is-argument
                                       fn-cbor-encode-argument)))))
 
 (defthm fn-cpc-depth-below-encoding
@@ -1607,11 +1643,20 @@
 ; a single record whose generation does not match its txid is enough to make
 ; validation refuse the whole prefix, whatever checkpoint is offered against
 ; it and whatever configuration is offered with it.
+;
+; Stated over `fn-store-event-generation' and `fn-store-event-txid', the
+; projections `fn-sf-record-listp' compares, since the journal carries every
+; Store event kind (books/store-events): on an article record they are
+; `fn-record-generation' and `fn-record-txid' by definition, and on a
+; retention or transaction event the article accessors select other fields
+; (a retention event's second field is its kind), so the statement over the
+; article accessors was false for a journal holding one.
 (local
  (defthm fn-cpc-journal-generation-matches
    (implies (and (fn-sf-record-listp records sequence lower frontier)
                  (member-equal record records))
-            (equal (fn-record-generation record) (fn-record-txid record)))
+            (equal (fn-store-event-generation record)
+                   (fn-store-event-txid record)))
    :rule-classes nil))
 
 ; KEYSTONE: the validator refuses a corrupt generation binding.  RULE-CLASSES
@@ -1621,8 +1666,8 @@
 ; applied by the rewriter.
 (defthm fn-cpc-valid-refuses-generation-mismatch
   (implies (and (member-equal record prefix)
-                (not (equal (fn-record-generation record)
-                            (fn-record-txid record))))
+                (not (equal (fn-store-event-generation record)
+                            (fn-store-event-txid record))))
            (not (fn-cpc-validp checkpoint groups capacity prefix)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
@@ -1631,8 +1676,8 @@
                             (frontier (fn-checkpoint-frontier checkpoint))))
            :in-theory (e/d (fn-cpc-validp)
                            (fn-replay fn-replay-okp fn-checkpointp
-                            fn-sf-record-listp fn-record-generation
-                            fn-record-txid)))))
+                            fn-sf-record-listp fn-store-event-generation
+                            fn-store-event-txid)))))
 
 ; -----------------------------------------------------------------------------
 ; The frame that carries a checkpoint generation and its selection marker.
@@ -1761,9 +1806,7 @@
    (implies (and (natp n) (<= n *fn-cbor-max-uint*))
             (<= (len (fn-cbor-encode (cons :uint n))) 5))
    :rule-classes :linear
-   :hints (("Goal" :cases ((< n 24) (< n 256) (< n 65536))
-            :in-theory (e/d (fn-cbor-encode fn-cbor-valuep fn-cbor-encode-argument)
-                            (fn-cbor-u16-bytes fn-cbor-u32-bytes))))))
+   :hints (("Goal" :in-theory (enable fn-cpc-encode-uint-is-argument)))))
 
 (verify-guards fn-cpc-frame-protected)
 (verify-guards fn-cpc-frame-encode)
@@ -1771,11 +1814,11 @@
 (verify-guards fn-cpc-frame-decode)
 (verify-guards fn-cpc-frame-open)
 (verify-guards fn-cpc-selection-protected
-  :hints (("Goal" :in-theory (enable fn-record-uint32p fn-cbor-encode
-                                     fn-cbor-valuep))))
+  :hints (("Goal" :in-theory (enable fn-record-uint32p fn-cbor-valuep
+                                     fn-cbor-valuep-bounded))))
 (verify-guards fn-cpc-selection-encode
-  :hints (("Goal" :in-theory (enable fn-record-uint32p fn-cbor-encode
-                                     fn-cbor-valuep))))
+  :hints (("Goal" :in-theory (enable fn-record-uint32p fn-cbor-valuep
+                                     fn-cbor-valuep-bounded))))
 (verify-guards fn-cpc-selection-decode)
 
 (defthm fn-cpc-frame-decode-of-encode

@@ -254,11 +254,52 @@
                              fn-replay-composite-record
                              fn-replay-identity-step))))))
 
-; The deferred link and the completing link are OPEN here and the codec is
-; closed: reconfiguration changes the keyring and the index and nothing the
-; two links read, so each side reduces to the same term, and with the codec
-; open the links unfold it (books/store-node-traces carries the same
-; measurement).
+; The two links reconfiguration has to carry, each stated once over the
+; accessors `fn-sn-set-keyring' keeps (the store components, the completion
+; record, the identity context) with the replay and the codec closed: the
+; deferred link reads the files, the node and the identity context, the
+; completing link the files, the node and the completion record, and
+; neither reads the keyring or the index.
+(local
+ (defthm fn-spc-set-keyring-keeps-deferred-link
+   (equal (fn-snt-deferred-linkp (fn-sn-set-keyring s keyring))
+          (fn-snt-deferred-linkp s))
+   :hints (("Goal" :in-theory (e/d (fn-snt-deferred-linkp)
+                                   (fn-sn-set-keyring
+                                    fn-sf-history-recoverablep fn-sf-replay-node
+                                    fn-sn-identity-context
+                                    fn-record-codec-vocabulary
+                                    fn-record-record-vocabulary
+                                    fn-store-event-p fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-replay-apply-record
+                                    fn-replay-apply-retention-event
+                                    fn-replay-apply-identity-neutral
+                                    fn-replay-composite-record
+                                    fn-replay-identity-step))))))
+
+(local
+ (defthm fn-spc-set-keyring-keeps-completion-link
+   (equal (fn-snt-completion-linkp (fn-sn-set-keyring s keyring))
+          (fn-snt-completion-linkp s))
+   :hints (("Goal" :in-theory (e/d (fn-snt-completion-linkp)
+                                   (fn-sn-set-keyring fn-sn-completion-record
+                                    fn-sf-replay-node fn-node-complete
+                                    fn-record-codec-vocabulary
+                                    fn-record-record-vocabulary
+                                    fn-store-event-p fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-replay-apply-record
+                                    fn-replay-apply-retention-event
+                                    fn-replay-apply-identity-neutral
+                                    fn-replay-composite-record
+                                    fn-replay-identity-step))))))
+
+; The relation's arms dispatch on the phase and the candidate's kind; every
+; link stays CLOSED and is carried by the two lemmas above.  With the
+; deferred link open the goal asked for it on the reconfigured state and
+; nothing said the keyring was not among what it reads (hbox
+; certify-20260922T181346Z-3153839, Subgoal 6).
 (defthm fn-spc-set-keyring-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-set-keyring s keyring)))
@@ -269,7 +310,9 @@
                            (fn-sn-statep fn-sf-statep fn-node-statep
                             fn-sn-set-keyring
                             fn-sf-history-recoverablep fn-sf-replay-node
-                            fn-snt-pending-linkp fn-sn-completion-enabledp
+                            fn-snt-pending-linkp fn-snt-deferred-linkp
+                            fn-snt-completion-linkp
+                            fn-sn-completion-enabledp
                             fn-record-codec-vocabulary
                             fn-record-record-vocabulary
                             fn-store-event-p fn-store-retention-event-p
