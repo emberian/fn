@@ -2,8 +2,9 @@
 
 This record preserves what the FREEZE lane established about the native image
 closure of `dev` on 2026-09-22.  **No image was built.**  The closure is not
-certified: 129 of its 164 books certify at the frozen origin, two books in it
-carry defects this lane did not repair, and the rest sit above them.  Nothing
+certified: 130 of its 164 books certify at the frozen origin, one book in it
+is still red, and the rest sit above it or were still being certified when
+this was written.  Nothing
 here is a server, proof or flight-readiness claim.
 
 ## Sources and toolchain
@@ -94,8 +95,20 @@ The repairs, in order, with the form each one fixes:
 7. `8d7c09ba` — `books/byte-store-frame`, `FN-BS-FRONTIER-CBOR-PAYLOAD-BOUND`
    stopping at `(FN-CBOR-OCTET-LISTP (FN-CBOR-ENCODE-BOUNDED (CONS :UINT N)
    65535))`.
-8. `c28ffc30` — `books/peer-inbound`, three reader-session constructor facts.
-   **This book still does not certify**, see below.
+8. `c28ffc30` and `6c7aac1d` — `books/peer-inbound`.  Three reader-session
+   constructor facts, one of which was false as stated, and the
+   configuration hypothesis `FN-PEER-SESSIONP-OF-FN-PEER-WITH-NODE` was
+   missing: `fn-peer-with-node` keeps a session's configuration, so a reader
+   session whose configuration is `NIL` becomes a checked node beside a null
+   configuration and satisfies neither reader shape.  The hypothesis is the
+   host's own branch condition -- `fn-own-conn-live-session` (books/owner)
+   refreshes a node only under `(if (fn-peer-session-cfg ps) ...)` -- and the
+   must-fail for it is in `tests/acl2/peer-inbound-tests` (`f3e89e7f`).  The
+   book certifies.
+9. `50edd2c6` — `books/store-node-invariants`,
+   `FN-SN-FINISH-PRESERVES-STATE`.  Partial: the theorem now reports a
+   checkpoint in about two minutes instead of growing a term past the
+   per-book limit, but **the book still does not certify**, see below.
 
 No `skip-proofs`, `defaxiom` or trust tag was used, no theorem was deleted, and
 no function that was guard verified before lost its guards.  Two definitions
@@ -107,33 +120,27 @@ it.
 
 ## What is still red
 
-### `books/peer-inbound`
-
-`FN-PEER-SESSIONP-OF-FN-PEER-WITH-NODE`, an exported theorem.
-`fn-peer-with-node` replaces a session's node and keeps its
-configuration, so for a reader session whose configuration is `NIL` the result
-has a checked node beside a null configuration and satisfies neither reader
-shape of `fn-peer-sessionp`.  The conjecture reduces to
-`(NOT (FN-NODE-STATEP NODE))` under exactly those hypotheses.  Either the
-theorem needs the configuration hypothesis its statement omits, or
-`fn-peer-with-node` needs to say what it does to a reader session; that is a
-decision about the peering interface `books/owner` depends on.
-
 ### `books/store-node-invariants`
 
-`FN-SN-FINISH-PRESERVES-STATE` does not leave `Goal''` within 600 s, the same
-symptom as the three books repaired above.  `fn-sn-finish` reaches the record
-and statement codecs through several paths, and closing them one at a time --
-`fn-replay-composite-record`, `fn-sn-composite-delta`,
-`fn-replay-identity-step`, `fn-replay-apply-record` -- did not change the
-symptom, so the term this goal is growing was not identified.  Nothing was
-committed for this book; the hint it needs is still to be found.
+`FN-SN-FINISH-PRESERVES-STATE`.  The growth was the record codec: this book
+enables `fn-record-codec-vocabulary` at the top for its field lemmas, and
+`fn-sn-finish` reads the completion record through four accessors and
+dispatches on four recognizers, so every branch unfolded the codec.  With
+that theory withdrawn for the one goal and the three branches' node facts
+supplied by `:use`, the theorem reports a checkpoint in about two minutes.
+What remains is the next conjunct of the identity branch,
+`(FN-SN-KEYRING-SNAPSHOT-LISTP (CADDR (FN-STXK-APPLY-SNAPSHOT ...)))`:
+`fn-stxk-apply-snapshot` either keeps the context's snapshots or conses the
+`fn-stxk-p` event onto them, so the fact is true and small, but stating it
+needs `fn-stxk-context-snapshots` held closed so the rule has a term to
+match.  This lane did not get there.
 
-16 of the uncertified books are above `books/peer-inbound` and the rest above
-`books/store-node-invariants` or still waiting.  `books/byte-store-frame`,
-`books/config-stream` and `books/byte-store-txn-name` certify with the
-repairs above; the first was still uncertified at the frozen origin when the
-counts in this record were taken.
+### `tests/acl2/peer-inbound-tests` (outside the image closure)
+
+The assertion on the effects of an IHAVE from a reader connection fails.  It
+is not this lane's change; the book was last updated before `64a80197` bound
+the inbound peer role to the authenticated principal.  Recorded because this
+lane added a must-fail to that book.
 
 ## Limitations
 
