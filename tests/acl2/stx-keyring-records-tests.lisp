@@ -1,6 +1,7 @@
 ; Witnesses and hypothesis teeth for ordered keyring/verdict replay.
 (in-package "ACL2")
 (include-book "../../books/store-events")
+(include-book "../../books/codec-attach")
 
 (defconst *stxk-profile* '(111 112 97 113 117 101 45 118 49))
 (defconst *stxk-one* (fn-stxk-make 0 10 20 7 *stxk-profile* '(1 2 3 4)))

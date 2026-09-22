@@ -158,7 +158,7 @@
                             fn-stmt-rest-of-ok2)
                            (fn-cbor-encode fn-stmt-header-items fn-stmt-headerp
                             fn-stmt-decode-items fn-stmt-header-of-items
-                            fn-stmt-encode-items))
+                            fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp))
            :use ((:instance fn-stmt-decode-items-of-encode-items
                             (items (fn-stx-detached-items (fn-stmt-header s)
                                                           (fn-stmt-signature s)))
@@ -193,7 +193,7 @@
                             fn-stmt-okp-of-ok fn-stmt-value-of-ok)
                            (fn-cbor-encode fn-stmt-header-items fn-stmt-headerp
                             fn-stmt-decode-items fn-stmt-header-of-items
-                            fn-stmt-encode-items))
+                            fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp))
            :use ((:instance fn-stmt-encode-items-of-decode-items
                             (fuel *fn-stx-max-detached-items*))
                  (:instance fn-stmt-header-of-items-sound

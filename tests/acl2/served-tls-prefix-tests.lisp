@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/served-tls-prefix")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 (defconst *stp-groups* (list (fn-nntp-string-octets "fn.test")))
 (defconst *stp-config*

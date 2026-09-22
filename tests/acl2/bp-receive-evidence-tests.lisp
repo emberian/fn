@@ -1,6 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-receive-evidence")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 (defconst *fn-t-bpe-empty* (fn-bpn-evidence-recover nil))
 (assert-event (equal *fn-t-bpe-empty* (fn-bpn-evidence-state 0)))

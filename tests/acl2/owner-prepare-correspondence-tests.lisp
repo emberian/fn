@@ -2,6 +2,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-prepare-correspondence")
+(include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defconst *opc-groups* '("fn.letters" "fn.test"))

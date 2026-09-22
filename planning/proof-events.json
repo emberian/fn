@@ -235,6 +235,14 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-record-impl-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-impl-accepted-input-is-canonical"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-bpa-round-trip"
         },
         {

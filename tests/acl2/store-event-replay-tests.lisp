@@ -2,6 +2,7 @@
 ; article, followed by a fresh replay (the logical reopen boundary).
 (in-package "ACL2")
 (include-book "../../books/replay")
+(include-book "../../books/codec-attach")
 
 (defconst *fn-ser-article-1*
   (fn-record-make 0 0 0 "<one@example.invalid>" '(1 2 3) '("g")

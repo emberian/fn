@@ -1,6 +1,7 @@
 ; Reachable witnesses and corruption teeth for P4 metadata frames.
 (in-package "ACL2")
 (include-book "../../books/byte-store-frame")
+(include-book "../../books/codec-attach")
 
 ; The development profile and zero frontier are the actual bytes init writes.
 (assert-event (fn-bs-config-okp (fn-bs-initial-config-octets)))

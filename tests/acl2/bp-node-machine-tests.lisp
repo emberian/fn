@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-machine-codec")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 (defconst *bpnm-local* (cons :dtn '(47 47 102 110 45 97 47)))
 (defconst *bpnm-peer* (cons :dtn '(47 47 102 110 45 98 47)))

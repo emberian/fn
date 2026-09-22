@@ -1,6 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-receiver-trace-invariants")
 (include-book "bp-receipt-records-tests")
+(include-book "../../books/codec-attach")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
@@ -9,7 +10,7 @@
 
 (defconst *bprv-journal*
  (list *bprr-config-record* *bprr-request-record* *bprr-intent-record* *bprr-decision-record*))
-(defconst *bprv-replayed* (cadr (fn-bprr-replay *bpr-recovered-ready-store* *bprv-journal*)))
+(make-event `(defconst *bprv-replayed* ',(cadr (fn-bprr-replay *bpr-recovered-ready-store* *bprv-journal*))))
 (assert-event (fn-bprv-invariantp *bpr-recovered-ready-store* *bprv-replayed* *bprv-journal*))
 (assert-event (fn-bprv-relationalp *bpr-recovered-ready-store* *bprv-replayed*))
 (assert-event (fn-bprv-entries-decidedp (fn-bpr-state-receipts *bprv-replayed*) *bprv-journal*))
@@ -40,9 +41,8 @@
 (assert-event (equal (fn-bpr-receipt-adu (cadr *bprr-absent*) *bpr-request*) nil))
 
 ; Replay stops on a duplicate/malformed journal record and retains the committed prefix.
-(defconst *bprv-duplicate-extension*
- (fn-bprr-replay-rest *bprv-replayed* *bpr-recovered-ready-store*
-                     (list *bprr-request-record*)))
+(make-event `(defconst *bprv-duplicate-extension* ',(fn-bprr-replay-rest *bprv-replayed* *bpr-recovered-ready-store*
+                     (list *bprr-request-record*))))
 (assert-event (not (car *bprv-duplicate-extension*)))
 (assert-event (equal (cadr *bprv-duplicate-extension*) *bprv-replayed*))
 (assert-event (equal (fn-bpr-receipt-adu (cadr *bprv-duplicate-extension*) *bpr-request*)

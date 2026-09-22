@@ -1,6 +1,7 @@
 ; Ground vectors and malformed-tag teeth for the ordered Store event grammar.
 (in-package "ACL2")
 (include-book "../../books/store-events")
+(include-book "../../books/codec-attach")
 
 (assert-event (equal (fn-store-publication-ceiling :article) 65538))
 (assert-event (equal (fn-store-publication-ceiling :undertake) 4096))
@@ -10,8 +11,7 @@
 (defconst *fn-se-test-undertake*
   (fn-store-retention-event-make :undertake 1 2 2 "forward-1" "subject-1"
                                  "evidence-1" 7))
-(defconst *fn-se-test-undertake-octets*
-  (fn-store-event-encode *fn-se-test-undertake*))
+(make-event `(defconst *fn-se-test-undertake-octets* ',(fn-store-event-encode *fn-se-test-undertake*)))
 
 (assert-event (fn-store-retention-event-p *fn-se-test-undertake*))
 (assert-event

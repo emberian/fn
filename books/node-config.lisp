@@ -31,12 +31,13 @@
 (include-book "config-invariants")
 (include-book "config-records")
 (include-book "nntp-syntax")
+(include-book "records-seam")
 
 ; A record passed to `fn-replay-apply-record' must be a true list; records'
 ; opacity withdrew that fact (board, convergence 2026-09-19), and
 ; `fn-record-uint32p' is withdrawn under the codec vocabulary.
 (local (in-theory (enable fn-record-record-vocabulary
-                          fn-record-codec-vocabulary
+                          fn-record-shape-vocabulary
                           fn-acceptance-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
@@ -663,7 +664,7 @@
                             fn-node-pending-matchesp
                             fn-replay-advance-txid
                             fn-record-record-vocabulary
-                            fn-record-codec-vocabulary))))))
+                            fn-record-shape-vocabulary))))))
 
 (defthm fn-cnode-apply-record-keeps-config
   (implies (consp (fn-cnode-apply-record cn record))

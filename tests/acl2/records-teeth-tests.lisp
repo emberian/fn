@@ -1,12 +1,20 @@
 ; Teeth for the schema-0 record codec keystones.
 ;
-; Both directions of the record codec are keystones with one hypothesis each
-; (books/records-invariants.lisp:174, books/records-canonicality.lisp:661).
+; Both directions of the record codec are keystones with one hypothesis each,
+; stated twice: once of the seam's constrained `fn-record-encode' and
+; `fn-record-decode-exact' (books/records-seam.lisp, the functions every book
+; above the codec and the host call), and once of the implementation the
+; image attaches to them (`fn-record-impl-round-trip' in records-invariants,
+; `fn-record-impl-accepted-input-is-canonical' in records-canonicality).
 ; Both hypotheses are recognizers, so each negative case is a malformed value:
-; a record that is not a record, and octets the decoder refuses.
+; a record that is not a record, and octets the decoder refuses.  The ground
+; assertions evaluate through the attachment (books/records-attach.lisp); the
+; `must-fail' cases are proof attempts, where no attachment is used, so the
+; seam's cases fail from the constraints alone.
 
 (in-package "ACL2")
 (include-book "../../books/records-canonicality")
+(include-book "../../books/records-attach")
 (include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
@@ -31,7 +39,7 @@
              (fn-record-release-evidence *rec-teeth-record*))))
 (assert-event (equal (len (fn-record-groups *rec-teeth-record*)) 2))
 
-(defconst *rec-teeth-octets* (fn-record-encode *rec-teeth-record*))
+(defconst *rec-teeth-octets* (fn-record-encode-impl *rec-teeth-record*))
 
 ; Both directions close at the witness.
 (assert-event (equal (fn-record-decode-exact *rec-teeth-octets*)
@@ -94,3 +102,35 @@
     (equal (fn-record-encode
             (fn-record-result-record (fn-record-decode-exact *rec-teeth-refused*)))
            *rec-teeth-refused*))))
+
+; -----------------------------------------------------------------------------
+; The same three cases of the implementation's keystones.
+
+(local
+ (must-fail
+  (defthm rec-teeth-impl-round-trip-without-record-p
+    (equal (fn-record-decode-exact-impl
+            (fn-record-encode-impl *rec-teeth-not-a-record*))
+           (list :ok *rec-teeth-not-a-record*)))))
+
+(local
+ (must-fail
+  (defthm rec-teeth-impl-round-trip-without-octet-payload
+    (equal (fn-record-decode-exact-impl
+            (fn-record-encode-impl *rec-teeth-bad-payload*))
+           (list :ok *rec-teeth-bad-payload*)))))
+
+(local
+ (must-fail
+  (defthm rec-teeth-impl-canonical-without-accepted-decode
+    (equal (fn-record-encode-impl
+            (fn-record-result-record
+             (fn-record-decode-exact-impl *rec-teeth-refused*)))
+           *rec-teeth-refused*))))
+
+; The attachment is the implementation: the seam's functions evaluate to the
+; implementation's values on the witness and on the refused input.
+(assert-event (equal (fn-record-encode *rec-teeth-record*)
+                     (fn-record-encode-impl *rec-teeth-record*)))
+(assert-event (equal (fn-record-decode-exact *rec-teeth-refused*)
+                     (fn-record-decode-exact-impl *rec-teeth-refused*)))

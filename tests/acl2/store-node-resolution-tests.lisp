@@ -1,6 +1,7 @@
 ; Resolution traces for synchronous refusal and known prepublication abort.
 (in-package "ACL2")
 (include-book "../../books/store-node-resolution")
+(include-book "../../books/codec-attach")
 
 (defconst *snr-groups* '("fn.letters" "fn.test"))
 

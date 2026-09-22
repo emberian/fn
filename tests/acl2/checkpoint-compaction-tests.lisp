@@ -1,6 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/checkpoint-compaction")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 (defconst *cc-a0*
   (fn-record-make 0 0 0 "<compact@example.invalid>" '(65 13 10)
@@ -11,33 +12,30 @@
 (defconst *cc-e2*
   (fn-store-retention-event-make :release 2 2 2
                                  "forward-1" "subject-1" "receipt-1" 0))
-(defconst *cc-b0* (fn-store-event-encode *cc-a0*))
-(defconst *cc-b1* (fn-store-event-encode *cc-e1*))
-(defconst *cc-b2* (fn-store-event-encode *cc-e2*))
+(make-event `(defconst *cc-b0* ',(fn-store-event-encode *cc-a0*)))
+(make-event `(defconst *cc-b1* ',(fn-store-event-encode *cc-e1*)))
+(make-event `(defconst *cc-b2* ',(fn-store-event-encode *cc-e2*)))
 (defconst *cc-i3*
   (fn-stxe-make 3 3 3 "<compact@example.invalid>" :unverified
                 '(117 110 118 101 114 105 102 105 101 100) 7 '(116 101 115 116)))
 (defconst *cc-k4*
   (fn-stxk-make 4 4 4 7 '(116 101 115 116) '(1 2 3 4)))
-(defconst *cc-b3* (fn-store-event-encode *cc-i3*))
-(defconst *cc-b4* (fn-store-event-encode *cc-k4*))
+(make-event `(defconst *cc-b3* ',(fn-store-event-encode *cc-i3*)))
+(make-event `(defconst *cc-b4* ',(fn-store-event-encode *cc-k4*)))
 
 (defun cc-repeat-octet (n)
   (declare (xargs :guard (natp n) :measure (nfix n)))
   (if (zp n) nil (cons 65 (cc-repeat-octet (1- n)))))
 (defconst *cc-large-payload* (cc-repeat-octet 24000))
-(defconst *cc-large-b0*
-  (fn-store-event-encode
+(make-event `(defconst *cc-large-b0* ',(fn-store-event-encode
    (fn-record-make 0 0 0 "<large-0@example.invalid>" *cc-large-payload*
-                   '("fn.letters") "archive-0" "subject-0" "evidence-0" 1)))
-(defconst *cc-large-b1*
-  (fn-store-event-encode
+                   '("fn.letters") "archive-0" "subject-0" "evidence-0" 1))))
+(make-event `(defconst *cc-large-b1* ',(fn-store-event-encode
    (fn-record-make 1 1 1 "<large-1@example.invalid>" *cc-large-payload*
-                   '("fn.letters") "archive-1" "subject-1" "evidence-1" 1)))
-(defconst *cc-large-b2*
-  (fn-store-event-encode
+                   '("fn.letters") "archive-1" "subject-1" "evidence-1" 1))))
+(make-event `(defconst *cc-large-b2* ',(fn-store-event-encode
    (fn-record-make 2 2 2 "<large-2@example.invalid>" *cc-large-payload*
-                   '("fn.letters") "archive-2" "subject-2" "evidence-2" 1)))
+                   '("fn.letters") "archive-2" "subject-2" "evidence-2" 1))))
 (defconst *cc-large-summary*
   (fn-cc-make 3 3 (list *cc-large-b0* *cc-large-b1* *cc-large-b2*)))
 (assert-event (< *fn-cbor-max-input* (len (fn-cc-encode *cc-large-summary*))))
@@ -47,9 +45,8 @@
 
 ; One canonical kind-3 Store event crosses the legacy CBOR byte-string cap.
 ; This exercises the per-item bound, independently of the aggregate witness.
-(defconst *cc-single-large-event*
-  (fn-store-event-encode
-   (fn-stxk-make 0 0 0 1 '(116 101 115 116) (cc-repeat-octet 65536))))
+(make-event `(defconst *cc-single-large-event* ',(fn-store-event-encode
+   (fn-stxk-make 0 0 0 1 '(116 101 115 116) (cc-repeat-octet 65536)))))
 (defconst *cc-single-large-summary*
   (fn-cc-make 1 1 (list *cc-single-large-event*)))
 (assert-event (< *fn-cbor-max-bytes* (len *cc-single-large-event*)))

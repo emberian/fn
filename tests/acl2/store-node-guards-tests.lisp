@@ -8,6 +8,7 @@
 ; (if a b 'nil), never (and a b).
 (include-book "../../books/store-node-resolution")
 (include-book "../../books/store-observed")
+(include-book "../../books/codec-attach")
 (assert-event (equal (symbol-class 'fn-sn-groups (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-groups nil (w state)) ''t))
 (assert-event (equal (symbol-class 'fn-sn-capacity (w state)) :common-lisp-compliant))

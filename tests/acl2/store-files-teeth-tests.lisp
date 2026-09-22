@@ -20,6 +20,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-files-invariants")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness: the whole publication sequence, driven

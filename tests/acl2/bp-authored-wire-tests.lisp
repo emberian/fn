@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-authored-wire")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 (defconst *bpaw-a* (cons :dtn '(47 47 102 110 45 97 47)))
 (defconst *bpaw-b* (cons :dtn '(47 47 102 110 45 98 47)))

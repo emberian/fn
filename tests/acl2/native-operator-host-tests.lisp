@@ -1,6 +1,7 @@
 ; The host wrapper calls the exact ACL2 operator subject.
 (in-package "ACL2")
 (include-book "../../host/native-operator-host")
+(include-book "../../books/codec-attach")
 
 (defconst *fn-nop-host-config*
   (append (fn-record-string-octets "[store]") (list 10)

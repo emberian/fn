@@ -83,6 +83,7 @@ class Acl2BpIngress(run_store.Acl2Store):
         super().__init__()
         try:
             self.call('(include-book "books/bp-ingress")')
+            self.call('(include-book "books/codec-attach")')
             self.call('(ld "host/bp-ingress-host.lisp" :ld-error-action :return :ld-error-triples t)')
             run_store.acl2_symbol(self.call("(fn-bpi-host-reset state)"))
         except BaseException:

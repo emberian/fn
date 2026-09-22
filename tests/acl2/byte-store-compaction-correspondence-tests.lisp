@@ -2,6 +2,7 @@
 (include-book "../../books/byte-store-compaction-correspondence")
 (include-book "../../books/byte-store-frame")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 (defconst *bscc-names*
   (list "00000000000000000001.txn" "00000000000000000003.txn" "00000000000000000004.txn"))

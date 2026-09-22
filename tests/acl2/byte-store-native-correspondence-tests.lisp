@@ -1,6 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-native-correspondence")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 ; Reach the actual composed subject at the allocator commit observation.  The
 ; frontier changes and the node does not, so this is not an identity witness.

@@ -16,6 +16,7 @@
 (include-book "crypto-seam-tests")
 (include-book "../../books/stx-epochs")
 (include-book "../../books/stx-authority")
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; Two principals, one keyring, and a store made of article records

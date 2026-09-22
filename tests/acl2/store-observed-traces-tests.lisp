@@ -4,6 +4,7 @@
 ; calls on each process start.
 (in-package "ACL2")
 (include-book "../../books/store-observed")
+(include-book "../../books/codec-attach")
 
 (defconst *fn-so-groups* '("fn.letters"))
 (defconst *fn-so-empty*

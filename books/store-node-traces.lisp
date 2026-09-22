@@ -2,10 +2,11 @@
 (in-package "ACL2")
 (include-book "store-node-invariants")
 (include-book "store-files-traces")
+(include-book "records-seam")
 (local (include-book "arithmetic/top" :dir :system))
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
-(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
+(local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
 
 ; The core definitions these correspondence proofs open (the core exports
 ; keystones only, docs/proof-style.md s2); local, named once.
@@ -365,8 +366,7 @@
                              (:d fn-stxe-p) (:d fn-stxe-shapep)
                              (:d fn-stxk-p) (:d fn-stxk-shapep)
                              (:d fn-stxa-p) (:d fn-stxa-shapep))
-                            ((:d fn-record-encode) (:d fn-record-decode-exact)
-                             (:d fn-stxe-bounded-octetsp)
+                            ((:d fn-stxe-bounded-octetsp)
                              (:d fn-record-uint32p) (:d fn-record-msgidp)
                              (:d fn-record-payloadp)
                              (:d fn-record-groups-validp)
