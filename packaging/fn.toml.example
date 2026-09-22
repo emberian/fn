@@ -9,10 +9,15 @@
 path = "/var/lib/fn/store"
 
 [listener]
-# Loopback only.  docs/architecture.md does not authorize a public listener,
-# and `fn run` refuses any other host rather than quietly binding 127.0.0.1.
+# One numeric IPv4 address, or `localhost`/`::1`.  Names are never resolved
+# and the wildcard 0.0.0.0 is refused (books/native-config.lisp,
+# fn-native-config-listener-hostp), so the node binds exactly the address it
+# is given.  Off loopback, set [auth] required and protected_only below and a
+# TLS pair here: USER/PASS crosses in the clear otherwise.
 host = "127.0.0.1"
 port = 1119
+# tls_cert = "/etc/fn/tls/cert.pem"
+# tls_key = "/etc/fn/tls/key.pem"
 
 [auth]
 # RFC 4643 AUTHINFO.  Omit the whole table and the node requires no login,
