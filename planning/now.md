@@ -20,17 +20,22 @@ the first two are repaired (28fb4bd0), the other two are the freeze lane's.
 Opus lanes run under `build/lanes/w31-*`: freeze (hbox: the image closure,
 then production, developer and DTN images; it writes `IMAGE-READY.txt` in
 its worktree when `build/fn-host` exists), treewide-reds (the roots outside
-the image closure; it has certified `msgid-index` for the first time),
+the image closure; it has certified `msgid-index` for the first time), and
 matrix-driver (landed 8935d992: AUTHINFO, live groups, the wildcard listener
 and an independent client are measurements on the native slice; on 915 the
 credential rows carry that image's exit 5, `V0-CFG-LIVE` is a real refusal
 and the two nntplib rows are the slice's first accepted independent rows; it
-reruns on the new image), agent-client (`tools/fn_client.py`: the way agents
-and humans read and post on the deployed node over STARTTLS and AUTHINFO,
-tested against a fake node), and duplicate-outcome (the matrix found that a
-second submission of one Message-ID answers refused on one node and accepted
-as a duplicate on the other, swapping between runs; the lane finds which
-octets `fn-owner-existing-action` compares and makes the word deterministic).
+reruns on the new image). Two more landed overnight: agent-client (acfb4964:
+`tools/fn_client.py`, the way agents and humans read and post on the
+deployed node over STARTTLS and AUTHINFO, [docs/agents.md](../docs/agents.md),
+tested only against a fake node so far) and duplicate-outcome (9890b318: the
+matrix's "duplicate submission answers refused or accepted by race" was the
+harness re-stamping `Date` on every article build; the node answered the
+octets it was given every time,
+[record](evidence/native-duplicate-outcome-2026-09-22.md); open item it
+found and did not fix: `fn-store-article-match` in `host/store-host.lisp`,
+the duplicate-versus-conflict comparison, is program-mode host code with no
+theorem naming it, against "one owner per decision").
 green-audit landed earlier (d667a874, `tools/green_check.py` in `make
 check`). Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
 step runs from the laptop: STARTTLS, the 483 before it, login, a post and a
