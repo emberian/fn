@@ -183,6 +183,51 @@ class FnClientTests(unittest.TestCase):
         self.assertEqual(code, 3)
         self.assertEqual(err.split()[0], "uncertain")
 
+    def test_a_node_that_accepts_and_then_closes_is_uncertain_and_not_a_traceback(self):
+        # The frozen 915d5c72 node behind an `ssh -L` tunnel, once its owner
+        # had stopped: the forwarder accepted on this side and closed before
+        # the greeting.  The greeting is read inside the Session constructor,
+        # so this arrives as `Disconnected` and not as an `OSError`, and the
+        # client used to let it out as a traceback with the refused exit.
+        node = self.serve(drop_before_greeting=True)
+        code, out, err = self.run_client(node, ["groups"], plain=True)
+        self.assertEqual(code, 3, err)
+        self.assertEqual(err.split()[0], "uncertain")
+        self.assertIn("closed the connection", err)
+
+    def test_a_node_named_by_an_ipv6_address_is_reached_at_that_address(self):
+        # `[listener] host` admits `::1` (docs/operator.md), and the tunnel
+        # the same page prescribes listens on `::1` as well as 127.0.0.1.
+        # `--node [::1]:PORT` used to fail the name lookup and report the
+        # node unreachable while it was serving.
+        try:
+            node = self.serve(host="::1", protected_only=False, require_auth=False)
+        except OSError as exc:                       # no IPv6 loopback here
+            self.skipTest("no ::1 to listen on: %s" % exc)
+        node.seed("fn.agents", "over six", "the address is the whole token")
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = fn_client.main(["--node", "[::1]:%d" % node.port, "--plain", "--timeout",
+                                   "10", "--state", str(self.state), "read", "fn.agents"])
+        self.assertEqual(code, 0, err.getvalue())
+        self.assertIn("the address is the whole token", out.getvalue())
+        self.assertIn("[::1]:%d" % node.port, err.getvalue())
+
+    def test_the_node_address_is_split_where_rfc_3986_says_and_nowhere_else(self):
+        self.assertEqual(fn_client.split_node("192.168.50.39:1119"), ("192.168.50.39", "1119"))
+        self.assertEqual(fn_client.split_node("hbox"), ("hbox", str(fn_client.DEFAULT_PORT)))
+        self.assertEqual(fn_client.split_node("[::1]:11340"), ("::1", "11340"))
+        self.assertEqual(fn_client.split_node("[::1]"), ("::1", str(fn_client.DEFAULT_PORT)))
+        # The one that mattered: `::1` is an address, not `::` at port 1.
+        self.assertEqual(fn_client.split_node("::1"), ("::1", str(fn_client.DEFAULT_PORT)))
+        self.assertEqual(fn_client.split_node("[::1"), (None, None))
+        for bad in ("[::1", "[::1]:0", "[::1]:99999", "host:not-a-port"):
+            with self.subTest(node=bad):
+                with contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as stop:
+                        fn_client.main(["--node", bad, "--plain", "groups"])
+                self.assertEqual(stop.exception.code, 2)
+
     def test_a_certificate_the_client_does_not_trust_stops_before_the_login(self):
         other = pathlib.Path(tempfile.mkdtemp(dir=self.work))
         cert, _ = make_pair(other)
@@ -297,6 +342,49 @@ class FnClientTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertIn("body one", out)
         self.assertIn("body three", out)
+
+    def test_a_watermark_that_cannot_be_saved_keeps_the_node_outcome_and_says_so(self):
+        # The read happened and the article is out; only this side's note of
+        # how far it got failed.  That is not the node refusing, so it must
+        # not arrive as the refused exit -- and it used to arrive as a
+        # traceback on exit 1.
+        blocked = self.work / "not-a-directory"
+        blocked.write_text("")
+        self.state = blocked / "state.json"
+        node = self.serve()
+        node.seed("fn.agents", "one", "body one")
+        code, out, err = self.run_client(node, ["read", "fn.agents"])
+        self.assertEqual(code, 0, err)
+        self.assertIn("body one", out)
+        self.assertIn("the watermark was not saved", err)
+        self.assertIn("offers these articles again", err)
+        self.assertFalse(self.state.exists())
+
+    def test_a_negative_since_is_a_usage_error_and_never_reaches_the_node(self):
+        # It used to reach it: `OVER 0-N` and then `ARTICLE 0`, which the
+        # frozen 915d5c72 node answered `501 syntax error` twice, so a
+        # client-side mistake came back wearing the node's refusal.
+        node = self.serve()
+        node.seed("fn.agents", "one", "body one")
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as stop:
+                self.run_client(node, ["read", "fn.agents", "--since", "-1"])
+        self.assertEqual(stop.exception.code, 2)
+        self.assertEqual(node.seen, [])
+
+    def test_a_441_line_this_fake_had_never_sent_is_still_a_refusal(self):
+        # The frozen 915d5c72 node answered this to an article whose Subject
+        # held non-ASCII octets.  books/nntp-post.lisp has more than twenty
+        # such lines and the fake knew two of them; a client that recognised
+        # a refusal by its wording rather than by its code would have shipped
+        # an uncertain outcome for a plain refusal.
+        node = self.serve(refuse_post=True,
+                          refusal="441 posting failed; the article is not valid syntax")
+        code, out, err = self.run_client(
+            node, ["post", "fn.agents", "--subject", "hi"], stdin="body\n")
+        self.assertEqual(code, 1)
+        self.assertIn("441 posting failed; the article is not valid syntax", err)
+        self.assertNotIn("uncertain", err)
 
     def test_a_read_of_a_group_the_node_does_not_carry_is_the_node_411(self):
         node = self.serve()
