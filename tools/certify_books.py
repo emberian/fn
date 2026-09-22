@@ -5,6 +5,28 @@ This runner deliberately requires a real ACL2 executable.  In particular, an
 ACL2 process exiting zero is insufficient evidence: each requested book must
 emit the success marker from the successful branch of `certify-book`, and the
 log must not contain an ACL2 certification/error marker.
+
+`--pcert` runs ACL2's provisional certification (`:DOC
+provisional-certification`) as three waves instead of one dependency-ordered
+pass.  Create skips proofs and writes each book's `.pcert0`; Convert does
+every proof, and because ACL2 accepts a sub-book's `.pcert0` there, **the
+Converts have no dependencies on each other** and run as one parallel wave;
+Complete renames `.pcert1` to `.cert` in dependency order.  What that buys is
+not only speed: a normal closure run stops at the first failing book and
+every book above it reads "There is no certificate on file", so one run names
+one layer of independent reds, while one Convert wave names all of them.
+Measured on a 63-book fn closure on persvati on 2026-09-22 with the same ACL2
+and 8 jobs: the normal run took 690.8 s and named ONE independent red;
+Create 32.9 s + Convert 301.4 s + Complete 2.6 s named FOUR, and the one they
+share fails on the same form either way.  The certificates Complete writes
+are byte-identical to normally produced ones apart from the absolute paths
+they embed, carry no provisional marker, and ACL2 accepts them at
+`include-book` (checked on that closure, 47 books).  Two cautions from the
+ACL2 documentation: Complete checks sub-books' certificate WRITE DATES and
+not their book-hash, and ACL2 itself says that for maximum trust a project's
+books are best certified from scratch without it.  So `--pcert` is the
+discovery mode; `tools/triage.py` is its report, and a claim about the tree
+still comes from an ordinary run.
 """
 
 from __future__ import annotations
@@ -48,6 +70,15 @@ FAILURE_MARKERS = (
     "HARD ACL2 ERROR",
 )
 BOOK_NAME = re.compile(r"(?:books|tests/acl2)/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+$")
+# ACL2's provisional certification, in the three waves `:DOC
+# provisional-certification` names.  Create skips proofs and writes `.pcert0`;
+# Convert does every proof given only its own `.pcert0` and a `.cert`,
+# `.pcert0` or `.pcert1` for each included book, so Converts do not depend on
+# each other and the whole tree's proofs run in one parallel wave; Complete
+# renames `.pcert1` to `.cert` once every included book has a `.cert`.
+PCERT_WAVES = {"create": ":create", "convert": ":convert", "complete": ":complete"}
+PCERT_ORDER = ("create", "convert", "complete")
+WAVE_PREFIX = "FN_PCERT_WAVE "
 FORBIDDEN_FACILITIES = {"skip-proofs", "defaxiom", "defttag", "set-raw-mode", "include-raw"}
 
 
@@ -143,6 +174,23 @@ def success_token(book: str, nonce: str) -> str:
     # Fixed width stays below ACL2's pretty-printer margin even for long paths.
     # Full requested paths and source digests remain in the manifest.
     return SUCCESS_PREFIX + nonce + " " + hashlib.sha256(book.encode()).hexdigest()[:12]
+
+
+def wave_token(book: str, nonce: str, wave: str) -> str:
+    """The marker a Create or Convert wave emits: a wave finished, not a book.
+
+    It is nonce-tagged like the success token, so an old log cannot supply
+    one, and it is deliberately NOT the success token: a book whose Convert
+    passed has had all its proofs done and still has no certificate.
+    """
+    return (WAVE_PREFIX + wave.upper() + " " + nonce + " "
+            + hashlib.sha256(book.encode()).hexdigest()[:12])
+
+
+def wave_passed(output: str, book: str, nonce: str, wave: str) -> bool:
+    """Did this wave reach its own marker for this book, in this run?"""
+    token = wave_token(book, nonce, wave)
+    return any(line.strip().endswith(token) for line in output.splitlines())
 
 
 def success_markers(output: str, nonce: str) -> list[str]:
@@ -448,12 +496,31 @@ def with_dependencies(books: list[str]) -> list[str]:
     return ordered
 
 
-def make_driver(book: str, nonce: str) -> str:
-    # `certify-book` must run at the top level of an ACL2 ld.  On an error,
-    # the inner ld returns before it reaches the marker; this catches ACL2
-    # failures even when the surrounding process eventually exits zero.
-    return f'''(ld '((certify-book "{book}" 0 t)
+def make_driver(book: str, nonce: str, wave: str | None = None) -> str:
+    """The ld that certifies one book, or runs one provisional-certification wave.
+
+    `certify-book` must run at the top level of an ACL2 ld.  On an error, the
+    inner ld returns before it reaches the marker; this catches ACL2 failures
+    even when the surrounding process eventually exits zero.
+
+    The nonce-tagged success token means one thing and keeps meaning it: this
+    book is certified.  A Create or Convert wave therefore emits its own wave
+    marker instead, and only Complete -- the wave that writes the `.cert` --
+    emits the token.  So `book_result`'s rule is unchanged under `--pcert`:
+    exactly one fresh token, a log with no failure marker, a certificate on
+    disk.  See `PCERT_WAVES` for what each wave is.
+    """
+    if wave is None:
+        return f'''(ld '((certify-book "{book}" 0 t)
       (value-triple (cw "~%{success_token(book, nonce)}~%")))
+    :ld-error-action :return
+    :ld-error-triples t)
+(quit)
+'''
+    marker = (success_token(book, nonce) if wave == "complete"
+              else wave_token(book, nonce, wave))
+    return f'''(ld '((certify-book "{book}" 0 t :pcert {PCERT_WAVES[wave]})
+      (value-triple (cw "~%{marker}~%")))
     :ld-error-action :return
     :ld-error-triples t)
 (quit)
@@ -541,6 +608,38 @@ def run_schedule(
                 future.result()
                 for pending in waiting.values():
                     pending.discard(finished)
+
+
+def pcert_waves(books: list[str], graph: dict[str, set[str]], jobs: int,
+                run_wave: Any) -> dict[str, float]:
+    """Create, Convert, Complete, and how long each wave took.
+
+    Create and Complete are dependency-ordered: Create of a book needs its
+    sub-books' `.pcert0`, Complete needs their `.cert`.  **Convert has no
+    edges at all** -- ACL2 accepts a sub-book's `.pcert0` in place of a
+    certificate there -- so every book's proofs run in one wave at `jobs`,
+    and one wave reports every independent red in the closure instead of the
+    first layer of them.  Measured on a 63-book fn closure on persvati,
+    2026-09-22: Create 32.9 s, Convert 301.4 s at 8 jobs (its floor is the
+    slowest single proof, 289.4 s), Complete 2.6 s; the same closure
+    certified normally took 690.8 s and named one independent red where the
+    Convert wave named four.
+
+    A wave that a book did not reach -- because its own previous wave failed
+    -- is not run for that book, and `run_wave` is told so.
+    """
+    walls: dict[str, float] = {}
+    for wave in PCERT_ORDER:
+        started = time.monotonic()
+        if wave == "convert":
+            # No edges: the whole tree's proofs at once.
+            run_schedule(books, {book: set() for book in books}, jobs,
+                         lambda book: run_wave(book, "convert"))
+        else:
+            run_schedule(books, graph, jobs,
+                         lambda book, wave=wave: run_wave(book, wave))
+        walls[wave] = round(time.monotonic() - started, 3)
+    return walls
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -643,6 +742,28 @@ def main() -> int:
         action="store_true",
         help="do not publish the resulting certificates to the local cache",
     )
+    parser.add_argument(
+        "--pcert",
+        action="store_true",
+        help=(
+            "certify through ACL2's provisional certification: a Create wave "
+            "that skips proofs, one parallel Convert wave that does every "
+            "book's proofs, and a Complete wave that writes the certificates. "
+            "One run then reports EVERY independent red in the closure rather "
+            "than the first layer of them"
+        ),
+    )
+    parser.add_argument(
+        "--budget-seconds",
+        type=int,
+        default=None,
+        metavar="SECONDS",
+        help=(
+            "per-book budget for the --pcert Convert wave, which is where the "
+            "proofs are (default: --timeout-seconds). Create and Complete keep "
+            "--timeout-seconds; they skip proofs and are seconds each"
+        ),
+    )
     args = parser.parse_args()
     if not args.books:
         try:
@@ -662,6 +783,10 @@ def main() -> int:
         parser.error("each book may be requested once: " + ", ".join(repeated))
     if args.timeout_seconds <= 0:
         parser.error("--timeout-seconds must be positive")
+    if args.budget_seconds is None:
+        args.budget_seconds = args.timeout_seconds
+    elif args.budget_seconds <= 0:
+        parser.error("--budget-seconds must be positive")
     if args.jobs <= 0:
         parser.error("--jobs must be positive")
     requested_before_filter = list(args.books)
@@ -705,6 +830,8 @@ def main() -> int:
         "requested_books": args.books,
         "affected_by": list(args.affected_by),
         "closure": bool(args.closure),
+        "pcert": bool(args.pcert),
+        "budget_seconds": args.budget_seconds,
         "requested_before_filter": requested_before_filter,
         "acl2_slots": acl2_slots.slot_count(),
         "timeout_seconds": args.timeout_seconds,
@@ -789,12 +916,16 @@ def main() -> int:
     driver_digests: dict[str, str] = {}
     drivers: dict[str, str] = {}
     nonce = secrets.token_hex(16)
+    waves = PCERT_ORDER if args.pcert else (None,)
     for book in args.books:
-        driver = make_driver(book, nonce)
-        driver_path = run_dir / (book.replace("/", "--") + ".certify.lsp")
-        driver_path.write_text(driver, encoding="utf-8")
-        driver_digests[book] = digest(driver_path)
-        drivers[book] = driver
+        flat = book.replace("/", "--")
+        for wave in waves:
+            driver = make_driver(book, nonce, wave)
+            suffix = f".pcert-{wave}" if wave else ""
+            driver_path = run_dir / (flat + suffix + ".certify.lsp")
+            driver_path.write_text(driver, encoding="utf-8")
+            driver_digests[f"{book}{suffix}"] = digest(driver_path)
+            drivers[f"{book}{suffix}"] = driver
 
     outputs: dict[str, str] = {}
     exit_codes: dict[str, int | str] = {}
@@ -836,8 +967,91 @@ def main() -> int:
                                              source_digests, output, code,
                                              manifest))
 
+    # Under `--pcert` a book's evidence is three ACL2 runs, and what the run
+    # records for it is their concatenation, each behind a wave line.  The
+    # verdict rule is untouched: `book_result` reads that combined log, the
+    # first exit code that was not 0, and the certificate on disk.
+    wave_outputs: dict[str, dict[str, str]] = {book: {} for book in args.books}
+    wave_seconds: dict[str, dict[str, float]] = {book: {} for book in args.books}
+    wave_codes: dict[str, dict[str, int | str]] = {book: {} for book in args.books}
+    pcert_reached: dict[str, str] = {}
+
+    def run_wave(book: str, wave: str) -> None:
+        previous = PCERT_ORDER[PCERT_ORDER.index(wave) - 1] if wave != "create" else None
+        if previous is not None and not wave_passed(
+                wave_outputs[book].get(previous, ""), book, nonce, previous):
+            # Its own previous wave did not finish, so this one has no input.
+            # Not running it is the finding, and the combined log says so.
+            wave_outputs[book][wave] = (
+                f"{WAVE_PREFIX}{wave.upper()} NOT RUN: this book's {previous} "
+                f"wave did not finish\n")
+            return
+        budget = args.budget_seconds if wave == "convert" else args.timeout_seconds
+        with acl2_slots.slot(f"pcert {wave} {book}") as held:
+            with record_lock:
+                start_order.append(f"{book} {wave}")
+                slot_wait_seconds[f"{book} {wave}"] = held.seconds
+            started = time.monotonic()
+            try:
+                result = run_acl2(acl2, drivers[f"{book}.pcert-{wave}"], budget)
+                output = result.stdout.decode("utf-8", errors="replace")
+                code: int | str = result.returncode
+            except subprocess.TimeoutExpired as error:
+                output = timeout_output(error).decode("utf-8", errors="replace")
+                code = f"timed out after {budget} seconds"
+            elapsed = time.monotonic() - started
+        (run_dir / (book.replace("/", "--") + f".pcert-{wave}.certify.log")
+         ).write_text(output, encoding="utf-8")
+        with record_lock:
+            wave_outputs[book][wave] = output
+            wave_codes[book][wave] = code
+            wave_seconds[book][wave] = round(elapsed, 3)
+            # Complete emits the success token, not a wave token: it is the
+            # wave that certifies, so it speaks in the one marker that means
+            # certified.
+            reached = (success_markers(output, nonce)
+                       == [success_token(book, nonce)]
+                       if wave == "complete"
+                       else wave_passed(output, book, nonce, wave))
+            if reached:
+                pcert_reached[book] = wave
+
+    def collect_pcert(book: str) -> None:
+        """One book's three waves as the one log and one code the rule reads."""
+        parts = []
+        for wave in PCERT_ORDER:
+            parts.append(f"{WAVE_PREFIX}{wave.upper()} {book}")
+            parts.append(wave_outputs[book].get(wave, ""))
+        output = "\n".join(parts)
+        # The same file name a closure run writes, so every reader of a run
+        # directory -- `tools/triage.py` included -- finds one log per book
+        # whichever mode produced it.  The per-wave logs stay beside it.
+        (run_dir / (book.replace("/", "--") + ".certify.log")).write_text(
+            output, encoding="utf-8")
+        codes = [wave_codes[book].get(wave) for wave in PCERT_ORDER]
+        bad = next((code for code in codes if code not in (0, None)), None)
+        outputs[book] = output
+        exit_codes[book] = 0 if bad is None else bad
+        book_wall_seconds[book] = round(
+            sum(wave_seconds[book].get(wave, 0.0) for wave in PCERT_ORDER), 3)
+        if args.no_publish:
+            return
+        verdict, _ = book_result(book, output, exit_codes[book], nonce,
+                                 (ROOT / f"{book}.cert").is_file())
+        with publish_lock:
+            cache_events.append(publish_pair(book, verdict, run_dir, nonce,
+                                             source_digests, output,
+                                             exit_codes[book], manifest))
+
     certify_started = time.monotonic()
-    run_schedule(args.books, schedule, effective_jobs, certify)
+    if args.pcert:
+        pcert_wall_seconds = pcert_waves(args.books, schedule, effective_jobs,
+                                         run_wave)
+        for book in args.books:
+            collect_pcert(book)
+    else:
+        pcert_wall_seconds = None
+        run_schedule(args.books, schedule, effective_jobs, certify)
     certify_wall_seconds = round(time.monotonic() - certify_started, 3)
 
     # Evidence is assembled in requested order, never completion order, so the
@@ -879,6 +1093,15 @@ def main() -> int:
             "book_failures": book_failures,
             "book_wall_seconds": book_wall_seconds,
             "certify_wall_seconds": certify_wall_seconds,
+            "pcert_wall_seconds": pcert_wall_seconds,
+            # The last provisional wave each book finished.  A book that
+            # reached `convert` has had every one of its proofs done and may
+            # still have no certificate, because a book below it has none:
+            # that is the distinction a closure run cannot make at all.
+            "pcert_reached": dict(pcert_reached) if args.pcert else None,
+            "book_wave_seconds": ({book: wave_seconds[book]
+                                   for book in args.books}
+                                  if args.pcert else None),
             "start_order": start_order,
             "expected_success_markers": expected_markers,
             "observed_success_markers": markers,

@@ -341,8 +341,11 @@ class FakeBox:
         into.mkdir(parents=True, exist_ok=True)
         scripted = self.rounds[self.started - 1]
         (into / "manifest.json").write_text(json.dumps(scripted["manifest"]))
-        for book, log in scripted["logs"].items():
+        for book, log in scripted.get("logs", {}).items():
             (into / (book.replace("/", "--") + ".certify.log")).write_text(log)
+        for (book, wave), log in scripted.get("wave_logs", {}).items():
+            (into / (book.replace("/", "--")
+                     + f".pcert-{wave}.certify.log")).write_text(log)
 
     def scripts(self) -> list[str]:
         return [command[-1] for command in self.commands if command[0] == "ssh"]
@@ -388,7 +391,8 @@ class WholeTriageTests(unittest.TestCase):
             cls.report = triage.triage(
                 "persvati", ["books/c"], root=cls.root,
                 remote_root=cls.remote, acl2="/opt/acl2", cache="/home/x/cache",
-                budget_seconds=300, rounds=4, jobs=6, poll_seconds=0)
+                budget_seconds=300, rounds=4, jobs=6, poll_seconds=0,
+                pcert=False)
 
     @classmethod
     def tearDownClass(cls):
@@ -398,7 +402,7 @@ class WholeTriageTests(unittest.TestCase):
         self.assertEqual(len(self.report["rounds"]), 2)
         self.assertEqual(self.report["rounds"][0]["kinds"],
                          {"independent": 1, "timeout": 0, "unexplained": 0,
-                          "cascade": 1})
+                          "blocked": 0, "cascade": 1})
         self.assertEqual(self.report["rounds"][1]["kinds"]["independent"], 1)
 
     def test_every_independent_red_is_reported_with_its_round(self):
@@ -467,6 +471,90 @@ class WholeTriageTests(unittest.TestCase):
         self.assertEqual(json.loads(data.read_text())["schema"], "fn-triage-v1")
         self.assertTrue(str(document).startswith(
             str(self.root / triage.OUT_REL)))
+
+
+class ProvisionalTriageTests(unittest.TestCase):
+    """One provisional round answers the whole closure, so there is no second.
+
+    The shape is the one the real run showed on persvati: the book that
+    fails is `b`, and `c` -- which an ordinary closure run could only call a
+    cascade, knowing nothing about it -- has had every one of its proofs
+    done and is waiting for a certificate.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.directory = tempfile.TemporaryDirectory()
+        cls.root = Path(cls.directory.name).resolve()
+        synthetic_tree(cls.root)
+        cls.remote = "/home/ember/fn-gates/w32-triage"
+        manifest = manifest_for(
+            {"books/a": "passed", "books/b": "failed", "books/c": "failed"},
+            {"books/a": 1.0, "books/b": 13.0, "books/c": 32.0})
+        manifest.update({
+            "pcert": True,
+            "pcert_reached": {"books/a": "complete", "books/b": "create",
+                              "books/c": "convert"},
+            "book_wave_seconds": {
+                "books/a": {"create": 0.4, "convert": 0.5, "complete": 0.1},
+                "books/b": {"create": 0.4, "convert": 12.6},
+                "books/c": {"create": 0.4, "convert": 31.5, "complete": 0.1}},
+            "pcert_wall_seconds": {"create": 1.2, "convert": 31.5,
+                                   "complete": 0.2},
+        })
+        cls.box = FakeBox([{"manifest": manifest, "wave_logs": {
+            ("books/b", "convert"): OWN.format(name="B", book="b"),
+            ("books/c", "complete"): CASCADE.format(remote=cls.remote)}}])
+        with mock.patch.object(farm, "RUN", cls.box), \
+                mock.patch.object(farm, "SLEEP", lambda seconds: None), \
+                mock.patch.dict(os.environ,
+                                {"FN_CERT_CACHE": str(cls.root / "cache")}), \
+                contextlib.redirect_stderr(io.StringIO()), \
+                contextlib.redirect_stdout(io.StringIO()):
+            cls.report = triage.triage(
+                "persvati", ["books/c"], root=cls.root,
+                remote_root=cls.remote, acl2="/opt/acl2", cache="/home/x/cache",
+                budget_seconds=300, rounds=4, jobs=6, poll_seconds=0)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.directory.cleanup()
+
+    def test_one_round_is_enough_and_no_source_is_substituted(self):
+        self.assertEqual(len(self.report["rounds"]), 1)
+        self.assertEqual(self.report["substitutions"], [])
+        self.assertEqual(self.report["still_unanswered"], [])
+
+    def test_the_convert_failure_is_the_independent_red(self):
+        found = {one["book"]: one for one in self.report["findings"]}
+        self.assertEqual(found["books/b"]["kind"], "independent")
+        self.assertEqual(found["books/b"]["pcert_reached"], "create")
+        self.assertFalse(found["books/b"]["proofs_done"])
+        self.assertIn("FN-B-HOLDS", found["books/b"]["first_error"])
+        self.assertIn("Subgoal 2.1'", found["books/b"]["key_checkpoint"])
+        self.assertEqual(found["books/b"]["wall_seconds"], 13.0)
+
+    def test_a_book_that_converted_is_blocked_and_hides_nothing(self):
+        found = {one["book"]: one for one in self.report["findings"]}
+        self.assertEqual(found["books/c"]["kind"], "blocked")
+        self.assertTrue(found["books/c"]["proofs_done"])
+        self.assertEqual(found["books/c"]["blocked_by"], ["books/b"])
+
+    def test_the_runner_is_asked_for_the_waves_and_the_convert_budget(self):
+        script = self.box.runner_scripts()[0]
+        self.assertIn("--pcert", script)
+        self.assertIn("--budget-seconds 300", script)
+        self.assertIn("--no-publish", script)
+        # Create and Complete skip proofs; their ceiling is not the budget.
+        self.assertIn(f"FN_ACL2_TIMEOUT_SECONDS={triage.WAVE_TIMEOUT_SECONDS}",
+                      script)
+
+    def test_the_report_separates_proved_from_unknown(self):
+        document = triage.markdown(self.report)
+        self.assertIn("## Independent reds (1)", document)
+        self.assertIn("Proved, not certified", document)
+        self.assertIn("Waiting on: `books/b`", document)
+        self.assertIn("Convert wave", document)
 
 
 class NeverPublishTests(unittest.TestCase):
