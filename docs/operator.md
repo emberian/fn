@@ -149,6 +149,44 @@ FN_NATIVE_PROFILE=developer tools/build_native_host.sh
 image. Changing `FN_NATIVE_PROFILE` when an existing saved image starts has no
 effect; the profile is selected during image construction and serialized.
 
+### Developer selectors
+
+The developer image honours eight environment selectors and one positional
+argument that arm a cut or a fault. The table is `+fnn-developer-selectors+`
+in `host/native/io.lisp`; each is read only through `fnn-developer-selector`,
+which answers nothing on a production image.
+
+| selector | value | what it arms |
+| --- | --- | --- |
+| `FN_NATIVE_POST_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-post-model-cuts+` | the frontier, record and finish cuts of a post, in `store ROOT post` and in the served owner (`operator CONFIG run`, and the developer `owner run`) |
+| `FN_NATIVE_RECOVERY_FAULT` | `CUT:eio\|kill`, CUT one of `recover-replayed`, `recover-barrier` (the first of its five sites), `recovery-stage-unlinked` | recovery's cuts, in `store ROOT recover`, `operator CONFIG recover`, `store ROOT post` and the served owner's own recovery at start |
+| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts |
+| `FN_NATIVE_CONTROL_FAULT` | one of `prepublish`, `postpublish`, `frontierbarrier`, `recordbarrier` | the owner's store for exactly one control submission; `postpublish` is the uncertain outcome |
+| `FN_NATIVE_CONTROL_TEST_STOP` | `after-submit` | a SIGSTOP of the owner from the worker that holds the reply, after the owner answered accepted, duplicate or refused and before the reply is sent; the stop is directed at that thread (`pthread_kill`), so the reply cannot leave first |
+| `FN_NATIVE_AUTH_ADMIN_FAULT` | `CUT:eio\|kill` | the AUTHINFO credential writer's cuts |
+| `FN_NATIVE_OWNER_TEST_SIGTERM` | `after-install` | a SIGTERM between owner recovery and listen |
+| `FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP` | `1` | a two-second pause inside owner cleanup |
+| `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
+
+The served owner and `store ROOT post` read the post and recovery selectors
+through one function, `fnn-post-entry-fault`, into the one store fault slot
+that every `fnn-at` cut tests; at most one of the positional FAULT,
+`FN_NATIVE_POST_FAULT` and `FN_NATIVE_RECOVERY_FAULT` may be set (usage 5
+otherwise). The cut sites are the `fnn-at` calls in `fnn-recover`,
+`fnn-advance-frontier`, `fnn-publish` and `fnn-finish`, which both entries
+call.
+
+A production image refuses to start when any selector in the table is set in
+its environment, even to the empty string, or when `store ROOT post` is given
+a FAULT other than `-`. `fnn-main` runs `fnn-developer-selector-gate` before
+dispatch, so the refusal is usage exit 5 naming the variable, and no store,
+socket or request is reached. A running production node therefore never
+meets a selector in the middle of a request: accepted, refused and uncertain
+keep their meanings for every real request. The selectors that other layers
+read (`FN_BP_*`, `FN_TCPCL_TEST_*`, `FN_CHECKPOINT_TEST_*`,
+`FN_APP_JOURNAL_TEST_*`, `FN_IMMUTABLE_PUBLISH_TEST_FAIL`) are not in this
+table yet; the DTN image they are exercised on has no developer profile.
+
 ## Install
 
 The development service needs Python 3.11 or newer (for `tomllib`) and ACL2 8.7 with a certified
