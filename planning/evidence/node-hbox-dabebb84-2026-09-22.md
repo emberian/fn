@@ -69,8 +69,15 @@ the live owner exits 3 (uncertain) and the socket then gets no reply to
 image was cut (4931dcb4) and lane T8c determines whether they account for
 it. `V0-CFG-LIVE-REFUSE`: a second configuration over the same store with an
 unbound control path ran the offline executor, which accepted `group create`
-and wrote configuration generation 7 while the live owner held the store,
-two writers on one store; lane T8c owns the fix.
+and wrote configuration generation 7. Lane T8c found
+([record](t8c-live-rows-2026-09-22.md)) that this was not two writers: the
+live request had killed the owner (its open's integer id went through the
+action reader, and its stop hook closed the reply socket, which is the
+uncertain-and-silent of the first row), so the lock was free and accepting
+was correct; the harness now checks the owner is alive before the offline
+half. Both owner defects are fixed on dev (85e3254f), unwitnessed on an
+image; the first row stays a disagreement until T8b serves a group created
+live.
 
 ## What this record does not claim
 
