@@ -11,7 +11,7 @@ lemmas do not close an entire subsystem proof target.
 Each new reachable command, persistent record, transition, codec or adapter
 operation adds assurance obligations. A proof about an older component does not
 automatically cover a new caller or the composition between components. Keep
-three things distinct in the [closure inventory](../planning/assurance-closure.md):
+three things distinct in the [closure inventory](../planning/archive/assurance-closure.md):
 evidence for implemented behavior, missing evidence for implemented behavior,
 and requirements for features that have not been implemented.
 

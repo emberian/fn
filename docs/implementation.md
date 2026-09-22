@@ -10,7 +10,7 @@ planning/ledger.md for current counts), plus an independent client over the
 reopened store. The physical adapter
 now uses the composed storage machine and its observed-image recovery gate.
 Earlier evidence retains the independent CBOR and other interoperability cases.
-The [closure queue](../planning/assurance-closure.md) tracks remaining work;
+The [closure queue](../planning/archive/assurance-closure.md) tracks remaining work;
 [BPv7 integration](../specs/bp-path.md) is an active architectural path.
 
 The [follow-on batch](../tests/evidence/2026-09-18-reader-checkpoint-index.md) adds

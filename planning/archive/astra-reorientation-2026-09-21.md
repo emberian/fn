@@ -5,7 +5,7 @@ at `9e4b7ee`, the completed feed candidate at `2f802d4`, and the active transit
 candidate at `3f68944`, including its updated working handoff and gate record.
 I read the implementation changes, theorem statements, lane handoffs and existing
 evidence. I did not launch tests, certification, labs, deployment, or more agents.
-The [inspection record](evidence/astra-orientation-2026-09-21.json) pins source
+The [inspection record](../evidence/astra-orientation-2026-09-21.json) pins source
 digests, branch ancestry, matrix revisions and the certification correspondence
 checked here. Later work may supersede individual observations.
 

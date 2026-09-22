@@ -6,11 +6,11 @@ change a registry status. `Certified` below means that the cited evidence has
 established the stated scope in a clean run; `Assigned` means current work is
 being attempted and is not evidence of completion.
 The historical integrated baseline is the
-[54-root/45-test checkpoint](../tests/evidence/2026-09-18-assurance.md), with its
+[54-root/45-test checkpoint](../../tests/evidence/2026-09-18-assurance.md), with its
 explicit original test failure and corrected recheck. Later targeted results
-remain distinct from that frozen source set. The subsequent [75-root/67-test batch](../tests/evidence/2026-09-18-composed-store.md)
+remain distinct from that frozen source set. The subsequent [75-root/67-test batch](../../tests/evidence/2026-09-18-composed-store.md)
 passed with unchanged input sources; current owners and next exits are in
-[current work](now.md).
+[current work](../now.md).
 
 The closure test for every mechanizable row is a theorem over reachable,
 bounded, non-vacuous states (including the rejecting cases), plus the named
@@ -39,10 +39,10 @@ must remain hypotheses of the code claims.
 
 ## Current closure batch over implemented BP behavior
 
-The [actual BP checkpoint](../tests/evidence/2026-09-18-bp-exchange.md) added
+The [actual BP checkpoint](../../tests/evidence/2026-09-18-bp-exchange.md) added
 working sender/receiver composition and exposed new obligations. These are gaps
 in implemented behavior, distinct from future LTP, GC or private-group features.
-The completed [composition assurance batch](../tests/evidence/2026-09-18-bp-composition-assurance.md)
+The completed [composition assurance batch](../../tests/evidence/2026-09-18-bp-composition-assurance.md)
 adds no product protocol or new persistent record kind. Root certified 11 scoped
 roots in four recorded batches; this is separate from historical all-root runs.
 
@@ -51,14 +51,14 @@ roots in four recorded batches; this is separate from historical all-root runs.
 | Sender work → article/archive node | Joint durable/pending work binding proved for initialization, actual transitions, dispatcher and arbitrary finite traces; fabricated typed-but-unbound witness included | Byte/live/replay and host refinement are separate from this logical relation; retain outbound boundary recheck | **Certified** for the selected logical scope |
 | Receiver context → recovered Store → receipt | General typed state, context/Store and receipt/decision invariant under actual record application and finite replay; committed-decision grounding and unchanged existing receipt ADUs | Compose the fixed-Store theorem with Store evolution and physical journal refinement | **Certified** for the selected logical scope |
 | Receiver host → durable recovery | Five actual SIGKILL cuts across FNBI, Store, context, intent and decision/delete boundaries; exact content, one article/pin and identical regenerated receipts; 133-test suite passed | Wider host/file-event correspondence, exhausted-resource/corruption composition and physical platform qualification | **Tested** for the five named process-death cuts; distinct from seven exception/reopen cases |
-| Logical BP functions → raw execution | [Complete 41-function ADU guard closure](../tests/evidence/2026-09-18-bp-guards.md); actual seven-book inventory identifies 97 remaining unverified functions | Close the remaining selected BP call graph before claiming raw execution; report actual ACL2 status separately | Codec closed; other BP graphs open |
+| Logical BP functions → raw execution | [Complete 41-function ADU guard closure](../../tests/evidence/2026-09-18-bp-guards.md); actual seven-book inventory identifies 97 remaining unverified functions | Close the remaining selected BP call graph before claiming raw execution; report actual ACL2 status separately | Codec closed; other BP graphs open |
 | Journal bytes/barriers → logical histories | Bounded checked local codecs, ordered host I/O, actual ACL2 replay and fault tests | General FNWF/FNRJ byte/live/replay correspondence and host-event refinement under the named filesystem hypotheses | Follow-on, open |
 | Application evidence → authorized handoff | Explicit trusted laboratory A-POLICY, exact receipt context match | Concrete D01/D09 signature/authority profile and its refinement; cooperative peer/durability premises remain explicit | Design dependency, open |
 
-The [assurance scope rules](../docs/proofs.md#assurance-grows-with-the-implemented-surface)
+The [assurance scope rules](../../docs/proofs.md#assurance-grows-with-the-implemented-surface)
 apply to subsequent behavior changes. Keep evidence, current missing assurance,
 and future feature requirements separately visible. No theorem/test count closes
-an entire row. The initial-usable-release criteria remain in [milestones](milestones.md);
+an entire row. The initial-usable-release criteria remain in [milestones](../milestones.md);
 this batch does not silently resolve D18 or weaken those criteria.
 
 The [three-cycle plan](swarm-cycles.md) now schedules these BP closures alongside
@@ -109,7 +109,7 @@ checkpoint; they are included in the subsequent 75-root integration result:
   compaction, physical/platform qualification, rollback freshness, and related
   host adoption remain open.
 
-The [evidence record](../tests/evidence/2026-09-18-assurance.json) attaches the
+The [evidence record](../../tests/evidence/2026-09-18-assurance.json) attaches the
 exact manifests and source set. All real filesystem results remain distinct from
 power-loss qualification. The subsequent 75-root integration batch passed and
 has its own linked evidence record.
@@ -123,7 +123,7 @@ both soundness and range completeness against authoritative article memberships
 (PRF-010). Work is isolated until actual certification. No persisted checkpoint
 or index schema, compaction, or physical publication guarantee follows yet.
 NNTP and semantic-field guard graphs are now integrated; 17 socket/partition tests
-and independent client traffic passed. The [follow-on record](../tests/evidence/2026-09-18-reader-checkpoint-index.md)
+and independent client traffic passed. The [follow-on record](../../tests/evidence/2026-09-18-reader-checkpoint-index.md)
 retains the exact scope and initial incomplete-ingress-copy correction.
 
 ## Active BP vertical slice
@@ -134,10 +134,10 @@ Sol owns durable workflow/attempt/receipt semantics and trace proofs, and a seco
 Sol lane owns the actual workflow journal and crash-tested ACL2 bridge. This
 activates the previously unassigned scheduler/receipt/storage seams; it does not
 claim their implementation or certification is already complete. The
-[BP path](../specs/bp-path.md) supplies the first two-node exit and fault cuts.
+[BP path](../../specs/bp-path.md) supplies the first two-node exit and fault cuts.
 
 
-The [complete BP application slice](../tests/evidence/2026-09-18-bp-exchange.md)
+The [complete BP application slice](../../tests/evidence/2026-09-18-bp-exchange.md)
 now passed real return transport with lost receipt and restart. The sender's
 finite trace state/node invariants and finite transport receipt preservation are
 certified. The 132-test combined host suite includes seven new receiver

@@ -4,7 +4,7 @@ One row per record in `tests/evidence/`, and for the deploy gate's records in `p
 qualitative; exact root/test/function counts belong to each record's own JSON
 file and to planning/ledger.md, never repeated here as prose. Records are
 ordered by their position in the project's own narrative
-([now.md](now.md)/[assurance-closure.md](assurance-closure.md)); several share
+([now.md](now.md)/[assurance-closure.md](archive/assurance-closure.md)); several share
 the calendar date 2026-09-18 because that date compresses many batches.
 
 A record cites the certification run behind it by run id. Those runs write
