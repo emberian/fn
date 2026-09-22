@@ -8,10 +8,21 @@ matrix: the full driver now runs against the native image and reaches 123 of
 ([record](evidence/native-matrix-915-2026-09-22.md)). Its four disagreements
 are one gap, the native node's missing path identity. The next steps in order
 are: give the native node a path identity (config key or operator verb) so
-loop suppression can fire; freeze `dev` once into a new image so the AUTH,
-live-administration and STARTTLS rows can move; run the matrix on it; stand
-up one reachable node and use it. The v0.5/v0.6 lanes stay checkpointed until
-that node exists.
+loop suppression can fire (done, `policy set path-identity`, dbf2e1ab);
+freeze `dev` once into a new image so the AUTH, live-administration and
+STARTTLS rows can move; run the matrix on it; stand up one reachable node and
+use it. The v0.5/v0.6 lanes stay checkpointed until that node exists.
+
+The first freeze attempts (hbox, 2026-09-22 02:15Z and 02:29Z) found `dev`
+red in four books no lane had certified at their current digests
+(stx-evidence-records, checkpoint-compaction, hybrid-store, feed-connection);
+the first two are repaired (28fb4bd0), the other two have candidate repairs
+(dbf2e1ab). Four Opus lanes run from dbf2e1ab under `build/lanes/w31-*`:
+freeze (hbox: closure, images), treewide-reds (hbox: the roots outside the
+image closure), matrix-driver (local: AUTH, live reconfiguration, loopback and
+nntplib rows, then a run on the new image), green-audit (local:
+`tools/green_check.py`, certified-at-current-digest per book). persvati has
+been unreachable since about 01:50Z.
 
 Updated 2026-09-21. The goal remains the full selected two-peer v0 and v1/M6
 scope in [milestones](milestones.md#release-shape-v0-and-v1). Component tests
