@@ -14,6 +14,7 @@ Each run's rows, invocations and logs are its own directory under
 | `20260922T013727` | `783db508` | 99 | 4 | 4 | offline admin, outcomes, transit, pins, stop added; `$HOME` quoted |
 | `20260922T014155` | `783db508` | 121 | 12 | 2 | quoting fixed; peer records carried an outbound feed |
 | `20260922T014358` | `783db508` | 123 | 4 | 0 | outbound `-`; the four loop rows remain |
+| `20260922T030846` | `6c5df887` | 128 | 6 | 7 | AUTHINFO, live groups, the wildcard listener and the independent client became measurements |
 
 Counts are the tool's (`summary` in each `matrix.json`); "exercised" is
 accepted plus refused plus uncertain.
@@ -48,10 +49,37 @@ offer and journal rows. None of it needed a Python process in the node.
 ## What the slice still does not reach, and why
 
 `not-built` on this image: init/reinit (no operator verb), uncertain outcome
-(no public fault injection), `peer list`, live group declaration (the control
-socket is ACL2-framed), path identity. `not-exercised` by the slice: the
-loopback refusal, capacity refusal (needs an owner over the scratch store),
-AUTH (the 915 image predates `principal`), crash, BP, statements, media,
-scale, INN, independent clients. The 915 image is 210 commits behind `dev`;
-`principal`, STARTTLS and live administration exist there and need their own
-image before their rows can move.
+(no public fault injection), `peer list`, and `principal new` (the local
+principal id is derived inside `set-password`, so no verb derives one from a
+seed). `not-exercised` by the slice: crash, BP, statements, media, scale, INN
+and slrn.
+
+What the 03:08Z run changed is where the remaining F-AUTH, live-configuration
+and loopback gaps live. They are no longer the harness declining to look:
+
+- The two credential rows and the wildcard-listener row now carry this
+  image's own exit code 5 (`operator principal UNSUPPORTED-COMMAND`, and
+  `operator request (CONFIGURATION INVALID)`), and the six AUTHINFO session
+  rows name the enrolment that did not happen. A usage error is not an
+  outcome, so none of them reads as a refusal.
+- `V0-CFG-LIVE` disagrees rather than being not-built: `group create` against
+  the live node's own configuration exits 1 with `store is already locked`
+  and `GROUP fn.matrix.live` then answers 411, so this image does not
+  dispatch live administration. `V0-CFG-LIVE-REFUSE` keeps its property on a
+  second configuration over the same store whose control path is unbound,
+  which is the executor that can still show it once an image does dispatch.
+- `V0-CLIENT-NNTPLIB-{A,B}` are accepted and are the first two `independent`
+  rows the native slice has had: stdlib nntplib 3.12.13 drove CAPABILITIES,
+  GROUP, STAT, ARTICLE, HEAD, BODY, OVER, LIST and an absent lookup on both
+  listeners.
+- `V0-CAP-REFUSE-{A,B}` are refused, where the 01:43Z run could not start the
+  scratch owner at all.
+- `V0-OUT-REFUSED-B` exited 0 with `accepted operator post DUPLICATE` where
+  the identical second submission on node A exited 1 with `refused operator
+  post REFUSED`. A duplicate that is accepted on one node and refused on the
+  other in one run is a D13 distinctness question on the native submission
+  path, not a harness gap.
+
+The 915 image is 210 commits behind `dev`; `principal`, `policy set
+path-identity`, STARTTLS and live administration exist there and need their
+own image before those rows can move.
