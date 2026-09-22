@@ -3788,11 +3788,16 @@ exit "$rc"
                          "was enrolled", nodes=(node.name,),
                          invocation="od -An -tx1 -N16 /dev/urandom")
             return
+        # `timeout` on the REMOTE side, not only the gate's: the image reads
+        # two lines of standard input, and an image that waited for a third
+        # would otherwise be killed locally while the remote process kept the
+        # credential lock and made the next attempt refuse for the wrong
+        # reason.  124 is not one of the three outcomes and says so.
         setpw = self.sh(
             "node {} principal set-password {}".format(node.upper, AUTH_USER),
-            self.cd("{} < {}".format(
+            self.cd("timeout 120 {} < {}".format(
                 self.native_operator(node, "principal", "set-password", AUTH_USER),
-                pair)), timeout=900, expect=None)
+                pair)), timeout=240, expect=None)
         self.from_step("V0-AUTH-PASSWORD", setpw, node=node.name,
                        limit="the password and its confirmation are read from a file on "
                              "the execution host (two lines, umask 077) because the "
@@ -3896,10 +3901,10 @@ exit "$rc"
                     group=shlex.quote(self.native_group), port=port, config=config)),
             timeout=900, expect=None)
         enrol = self.sh("node {} auth-required scratch credential".format(node.upper),
-                        self.cd("{} < {}".format(
+                        self.cd("timeout 120 {} < {}".format(
                             self.native_command(self.Raw(config), "principal",
                                                 "set-password", AUTH_USER), pair)),
-                        timeout=900, expect=None)
+                        timeout=240, expect=None)
         if init.rc != 0 or enrol.rc != EXIT_OK:
             self.blocked(("V0-AUTH-GATED",),
                          "the auth-required subject was not prepared: the image's store "
