@@ -102,7 +102,16 @@
 (defconst *sft-after-bad-prefix*
   (fn-store-retention-event-make
    :undertake 1 1 1 "obligation-two" "subject-two" "evidence-two" 1))
-(assert-event (fn-sf-candidatep *sft-after-bad-prefix* '(bad-prefix) 2))
+; `fn-sf-candidatep' is guarded by `fn-sf-record-valuesp' (books/store-files,
+; since 8209f27c), and `bad-prefix' is exactly not a record value, so this
+; countermodel to the unpremised theorem below lies outside the guard: it is
+; evaluated in the logic, where the `must-fail' lives, as acceptance-tests
+; does for its own out-of-guard witnesses.  Certified at the top level, the
+; guard check refuses the call before the value is seen (persvati
+; certify-20260922T075332Z-1349583).
+(assert-event
+ (with-guard-checking :none
+  (fn-sf-candidatep *sft-after-bad-prefix* '(bad-prefix) 2)))
 (assert-event (not (fn-sf-record-listp '(bad-prefix) 0 0 2)))
 (assert-event
  (not (fn-sf-record-listp '(bad-prefix
@@ -112,18 +121,28 @@
 
 ; Each premise is proof-relevant: ACL2 must reject the universal theorem when
 ; either the ordered-history premise or the candidate premise is omitted.
+; The refutation is the concrete pair above: a candidate over `(bad-prefix)'
+; whose appended history `fn-sf-record-listp' rejects.  These two forms only
+; say the statements are not accepted as written.  They are asked not to
+; induct: with `fn-store-event-p' withdrawn on export (books/store-events,
+; af06f90e) the prover no longer meets the contradiction on the way in and
+; inducts on the appended history without end -- persvati
+; certify-20260922T081242Z-1518252 killed the first one at 1800 s in
+; Subgoal *1.14.25.6/3.8.8..., where before it failed at once.
 (local
  (must-fail
   (defthm sft-candidate-append-without-ordered-history
     (implies (fn-sf-candidatep record records frontier)
              (fn-sf-record-listp (append records (list record))
-                                 0 0 frontier)))))
+                                 0 0 frontier))
+    :hints (("Goal" :do-not-induct t)))))
 (local
  (must-fail
   (defthm sft-candidate-append-without-candidate
     (implies (fn-sf-record-listp records 0 0 frontier)
              (fn-sf-record-listp (append records (list record))
-                                 0 0 frontier)))))
+                                 0 0 frontier))
+    :hints (("Goal" :do-not-induct t)))))
 
 ; Emission is reachable exactly at :completed, and it is the only thing that
 ; grows the success list.  Not before the phase, and not for another identity.
