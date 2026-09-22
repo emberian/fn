@@ -501,7 +501,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ag-less-is-less` | `books/acceptance-alloc.lisp` | 58 | definition-restated: the conclusion is the body of fn-ag-less; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-anchor-octets-of-lengthp-forward` | `books/anchor.lisp` | 130 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp |
 | `fn-auth-consistent-forward` | `books/nntp-auth.lisp` | 409 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp |
-| `fn-auth-token-argp-forward` | `books/nntp-auth.lisp` | 711 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp |
+| `fn-auth-token-argp-forward` | `books/nntp-auth.lisp` | 718 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp |
 | `fn-bp-effect-for-pending-attempt-unfolds` | `books/bp-workflow-invariants.lisp` | 884 | branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value |
 | `fn-bpaj-dispatch-intent-absent-retries` | `books/bp-native-app.lisp` | 445 | branch-of-definition: the hypothesis is a branch test of fn-bpaj-dispatch and the conclusion is that branch's value |
 | `fn-bpb-decode-refuses-overlong-input` | `books/bp-bundle-invariants.lisp` | 530 | branch-of-definition: the hypothesis is a branch test of fn-bpb-decode and the conclusion is that branch's value |
