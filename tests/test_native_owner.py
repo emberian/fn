@@ -1,7 +1,9 @@
 """Developer-image owner diagnostic: writable NNTP POST with no Python peer."""
 import os
 from pathlib import Path
+import re
 import select
+import shutil
 import socket
 import struct
 import subprocess
@@ -67,6 +69,33 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         self.assertEqual(head(clauses[3][0]), "or")
         for clause in clauses:
             self.assertEqual([str(symbol) for symbol in clause[1]], ["e"])
+
+    def test_the_served_listener_passes_a_documented_accept_queue(self):
+        # `ss -ltn` read `LISTEN 0 1` against the 915 node: the owner took
+        # fnn-listen's default backlog, which is written for the one-client
+        # diagnostic reader.  The accept thread hands each connection to a
+        # worker, so a queue of one drops the client that arrives while it is
+        # doing that.  The connection LIMIT is fn-own-open's and stays there.
+        source = (ROOT / "host/native/owner.lisp").read_text()
+        self.assertIn("(defconstant +fnn-owner-listen-backlog+", source)
+        start = source.index("(defun fnn-owner-run ")
+        self.assertIn(":backlog +fnn-owner-listen-backlog+", source[start:])
+
+    def test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step(self):
+        # tests/native_owner_chunk_loop_raw.lisp evaluates the deployed
+        # fnn-owner-serve-client, fnn-owner-handle-chunk and
+        # fnn-owner-advance-clock against recording stubs, so the two 915
+        # defects have a check that needs no image.
+        sbcl = shutil.which("sbcl")
+        if sbcl is None:
+            raise unittest.SkipTest("sbcl is not on PATH")
+        result = subprocess.run(
+            [sbcl, "--noinform", "--script",
+             "tests/native_owner_chunk_loop_raw.lisp"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            timeout=180, check=False)
+        self.assertEqual(result.returncode, 0,
+                         result.stdout.decode("utf-8", "replace"))
 
 
 class NativeOwnerTests(unittest.TestCase):
@@ -442,6 +471,140 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertTrue(inspected.stdout.startswith(
             b"Path: fn.example.invalid!not-for-mail\r\n"), inspected.stdout[:80])
         self.assertTrue(inspected.stdout.endswith(article), inspected.stdout[-80:])
+
+    def test_article_over_the_body_limit_is_refused_and_the_owner_survives(self):
+        # The 915 node's first defect.  An article whose CRLF-canonical size
+        # passes fn-own-body-limit (books/owner.lisp; *fn-store-max-payload*
+        # is 32768) closes the wire mid-article -- books/wire.lisp
+        # fn-wire-after-line answers (fn-wire-close ... :body-overlimit) -- so
+        # the served step consumes a PREFIX of the socket read and leaves the
+        # rest.  The host used to fault on that suffix and stop the process,
+        # taking the listener with it.  The answer is the model's and was read
+        # out of the certified books/served-tls-prefix on 2026-09-22: over one
+        # chunk carrying POST and an article past the limit,
+        # fn-served-step-counted consumes 61 of 130 octets and emits
+        # (:reply :begin-article :reply :close) whose second reply is the line
+        # below (books/nntp-post.lisp fn-nntp-post-step, on the :reject event
+        # fn-wire-close raised).  That run is in
+        # planning/evidence/owner-defects-2026-09-22.md.
+        process, port = self.start_owner(once=False)
+        oversize = self.article(b"<native-owner-oversize@example.invalid>",
+                                b"z" * 70 + b"\r\n")
+        oversize += b"y" * 70 + b"\r\n"
+        while len(oversize) < 40960:
+            oversize += b"y" * 70 + b"\r\n"
+        self.assertGreater(len(oversize), 32768)
+        try:
+            client = socket.create_connection(("127.0.0.1", port), timeout=30)
+            self.addCleanup(client.close)
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            stream.write(b"POST\r\n")
+            self.assertTrue(stream.readline().startswith(b"340 "))
+            try:
+                stream.write(oversize + b".\r\n")
+            except OSError:
+                # The node refused and closed while the body was still going
+                # out.  That is the refusal arriving early, not a failure.
+                pass
+            try:
+                answer = stream.readline()
+            except OSError:
+                answer = b""
+            self.assertEqual(
+                answer, b"441 posting failed; the article was not received\r\n",
+                "an oversize article got {!r}".format(answer))
+            client.close()
+
+            # The listener is still there and still serves, which is the whole
+            # point: one long article is not a reason to stop the node.
+            with socket.create_connection(("127.0.0.1", port), timeout=30) as later:
+                after = later.makefile("rwb", buffering=0)
+                self.assertTrue(after.readline().startswith(b"200 "))
+                after.write(b"QUIT\r\n")
+                self.assertTrue(after.readline().startswith(b"205 "))
+            self.assertIsNone(process.poll(),
+                              "an oversize article stopped the owner")
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
+
+        # Nothing durable came of a refused article.
+        missing = subprocess.run(
+            [str(IMAGE), "--fn", "store", str(self.store), "inspect",
+             "<native-owner-oversize@example.invalid>"], cwd=ROOT,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=environment(), timeout=180, check=False)
+        self.assertNotEqual(missing.returncode, 0)
+
+    def date_reading(self, port):
+        with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            stream.write(b"DATE\r\n")
+            line = stream.readline()
+            stream.write(b"QUIT\r\n")
+            stream.readline()
+        self.assertTrue(line.startswith(b"111 "), line)
+        return line.split()[1]
+
+    def post_article(self, port, message_id):
+        with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            stream.write(b"POST\r\n")
+            self.assertTrue(stream.readline().startswith(b"340 "))
+            stream.write(self.article(message_id) + b".\r\n")
+            self.assertTrue(stream.readline().startswith(b"240 "))
+            stream.write(b"QUIT\r\n")
+            stream.readline()
+
+    def injection_date(self, message_id):
+        inspected = subprocess.run(
+            [str(IMAGE), "--fn", "store", str(self.store), "inspect",
+             message_id.decode("ascii")], cwd=ROOT, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env=environment(), timeout=180, check=False)
+        self.assertEqual(inspected.returncode, 0, inspected.stderr.decode())
+        found = re.search(br"^Injection-Date: (.*)\r$", inspected.stdout,
+                          re.MULTILINE)
+        self.assertIsNotNone(found, inspected.stdout[:400])
+        return found.group(1)
+
+    def test_each_submission_and_each_connection_take_a_fresh_reading(self):
+        # The 915 node's second defect.  Every article of a run carried one
+        # Date and one Injection-Date and DATE answered one value for the life
+        # of the process, because the native host took a clock reading at
+        # startup and never again.  books/owner.lisp fn-own-open pins a
+        # reading as the connection's READER environment and fn-own-read takes
+        # the owner's CURRENT reading per read, so each submission is injected
+        # at its own time (RFC 5537 section 3.4): supplying them is the host's
+        # job, and tools/run_owner.py already did it at both points.
+        process, port = self.start_owner(once=False)
+        try:
+            first = self.date_reading(port)
+            self.post_article(port, b"<native-owner-clock-one@example.invalid>")
+            # Past the one-second resolution of the rendered value, so a fresh
+            # reading cannot be mistaken for the pinned one.
+            time.sleep(1.2)
+            second = self.date_reading(port)
+            self.post_article(port, b"<native-owner-clock-two@example.invalid>")
+            self.assertLess(first, second,
+                            "DATE answered {!r} twice".format(first))
+            self.assertIsNone(process.poll(), "the owner stopped mid-run")
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
+
+        one = self.injection_date(b"<native-owner-clock-one@example.invalid>")
+        two = self.injection_date(b"<native-owner-clock-two@example.invalid>")
+        self.assertNotEqual(one, two,
+                            "both articles were injected at {!r}".format(one))
 
 
 if __name__ == "__main__":
