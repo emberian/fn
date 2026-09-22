@@ -20,8 +20,22 @@ Every switch names one thing about a node a client has to survive:
     fail_article        one number answers 403 instead of the article
     echo_password       the login refusal quotes the password back
     refuse_post         the article is taken and then refused, 441
+    refusal             which 441 refusal line that is
     uncertain_post      the article is taken and the outcome is uncertain, 441
     drop_after_article  the article is taken and the socket closes: no reply
+    drop_before_greeting  the connection is accepted and closed, unspoken
+    host                where it listens, so `::1` can be reached as `::1`
+
+The last two arrived from the frozen 915d5c72 node on 2026-09-22
+(planning/evidence/fn-client-915-2026-09-22.md).  `drop_before_greeting` is
+what an `ssh -L` forwarder does once the owner behind it has stopped: the
+connection is accepted on this side and closed with nothing said, which is
+not the `ECONNREFUSED` the earlier "not listening" case produced.  `host` is
+there because `[listener] host` admits `::1` (docs/operator.md) and no test
+had ever named a node that way.  That node also answered `101 capability
+list follows`, `205 closing connection` and `423 no article with that
+number` where this fake says something shorter; the wording is left alone so
+nothing here can be mistaken for the node's own voice.
 """
 import socket
 import ssl
@@ -35,7 +49,8 @@ class FakeNode(threading.Thread):
     def __init__(self, cert, key, protected_only=True, password="right", accept_post=True,
                  offer_starttls=True, require_auth=True, refuse_post=False,
                  uncertain_post=False, drop_after_article=False, fail_article=None,
-                 echo_password=False, groups=("fn.agents",)):
+                 echo_password=False, groups=("fn.agents",), drop_before_greeting=False,
+                 host="127.0.0.1", refusal="441 posting failed; the article was refused"):
         super().__init__(daemon=True)
         self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.context.load_cert_chain(cert, key)
@@ -45,15 +60,19 @@ class FakeNode(threading.Thread):
         self.offer_starttls = offer_starttls
         self.require_auth = require_auth
         self.refuse_post = refuse_post
+        self.refusal = refusal
         self.uncertain_post = uncertain_post
         self.drop_after_article = drop_after_article
+        self.drop_before_greeting = drop_before_greeting
         self.fail_article = fail_article
         self.echo_password = echo_password
         self.articles = {}
         self.numbers = {name: {} for name in groups}
-        self.listener = socket.socket()
+        self.host = host
+        family = socket.AF_INET6 if ":" in host else socket.AF_INET
+        self.listener = socket.socket(family)
         self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.listener.bind(("127.0.0.1", 0))
+        self.listener.bind((host, 0))
         self.listener.listen(4)
         self.port = self.listener.getsockname()[1]
         self.stopping = False
@@ -158,6 +177,12 @@ class FakeNode(threading.Thread):
                     return lines
                 lines.append(one[1:] if one.startswith("..") else one)
 
+        if self.drop_before_greeting:
+            # Accepted and then closed with nothing said.  A forwarder in
+            # front of a stopped owner does exactly this, and it is not the
+            # refused connection a stopped listener gives.
+            conn.close()
+            return
         send("200 fake node ready")
         try:
             while True:
@@ -271,7 +296,7 @@ class FakeNode(threading.Thread):
                         # client cannot tell this from a node that stored it.
                         return
                     if self.refuse_post:
-                        send("441 posting failed; the article was refused")
+                        send(self.refusal)
                         continue
                     if self.uncertain_post:
                         send("441 posting failed; the outcome is uncertain, do not repost")

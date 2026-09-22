@@ -76,7 +76,11 @@ class Probe:
         names = [phase + ":" + n for n in self.PROTECTED]
         try:
             session = Session(self.args.host, self.args.port, self.args.timeout)
-        except OSError as exc:
+        except (OSError, Disconnected) as exc:
+            # The greeting is read inside the constructor, so a node that
+            # accepts and then closes -- a stopped owner behind an `ssh -L`
+            # forwarder -- arrives here as `Disconnected`.  Undecided, not a
+            # traceback: this probe's exit is a gate.
             self.undecided_after(names, "connect: %s" % exc)
             return None
         try:
