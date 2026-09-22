@@ -464,7 +464,14 @@
   (declare (xargs :guard t))
   (let* ((ps (fn-auth-session-base as))
          (cfg (fn-peer-session-cfg ps))
-         (hex (fn-digest-hex principal))
+         ; `fn-digest-hex' is guarded by `fn-cbor-octet-listp' and this
+         ; function is `:guard t', so the check is here: a principal that is
+         ; not octets names no peer and promotes nothing, which is the same
+         ; refusal an unmatched principal gets.  The host passes the digest
+         ; `fn-auth-principal' returned, so the branch is not reachable in
+         ; the composed machine.
+         (hex (and (fn-cbor-octet-listp principal)
+                   (fn-digest-hex principal)))
          (rows (and (fn-cfgp cfg) (fn-cfg-peers (fn-cfg-value cfg))))
          (count (fn-auth-principal-peer-count hex rows))
          (peer (and (equal count 1) (fn-auth-principal-peer-name hex rows))))
