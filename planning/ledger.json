@@ -407,7 +407,7 @@
     "books": 402,
     "books_in_root_closure": 401,
     "roots": 400,
-    "theorems": 6589,
+    "theorems": 6592,
     "functions": 5183,
     "assert_events": 7054,
     "must_fails": 187,
@@ -419,10 +419,10 @@
       "default-unguarded": 605
     },
     "suspect_theorems": 61,
-    "export_hygiene_warnings": 85,
+    "export_hygiene_warnings": 86,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 10,
-    "include_hygiene_warnings": 155,
+    "include_hygiene_warnings": 150,
     "host_names_warnings": 636,
     "hand_written_record_warnings": 18
   },
@@ -2767,7 +2767,7 @@
       "book": "books/config-records.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 12,
+      "theorems": 15,
       "functions": 15,
       "guards": {
         "verified": 2,
@@ -11744,13 +11744,19 @@
       {
         "theorem": "fn-jrec-article-sequence-agrees",
         "book": "books/config-records.lisp",
-        "line": 84,
+        "line": 97,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-jrec-article-store-event-sequence-agrees",
+        "book": "books/config-records.lisp",
+        "line": 102,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-jrec-config-sequence-agrees",
         "book": "books/config-records.lisp",
-        "line": 87,
+        "line": 110,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -12653,13 +12659,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/checkpoint-compaction.lisp",
-        "line": 6,
-        "include": "store-events",
-        "included": "books/store-events.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/checkpoint-publish.lisp",
         "line": 30,
         "include": "byte-store-txn-name",
@@ -12811,13 +12810,6 @@
         "line": 29,
         "include": "bp-workflow-binding-invariants",
         "included": "books/bp-workflow-binding-invariants.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/replay.lisp",
-        "line": 18,
-        "include": "store-events",
-        "included": "books/store-events.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13353,31 +13345,10 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/store-events-tests.lisp",
-        "line": 3,
-        "include": "../../books/store-events",
-        "included": "books/store-events.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "tests/acl2/store-node-index-tests.lisp",
         "line": 25,
         "include": "crypto-seam-tests",
         "included": "tests/acl2/crypto-seam-tests.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/stx-accept-records-tests.lisp",
-        "line": 3,
-        "include": "../../books/store-events",
-        "included": "books/store-events.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/stx-keyring-records-tests.lisp",
-        "line": 3,
-        "include": "../../books/store-events",
-        "included": "books/store-events.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -18011,7 +17982,7 @@
       },
       {
         "book": "books/replay.lisp",
-        "line": 110,
+        "line": 114,
         "shape": "fn-replay-fault-shapep",
         "shapes": 2,
         "accessors": 4,

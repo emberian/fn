@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 402 |
 | Certification roots in the Makefile | 400 |
 | Books inside the root closure | 401 |
-| `defthm` and `defthmd` events | 6589 |
+| `defthm` and `defthmd` events | 6592 |
 | `defun` events | 5183 |
 | Functions with verified guards | 1711 |
 | Functions declared `:verify-guards nil` and never verified | 279 |
@@ -23,10 +23,10 @@ stale. Counts describe artifacts, not coverage; see
 | `must-fail` checks | 187 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 61 |
-| Export-hygiene warnings | 85 |
+| Export-hygiene warnings | 86 |
 | Enabled-projection warnings | 27 |
 | Teeth-form warnings | 10 |
-| Include-hygiene warnings | 155 |
+| Include-hygiene warnings | 150 |
 | Host-names warnings | 636 |
 | Hand-written-record warnings | 18 |
 
@@ -173,7 +173,7 @@ that `make certify` requests.
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 0 |
 | `books/config-invariants.lisp` | root | 34 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/config-records.lisp` | root | 12 | 15 | 2/0/13/0 | 0 | 0 | 0 |
+| `books/config-records.lisp` | root | 15 | 15 | 2/0/13/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 42 | 133 | 1/0/132/0 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |

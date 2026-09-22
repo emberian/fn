@@ -848,26 +848,31 @@
             (true-listp records))))
 
 ; The record fields the kernel arithmetic touches, typed once so the guard
-; proofs below never open fn-store-event-p.
+; proofs below never open fn-store-event-p -- and neither do these four.
+; books/replay states the same facts over the five event kinds one kind at a
+; time and exports them; proving them here instead means opening the
+; recognizer, which the splitter turns into 28572 and then 15018 subgoals and
+; the book misses its per-book limit (measured 2026-09-22, hbox
+; certify-20260922T034701Z-2641627).
 (local
  (defthm fn-sfg-record-is-a-true-list
    (implies (fn-store-event-p record) (true-listp record))
-   :hints (("Goal" :in-theory (enable fn-store-event-p)))))
+   :hints (("Goal" :in-theory (disable fn-store-event-p)))))
 (local
  (defthm fn-sfg-record-sequence-is-natural
    (implies (fn-store-event-p record) (natp (fn-store-event-sequence record)))
    :rule-classes (:rewrite :forward-chaining :type-prescription)
-   :hints (("Goal" :in-theory (enable fn-store-event-p)))))
+   :hints (("Goal" :in-theory (disable fn-store-event-p)))))
 (local
  (defthm fn-sfg-record-txid-is-natural
    (implies (fn-store-event-p record) (natp (fn-store-event-txid record)))
    :rule-classes (:rewrite :forward-chaining :type-prescription)
-   :hints (("Goal" :in-theory (enable fn-store-event-p)))))
+   :hints (("Goal" :in-theory (disable fn-store-event-p)))))
 (local
  (defthm fn-sfg-record-generation-is-natural
    (implies (fn-store-event-p record) (natp (fn-store-event-generation record)))
    :rule-classes (:rewrite :forward-chaining :type-prescription)
-   :hints (("Goal" :in-theory (enable fn-store-event-p)))))
+   :hints (("Goal" :in-theory (disable fn-store-event-p)))))
 (local
  (defthm fn-sfg-next-lower-is-natural
    (implies (and (fn-sf-record-valuesp records) (natp lower))
