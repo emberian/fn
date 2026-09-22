@@ -101,6 +101,31 @@
            (fn-stmt-item-listp (cdr xs)))
     (null xs)))
 
+; The two shape facts an indexing consumer of an item sequence needs, the
+; twins of `fn-stmt-id-listp-implies-true-listp' below.  A successful bounded
+; decode delivers `fn-stmt-item-listp' of its value
+; (fn-stmt-decode-items-value-is-item-list, books/statement-invariants); from
+; that a caller's `nth' guard needs the sequence to be proper and its `cdr'
+; guard needs an index to land on an item pair or off the end.  With a literal
+; fuel the decoder suggests no induction, so these are what decide those
+; guards -- measured 2026-09-22 on `fn-hsig-keyring-snapshot-value'
+; (books/hybrid-store), whose extraction runs before its own shape checks.
+; Both are withdrawn immediately: a `true-listp' rewrite rule that backchains
+; into a recognizer joins the other recognizer-implies-true-listp rules of the
+; books above into a rewriter loop (call depth 1000 in
+; books/statement-invariants, same date), so a caller names them in its hint.
+(defthm fn-stmt-item-listp-implies-true-listp
+  (implies (fn-stmt-item-listp xs) (true-listp xs)))
+
+(defthm fn-stmt-item-listp-nth-is-item-or-nil
+  (implies (fn-stmt-item-listp xs)
+           (or (consp (nth n xs)) (equal (nth n xs) nil)))
+  :rule-classes ((:type-prescription :typed-term (nth n xs)))
+  :hints (("Goal" :in-theory (enable fn-cbor-valuep fn-cbor-valuep-bounded))))
+
+(in-theory (disable fn-stmt-item-listp-implies-true-listp
+                    fn-stmt-item-listp-nth-is-item-or-nil))
+
 (defun fn-stmt-encode-items (items)
   (declare (xargs :guard (fn-stmt-item-listp items)))
   (if (consp items)

@@ -1102,12 +1102,49 @@
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp))))))
 
+; The reader case of `fn-peer-sessionp' is a null peer with a null node and a
+; null configuration, which is what `fn-peer-open-session' builds (line 539);
+; a null peer beside an arbitrary node and configuration is not a session, so
+; the free `node' and `cfg' this lemma carried made it false rather than hard.
+; The peer case, where the node and configuration are checked, is the sibling
+; below.
 (local (defthm fn-peer-sessionp-of-make-session-reader
   (implies (and (fn-post-sessionp base)
                 (fn-peer-transferp transfer)
                 (natp inflight))
            (fn-peer-sessionp
+            (fn-peer-make-session base nil transfer inflight nil nil)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+
+; And the configured reader: a null peer beside a checked node and
+; configuration is the recognizer's second reader form.
+(local (defthm fn-peer-sessionp-of-make-session-reader-configured
+  (implies (and (fn-post-sessionp base)
+                (fn-peer-transferp transfer)
+                (natp inflight)
+                (fn-node-statep node)
+                (fn-cfgp cfg))
+           (fn-peer-sessionp
             (fn-peer-make-session base nil transfer inflight node cfg)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+
+; The other reader shape a step rebuilds: the node and configuration of a
+; reader session it already has, whichever of the two reader forms that
+; session is in.
+(local (defthm fn-peer-sessionp-of-make-session-reader-from-session
+  (implies (and (fn-post-sessionp base)
+                (fn-peer-transferp transfer)
+                (natp inflight)
+                (fn-peer-sessionp ps)
+                (not (fn-peer-session-peer ps)))
+           (fn-peer-sessionp
+            (fn-peer-make-session base nil transfer inflight
+                                  (fn-peer-session-node ps)
+                                  (fn-peer-session-cfg ps))))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp)))))))
@@ -1260,15 +1297,30 @@
          (fn-peer-session-cfg ps))
   :hints (("Goal" :in-theory (enable (:d fn-peer-with-node)))))
 
+; The configuration hypothesis is the host's own branch condition, not a
+; negated branch test inside `fn-peer-with-node', which has no branch:
+; `fn-own-conn-live-session' (books/owner) refreshes a session's node only
+; under `(if (fn-peer-session-cfg ps) ...)', because an ordinary reader
+; connection is returned unchanged.  Without it the theorem is false:
+; `fn-peer-with-node' keeps the configuration, so a reader session whose
+; configuration is NIL becomes a checked node beside a null configuration and
+; satisfies neither reader shape of `fn-peer-sessionp'.  The conjecture
+; reduced to (NOT (FN-NODE-STATEP NODE)) under exactly those hypotheses
+; (hbox certify-20260922T060312Z-2712514, 2026-09-22).  Under `fn-peer-sessionp'
+; a non-NIL configuration is `fn-cfgp' and the node is `fn-node-statep' in
+; both remaining shapes, which is what makes the result a session.
 (defthm fn-peer-sessionp-of-fn-peer-with-node
-  (implies (and (fn-peer-sessionp ps) (fn-node-statep node))
+  (implies (and (fn-peer-sessionp ps) (fn-peer-session-cfg ps)
+                (fn-node-statep node))
            (fn-peer-sessionp (fn-peer-with-node ps node)))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp) (:d fn-peer-with-node))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp))))))
 
 (defthm fn-peer-session-consistentp-of-fn-peer-with-node
-  (implies (and (fn-peer-session-consistentp ps archive) (fn-node-statep node))
+  (implies (and (fn-peer-session-consistentp ps archive)
+                (fn-peer-session-cfg ps)
+                (fn-node-statep node))
            (fn-peer-session-consistentp (fn-peer-with-node ps node) archive))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-session-consistentp))
                                   ((:d fn-peer-sessionp) (:d fn-peer-with-node)

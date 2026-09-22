@@ -21,12 +21,17 @@
 ; loop's guard proof needs only that a record is a true list.  Interim
 ; local fact applied by the store deputy so its closure certifies; the
 ; convergence lane owns the final form.
-(local
- (defthm fn-replay-record-is-a-true-list
+; Exported: with `fn-store-event-p' withdrawn on export (books/store-events)
+; these are the facts a book above needs about an event, and proving them
+; there means opening the recognizer again -- which is a 15018-way splitter
+; case in books/store-files (measured 2026-09-22).
+(defthm fn-replay-record-is-a-true-list
    (implies (fn-store-event-p record) (true-listp record))
    :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory (enable fn-record-codec-vocabulary
-                                      fn-record-record-vocabulary)))))
+   :hints (("Goal" :in-theory (enable fn-store-event-p
+                                      fn-store-retention-event-p
+                                      fn-record-codec-vocabulary
+                                      fn-record-record-vocabulary))))
 (local
  (defthm fn-replay-article-counters-are-natural
    (implies (fn-record-p record)
@@ -64,8 +69,7 @@
                  (natp (fn-stxa-txid record))
                  (natp (fn-stxa-generation record))))
    :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
-(local
- (defthm fn-replay-record-counters-are-natural
+(defthm fn-replay-record-counters-are-natural
    (implies (fn-store-event-p record)
             (and (natp (fn-store-event-sequence record))
                  (natp (fn-store-event-txid record))
@@ -96,7 +100,7 @@
                               fn-replay-retention-counters-are-natural
                               fn-replay-stxe-counters-are-natural
                               fn-replay-stxk-counters-are-natural
-                              fn-replay-stxa-counters-are-natural))))))
+                              fn-replay-stxa-counters-are-natural)))))
 
 ; Convergence (board, codecs CHANGE on records): `fn-store-event-p' is opaque and exports no forward shape rule; the loop guard needs true-listp from it.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
@@ -318,9 +322,19 @@
 ; validated against its historical snapshot but is deliberately removed from
 ; the accepted-verdict projection; only a bound kind-4 composite contributes
 ; an accepted article verdict.
+; `nfix' on the counter, the same totalization `fn-sn-advance-identity-next'
+; (books/store-node) got in 7740f605, the commit that also asked for this
+; function's guards.  The one caller below reaches this branch for an event
+; that is none of the three identity records, so the counter it advances is
+; not decided by a record recognizer here and `:guard t' leaves
+; (acl2-numberp (fn-stxk-context-next ctx)) with nothing to prove it: the
+; guard conjecture suggests no induction and fails (hbox
+; run-20260922T031236Z-c1fb).  Every reachable context is built by
+; `fn-stxk-initial-context' from 0 and advanced by this function, so `nfix'
+; is the identity on the composed machine.
 (defun fn-replay-identity-advance (ctx)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
+  (fn-stxk-context :ok (1+ (nfix (fn-stxk-context-next ctx)))
                    (fn-stxk-context-snapshots ctx)
                    (fn-stxk-context-verdicts ctx)
                    (fn-stxk-context-current-generation ctx) nil))
@@ -498,6 +512,23 @@
                               (fn-record-txid article)
                               (fn-record-generation article)
                               :durable)))))))))
+
+; From here down the event recognizers and the composite article decoder are
+; closed.  `fn-record-codec-vocabulary' is enabled for this book (above), so an
+; open `fn-record-p', `fn-stxe-p', `fn-stxk-p', `fn-stxa-p' or
+; `fn-store-retention-event-p' lets a goal that merely dispatches on the event
+; kind unfold the whole record and statement codec underneath it: measured
+; 2026-09-22, `fn-replay-apply-record-non-nil-is-node-state' ran 600 s without
+; leaving Goal\'\' and took the book past its 1800 s and 2400 s limits on hbox
+; (run-20260922T031236Z-c1fb, run certify-20260922T034701Z-2641627); with the
+; recognizers closed it proves in 0.32 s over 90 subgoals.  The proofs below
+; dispatch on these terms, they do not need to see inside them --
+; `fn-replay-record-counters-are-natural' above already closes exactly this set
+; for the same reason.
+(local (in-theory (disable fn-store-event-p fn-store-event-sequence
+                           fn-record-p fn-stxe-p fn-stxk-p fn-stxa-p
+                           fn-store-retention-event-p
+                           fn-replay-composite-record)))
 
 ; A non-NIL one-record result is the existing node transaction machine's
 ; durable branch, hence remains a valid node.  NIL is intentionally a refusal,

@@ -43,7 +43,13 @@
    :hints (("Goal" :cases ((< n 24) (< n 256) (< n 65536))
             :use ((:instance fn-frame-u32-bytes-len (n n))
                   (:instance fn-frame-u16-bytes-len (n n)))
-            :in-theory (enable fn-cbor-encode fn-cbor-valuep
+            ; `fn-cbor-encode-bounded' and `fn-cbor-valuep-bounded' too: the
+            ; encoder became the bounded one and its definition is withdrawn
+            ; on export (books/cbor), so without them this goal stops at
+            ; (fn-cbor-octet-listp (fn-cbor-encode-bounded (cons :uint n)
+            ; 65535)) with no rule to move it.
+            :in-theory (enable fn-cbor-encode fn-cbor-encode-bounded
+                               fn-cbor-valuep fn-cbor-valuep-bounded
                                fn-cbor-encode-argument
                                fn-cbor-octet-listp fn-cbor-octetp)))))
 
