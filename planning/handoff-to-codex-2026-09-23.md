@@ -35,6 +35,11 @@ disagree, those win and this file is wrong.
 
 ## The loop, in one paragraph
 
+Read "Certification cost, learned 2026-09-23" at the end of
+[how we work](how-we-work.md) before your first farm run: report when the
+run is submitted, do not merge `dev` mid-flight, and run a provisional wave
+only when a closure failed behind a cascade.
+
 A package is DONE or NOT; there are no partial rows. State the property
 first as theorem statements over the function the host calls (say the host
 line), with one reachable witness and one `must-fail` per hypothesis in the
