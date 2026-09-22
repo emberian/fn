@@ -1,0 +1,279 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "books/acceptance-alloc": 0,
+    "books/cbor": 0,
+    "books/defrecord": 0,
+    "books/provenance": 0,
+    "books/retention": 0,
+    "books/retention-invariants": 0,
+    "tests/acl2/retention-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-gates/t11-capacity/build/acl2/certify-20260922T164132Z-1758181",
+  "book_failures": {},
+  "book_results": {
+    "books/acceptance-alloc": "passed",
+    "books/cbor": "passed",
+    "books/defrecord": "passed",
+    "books/provenance": "passed",
+    "books/retention": "passed",
+    "books/retention-invariants": "passed",
+    "tests/acl2/retention-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/acceptance-alloc": 0.075,
+    "books/cbor": 0.14,
+    "books/defrecord": 0.097,
+    "books/provenance": 1.942,
+    "books/retention": 0.275,
+    "books/retention-invariants": 0.174,
+    "tests/acl2/retention-tests": 0.137
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 1800,
+  "cert_cache": {
+    "already_cached": 7,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/acceptance-alloc",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/defrecord",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/cbor",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/provenance",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/retention",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/retention-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/retention-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 7,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/acceptance-alloc": "8a54c6fd747328a81b5a9f51b98f2e4b83d01716cd463758d0ceae47913c157e",
+    "books/cbor": "43e01d7501a29db7aedee66a12af900f672e4b2a4658f6071c85197f8bbfba4f",
+    "books/defrecord": "71b0977dda2883e9df33e8108b008cdefc298d208ac3c8498c196e23a2f3ec85",
+    "books/provenance": "ff9406bedf30f241c435839846908f239af80da5fe7c9060b77dc8c2aaa3d97b",
+    "books/retention": "10f56b5f7fb003caf5bba235e4a298ee4ea003960d4532643206164c94b4c20c",
+    "books/retention-invariants": "089361ea6bc6626278b82e5d8be48831ae3a48d3cbee61369040f66b26dd221e",
+    "tests/acl2/retention-tests": "d4c35399bf9f19e9e8499cbc8d0b7625ea7b1e4bba23e0e7188e2d57fa042790"
+  },
+  "certify_wall_seconds": 2.694,
+  "closure": true,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "driver_digests_sha256": {
+    "books/acceptance-alloc": "bef6eb67ab439aa4d1dc6dec632eecd35de3693e124f127501ea0c512b2e6c81",
+    "books/cbor": "eea93a92d16335c969d3a381af1237c6a66d8f153c81aaf0acb2d192438c05ba",
+    "books/defrecord": "c6b9278b479d0f426bc21236eaaca3236e9122a1b75629f869f345041382f69f",
+    "books/provenance": "410a40d4e3de6a2b99b6073a685d0d17c8d565eccbc2925d69edd4e675b0536c",
+    "books/retention": "2f39bf8cbd836e4e5afbbcdab7df7d119274af9100df678a73aa6d1350432ceb",
+    "books/retention-invariants": "704266a13b4928063c3bf2e8038dc93b0fbf768f8b3f797e325d673d4e66a96c",
+    "tests/acl2/retention-tests": "08c304a50809f67e99063b99c9218e57f23fa7d26122c2c1c71c83452cf496b2"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 e768a5583691",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 277b11e7429f",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 e2aaf8c35567",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 3aa4f6abf983",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 1d0427fa8194"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-22T16:41:35+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "jobs": 6,
+  "jobs_effective": 6,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 e768a5583691",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 277b11e7429f",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 e2aaf8c35567",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 3aa4f6abf983",
+    "FN_CERTIFY_SUCCESS 63c1c0ee666dfdce1667df87b92e9df0 1d0427fa8194"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "662e8ef911ffe2cef222a48b8a279a01f86a4557dcf1fc00bc8002c8d8dfacb4",
+  "requested_before_filter": [
+    "books/retention",
+    "books/retention-invariants",
+    "tests/acl2/retention-tests"
+  ],
+  "requested_books": [
+    "books/cbor",
+    "books/defrecord",
+    "books/acceptance-alloc",
+    "books/provenance",
+    "books/retention",
+    "books/retention-invariants",
+    "tests/acl2/retention-tests"
+  ],
+  "run_id": "certify-20260922T164132Z-1758181",
+  "runner_sha256": "9b29496a70c660b0457044b528b437ee3f786aa99576bdc67d5424ae7cc6edac",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/acceptance-alloc": 0.0,
+    "books/cbor": 0.0,
+    "books/defrecord": 0.001,
+    "books/provenance": 0.0,
+    "books/retention": 0.0,
+    "books/retention-invariants": 0.0,
+    "tests/acl2/retention-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/retention-invariants.lisp": "84edac122a1526bc2a8a53fe53c4d55afae3eb4a93eb7866066185ba779de51e",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "tests/acl2/retention-tests.lisp": "41af20131d327f7df75c5491453702fa1b70adb28506bac6b66d7dd250caf6ae"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/retention-invariants.lisp": "84edac122a1526bc2a8a53fe53c4d55afae3eb4a93eb7866066185ba779de51e",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "tests/acl2/retention-tests.lisp": "41af20131d327f7df75c5491453702fa1b70adb28506bac6b66d7dd250caf6ae"
+  },
+  "start_order": [
+    "books/cbor",
+    "books/acceptance-alloc",
+    "books/defrecord",
+    "books/provenance",
+    "books/retention",
+    "books/retention-invariants",
+    "tests/acl2/retention-tests"
+  ],
+  "started_utc": "2026-09-22T16:41:32+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/home/ember/fn-gates/t11-capacity"
+}
