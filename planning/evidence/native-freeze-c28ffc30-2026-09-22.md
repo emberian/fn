@@ -2,9 +2,8 @@
 
 This record preserves what the FREEZE lane established about the native image
 closure of `dev` on 2026-09-22.  **No image was built.**  The closure is not
-certified: 130 of its 164 books certify at the frozen origin, one book in it
-is still red, and the rest sit above it or were still being certified when
-this was written.  Nothing
+certified: 130 of its 164 books certify at the frozen origin and the other 34
+are blocked behind two red books.  Nothing
 here is a server, proof or flight-readiness claim.
 
 ## Sources and toolchain
@@ -36,6 +35,8 @@ here is a server, proof or flight-readiness claim.
 | targeted 2 | `certify-20260922T050741Z-2682176` | 51 | 49 | 2404 |
 | targeted 3 | `certify-20260922T054916Z-2704241` | 54 | 45 | 313 |
 | targeted 4 | `certify-20260922T060312Z-2712514` | 51 | 41 | 2434 |
+| targeted 5 | `certify-20260922T064054Z-2733885` | 41 | 35 | 2428 |
+| targeted 6 | `certify-20260922T074616Z-2768738` | 34 | 34 | 15 |
 
 Each targeted run recertified the failures of the one before it in the same
 tree, so the dependencies already certified there were not rebuilt.  The
@@ -134,6 +135,13 @@ What remains is the next conjunct of the identity branch,
 `fn-stxk-p` event onto them, so the fact is true and small, but stating it
 needs `fn-stxk-context-snapshots` held closed so the rule has a term to
 match.  This lane did not get there.
+
+### `books/nntp-auth`
+
+`FN-AUTH-BIND-PRINCIPAL-PEER` was `:guard t` and called `fn-digest-hex`,
+guarded by `fn-cbor-octet-listp`; that one is repaired in `a8954441`.  The
+next form, `FN-AUTH-CLEAR-PRINCIPAL-PEER`, fails the same way on
+`fn-cfg-peer-auth` of `fn-cfg-peer-find` over the session's configuration.
 
 ### `tests/acl2/peer-inbound-tests` (outside the image closure)
 
