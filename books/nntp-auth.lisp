@@ -459,6 +459,28 @@
         (fn-auth-principal-peer-name hex (cdr rows)))
     nil))
 
+; What AUTHINFO may assume of the peer name it reads out of the configured
+; rows.  `fn-cfgp' makes the peers a `fn-cfg-row-listp', every row's first
+; field is a `fn-cfg-labelp' and every label is an ASCII string, so a name
+; that was found is a string -- which is what `fn-peer-sessionp' asks of a
+; peer connection (books/peer-inbound.lisp).  Stated here because this book
+; does not open the configuration record anywhere else.
+(local
+ (defthm fn-auth-cfgp-gives-peer-rows
+   (implies (fn-cfgp cfg)
+            (fn-cfg-row-listp (fn-cfg-peers (fn-cfg-value cfg))))
+   :hints (("Goal" :in-theory (enable fn-cfgp fn-cfg-valuep)))))
+
+(local
+ (defthm fn-auth-principal-peer-name-is-a-string
+   (implies (and (fn-cfg-row-listp rows)
+                 (fn-auth-principal-peer-name hex rows))
+            (stringp (fn-auth-principal-peer-name hex rows)))
+   :hints (("Goal" :induct (fn-auth-principal-peer-name hex rows)
+            :in-theory (enable fn-auth-principal-peer-name fn-cfg-row-listp
+                               fn-cfg-rowp fn-cfg-labelp fn-cfg-row-a
+                               fn-record-ascii-stringp)))))
+
 (defun fn-auth-bind-principal-peer (as principal)
   "Promote a contextual reader only for one unambiguous configured principal."
   (declare (xargs :guard t))
@@ -1130,10 +1152,18 @@
   (implies (fn-auth-session-consistentp as archive)
            (fn-auth-session-consistentp
             (fn-post-result-session (fn-auth-authinfo as args)) archive))
+  ; The POST and NNTP session recognizers stay closed too: AUTHINFO's
+  ; promotion branch builds a peer session, and the constructor rules
+  ; books/peer-inbound.lisp exports for it reduce that to the consistency of
+  ; the POST base this session already carried.  Opened, that base's
+  ; recognizer unfolds into a `true-listp' obligation on the NNTP session
+  ; instead (hbox certify-20260922T084314Z-2803863).
   :hints (("Goal"
            :in-theory (e/d (fn-auth-authinfo fn-auth-session-consistentp
                             fn-auth-sessionp)
                            (fn-peer-sessionp fn-peer-session-consistentp
+                            fn-post-sessionp fn-post-session-consistentp
+                            fn-nntp-sessionp fn-nntp-session-consistentp
                             fn-auth-configp fn-auth-single fn-nntp-single
                             fn-auth-find-cred fn-auth-checkp
                             fn-auth-token-argp fn-nntp-keywordp
@@ -1143,10 +1173,16 @@
   (implies (fn-auth-session-consistentp as archive)
            (fn-auth-session-consistentp
             (fn-post-result-session (fn-auth-starttls as args)) archive))
+  ; The POST and NNTP session recognizers stay closed, as they do for
+  ; AUTHINFO above: STARTTLS drops a principal-derived peer role back to the
+  ; configured reader shape, and the constructor rules books/peer-inbound.lisp
+  ; exports carry it.
   :hints (("Goal"
            :in-theory (e/d (fn-auth-starttls fn-auth-session-consistentp
                             fn-auth-sessionp)
                            (fn-peer-sessionp fn-peer-session-consistentp
+                            fn-post-sessionp fn-post-session-consistentp
+                            fn-nntp-sessionp fn-nntp-session-consistentp
                             fn-auth-configp fn-auth-single fn-nntp-single
                             fn-nntp-printable-tokenp fn-prin-idp))))))
 
