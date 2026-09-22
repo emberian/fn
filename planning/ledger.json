@@ -407,7 +407,7 @@
     "books": 402,
     "books_in_root_closure": 401,
     "roots": 400,
-    "theorems": 6640,
+    "theorems": 6642,
     "functions": 5183,
     "assert_events": 7072,
     "must_fails": 187,
@@ -5820,7 +5820,7 @@
       "book": "books/store-node-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 53,
+      "theorems": 55,
       "functions": 5,
       "guards": {
         "verified": 2,
