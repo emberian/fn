@@ -38,8 +38,19 @@ packaging/fn-native operator /path/to/fn.toml recover
 packaging/fn-native operator /path/to/fn.toml group create fn.announce
 packaging/fn-native operator /path/to/fn.toml group retire fn.announce
 packaging/fn-native operator /path/to/fn.toml capacity 1048576
+packaging/fn-native operator /path/to/fn.toml peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false
+packaging/fn-native operator /path/to/fn.toml peer remove NAME
+packaging/fn-native operator /path/to/fn.toml policy set path-identity news.example.invalid
 packaging/fn-native operator /path/to/fn.toml run
 ```
+
+`policy set path-identity` gives the node its own RFC 5537 section 3.2
+`<path-identity>`. Until it is set, the owner cannot recognise its own name in
+a `Path` header and section 3.5 loop suppression cannot fire, which the native
+v0 matrix measured on 2026-09-22 as `V0-TRANSIT-LOOP` accepting the looped
+article. It is a durable configuration record like a group or a peer, refused
+while the owner holds the writer lock offline and applied live through the
+owner otherwise.
 
 `help` does not read the configuration file. `run` uses the normalized native
 owner callback. Missing, nonregular or oversized configuration is usage (5);

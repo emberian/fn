@@ -231,3 +231,26 @@
 (assert-event (equal (fn-native-operator-result-reason
                       (fn-native-operator-run '(999) '(999)))
                      :argv-bounds))
+
+; `policy set path-identity' reaches the administrative plan through the
+; public operator, and its help subject exists.
+(defconst *fn-nop-policy*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("policy" "set" "path-identity"
+                                              "a.gate.example.invalid"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-policy*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-policy*) :admin))
+(assert-event (equal (fn-native-admin-result-kind
+                      (fn-native-operator-result-admin-plan *fn-nop-policy*))
+                     :set-policy))
+(assert-event (equal (fn-native-admin-result-value
+                      (fn-native-operator-result-admin-plan *fn-nop-policy*))
+                     (fn-record-string-octets "a.gate.example.invalid")))
+(assert-event (equal (fn-native-operator-exit-code
+                      (fn-native-operator-run *fn-nop-minimal-config*
+                                              (fn-nop-test-argv '("policy" "get" "path-identity"))))
+                     5))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run '(999)
+                                              (fn-nop-test-argv '("help" "policy"))))
+                     :accepted))

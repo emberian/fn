@@ -88,9 +88,12 @@
            (<= 0 (fn-native-admin-decimal-value chars))
            (fn-record-uint32p (fn-native-admin-decimal-value chars))))))
 
-(defun fn-native-admin-result (status reason kind name capacity peer)
+(defun fn-native-admin-result (status reason kind name capacity peer value)
+  ; `value' is the second label of a two-label delta: the policy id of
+  ; `policy set SLOT VALUE' (`name' carries the slot).  Every other kind
+  ; leaves it nil.
   (declare (xargs :guard t))
-  (list status reason kind name capacity peer))
+  (list status reason kind name capacity peer value))
 
 (defun fn-native-admin-result-status (result)
   (declare (xargs :guard t))
@@ -113,6 +116,12 @@
        :exec (fn-ag-car
               (fn-ag-cdr
                (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr result))))))))
+(defun fn-native-admin-result-value (result) (declare (xargs :guard t))
+  (mbe :logic (caddr (cddddr result))
+       :exec (fn-ag-car
+              (fn-ag-cdr
+               (fn-ag-cdr
+                (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr result)))))))))
 
 (defun fn-native-admin-peer-plan (words)
   "Build the complete peer record in ACL2; raw Lisp receives no field defaults.
@@ -187,42 +196,60 @@ decoded as source-address for durable command compatibility."
                                 :principal :source-address)
                             auth-value))))
           (if (fn-cfg-peerp peer)
-              (fn-native-admin-result :accepted nil :set-peer nil 0 peer)
-            (fn-native-admin-result :refused :peer-record nil nil 0 nil)))
-      (fn-native-admin-result :refused :syntax nil nil 0 nil))))
+              (fn-native-admin-result :accepted nil :set-peer nil 0 peer nil)
+            (fn-native-admin-result :refused :peer-record nil nil 0 nil nil)))
+      (fn-native-admin-result :refused :syntax nil nil 0 nil nil))))
 
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t))
   (if (or (not (fn-native-admin-argvp argv))
           (< *fn-native-admin-max-arguments* (len argv)))
-      (fn-native-admin-result :refused :argv nil nil nil nil)
+      (fn-native-admin-result :refused :argv nil nil nil nil nil)
     (let ((words (fn-native-admin-words argv)))
       (cond
        ((and (equal (len words) 3)
              (equal (car words) "group")
              (equal (cadr words) "create")
              (fn-record-group-namep (caddr words)))
-        (fn-native-admin-result :accepted nil :create-group (caddr argv) 0 nil))
+        (fn-native-admin-result :accepted nil :create-group (caddr argv) 0 nil nil))
        ((and (equal (len words) 3)
              (equal (car words) "group")
              (equal (cadr words) "retire")
              (fn-record-group-namep (caddr words)))
-        (fn-native-admin-result :accepted nil :remove-group (caddr argv) 0 nil))
+        (fn-native-admin-result :accepted nil :remove-group (caddr argv) 0 nil nil))
        ((and (equal (len words) 2)
              (equal (car words) "capacity")
              (fn-native-admin-decimalp (cadr words)))
         (fn-native-admin-result :accepted nil :set-capacity nil
                                 (fn-native-admin-decimal-value
-                                 (coerce (cadr words) 'list)) nil))
+                                 (coerce (cadr words) 'list)) nil nil))
+       ; The node's own RFC 5537 section 3.2 <path-identity>.  It is the one
+       ; policy slot peering needs: `fn-peer-local-identity' (books/peer-inbound)
+       ; reads it, and while it is unset a node cannot recognise its own name
+       ; in a Path, so section 3.5 loop suppression cannot fire (measured on
+       ; the native v0 matrix, 2026-09-22: V0-TRANSIT-LOOP accepted 235).  The
+       ; value must itself be a <path-identity>; the same recognizer admits a
+       ; peer's identity in `fn-native-admin-peer-plan'.  The slot is a durable
+       ; `:set-policy' configuration record, not a configuration-file key, for
+       ; the reason packaging/fn.toml.example gives for served groups.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) "path-identity")
+             (fn-path-identityp (cadddr argv)))
+        (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                (cadddr argv)))
+       ((and (consp words) (equal (car words) "policy"))
+        (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "peer"))
         (if (and (equal (len words) 3)
                  (equal (cadr words) "remove")
                  (stringp (caddr words))
                  (not (equal (caddr words) "")))
-            (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil)
+            (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil)
           (fn-native-admin-peer-plan words)))
-       (t (fn-native-admin-result :refused :syntax nil nil nil nil))))))
+       (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))))))
 
 ; Config record names are a fixed-width namespace.  The digit renderer is the
 ; existing ACL2 byte-store renderer; no host formatter derives a durable name.

@@ -131,6 +131,26 @@ class NativeAdminTests(unittest.TestCase):
         # obligations or the allocation-domain identity they rely on.
         self.native("store", self.store, "inspect", message_id)
 
+    def test_policy_set_path_identity_is_a_durable_configuration_record(self):
+        # RFC 5537 section 3.2: the node's own <path-identity>, written as a
+        # `:set-policy` record like a group or a peer, so the owner's replay
+        # sees it at open and `fn-peer-local-identity` stops reading "".
+        written = self.operator("policy", "set", "path-identity", "a.gate.example.invalid")
+        self.assertIn(b"configured generation=2 record=00000002.cfg verification=verified",
+                      written.stdout)
+        self.assertIn("generation=2", self.config_report())
+        refused = self.operator("policy", "set", "path-identity", ".not.an.identity",
+                                expected=5)
+        self.assertNotIn(b"configured generation=3", refused.stdout)
+        self.assertIn("generation=2", self.config_report())
+
+    def test_running_owner_applies_policy_set_path_identity(self):
+        process = self.start_owner()
+        written = self.operator("policy", "set", "path-identity", "live.gate.example.invalid")
+        self.assertIn(b"accepted operator policy", written.stderr)
+        self.stop_owner(process)
+        self.assertIn("generation=2", self.config_report())
+
     def test_peer_add_and_remove_use_public_native_admin(self):
         added = self.operator("peer", "add", "far", "far.example.invalid",
                               "192.0.2.44", "1119", "fn.*", "fn.*",

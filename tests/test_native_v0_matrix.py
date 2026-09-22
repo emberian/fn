@@ -288,8 +288,18 @@ class NativeSliceAccountingTests(unittest.TestCase):
                 self.assertNotIn("bin/fn", rows[rid].invocation, rid)
             self.assertEqual(rows["V0-OUT-UNCERTAIN-A"].verdict, v0_matrix.NOT_BUILT)
             self.assertEqual(rows["V0-PEER-LIST-A"].verdict, v0_matrix.NOT_BUILT)
-            self.assertEqual(rows["V0-TRANSIT-IDENTITY-A"].verdict, v0_matrix.NOT_BUILT)
             self.assertEqual(rows["V0-CFG-LIVE"].verdict, v0_matrix.NOT_BUILT)
+            # The node's own path identity is a real operator step now, before
+            # the peer records and before either owner starts.
+            identity = rows["V0-TRANSIT-IDENTITY-A"]
+            self.assertIn("policy set path-identity a.gate.example.invalid",
+                          identity.invocation)
+            self.assertNotEqual(identity.verdict, v0_matrix.NOT_BUILT)
+            order = [row.id for row in gate.rows]
+            self.assertLess(order.index("V0-TRANSIT-IDENTITY-A"),
+                            order.index("V0-PEER-ADD-A"))
+            self.assertLess(order.index("V0-PEER-ADD-A"),
+                            order.index("V0-NODE-START-A"))
 
     def test_successful_shared_witness_maps_only_the_cases_it_exercises(self):
         with tempfile.TemporaryDirectory() as home:

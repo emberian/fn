@@ -3610,17 +3610,24 @@ exit "$rc"
     def native_peer_records(self):
         """A peer record on each node naming the other, in the operator's grammar."""
         for node in self.nodes:
-            self.blocked(("V0-TRANSIT-IDENTITY",),
-                         "the packaged native operator has no policy verb and the native "
-                         "configuration (books/native-config.lisp) carries no "
-                         "<path-identity> of the node's own; RFC 5537 3.5 loop "
-                         "suppression cannot fire on an unnamed node, and the loop rows "
-                         "measure exactly that",
-                         verdict=NOT_BUILT, owner="native path-identity administration",
-                         nodes=(node.name,),
-                         invocation=self.native_operator(node, "policy", "set",
+            # The node's OWN <path-identity>: `fn-peer-local-identity` reads
+            # this policy slot, and the loop rows below are unfounded without
+            # it.  An image whose operator predates the verb answers usage
+            # (5), which `from_step` records as not-exercised with the code.
+            ident = self.sh("node {} path-identity".format(node.upper),
+                            self.cd(self.native_operator(node, "policy", "set",
                                                          "path-identity",
-                                                         node.path_identity))
+                                                         node.path_identity)),
+                            timeout=900, expect=None)
+            self.from_step("V0-TRANSIT-IDENTITY", ident, node=node.name,
+                           limit="a `:set-policy` configuration record; the loop rows "
+                                 "below are what shows the owner read it")
+            if ident.rc != EXIT_OK:
+                self.gaps.append(
+                    "node {} has no <path-identity> of its own (rc={}, {}); RFC 5537 "
+                    "3.5 loop suppression cannot fire on it and V0-TRANSIT-LOOP is "
+                    "measuring an unconfigured node.".format(
+                        node.upper, ident.rc, ident.first_line))
         # Inbound `fn.*`, outbound `-`: the transit rows below offer articles
         # BY HAND over the driver's socket, and a record with an outbound
         # pattern makes the native owner's own feed deliver every live post

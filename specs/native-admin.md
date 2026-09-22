@@ -12,9 +12,12 @@ most 512 octets:
 group create NAME
 group retire NAME
 capacity DECIMAL-UINT32
+policy set path-identity IDENTITY
 ```
 
-The plan produces `:create-group`, `:remove-group`, or `:set-capacity` and a
+The plan produces `:create-group`, `:remove-group`, `:set-capacity` or
+`:set-policy` (slot and value as the exact argv octets; the value must satisfy
+`fn-path-identityp`, the recognizer a peer's identity also passes) and a
 tagged refusal.  It owns decimal parsing and applies the existing bounded
 configuration group-label predicate.
 `fn-store-cfg-reconfigure` remains the sole owner of the record deltas,
