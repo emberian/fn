@@ -13,15 +13,15 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 405 |
 | Certification roots in the Makefile | 403 |
 | Books inside the root closure | 404 |
-| `defthm` and `defthmd` events | 6673 |
-| `defun` events | 5238 |
+| `defthm` and `defthmd` events | 6696 |
+| `defun` events | 5244 |
 | Functions with verified guards | 1731 |
-| Functions declared `:verify-guards nil` and never verified | 282 |
-| Functions left at the default with an explicit guard | 2605 |
-| Functions left at the default with no guard | 620 |
-| `assert-event` checks | 7358 |
+| Functions declared `:verify-guards nil` and never verified | 284 |
+| Functions left at the default with an explicit guard | 2607 |
+| Functions left at the default with no guard | 622 |
+| `assert-event` checks | 7423 |
 | `must-fail` checks | 221 |
-| `encapsulate` events | 19 |
+| `encapsulate` events | 21 |
 | Theorems flagged SUSPECT by shape | 61 |
 | Export-hygiene warnings | 88 |
 | Enabled-projection warnings | 27 |
@@ -216,7 +216,7 @@ that `make certify` requests.
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
 | `books/msgid-index.lisp` | root | 20 | 13 | 0/0/13/0 | 0 | 0 | 0 |
-| `books/native-admin.lisp` | root | 5 | 41 | 1/0/40/0 | 0 | 0 | 0 |
+| `books/native-admin.lisp` | root | 13 | 42 | 1/0/41/0 | 0 | 0 | 0 |
 | `books/native-auth-admin.lisp` | root | 6 | 46 | 0/0/46/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 3 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/native-config-observation.lisp` | root | 5 | 17 | 3/0/14/0 | 0 | 0 | 0 |
@@ -243,7 +243,7 @@ that `make certify` requests.
 | `books/node-retention-transitions.lisp` | root | 17 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/node-traces.lisp` | root | 12 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/node.lisp` | root | 37 | 33 | 27/0/6/0 | 0 | 0 | 2 |
-| `books/owner-config.lisp` | root | 22 | 40 | 0/4/36/0 | 0 | 0 | 1 |
+| `books/owner-config.lisp` | root | 37 | 43 | 0/6/37/0 | 0 | 0 | 1 |
 | `books/owner-fault.lisp` | root | 11 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/owner-feed-port.lisp` | root | 9 | 1 | 0/0/1/0 | 0 | 0 | 4 |
 | `books/owner-feed.lisp` | root | 84 | 77 | 0/0/77/0 | 0 | 0 | 0 |
@@ -414,7 +414,7 @@ that `make certify` requests.
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 2 | 0 |
-| `tests/acl2/native-admin-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 74 | 0 | 0 |
+| `tests/acl2/native-admin-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 96 | 0 | 0 |
 | `tests/acl2/native-auth-admin-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 42 | 0 | 0 |
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
@@ -436,7 +436,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 2 | 0 |
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 167 | 0 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
-| `tests/acl2/owner-config-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 75 | 0 | 0 |
+| `tests/acl2/owner-config-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 118 | 0 | 0 |
 | `tests/acl2/owner-feed-port-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 2 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 119 | 0 | 0 |
 | `tests/acl2/owner-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 26 | 1 | 0 |
@@ -538,7 +538,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-node-recover-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 171 | closed-theory-corollary: proved only by fn-node-recover-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-stale-completion-is-no-op` | `books/node.lisp` | 320 | branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
-| `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 713 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
+| `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 742 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
 | `fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session` | `books/owner-invariants.lisp` | 587 | branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
 | `fn-own-feed-port-lost-is-port-peer` | `books/owner-feed-port.lisp` | 74 | definition-restated: the conclusion is the body of fn-own-feed-port-lost-peer; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-own-feed-port-observe-is-port-peer` | `books/owner-feed-port.lisp` | 69 | definition-restated: the conclusion is the body of fn-own-feed-port-observe-peer; reflexive-conclusion: a conjunct is (equal X X) |
