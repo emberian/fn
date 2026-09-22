@@ -29,6 +29,23 @@ imports the ledger's reader and adds the evaluation the ledger may not do.
     python3 tools/teeth_check.py --evaluate tests/acl2/owner-tests.lisp
     python3 tools/teeth_check.py --report         # static + the saved values
     python3 tools/teeth_check.py --summary        # the counts `make check` prints
+    python3 tools/teeth_check.py --table          # macro-generated teeth, marked apart
+
+MACRO-GENERATED TEETH.  A book may write its witnesses through a `defmacro`
+that expands to one `defthm` -- `feed-connection-teeth-tests.lisp` admits a
+keystone once through such a macro and then calls it again under `must-fail`,
+once per hypothesis, so a must-fail that fails for the wrong reason is caught
+by the same hints that prove the keystone.  A reader of the SOURCE alone
+cannot see this: the sixteen must-fails of that book are sixteen calls of
+three macros, and none of them is the literal text `must-fail` at the call
+site for thirteen of them.  This tool reads each book's own top-level
+`defmacro` forms and, for a macro whose template either submits a `must-fail`
+itself or is wrapped in one at the call site, counts each call as one tooth,
+attributed to the theorem name the call gives it -- never to a macro defined
+in a DIFFERENT book, and never to a `must-fail` a macro only mentions inside
+a comment or a string, since neither reaches the reader as a form.  `--table`
+lists them, and the book's own literal (non-macro) `must-fail` forms beside
+them, marked apart.
 
 The static pass needs no ACL2 and is what `make check` runs.  `--evaluate`
 writes `build/teeth/values.json`; `--report` reads it back, so the expensive
@@ -339,6 +356,263 @@ def read_book(path: Path) -> tuple[list[Assertion], list[str], str | None]:
     for top, (form, line) in enumerate(forms):
         walk(form, line)
     return assertions, constants, None
+
+
+# --------------------------------------------------------------------------
+# macro-generated teeth
+# --------------------------------------------------------------------------
+#
+# A macro-generated tooth is not an `assert-event`: it is a `defthm` a
+# `defmacro` in the SAME book produces, admitted once (a witness) and
+# resubmitted under `must-fail` with one hypothesis dropped (a must-fail).
+# It has no ground value to evaluate -- ACL2's own prover is the check -- so
+# it is read here, never fed to `probes_for`/`evaluate`, and it is counted
+# separately from the `assert-event` witnesses `counts()` reports.
+
+DEFTHM_NAMES = {"defthm", "defthmd"}
+
+
+def _is_must_fail_name(name: object) -> bool:
+    """Is this a `must-fail`-family head?  `ledger.py`'s own convention:
+    the family shares a prefix (`must-fail`, `must-fail!`,
+    `must-fail-with-error`, ...), not a fixed set."""
+    return isinstance(name, str) and name.startswith("must-fail")
+
+
+def contains_must_fail(form: object) -> bool:
+    """Does this template structurally submit a `must-fail` form?
+
+    Walks the read s-expression, so a `must-fail` written inside a COMMENT
+    or a STRING literal -- neither of which the reader keeps as a form --
+    can never make this true."""
+    if isinstance(form, list) and form:
+        if _is_must_fail_name(head(form)):
+            return True
+        return any(contains_must_fail(item) for item in form)
+    return False
+
+
+def find_defthm(form: object) -> object | None:
+    """The first `defthm`/`defthmd` this template admits outright, or None.
+
+    Does not look inside a `must-fail`-family form: a `defthm` there is
+    asked to FAIL, not admitted, so it is not "the template admits the
+    keystone."""
+    if not isinstance(form, list) or not form:
+        return None
+    name = head(form)
+    if name in DEFTHM_NAMES:
+        return form
+    if _is_must_fail_name(name):
+        return None
+    for item in form:
+        found = find_defthm(item)
+        if found is not None:
+            return found
+    return None
+
+
+def formal_names(formals_form: object) -> list[str]:
+    """A `defmacro` lambda-list's plain names: lambda-list keywords
+    (`&optional`, `&rest`, ...) and each entry's default value are dropped,
+    keeping just the name a `,name` in the template can refer to."""
+    if not isinstance(formals_form, list):
+        return []
+    out = []
+    for item in formals_form:
+        if isinstance(item, Sym) and not str(item).startswith("&"):
+            out.append(str(item))
+        elif isinstance(item, list) and item and isinstance(item[0], Sym):
+            out.append(str(item[0]))
+    return out
+
+
+@dataclass
+class MacroInfo:
+    """One `defmacro` this book defines, and what its template does."""
+
+    name: str
+    line: int
+    formals: list[str]
+    has_must_fail: bool   # the template itself submits a must-fail
+    has_defthm: bool      # the template admits a defthm outright
+    name_index: int | None  # which formal fills the produced defthm's name
+
+
+def macro_info(form: list, line: int) -> MacroInfo | None:
+    """Read one top-level `defmacro`, or None if its shape is not this one."""
+    if head(form) != "defmacro" or len(form) < 4 or not isinstance(form[1], Sym):
+        return None
+    name = str(form[1])
+    formals = formal_names(form[2])
+    body = form[-1]
+    template = body[1] if head(body) == "quasiquote" and len(body) == 2 else body
+    defthm = find_defthm(template)
+    name_index = None
+    if defthm is not None and len(defthm) > 1:
+        name_arg = defthm[1]
+        if (isinstance(name_arg, list) and len(name_arg) == 2
+                and head(name_arg) == "unquote" and isinstance(name_arg[1], Sym)
+                and str(name_arg[1]) in formals):
+            name_index = formals.index(str(name_arg[1]))
+    return MacroInfo(name=name, line=line, formals=formals,
+                     has_must_fail=contains_must_fail(template),
+                     has_defthm=defthm is not None, name_index=name_index)
+
+
+@dataclass
+class MacroTooth:
+    """One theorem a book-local macro's call produced: a must-fail or a
+    witness.  `theorem` is the name the CALL gives it -- read from the
+    macro's own name parameter, filled in from the call's argument at that
+    position -- not a registry keystone; nothing here claims the two are
+    the same theorem."""
+
+    book: str
+    line: int
+    macro: str
+    theorem: str | None
+    kind: str  # "must-fail" | "witness"
+
+
+def unwrap_call(form: object) -> tuple[object | None, bool]:
+    """Peel `local`, a `must-fail`-family wrapper, `make-event` and a
+    quasiquote off a top-level form, down to the call underneath.
+
+    A book writes its teeth as `(local (must-fail (MACRO name hyps)))` and,
+    when the hypotheses are assembled at read time, `(local (must-fail
+    (make-event `(MACRO name (,h1 ,h2 ...)))))`.  `local` and a `must-fail`
+    wrapper are transparent to the call inside them; `make-event`'s argument
+    is the form it submits; a backquoted form's head is unaffected by the
+    unquotes in its tail.  Returns (the call form, or None; whether a
+    `must-fail`-family wrapper was crossed to reach it)."""
+    node = form
+    wrapped = False
+    while isinstance(node, list) and node:
+        name = head(node)
+        if name == "local" and len(node) == 2:
+            node = node[1]
+        elif _is_must_fail_name(name) and len(node) >= 2:
+            wrapped = True
+            node = node[1]
+        elif name == "make-event" and len(node) == 2:
+            node = node[1]
+        elif name == "quasiquote" and len(node) == 2:
+            node = node[1]
+        else:
+            break
+    return (node if isinstance(node, list) and node else None), wrapped
+
+
+def macro_teeth_for_book(path: Path) -> tuple[list[MacroTooth], dict[str, MacroInfo]]:
+    """This book's macro-generated teeth, and the macros that produced them.
+
+    Only a `defmacro` READ FROM THIS SAME BOOK is ever attributed: a call of
+    a macro this book merely includes is invisible here, same as it always
+    was, rather than guessed at from a definition this reader never saw."""
+    try:
+        forms = ledger.Reader(path.read_text(encoding="utf-8")).top_level()
+    except Exception:
+        return [], {}
+    book = path.relative_to(ROOT).as_posix()
+    macros: dict[str, MacroInfo] = {}
+    for form, line in forms:
+        if head(form) == "defmacro":
+            info = macro_info(form, line)
+            if info is not None:
+                macros[info.name] = info
+    teeth: list[MacroTooth] = []
+    for form, line in forms:
+        if head(form) == "defmacro":
+            continue
+        call, wrapped = unwrap_call(form)
+        info = macros.get(head(call))
+        if info is None or call is None:
+            continue
+        name = head(call)
+        index = info.name_index if info.name_index is not None else 0
+        theorem = (str(call[index + 1]) if len(call) > index + 1
+                  and isinstance(call[index + 1], Sym) else None)
+        if wrapped or info.has_must_fail:
+            teeth.append(MacroTooth(book=book, line=line, macro=name,
+                                    theorem=theorem, kind="must-fail"))
+        if info.has_defthm and not wrapped:
+            teeth.append(MacroTooth(book=book, line=line, macro=name,
+                                    theorem=theorem, kind="witness"))
+    return teeth, macros
+
+
+_MACRO_TEETH: dict[str, list[MacroTooth]] | None = None
+
+
+def macro_teeth_for_paths(paths: list[Path]) -> dict[str, list[MacroTooth]]:
+    found: dict[str, list[MacroTooth]] = {}
+    for path in paths:
+        teeth, _macros = macro_teeth_for_book(path)
+        if teeth:
+            found[path.relative_to(ROOT).as_posix()] = teeth
+    return found
+
+
+def macro_teeth_by_book() -> dict[str, list[MacroTooth]]:
+    """Every test book's macro-generated teeth, corpus-wide and cached."""
+    global _MACRO_TEETH
+    if _MACRO_TEETH is None:
+        _MACRO_TEETH = macro_teeth_for_paths(sorted(TESTS.glob("*.lisp")))
+    return _MACRO_TEETH
+
+
+def macro_teeth_totals(macro_teeth: dict[str, list[MacroTooth]]) -> dict[str, int]:
+    must_fails = sum(1 for teeth in macro_teeth.values()
+                     for tooth in teeth if tooth.kind == "must-fail")
+    witnesses = sum(1 for teeth in macro_teeth.values()
+                    for tooth in teeth if tooth.kind == "witness")
+    macros = len({(book, tooth.macro) for book, teeth in macro_teeth.items()
+                 for tooth in teeth})
+    return {"must_fails": must_fails, "witnesses": witnesses,
+            "macros": macros, "books": len(macro_teeth)}
+
+
+def literal_must_fails(book: str, generated_lines: set[int]) -> list[tuple[int, str]]:
+    """This book's own top-level `must-fail` forms that no local macro
+    produced, for `--table` to set beside the macro-generated ones."""
+    tree = ledger.load_tree()
+    info = tree.books.get(book)
+    if info is None:
+        return []
+    out = []
+    for line, arguments in info.must_fail_forms:
+        if line in generated_lines:
+            continue
+        text = renderable(arguments[0]) if arguments else None
+        out.append((line, (text or "<unrenderable>")[:48]))
+    return out
+
+
+def macro_table(macro_teeth: dict[str, list[MacroTooth]]) -> list[str]:
+    """Every macro-generated tooth, and each book's literal must-fails
+    beside them, GEN marking which is which."""
+    rows: list[tuple[str, str, str, int, str, str]] = []
+    for book, teeth in sorted(macro_teeth.items()):
+        generated_lines = {tooth.line for tooth in teeth}
+        for tooth in sorted(teeth, key=lambda t: t.line):
+            rows.append(("macro", tooth.kind, book, tooth.line,
+                        tooth.theorem or "?", tooth.macro))
+        for line, description in literal_must_fails(book, generated_lines):
+            rows.append(("literal", "must-fail", book, line, description, ""))
+    if not rows:
+        return ["teeth: no macro-generated must-fail or witness in the "
+                "selected books"]
+    rows.sort(key=lambda r: (r[2], r[3]))
+    width_book = max(len(r[2]) for r in rows)
+    width_theorem = max(len(r[4]) for r in rows)
+    header = (f"{'GEN':7}  {'KIND':9}  {'BOOK':{width_book}}  {'LINE':>5}  "
+             f"{'THEOREM':{width_theorem}}  MACRO")
+    lines = [header]
+    for origin, kind, book, line, theorem, macro in rows:
+        lines.append(f"{origin:7}  {kind:9}  {book:{width_book}}  {line:5d}  "
+                     f"{theorem:{width_theorem}}  {macro}")
+    return lines
 
 
 # --------------------------------------------------------------------------
@@ -939,16 +1213,22 @@ def cited_sections(name: str) -> list[tuple[str, int, int]]:
     The corpus writes teeth as `; <theorem-name>` and then the witnesses, so
     the assertions between one citation and the next are the teeth for that
     theorem.  This is a CONVENTION, not a declaration: the count below is a
-    heuristic and the finding says so.
+    heuristic and the finding says so.  A macro-generated `must-fail` in the
+    same span counts too, on the same line-range convention as a literal
+    `(assert-event` -- `macro_teeth_for_book`'s docstring has the shapes.
     """
     out: list[tuple[str, int, int]] = []
+    macro_by_book = macro_teeth_by_book()
     for path, lines, marks in _sections():
+        teeth = macro_by_book.get(path, [])
         for index, (number, cited) in enumerate(marks):
             if cited != name:
                 continue
             stop = marks[index + 1][0] if index + 1 < len(marks) else len(lines)
             body = "\n".join(lines[number:stop])
-            out.append((path, number, body.count("(assert-event")))
+            macro_musts = sum(1 for tooth in teeth if tooth.kind == "must-fail"
+                              and number < tooth.line <= stop)
+            out.append((path, number, body.count("(assert-event") + macro_musts))
     return out
 
 
@@ -1225,6 +1505,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="static findings plus the saved probe values")
     parser.add_argument("--summary", action="store_true",
                         help="counts only, one line per check")
+    parser.add_argument("--table", action="store_true",
+                        help="every macro-generated must-fail/witness, and "
+                             "each book's literal must-fails beside them, "
+                             "GEN marking which is which")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--values", default=str(VALUES),
                         help=f"where the probe values live (default {VALUES})")
@@ -1300,13 +1584,18 @@ def main(argv: list[str] | None = None) -> int:
         saved = json.loads(values_path.read_text(encoding="utf-8"))
         findings += evaluated_findings(assertions, saved)
 
+    macro_teeth = (macro_teeth_by_book() if not arguments.books
+                  else macro_teeth_for_paths(paths))
     totals = counts(assertions)
     by_check = collections.Counter(finding.check for finding in findings)
     if arguments.json:
         print(json.dumps({"counts": totals, "by_check": dict(by_check),
                           "evaluated_books": sorted(saved),
+                          "macro_teeth": macro_teeth_totals(macro_teeth),
                           "findings": [vars(f) for f in findings]},
                          indent=1, sort_keys=True))
+    elif arguments.table:
+        print("\n".join(macro_table(macro_teeth)))
     elif arguments.summary:
         print(f"teeth: {totals['assertions']} assert-events in "
               f"{totals['books']} test books "
@@ -1314,6 +1603,14 @@ def main(argv: list[str] | None = None) -> int:
               f"{totals['witnesses']} witnesses)"
               + (f", {len(saved)} books evaluated" if saved else
                  ", values not evaluated (run --evaluate)"))
+        macro_totals = macro_teeth_totals(macro_teeth)
+        if macro_totals["must_fails"] or macro_totals["witnesses"]:
+            print(f"teeth: {macro_totals['must_fails']} must-fail(s) and "
+                  f"{macro_totals['witnesses']} witness(es) come from "
+                  f"{macro_totals['macros']} defmacro(s) in "
+                  f"{macro_totals['books']} test book(s), invisible to a "
+                  f"literal count of `must-fail`; --table marks them apart "
+                  f"from literal ones")
         total, cited = hypothesis_coverage()
         print(f"teeth: {total} keystones have two or more hypotheses and a "
               f"test book names {cited} of them, so one-must-fail-per-"

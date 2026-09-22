@@ -481,22 +481,78 @@
                                fn-cfg-rowp fn-cfg-labelp fn-cfg-row-a
                                fn-record-ascii-stringp)))))
 
+; The connection's peer role: the name of the configured peer record the
+; connection speaks for, or nil for a reader.  Named so the role theorems
+; below read as statements about the role and not about the third wrapper.
+(defun fn-auth-session-peer (as)
+  (declare (xargs :guard t))
+  (fn-peer-session-peer (fn-auth-session-base as)))
+
+(defthm fn-auth-session-peer-of-fn-auth-make-session
+  (equal (fn-auth-session-peer
+          (fn-auth-make-session base config pending subject tlsp handshaking))
+         (fn-peer-session-peer base)))
+
+(defthm fn-auth-session-peer-of-fn-auth-with-base
+  (equal (fn-auth-session-peer (fn-auth-with-base as base))
+         (fn-peer-session-peer base)))
+
+; The one peer a principal binds under a pinned configuration, or nil.  A
+; match is a peer whose record, read back through `fn-cfg-peer-find' exactly
+; as the transit decision reads it, authenticates by (:principal HEX) with
+; HEX the principal's digest in hex; and it must be the ONLY configured
+; auth-principal row naming HEX.  Zero rows is a mismatch and two are an
+; ambiguity, and both bind nothing.
+;
+; The record check is not redundant with the row count.  `fn-cfgp' asks only
+; that the peers slot be a row list, and `(:set-peers rows)' installs any
+; row list, so a row group can carry an auth-principal row and yet denote no
+; record, or a record whose auth is (:source-address ...) because
+; `fn-cfg-peer-of-rows' reads that slot first.  A role bound from such a row
+; would not be one `fn-auth-clear-principal-peer' recognizes as
+; principal-derived, and it would survive STARTTLS: a role learned before
+; the handshake carried across it, which RFC 4642 section 2.2.2 forbids.
+; Binding only a peer whose record says (:principal HEX) is what makes
+; `fn-auth-principal-rolep' true of every binding, and therefore what makes
+; STARTTLS clear every binding.
+(defun fn-auth-principal-match (principal cfg)
+  (declare (xargs :guard t))
+  (let* ((hex (and (fn-cbor-octet-listp principal)
+                   (fn-digest-hex principal)))
+         (rows (and (fn-cfgp cfg) (fn-cfg-peers (fn-cfg-value cfg))))
+         (name (and (equal (fn-auth-principal-peer-count hex rows) 1)
+                    (fn-auth-principal-peer-name hex rows)))
+         (record (and name (fn-cfg-peer-find name rows))))
+    (and record
+         (equal (fn-cfg-peer-auth record) (list :principal hex))
+         name)))
+
+; Whether the connection's peer role came from a (:principal ...) record of
+; the configuration pinned into it.  The configuration is pinned at open and
+; no transition of this book or of books/owner.lisp rewrites it (the owner
+; re-pins only the node, fn-own-conn-live-session), so this reads the same
+; record the binding read.
+(defun fn-auth-principal-rolep (as)
+  (declare (xargs :guard t))
+  (let* ((ps (fn-auth-session-base as))
+         (peer (fn-peer-session-peer ps))
+         (cfg (fn-peer-session-cfg ps))
+         (record (and peer (fn-cfgp cfg)
+                      (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))))
+    (and record (equal (car (fn-cfg-peer-auth record)) :principal))))
+
 (defun fn-auth-bind-principal-peer (as principal)
   "Promote a contextual reader only for one unambiguous configured principal."
   (declare (xargs :guard t))
   (let* ((ps (fn-auth-session-base as))
          (cfg (fn-peer-session-cfg ps))
-         ; `fn-digest-hex' is guarded by `fn-cbor-octet-listp' and this
-         ; function is `:guard t', so the check is here: a principal that is
-         ; not octets names no peer and promotes nothing, which is the same
+         ; `fn-digest-hex' is guarded by `fn-cbor-octet-listp' and the match
+         ; is `:guard t', so the check is there: a principal that is not
+         ; octets names no peer and promotes nothing, which is the same
          ; refusal an unmatched principal gets.  The host passes the digest
-         ; `fn-auth-principal' returned, so the branch is not reachable in
+         ; `fn-auth-principal' returned, so that branch is not reachable in
          ; the composed machine.
-         (hex (and (fn-cbor-octet-listp principal)
-                   (fn-digest-hex principal)))
-         (rows (and (fn-cfgp cfg) (fn-cfg-peers (fn-cfg-value cfg))))
-         (count (fn-auth-principal-peer-count hex rows))
-         (peer (and (equal count 1) (fn-auth-principal-peer-name hex rows))))
+         (peer (fn-auth-principal-match principal cfg)))
     (if (and (null (fn-peer-session-peer ps)) peer
              (fn-node-statep (fn-peer-session-node ps)))
         (fn-auth-with-base
@@ -507,15 +563,12 @@
 (defun fn-auth-clear-principal-peer (as)
   "Drop only a role derived from (:principal ...); legacy source peers stay peers."
   (declare (xargs :guard t))
-  (let* ((ps (fn-auth-session-base as))
-         (peer (fn-peer-session-peer ps))
-         (cfg (fn-peer-session-cfg ps))
-         (record (and peer (fn-cfgp cfg)
-                      (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))))
-    (if (and record (equal (car (fn-cfg-peer-auth record)) :principal))
+  (let ((ps (fn-auth-session-base as)))
+    (if (fn-auth-principal-rolep as)
         (fn-auth-with-base
          as (fn-peer-make-session (fn-peer-session-base ps) nil nil 0
-                                  (fn-peer-session-node ps) cfg))
+                                  (fn-peer-session-node ps)
+                                  (fn-peer-session-cfg ps)))
       as)))
 
 ; -----------------------------------------------------------------------------
@@ -980,6 +1033,9 @@
 (verify-guards fn-auth-with-base)
 (verify-guards fn-auth-principal-peer-count)
 (verify-guards fn-auth-principal-peer-name)
+(verify-guards fn-auth-session-peer)
+(verify-guards fn-auth-principal-match)
+(verify-guards fn-auth-principal-rolep)
 (verify-guards fn-auth-bind-principal-peer)
 (verify-guards fn-auth-clear-principal-peer)
 (verify-guards fn-auth-single)
@@ -1959,6 +2015,512 @@
                             (args (cdr (fn-nntp-tokenize line))))))))
 
 ; -----------------------------------------------------------------------------
+; THE PEER ROLE A LOGIN BINDS (PRF-049).
+;
+; A connection the owner opens through fn-ocfg-open (host/owner-host.lisp
+; fn-owner-open) is a reader; books/owner-config.lisp
+; fn-ocfg-open-begins-unbound says so of every open, whatever the owner's
+; other connections have done.  The only transition that gives a reader a
+; peer role is AUTHINFO PASS, and only for a principal the pinned
+; configuration binds to exactly one peer record (fn-auth-principal-match).
+; Three keystones over fn-auth-step, the function books/served.lisp
+; fn-served-dispatch calls and host/owner-host.lisp fn-owner-chunk reaches
+; through fn-own-read and fn-served-step:
+;
+;   fn-auth-step-binds-a-peer-role-only-by-a-principal-login   (only way in)
+;   fn-auth-step-principal-login-binds-exactly-the-unique-match (the way in)
+;   fn-auth-step-starttls-clears-a-principal-role               (the way out)
+;
+; Protected-only is not restated here: fn-auth-step-protected-only-refuses-
+; authinfo-before-tls (PRF-031) says the session is unchanged by any AUTHINFO
+; before TLS, and the first keystone's fourth conjunct says the same thing
+; from the other side -- no step whatever binds a role on a cleartext
+; connection under that policy.
+
+; The peer half of fn-peer-step never moves the peer name: every branch
+; rebuilds the session with fn-peer-with-base or fn-peer-with-transfer.
+(local (defthm fn-auth-peer-step-keeps-the-peer
+  (equal (fn-peer-session-peer
+          (fn-post-result-session
+           (fn-peer-step ps archive config observation injection wire-event)))
+         (fn-peer-session-peer ps))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-peer-step fn-peer-command fn-peer-delegate
+                            fn-peer-with-base fn-peer-with-transfer)
+                           (fn-nntp-post-step fn-peer-sessionp
+                            fn-peer-decide-offer fn-peer-single
+                            fn-peer-echo-reply fn-peer-msgid-argp
+                            fn-peer-capability-lines fn-peer-check-code
+                            fn-peer-ihave-offer-line
+                            fn-nntp-multi fn-nntp-keywordp
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp))))))
+
+(local (defthm fn-auth-authinfo-binds-only-on-an-accepted-pass
+  (implies (and (not (fn-auth-session-peer as))
+                (fn-auth-session-peer
+                 (fn-post-result-session (fn-auth-authinfo as args))))
+           (and (not (fn-auth-session-subject as))
+                (not (and (fn-auth-config-protected-onlyp
+                           (fn-auth-session-config as))
+                          (not (fn-auth-session-tlsp as))))
+                (fn-nntp-keywordp (car args) "PASS")
+                (fn-auth-token-argp (cdr args))
+                (fn-auth-session-pending as)
+                (fn-auth-checkp (fn-auth-find-cred
+                                 (fn-auth-session-pending as)
+                                 (fn-auth-config-creds
+                                  (fn-auth-session-config as)))
+                                (car (cdr args)))
+                (equal (fn-auth-session-subject
+                        (fn-post-result-session (fn-auth-authinfo as args)))
+                       (fn-auth-cred-principal
+                        (fn-auth-find-cred (fn-auth-session-pending as)
+                                           (fn-auth-config-creds
+                                            (fn-auth-session-config as)))))
+                (equal (fn-auth-session-peer
+                        (fn-post-result-session (fn-auth-authinfo as args)))
+                       (fn-auth-principal-match
+                        (fn-auth-cred-principal
+                         (fn-auth-find-cred (fn-auth-session-pending as)
+                                            (fn-auth-config-creds
+                                             (fn-auth-session-config as))))
+                        (fn-peer-session-cfg (fn-auth-session-base as))))
+                (fn-auth-principal-rolep
+                 (fn-post-result-session (fn-auth-authinfo as args)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-authinfo fn-auth-bind-principal-peer
+                            fn-auth-with-base fn-auth-session-peer
+                            fn-auth-principal-rolep fn-auth-principal-match)
+                           (fn-auth-single fn-auth-find-cred fn-auth-checkp
+                            fn-auth-token-argp fn-nntp-keywordp
+                            fn-nntp-single fn-cfg-peer-find fn-cfgp
+                            
+                            fn-digest-hex
+                            fn-node-statep))))))
+
+(local (defthm fn-auth-configured-session-has-a-node
+  (implies (and (fn-peer-sessionp x)
+                (fn-cfgp (fn-peer-session-cfg x)))
+           (fn-node-statep (fn-peer-session-node x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+
+(local (defthm fn-auth-authinfo-accepted-pass-binds-the-match
+  (implies (and (fn-auth-sessionp as)
+                (not (fn-auth-session-peer as))
+                (not (fn-auth-session-subject as))
+                (not (and (fn-auth-config-protected-onlyp
+                           (fn-auth-session-config as))
+                          (not (fn-auth-session-tlsp as))))
+                (fn-nntp-keywordp (car args) "PASS")
+                (fn-auth-token-argp (cdr args))
+                (fn-auth-session-pending as)
+                (fn-auth-checkp (fn-auth-find-cred
+                                 (fn-auth-session-pending as)
+                                 (fn-auth-config-creds
+                                  (fn-auth-session-config as)))
+                                (car (cdr args))))
+           (and (equal (fn-post-result-effects (fn-auth-authinfo as args))
+                       (fn-auth-single as "281 authentication accepted"))
+                (equal (fn-auth-session-subject
+                        (fn-post-result-session (fn-auth-authinfo as args)))
+                       (fn-auth-cred-principal
+                        (fn-auth-find-cred (fn-auth-session-pending as)
+                                           (fn-auth-config-creds
+                                            (fn-auth-session-config as)))))
+                (equal (fn-auth-session-peer
+                        (fn-post-result-session (fn-auth-authinfo as args)))
+                       (fn-auth-principal-match
+                        (fn-auth-cred-principal
+                         (fn-auth-find-cred (fn-auth-session-pending as)
+                                            (fn-auth-config-creds
+                                             (fn-auth-session-config as))))
+                        (fn-peer-session-cfg (fn-auth-session-base as))))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-authinfo fn-auth-bind-principal-peer
+                            fn-auth-with-base fn-auth-session-peer
+                            fn-auth-principal-match fn-auth-sessionp)
+                           (fn-auth-single fn-auth-find-cred fn-auth-checkp
+                            fn-auth-token-argp fn-nntp-keywordp
+                            fn-nntp-single fn-cfg-peer-find fn-cfgp
+                            fn-digest-hex fn-peer-sessionp fn-auth-configp
+                            fn-nntp-printable-tokenp fn-prin-idp
+                            fn-node-statep))))))
+
+(local (defthm fn-auth-starttls-handshake-clears-a-principal-role
+  (implies (and (not (fn-auth-session-handshakingp as))
+                (fn-auth-session-handshakingp
+                 (fn-post-result-session (fn-auth-starttls as args))))
+           (and (null (fn-auth-session-subject
+                       (fn-post-result-session (fn-auth-starttls as args))))
+                (null (fn-auth-session-pending
+                       (fn-post-result-session (fn-auth-starttls as args))))
+                (not (fn-auth-principal-rolep
+                      (fn-post-result-session (fn-auth-starttls as args))))
+                (equal (fn-auth-session-peer
+                        (fn-post-result-session (fn-auth-starttls as args)))
+                       (if (fn-auth-principal-rolep as)
+                           nil
+                         (fn-auth-session-peer as)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-starttls fn-auth-clear-principal-peer
+                            fn-auth-with-base fn-auth-session-peer
+                            fn-auth-principal-rolep)
+                           (fn-auth-single fn-nntp-single fn-cfg-peer-find
+                            fn-cfgp))))))
+
+(local (defthm fn-auth-starttls-keeps-a-reader
+  (implies (not (fn-auth-session-peer as))
+           (not (fn-auth-session-peer
+                 (fn-post-result-session (fn-auth-starttls as args)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-starttls fn-auth-clear-principal-peer
+                            fn-auth-with-base fn-auth-session-peer
+                            fn-auth-principal-rolep)
+                           (fn-auth-single fn-nntp-single fn-cfg-peer-find
+                            fn-cfgp))))))
+
+(local (defthm fn-auth-delegate-keeps-the-role-and-the-handshake
+  (and (equal (fn-auth-session-peer
+               (fn-post-result-session
+                (fn-auth-delegate as archive config observation injection
+                                  wire-event)))
+              (fn-auth-session-peer as))
+       (equal (fn-auth-session-handshakingp
+               (fn-post-result-session
+                (fn-auth-delegate as archive config observation injection
+                                  wire-event)))
+              (fn-auth-session-handshakingp as)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-delegate fn-auth-with-base
+                            fn-auth-session-peer)
+                           (fn-peer-step))))))
+
+(local (defthm fn-auth-authinfo-keeps-the-handshake
+  (equal (fn-auth-session-handshakingp
+          (fn-post-result-session (fn-auth-authinfo as args)))
+         (fn-auth-session-handshakingp as))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-authinfo fn-auth-bind-principal-peer
+                            fn-auth-with-base)
+                           (fn-auth-single fn-auth-find-cred fn-auth-checkp
+                            fn-auth-token-argp fn-nntp-keywordp
+                            fn-nntp-single fn-auth-principal-match
+                            fn-node-statep))))))
+
+(local (defthmd fn-auth-session-peer-folds
+  (equal (fn-peer-session-peer (fn-auth-session-base as))
+         (fn-auth-session-peer as))))
+
+
+; KEYSTONE.  The only way a reader becomes a peer.
+;
+; No hypothesis about the session or the event beyond the role change
+; itself: for ANY session and ANY wire event, if the step's session has a
+; peer role and the session it was given had none, then the event was an
+; AUTHINFO PASS command line, sent on a well-formed, non-handshaking,
+; unauthenticated connection whose channel the policy accepts, after a
+; USER, whose one-token secret checks against the cached name's stored
+; verifier; the step installed that credential's principal as the subject;
+; the role it bound is fn-auth-principal-match of that principal under the
+; configuration pinned into the connection -- the one peer whose record says
+; (:principal HEX) and the only auth-principal row naming HEX -- and the role
+; is principal-derived, so the next keystone's STARTTLS clears it.
+;
+; Consequences read straight off it: a principal with no matching row
+; (mismatch) or two (duplicate) never gains a role on any step, since the
+; match is then nil; a protected-only connection without TLS never gains
+; one; a delegated reader command, a CAPABILITIES, a USER, a failed PASS, a
+; STARTTLS and the handshake re-entry never do.
+;
+; Two hypotheses, each with a violating value in
+; tests/acl2/nntp-auth-teeth-tests.lisp.
+(defthm fn-auth-step-binds-a-peer-role-only-by-a-principal-login
+  (implies (and (not (fn-auth-session-peer as))
+                (fn-auth-session-peer
+                 (fn-post-result-session
+                  (fn-auth-step as archive config observation injection
+                                wire-event))))
+           (and (fn-auth-sessionp as)
+                (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-session-subject as))
+                (not (and (fn-auth-config-protected-onlyp
+                           (fn-auth-session-config as))
+                          (not (fn-auth-session-tlsp as))))
+                (equal (car wire-event) :command)
+                (fn-nntp-keywordp (car (fn-nntp-tokenize (cadr wire-event)))
+                                  "AUTHINFO")
+                (fn-nntp-keywordp (cadr (fn-nntp-tokenize (cadr wire-event)))
+                                  "PASS")
+                (fn-auth-token-argp (cddr (fn-nntp-tokenize (cadr wire-event))))
+                (fn-auth-session-pending as)
+                (fn-auth-checkp
+                 (fn-auth-find-cred (fn-auth-session-pending as)
+                                    (fn-auth-config-creds
+                                     (fn-auth-session-config as)))
+                 (caddr (fn-nntp-tokenize (cadr wire-event))))
+                (equal (fn-auth-session-subject
+                        (fn-post-result-session
+                         (fn-auth-step as archive config observation injection
+                                       wire-event)))
+                       (fn-auth-cred-principal
+                        (fn-auth-find-cred (fn-auth-session-pending as)
+                                           (fn-auth-config-creds
+                                            (fn-auth-session-config as)))))
+                (equal (fn-auth-session-peer
+                        (fn-post-result-session
+                         (fn-auth-step as archive config observation injection
+                                       wire-event)))
+                       (fn-auth-principal-match
+                        (fn-auth-cred-principal
+                         (fn-auth-find-cred (fn-auth-session-pending as)
+                                            (fn-auth-config-creds
+                                             (fn-auth-session-config as))))
+                        (fn-peer-session-cfg (fn-auth-session-base as))))
+                (fn-auth-principal-rolep
+                 (fn-post-result-session
+                  (fn-auth-step as archive config observation injection
+                                wire-event)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-tls-eventp fn-auth-session-peer-folds
+                            fn-auth-tls-established)
+                           (fn-peer-step fn-auth-delegate fn-auth-single
+                            fn-auth-authinfo fn-auth-starttls
+                            fn-auth-sessionp fn-auth-session-peer
+                            fn-auth-principal-rolep fn-auth-principal-match
+                            fn-auth-gatedp fn-auth-postingp
+                            fn-auth-find-cred fn-auth-checkp
+                            fn-auth-capability-lines-for-peer
+                            fn-auth-peer-record fn-nntp-multi
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp fn-nntp-keywordp
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-authinfo-binds-only-on-an-accepted-pass))
+           :use ((:instance fn-auth-authinfo-binds-only-on-an-accepted-pass
+                            (args (cdr (fn-nntp-tokenize
+                                        (cadr wire-event)))))))))
+
+; The line-length fact the next keystone needs so that it does not carry
+; `fn-nntp-command-arguments-at-mostp' as a hypothesis no value could
+; violate: a command line inside RFC 3977 section 3.1's 510 octets that
+; tokenizes to AUTHINFO PASS <one token> has a secret of at most 496
+; octets, inside the 497-octet argument bound.  `fn-auth-token-span' counts
+; each token with one separator; the tokenizer consumes at least that.
+(local (defun fn-auth-token-span (toks)
+  (if (consp toks)
+      (+ 1 (len (car toks)) (fn-auth-token-span (cdr toks)))
+    0)))
+
+(local (defthm fn-auth-token-span-of-append
+  (equal (fn-auth-token-span (append a b))
+         (+ (fn-auth-token-span a) (fn-auth-token-span b)))))
+
+(local (defthm fn-auth-token-span-of-rev
+  (equal (fn-auth-token-span (rev a)) (fn-auth-token-span a))))
+
+(local (defthm fn-auth-token-span-of-reverse
+  (equal (fn-auth-token-span (reverse a)) (fn-auth-token-span a))))
+
+(local (defthm fn-auth-tokenize-aux-span
+  (<= (fn-auth-token-span (fn-nntp-tokenize-aux xs word-rev words-rev))
+      (+ 1 (len xs) (len word-rev) (fn-auth-token-span words-rev)))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-nntp-tokenize-aux xs word-rev words-rev)
+           :in-theory (enable fn-nntp-tokenize-aux)))))
+
+(local (defthm fn-auth-tokenize-span
+  (<= (fn-auth-token-span (fn-nntp-tokenize line)) (+ 1 (len line)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-nntp-tokenize)))))
+
+(local (defthm fn-auth-len-of-upcase-keyword
+  (equal (len (fn-nntp-upcase-keyword x)) (len x))
+  :hints (("Goal" :in-theory (enable fn-nntp-upcase-keyword)))))
+
+(local (defthm fn-auth-keyword-len
+  (implies (fn-nntp-keywordp k text)
+           (equal (len k) (len (fn-nntp-string-octets text))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-nntp-keywordp)
+                                  (fn-nntp-upcase-keyword
+                                   fn-auth-len-of-upcase-keyword))
+           :use ((:instance fn-auth-len-of-upcase-keyword (x k)))))))
+
+(local (defthm fn-auth-cbor-at-mostp-len
+  (implies (fn-cbor-at-mostp xs bound) (<= (len xs) (nfix bound)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-cbor-at-mostp)))))
+
+(local (defthmd fn-auth-pass-line-arguments-are-in-bounds
+  (implies (and (fn-nntp-command-inputp line)
+                (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO")
+                (fn-nntp-keywordp (cadr (fn-nntp-tokenize line)) "PASS")
+                (fn-auth-token-argp (cddr (fn-nntp-tokenize line))))
+           (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line)))
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-auth-tokenize-span))
+           :expand ((fn-auth-token-span (fn-nntp-tokenize line))
+                    (fn-auth-token-span (cdr (fn-nntp-tokenize line)))
+                    (fn-auth-token-span (cddr (fn-nntp-tokenize line))))
+           :in-theory (e/d (fn-nntp-command-arguments-at-mostp
+                            fn-nntp-argument-tokens
+                            fn-nntp-each-token-at-mostp
+                            fn-nntp-command-inputp fn-auth-token-argp)
+                           (fn-nntp-tokenize fn-nntp-keywordp
+                            fn-auth-tokenize-span fn-nntp-command-linep
+                            fn-nntp-contains-bomp fn-cbor-at-mostp
+                            fn-nntp-printable-tokenp))))))
+
+; KEYSTONE.  The way in: an accepted PASS binds exactly the unique match.
+;
+; On a reader connection that is well-formed, not handshaking,
+; unauthenticated and whose channel the policy accepts, an AUTHINFO PASS
+; line after a USER whose secret checks is answered 281, installs the
+; credential's principal, and leaves the connection with the peer role
+; fn-auth-principal-match computes: the configured peer when exactly one
+; auth-principal row names the principal's digest and that peer's record
+; says (:principal digest), and no role -- a reader, still authenticated --
+; when there are none (mismatch) or several (duplicate).  RFC 4643 section
+; 2.3.2's 281 is the same in every case: whether the login also names a
+; peer is not disclosed on the wire.
+;
+; Eleven hypotheses, each with a violating value in
+; tests/acl2/nntp-auth-teeth-tests.lisp.
+(defthm fn-auth-step-principal-login-binds-exactly-the-unique-match
+  (implies (and (fn-auth-sessionp as)
+                (not (fn-auth-session-handshakingp as))
+                (not (fn-auth-session-peer as))
+                (not (fn-auth-session-subject as))
+                (not (and (fn-auth-config-protected-onlyp
+                           (fn-auth-session-config as))
+                          (not (fn-auth-session-tlsp as))))
+                (fn-nntp-command-inputp line)
+                (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO")
+                (fn-nntp-keywordp (cadr (fn-nntp-tokenize line)) "PASS")
+                (fn-auth-token-argp (cddr (fn-nntp-tokenize line)))
+                (fn-auth-session-pending as)
+                (fn-auth-checkp
+                 (fn-auth-find-cred (fn-auth-session-pending as)
+                                    (fn-auth-config-creds
+                                     (fn-auth-session-config as)))
+                 (caddr (fn-nntp-tokenize line))))
+           (and (equal (fn-post-result-effects
+                        (fn-auth-step as archive config observation injection
+                                      (list :command line)))
+                       (fn-auth-single as "281 authentication accepted"))
+                (equal (fn-auth-session-subject
+                        (fn-post-result-session
+                         (fn-auth-step as archive config observation injection
+                                       (list :command line))))
+                       (fn-auth-cred-principal
+                        (fn-auth-find-cred (fn-auth-session-pending as)
+                                           (fn-auth-config-creds
+                                            (fn-auth-session-config as)))))
+                (equal (fn-auth-session-peer
+                        (fn-post-result-session
+                         (fn-auth-step as archive config observation injection
+                                       (list :command line))))
+                       (fn-auth-principal-match
+                        (fn-auth-cred-principal
+                         (fn-auth-find-cred (fn-auth-session-pending as)
+                                            (fn-auth-config-creds
+                                             (fn-auth-session-config as))))
+                        (fn-peer-session-cfg (fn-auth-session-base as))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
+                            fn-auth-tls-eventp fn-auth-restricted-keywordp
+                            fn-nntp-keywordp)
+                           (fn-peer-step fn-auth-delegate fn-auth-single
+                            fn-auth-authinfo fn-auth-starttls
+                            fn-auth-sessionp fn-auth-session-peer
+                            fn-auth-principal-match fn-auth-find-cred
+                            fn-auth-checkp fn-auth-token-argp
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-authinfo-accepted-pass-binds-the-match))
+           :use ((:instance fn-auth-authinfo-accepted-pass-binds-the-match
+                            (args (cdr (fn-nntp-tokenize line))))
+                 (:instance fn-auth-pass-line-arguments-are-in-bounds)))))
+
+; KEYSTONE.  The way out: STARTTLS clears a principal-derived role.
+;
+; For ANY session and ANY wire event: if the step entered the TLS handshake
+; (the session was not handshaking and is now), the new session carries no
+; subject, no cached name and no principal-derived role, and its peer role
+; is the old one exactly when that role was NOT principal-derived.  So a
+; peer the operator configured by source address (fn-own-open-peer) keeps
+; its role across the handshake, and a role a login bound -- principal-
+; derived by the first keystone -- is gone before the first octet of the
+; handshake, as RFC 4642 section 2.2.2's reset of the protocol state
+; requires.  The (:tls-established) re-entry keeps the base session
+; (fn-auth-tls-established), so the connection comes out of the handshake
+; a reader, and only a fresh AUTHINFO over TLS can bind again.
+;
+; Two hypotheses, each with a violating value in
+; tests/acl2/nntp-auth-teeth-tests.lisp.
+(defthm fn-auth-step-starttls-clears-a-principal-role
+  (implies (and (not (fn-auth-session-handshakingp as))
+                (fn-auth-session-handshakingp
+                 (fn-post-result-session
+                  (fn-auth-step as archive config observation injection
+                                wire-event))))
+           (and (null (fn-auth-session-subject
+                       (fn-post-result-session
+                        (fn-auth-step as archive config observation injection
+                                      wire-event))))
+                (null (fn-auth-session-pending
+                       (fn-post-result-session
+                        (fn-auth-step as archive config observation injection
+                                      wire-event))))
+                (not (fn-auth-principal-rolep
+                      (fn-post-result-session
+                       (fn-auth-step as archive config observation injection
+                                     wire-event))))
+                (equal (fn-auth-session-peer
+                        (fn-post-result-session
+                         (fn-auth-step as archive config observation injection
+                                       wire-event)))
+                       (if (fn-auth-principal-rolep as)
+                           nil
+                         (fn-auth-session-peer as)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-tls-eventp
+                            fn-auth-tls-established)
+                           (fn-peer-step fn-auth-delegate fn-auth-single
+                            fn-auth-authinfo fn-auth-starttls
+                            fn-auth-sessionp fn-auth-session-peer
+                            fn-auth-principal-rolep fn-auth-gatedp
+                            fn-auth-postingp fn-auth-find-cred
+                            fn-auth-capability-lines-for-peer
+                            fn-auth-peer-record fn-nntp-multi
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp fn-nntp-keywordp
+                            fn-nntp-command-arguments-at-mostp
+                            fn-auth-starttls-handshake-clears-a-principal-role))
+           :use ((:instance fn-auth-starttls-handshake-clears-a-principal-role
+                            (args (cdr (fn-nntp-tokenize
+                                        (cadr wire-event)))))))))
+
+
+; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).  The keystones and the
 ; record lemmas leave enabled; the transitions and the recognizers are
 ; withdrawn, so a book above computes with them and never inherits their
@@ -1979,6 +2541,8 @@
     (:d fn-auth-gatedp)
     (:d fn-auth-token-argp) (:d fn-auth-authinfo) (:d fn-auth-starttls)
     (:d fn-auth-tls-established) (:d fn-auth-tls-eventp)
-    (:d fn-auth-command) (:d fn-auth-delegate) (:d fn-auth-step)))
+    (:d fn-auth-command) (:d fn-auth-delegate) (:d fn-auth-step)
+    (:d fn-auth-session-peer) (:d fn-auth-principal-match)
+    (:d fn-auth-principal-rolep)))
 
 (in-theory (disable fn-auth-vocabulary))

@@ -626,9 +626,34 @@
 ; that decision; this says which node the served path supplies, and it is
 ; the owner's own, not the one the connection opened with.  The host line is
 ; host/owner-host.lisp fn-owner-chunk -> fn-own-read.
+; A peer session whose role is bound carries a configuration: `fn-peer-sessionp'
+; (books/peer-inbound) demands `fn-cfgp' of it on the peer arm, and `fn-cfgp'
+; demands a cons.  `64a80197' bound the inbound peer role to an authenticated
+; principal and made that pairing the recognizer's business; before it, a peer
+; beside a null configuration was merely unusual.
+(local
+ (defthm fn-own-bound-peer-session-has-configuration
+   (implies (and (fn-peer-sessionp x) (fn-peer-session-peer x))
+            (fn-peer-session-cfg x))
+   :hints (("Goal" :in-theory (e/d (fn-peer-sessionp fn-cfgp fn-cfg-shapep)
+                                   (fn-post-sessionp fn-peer-transferp
+                                    fn-node-statep fn-cfg-valuep
+                                    fn-peer-session-shapep
+                                    fn-record-uint32p))))))
+
+; The recognizer hypothesis is what `64a80197' made this theorem owe.
+; `fn-own-conn-live-session' (books/owner.lisp) refreshes the node only under
+; `(fn-peer-session-cfg ps)', so on a peer beside a NULL configuration the
+; session is handed back untouched and the node equation below is false of
+; it.  That object is not a `fn-peer-sessionp' -- the lemma above is what says
+; so -- and the served path does not reach it; the other four conjuncts hold
+; on both branches and are unrestricted.  books/owner-invariants has not
+; certified since 2026-09-21.
 (defthm fn-own-read-offers-against-the-live-node
-  (implies (fn-peer-session-peer
-            (fn-auth-session-base (fn-own-conn-session conn)))
+  (implies (and (fn-peer-sessionp
+                 (fn-auth-session-base (fn-own-conn-session conn)))
+                (fn-peer-session-peer
+                 (fn-auth-session-base (fn-own-conn-session conn))))
            (and (equal (fn-peer-session-node
                         (fn-auth-session-base (fn-own-conn-live-session o conn)))
                        (fn-sn-node (fn-own-store o)))

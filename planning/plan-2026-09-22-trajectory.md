@@ -193,13 +193,15 @@ Tier follows ember's preference: Opus for most, Fable for the seams.
 | --- | --- | --- | --- | --- | --- | --- |
 | T0 | Green image, deployed node | image closure green; images frozen under `build/images/<rev>/`; `hbox-node-deploy.sh` run; `node_probe.py` exits 0 from the laptop; matrix run on the image; the node's page lists which of P1 to P11 hold | in flight (w31-freeze-3, w32-native-guards) | the eight reds' books | 1 to 2 left, root 0.5 | Opus |
 | T1 | Codec boundary | `theory_check --strict` wired into `make check` at zero codec openings; every proof above the seam uses only the seam's constraints; encoded bytes unchanged (a golden-vector control); certify wall of `store-node-invariants` and `feed-connection-invariants` measured before and after | T0 (so the deploy is not held) | §4.1 | 2 seam + 6 to 8 across four cluster lanes | Fable seam, Opus clusters |
-| T2 | Acceptance stamp | §3.1: schema-1 record with the acceptance instant, schema-0 read as `:legacy`; the stamp installed by `fn-sn-finish`, replayed by `fn-replay`, read by NEWNEWS; codec round trip and canonicality re-proved at schema 1; NNT-008 restated over the stamp | T1 | `records*`, `acceptance*`, `node`, `replay*`, `store-node*`, `nntp-responses`, `nntp-newnews`, `nntp-invariants`, `nntp-effects`; `host/store-node-host.lisp:443`, `host/owner-host.lisp:304` | 4 to 6 | Fable |
+| T2a | Acceptance stamp in the record | [`specs/acceptance-stamp.md`](../specs/acceptance-stamp.md) §2.1 to §2.5 and §6: the eleventh field fixed at prepare, schema 1 with schema-0 bytes decoding as `:legacy`, the codec, prepare, finish and replay theorems with teeth, a clock the node cannot use refusing the submission as its own completion kind; the four callers the design found (the signed submission, BP ingress and its receiver books, the checkpoint codec, the D10-a reply path) | T1 (the seam exports the magic and the schema octet) | `records*`, `acceptance*`, `node`, `replay*`, `store-node*`, `hybrid-store`, `bp-ingress`, `checkpoint-codec`, `owner`, `nntp-post`, `peer-inbound`; `host/store-node-host.lisp:443` (prepare), `:549` and `host/owner-host.lisp:415` (finish) | 5 to 7 | Fable |
+| T2b | NEWNEWS over the stamp | the design's §2.6: `fn-nntp-newnews-scan-is-the-acceptance-filter` as an equation with an independent filter, no article octet read, the parse budget and its 503 retired; a legacy article dated by the nearest later stamp; NNT-008 restated with the `O(A·G')` sentence; matrix rows `V0-READ-NEWNEWS-STAMP` and `-LEGACY` | T2a | `nntp-responses`, `nntp-newnews`, `nntp-invariants`, `nntp-effects` | 1.5 to 2 | Opus |
 | T3 | One owner for duplicate-vs-conflict | `fn-sn-existing-action` in `books/store-node.lisp`; `fn-sn-existing-action-is-duplicate-iff-byte-identical` and its refusal sibling; `must-fail` per hypothesis; the four host lines call it; `host/store-host.lisp:138` deleted; OBJ-002's open item closed | T2 | `store-node`, `store-node-invariants`, three host files | 1 | Opus |
 | T4 | `fn-sn-finish` per arm, index on every arm | one theorem per arm for each of the four keystones the freeze made conditional; the retention and identity arms stated positively; `fn-sn-finish-preserves-indexedp` with no arm hypothesis; PRF-023 events updated; PRF-050's sequence invariant from `w25/prf050-identity-sequence` certified or retired by name | T2 | `store-node-invariants`, `stx-lace`, `stx-index`, `store-prepare-correspondence` | 3 to 4 | Fable |
 | T5 | POST is durable end to end | `fn-own-240-follows-consumed-completion`: the `240` effect of the owner on a `(:complete)` event equals `fn-store-sn-finish`'s `:durable`, and no `240` otherwise; the 14-cut campaign passes on the developer image at every cut with the record expectation the table states; NNT-005 `implemented` | T2 | `owner`, `owner-invariants`, `nntp-post`; `host/owner-host.lisp:409-425`; `tests/campaign/native_cuts.py`, `tests/test_native_crash_model.py` | 3 to 4 | Opus |
 | T6 | Reader pins and concurrency | `fn-own-read-of-a-pinned-reader-is-stable-under-another-connections-complete`; `max-conns` refusal theorem; measured on the image with two clients (matrix rows `V0-READ-*` pinned across POST); NNT-006 note rewritten | T5 (same books, same lane) | `owner`, `owner-invariants`; `host/native/owner.lisp` | 2 to 3 | Opus |
 | T7 | Login and the protected channel as one property | PRF-031 events cited; `tests/acl2/nntp-auth-teeth-tests.lisp` with one `must-fail` per hypothesis of `fn-auth-gated-command-is-refused-and-not-performed` and the two PRF-039 greeting theorems; `owner-tls-prefix` green; `node_probe.py` 483-then-login row on the image | T0 | `nntp-auth`, `nntp-auth-invariants`, `served-tls-prefix`, `owner-tls-prefix` | 2 | Opus |
-| T8 | Live reconfiguration DONE | the two headline theorems of `specs/reconfiguration.md` (no reader observes a half change; a crash at any instant recovers the live generation) stated over `fn-ocfg-step` and `fn-own-reconfigure`; PRF-028 notes corrected; a live `peer add` test; `V0-CFG-LIVE` accepted on the image | T0 | `owner-config`, `native-admin`, `config-records`; `host/native-admin-host.lisp:14-32` | 2 | Opus |
+| T8 | Live reconfiguration: the theorems and the live path | DONE 2026-09-22: the two headline theorems of `specs/reconfiguration.md` stated over `fn-ocfg-step` and the config replay with teeth; PRF-028 curated; the live arm's octet labels and the unpublished second reconfiguration fixed; a live `peer add` test on the developer image | T0 | `owner-config`, `native-admin`, `config-records`; `host/native-admin-host.lisp` | 2 | Opus |
+| T8b | The live node adopts a new domain and capacity | a group created live is served before any restart (`GROUP`, `LIST ACTIVE`, `POST` into it) and a capacity change takes effect live; a per-connection domain in `fn-own-conn-okp` and the store re-parameterised, proved against `fn-snt-relation`; `V0-CFG-LIVE` accepted on the image | T2, T4 | `owner`, `owner-invariants`, `store-node*`; `host/native-admin-host.lisp` | 3 to 4 | Opus |
 | T9 | Peering complete | (a) PRF-029 cited with teeth; K5 `fn-feed-replay-is-the-live-feed-modulo-inflight` proved or replaced by a K5 theorem over `fn-feed-tick-step` and the FNFD journal the host writes, the open row retired by name; (b) `fn-peer-transfer-stores-the-offered-octets-modulo-path-and-xref`; the peer-row round trip from `w29-peer-row-roundtrip` certified or its open row retired by name; (c) PRF-047/051 cited with teeth; gate: the matrix's two nodes on one box, TLS and AUTHINFO both ways, a `kill -9` of the sender mid-transfer, exactly one copy after restart | T1 for (a) (`feed-journal` is a codec opener); T0 for (b), (c) | (a) `owner-feed`, `peer-feed*`, `feed-journal`; (b) `peer-inbound*`, `path`, `peer-config`; (c) `feed-connection*`, `feed-auth-profile`; `host/native/feed-service.lisp` | 6 to 10 across three lanes | Opus, Fable for (a) |
 | T10 | Signatures an agent can check | (a) node: `fn-hsig-subject-body` injectivity; `fn-stxe-profile-supportedp` recognises the hybrid profile and its decoder is proved; the verdict arm of `fn-sn-finish` evaluates in the image (an attachment for `fn-sig-verify` in the pattern of `books/crypto-attach.lisp`, or an observed-verdict argument, named in `specs/identity.md`); the portable carrier from `recovery/portable-hybrid-authorship` decided against `FN-Statement` (one carrier per signature kind); (b) reader: S6 `HDR :fn-verified` with the three-token rendering and `fn-stx-reader-verdict-is-the-recorded-verdict`; (c) client: `principal new` derives the id from a seed, `fn_client.py post --sign`; a second agent verifies with its own keyring and no fn code; OBJ-003/OBJ-007 `implemented` | T4, T1 | (a) `hybrid-*`, `stx-evidence-records`, `crypto-attach`, `host/native/hybrid-control.lisp`, `signatures.lisp`; (b) `nntp-responses`, `nntp-effects`, `nntp-invariants`; (c) `tools/fn_client.py`, `host/native/operator.lisp` | 8 to 12 across three lanes | Fable (a), Opus |
 | T11 | Capacity refusal keystone | `fn-retain-admit-refuses-unaffordable-obligation` with teeth; RET-002 `implemented`; `V0-CAP-REFUSE` on the image | T0 | `retention`, `retention-invariants` | 1 | Sonnet |
@@ -399,23 +401,27 @@ with the key file it already refuses to read unless mode 0600.
 the step proves first. The carrier question (§5.2, branch 6) is decided in
 (a).
 
-**T12.** Decision 1 puts the DTN path in v0, and `specs/bp-design.md` §1.5.1
-is the honest inventory: `books/bp-node` is "two ends of this machine, not
-the machine", `fn-bpn-step` and its state do not exist, T1 to T6 are
-unproved, reassembly is not wired, status reports are absent, and dispatch
-has no routing table. `books/bp-node-machine` is the outbound lifecycle
-(queue, contact, persistence result, retry, expiry, restart) with
-certified-image component evidence and PRF-046's three events. The four
-steps are the design's packets 3 and 2 (T12a), 1 (T12b), 6 with the v0.3
-gate (T12c), and the obligation seam the independent review's naivety 6
-named (T12d). D07 applies: `tools/scheduler.py` is Python and
-`books/scheduler` has no native caller, so T12c's contact scheduling is
-`books/scheduler` called from `host/native/bp-service.lisp`, or
-`bp-node-machine`'s own contact model proved to be the scheduler's, not a
-third one. The gate run of T12c is on one box (two DTN images and a relay,
-the shape of the four-node lab without the mock BPA), with the interrupted
-contact, the expiry and the staging exhaustion the v0.3 row asked for. LTP
-follows T12 (decision 5).
+**T12.** Decision 1 puts the DTN path in v0. The contract is
+[`specs/bp-node-machine.md`](../specs/bp-node-machine.md), revised on
+2026-09-22 against [gpt-6's review](review-2026-09-22-bp-node-machine.md);
+its §11 replaces the four steps T12a to T12d with slices whose briefs,
+boxes, sizes and acceptance traces (BP-R01 to BP-R24) are stated there:
+A1 the machine, the TCPCL refusal and the two-process article-and-receipt
+round trip with its crash cuts on the real owner Store (hbox, Fable, 7 to
+9 days); A2 the records and the replay theorems (3 to 4); A3 the
+obligation release, the receipt outbox, the scheduler runner and K6
+(persvati, 5 to 6, K6 gated on T1's BP-receiver cluster); B the serialized
+service loop, routes, the three-process gate with the sender's carrier
+discarded and with reports dropped (hbox, Fable, 5 to 7); C1 fragment
+lemmas, the fast reassembler and the limits table (2 to 3); C2 the fragment
+families in the machine (after B, 3 to 4); D1 the status-report codec (1 to
+2); D2 reports, the administrative path and independent wire vectors (2 to
+3); E journal exhaustion and the operating envelope (after B, 2 to 3). The
+slices total 32 to 44 lane-days against the 20 to 31 the four steps
+carried; the receive path merges only with A2's replay theorems certified.
+D07 stands: the scheduler's policy is `books/scheduler` behind a prepare,
+publish, complete runner called from the native host; `tools/scheduler.py`
+retires with B. LTP follows (decision 5).
 
 **T16.** The paragraph under T5.
 
@@ -459,10 +465,10 @@ image changed what the node does.
 | --- | --- | --- | --- | --- | --- | --- |
 | 0 (now) | T0 store reds (`w31-freeze-3`) | T12a design against §1.5, no book edits until phase 2 | T0 native guards (`w32-native-guards`) | T7 login/TLS teeth | root: T14 hygiene, T15 retirement | the image, the hbox node, the matrix on it, the node's page |
 | 1 | T1 seam books, then the store cluster (Fable) | T1 BP-receiver cluster, from the day the seam books exist | T9c outbound TLS/AUTHINFO feed | T8 live reconfiguration | T11 capacity keystone; then the T2 design note | wave; `theory_check --strict` count; image |
-| 2 | T2 acceptance stamp (Fable) | T12a node machine: definitions, state, reassembly, dispatch (Fable) | T1 stx/identity/lace cluster | T1 frame/anchor/transfer-journal cluster | T12b bundle store records (certifies on hbox by farm) | wave; `theory_check --strict` at zero, wired into `make check`; image |
-| 3 | T4 finish arms, then T3 article match | T12a proofs T1 to T6 | T5 POST end to end, then T6 reader pins | T9a feed K5 (Fable) | T9b inbound octets and the peer-row round trip | wave; image; second deploy (P2, P3, P4, P6, P7 on loopback) |
+| 2 | T2 acceptance stamp (Fable) | T12 slice A1, the machine and the round trip (Fable) | T1 stx/identity/lace cluster | T1 frame/anchor/transfer-journal cluster | T12b bundle store records (certifies on hbox by farm) | wave; `theory_check --strict` at zero, wired into `make check`; image |
+| 3 | T4 finish arms, then T3 article match | T12 slice A2 replay theorems, then A3 obligations and K6 | T5 POST end to end, then T6 reader pins | T9a feed K5 (Fable) | T9b inbound octets and the peer-row round trip | wave; image; second deploy (P2, P3, P4, P6, P7 on loopback) |
 | 4 | T10a signatures, node side (Fable) | T12c contact scheduler native and the gate run's harness | T10b S6 reader exposure | T12d obligations and receipts | T10c client `--sign` and `principal new`; T13 INN and dtn7-rs labs on hbox | wave; DTN image; third deploy (P8) |
-| 5 | T16a K0, K5, K6, K8 (Fable) | T12d proofs, then the T12c gate run and record | T16b platform profile on hbox | T13 ION lab; hbox-to-persvati exchange row | T13 matrix and the v0 record | wave; the v0 image; `planning/evidence/v0-<rev>.md` |
+| 5 | T16a K0, K5, K6, K8 (Fable) | T12 slices C2, D2 and E, then the v0.3 gate record | T16b platform profile on hbox | T13 ION lab; hbox-to-persvati exchange row | T13 matrix and the v0 record | wave; the v0 image; `planning/evidence/v0-<rev>.md` |
 | 6 (v1 begins) | LTP | T17 Message-ID index | S4/S5 | compaction | | |
 
 Why this order and not another: phase 1 cannot start T2, T4, T5 or T9a

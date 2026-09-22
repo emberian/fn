@@ -262,6 +262,9 @@ def _inn_unmet(root: Path, args) -> str | None:
         return unmet.replace("--host (persvati or hbox)",
                              "--host, naming a box with the pinned INN build "
                              "(tests/inn/pin.json; /tank/fn/inn/2.7.4 on hbox)")
+    if not getattr(args, "native_image", None):
+        return ("the INN lab's fn side is the native image or the lab does not "
+                "run (D07): give --native-image, the image's path on the box")
     return None
 
 
@@ -335,13 +338,16 @@ LABS: tuple[Lab, ...] = (
         unmet=_box_unmet),
     Lab(name="inn", kind="lab", tier="box",
         script="tools/inn_lab.py",
-        budget=7200.0, cost="an hour or more on the box that holds INN",
+        budget=1800.0, cost="about a minute on the box that holds INN (52 s on "
+                            "hbox, 2026-09-22)",
         carries="the only question whose answer does not come from our own "
-                "code: fn against a real InterNetNews, read, IHAVE, innfeed's "
-                "offer, and a cut on each side",
+                "code: the native fn owner against a real InterNetNews, its "
+                "feed into innd, innfeed into fn, duplicates and loops both "
+                "ways, and a cut on each side",
         argv=lambda root, run, args: [
             sys.executable, str(root / "tools/inn_lab.py"), _commit(args),
-            "--host", args.host or "", "--jobs", str(args.jobs)],
+            "--host", args.host or "", "--native-image", args.native_image or "",
+            "--evidence", str(Path(run) / "inn-lab.md")],
         unmet=_inn_unmet),
     Lab(name="scale", kind="lab", tier="box",
         script="tools/scale_gate.py",
@@ -387,10 +393,10 @@ LABS: tuple[Lab, ...] = (
         unmet=_dry_unmet),
     Lab(name="inn-dry", kind="dry", tier="quick",
         script="tests/test_inn_lab.py",
-        budget=600.0, cost="about 10 s",
-        carries="tools/inn_lab.py's scenario sequencing, port scheme, "
-                "configuration writing, skip accounting and evidence, against "
-                "tests/inn_lab_fake",
+        budget=600.0, cost="about 20 s",
+        carries="tools/inn_lab.py's scenario sequencing, relay parsing, header "
+                "comparison, port scheme, configuration writing and evidence, "
+                "against a stand-in INN and a stand-in image (tests/inn_lab_fake)",
         argv=lambda root, run, args: [
             sys.executable, "-m", "unittest", "tests.test_inn_lab"],
         unmet=_dry_unmet),
@@ -562,6 +568,9 @@ def main(argv=None) -> int:
     parser.add_argument("--image", default=None,
                         help="the native fn image for the TCPCL lab "
                              "(default: build/fn-host under this worktree)")
+    parser.add_argument("--native-image", default=None,
+                        help="the saved native image's path on the box, for the "
+                             "INN lab (its fn side is the image, D07)")
     parser.add_argument("--ion-root", default=os.environ.get("FN_ION_ROOT", "/tank/fn/ltp"),
                         help="the pinned ION install for the LTP lab")
     parser.add_argument("--run", default=None,

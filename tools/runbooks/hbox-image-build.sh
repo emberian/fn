@@ -5,6 +5,13 @@ set -eu
 ROOT=$1; REV=$2
 ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
 CACHE=/tank/fn/certcache
+# The images refuse to build without an OpenSSL pair that provides ML-DSA-65
+# (host/native/signatures.lisp, OpenSSL >= 3.5); hbox's system library is
+# 3.3.1.  This is the matched pair built from the openssl-3.5.8 release
+# tarball (SHA-256 a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2);
+# a running image needs the same variable.
+FN_OPENSSL_PREFIX=${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}
+export FN_OPENSSL_PREFIX
 cd "$ROOT"
 mkdir -p build/freeze
 echo "== acquire default"
@@ -25,6 +32,6 @@ echo "== freeze"
 IMG=build/images/$REV; mkdir -p "$IMG"
 cp -p build/fn-host build/fn-host.core build/fn-host-developer build/fn-host-developer.core build/fn-host-dtn build/fn-host-dtn.core "$IMG/"
 find books host Makefile tools/build_native_host.sh -type f \( -name '*.lisp' -o -name Makefile -o -name '*.sh' \) | sort | xargs sha256sum > "$IMG/build-source.sha256"
-sha256sum "$IMG"/* /tank/fn/sbcl/bin/sbcl "$ACL2" /tank/fn/acl2-8.7/saved_acl2.core | tee build/freeze/image-hashes.txt
+sha256sum "$IMG"/* /tank/fn/sbcl/bin/sbcl "$ACL2" /tank/fn/acl2-8.7/saved_acl2.core "$FN_OPENSSL_PREFIX/lib/libcrypto.so.3" "$FN_OPENSSL_PREFIX/lib/libssl.so.3" | tee build/freeze/image-hashes.txt
 ls -la "$IMG"
 echo "== done"

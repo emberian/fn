@@ -10,6 +10,11 @@ PREFIX=$NODE/fn-$REV
 mkdir -p "$NODE/tls" "$NODE/log"
 cd "$TREE"
 export ACL2_CUSTOMIZATION=NONE; unset ACL2_SYSTEM_BOOKS
+# The image was built against OpenSSL 3.5 (ML-DSA-65); the host reads this
+# variable at runtime (host/native/tls.lisp) and falls back to the system
+# library without it, which on hbox is 3.3.1 and has no ML-DSA-65.
+FN_OPENSSL_PREFIX=${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}
+export FN_OPENSSL_PREFIX
 echo "== install the production image under $PREFIX"
 FN_NATIVE_HOST="$TREE/build/fn-host" FN_NATIVE_CORE="$TREE/build/fn-host.core" \
   FN_NATIVE_SOURCE_REVISION="$REV" PREFIX="$PREFIX" sh packaging/install-native.sh
@@ -38,14 +43,14 @@ path = "$NODE/store/auth.toml"
 
 [posting]
 enabled = true
-agent = "fn@hbox.ember.software"
 
 [control]
 path = "$NODE/store/control.sock"
-
-[log]
-path = "$NODE/log/fn.log"
 TOML
+# No [log] and no [posting] agent: the native image's supported profile
+# (books/native-config.lisp fn-native-config-operator-availablep) refuses a
+# log path and any agent but the default, and `run` answers
+# UNSUPPORTED-PROFILE. stderr goes to the user journal.
 echo "== configuration records: identity and groups"
 "$FN" operator "$NODE/fn.toml" policy set path-identity hbox.ember.software
 for g in fn.agents fn.humans fn.announce; do "$FN" operator "$NODE/fn.toml" group create "$g"; done
@@ -72,6 +77,7 @@ StartLimitBurst=5
 [Service]
 Type=simple
 Environment=ACL2_CUSTOMIZATION=NONE
+Environment=FN_OPENSSL_PREFIX=$FN_OPENSSL_PREFIX
 ExecStart=$FN operator $NODE/fn.toml run
 Restart=on-failure
 RestartSec=5

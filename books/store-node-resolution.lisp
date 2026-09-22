@@ -86,13 +86,27 @@
    (implies (fn-record-p record) (true-listp record))
    :hints (("Goal" :in-theory (enable fn-record-p)))))
 
+; The retention arm advances the live node over the transaction id the
+; abort consumes, exactly as `fn-sn-refuse-reservation' above advances it
+; over a refused reservation.  `6ab2c783' added this arm and left the node
+; alone, which is a `fn-sn-node' one transaction id behind the durable
+; frontier in a `:ready' state: the store's own invariant says an idle node
+; IS the replay of its durable history at that frontier
+; (`fn-snt-relation', books/store-node-traces) and
+; `fn-own-idle-node-is-replay' (books/owner-invariants) is what lets the
+; reader path serve from the live node instead of replaying.  The article arm
+; consumes the id through the aborted completion; a retention candidate
+; staged no proposal to complete, so the advance is the whole of it.  Nothing
+; else changes: `fn-replay-advance-txid' touches no article, pin, binding,
+; watermark or capacity (books/replay).
 (defun fn-sn-known-abort (s)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (fn-sn-known-abort-enabledp s)
       (let* ((files (fn-sn-files s))
              (record (fn-sf-record-candidate files))
              (node (if (fn-store-retention-event-p record)
-                       (fn-sn-node s)
+                       (fn-replay-advance-txid (fn-sn-node s)
+                                               (fn-sf-frontier files))
                      (fn-node-complete
                       (fn-sn-node s) (fn-record-txid record)
                       (fn-record-generation record) :aborted))))
@@ -118,6 +132,7 @@
               fn-store-node-traces-vocabulary)
              (fn-sn-statep fn-sf-statep fn-node-statep fn-record-p
               fn-sn-record-bindsp fn-snt-relation fn-snt-pending-linkp
+              fn-snt-deferred-linkp fn-snt-completion-linkp
               fn-sf-history-recoverablep fn-sf-replay-node
               fn-sn-refuse-reservation-enabledp fn-sn-refuse-reservation
               fn-sn-known-abort-enabledp fn-sn-known-abort-file-start
@@ -160,11 +175,17 @@
            (fn-sf-statep (fn-sn-known-abort-files files)))
   :hints (("Goal"
            :use ((:instance fn-sn-known-abort-file-start-preserves-state)
+                 ; `6ab2c783' changed the pair `fn-sn-known-abort-files'
+                 ; hands `fn-sf-abort-completion' to the composed
+                 ; `fn-store-event-sequence' and `fn-store-event-txid'
+                 ; (the staged candidate is no longer always an article
+                 ; record), and this book has not certified since; the
+                 ; instance has to name the same pair.
                  (:instance fn-sf-abort-completion-preserves-state
                             (s (fn-sn-known-abort-file-start files))
-                            (sequence (fn-record-sequence
+                            (sequence (fn-store-event-sequence
                                        (fn-sf-record-candidate files)))
-                            (txid (fn-record-txid
+                            (txid (fn-store-event-txid
                                    (fn-sf-record-candidate files)))))
            :in-theory (enable fn-sn-known-abort-files))))
 
@@ -175,6 +196,10 @@
            :cases ((fn-sn-known-abort-enabledp s))
            :use ((:instance fn-sn-known-abort-files-preserves-state
                             (files (fn-sn-files s)))
+                 ; The retention arm's node since `6ab2c783'.
+                 (:instance fn-replay-advance-preserves-node-statep
+                            (node (fn-sn-node s))
+                            (recorded-txid (fn-sf-frontier (fn-sn-files s))))
                  (:instance fn-node-complete-preserves-state
                             (s (fn-sn-node s))
                             (txid (fn-record-txid
@@ -185,7 +210,11 @@
                             (completion-status :aborted)))
            :in-theory (e/d (fn-sn-known-abort fn-sn-update fn-sn-statep)
                            (fn-sn-record-bindsp
-                            fn-sn-known-abort-files fn-node-complete)))))
+                            fn-sn-known-abort-files fn-node-complete
+                            fn-replay-advance-txid
+                            fn-record-codec-vocabulary
+                            fn-store-event-p fn-store-retention-event-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
 ; -----------------------------------------------------------------------------
 ; The carried statement index (D21): the two resolution transitions
@@ -264,16 +293,59 @@
   (equal (fn-sf-successes (fn-sn-files (fn-sn-known-abort s)))
          (fn-sf-successes (fn-sn-files s)))
   :hints (("Goal"
+           ; The composed pair, as in `fn-sn-known-abort-files-preserves-state'
+           ; above (`6ab2c783').
            :use ((:instance fn-sf-successes-of-abort-completion
                             (s (fn-sn-known-abort-file-start (fn-sn-files s)))
-                            (sequence (fn-record-sequence
+                            (sequence (fn-store-event-sequence
                                        (fn-sf-record-candidate (fn-sn-files s))))
-                            (txid (fn-record-txid
+                            (txid (fn-store-event-txid
                                    (fn-sf-record-candidate (fn-sn-files s))))))
            :in-theory (e/d (fn-sn-known-abort fn-sn-known-abort-files
                              fn-sn-update)
                            (fn-sn-known-abort-file-start
-                            fn-sf-abort-completion )))))
+                            fn-sf-abort-completion
+                            fn-record-codec-vocabulary
+                            fn-store-event-p fn-store-retention-event-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-replay-apply-record
+                            fn-replay-apply-retention-event
+                            fn-node-complete)))))
+
+; The two deferred preparations acknowledge nothing either: they stage a
+; candidate through `fn-sf-prepare-record', which publishes no success.
+; `6ab2c783' and `4bb7bb3d' put both on `fn-snrt-step' and the monotonicity
+; theorems below walk every arm of it.
+(defthm fn-sn-prepare-retention-cannot-acknowledge
+  (equal (fn-sf-successes (fn-sn-files (fn-sn-prepare-retention s event)))
+         (fn-sf-successes (fn-sn-files s)))
+  :hints (("Goal"
+           :use ((:instance fn-sf-successes-of-prepare-record
+                            (s (fn-sn-files s)) (record event)
+                            (groups (fn-sn-groups s))
+                            (capacity (fn-sn-capacity s))))
+           :in-theory (e/d (fn-sn-prepare-retention fn-sn-update)
+                           (fn-sn-statep fn-sf-prepare-record
+                            fn-replay-apply-retention-event
+                            fn-record-codec-vocabulary
+                            fn-store-event-p fn-store-retention-event-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p)))))
+
+(defthm fn-sn-prepare-identity-cannot-acknowledge
+  (equal (fn-sf-successes (fn-sn-files (fn-sn-prepare-identity s event)))
+         (fn-sf-successes (fn-sn-files s)))
+  :hints (("Goal"
+           :use ((:instance fn-sf-successes-of-prepare-record
+                            (s (fn-sn-files s)) (record event)
+                            (groups (fn-sn-groups s))
+                            (capacity (fn-sn-capacity s))))
+           :in-theory (e/d (fn-sn-prepare-identity fn-sn-update)
+                           (fn-sn-statep fn-sf-prepare-record
+                            fn-replay-apply-record
+                            fn-replay-identity-step fn-sn-identity-context
+                            fn-record-codec-vocabulary
+                            fn-store-event-p fn-store-retention-event-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
 (defthm fn-sn-known-abort-files-reaches-ready
   (implies (and (fn-sf-statep files)
@@ -305,6 +377,14 @@
                    fn-sn-refuse-reservation-enabledp fn-sn-update
                    fn-sf-refuse-reservation fn-replay-advance-txid))))
 
+; `6ab2c783' gave `fn-sn-known-abort' a second arm, and on it the node is not
+; an aborted completion: a retention candidate never staged a proposal on the
+; live node (`fn-sn-prepare-retention' defers the whole node effect to
+; `fn-sn-finish'), so the abort leaves the node where the reservation left
+; it.  Stated for both arms rather than hypothesised on one, so the theorem
+; still says what the transition does everywhere it is enabled.  This book has
+; not certified since 2026-09-21 01:20 and the one-armed statement was never
+; proved in the shape the machine has.
 (defthm fn-sn-known-abort-is-exact-node-abort
   (implies (fn-sn-known-abort-enabledp s)
            (let ((record (fn-sf-record-candidate (fn-sn-files s))))
@@ -312,14 +392,22 @@
                           (fn-sn-files (fn-sn-known-abort s)))
                          :ready)
                   (equal (fn-sn-node (fn-sn-known-abort s))
-                         (fn-node-complete
-                          (fn-sn-node s) (fn-record-txid record)
-                          (fn-record-generation record) :aborted)))))
+                         (if (fn-store-retention-event-p record)
+                             (fn-replay-advance-txid
+                              (fn-sn-node s) (fn-sf-frontier (fn-sn-files s)))
+                           (fn-node-complete
+                            (fn-sn-node s) (fn-record-txid record)
+                            (fn-record-generation record) :aborted))))))
   :hints (("Goal"
            :in-theory (e/d (fn-sn-known-abort
                              fn-sn-known-abort-enabledp fn-sn-update)
-                           (fn-sn-known-abort-files 
-                            fn-node-complete)))))
+                           (fn-sn-known-abort-files
+                            fn-node-complete
+                            fn-record-codec-vocabulary
+                            fn-store-event-p fn-store-retention-event-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-replay-apply-record
+                            fn-replay-apply-retention-event)))))
 
 (defthm fn-sn-refuse-reservation-preserves-relation
   (implies (fn-snt-relation s)
@@ -342,15 +430,32 @@
                             fn-snt-pending-linkp fn-sn-completion-enabledp
                             fn-replay-advance-txid)))))
 
+; Both arms land `:ready', and on both the node is the replay of the durable
+; history at the frontier, which is what the `:ready' arm of the relation
+; asks for.  On the article arm that is the aborted completion, as before.
+; On the retention arm the relation carries the deferred link
+; (`fn-snt-deferred-linkp', books/store-node-traces), whose node is the
+; replay at the frontier's predecessor, and the advance `6ab2c783' left out
+; is exactly `fn-snt-advance-replayed-node' -- the same step
+; `fn-sn-refuse-reservation-preserves-relation' above takes.
 (defthm fn-sn-known-abort-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-known-abort s)))
   :hints (("Goal"
            :cases ((fn-sn-known-abort-enabledp s))
            :use (fn-sn-known-abort-preserves-state
-                 fn-sn-known-abort-is-exact-node-abort)
+                 fn-sn-known-abort-is-exact-node-abort
+                 (:instance fn-snt-an-article-record-is-no-other-store-event
+                   (record (fn-sf-record-candidate (fn-sn-files s))))
+                 (:instance fn-snt-advance-replayed-node
+                   (groups (fn-sn-groups s))
+                   (capacity (fn-sn-capacity s))
+                   (records (fn-sf-records (fn-sn-files s)))
+                   (first (+ -1 (fn-sf-frontier (fn-sn-files s))))
+                   (second (fn-sf-frontier (fn-sn-files s)))))
            :in-theory (e/d (fn-snt-relation fn-snt-idle-phasep
-                             fn-snt-pending-linkp
+                             fn-snt-pending-linkp fn-snt-deferred-linkp
+                             fn-snt-completion-linkp
                              fn-sn-known-abort fn-sn-known-abort-enabledp
                              fn-sn-known-abort-files
                              fn-sn-known-abort-file-start fn-sn-update
@@ -361,7 +466,12 @@
                              fn-sn-record-bindsp
                              fn-sf-history-recoverablep
                              fn-sf-replay-node fn-node-complete
-                             fn-sn-completion-enabledp)))))
+                             fn-sn-completion-enabledp
+                             fn-record-codec-vocabulary
+                             fn-store-event-p fn-store-retention-event-p
+                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-replay-apply-record
+                             fn-replay-apply-retention-event)))))
 
 ; =============================================================================
 ; Mixed live-store traces including refusal and known prepublication abort
@@ -386,11 +496,17 @@
       (fn-snrt-run (fn-snrt-step s (car events)) (cdr events))
     s))
 
+; The two arms `6ab2c783' and `4bb7bb3d' added are closed here like the
+; others, so the step is decided by the preservation theorems of the
+; transitions themselves -- `fn-snt-prepare-retention-preserves-relation' and
+; `fn-snt-prepare-identity-preserves-relation' (books/store-node-traces) are
+; the two that did not exist when those arms landed.
 (defthm fn-snrt-step-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-snrt-step s event)))
   :hints (("Goal" :in-theory (disable fn-snt-relation fn-sn-prepare fn-sn-io
-                      fn-sn-finish fn-sn-crash fn-sn-recover))))
+                      fn-sn-finish fn-sn-crash fn-sn-recover
+                      fn-sn-prepare-retention fn-sn-prepare-identity))))
 
 (defthm fn-snrt-mixed-trace-preserves-live-history-relation
   (implies (fn-snt-relation s)
@@ -460,6 +576,14 @@
 ; Refusal and abort add no acknowledgement-producing paths.  Any step that
 ; changes acknowledgement history executes the actual matching live durable
 ; completion, including its exact article and retention obligation.
+; The safety conjuncts -- a new acknowledgement only from `:finish', and only
+; under an enabled completion -- stand for all three arms of `fn-sn-finish'.
+; The article-specific conclusions are conditional on the acceptance arm, as
+; they are in the keystone this uses
+; (`fn-sn-new-success-requires-actual-matching-durable-node-completion',
+; books/store-node-invariants): since `6ab2c783' and `4bb7bb3d' the completion
+; record can be a retention or identity event, whose node transition is not a
+; `fn-node-complete' and whose article accessors name nothing.
 (defthm fn-snrt-new-success-is-actual-matching-durable-completion
   (let ((next (fn-snrt-step s event)))
     (implies
@@ -467,12 +591,19 @@
                   (fn-sf-successes (fn-sn-files s))))
      (and (equal (car event) :finish)
           (fn-sn-completion-enabledp s)
-          (fn-sn-record-bindsp (fn-sn-node s) (fn-sn-completion-record s))
-          (equal (fn-sn-node next)
-                 (fn-node-complete (fn-sn-node s)
-                   (fn-record-txid (fn-sn-completion-record s))
-                   (fn-record-generation (fn-sn-completion-record s)) :durable))
-          (fn-sn-committed-recordp (fn-sn-node next) (fn-sn-completion-record s)))))
+          (implies
+           (and (not (fn-store-retention-event-p (fn-sn-completion-record s)))
+                (not (fn-stxe-p (fn-sn-completion-record s)))
+                (not (fn-stxk-p (fn-sn-completion-record s)))
+                (not (fn-stxa-p (fn-sn-completion-record s))))
+           (and (fn-sn-record-bindsp (fn-sn-node s) (fn-sn-completion-record s))
+                (equal (fn-sn-node next)
+                       (fn-node-complete (fn-sn-node s)
+                         (fn-record-txid (fn-sn-completion-record s))
+                         (fn-record-generation (fn-sn-completion-record s))
+                         :durable))
+                (fn-sn-committed-recordp (fn-sn-node next)
+                                         (fn-sn-completion-record s)))))))
   :hints (("Goal"
            :use fn-sn-new-success-requires-actual-matching-durable-node-completion
            :in-theory (e/d (fn-snrt-step fn-snt-step)
@@ -480,6 +611,12 @@
                              fn-sn-finish fn-sn-completion-enabledp
                              fn-sn-record-bindsp fn-sn-completion-record
                              fn-sn-committed-recordp fn-node-complete
+                             fn-record-codec-vocabulary
+                             fn-store-event-p fn-store-retention-event-p
+                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-replay-apply-record
+                             fn-replay-apply-retention-event
+                             fn-sn-prepare-retention fn-sn-prepare-identity
                               fn-record-txid fn-record-generation)))))
 
 ; -----------------------------------------------------------------------------

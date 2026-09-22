@@ -190,6 +190,29 @@
   (equal (fn-sn-keyring (fn-sn-make groups capacity files node keyring index)) keyring))
 (defthm fn-sn-index-of-fn-sn-make
   (equal (fn-sn-index (fn-sn-make groups capacity files node keyring index)) index))
+; The four fields `6e992351' added to `fn-sn-state', over the six-field
+; constructor that fills them: it is not silent about them, it writes 0, NIL,
+; NIL and 0, and a caller that builds through it owes `fn-sn-statep' those
+; four conjuncts.  Without these rules `(fn-sn-keyring-generation
+; (fn-sn-make ...))' is a stuck term and `fn-sn-observed-seed-is-state'
+; (books/store-observed) cannot be proved -- which is how that book was red,
+; found by the w32 triage lane's provisional-certification run over this
+; closure on 2026-09-22 and named in its own record.
+(defthm fn-sn-keyring-generation-of-fn-sn-make
+  (equal (fn-sn-keyring-generation
+          (fn-sn-make groups capacity files node keyring index))
+         0))
+(defthm fn-sn-verdicts-of-fn-sn-make
+  (equal (fn-sn-verdicts (fn-sn-make groups capacity files node keyring index))
+         nil))
+(defthm fn-sn-keyring-snapshots-of-fn-sn-make
+  (equal (fn-sn-keyring-snapshots
+          (fn-sn-make groups capacity files node keyring index))
+         nil))
+(defthm fn-sn-identity-next-of-fn-sn-make
+  (equal (fn-sn-identity-next
+          (fn-sn-make groups capacity files node keyring index))
+         0))
 (in-theory (disable (:d fn-sn-shapep) (:d fn-sn-groups) (:d fn-sn-capacity)
                     (:d fn-sn-files) (:d fn-sn-node) (:d fn-sn-keyring)
                     (:d fn-sn-index) (:d fn-sn-keyring-generation)
