@@ -4773,6 +4773,16 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                  "whether the group reached the served configuration. No concurrent "
                  "reader was observed across the change, and nothing here says the "
                  "change survives a restart")
+        # The refusal half below is only a statement about a store a live
+        # owner holds.  On the dabebb84 image the live verb killed the owner
+        # (host/native/admin.lisp opened its private connection through
+        # `fnn-owner-action', which faults on the integer id), the offline
+        # executor then found the writer lock free and correctly accepted,
+        # and this row recorded that as two writers on one store.  Ask first.
+        owner_alive = self.alive(self.a)
+        if not owner_alive:
+            observed += "; node A's owner DIED after the verb ({})".format(
+                self.dead.get(self.a.name, "no log"))
         if declare.rc == EXIT_OK:
             # The verb accepted; what decides the row is whether the RUNNING
             # service serves the group, and that observation is the socket's.
@@ -4783,6 +4793,14 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                       exit_code=declare.rc, client=CLIENT_CLI,
                       limit=limit + "; the verb did not accept, so the socket reply "
                                     "above is the state the node was left in")
+        if not owner_alive:
+            self.emit("V0-CFG-LIVE-REFUSE", NOT_EXERCISED,
+                      "(the offline command was not run)", "(node A's owner was gone)",
+                      blocker="node A's owner died during the live verb, so no live "
+                              "owner held the store: an offline command then takes the "
+                              "free writer lock and is accepted, which says nothing "
+                              "about a store a live owner holds")
+            return
         store = self.native_config_store(self.a)
         if not store:
             self.emit("V0-CFG-LIVE-REFUSE", NOT_EXERCISED,
@@ -4806,7 +4824,8 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
             "V0-CFG-LIVE-REFUSE", step,
             limit="a second configuration over node A's OWN store whose `[control] "
                   "path` names a socket nothing has bound, so the verb takes the "
-                  "offline executor while the live owner holds the writer lock; the "
+                  "offline executor while the live owner (asked alive just before) "
+                  "holds the writer lock; the "
                   "refusal is that lock's and a server that does not take it would not "
                   "produce it. The supplied configuration is unchanged, and with its "
                   "own live control path the same words reach the live owner instead -- "
