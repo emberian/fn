@@ -1711,6 +1711,32 @@ OpenSSL or certificates correct, or establish peer honesty.  AUTHINFO, a
 principal-bound profile, or mutual TLS remains required to make that stronger
 claim.
 
+What is proved of it (T9c, 2026-09-22; PRF-047, PRF-051), over the two
+functions the host calls on a connection -- `fn-fc-step`
+(`host/owner-host.lisp` `fn-owner-feed-reply-chunk`) and `fn-fc-after-tls`
+(`fn-owner-feed-tls-established`) -- in `books/feed-connection-invariants.lisp`,
+with teeth in `tests/acl2/feed-connection-teeth-tests.lisp`:
+
+- `fn-fc-offers-and-credentials-wait-for-tls-and-login`: from the phase
+  `fn-owner-feed-dial-open` installs, under a record that requires a protected
+  channel, on every sequence of reads and TLS reports, no MODE, ready or
+  delivered reply precedes a 382, an accepted TLS report and (with a
+  credential) a 281, and no AUTHINFO line precedes the 382 and the TLS report.
+  A credential on a clear transport without the profile's explicit permission
+  is never sent.
+- `fn-fc-starttls-refusal-closes-before-the-credential` and
+  `fn-fc-refused-login-closes-without-an-offer`: a non-382 answer to STARTTLS,
+  or a non-281 (non-381 to USER) answer to the login, is `:refused`, closes the
+  connection, and nothing fed to it afterwards produces a command, a handshake
+  or an offer.  fn does not read CAPABILITIES before STARTTLS.
+- `fn-fc-decoded-profile-renders-verbatim-in-every-state`: the AUTHINFO USER and
+  PASS lines are the prefix, the `fn-fap-decode`d field and CRLF, one line each,
+  in every state the connection reaches.
+
+The two-node measurement is the v0 matrix's `V0-TRANSIT-TLS-*`,
+`V0-TRANSIT-AUTHINFO-*` rows (`tests/test_native_protected_peering.py`); no
+image has run them yet.
+
 ## Principal-bound inbound role selection (2026-09-21)
 
 A peer configured with `(:principal id)` starts every inbound connection as a

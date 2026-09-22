@@ -48,6 +48,42 @@
           (list :bad nil nil)))
     (list :bad nil nil)))
 
+;
+; What an accepted profile hands the connection machine.  `fn-fap-decode'
+; itself checks `fn-fap-tokenp' of both fields; what it does not say on its
+; face is that both are true lists, which `fn-fc-auth-command' requires
+; before it renders anything (books/feed-connection).  Together they are
+; the hypotheses of `fn-fc-decoded-profile-renders-verbatim-in-every-state'
+; in books/feed-connection-invariants.  The subject is the function the host
+; calls: host/owner-host.lisp `fn-owner-feed-profile-decode' is
+; `fn-fap-decode', and host/native/feed-service.lisp `fnn-feed-auth-profile'
+; calls it on the bytes of the owner-only profile file.
+(local
+ (defthm fn-fap-reverse-aux-is-true-list
+   (implies (true-listp out) (true-listp (fn-fap-reverse-aux xs out)))))
+
+(local
+ (defthm fn-fap-line-aux-yields-a-true-list
+   (implies (true-listp rev)
+            (true-listp (cadr (fn-fap-line-aux xs rev))))
+   :hints (("Goal" :in-theory (enable fn-fap-line-aux fn-fap-reverse)))))
+
+(defthm fn-fap-decode-yields-two-renderable-tokens
+  (implies (equal (car (fn-fap-decode octets)) :ok)
+           (and (fn-fap-tokenp (cadr (fn-fap-decode octets)))
+                (true-listp (cadr (fn-fap-decode octets)))
+                (fn-fap-tokenp (caddr (fn-fap-decode octets)))
+                (true-listp (caddr (fn-fap-decode octets)))))
+  :hints (("Goal" :in-theory (e/d (fn-fap-decode fn-fap-line)
+                                  (fn-fap-tokenp fn-fap-line-aux)))))
+
+; And a profile it refuses yields no name and no secret at all.
+(defthm fn-fap-decode-refusal-yields-no-credential
+  (implies (not (equal (car (fn-fap-decode octets)) :ok))
+           (and (equal (cadr (fn-fap-decode octets)) nil)
+                (equal (caddr (fn-fap-decode octets)) nil)))
+  :hints (("Goal" :in-theory (e/d (fn-fap-decode) (fn-fap-tokenp fn-fap-line)))))
+
 (verify-guards fn-fap-prefixp)
 (verify-guards fn-fap-drop)
 (verify-guards fn-fap-reverse-aux)

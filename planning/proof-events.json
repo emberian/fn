@@ -1559,11 +1559,41 @@
     },
     {
       "id": "PRF-047",
-      "events": []
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-fc-offers-and-credentials-wait-for-tls-and-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fc-starttls-refusal-closes-before-the-credential"
+        }
+      ]
     },
     {
       "id": "PRF-051",
-      "events": []
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-fc-offers-and-credentials-wait-for-tls-and-login"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fc-refused-login-closes-without-an-offer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fc-auth-user-command-sends-the-configured-name-alone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fc-auth-pass-command-sends-the-configured-secret-alone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-fc-decoded-profile-renders-verbatim-in-every-state"
+        }
+      ]
     }
   ]
 }

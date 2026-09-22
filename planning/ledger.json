@@ -118,6 +118,7 @@
     "tests/acl2/feed-connection-tests",
     "books/feed-connection-invariants",
     "tests/acl2/feed-connection-invariants-tests",
+    "tests/acl2/feed-connection-teeth-tests",
     "books/store-files",
     "books/store-files-invariants",
     "tests/acl2/store-files-tests",
@@ -407,25 +408,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 405,
-    "books_in_root_closure": 404,
-    "roots": 403,
-    "theorems": 6673,
-    "functions": 5238,
-    "assert_events": 7358,
-    "must_fails": 221,
+    "books": 406,
+    "books_in_root_closure": 405,
+    "roots": 404,
+    "theorems": 6702,
+    "functions": 5258,
+    "assert_events": 7417,
+    "must_fails": 237,
     "encapsulates": 19,
     "guards": {
       "verified": 1731,
       "declared-off": 282,
-      "default-guarded": 2605,
+      "default-guarded": 2625,
       "default-unguarded": 620
     },
     "suspect_theorems": 61,
     "export_hygiene_warnings": 88,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 13,
-    "include_hygiene_warnings": 150,
+    "include_hygiene_warnings": 151,
     "host_names_warnings": 645,
     "hand_written_record_warnings": 18
   },
@@ -3055,7 +3056,7 @@
       "book": "books/feed-auth-profile.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 4,
       "functions": 8,
       "guards": {
         "verified": 8,
@@ -3080,12 +3081,12 @@
       "book": "books/feed-connection-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 18,
-      "functions": 1,
+      "theorems": 43,
+      "functions": 21,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 1,
+        "default-guarded": 21,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -8643,6 +8644,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/feed-connection-teeth-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 59,
+      "must_fails": 16,
+      "defconsts": 39,
+      "defmacros": 4,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/feed-connection-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/feed-connection-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -13320,6 +13348,13 @@
       {
         "book": "tests/acl2/feed-connection-invariants-tests.lisp",
         "line": 3,
+        "include": "../../books/feed-connection-invariants",
+        "included": "books/feed-connection-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/feed-connection-teeth-tests.lisp",
+        "line": 34,
         "include": "../../books/feed-connection-invariants",
         "included": "books/feed-connection-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
