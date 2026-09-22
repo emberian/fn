@@ -107,6 +107,10 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-run-posting-enabledp result))
 
+(defun fn-native-operator-host-result-run-log-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-log-path-octets result))
+
 (defun fn-native-operator-host-result-post-control-path-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-post-control-path-octets result))
