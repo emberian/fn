@@ -62,8 +62,8 @@
                            (fn-oag-identity *oat-cfg-unset*)))))
 (must-fail
  (defthm oat-post-config-without-identity-setp
-   (equal (fn-inj-config-agent (fn-oag-post-config cfg max-octets))
-          (fn-record-string-octets (fn-oag-identity cfg)))
+   (equal (fn-inj-config-agent (fn-oag-post-config *oat-cfg-unset* 32768))
+          (fn-record-string-octets (fn-oag-identity *oat-cfg-unset*)))
    :hints (("Goal" :in-theory (disable fn-oag-identity)))))
 
 ; -----------------------------------------------------------------------------
@@ -122,17 +122,19 @@
                           (fn-own-config *oat-stale-owner*))))
 (must-fail
  (defthm oat-open-without-freshness
-   (let* ((o (fn-ocfg-owner oc))
+   (let* ((oc *oat-stale-oc*)
+          (o (fn-ocfg-owner oc))
           (id (fn-own-next-id o))
           (conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner
-                                                     (cdr (fn-ocfg-open oc acfg)))))))
+                                                     (cdr (fn-ocfg-open oc nil)))))))
      (implies conn
               (equal (fn-own-conn-config conn) (fn-own-config o))))
    :hints (("Goal" :in-theory (e/d (fn-ocfg-open)
                                    (fn-own-open fn-own-reader-context
                                     fn-oag-own-open-pins-the-owner-config))
             :use ((:instance fn-oag-own-open-pins-the-owner-config
-                             (o (fn-ocfg-owner oc))))))))
+                             (o (fn-ocfg-owner *oat-stale-oc*))
+                             (acfg nil)))))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone 3: one socket read, POST and an article, through the transition
@@ -182,7 +184,8 @@
 ; reference, to equate the counted read with fn-served-step.  No value is
 ; known on which the conclusion fails without it -- every :submit the served
 ; path builds comes from fn-auth-step's result -- so this `must-fail' shows
-; only that the proof needs the premise, not that the conclusion does.
+; only that the proof needs the premise, not that the conclusion does, and it
+; is the one general-claim tooth in this book for that reason.
 (must-fail
  (defthm oat-read-without-served-invariant
    (let ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))

@@ -77,9 +77,10 @@
              (equal :durable :durable))))
 (must-fail
  (defthm olt-served-line-echoes-the-host-word
-   (equal (equal (fn-olog-line-word (fn-olog-served-post-line o id word))
+   (equal (equal (fn-olog-line-word
+                  (fn-olog-served-post-line *olt-served-unconsumed* 0 :durable))
                  (fn-olog-text "accepted"))
-          (equal word :durable))
+          (equal :durable :durable))
    :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text)
                                    (fn-own-outcome-completion fn-olog-field
                                     fn-olog-decimal fn-olog-time))))))
@@ -108,8 +109,8 @@
 ; served line above reports it as the refusal the NNTP client was sent.
 (must-fail
  (defthm olt-control-line-is-the-served-class
-   (equal (fn-olog-line-word (fn-olog-control-post-line o word))
-          (fn-olog-class-word (fn-olog-served-class o word)))
+   (equal (fn-olog-line-word (fn-olog-control-post-line *olt-control* :duplicate))
+          (fn-olog-class-word (fn-olog-served-class *olt-control* :duplicate)))
    :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text)
                                    (fn-own-control-outcome-result fn-olog-field
                                     fn-olog-decimal fn-olog-time))))))
