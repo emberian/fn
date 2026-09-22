@@ -410,7 +410,7 @@
     "books": 405,
     "books_in_root_closure": 404,
     "roots": 403,
-    "theorems": 6702,
+    "theorems": 6710,
     "functions": 5241,
     "assert_events": 7376,
     "must_fails": 221,
@@ -4780,7 +4780,7 @@
       "book": "books/owner-prepare-correspondence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
+      "theorems": 18,
       "functions": 3,
       "guards": {
         "verified": 1,
