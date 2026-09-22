@@ -1,62 +1,73 @@
-#!/usr/bin/env python3
-"""Every independent red in a book closure, in as few farm runs as its
-dependency graph allows.
+"""Every independent red in a book closure, from one certification run.
 
-**A triage run is evidence of nothing but the list of reds it prints.**  It
-certifies a tree whose sources have been substituted, on the box only; its
-certificates are never published to the box's cache or to this worktree's,
-its manifest is never archived under `planning/evidence/manifests/`, and its
-certify run id is deliberately absent from the report it writes, because
-naming one would read as a certification claim.  Nothing here certifies
-anything.  It finds out what is broken.
+**A triage run is evidence of nothing but the list of reds it prints.**  Its
+certificates are published nowhere -- not to the box's cache, not to this
+worktree's -- its manifest is never archived under
+`planning/evidence/manifests/`, and its certify run id is deliberately absent
+from the report it writes, because naming one would read as a certification
+claim.  Nothing here certifies anything.  It finds out what is broken.
 
     python3 tools/triage.py persvati books/checkpoint tests/acl2/checkpoint-tests \\
         --remote-root /home/ember/fn-gates/w32-triage \\
         --acl2 /home/ember/fn-gates/toolchains/w25/acl2-literal \\
-        --cache /home/ember/fn-certcache --budget-seconds 300 --rounds 4
+        --cache /home/ember/fn-certcache --budget-seconds 900 --rounds 2
 
-WHY.  `include-book` refuses an uncertified dependency, so a closure run
-stops at the first book that fails and every book above it reads "There is no
-certificate on file".  One run therefore reveals one *layer* of independent
-reds.  The image closure is about ten deep, and on 2026-09-22 it took three
-lanes and thirty-nine certification runs across nine hours to reach 140 of
-164 green, each run costing the slowest book in it
-(`planning/review-2026-09-22-proof-engineering.md`, finding F1).
+WHY.  `include-book` refuses an uncertified dependency, so an ordinary
+closure run stops at the first book that fails and every book above it reads
+"There is no certificate on file".  One run reveals one *layer* of
+independent reds.  The image closure is about ten deep: on 2026-09-22 three
+lanes and thirty-nine certification runs across nine hours reached 140 of 164
+green without producing an image (finding F1 of that day's proof-engineering
+review).
 
-WHAT A ROUND DOES.  Certify the closure on the farm with a short per-book
-budget; read each failed book's own log and call it one of
+WHAT A ROUND DOES.  It runs the closure through ACL2's provisional
+certification (`tools/certify_books.py --pcert`, `:DOC
+provisional-certification`): a Create wave that skips proofs, **one parallel
+Convert wave that does every book's proofs**, and a Complete wave that writes
+the certificates.  Convert takes a sub-book's `.pcert0` in place of a
+certificate, so the proofs are not a chain and one round answers the whole
+closure.  Each failed book is then one of
 
-  cascade      its log carries only ACL2's "There is no certificate on file"
-               for a book below it.  Nothing is known about this book.
-  timeout      the runner's per-book budget expired.  A proof that stops
+  independent  its Convert failed with an ACL2 error of its own.  The first
+               error and the key checkpoint are what the report carries.
+  timeout      its Convert hit `--budget-seconds`.  A proof that stops
                returning burns the whole budget, so this is a finding in its
-               own right (F2) and not a lesser kind of red.
-  independent  an ACL2 Error of its own.  The first one and its key
-               checkpoint are what the report carries.
-  unexplained  it failed with no error and no timeout.  Reported verbatim.
+               own right (F2) and not a lesser red.
+  blocked      its Convert PASSED -- every proof in the book succeeded -- and
+               Complete could not run because a book below it has no
+               certificate.  Nothing hides behind such a book.
+  cascade      its Create failed.  Create is the one dependency-ordered wave,
+               so this is the only kind that can still hide another book's
+               proofs, and the only kind the substitution loop below is for.
+  unexplained  it failed with no ACL2 error and no timeout.  Reported as is.
 
-Then, for every independent or timed-out book, find the newest source bytes
-that ever certified (`tools/green_check.py`'s audit names the run; that run's
-manifest names the digest; `git log --all` and `git show` hold the bytes),
-write those bytes into the *remote* tree only, and run the closure again.
-The books that were hiding behind it now fail on their own account or pass.
-Repeat to `--rounds`.
+Measured on a 63-book fn closure on persvati, 2026-09-22, 8 jobs: an ordinary
+round took 690.8 s and named ONE independent red with fifteen books cascading
+behind it, and a second round with that book at its last green source took
+643.2 s and named the same book again.  One provisional round took 317.3 s
+and named FOUR independent reds and twelve proved-but-blocked books, with
+nothing unanswered.
 
-WHAT IT COSTS.  A round is a whole-closure certification.  `certs.py
-install-set --purge-on-miss`, which `--closure` implies, removes every local
-pair in the closure before the runner starts, and a substituted source has no
-cached set anywhere, so there is nothing to reuse between rounds: the price
-of a round is the closure's critical path, not the layer's.  The saving is in
-the number of rounds, which is the point -- a ten-deep chain is triaged in
-two or three.  Set `--budget-seconds` above the closure's slowest honest book
-or that book becomes a timeout finding and hides everything above it again.
+THE SUBSTITUTION LOOP, which is what is left for a Create failure.  For a
+book whose Create failed, find the newest source bytes that ever certified
+(`tools/green_check.py`'s audit names the run; that run's manifest names the
+digest; `git log --all` and `git show` hold the bytes), write them into the
+*remote* tree only, and run again.  It is a weaker instrument than it looks:
+substituting a book's own source helps only when the book's own bytes are
+the problem, and on this tree the usual cause is drift underneath it.  On
+2026-09-22 `books/store-node-traces` at its last green source failed on a
+DIFFERENT theorem, because those bytes were green over dependencies the tree
+no longer has.  `--no-pcert` runs the old ordinary-certification loop.
 
 WHAT IT DOES NOT SHOW.  A book that passes under a substitution is not green:
 it is green *over a dependency this tree does not have*.  A book with no
-recorded green at any digest cannot be substituted and is reported as
-untriageable, and so is a book whose newest green is at the digest it already
-carries -- its failure is dependency drift, not its own bytes.  The
-assumption stack in the report is the honest name for all of this.
+recorded green at any digest cannot be substituted, and neither can one whose
+newest green is at the digest it already carries.  The assumption stack in
+the report is the honest name for all of this.  And a provisional
+certification is a discovery instrument: ACL2's own documentation notes that
+Complete checks sub-books' certificate write dates rather than their
+book-hash, and that for maximum trust a project's books are best certified
+from scratch without it.  A claim about the tree comes from an ordinary run.
 
 EXIT CODES.  0 the closure answered with no red left in it, 1 the report
 names reds or books it could not triage, 2 the triage could not be made at
@@ -96,6 +107,12 @@ ERROR_START = re.compile(
     r"^(?:ACL2 Error(?: \[[^\]]*\])?|HARD ACL2 ERROR)(?=[ :]|$)")
 CHECKPOINT_START = re.compile(r"^\*\*\* Key checkpoint.*\*\*\*$")
 MISSING_FOR = re.compile(NO_CERTIFICATE + r' for "([^"]+)"')
+# The Complete wave says it differently: it is not that the book is
+# uncertified, it is that the certificate is not there yet.  Found on the
+# real run of 2026-09-22; a classifier that knew only the include-book
+# sentence read every blocked book as having no reason at all.
+NOT_YET_CERTIFIED = "does not have a .cert file that is at least as recent"
+BLOCKED_ON = re.compile(NOT_YET_CERTIFIED + r' as that included book: "([^"]+)"')
 CHECKPOINT_LINES = 24
 # The verdict names, in the order the report presents them.
 KINDS = ("independent", "timeout", "unexplained", "blocked", "cascade")
@@ -195,7 +212,11 @@ def acl2_errors(log: str) -> list[AclError]:
             _, separator, rest = whole.partition(": ")
         message = rest.strip() if separator else whole
         cascade_of = None
-        if NO_CERTIFICATE in whole:
+        if NOT_YET_CERTIFIED in whole:
+            named = BLOCKED_ON.search(whole)
+            cascade_of = (repository_book(named.group(1)) if named
+                          else "an unnamed book")
+        elif NO_CERTIFICATE in whole:
             named = MISSING_FOR.search(whole)
             cascade_of = (repository_book(named.group(1)) if named
                           else repository_book(form.split('"')[1])
@@ -332,11 +353,10 @@ def classify_pcert(book: str, evidence: Path, manifest: dict, round_number: int,
         finding = Finding(book=book, kind="blocked", round=round_number,
                           wall_seconds=wall, exit_code=code,
                           assumptions=list(assumptions), reached=reached)
-        cascades = [error for error in
-                    acl2_errors(wave_log(evidence, book, "complete"))
-                    if error.cascade_of]
-        finding.blocked_by = sorted({error.cascade_of for error in cascades
-                                     if error.cascade_of})
+        finding.blocked_by = sorted(
+            {error.cascade_of for error
+             in acl2_errors(wave_log(evidence, book, "complete"))
+             if error.cascade_of})
         return finding
     wave = "create" if reached is None else "convert"
     finding = classify(book, wave_log(evidence, book, wave), code,
