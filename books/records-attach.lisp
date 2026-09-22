@@ -8,7 +8,7 @@
 ;
 ; WHAT THE ATTACHMENT CHANGES IN THE LOGIC: nothing.  `defattach' introduces
 ; no axiom; ACL2 proves that the attached pair satisfies every constraint of
-; the seam's `encapsulate' (the hint cites the five implementation facts of
+; the seam's `encapsulate' (the hint cites the six implementation facts of
 ; books/records-canonicality.lisp) and in exchange makes ground calls
 ; evaluate, in the ACL2 loop and in the saved image.  ACL2 never uses an
 ; attachment inside a proof, and ignores one while evaluating a `defconst';
@@ -30,5 +30,6 @@
                           fn-record-impl-round-trip
                           fn-record-impl-accepted-input-is-canonical
                           fn-record-impl-accepted-input-bounds
-                          fn-record-impl-accepted-input-header)
+                          fn-record-impl-accepted-input-magic
+                          fn-record-impl-accepted-schema-is-the-stamp-kind)
                     :in-theory (theory 'minimal-theory))))

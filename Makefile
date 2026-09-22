@@ -386,6 +386,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/statement-seam \
 	books/statement-attach \
 	books/codec-attach \
+	tests/acl2/codec-seam-tests \
 	books/statement \
 	books/statement-invariants \
 	tests/acl2/statement-tests \
