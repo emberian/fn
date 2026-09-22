@@ -167,9 +167,10 @@
         "books/retention.lisp",
         "tests/evidence/2026-09-18-articles.md",
         "tests/evidence/2026-09-18-articles.json",
-        "books/retention-invariants.lisp"
+        "books/retention-invariants.lisp",
+        "tests/acl2/retention-tests.lisp"
       ],
-      "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities. Authorized/committed evidence validation, durable node release, and physical-byte charging remain open."
+      "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities; RET-002's capacity refusal is now a keystone, fn-retain-admit-refuses-unaffordable-obligation, over the same fn-retain-admissiblep test fn-node-prepare's refusal branch uses, with teeth at the capacity-10/charge-5-vs-4 boundary. Authorized/committed evidence validation, durable node release, and physical-byte charging remain open."
     },
     {
       "id": "PRF-005",
@@ -417,7 +418,7 @@
         "A-WRITE-ISOLATION",
         "A-POLICY"
       ],
-      "status": "in-progress",
+      "status": "planned",
       "evidence": [
         "books/checkpoint-compaction.lisp",
         "tests/acl2/checkpoint-compaction-tests.lisp",
@@ -430,7 +431,7 @@
         "tests/test_native_compaction_crash_map.py",
         "planning/evidence/compaction-plan-guards-2026-09-21.json"
       ],
-      "progress_note": "The implemented physical tranche retains exact canonical event bytes in one immutable selected pack, validates every surviving covered record, accepts only missing files within the covered prefix, requires a contiguous uncovered suffix, and resumes exact prefix unlink under the writer lease. fn-cc-partial-deletion-preserves-exact-history covers arbitrary missing subsets of that prefix under summary, suffix and exact-observation hypotheses; its test has a non-degenerate middle deletion and one must-fail event per hypothesis. The aggregate parser refuses above 4 MiB before header parsing and its focused test round-trips a valid pack larger than the generic 65538-octet CBOR input cap. Selected namespace and exact-overlap helper guards are verified; guard closure of the actual framed coverage/observation caller remains open on the shared unverified Store-event decoder chain. The definition-unfolding prefix-plus-suffix equality is deliberately not a registry event. One pack is limited to 4096 events and 4 MiB, so this exact-history representation cannot compact arbitrarily large stores. Open: a general crash correspondence theorem, active-reader coordination, protected article-object closure, filesystem qualification, and integrated native-image execution. The byte crash correspondence now transcribes the actual native reclaim plan as repeated transaction-directory unlinks with a post-unlink cut and a closing directory fence with a post-barrier cut. Executable witnesses show arbitrary covered-name survival before the fence, no restoration after it, exact suffix retention, and conflict refusal. The native caller now invokes the logical plan subject directly; recovery continues through fn-store-checkpoint-compaction-observe. Source mapping and model witnesses are not integrated native-image evidence; source-matched process-death execution and filesystem qualification remain open. The actual reclaim planner now uses total nested-pair accessors and has explicit guard events, with source-LD evidence and malformed-input witnesses. The modeled crash examples execute the actual planner through a test helper; no hand-written substitute program supplies their run. These source checks do not certify the complete dependency closure or establish general suffix preservation under all physical crashes."
+      "progress_note": "The implemented physical tranche retains exact canonical event bytes in one immutable selected pack, validates every surviving covered record, accepts only missing files within the covered prefix, requires a contiguous uncovered suffix, and resumes exact prefix unlink under the writer lease. fn-cc-partial-deletion-preserves-exact-history covers arbitrary missing subsets of that prefix under summary, suffix and exact-observation hypotheses; its test has a non-degenerate middle deletion and one must-fail event per hypothesis. The aggregate parser refuses above 4 MiB before header parsing and its focused test round-trips a valid pack larger than the generic 65538-octet CBOR input cap. Selected namespace and exact-overlap helper guards are verified; guard closure of the actual framed coverage/observation caller remains open on the shared unverified Store-event decoder chain. The definition-unfolding prefix-plus-suffix equality is deliberately not a registry event. One pack is limited to 4096 events and 4 MiB, so this exact-history representation cannot compact arbitrarily large stores. Open: a general crash correspondence theorem, active-reader coordination, protected article-object closure, filesystem qualification, and integrated native-image execution. The byte crash correspondence now transcribes the actual native reclaim plan as repeated transaction-directory unlinks with a post-unlink cut and a closing directory fence with a post-barrier cut. Executable witnesses show arbitrary covered-name survival before the fence, no restoration after it, exact suffix retention, and conflict refusal. The native caller now invokes the logical plan subject directly; recovery continues through fn-store-checkpoint-compaction-observe. Source mapping and model witnesses are not integrated native-image evidence; source-matched process-death execution and filesystem qualification remain open. The actual reclaim planner now uses total nested-pair accessors and has explicit guard events, with source-LD evidence and malformed-input witnesses. The modeled crash examples execute the actual planner through a test helper; no hand-written substitute program supplies their run. These source checks do not certify the complete dependency closure or establish general suffix preservation under all physical crashes. No event yet; T12d (009 stays v1)."
     },
     {
       "id": "PRF-010",
@@ -488,7 +489,6 @@
         "fn-transfer-add-chunk-preserves-statep",
         "fn-transfer-complete-entry-candidate-correct",
         "fn-transfer-complete-entry-candidate-byte-agreement",
-        "fn-transfer-missing-ranges-is-correct",
         "fn-exchange-policy-ingest-trace-preserves-statep",
         "fn-exchange-policy-ingest-trace-preserves-facts",
         "fn-exchange-admitted-ingest-retains-conflicting-evidence"
@@ -751,10 +751,8 @@
         "fn-wildmat-successful-parse-text-parsedp",
         "fn-transfer-entry-candidate-work-value",
         "fn-transfer-entry-candidate-work-cost-bound",
-        "fn-transfer-missing-work-cost-bound",
         "fn-wm-pattern-match-work-cost",
         "fn-wm-match-codepoints-work-cost-bound",
-        "fn-transfer-missing-ranges-work-public-bound",
         "fn-article-parse-work-value",
         "fn-article-parse-work-input-bound",
         "fn-article-parse-work-profile-bound",
@@ -991,8 +989,7 @@
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
       "note": "`books/stx-epochs` CERTIFIES (w10/substrate-2), so the carrier obligation `fn-stx-commits-of-batch-are-verified-and-well-formed` is proved and the three reconnection rows follow it as labelled corollaries of the `books/membership-epochs-invariants` keystones. Its local witness lemma needed a repair, not a weakening: `fn-stx-commits-of-lace-have-witnesses` asked only `fn-lace-p` of the delta and was false; it now asks that every statement of the delta verifies, which `fn-stx-batch-delta` satisfies by construction. Not closed, and w11/node-index found the gap is wider than `no caller`: NO BOOK OUTSIDE THE STX CLUSTER INCLUDES `books/stx-epochs`, and there is no reconnection path in the tree to wire `fn-stx-commits-of-batch` to. That is future feature work, not missing evidence for implemented behaviour (docs/proofs.md, assurance scope). A-CRYPTO stands behind every verification here.",
       "events": [
-        "fn-stx-commit-decode-is-a-commit",
-        "fn-stx-commits-of-batch-are-verified-and-well-formed"
+        "fn-stx-commit-decode-is-a-commit"
       ]
     },
     {
@@ -1021,9 +1018,9 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "in-progress",
+      "status": "planned",
       "evidence": [],
-      "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20). The separating witness in tests/acl2/config-stream-tests is the argument for the decision: one (:set-capacity 1) over a history whose two articles reserve 2, which the configuration-only replay the host runs today accepts and the merged replay refuses with :config-refusal; a raise and a decrease to exactly the reservation total are both admitted, so the merged replay is not refusing every decrease. Open: the host still replays configuration first (specs/reconfiguration.md section 8)."
+      "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20). The separating witness in tests/acl2/config-stream-tests is the argument for the decision: one (:set-capacity 1) over a history whose two articles reserve 2, which the configuration-only replay the host runs today accepts and the merged replay refuses with :config-refusal; a raise and a decrease to exactly the reservation total are both admitted, so the merged replay is not refusing every decrease. Open: the host still replays configuration first (specs/reconfiguration.md section 8). No event yet; T2."
     },
     {
       "id": "PRF-028",
@@ -1069,7 +1066,11 @@
         "planning/evidence/feed-connection-table-invariants-2026-09-21.md",
         "planning/lanes/HANDOFF-w22-native-outbound-feed.md"
       ],
-      "progress_note": "books/owner-feed and tests/acl2/owner-feed-tests are CERTIFIED as of 2026-09-20, lane w6/peering-feed-4 (laptop ACL2 8.7, evidence build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T212559Z-13370; the persvati closure run-20260920T211802Z-ba78 reached them for the first time). What unblocked them was books/peer-feed-invariants, which now certifies with no open form. books/owner certifies too. The owner-side statement over fn-own-step is still open, and the reason has moved: books/owner-invariants is open at the :open-peer arm of fn-own-step-preserves-relation, not at the feed. The earlier non-admission explanation above is historical; later frozen owner books certified. W22 integrates the actual host tick/reply/loss/restart projections through owner-feed-port, including an all-or-nothing logical restart fold. Its owned closure and combined source gate are tracked separately; no new theorem over fn-own-step or native outbound socket/timer behavior is claimed from this adoption. Native feed component now carries a connection-table invariant from recovery through put/remove, validates only selected bounded input, and distinguishes handshake rejection from delivery refusal. Owned certification and raw boundary tests are separate from activation/real two-native-node evidence. The shell host-wrapper witness is withheld pending repair of its unconditional success marker."
+      "progress_note": "books/owner-feed and tests/acl2/owner-feed-tests are CERTIFIED as of 2026-09-20, lane w6/peering-feed-4 (laptop ACL2 8.7, evidence build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T212559Z-13370; the persvati closure run-20260920T211802Z-ba78 reached them for the first time). What unblocked them was books/peer-feed-invariants, which now certifies with no open form. books/owner certifies too. The owner-side statement over fn-own-step is still open, and the reason has moved: books/owner-invariants is open at the :open-peer arm of fn-own-step-preserves-relation, not at the feed. The earlier non-admission explanation above is historical; later frozen owner books certified. W22 integrates the actual host tick/reply/loss/restart projections through owner-feed-port, including an all-or-nothing logical restart fold. Its owned closure and combined source gate are tracked separately; no new theorem over fn-own-step or native outbound socket/timer behavior is claimed from this adoption. Native feed component now carries a connection-table invariant from recovery through put/remove, validates only selected bounded input, and distinguishes handshake rejection from delivery refusal. Owned certification and raw boundary tests are separate from activation/real two-native-node evidence. The shell host-wrapper witness is withheld pending repair of its unconditional success marker.",
+      "events": [
+        "fn-own-feed-target-is-offerable",
+        "fn-own-feed-targets-omit-no-offerable-peer"
+      ]
     },
     {
       "id": "PRF-030",
@@ -1100,7 +1101,7 @@
     {
       "id": "PRF-031",
       "title": "AUTHINFO on the served path, and what posting follows (W10)",
-      "statement": "fn-auth-gated-command-is-refused-and-not-performed: with authentication required and no authenticated subject, a restricted command's step submits nothing, never offers article mode, leaves the session unchanged and its whole effect list is the single 480 line (RFC 4643 section 2.2). fn-auth-post-without-permission-is-not-offered and its lift fn-auth-step-post-without-permission-is-not-offered: a connection whose posting allowance is false is answered by this book and never offered 340, so no body can follow and no submission can leave; fn-auth-postingp is the authenticated principal's credential flag, so a principal enrolled without it is refused 440 however permissive the pinned injection configuration is (RFC 3977 6.3.1.1). fn-served-dispatch-of-a-refused-post-leaves-the-wire-in-place carries that to the served dispatcher: the wire is not switched into article mode and the read carries no submission. fn-auth-pass-before-user-is-482, fn-auth-failed-pass-leaves-the-session-unauthenticated and fn-auth-protected-only-refuses-authinfo-before-tls are the three RFC 4643 section 2.3.2 codes, each with the session unchanged or cleared. fn-auth-pass-accepts-only-a-checking-secret says the accepting branch ran fn-authsec-checkp against the stored verifier; it does NOT say a wrong secret fails, which is A-CRYPTO. Covered scope: one served connection over a pinned archive and a pinned AUTHINFO configuration. The subject of the lifts is fn-auth-step, which books/served.lisp fn-served-dispatch calls and which host/owner-host.lisp fn-owner-chunk reaches through fn-own-read and fn-served-step.",
+      "statement": "fn-auth-gated-command-is-refused-and-not-performed: with authentication required and no authenticated subject, a restricted command's step submits nothing, never offers article mode, leaves the session unchanged and its whole effect list is the single 480 line (RFC 4643 section 2.2). Its seven hypotheses each have a violating value in tests/acl2/nntp-auth-teeth-tests.lisp; the two syntactic ones it used to carry were removed on 2026-09-22 because no value violates them while the restricted-keyword hypothesis holds (fn-auth-restricted-keyword-is-a-keyword-token). fn-auth-post-without-permission-is-not-offered and its lift fn-auth-step-post-without-permission-is-not-offered: a connection whose posting allowance is false is answered by this book and never offered 340, so no body can follow and no submission can leave; fn-auth-postingp is the authenticated principal's credential flag, so a principal enrolled without it is refused 440 however permissive the pinned injection configuration is (RFC 3977 6.3.1.1). fn-served-dispatch-of-a-refused-post-leaves-the-wire-in-place carries that to the served dispatcher: the wire is not switched into article mode and the read carries no submission. fn-auth-pass-before-user-is-482 and fn-auth-failed-pass-leaves-the-session-unauthenticated are two of the three RFC 4643 section 2.3.2 codes, each with the session unchanged or cleared. The third is stated over the called function: fn-auth-step-protected-only-refuses-authinfo-before-tls says that while the operator's policy is protected-only and the connection carries no TLS layer, an AUTHINFO command line -- USER or PASS, any arguments, configured name or not -- is answered 483 and nothing else happens: the session is the one the command arrived on, so no name is cached and no subject is installed, no submission leaves, and the secret is never compared because the branch that would compare it is not reached. Its eight hypotheses each have a violating value in the teeth book. The label half of the same channel: fn-auth-starttls-is-not-advertised-under-tls-on-any-connection, fn-auth-authinfo-is-not-advertised-once-authenticated-on-any-connection and fn-auth-authinfo-is-not-advertised-before-tls-under-protected-only are over fn-auth-capability-lines-for-peer, which is the list fn-auth-command puts in the 101 block for EVERY connection and not only a reader's, and fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines is the named unfold equating that list to what fn-auth-step emits; fn-auth-starttls-is-not-advertised-without-a-certificate is the reader-facing instance of the first. Those three say what a client is OFFERED; they do not state anything about the octets fn-nntp-multi renders the list into. fn-auth-pass-accepts-only-a-checking-secret says the accepting branch ran fn-authsec-checkp against the stored verifier; it does NOT say a wrong secret fails, which is A-CRYPTO. Covered scope: one served connection over a pinned archive and a pinned AUTHINFO configuration. The subject of the lifts is fn-auth-step, which books/served.lisp fn-served-dispatch calls and which host/owner-host.lisp fn-owner-chunk reaches through fn-own-read and fn-served-step.",
       "milestone": "M3",
       "requirements": [
         "NNT-001",
@@ -1116,9 +1117,25 @@
       "status": "in-progress",
       "evidence": [
         "planning/evidence/native-auth-runtime-2026-09-21/README.md",
-        "planning/lanes/HANDOFF-w23-native-auth-admin.md"
+        "planning/lanes/HANDOFF-w23-native-auth-admin.md",
+        "tests/acl2/nntp-auth-teeth-tests.lisp"
       ],
-      "progress_note": "Historical W10 local admission and cache-origin limitations are superseded for the frozen03 closure and source-pinned native-auth continuation by their archived certification/build evidence. The native AUTHINFO startup receiver passes scoped live wrong-password/correct-password and reader-versus-peer cases. These results do not discharge the open OB-AUTH-FOLD theorem or establish independent-client interoperability, native protected transport, or complete physical adapter correspondence. Native principal administration has scoped ACL2 and actual replacement/recovery evidence; public CLI composition remains open. The existing salted SHA-256 verifier is preserved without a password-hardening or secrecy theorem claim."
+      "progress_note": "Historical W10 local admission and cache-origin limitations are superseded for the frozen03 closure and source-pinned native-auth continuation by their archived certification/build evidence. The native AUTHINFO startup receiver passes scoped live wrong-password/correct-password and reader-versus-peer cases. These results do not discharge the open OB-AUTH-FOLD theorem or establish independent-client interoperability, native protected transport, or complete physical adapter correspondence. Native principal administration has scoped ACL2 and actual replacement/recovery evidence; public CLI composition remains open. The existing salted SHA-256 verifier is preserved without a password-hardening or secrecy theorem claim. Lane t7/auth-teeth, 2026-09-22: the events above are curated for the first time and tests/acl2/nntp-auth-teeth-tests.lisp is the teeth book, with a reachable non-degenerate witness for each keystone and one must-fail per hypothesis for the 480 gate (seven) and the 483 refusal (eight), plus separating witnesses for the three capability labels. Still open under this target, and named rather than dropped: OB-AUTH-FOLD (K2 of books/nntp-auth-invariants), which waits on a wire lemma in books/wire-invariants and a reader lemma in books/nntp-post -- the third fact it named, fn-auth-step-preserves-the-config, is now proved and is PRF-039's; and two of K1's four hypotheses (fn-served-connp and the not-handshaking one) are proof-support and have no must-fail, because K1 restated without them reaches an open case, a session that is fn-auth-sessionp but not consistent with its connection's archive. The 483-before-TLS and 281-after-STARTTLS behaviour on a deployed image is tools/node_probe.py's row and has not been run on one.",
+      "events": [
+        "fn-auth-gated-command-is-refused-and-not-performed",
+        "fn-auth-post-without-permission-is-not-offered",
+        "fn-auth-step-post-without-permission-is-not-offered",
+        "fn-served-dispatch-of-a-refused-post-leaves-the-wire-in-place",
+        "fn-auth-step-protected-only-refuses-authinfo-before-tls",
+        "fn-auth-pass-before-user-is-482",
+        "fn-auth-failed-pass-leaves-the-session-unauthenticated",
+        "fn-auth-pass-accepts-only-a-checking-secret",
+        "fn-auth-starttls-is-not-advertised-under-tls-on-any-connection",
+        "fn-auth-starttls-is-not-advertised-without-a-certificate",
+        "fn-auth-authinfo-is-not-advertised-once-authenticated-on-any-connection",
+        "fn-auth-authinfo-is-not-advertised-before-tls-under-protected-only",
+        "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines"
+      ]
     },
     {
       "id": "PRF-032",
@@ -1168,7 +1185,11 @@
       "depends_on": [],
       "assumptions": [],
       "status": "in-progress",
-      "note": "Decision D10-a, lane w11/clock-seam. Keystones fn-own-observe-refusal-names-a-contradiction (books/owner-invariants.lisp) and fn-post-without-a-clock-refuses-with-the-clock-line (books/nntp-post.lisp), with fn-own-observe-outcome-is-one-of-three and fn-own-observe-outcome-decides-the-clock-by-definition named for what they are and cited by :use. Teeth are evaluated in tests/acl2/owner-tests.lisp (the served-path second post on one connection, the same-reading collision, the clock 441 with an empty queue, DATE 503, and one-event recovery) and tests/acl2/nntp-post-tests.lisp (one must-fail per hypothesis). OPEN under this target: two submissions inside one millisecond still share a generated Message-ID, because fn-clock-later-observationp is non-strict; separating them needs the owner to remember the reading it last minted under and is not done here."
+      "note": "Decision D10-a, lane w11/clock-seam. Keystones fn-own-observe-refusal-names-a-contradiction (books/owner-invariants.lisp) and fn-post-without-a-clock-refuses-with-the-clock-line (books/nntp-post.lisp), with fn-own-observe-outcome-is-one-of-three and fn-own-observe-outcome-decides-the-clock-by-definition named for what they are and cited by :use. Teeth are evaluated in tests/acl2/owner-tests.lisp (the served-path second post on one connection, the same-reading collision, the clock 441 with an empty queue, DATE 503, and one-event recovery) and tests/acl2/nntp-post-tests.lisp (one must-fail per hypothesis). OPEN under this target: two submissions inside one millisecond still share a generated Message-ID, because fn-clock-later-observationp is non-strict; separating them needs the owner to remember the reading it last minted under and is not done here.",
+      "events": [
+        "fn-own-observe-refusal-names-a-contradiction",
+        "fn-post-without-a-clock-refuses-with-the-clock-line"
+      ]
     },
     {
       "id": "PRF-034",
@@ -1244,7 +1265,7 @@
         "PRF-032"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "in-progress",
       "note": "Lane w11/bytestore-k2, packet 2. fn-sn-replay-loop-append already gave ok(whole) implies ok(prefix); what was missing, and what blocked lane w10/kernel-freedom's first widening at fn-snt-admissible-crash-image-is-recoverable, is that the prefix node is idle with next-txid at most the frontier. The acknowledged-record half of crash-model-v2 K4 is NOT restated over the wider predicate: on both rollback arms the arm's own (null (fn-sf-successes s)) and a member-equal success hypothesis are contradictory, so the restatement would be fn-sn-acknowledged-record-survives-observed-reopen with two vacuous arms. fn-sf-recovery-admissible-image-facts carries that guarantee over every arm instead. Claimed as PRF-033 before merging dev at 81ae082 and RENUMBERED: w11/clock-seam and w11/workflow-replay had taken 033 and 034, and w11/one-owner 035, while this lane held an older dev.",
       "evidence": [
         "books/store-node-invariants.lisp",
@@ -1260,7 +1281,8 @@
         "fn-snt-history-recoverable-under-record-bound",
         "fn-snt-recovery-admissible-crash-image-is-recoverable",
         "fn-sn-recovery-admissible-image-reopens"
-      ]
+      ],
+      "progress_note": "Certified over an older digest; `store-node-traces`, `store-observed` are red at their current digest per `green_check` (2026-09-22); T0 re-establishes them. "
     },
     {
       "id": "PRF-037",
@@ -1274,7 +1296,7 @@
         "PRF-008"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "in-progress",
       "events": [
         "fn-cpc-valid-is-capture-value",
         "fn-cpc-valid-refuses-generation-mismatch"
@@ -1285,7 +1307,7 @@
         "specs/checkpoint.md",
         "planning/evidence/checkpoint-validator-2026-09-21.md"
       ],
-      "progress_note": "fn-cpc-validp accepted a prefix that fn-checkpoint-capture refuses as :history until 2026-09-21, because fn-replay carries a record generation into the node transitions without comparing it with the txid and validation compared only replay results. The journal-interval clause is now in the recognizer. Open, and not claimed here: fn-cpc-validp has no host caller, so these are properties of a sibling API to the served restore path (host/checkpoint-host.lisp calls fn-checkpoint-restore, which tests the condition itself)."
+      "progress_note": "Certified over an older digest; `checkpoint-codec` are red at their current digest per `green_check` (2026-09-22); T0 re-establishes them. fn-cpc-validp accepted a prefix that fn-checkpoint-capture refuses as :history until 2026-09-21, because fn-replay carries a record generation into the node transitions without comparing it with the txid and validation compared only replay results. The journal-interval clause is now in the recognizer. Open, and not claimed here: fn-cpc-validp has no host caller, so these are properties of a sibling API to the served restore path (host/checkpoint-host.lisp calls fn-checkpoint-restore, which tests the condition itself). `fn-cpc-validp` has no caller; the served restore path is `host/checkpoint-host.lisp` to `fn-checkpoint-restore`; v1 checkpoint adoption."
     },
     {
       "id": "PRF-038",
@@ -1305,7 +1327,7 @@
     {
       "id": "PRF-039",
       "title": "Every connection the owner opens carries the operator's AUTHINFO policy, and its greeting says what that policy allows",
-      "statement": "fn-served-peer-and-reader-open-under-the-same-policy: the AUTHINFO configuration pinned into a connection the owner resolved to a peer record (fn-served-open-peer) is the same value pinned into a reader connection opened under that policy (fn-served-open), so no decision in books/nntp-auth.lisp -- the credential fn-auth-authinfo searches, the AUTHINFO and STARTTLS labels fn-auth-capability-lines emits, the 480 gate fn-auth-gatedp applies and the posting allowance fn-auth-postingp computes -- can answer one way for a client the owner resolved as a peer and another way for the client beside it. fn-served-open-peer-pins-the-configuration is the field-level half: the pinned value is the argument, coerced by fn-auth-open-session to fn-auth-open-config only when it is not a configuration. Covered scope: the OPEN transition of one connection; what happens to the policy afterwards is fn-auth-step-preserves-consistent-session's and OB-AUTH-FOLD's. The subject is what host/owner-host.lisp fn-owner-open-peer calls through fn-own-open-peer, which tools/run_owner.py Owner.accept_nntp calls for every accepted socket whose source address matches a peer record. Second half, the same value read where a client first sees it: fn-served-open-greets-200-exactly-when-the-connection-may-post says the greeting the open emits is RFC 3977 section 5.1.2's 200 exactly when the pinned injection configuration allows posting AND fn-auth-postingp of the session just built is true -- which is the conjunction fn-auth-command hands fn-nntp-capability-lines for the POST label and the one fn-auth-postingp decides 340 against 440 and 480 by. fn-served-open-greeting-agrees-with-the-post-label states that over the octets a client sees, and is named for what it is: a corollary of the keystone and a local unfold of fn-auth-capability-lines, doing no work of its own. Covered scope: the OPEN transition. It says nothing about the greeting a connection would deserve LATER, after a 281 changes the allowance; RFC 4643 section 2.2 sends the client back to CAPABILITIES for that, and fn-auth-authinfo-is-not-advertised-once-authenticated is the only statement fn has about the block after a login.",
+      "statement": "fn-served-peer-and-reader-open-under-the-same-policy: the AUTHINFO configuration pinned into a connection the owner resolved to a peer record (fn-served-open-peer) is the same value pinned into a reader connection opened under that policy (fn-served-open), so no decision in books/nntp-auth.lisp -- the credential fn-auth-authinfo searches, the AUTHINFO and STARTTLS labels fn-auth-capability-lines emits, the 480 gate fn-auth-gatedp applies and the posting allowance fn-auth-postingp computes -- can answer one way for a client the owner resolved as a peer and another way for the client beside it. fn-served-open-peer-pins-the-configuration is the field-level half: the pinned value is the argument, coerced by fn-auth-open-session to fn-auth-open-config only when it is not a configuration. fn-auth-step-preserves-the-config is what makes those two statements about the CONNECTION and not only about its open: for any session and any wire event, with no hypothesis at all, the step's session carries the same fn-auth-session-config -- not a login, not the handshake, not a delegated reader command and not a command books/nntp-auth.lisp does not answer writes that field. Every decision in that book reads it, so the policy a client meets on its hundredth command is the one pinned before the connection opened. Covered scope: the OPEN transition for the first two, and one step for the third; the fold over a whole read is OB-AUTH-FOLD's. The subject is what host/owner-host.lisp fn-owner-open-peer calls through fn-own-open-peer, which tools/run_owner.py Owner.accept_nntp calls for every accepted socket whose source address matches a peer record. Second half, the same value read where a client first sees it: fn-served-open-greets-200-exactly-when-the-connection-may-post says the greeting the open emits is RFC 3977 section 5.1.2's 200 exactly when the pinned injection configuration allows posting AND fn-auth-postingp of the session just built is true -- which is the conjunction fn-auth-command hands fn-nntp-capability-lines for the POST label and the one fn-auth-postingp decides 340 against 440 and 480 by. fn-served-open-greeting-agrees-with-the-post-label states that over the octets a client sees, and is named for what it is: a corollary of the keystone and a local unfold of fn-auth-capability-lines, doing no work of its own. Covered scope: the OPEN transition. It says nothing about the greeting a connection would deserve LATER, after a 281 changes the allowance; RFC 4643 section 2.2 sends the client back to CAPABILITIES for that, and fn-auth-authinfo-is-not-advertised-once-authenticated is the only statement fn has about the block after a login.",
       "milestone": "M3",
       "requirements": [
         "NNT-001",
@@ -1317,14 +1339,15 @@
       ],
       "assumptions": [],
       "status": "in-progress",
-      "note": "Lane w11/auth-live, decided by measurement and not by inspection. fn-served-open-peer pinned the literal (fn-auth-open-config) while fn-served-open pinned the operator's, and the owner resolves a connection to a peer by SOURCE ADDRESS alone, so on a box where a configured peer is reachable on loopback every client was opened without the operator's policy: AUTHINFO PASS answered 481 with the secret just written, CAPABILITIES carried no AUTHINFO line and POST was never gated. Both theorems are FALSE of that definition. The live before/after is planning/evidence/auth-live-2026-09-21.md and the boundary test is tests/test_auth.py ServedCredentialTests, which starts the node with `bin/fn run` over an fn.toml and writes the peer record, because no test that starts tools/run_owner.py directly can reach this. The greeting half is a second defect the same measurement found: fn-served-greeting read the injection configuration alone, so a connection under [auth] required = true greeted 200 and then answered POST 480, where section 5.1.2's MUST is 201. It takes the opened session now.",
+      "note": "Lane w11/auth-live, decided by measurement and not by inspection. fn-served-open-peer pinned the literal (fn-auth-open-config) while fn-served-open pinned the operator's, and the owner resolves a connection to a peer by SOURCE ADDRESS alone, so on a box where a configured peer is reachable on loopback every client was opened without the operator's policy: AUTHINFO PASS answered 481 with the secret just written, CAPABILITIES carried no AUTHINFO line and POST was never gated. Both theorems are FALSE of that definition. The live before/after is planning/evidence/auth-live-2026-09-21.md and the boundary test is tests/test_auth.py ServedCredentialTests, which starts the node with `bin/fn run` over an fn.toml and writes the peer record, because no test that starts tools/run_owner.py directly can reach this. The greeting half is a second defect the same measurement found: fn-served-greeting read the injection configuration alone, so a connection under [auth] required = true greeted 200 and then answered POST 480, where section 5.1.2's MUST is 201. It takes the opened session now. Lane t7/auth-teeth, 2026-09-22: teeth in tests/acl2/nntp-auth-teeth-tests.lisp. Neither greeting theorem nor either pinning theorem has a hypothesis, so the teeth are the values that separate the two sides together with a must-fail on the statement the definition satisfied BEFORE the 2026-09-21 measurement: that the greeting is 200 exactly when the injection configuration allows posting, and that the peer open pins (fn-auth-open-config). fn-served-open-greeting-agrees-with-the-post-label stays uncited: the statement above names it a corollary and a local unfold, so its evidence is the witnesses on both sides of its iff, not a registry event. fn-auth-step-preserves-the-config is new in this lane and was asked for by name in the header of books/nntp-auth-invariants.lisp as the first of the three facts OB-AUTH-FOLD waits on.",
       "evidence": [
         "planning/evidence/native-auth-runtime-2026-09-21/README.md"
       ],
       "events": [
         "fn-served-peer-and-reader-open-under-the-same-policy",
         "fn-served-open-peer-pins-the-configuration",
-        "fn-served-open-greets-200-exactly-when-the-connection-may-post"
+        "fn-served-open-greets-200-exactly-when-the-connection-may-post",
+        "fn-auth-step-preserves-the-config"
       ],
       "native_scope": "The native startup receiver installs the ACL2-produced bounded credential profile before bind, with policy projection and live login evidence. Native configured-peer/source admission and protected transport remain separate; this does not extend the OPEN theorem to every subsequent connection transition."
     },
@@ -1340,7 +1363,15 @@
       "depends_on": [],
       "assumptions": [],
       "status": "in-progress",
-      "note": "Lane w11/owner-survival. CLAIMED as PRF-035 and renumbered to PRF-040 on merging dev: 035 had already gone to w11/one-owner's frame trailer, 036 to w11/bytestore-k2, 037 to w11/checkpoint-validator, 038 to w11/bp-node and 039 to w11/auth-live, all inside one evening. Keystones fn-own-fault-keeps-every-other-connection, fn-own-fault-clears-the-faulted-submission and fn-own-fault-reply-is-not-a-post-outcome (books/owner-fault.lisp), with fn-own-fault-closes-the-faulted-connection, fn-own-fault-keeps-another-connections-submission, fn-own-fault-releases-the-faulted-transaction and fn-own-fault-is-not-a-store-event beside them. Teeth are evaluated in tests/acl2/owner-tests.lisp on the same witness the served POST scenario builds (*own-taken*: connection 4's submission in flight, reader 3 open), including one violating value per hypothesis and the relation holding after a fault. The host side is tests/test_owner.py OwnerSurvivesAFaultTests, which injects an unexpected exception on one connection and asserts the other is still served. OPEN under this target: nothing states that the HOST calls fn-own-fault at every point where it can fault -- the boundary's coverage is a code property, not a theorem -- and tools/run_reader.py has no such boundary at all. Native host calls fn-owner-fault through fnn-owner-serialized/fault-service, but at checkpoint 76901c1 also stops the service for unexpected serious conditions. The logical single-connection theorem does not establish native service survival; that actual-host obligation remains open. Shared-core failure and uncertain persistence require a global fence and are not justified as connection-local faults by this theorem."
+      "note": "Lane w11/owner-survival. CLAIMED as PRF-035 and renumbered to PRF-040 on merging dev: 035 had already gone to w11/one-owner's frame trailer, 036 to w11/bytestore-k2, 037 to w11/checkpoint-validator, 038 to w11/bp-node and 039 to w11/auth-live, all inside one evening. Keystones fn-own-fault-keeps-every-other-connection, fn-own-fault-clears-the-faulted-submission and fn-own-fault-reply-is-not-a-post-outcome (books/owner-fault.lisp), with fn-own-fault-closes-the-faulted-connection, fn-own-fault-keeps-another-connections-submission, fn-own-fault-releases-the-faulted-transaction and fn-own-fault-is-not-a-store-event beside them. Teeth are evaluated in tests/acl2/owner-tests.lisp on the same witness the served POST scenario builds (*own-taken*: connection 4's submission in flight, reader 3 open), including one violating value per hypothesis and the relation holding after a fault. The host side is tests/test_owner.py OwnerSurvivesAFaultTests, which injects an unexpected exception on one connection and asserts the other is still served. OPEN under this target: nothing states that the HOST calls fn-own-fault at every point where it can fault -- the boundary's coverage is a code property, not a theorem -- and tools/run_reader.py has no such boundary at all. Native host calls fn-owner-fault through fnn-owner-serialized/fault-service, but at checkpoint 76901c1 also stops the service for unexpected serious conditions. The logical single-connection theorem does not establish native service survival; that actual-host obligation remains open. Shared-core failure and uncertain persistence require a global fence and are not justified as connection-local faults by this theorem.",
+      "events": [
+        "fn-own-fault-closes-the-faulted-connection",
+        "fn-own-fault-keeps-every-other-connection",
+        "fn-own-fault-clears-the-faulted-submission",
+        "fn-own-fault-keeps-another-connections-submission",
+        "fn-own-fault-releases-the-faulted-transaction",
+        "fn-own-fault-is-not-a-store-event"
+      ]
     },
     {
       "id": "PRF-041",
@@ -1356,7 +1387,7 @@
         "PRF-036"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "in-progress",
       "note": "Lane w11/k1-scan. CLAIMED as PRF-040 and renumbered to PRF-041 on merging dev: w11/owner-survival had claimed 035, been renumbered to 040 by its own merge, and landed first. That is the fifth collision in two evenings and the board CLAIM line is what caught it here. K1's namespace clause was closed by w9/storage-3; this target closes its other three and everything that waited on them. Books books/byte-store-scan.lisp (K1, K2) and books/byte-store-keystones.lisp (K3, K4, at the seam where the host reopen entry lives), teeth in tests/acl2/byte-store-scan-tests.lisp. The subject of K4 and of fn-bs-crash-image-reopens is fn-sn-open-observed, which host/store-node-host.lisp:70 calls at every process start, reached from tools/run_store.py:1245 (acl2.recover). SCOPE, stated because it is not visible in the statement: K4's instances inside the recovery window are vacuous, because fn-bs-replay-matches-scan carries (equal (fn-sf-successes ks) nil) there and K4's fourth hypothesis is a member of that list; its live instances are the publish window, and what covers the recovery window is fn-bs-crash-image-reopens, which carries no success hypothesis. A positive GROUND witness for K1 does not exist in this tree and the test book says so: an assert-event evaluates and three of the scan's tests are calls of constrained functions (fn-bs-config-okp, fn-bs-frontier-decode, fn-bs-txn-name), so the teeth are the two violating values, one per hypothesis, reached through the scan's first test. Packet P4, which makes the config and frontier files fn-frame frames, is what makes a positive ground witness possible. K0 (fn-bs-program-step-preserves-relation) is still open and is what discharges the relation's own clauses on the host's programs. A later focused K7 packet proves issued record-link and allocator-rename errors, and both authority-directory barrier errors, enter the recovery fence at the exact fn-sn-io subject; K5, K6, K8, general K0 and physical every-cut correspondence remain open, and the exact-octet SIGKILL scenario awaits a frozen developer image.",
       "evidence": [
         "books/byte-store-scan.lisp",
@@ -1378,7 +1409,8 @@
         "fn-bs-crash-image-frontier-decodes-to-a-natural",
         "fn-bs-crash-image-namespace-is-contiguous",
         "fn-bs-crash-image-records-do-not-fault"
-      ]
+      ],
+      "progress_note": "Certified over an older digest; `byte-store-keystones` are red at their current digest per `green_check` (2026-09-22); T0 re-establishes them. "
     },
     {
       "id": "PRF-042",
@@ -1589,7 +1621,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "in-progress",
+      "status": "planned",
       "evidence": [
         "books/feed-connection.lisp",
         "tests/acl2/feed-connection-tests.lisp",
@@ -1597,7 +1629,7 @@
         "tests/test_native_tls_transport.py"
       ],
       "pending_subject": "Add and certify named keystones for TLS phase ordering and loss-to-requeue composition over the host-called owner functions; OpenSSL chain/hostname behavior remains trusted integration evidence, not an ACL2 proof.",
-      "progress_note": "Ground witnesses cover accepted 382, refusal, authenticated client success, wrong anchor and wrong hostname. Focused integrated batch certification is pending."
+      "progress_note": "Ground witnesses cover accepted 382, refusal, authenticated client success, wrong anchor and wrong hostname. Focused integrated batch certification is pending. No fn-fc-step theorem by the names the status text uses exists in the books; planned (2026-09-22), T9c."
     },
     {
       "id": "PRF-049",
@@ -1611,14 +1643,14 @@
         "PRF-039"
       ],
       "assumptions": [],
-      "status": "in-progress",
+      "status": "planned",
       "evidence": [
         "books/nntp-auth.lisp",
         "books/owner-config.lisp",
         "tests/acl2/nntp-auth-tests.lisp"
       ],
       "pending_subject": "Name and certify keystones over the host-called owner open/read composition; current ground witnesses exercise the ACL2 dispatcher and role reset but do not prove raw password-verifier correctness or host transport behavior.",
-      "progress_note": "Source implementation and focused logical witnesses are present; integrated certification and native reconnect evidence remain pending."
+      "progress_note": "Source implementation and focused logical witnesses are present; integrated certification and native reconnect evidence remain pending. No event yet; T9c."
     },
     {
       "id": "PRF-048",
@@ -1671,7 +1703,7 @@
       "assumptions": [
         "A-DURABILITY"
       ],
-      "status": "in-progress",
+      "status": "planned",
       "evidence": [
         "books/store-events.lisp",
         "books/replay.lisp",
@@ -1682,7 +1714,7 @@
         "tests/native_owner_publication.lisp"
       ],
       "pending_subject": "Certify the actual fn-sn prepare/finish/recovery preservation and correspondence theorems for the carried journal sequence and kind-4 snapshot binding, then relate every physical publication/recovery cut to that state. The raw witness establishes condition routing and reservation cleanup only; it does not prove filesystem durability or cryptographic primitive correctness.",
-      "progress_note": "Source integration carries journal sequence separately from allocation frontier, uses one native prepared-publication helper for article, retention and identity events, and replays enrolled kind-3 plus bound kind-4 history. A fresh source trace covers enrollment, atomic acceptance, reopen, a burned transaction-id gap, later events and another reopen; it preserves the kind-4 historical verdict and reports no historical authority for a legacy fn-r record. The raw shared-helper witness covers expected refusal followed by a valid commit, indeterminate fencing, and structural-fault fencing. No theorem events are registered yet and the combined image gate remains separate."
+      "progress_note": "Source integration carries journal sequence separately from allocation frontier, uses one native prepared-publication helper for article, retention and identity events, and replays enrolled kind-3 plus bound kind-4 history. A fresh source trace covers enrollment, atomic acceptance, reopen, a burned transaction-id gap, later events and another reopen; it preserves the kind-4 historical verdict and reports no historical authority for a legacy fn-r record. The raw shared-helper witness covers expected refusal followed by a valid commit, indeterminate fencing, and structural-fault fencing. No theorem events are registered yet and the combined image gate remains separate. No event yet; T4."
     },
     {
       "id": "PRF-051",
@@ -1696,7 +1728,7 @@
         "PRF-047"
       ],
       "assumptions": [],
-      "status": "in-progress",
+      "status": "planned",
       "evidence": [
         "books/feed-auth-profile.lisp",
         "books/feed-connection.lisp",
@@ -1706,7 +1738,8 @@
         "tests/acl2/feed-auth-profile-tests.lisp",
         "tests/acl2/feed-connection-tests.lisp"
       ],
-      "pending_subject": "Certify named keystones for AUTHINFO ordering and the host-called loss-to-requeue composition; filesystem ownership and mode checks remain native integration evidence."
+      "pending_subject": "Certify named keystones for AUTHINFO ordering and the host-called loss-to-requeue composition; filesystem ownership and mode checks remain native integration evidence.",
+      "progress_note": " No fn-fc-step theorem by the names the status text uses exists in the books; planned (2026-09-22), T9c."
     },
     {
       "id": "PRF-052",

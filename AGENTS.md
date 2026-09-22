@@ -110,7 +110,7 @@ that motivated it. Green is not true; these rules are how a claim earns its name
 - **Housekeeping.** Function prefixes are registered in
   [`docs/prefixes.md`](docs/prefixes.md); lane worktrees under `build/lanes/`
   are removed when the lane lands; role names used in planning are defined in
-  [`planning/swarm-cycles.md`](planning/swarm-cycles.md) or not used.
+  [`planning/swarm-cycles.md`](planning/archive/swarm-cycles.md) or not used.
 
 ## Evidence and handoff
 
@@ -131,6 +131,8 @@ that motivated it. Green is not true; these rules are how a claim earns its name
   and limitations for certification or integration evidence.
 - A proposed theorem is not a theorem proved by ACL2. An admitted definition is
   not guard verification. Passing tests is not a proof or an RFC audit.
+- A lane is briefed from `planning/how-we-work.md` and its step in the
+  current plan (`planning/plan-2026-09-22-trajectory.md` §3).
 - Before ending a development task, keep the milestone's current task and the
   registries accurate. Report what changed, what ran, and what remains open.
 - Do not create deployment, publication, or messaging side effects unless the

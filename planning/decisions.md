@@ -12,7 +12,7 @@ No unanswered recommendation is silently promoted to an agreed decision.
 rows. Astra owns routine reversible implementation choices and will bring
 user-facing tradeoffs forward with concrete examples as they become relevant.
 
-The [three-cycle plan](swarm-cycles.md) schedules concrete decision packets
+The [three-cycle plan](archive/swarm-cycles.md) schedules concrete decision packets
 alongside implementation. Independent local service, storage and DTN work can
 proceed under explicit experimental profiles. Its proposed sequencing and UI
 placement do not independently select a source grammar, cryptographic suite or
@@ -872,3 +872,14 @@ the field and so covering any batch size) and
 `fn-anchor-verifiedp-observed-is-verifiedp` (`books/anchor-invariants.lisp`,
 the seam hypothesis discharged once for all three host entries). Teeth in
 `tests/acl2/anchor-teeth-tests.lisp` and `tests/test_anchor.py`.
+
+### 2026-09-22: the eight questions of the trajectory plan
+
+ember answered the eight questions in `plan-2026-09-22-trajectory.md` §0,
+quoted there. Consequences: DTN is v0 (A06 and the purpose); native author
+signatures are v0 (D02, D09); LTP follows the node machine; the acceptance
+stamp is a v0 schema step (ENC-004's first exercise); the six-wave release
+shape, its checklist and the fiber records are retired; the lane worktrees
+are removed with every checkpointed branch dispositioned in the plan's
+§5.2; the Codex role names are retired; five lanes converge every two to
+three batches; peering is measured on one box first.

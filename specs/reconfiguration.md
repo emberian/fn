@@ -855,7 +855,7 @@ owner's first open item ("persist the group-configuration fact log") closes.
 ## 5. Migration
 
 Ordered packets. Each names an owner role from
-[`planning/swarm-cycles.md`](../planning/swarm-cycles.md) and an acceptance
+[`planning/swarm-cycles.md`](../planning/archive/swarm-cycles.md) and an acceptance
 criterion that is checkable without reading the implementer's summary.
 
 **Packet R1 — configuration value and record, no behavior change.** Owner:

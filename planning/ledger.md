@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 404 |
-| Certification roots in the Makefile | 402 |
-| Books inside the root closure | 403 |
-| `defthm` and `defthmd` events | 6683 |
-| `defun` events | 5229 |
+| Books read | 405 |
+| Certification roots in the Makefile | 403 |
+| Books inside the root closure | 404 |
+| `defthm` and `defthmd` events | 6698 |
+| `defun` events | 5241 |
 | Functions with verified guards | 1734 |
-| Functions declared `:verify-guards nil` and never verified | 279 |
+| Functions declared `:verify-guards nil` and never verified | 282 |
 | Functions left at the default with an explicit guard | 2605 |
-| Functions left at the default with no guard | 611 |
-| `assert-event` checks | 7229 |
-| `must-fail` checks | 198 |
+| Functions left at the default with no guard | 620 |
+| `assert-event` checks | 7376 |
+| `must-fail` checks | 221 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 62 |
-| Export-hygiene warnings | 87 |
+| Export-hygiene warnings | 88 |
 | Enabled-projection warnings | 27 |
-| Teeth-form warnings | 10 |
+| Teeth-form warnings | 13 |
 | Include-hygiene warnings | 150 |
-| Host-names warnings | 646 |
+| Host-names warnings | 645 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -140,7 +140,7 @@ that `make certify` requests.
 | `books/bp-receiver-store-invariants.lisp` | root | 12 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/bp-receiver-trace-invariants.lisp` | root | 6 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-release-invariants.lisp` | root | 46 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-release.lisp` | root | 0 | 34 | 0/13/21/0 | 0 | 0 | 0 |
+| `books/bp-release.lisp` | root | 0 | 37 | 0/16/21/0 | 0 | 0 | 0 |
 | `books/bp-sequence-fidelity.lisp` | root | 22 | 31 | 2/0/29/0 | 0 | 0 | 3 |
 | `books/bp-sequence-persistence.lisp` | root | 10 | 20 | 1/0/19/0 | 0 | 0 | 0 |
 | `books/bp-workflow-binding-core.lisp` | root | 27 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -225,7 +225,7 @@ that `make certify` requests.
 | `books/native-hybrid-control.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/native-operator.lisp` | root | 0 | 57 | 0/0/57/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
-| `books/nntp-auth.lisp` | root | 70 | 54 | 37/3/14/0 | 0 | 0 | 2 |
+| `books/nntp-auth.lisp` | root | 84 | 54 | 37/3/14/0 | 0 | 0 | 2 |
 | `books/nntp-effects.lisp` | root | 141 | 12 | 0/0/0/12 | 0 | 0 | 1 |
 | `books/nntp-index.lisp` | root | 33 | 25 | 25/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-invariants.lisp` | root | 92 | 4 | 0/0/0/4 | 0 | 0 | 0 |
@@ -271,7 +271,7 @@ that `make certify` requests.
 | `books/relay.lisp` | root | 0 | 32 | 0/15/17/0 | 0 | 0 | 0 |
 | `books/replay-invariants.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/replay.lisp` | root | 36 | 25 | 18/0/7/0 | 0 | 0 | 0 |
-| `books/retention-invariants.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/retention-invariants.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention.lisp` | root | 42 | 38 | 38/0/0/0 | 0 | 0 | 2 |
 | `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/scheduler-peers.lisp` | root | 18 | 9 | 0/0/9/0 | 0 | 0 | 0 |
@@ -426,6 +426,7 @@ that `make certify` requests.
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
 | `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 92 | 0 | 0 |
+| `tests/acl2/nntp-auth-teeth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 141 | 23 | 0 |
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 145 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
 | `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 92 | 0 | 0 |
@@ -449,7 +450,7 @@ that `make certify` requests.
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 62 | 4 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
-| `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 0 | 0 |
+| `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 55 | 0 | 0 |
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 116 | 0 | 0 |

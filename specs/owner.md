@@ -5,7 +5,7 @@ in [`books/owner-invariants.lisp`](../books/owner-invariants.lisp), witnesses
 and teeth in [`tests/acl2/owner-tests.lisp`](../tests/acl2/owner-tests.lisp).
 The host is [`tools/run_owner.py`](../tools/run_owner.py) over
 [`host/owner-host.lisp`](../host/owner-host.lisp). This is packet C1-05 of
-[the swarm cycles](../planning/swarm-cycles.md); it fills the "Owner events
+[the swarm cycles](../planning/archive/swarm-cycles.md); it fills the "Owner events
 and effects" contract row for connection/generation, committed view version,
 one pending transaction and read pin lifetime. Submission identity and
 partial-output tracking stay with their own packets.

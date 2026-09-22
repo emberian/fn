@@ -94,7 +94,7 @@ progress, storage reclamation and mission qualification are separate unfinished
 features with their own obligations. No complete milestone or handoff theorem
 is claimed.
 
-The updated [closure inventory](../../planning/assurance-closure.md) separates
+The updated [closure inventory](../../planning/archive/assurance-closure.md) separates
 implemented behavior with evidence, missing assurance for implemented behavior,
 and future features. New behavior must bring its state, composition, durability,
 codec, authority and transport obligations into that inventory in the same batch.
