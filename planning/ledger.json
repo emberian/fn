@@ -407,18 +407,18 @@
     "books": 402,
     "books_in_root_closure": 401,
     "roots": 400,
-    "theorems": 6642,
-    "functions": 5183,
-    "assert_events": 7072,
+    "theorems": 6664,
+    "functions": 5185,
+    "assert_events": 7090,
     "must_fails": 187,
     "encapsulates": 19,
     "guards": {
-      "verified": 1711,
+      "verified": 1713,
       "declared-off": 279,
       "default-guarded": 2588,
       "default-unguarded": 605
     },
-    "suspect_theorems": 61,
+    "suspect_theorems": 62,
     "export_hygiene_warnings": 86,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 10,
@@ -5792,7 +5792,7 @@
       "book": "books/store-node-resolution.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 34,
+      "theorems": 36,
       "functions": 8,
       "guards": {
         "verified": 6,
@@ -5820,15 +5820,15 @@
       "book": "books/store-node-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 55,
-      "functions": 5,
+      "theorems": 71,
+      "functions": 7,
       "guards": {
-        "verified": 2,
+        "verified": 4,
         "declared-off": 0,
         "default-guarded": 1,
         "default-unguarded": 2
       },
-      "verify_guards_events": 2,
+      "verify_guards_events": 4,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -5841,14 +5841,16 @@
       "system_includes": [
         "arithmetic/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-snt-apply-record-of-a-retention-event"
+      ],
       "read_error": null
     },
     {
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 24,
+      "theorems": 28,
       "functions": 48,
       "guards": {
         "verified": 32,
@@ -10350,9 +10352,9 @@
         "default-unguarded": 6
       },
       "verify_guards_events": 0,
-      "assert_events": 33,
+      "assert_events": 51,
       "must_fails": 0,
-      "defconsts": 30,
+      "defconsts": 34,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -11442,7 +11444,7 @@
     {
       "theorem": "fn-sn-known-abort-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 136,
+      "line": 151,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value"
       ]
@@ -11458,9 +11460,17 @@
     {
       "theorem": "fn-sn-refuse-reservation-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 130,
+      "line": 145,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-snt-apply-record-of-a-retention-event",
+      "book": "books/store-node-traces.lisp",
+      "line": 613,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value"
       ]
     },
     {

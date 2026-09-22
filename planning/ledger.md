@@ -13,16 +13,16 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 402 |
 | Certification roots in the Makefile | 400 |
 | Books inside the root closure | 401 |
-| `defthm` and `defthmd` events | 6642 |
-| `defun` events | 5183 |
-| Functions with verified guards | 1711 |
+| `defthm` and `defthmd` events | 6664 |
+| `defun` events | 5185 |
+| Functions with verified guards | 1713 |
 | Functions declared `:verify-guards nil` and never verified | 279 |
 | Functions left at the default with an explicit guard | 2588 |
 | Functions left at the default with no guard | 605 |
-| `assert-event` checks | 7072 |
+| `assert-event` checks | 7090 |
 | `must-fail` checks | 187 |
 | `encapsulate` events | 19 |
-| Theorems flagged SUSPECT by shape | 61 |
+| Theorems flagged SUSPECT by shape | 62 |
 | Export-hygiene warnings | 86 |
 | Enabled-projection warnings | 27 |
 | Teeth-form warnings | 10 |
@@ -286,9 +286,9 @@ that `make certify` requests.
 | `books/store-files-traces.lisp` | root | 51 | 12 | 0/0/0/12 | 0 | 0 | 0 |
 | `books/store-files.lisp` | root | 30 | 57 | 54/0/3/0 | 0 | 0 | 0 |
 | `books/store-node-invariants.lisp` | root | 112 | 2 | 0/1/0/1 | 0 | 0 | 1 |
-| `books/store-node-resolution.lisp` | root | 34 | 8 | 6/0/0/2 | 0 | 0 | 2 |
-| `books/store-node-traces.lisp` | root | 55 | 5 | 2/0/1/2 | 0 | 0 | 0 |
-| `books/store-node.lisp` | root | 24 | 48 | 32/2/14/0 | 0 | 0 | 0 |
+| `books/store-node-resolution.lisp` | root | 36 | 8 | 6/0/0/2 | 0 | 0 | 2 |
+| `books/store-node-traces.lisp` | root | 71 | 7 | 4/0/1/2 | 0 | 0 | 1 |
+| `books/store-node.lisp` | root | 28 | 48 | 32/2/14/0 | 0 | 0 | 0 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 39 | 13 | 12/0/1/0 | 0 | 0 | 1 |
 | `books/store-prepare-correspondence.lisp` | root | 15 | 4 | 2/0/0/2 | 0 | 0 | 0 |
@@ -461,7 +461,7 @@ that `make certify` requests.
 | `tests/acl2/store-files-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 88 | 0 | 0 |
 | `tests/acl2/store-files-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/store-identity-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
-| `tests/acl2/store-identity-traces-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 33 | 0 | 0 |
+| `tests/acl2/store-identity-traces-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 51 | 0 | 0 |
 | `tests/acl2/store-node-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 116 | 0 | 0 |
 | `tests/acl2/store-node-index-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 80 | 0 | 0 |
 | `tests/acl2/store-node-resolution-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 21 | 0 | 0 |
@@ -550,9 +550,10 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sf-frontier-rollback-visiblep-unfolds` | `books/store-files-invariants.lisp` | 410 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep |
 | `fn-sf-stable-records-outside-the-window` | `books/store-files-invariants.lisp` | 90 | branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value |
 | `fn-sn-finish-disabled-is-no-op` | `books/store-node-invariants.lisp` | 429 | branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value |
-| `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 136 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
+| `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 151 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
 | `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 454 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
-| `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 130 | branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
+| `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 145 | branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
+| `fn-snt-apply-record-of-a-retention-event` | `books/store-node-traces.lisp` | 613 | branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value |
 | `fn-stx-admission-is-peer-independent-by-definition` | `books/stx-policy.lisp` | 57 | definition-restated: the conclusion is the body of fn-stx-transit-authority-ok |
 | `fn-stx-index-lookup-cost-is-index-bounded` | `books/stx-index.lisp` | 784 | instance-corollary: the statement is fn-stx-alist-steps-is-len-bounded instantiated, discharging nothing |
 | `fn-stx-index-query-is-store-free-by-definition` | `books/stx-index.lisp` | 801 | definition-restated: the conclusion is the body of fn-stx-index-lookup; reflexive-conclusion: a conjunct is (equal X X) |

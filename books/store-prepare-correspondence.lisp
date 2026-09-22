@@ -77,14 +77,23 @@
                 (fn-sf-statep fn-node-statep fn-node-pending-matchesp
                  fn-sn-pending-record fn-sn-prepare-node)))))
 
+; `fn-sf-candidatep' pins the COMPOSED transaction id: since `6ab2c783' and
+; `4bb7bb3d' a staged candidate is not always an article record, and this book
+; has not certified since 2026-09-21.  On an article record -- which is what
+; `fn-sn-record-bindsp' in the theorem below gives -- the two accessors are
+; the same value by `fn-store-event-txid's first `cond' arm, so the article
+; hypothesis is what carries the old statement over.
 (local
  (defthm fn-spc-candidate-txid-is-frontier-predecessor
-   (implies (fn-sf-candidatep record records frontier)
+   (implies (and (fn-sf-candidatep record records frontier)
+                 (fn-record-p record))
             (equal (fn-record-txid record) (+ -1 frontier)))
    :rule-classes nil
    :hints (("Goal" :in-theory
-            (e/d (fn-sf-candidatep)
-                 (fn-sf-next-lower fn-record-p fn-record-txid))))))
+            (e/d (fn-sf-candidatep fn-store-event-txid)
+                 (fn-sf-next-lower fn-record-p fn-record-txid
+                  fn-store-event-p fn-store-retention-event-p
+                  fn-stxe-p fn-stxk-p fn-stxa-p))))))
 
 ; The semantic bridge.  In a related reserved state the node is exact replay
 ; at frontier-1.  If the actual prepared node binds the candidate, the
@@ -109,6 +118,8 @@
                  (:instance fn-spc-candidate-txid-is-frontier-predecessor
                   (records (fn-sf-records (fn-sn-files s)))
                   (frontier (fn-sf-frontier (fn-sn-files s))))
+                 (:instance fn-snt-bound-record-is-an-article-record
+                  (node (fn-sn-prepare-node (fn-sn-node s) record)))
                  (:instance fn-sf-state-records-are-true-list
                   (s (fn-sn-files s)))
                  (:instance fn-snt-bound-record-is-matching-proposal
