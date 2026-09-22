@@ -2769,7 +2769,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
-      "defmacros": 1,
+      "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "records-attach",
@@ -8446,7 +8446,7 @@
       "verify_guards_events": 0,
       "assert_events": 20,
       "must_fails": 0,
-      "defconsts": 8,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -10792,7 +10792,7 @@
       "verify_guards_events": 0,
       "assert_events": 51,
       "must_fails": 0,
-      "defconsts": 23,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -11214,7 +11214,7 @@
       "verify_guards_events": 0,
       "assert_events": 84,
       "must_fails": 0,
-      "defconsts": 10,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
