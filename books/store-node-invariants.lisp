@@ -70,13 +70,76 @@
                   (stringp (fn-record-msgid record)))
          :hints (("Goal" :in-theory (enable fn-record-p)))))
 
+; The identity branch appends the verdict pairs the identity fold produced to
+; the ones the state already holds.  Both conjuncts of `fn-sn-verdict-listp'
+; for a produced pair come from `fn-stxe-p': the Message-ID field is a string,
+; the token is one of `*fn-stx-verdicts*' and the keyring generation is a
+; uint32.  Stated here so the branch does not need the record codec to see it.
+(local
+ (defthm fn-sn-verdict-listp-of-replay-verdict-pairs
+   (fn-sn-verdict-listp (fn-replay-verdict-pairs events))
+   :hints (("Goal" :induct (fn-replay-verdict-pairs events)
+            :in-theory (e/d (fn-replay-verdict-pairs fn-sn-verdict-listp
+                             fn-stx-make-verdict fn-stx-verdict-token
+                             fn-stx-verdict-generation fn-stxe-tokenp)
+                            (fn-record-codec-vocabulary)
+                            (fn-record-msgidp))))))
+
+(local
+ (defthm fn-sn-verdict-listp-of-append
+   (implies (and (fn-sn-verdict-listp a) (fn-sn-verdict-listp b))
+            (fn-sn-verdict-listp (append a b)))
+   :hints (("Goal" :induct (fn-sn-verdict-listp a)
+            :in-theory (enable fn-sn-verdict-listp)))))
+
+; The retention branch of `fn-sn-finish' calls `fn-replay-apply-retention-event'
+; directly, so the exported fact about `fn-replay-apply-record' does not reach
+; it by rewriting; this is that fact restricted to the branch, with the record
+; codec closed while it is proved.
+(local
+ (defthm fn-sn-retention-event-preserves-node
+   (implies (and (fn-node-statep node)
+                 (fn-store-retention-event-p event)
+                 (consp (fn-replay-apply-retention-event node event)))
+            (fn-node-statep (fn-replay-apply-retention-event node event)))
+   :hints (("Goal"
+            :use ((:instance fn-replay-apply-record-non-nil-is-node-state
+                             (record event)))
+            :in-theory (e/d (fn-replay-apply-record fn-store-event-p)
+                            (fn-record-codec-vocabulary
+                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-replay-apply-retention-event))))))
+
 (defthm fn-sn-finish-preserves-state
   (implies (fn-sn-statep s)
            (fn-sn-statep (fn-sn-finish s)))
+  ; The record codec stays closed here.  This book enables
+  ; `fn-record-codec-vocabulary' at the top for its field lemmas, and that
+  ; theory carries (:d fn-record-p), (:d fn-record-encode) and
+  ; (:d fn-record-decode-exact); `fn-sn-finish' reads the completion record
+  ; through four accessors and dispatches on four recognizers, so with the
+  ; codec open this goal grows a term instead of proving and does not leave
+  ; Goal'' (measured 2026-09-22, hbox certify-20260922T060312Z-2712514 and
+  ; certify-20260922T064054Z-2733885).  The three node facts the branches need
+  ; come in by `:use' instead of by unfolding.
   :hints (("Goal"
            :use ((:instance fn-sn-record-p-implies-string-msgid
-                            (record (fn-sn-completion-record s))))
-           :in-theory (disable fn-sf-core-completion
+                            (record (fn-sn-completion-record s)))
+                 (:instance fn-replay-apply-record-non-nil-is-node-state
+                            (node (fn-sn-node s))
+                            (record (fn-sn-completion-record s)))
+                 (:instance fn-node-complete-preserves-state
+                            (s (fn-sn-node s))
+                            (txid (fn-record-txid (fn-sn-completion-record s)))
+                            (generation
+                             (fn-record-generation (fn-sn-completion-record s)))
+                            (completion-status :durable)))
+           :in-theory (disable fn-record-codec-vocabulary
+                               fn-stxe-p fn-stxk-p fn-stxa-p
+                               fn-replay-apply-record
+                               fn-replay-apply-retention-event
+                               fn-node-complete
+                               fn-sf-core-completion
                                fn-sf-emit-success))))
 
 ; Keystone for the host-called acceptance subject.  host/store-node-host.lisp
