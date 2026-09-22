@@ -33,9 +33,24 @@
    (fn-cbor-encode (cons :bytes (fn-record-string-octets "evidence-1")))
    (fn-cbor-encode (cons :uint 7))))
 
+; The decoder that examines the sequence tag is the retention one, and it
+; refuses with (:error :record) -- the claim this test was written for, at
+; 6ab2c783.  fn-store-event-decode-exact then keeps trying the remaining
+; kinds (5d497ebe, a different lane, thirteen minutes later) and reports the
+; LAST alternative it tried, so at the composed boundary the same input reads
+; (:error :accepted-article) with the same refused outcome.  All three are
+; asserted: the deciding function's reason, that the composition refuses, and
+; the tag the composition currently reports.  A lane that makes the dispatcher
+; stop at the kind code it matched will trip the third and should say so.
+(assert-event
+ (equal (fn-store-retention-event-decode-exact *fn-se-test-wrong-sequence-tag*)
+        '(:error :record)))
+(assert-event
+ (not (fn-record-result-okp
+       (fn-store-event-decode-exact *fn-se-test-wrong-sequence-tag*))))
 (assert-event
  (equal (fn-store-event-decode-exact *fn-se-test-wrong-sequence-tag*)
-        '(:error :record)))
+        '(:error :accepted-article)))
 
 ; Unknown event kind and trailing items are fail-closed.
 (assert-event
