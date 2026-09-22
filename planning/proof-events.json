@@ -549,11 +549,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-transfer-missing-ranges-is-correct",
-          "pending_subject": "fn-transfer-missing-ranges has no caller outside the transfer books; no host line calls the subject. Review section 4, transfer row."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-exchange-policy-ingest-trace-preserves-statep"
         },
         {
@@ -563,6 +558,13 @@
         {
           "kind": "theorem",
           "name": "fn-exchange-admitted-ingest-retains-conflicting-evidence"
+        }
+      ],
+      "deferred": [
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-missing-ranges-is-correct",
+          "note": "no caller; v1"
         }
       ]
     },
@@ -838,21 +840,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-transfer-missing-work-cost-bound",
-          "pending_subject": "Costs a function with no caller outside the transfer books. Review section 4, transfer row."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-wm-pattern-match-work-cost"
         },
         {
           "kind": "theorem",
           "name": "fn-wm-match-codepoints-work-cost-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-transfer-missing-ranges-work-public-bound",
-          "pending_subject": "Costs a function with no caller outside the transfer books, and the closed form is far above the measured cost. Review section 4, transfer row."
         },
         {
           "kind": "theorem",
@@ -873,6 +865,18 @@
         {
           "kind": "theorem",
           "name": "fn-served-step-nntp-steps-is-bounded"
+        }
+      ],
+      "deferred": [
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-missing-work-cost-bound",
+          "note": "no caller; v1"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-missing-ranges-work-public-bound",
+          "note": "no caller; v1"
         }
       ]
     },
@@ -965,11 +969,13 @@
         {
           "kind": "theorem",
           "name": "fn-stx-commit-decode-is-a-commit"
-        },
+        }
+      ],
+      "deferred": [
         {
           "kind": "theorem",
           "name": "fn-stx-commits-of-batch-are-verified-and-well-formed",
-          "pending_subject": "fn-stx-commits-of-batch has no caller outside books/stx-epochs, and no book outside the stx cluster includes books/stx-epochs at all: there is no reconnection path in the tree to wire it to. Future feature work, not missing evidence for implemented behaviour. Review section 4."
+          "note": "no caller; v1"
         }
       ]
     },
@@ -979,22 +985,22 @@
         {
           "kind": "theorem",
           "name": "fn-ocfg-open-pins-the-live-configuration",
-          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+          "note": "host lines host/owner-host.lisp:1005 (fn-ocfg-open)"
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-advance-observes-the-live-configuration",
-          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+          "note": "host lines host/owner-host.lisp:214 (fn-ocfg-step)"
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-pin-is-stable-without-advance",
-          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+          "note": "host lines host/owner-host.lisp:232 (fn-ocfg-reconfig-refusal)"
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-list-active-lists-the-pinned-served-table",
-          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+          "note": "host lines host/owner-host.lisp:610 (fn-ocfg-open-peer)"
         }
       ]
     },
@@ -1430,6 +1436,73 @@
           "name": "fn-nntp-effects-newnews-response"
         }
       ]
+    },
+    {
+      "id": "PRF-029",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-target-is-offerable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-targets-omit-no-offerable-peer"
+        }
+      ]
+    },
+    {
+      "id": "PRF-033",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-observe-refusal-names-a-contradiction"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-without-a-clock-refuses-with-the-clock-line"
+        }
+      ]
+    },
+    {
+      "id": "PRF-040",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-fault-closes-the-faulted-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-fault-keeps-every-other-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-fault-clears-the-faulted-submission"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-fault-keeps-another-connections-submission"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-fault-releases-the-faulted-transaction"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-fault-is-not-a-store-event"
+        }
+      ]
+    },
+    {
+      "id": "PRF-038",
+      "events": []
+    },
+    {
+      "id": "PRF-047",
+      "events": []
+    },
+    {
+      "id": "PRF-051",
+      "events": []
     }
   ]
 }

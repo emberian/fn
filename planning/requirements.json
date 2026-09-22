@@ -52,7 +52,7 @@
         "fn-recover-preserves-existing-message-id-binding",
         "fn-article-successful-parse-preserves-source"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The exact Message-ID binding survives completion and recovery, and a successful parse reconstructs its exact source octets, so the wire identity, the content subject and the local number stay three things. Open: native identity and signature composition, and the digest side of OBJ-001."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The exact Message-ID binding survives completion and recovery, and a successful parse reconstructs its exact source octets, so the wire identity, the content subject and the local number stay three things. Open: native identity and signature composition, and the digest side of OBJ-001. Open item: `fn-store-article-match` (`host/store-host.lisp:138`) decides duplicate-versus-conflict in host code; T3 moves it into `books/store-node` with its theorem."
     },
     {
       "id": "OBJ-003",
@@ -482,7 +482,7 @@
         "fn-snrt-acknowledged-history-retained-through-mixed-trace",
         "fn-sn-open-observed-success-exact-history"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). An acknowledged record survives an observed reopen and a mixed trace, and reopen yields the exact history. Real evidence at the process level: the deploy gate SIGKILLed the server from inside an open POST, the interrupted article was absent after recovery, and the article acknowledged before the kill reread byte-for-byte through a fresh server. Open: one kill point only, and a SIGKILL is not a power loss."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). An acknowledged record survives an observed reopen and a mixed trace, and reopen yields the exact history. Real evidence at the process level: the deploy gate SIGKILLed the server from inside an open POST, the interrupted article was absent after recovery, and the article acknowledged before the kill reread byte-for-byte through a fresh server. The 14-cut campaign on an image is T5; power loss is T16b."
     },
     {
       "id": "STO-006",
@@ -727,7 +727,7 @@
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
       "implementation_note": "Abstract reservations compose with acceptance; local adapter also refuses configured bounds and tests duplicates at capacity. Physical-space reservation accounting remains open.",
-      "note": "Reservation preservation is certified (fn-retain-admit-preserves-statep), but no keystone states that an unaffordable obligation is refused; the refusal exists in the definitions and nothing names it. Charges are abstract units, not measured physical bytes, which is also why AGENTS.md's twins rule bites here."
+      "note": "Reservation preservation is certified (fn-retain-admit-preserves-statep), but no keystone states that an unaffordable obligation is refused; the refusal exists in the definitions and nothing names it. Charges are abstract units, not measured physical bytes, which is also why AGENTS.md's twins rule bites here. T11 states the refusal keystone."
     },
     {
       "id": "RET-003",
@@ -890,7 +890,7 @@
         "fn-transfer-reserve-preserves-statep",
         "fn-transfer-add-chunk-preserves-statep"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The merge is idempotent and order-independent in membership, and an exact duplicate chunk does not overwrite. The stated scope is exactly that: validated fact sets and declared-byte fragments. A byte-identical partial overlap is still a conservative :overlap-conflict with no byte comparison, and convergence across two real peers is the K3 seam, which no book states."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The merge is idempotent and order-independent in membership, and an exact duplicate chunk does not overwrite. The stated scope is exactly that: validated fact sets and declared-byte fragments. A byte-identical partial overlap is still a conservative :overlap-conflict with no byte comparison, and convergence across two real peers is the K3 seam, which no book states. Two-node convergence with restart is T9's gate."
     },
     {
       "id": "REP-003",
@@ -1145,7 +1145,7 @@
       "evidence": [
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "note": "books/nntp-post certifies (520.4 s in the gate), but POST is not durable acceptance end to end: the store-backed read-back test fails on dev's own host path (211 1 1 1 after 240, because nothing re-pins the posting connection's archive after a durable outcome), and books/owner -- the only concurrent server -- does not certify."
+      "note": "`books/nntp-post` and `books/owner` certify at their last green digests; what is missing is the theorem from the served `240` to the consumed completion (`fn-own-240-follows-consumed-completion`) and the native cut campaign on an image; both are T5."
     },
     {
       "id": "NNT-006",
@@ -1181,7 +1181,7 @@
         "fn-index-range-query-correct",
         "fn-state-has-fresh-local-numbers"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). A step preserves the projection the session carries, and the derived index corresponds to the committed memberships. Open: a reader's pinned snapshot surviving another connection's POST is NOT established by any run, because the reader serves one connection at a time and the owner does not start."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). A step preserves the projection the session carries, and the derived index corresponds to the committed memberships. The pinned view surviving another connection's POST is T6; the keystones cover the projection and the index halves."
     },
     {
       "id": "NNT-007",
@@ -1227,7 +1227,7 @@
         "specs/nntp-audit.md"
       ],
       "implementation_note": "RFC 3977 section 7.4 over the same section 7.3.2 date and time parse NEWGROUPS uses and the same wildmat matcher LIST ACTIVE uses. The instant compared is the article's own Injection-Date, falling back to Date (RFC 5537 sections 3.6 and 3.7), because the committed article record carries no arrival stamp. One command costs one pass over the committed article list plus at most *fn-nntp-newnews-parse-budget* = 256 article parses; a request with more candidates is refused with 503 and parses nothing.",
-      "note": "Open: a durable acceptance stamp beside the article, which would make NEWNEWS a statement about this node rather than about the injecting agent's claim; and the per-group index of books/nntp-index.lisp, which is not on the dispatcher's path, so the membership walk is still one pass over every committed article. No native run has measured the V0-READ-NEWNEWS rows: no image exists on this commit."
+      "note": "NEWNEWS answers from the injector's stamp until T2 writes the acceptance instant into the record; then it answers from this node's own acceptance and the parse budget leaves the served path."
     },
     {
       "id": "HST-001",
