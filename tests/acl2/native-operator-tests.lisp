@@ -161,29 +161,64 @@
                        (fn-nop-test-argv '("status"))))
                      :usage))
 
-; A valid config can be unsupported for the running owner while still
-; allowing offline store administration.  Only RUN checks owner availability.
-(defconst *fn-nop-full-unavailable-config*
+; Offline store administration does not consult owner availability; only RUN
+; does.  The full protected profile below carries the paired TLS paths, so
+; since 9223873c (`adopt STARTTLS in native owner') the saved image CAN
+; consume it and RUN is an accepted plan: the assertion here expected
+; :unsupported-profile and was written against the availability rule that
+; commit replaced, in the same book whose TLS block above already says so.
+; The claim it was written for -- protected-only credentials with no TLS
+; context are not a runnable profile -- is asserted below of
+; `fn-native-config-operator-availablep', the function that decides it, and
+; of the composed run.
+(defconst *fn-nop-full-protected-config*
   (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""
                        "[listener]" "tls_cert = \"/etc/fn/cert.pem\"" "tls_key = \"/etc/fn/key.pem\""
                        "[auth]" "required = true" "protected_only = true"
                        "[posting]" "enabled = false")))
+(defconst *fn-nop-protected-without-tls-config*
+  (fn-nop-test-lines '("[store]" "path = \"/srv/fn\""
+                       "[auth]" "required = true" "protected_only = true"
+                       "[posting]" "enabled = false")))
 (assert-event (equal (fn-native-operator-result-status
-                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+                      (fn-native-operator-run *fn-nop-full-protected-config*
                                               (fn-nop-test-argv '("group" "create" "fn.offline"))))
                      :accepted))
 (assert-event (equal (fn-native-operator-result-status
-                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+                      (fn-native-operator-run *fn-nop-full-protected-config*
                                               (fn-nop-test-argv '("status"))))
                      :accepted))
 (assert-event (equal (fn-native-operator-result-status
-                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+                      (fn-native-operator-run *fn-nop-full-protected-config*
                                               (fn-nop-test-argv '("recover"))))
                      :accepted))
-(assert-event (equal (fn-native-operator-result-reason
-                      (fn-native-operator-run *fn-nop-full-unavailable-config*
+; The deciding function, on both profiles.
+(assert-event (fn-native-config-operator-availablep
+               (fn-ncfg-second
+                (fn-native-config-load *fn-nop-full-protected-config*))))
+(assert-event (not (fn-native-config-operator-availablep
+                    (fn-ncfg-second
+                     (fn-native-config-load
+                      *fn-nop-protected-without-tls-config*)))))
+; And the composed run, which reads that decision.
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run *fn-nop-full-protected-config*
                                               (fn-nop-test-argv '("run"))))
+                     :accepted))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-run *fn-nop-full-protected-config*
+                                              (fn-nop-test-argv '("run"))))
+                     :plan))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-run
+                       *fn-nop-protected-without-tls-config*
+                       (fn-nop-test-argv '("run"))))
                      :unsupported-profile))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-run
+                       *fn-nop-protected-without-tls-config*
+                       (fn-nop-test-argv '("run"))))
+                     :usage))
 
 ; The service may run with posting disabled, but POST is an explicit refusal.
 (assert-event (equal (fn-native-operator-result-status
