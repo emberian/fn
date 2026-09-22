@@ -329,6 +329,26 @@ CERTIFICATION lock: `tools/farm.py` runs do not take it (they are `--closure`
 runs into their own remote root), and neither do the deploy, two-node, INN and
 scale fibers.
 
+**And the manifests answer one question nothing was asking.**
+[`tools/green_check.py`](../tools/green_check.py) hashes every root in
+`ACL2_BOOKS` and every book in those roots' local include closure, then finds
+the newest run -- across the committed archive and this worktree's unarchived
+`build/acl2/` runs -- that recorded a verdict for those exact bytes, so each
+book is green at its current digest, *red* at its current digest, never at
+this digest (naming its last green at an older one), or never a requested root
+anywhere. It exists because on 2026-09-21 `dev` had been red for a day in
+`books/stx-evidence-records`, `books/checkpoint-compaction`,
+`books/hybrid-store` and `books/feed-connection`, each committed by a lane that
+never certified it, with the failures already recorded at those digests in the
+archive while every reader took `git log` for certification; `make check` prints
+its three summary lines and `--strict` fails on a book whose newest verdict at
+its current bytes is a failure. What a green there is *not*: one host's one
+toolchain identity once accepted those bytes, which is not a certificate in
+this worktree, says nothing about images or saved cores, and -- since the
+verdict is about the book's own digest -- comes with `deps_moved`, the closure
+members whose bytes have moved since, because same book over a changed
+dependency is a different key.
+
 `tools/verdict.py --reuse-gate [REV]` reads a gate directory that already
 exists and builds its per-fiber table from it, shipping nothing and starting
 no ACL2. It reads the shape both kinds of gate share (`certify.log`,
