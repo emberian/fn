@@ -122,6 +122,21 @@ class ClassificationTests(unittest.TestCase):
         self.assertIn("more lines", cut)
         self.assertEqual(len(cut.splitlines()), 7)
 
+    def test_the_complete_wave_says_blocked_in_its_own_words(self):
+        """Complete does not say "no certificate on file"; it says not yet.
+
+        This is the real Complete-wave log of `books/store-sweep` from the
+        provisional run of 2026-09-22.  Reading only the include-book
+        sentence made every proved-but-blocked book look like a failure
+        with no reason given.
+        """
+        log = fixture("books--store-sweep.pcert-complete.certify.log")
+        self.assertIn("does not have a .cert file that is at least\nas recent",
+                      log)
+        errors = triage.acl2_errors(log)
+        self.assertEqual({error.cascade_of for error in errors},
+                         {"books/store-node-traces"})
+
     def test_an_absolute_box_path_names_a_repository_book(self):
         self.assertEqual(
             triage.repository_book(
@@ -277,6 +292,18 @@ See :DOC uncertified-books.
 
 ACL2 Error [Failure] in ( INCLUDE-BOOK "b" ...):
 See :DOC failure.
+
+ACL2 Error [Failure] in (CERTIFY-BOOK "books/c" ...):  See
+:DOC failure.
+"""
+
+BLOCKED = """
+ACL2 Error in (CERTIFY-BOOK "books/c" ...):  Unable to complete
+the renaming of "{remote}/books/c.pcert1"
+to "{remote}/books/c.cert", because
+the following included book does not have a .cert file that is at least
+as recent as that included book:
+"{remote}/books/b.lisp".
 
 ACL2 Error [Failure] in (CERTIFY-BOOK "books/c" ...):  See
 :DOC failure.
@@ -504,7 +531,7 @@ class ProvisionalTriageTests(unittest.TestCase):
         })
         cls.box = FakeBox([{"manifest": manifest, "wave_logs": {
             ("books/b", "convert"): OWN.format(name="B", book="b"),
-            ("books/c", "complete"): CASCADE.format(remote=cls.remote)}}])
+            ("books/c", "complete"): BLOCKED.format(remote=cls.remote)}}])
         with mock.patch.object(farm, "RUN", cls.box), \
                 mock.patch.object(farm, "SLEEP", lambda seconds: None), \
                 mock.patch.dict(os.environ,

@@ -23,9 +23,13 @@ the environment and the certificate copied from `/tank/fn/node/tls/cert.pem`.
 
 Not a runbook, but what to run before `hbox-image-build.sh`:
 `python3 tools/triage.py <box> <roots...> --remote-root <path> --acl2 <path>
---cache <path> --budget-seconds 900 --rounds 3`. A closure run stops at the
+--cache <path> --budget-seconds 900`. An ordinary closure run stops at the
 first failing book and hides every book above it, so a red closure costs one
-run per layer; a triage reports every independent red in the closure at once,
-each with its first ACL2 error, its key checkpoint and the assumption it rests
-on. Its certificates are published nowhere and its output is evidence of
-nothing but the list of reds (docs/proofs.md).
+run per layer. A triage runs the closure through ACL2's provisional
+certification instead — one parallel wave does every book's proofs — so one
+run names every independent red, each with its first ACL2 error and its key
+checkpoint, and says of the books above them that their proofs passed and
+they are waiting on a certificate. Measured on a 63-book closure: 337 s and
+four reds, against 691 s and one for an ordinary round. Its certificates are
+published nowhere and its output is evidence of nothing but the list of reds
+(docs/proofs.md, planning/evidence/triage-2026-09-22.md).
