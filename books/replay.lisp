@@ -509,6 +509,23 @@
                               (fn-record-generation article)
                               :durable)))))))))
 
+; From here down the event recognizers and the composite article decoder are
+; closed.  `fn-record-codec-vocabulary' is enabled for this book (above), so an
+; open `fn-record-p', `fn-stxe-p', `fn-stxk-p', `fn-stxa-p' or
+; `fn-store-retention-event-p' lets a goal that merely dispatches on the event
+; kind unfold the whole record and statement codec underneath it: measured
+; 2026-09-22, `fn-replay-apply-record-non-nil-is-node-state' ran 600 s without
+; leaving Goal\'\' and took the book past its 1800 s and 2400 s limits on hbox
+; (run-20260922T031236Z-c1fb, run certify-20260922T034701Z-2641627); with the
+; recognizers closed it proves in 0.32 s over 90 subgoals.  The proofs below
+; dispatch on these terms, they do not need to see inside them --
+; `fn-replay-record-counters-are-natural' above already closes exactly this set
+; for the same reason.
+(local (in-theory (disable fn-store-event-p fn-store-event-sequence
+                           fn-record-p fn-stxe-p fn-stxk-p fn-stxa-p
+                           fn-store-retention-event-p
+                           fn-replay-composite-record)))
+
 ; A non-NIL one-record result is the existing node transaction machine's
 ; durable branch, hence remains a valid node.  NIL is intentionally a refusal,
 ; not a partially reconstructed state.
