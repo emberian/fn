@@ -1,0 +1,299 @@
+{
+  "acl2_compatibility": null,
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/cbor": 0,
+    "books/cbor-invariants": 0,
+    "books/crypto-seam": 0,
+    "books/defrecord": 0,
+    "books/principal": 0,
+    "books/principal-invariants": 0,
+    "books/records": 0,
+    "books/records-invariants": 0,
+    "books/statement": 0,
+    "books/statement-invariants": 0
+  },
+  "acl2_slots": 4,
+  "acl2_toolchain": {
+    "launcher": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+    "launcher_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+    "launcher_size": 142,
+    "reason": "shell expansion is outside the recognized launcher subset at /opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2:6",
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "unqualified"
+  },
+  "acl2_toolchain_identity": null,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w31-treewide-reds/build/acl2/certify-20260922T030243Z-97144",
+  "book_failures": {},
+  "book_results": {
+    "books/cbor": "passed",
+    "books/cbor-invariants": "passed",
+    "books/crypto-seam": "passed",
+    "books/defrecord": "passed",
+    "books/principal": "passed",
+    "books/principal-invariants": "passed",
+    "books/records": "passed",
+    "books/records-invariants": "passed",
+    "books/statement": "passed",
+    "books/statement-invariants": "passed"
+  },
+  "book_wall_seconds": {
+    "books/cbor": 0.188,
+    "books/cbor-invariants": 0.753,
+    "books/crypto-seam": 0.517,
+    "books/defrecord": 0.13,
+    "books/principal": 0.802,
+    "books/principal-invariants": 2.562,
+    "books/records": 4.623,
+    "books/records-invariants": 33.896,
+    "books/statement": 6.516,
+    "books/statement-invariants": 30.825
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [
+      "books/cbor-invariants: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/cbor: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/crypto-seam: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/defrecord: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/principal-invariants: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/principal: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/records-invariants: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/records: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/statement-invariants: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/statement: no qualified ACL2 launcher/core/runtime fingerprint"
+    ],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/defrecord",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/defrecord: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/cbor",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/cbor: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/cbor-invariants",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/cbor-invariants: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/records",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/records: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/records-invariants",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/records-invariants: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/crypto-seam",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/crypto-seam: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/statement",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/statement: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/principal",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/principal: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/statement-invariants",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/statement-invariants: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/principal-invariants",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/principal-invariants: no qualified ACL2 launcher/core/runtime fingerprint"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/cbor": "fe358d9e1450460e045bc319c5314b30fd8091ff41beeb4a2b35932d4816d638",
+    "books/cbor-invariants": "897e77e9fdf30282eb40fdf5399cd6a35186a10f85fe35c7701b7f397e47edee",
+    "books/crypto-seam": "2614e97c2111d6c1f4b3f5fa16fd2ad8015e9fda6a11f787c84686084791b472",
+    "books/defrecord": "55e9ae4f4a33cfe1f02654c97fc61d5cf6f156caee78919d22f8d1345d496519",
+    "books/principal": "3fc078ed15306e17725c2206f033fb9b9630ce5447282b160ea5c70b06d8894f",
+    "books/principal-invariants": "0f3c0b142bb82a50e14fc55fb3ec3ab2d5f819251cf37204527db368b3f99dc2",
+    "books/records": "402bf18d80dfcb13867728da90302b386ec96759d74b7dc5c8ac4391ad6d8100",
+    "books/records-invariants": "814cea4f4f9f62cfcad9e388518ee60f448e5b3b72af06ca133e7fc5c87b2ad9",
+    "books/statement": "0835fe78ff660ddd324796aae5e4cb0a01af0452c8188940c8f56e8cce10091d",
+    "books/statement-invariants": "5d218978a309257bc26a1c678457ac489ca2edc2fa40f2d3ace6be80dc9d0f48"
+  },
+  "certify_wall_seconds": 79.149,
+  "closure": true,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/cbor": "4bede1b5d28932576270f9257e8ea30967b485ed5bb1343ea67f1841ca155e93",
+    "books/cbor-invariants": "ced792c28ae73c88539e5b176648721926feb35bbe55b8700acffb4c83b8a7b8",
+    "books/crypto-seam": "4201bb41d3bc3ba81395ba40c620ed0f364f1bf7b70cee823a83b961da38984c",
+    "books/defrecord": "ebedf6672b4c43387a18e5406ecd72d6b0968acf6e1b003f061d57844b30be9e",
+    "books/principal": "b1c301b50766a2414cc320080880f586d959eaae9fcb025571aa3a9d17fff1fb",
+    "books/principal-invariants": "b3fc043c224fc963db2640a06d80f09e67949da798183cd5b8dbdf121457d626",
+    "books/records": "ebd7f14ac0105ffb9356ad55bab5a3f5fb97f2701a1b008704910fcaef557981",
+    "books/records-invariants": "c72cedde6078ca82b83e8fd6ce2d77cbff5304db402e19acdc3dfad6080f7b10",
+    "books/statement": "347d165b8e1cabef41ca007e3d771614a2880244fcc6974f7b2d1500b1b66b72",
+    "books/statement-invariants": "e70a8f6e7b88011edde9e4f55e2434c7f7b417eb051887a215953d8866b40c57"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba bf0ee880713d",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba d45992d8befd",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba c995de05ead1",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 593ea745a8c4",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 5cbf30634c44",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 3818b94ef8d7",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba af0d6423b8a8",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 4e6c7e93344f"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-22T03:04:03+00:00",
+  "git_branch": "w31/treewide-reds",
+  "git_dirty": true,
+  "git_revision": "dbf2e1ab0aaa0822b3fe9865ce66423e39ec2948",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 3,
+  "jobs_effective": 3,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba bf0ee880713d",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba d45992d8befd",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba c995de05ead1",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 593ea745a8c4",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 5cbf30634c44",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 3818b94ef8d7",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba af0d6423b8a8",
+    "FN_CERTIFY_SUCCESS 2d1246867a14c46adc46c43b6e5f2aba 4e6c7e93344f"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "662e8ef911ffe2cef222a48b8a279a01f86a4557dcf1fc00bc8002c8d8dfacb4",
+  "requested_before_filter": [
+    "books/principal-invariants"
+  ],
+  "requested_books": [
+    "books/cbor",
+    "books/cbor-invariants",
+    "books/defrecord",
+    "books/records",
+    "books/records-invariants",
+    "books/crypto-seam",
+    "books/statement",
+    "books/statement-invariants",
+    "books/principal",
+    "books/principal-invariants"
+  ],
+  "run_id": "certify-20260922T030243Z-97144",
+  "runner_sha256": "cb79d3bea9e5a531e33e44c882f8f615d4c0258db2c4f7361746ff1e2416c7d6",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/cbor": 0.0,
+    "books/cbor-invariants": 0.0,
+    "books/crypto-seam": 0.0,
+    "books/defrecord": 0.0,
+    "books/principal": 0.0,
+    "books/principal-invariants": 0.0,
+    "books/records": 0.0,
+    "books/records-invariants": 0.0,
+    "books/statement": 0.0,
+    "books/statement-invariants": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/principal-invariants.lisp": "f675175f65fe3f7780b865e0f1942525c06f49780bacf09e95af0c898f849de1",
+    "books/principal.lisp": "ba1d7595b49b1bfc06e47c758cc6a1847372bbe2b869ed7438077f7b67dd49b1",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/statement-invariants.lisp": "ae9301f03968f83bcfa91f492a616bef7706bd0e7979a50290abdb700dc1c601",
+    "books/statement.lisp": "48887b25bfe62fa7c820a1348a43849152641813fb834f39368c7f6dbe5aac7a"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/principal-invariants.lisp": "f675175f65fe3f7780b865e0f1942525c06f49780bacf09e95af0c898f849de1",
+    "books/principal.lisp": "ba1d7595b49b1bfc06e47c758cc6a1847372bbe2b869ed7438077f7b67dd49b1",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/statement-invariants.lisp": "ae9301f03968f83bcfa91f492a616bef7706bd0e7979a50290abdb700dc1c601",
+    "books/statement.lisp": "48887b25bfe62fa7c820a1348a43849152641813fb834f39368c7f6dbe5aac7a"
+  },
+  "start_order": [
+    "books/cbor",
+    "books/defrecord",
+    "books/records",
+    "books/cbor-invariants",
+    "books/records-invariants",
+    "books/crypto-seam",
+    "books/statement",
+    "books/principal",
+    "books/statement-invariants",
+    "books/principal-invariants"
+  ],
+  "started_utc": "2026-09-22T03:02:43+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/w31-treewide-reds"
+}
