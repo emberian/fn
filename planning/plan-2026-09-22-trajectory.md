@@ -399,23 +399,27 @@ with the key file it already refuses to read unless mode 0600.
 the step proves first. The carrier question (§5.2, branch 6) is decided in
 (a).
 
-**T12.** Decision 1 puts the DTN path in v0, and `specs/bp-design.md` §1.5.1
-is the honest inventory: `books/bp-node` is "two ends of this machine, not
-the machine", `fn-bpn-step` and its state do not exist, T1 to T6 are
-unproved, reassembly is not wired, status reports are absent, and dispatch
-has no routing table. `books/bp-node-machine` is the outbound lifecycle
-(queue, contact, persistence result, retry, expiry, restart) with
-certified-image component evidence and PRF-046's three events. The four
-steps are the design's packets 3 and 2 (T12a), 1 (T12b), 6 with the v0.3
-gate (T12c), and the obligation seam the independent review's naivety 6
-named (T12d). D07 applies: `tools/scheduler.py` is Python and
-`books/scheduler` has no native caller, so T12c's contact scheduling is
-`books/scheduler` called from `host/native/bp-service.lisp`, or
-`bp-node-machine`'s own contact model proved to be the scheduler's, not a
-third one. The gate run of T12c is on one box (two DTN images and a relay,
-the shape of the four-node lab without the mock BPA), with the interrupted
-contact, the expiry and the staging exhaustion the v0.3 row asked for. LTP
-follows T12 (decision 5).
+**T12.** Decision 1 puts the DTN path in v0. The contract is
+[`specs/bp-node-machine.md`](../specs/bp-node-machine.md), revised on
+2026-09-22 against [gpt-6's review](review-2026-09-22-bp-node-machine.md);
+its §11 replaces the four steps T12a to T12d with slices whose briefs,
+boxes, sizes and acceptance traces (BP-R01 to BP-R24) are stated there:
+A1 the machine, the TCPCL refusal and the two-process article-and-receipt
+round trip with its crash cuts on the real owner Store (hbox, Fable, 7 to
+9 days); A2 the records and the replay theorems (3 to 4); A3 the
+obligation release, the receipt outbox, the scheduler runner and K6
+(persvati, 5 to 6, K6 gated on T1's BP-receiver cluster); B the serialized
+service loop, routes, the three-process gate with the sender's carrier
+discarded and with reports dropped (hbox, Fable, 5 to 7); C1 fragment
+lemmas, the fast reassembler and the limits table (2 to 3); C2 the fragment
+families in the machine (after B, 3 to 4); D1 the status-report codec (1 to
+2); D2 reports, the administrative path and independent wire vectors (2 to
+3); E journal exhaustion and the operating envelope (after B, 2 to 3). The
+slices total 32 to 44 lane-days against the 20 to 31 the four steps
+carried; the receive path merges only with A2's replay theorems certified.
+D07 stands: the scheduler's policy is `books/scheduler` behind a prepare,
+publish, complete runner called from the native host; `tools/scheduler.py`
+retires with B. LTP follows (decision 5).
 
 **T16.** The paragraph under T5.
 
@@ -459,10 +463,10 @@ image changed what the node does.
 | --- | --- | --- | --- | --- | --- | --- |
 | 0 (now) | T0 store reds (`w31-freeze-3`) | T12a design against §1.5, no book edits until phase 2 | T0 native guards (`w32-native-guards`) | T7 login/TLS teeth | root: T14 hygiene, T15 retirement | the image, the hbox node, the matrix on it, the node's page |
 | 1 | T1 seam books, then the store cluster (Fable) | T1 BP-receiver cluster, from the day the seam books exist | T9c outbound TLS/AUTHINFO feed | T8 live reconfiguration | T11 capacity keystone; then the T2 design note | wave; `theory_check --strict` count; image |
-| 2 | T2 acceptance stamp (Fable) | T12a node machine: definitions, state, reassembly, dispatch (Fable) | T1 stx/identity/lace cluster | T1 frame/anchor/transfer-journal cluster | T12b bundle store records (certifies on hbox by farm) | wave; `theory_check --strict` at zero, wired into `make check`; image |
-| 3 | T4 finish arms, then T3 article match | T12a proofs T1 to T6 | T5 POST end to end, then T6 reader pins | T9a feed K5 (Fable) | T9b inbound octets and the peer-row round trip | wave; image; second deploy (P2, P3, P4, P6, P7 on loopback) |
+| 2 | T2 acceptance stamp (Fable) | T12 slice A1, the machine and the round trip (Fable) | T1 stx/identity/lace cluster | T1 frame/anchor/transfer-journal cluster | T12b bundle store records (certifies on hbox by farm) | wave; `theory_check --strict` at zero, wired into `make check`; image |
+| 3 | T4 finish arms, then T3 article match | T12 slice A2 replay theorems, then A3 obligations and K6 | T5 POST end to end, then T6 reader pins | T9a feed K5 (Fable) | T9b inbound octets and the peer-row round trip | wave; image; second deploy (P2, P3, P4, P6, P7 on loopback) |
 | 4 | T10a signatures, node side (Fable) | T12c contact scheduler native and the gate run's harness | T10b S6 reader exposure | T12d obligations and receipts | T10c client `--sign` and `principal new`; T13 INN and dtn7-rs labs on hbox | wave; DTN image; third deploy (P8) |
-| 5 | T16a K0, K5, K6, K8 (Fable) | T12d proofs, then the T12c gate run and record | T16b platform profile on hbox | T13 ION lab; hbox-to-persvati exchange row | T13 matrix and the v0 record | wave; the v0 image; `planning/evidence/v0-<rev>.md` |
+| 5 | T16a K0, K5, K6, K8 (Fable) | T12 slices C2, D2 and E, then the v0.3 gate record | T16b platform profile on hbox | T13 ION lab; hbox-to-persvati exchange row | T13 matrix and the v0 record | wave; the v0 image; `planning/evidence/v0-<rev>.md` |
 | 6 (v1 begins) | LTP | T17 Message-ID index | S4/S5 | compaction | | |
 
 Why this order and not another: phase 1 cannot start T2, T4, T5 or T9a
