@@ -458,13 +458,26 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
 
 
 def progress_script(root: Path, identifier: str) -> str:
+    """The run's status file, its success count, its started count, its tail.
+
+    The runner captures each ACL2's output into that book's own log under
+    the run directory, `build/acl2/certify-<stamp>-<pid>/<book>.certify.log`,
+    and writes the success marker there; the farm log carries nothing per
+    book until the end.  Until 2026-09-22 this counted markers in the farm
+    log and every progress line read "0 books certified" (three real runs
+    checked, all 0).  The running run's directory is the newest one.
+    """
     log = f"build/farm/{identifier}.log"
+    newest = "$(ls -td build/acl2/certify-*/ 2>/dev/null | head -1)"
     return (
         f"cd {remote_quote(root)} 2>/dev/null || exit 9; "
         f"printf 'STATUS %s\\n' \"$(cat build/farm/{identifier}.status "
         f"2>/dev/null || echo running)\"; "
-        f"printf 'MARKERS %s\\n' \"$(grep -c FN_CERTIFY_SUCCESS {log} 2>/dev/null "
-        f"|| echo 0)\"; "
+        f"d={newest}; "
+        f"printf 'MARKERS %s\\n' \"$(grep -l FN_CERTIFY_SUCCESS \"$d\"*.certify.log "
+        f"2>/dev/null | wc -l | tr -d ' ')\"; "
+        f"printf 'STARTED %s\\n' \"$(ls \"$d\"*.certify.log 2>/dev/null | wc -l "
+        f"| tr -d ' ')\"; "
         f"printf 'TAIL %s\\n' \"$(tail -c 300 {log} 2>/dev/null | tr '\\n' ' ')\""
     )
 
@@ -472,7 +485,7 @@ def progress_script(root: Path, identifier: str) -> str:
 def parse_progress(output: str) -> dict[str, str]:
     fields: dict[str, str] = {}
     for line in output.splitlines():
-        for key in ("STATUS", "MARKERS", "TAIL"):
+        for key in ("STATUS", "MARKERS", "STARTED", "TAIL"):
             if line.startswith(key + " "):
                 fields[key] = line[len(key) + 1:].strip()
     return fields
@@ -508,7 +521,8 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
             break
         elapsed = int(time.monotonic() - started)
         print(f"{identifier} on {host}: running, {progress.get('MARKERS', '0')} "
-              f"books certified, {elapsed}s elapsed", flush=True)
+              f"books certified of {progress.get('STARTED', '0')} started, "
+              f"{elapsed}s elapsed", flush=True)
         if time.monotonic() - started >= timeout_seconds:
             print(f"{identifier} on {host}: still running after "
                   f"{timeout_seconds}s; not waiting further", file=sys.stderr)
