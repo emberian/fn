@@ -64,8 +64,11 @@ Opus lanes now run under `build/lanes/`: w31-freeze-3 (the last two closure
 reds, then the images), w32-reader-polling (NEWNEWS and LIST NEWSGROUPS,
 absent from the books), w32-operator-verbs (`init`, `peer list`, and a
 developer-image fault that makes an uncertain outcome observable),
-w32-client-real-node (`tools/fn_client.py` against the real 915 node on
-persvati), and w32-triage (`tools/triage.py`, review finding F1: every
+w32-owner-defects (two node defects the client found against the real
+915 node, [record](evidence/fn-client-915-2026-09-22.md): a POST over about
+32 KiB stops the owner with a plaintext-read suffix fault, and every
+article in one owner run carries the same Date; the client lane itself
+landed at 13c5ea43 with four client defects fixed), and w32-triage (`tools/triage.py`, review finding F1: every
 independent red of a closure in one report).
 green-audit landed earlier (d667a874, `tools/green_check.py` in `make
 check`); with the treewide and freeze manifests in the tree it reads dev as 323
