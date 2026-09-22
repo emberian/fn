@@ -160,6 +160,21 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
             return "LISTENING 11292"
         if name.endswith("principal list"):
             return "matrix principal=" + "c" * 64 + " posting=true"
+        if name.endswith("lists its peers"):
+            # Both records, so either node's phase finds the other's identity;
+            # the phase matches the <path-identity>, not the node letter.
+            return ("a path-identity=a.gate.example.invalid address=127.0.0.1 "
+                    "port=11000 security=clear inbound=fn.* outbound=- "
+                    "auth=source-address:127.0.0.1\n"
+                    "b path-identity=b.gate.example.invalid address=127.0.0.1 "
+                    "port=11001 security=clear inbound=fn.* outbound=- "
+                    "auth=source-address:127.0.0.1")
+        if name.endswith("recover the init scratch store"):
+            return ("recovered transactions=1 articles=1 staging-orphans=0 "
+                    "anchor=none checkpoint=none")
+        if name.endswith("recover after the second init"):
+            return ("recovered transactions=1 articles=1 staging-orphans=0 "
+                    "anchor=none checkpoint=none")
         if name.endswith("configured store"):
             return "/srv/fn/a-store"
         if "auth-required AUTHINFO gate" in name:
@@ -183,7 +198,11 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
     # configuration ADMISSION and reported as a usage error, and an offline
     # administrative command against a store a live owner holds is refused.
     CANNED_RC = {"loopback refusal: run": v0_matrix.EXIT_USAGE,
-                 "offline group create while the owner holds the store": 1}
+                 "offline group create while the owner holds the store": 1,
+                 # A second `init` over a store that exists is refused, and
+                 # the reinit-safety row is about what that refusal left.
+                 "node A second operator init": 1,
+                 "node B second operator init": 1}
 
     def sh(self, name, script, timeout=600, note="", expect=0):
         step = Step(name, script, self.CANNED_RC.get(name, 0), self.canned(name),
@@ -357,8 +376,27 @@ class NativeSliceAccountingTests(unittest.TestCase):
                         "V0-OUT-RECOVER-A", "V0-PEER-REMOVE", "V0-CFG-LIVE-REFUSE"):
                 self.assertIn("packaging/fn-native operator", rows[rid].invocation, rid)
                 self.assertNotIn("bin/fn", rows[rid].invocation, rid)
+            # Without a developer image the cut that loses an outcome is
+            # unreachable, and the row says which image it wanted.
             self.assertEqual(rows["V0-OUT-UNCERTAIN-A"].verdict, v0_matrix.NOT_BUILT)
-            self.assertEqual(rows["V0-PEER-LIST-A"].verdict, v0_matrix.NOT_BUILT)
+            self.assertIn("--native-developer-image",
+                          rows["V0-OUT-UNCERTAIN-A"].blocker)
+            self.assertEqual(rows["V0-PEER-LIST-A"].verdict, v0_matrix.ACCEPTED)
+            self.assertIn("peer list", rows["V0-PEER-LIST-A"].invocation)
+            # The node is stood up, submitted to, recovered and refused a
+            # second init, all through the public operator.
+            self.assertEqual(rows["V0-NODE-INIT-A"].verdict, v0_matrix.ACCEPTED)
+            self.assertIn("operator", rows["V0-NODE-INIT-A"].invocation)
+            self.assertIn("init fn.letters", rows["V0-NODE-INIT-A"].invocation)
+            self.assertEqual(rows["V0-NODE-REINIT-A"].verdict, v0_matrix.REFUSED)
+            self.assertEqual(rows["V0-NODE-REINIT-SAFE-A"].verdict, v0_matrix.ACCEPTED)
+            self.assertIn("articles=1", rows["V0-NODE-REINIT-SAFE-A"].observed)
+            self.assertEqual(rows["V0-NODE-CONFIG-A"].verdict, v0_matrix.NOT_BUILT)
+            self.assertIn("[acl2]", rows["V0-NODE-CONFIG-A"].blocker)
+            # The recovery row belongs to the phase with the better subject.
+            order = [row.id for row in gate.rows]
+            self.assertLess(order.index("V0-OUT-RECOVER-A"),
+                            order.index("V0-NODE-STOP-A"))
             self.assertEqual(rows["V0-CFG-LIVE"].verdict, v0_matrix.ACCEPTED)
             # The node's own path identity is a real operator step now, before
             # the peer records and before either owner starts.
@@ -371,6 +409,48 @@ class NativeSliceAccountingTests(unittest.TestCase):
                             order.index("V0-PEER-ADD-A"))
             self.assertLess(order.index("V0-PEER-ADD-A"),
                             order.index("V0-NODE-START-A"))
+
+    def test_a_developer_image_makes_the_uncertain_outcome_a_measurement(self):
+        """The one row the developer image is for, and the only thing it is for."""
+        class DeveloperGate(HarnessOnlyNativeGate):
+            CANNED_RC = dict(
+                HarnessOnlyNativeGate.CANNED_RC,
+                **{"node A submission to the init scratch owner":
+                   v0_matrix.EXIT_UNCERTAIN,
+                   "node B submission to the init scratch owner":
+                   v0_matrix.EXIT_UNCERTAIN})
+
+        with tempfile.TemporaryDirectory() as home:
+            gate = DeveloperGate(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_developer_image="/opt/fn/fn-host-developer",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"},
+                native_group="fn.letters")
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            row = rows["V0-OUT-UNCERTAIN-A"]
+            self.assertEqual(row.verdict, v0_matrix.UNCERTAIN)
+            self.assertEqual(row.exit_code, v0_matrix.EXIT_UNCERTAIN)
+            self.assertIn("fn-native-control-status-exit-code", row.limit)
+            # The owner carries the cut and the developer image; the client
+            # that reports the outcome is the production one.
+            owner = next(step for step in gate.steps
+                         if step.name.startswith("start server")
+                         and "init owner" in step.name
+                         and "node A" in step.name)
+            self.assertIn("FN_NATIVE_CONTROL_FAULT=postpublish", owner.command)
+            self.assertIn("/opt/fn/fn-host-developer", owner.command)
+            client = next(step for step in gate.steps
+                          if step.name == "node A submission to the init scratch owner")
+            self.assertIn("FN_NATIVE_HOST=/opt/fn/fn-host ", client.command)
+            self.assertNotIn("fn-host-developer", client.command)
+            self.assertNotIn("FN_NATIVE_CONTROL_FAULT", client.command)
+            # Nothing else in the slice runs on the developer image.
+            for step in gate.steps:
+                if "init owner" in step.name:
+                    continue
+                self.assertNotIn("fn-host-developer", step.command, step.name)
 
     def test_native_authinfo_rows_are_measured_and_name_their_two_subjects(self):
         """F-AUTH: the credential half on the served node, the policy half on

@@ -370,6 +370,31 @@
   (declare (xargs :guard t))
   (fn-cfg-peer-of-rows name (fn-cfg-rows-with-key peers name)))
 
+; The peer table's keys, in row order: every peer contributes exactly one
+; "path-identity" row above, so folding over that slot enumerates the table
+; without a second name list to keep in step with it.  A caller that wants
+; the records pairs this with `fn-cfg-peer-find'.
+;
+; books/owner-feed.lisp's `fn-own-feed-peer-names' is the same fold and
+; predates this definition; it stays where it is until owner-feed is next
+; recertified.  host/store-node-host.lisp's `fn-store-cfg-peer-name-list'
+; was the third copy and now calls this one.
+(defun fn-cfg-peer-names (peers)
+  (declare (xargs :guard t))
+  (if (consp peers)
+      (if (equal (fn-cfg-row-b (car peers)) "path-identity")
+          (cons (fn-cfg-row-a (car peers)) (fn-cfg-peer-names (cdr peers)))
+        (fn-cfg-peer-names (cdr peers)))
+    nil))
+
+(defthm fn-cfg-peer-names-true-listp
+  (true-listp (fn-cfg-peer-names peers)))
+
+(defthm fn-cfg-peer-names-of-peer-rows
+  (equal (fn-cfg-peer-names (fn-cfg-peer-rows p))
+         (list (fn-cfg-peer-name p)))
+  :hints (("Goal" :in-theory (enable fn-cfg-peer-rows))))
+
 ; The two deltas, as the design writes them.
 (defun fn-cfg-set-peer-delta (p)
   (declare (xargs :guard t))

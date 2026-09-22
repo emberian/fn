@@ -889,23 +889,80 @@ and control-outcome sequence."
               (fnn-indeterminate "owner bound Store outcome is uncertain"))
             result))))))
 
+;;; The developer-only uncertain outcome.
+;;;
+;;; `FN_NATIVE_CONTROL_FAULT=<cut>` selects one entry of +fnn-cli-faults+ --
+;;; the same named table `store post --inject-fault` selects from -- and arms
+;;; it on the owner's store for exactly one control submission.  It adds a
+;;; reachable path to an existing model cut; it invents no fault point, no
+;;; second action vocabulary and no outcome of its own.
+;;;
+;;; `postpublish` is the cut the uncertain outcome needs: FNN-STORE-INDETERMINATE
+;;; is raised after the final publication, so the article is durable and its
+;;; report is not.  fnn-owner-attempt answers :uncertain, ACL2's
+;;; `fn-owner-control-outcome` keeps that word, fnn-owner-complete-bound-submission
+;;; raises it again, fnn-owner-shared-action-locked fences this owner at exit 3,
+;;; and the local-control reply carries ACL2's :uncertain status, which
+;;; `fn-native-control-status-class` projects to exit 3 at the caller.  No word
+;;; on that path is the host's.
+;;;
+;;; The gate is the saved image's profile, as FN_NATIVE_POST_FAULT's is: a
+;;; production image refuses the variable rather than honouring it, and the
+;;; profile is serialized at build time so a restart-time environment cannot
+;;; change it (host/native/io.lisp, `fnn-select-image-profile`).
+(defvar *fnn-owner-control-fault-consumed* nil)
+
+(defun fnn-owner-control-test-fault ()
+  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_CONTROL_FAULT")))
+    (when (and raw (not *fnn-owner-control-fault-consumed*))
+      (unless (fnn-developer-image-p)
+        (fnn-fault "FN_NATIVE_CONTROL_FAULT requires a developer image"))
+      (let ((fault (cdr (assoc raw +fnn-cli-faults+ :test #'string=))))
+        (unless fault
+          (fnn-fault "unknown FN_NATIVE_CONTROL_FAULT cut: ~a" raw))
+        fault))))
+
+(defun fnn-owner-control-arm-fault (store)
+  "Arm the developer cut on STORE for one submission; NIL when none is armed.
+
+The caller holds the owner mutex, so the armed window cannot overlap another
+submission, and the cut is consumed here rather than at each `fnn-at` so that
+exactly one submission is affected even if the owner survives it."
+  (let ((fault (fnn-owner-control-test-fault)))
+    (when fault
+      (setq *fnn-owner-control-fault-consumed* t)
+      (destructuring-bind (point class message) fault
+        (setf (fnn-store-fault-point store) point
+              (fnn-store-fault-class store) class
+              (fnn-store-fault-message store) message))
+      t)))
+
+(defun fnn-owner-control-disarm-fault (store)
+  (setf (fnn-store-fault-point store) nil
+        (fnn-store-fault-class store) nil
+        (fnn-store-fault-message store) nil))
+
 (defun fnn-owner-control-submit-serialized (service msgid groups payload)
   "Queue and drain one exact authored article through the shared owner writer."
   (fnn-owner-serialized
    service nil
    (lambda ()
-     (let ((evidence (fnn-octets (fnn-owner-core 'fn-owner-prov-post)))
-           (generation
-             (fnn-nat (fnn-owner-core 'fn-owner-config-generation)))
-           (txid (fnn-nat (fnn-owner-core 'fn-owner-next-txid))))
-       (fnn-owner-complete-bound-submission
-        service
-        (lambda ()
-          (fnn-owner-action 'fn-owner-control-submit
-                            (fnn-octet-list msgid)
-                            (mapcar #'fnn-octet-list groups)
-                            (fnn-octet-list payload)))
-        msgid payload groups evidence generation txid)))))
+     (let* ((store (fnn-owner-service-store service))
+            (armed (fnn-owner-control-arm-fault store)))
+       (unwind-protect
+            (let ((evidence (fnn-octets (fnn-owner-core 'fn-owner-prov-post)))
+                  (generation
+                    (fnn-nat (fnn-owner-core 'fn-owner-config-generation)))
+                  (txid (fnn-nat (fnn-owner-core 'fn-owner-next-txid))))
+              (fnn-owner-complete-bound-submission
+               service
+               (lambda ()
+                 (fnn-owner-action 'fn-owner-control-submit
+                                   (fnn-octet-list msgid)
+                                   (mapcar #'fnn-octet-list groups)
+                                   (fnn-octet-list payload)))
+               msgid payload groups evidence generation txid))
+         (when armed (fnn-owner-control-disarm-fault store)))))))
 
 (defun fnn-owner-handle-chunk (service cid incoming)
   "Run one owner read and its serial writer drain under the service mutex."

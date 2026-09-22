@@ -33,6 +33,7 @@ store and a supported minimal configuration, its component commands are:
 
 ```sh
 packaging/fn-native operator /path/to/fn.toml help
+packaging/fn-native operator /path/to/fn.toml init fn.letters fn.test
 packaging/fn-native operator /path/to/fn.toml status
 packaging/fn-native operator /path/to/fn.toml recover
 packaging/fn-native operator /path/to/fn.toml group create fn.announce
@@ -40,9 +41,39 @@ packaging/fn-native operator /path/to/fn.toml group retire fn.announce
 packaging/fn-native operator /path/to/fn.toml capacity 1048576
 packaging/fn-native operator /path/to/fn.toml peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false
 packaging/fn-native operator /path/to/fn.toml peer remove NAME
+packaging/fn-native operator /path/to/fn.toml peer list
 packaging/fn-native operator /path/to/fn.toml policy set path-identity news.example.invalid
 packaging/fn-native operator /path/to/fn.toml run
 ```
+
+`init` creates the store `[store] path` names and admits the groups the
+operator named, so a node is stood up with the same binary that runs it; the
+image's low-level `--fn store ROOT init` entry stays a diagnostic. There is no
+default group table: `init` with no group is a usage error (5) rather than a
+store whose served groups nobody chose. The names it admits are the store's
+own -- `fn-record-group-namep`, bounded at 128 octets, the same predicate
+`group create` applies and the same duplicate rule `fn-record-groupsp`
+imposes -- so this verb does not own a second idea of what a group may be
+called. An `init` over a store that already
+exists is refused (1), and it is refused on the presence of the store's own
+entries -- `config.json`, `writer.lock`, `allocation-frontier.json`,
+`transactions/`, `config/` -- so a store a live owner holds is never opened or
+locked to find that out. An existing store is adopted by `run` and repaired by
+`recover`; `init` does not reinitialise one.
+
+`peer list` prints the peer records the durable configuration holds, one line
+per peer, in the order `peer add` takes its arguments:
+
+```
+far path-identity=far.example address=192.0.2.44 port=1119 security=starttls inbound=fn.* outbound=fn.* auth=source-address:192.0.2.44
+```
+
+A half the record does not carry is `-`. The line is rendered by ACL2
+(`fn-native-admin-peer-report`, books/native-admin.lisp) from the replayed
+configuration's own peer rows. `peer list` is a read: it opens the store
+without the exclusive writer lock and never reaches the live owner, so while
+an owner is running it refuses (1) exactly as `status` does, and it can neither
+publish a configuration record nor take the lock away from the owner.
 
 `policy set path-identity` gives the node its own RFC 5537 section 3.2
 `<path-identity>`. Until it is set, the owner cannot recognise its own name in
