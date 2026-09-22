@@ -107,6 +107,22 @@ class FnClientTests(unittest.TestCase):
         self.assertNotIn("body one", out)
         self.assertEqual(self.marks(), {})
 
+    def test_show_by_message_id_carries_no_article_number_in_json(self):
+        # The hbox node answered `220 0 <id> article follows` to ARTICLE by
+        # Message-ID, as RFC 3977 section 6.2.1 says, and --json carried
+        # `"number": 0` although the text rendering already knew 0 is not an
+        # article number.  An agent keying on the JSON would file it as 0.
+        node = self.serve()
+        node.seed("fn.agents", "one", "body one", msgid="<one@fake.invalid>")
+        code, out, err = self.run_client(node, ["show", "<one@fake.invalid>", "--json"])
+        self.assertEqual(code, 0, err)
+        document = self.document(out)
+        self.assertTrue(any(one.startswith("220 0 ") for one in document["status_lines"]))
+        self.assertIsNone(document["articles"][0]["number"])
+        code, out, err = self.run_client(node, ["show", "1", "--group", "fn.agents", "--json"])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(self.document(out)["articles"][0]["number"], 1)
+
     def test_post_sends_the_article_and_the_node_can_read_it_back(self):
         node = self.serve()
         body = self.work / "body.txt"
@@ -228,20 +244,49 @@ class FnClientTests(unittest.TestCase):
                         fn_client.main(["--node", bad, "--plain", "groups"])
                 self.assertEqual(stop.exception.code, 2)
 
-    def test_a_certificate_the_client_does_not_trust_stops_before_the_login(self):
+    def test_a_certificate_the_client_does_not_trust_is_refused_and_nothing_follows_the_382(self):
+        # The hbox node from the dabebb84 image, 2026-09-22, with a --cafile
+        # that was not its certificate: the node answered 382, the handshake
+        # failed verification, and the client reported `uncertain` on exit 3,
+        # dropped the 382 from the status lines, and then wrote a cleartext
+        # QUIT onto the stream the node was reading as TLS.  What happened is
+        # known exactly -- no command reached the node after the 382 -- so
+        # the outcome is refused, and not one octet follows the handshake.
         other = pathlib.Path(tempfile.mkdtemp(dir=self.work))
         cert, _ = make_pair(other)
         node = self.serve()
+        sent = []
+        original = fn_client.Session.send
+
+        def spy(session, text):
+            sent.append(text)
+            original(session, text)
+
         out, err = io.StringIO(), io.StringIO()
         with mock.patch.dict(os.environ, {"FN_CLIENT_USER": "yue",
                                           "FN_CLIENT_PASSWORD": "right"}):
-            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-                code = fn_client.main(["--node", "127.0.0.1:%d" % node.port, "--cafile",
-                                       str(cert), "--timeout", "10", "--state",
-                                       str(self.state), "groups"])
-        self.assertEqual(code, 3)
-        self.assertIn("handshake", err.getvalue())
+            with mock.patch.object(fn_client.Session, "send", spy):
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    code = fn_client.main(["--node", "127.0.0.1:%d" % node.port, "--cafile",
+                                           str(cert), "--timeout", "10", "--state",
+                                           str(self.state), "--json", "groups"])
+        self.assertEqual(code, 1, err.getvalue())
+        document = self.document(out.getvalue())
+        self.assertEqual(document["outcome"], "refused")
+        self.assertIn("did not verify against --cafile", document["detail"])
+        self.assertTrue(any(one.startswith("382") for one in document["status_lines"]))
+        self.assertEqual(sent, ["CAPABILITIES", "STARTTLS"])
         self.assertNotIn("AUTHINFO PASS *", node.seen)
+
+    def test_a_handshake_the_node_abandons_is_uncertain_and_not_refused(self):
+        # The other arm of the split above: the node said 382 and then closed
+        # instead of negotiating.  Nothing verified or failed to verify; the
+        # connection failed, which stays uncertain.
+        node = self.serve(close_after_382=True)
+        code, out, err = self.run_client(node, ["groups"])
+        self.assertEqual(code, 3, err)
+        self.assertEqual(err.split()[0], "uncertain")
+        self.assertIn("handshake", err)
 
     # ---- posting refusals and the uncertain outcome ---------------------
 
