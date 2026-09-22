@@ -96,12 +96,20 @@
     (if (fn-wire-outbound-okp rendered)
         (fn-wire-ag-car (fn-wire-outbound-octets rendered)) nil)))
 
+; Total under the book's implicit `:guard t' (its callers are too, and
+; `fn-fc-user' returns whatever the state holds): a prefix or token that is
+; not a true list renders no command, which is also what a state that fails
+; `fn-fc-statep' (both fields `fn-fap-tokenp') would deserve.  Before
+; 2026-09-22 this called `append' on them unguarded and `verify-guards'
+; below could not discharge it.
 (defun fn-fc-auth-command (prefix token)
-  (let ((rendered (fn-wire-outbound-command-line
-                   (append prefix token '(13 10))
-                   *fn-nntp-max-initial-line-octets*)))
-    (if (fn-wire-outbound-okp rendered)
-        (fn-wire-ag-car (fn-wire-outbound-octets rendered)) nil)))
+  (if (and (true-listp prefix) (true-listp token))
+      (let ((rendered (fn-wire-outbound-command-line
+                       (append prefix token '(13 10))
+                       *fn-nntp-max-initial-line-octets*)))
+        (if (fn-wire-outbound-okp rendered)
+            (fn-wire-ag-car (fn-wire-outbound-octets rendered)) nil))
+    nil))
 (defun fn-fc-auth-user-command (st)
   (fn-fc-auth-command *fn-fc-auth-user-prefix* (fn-fc-user st)))
 (defun fn-fc-auth-pass-command (st)
