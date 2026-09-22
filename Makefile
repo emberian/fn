@@ -486,6 +486,23 @@ check:
 # and cannot grow silently.  Deliberately generous about what counts as a
 # subject, so every orphan it reports is real and it misses some.
 	$(PYTHON) tools/reach_check.py --summary --strict
+# Whether each book is certified AT THE SOURCE DIGEST IT CARRIES NOW.  On
+# 2026-09-21 `dev` had been red for a day in books/stx-evidence-records,
+# books/checkpoint-compaction, books/hybrid-store and books/feed-connection,
+# each committed by a lane that never certified it, and every reader took
+# `git log` for certification.  The archived manifests had already recorded
+# those failures at exactly the digests the tree carried; nothing asked.  This
+# reads every manifest under planning/evidence/manifests/ plus this worktree's
+# unarchived runs and gives every root and every book in the roots' closure
+# one of four answers: green at this digest, RED at this digest, never at this
+# digest, or never a requested root anywhere.  It REPORTS here -- 32 books are
+# red at their digest on this tree and are the certification lanes' worklist
+# -- and `--strict` fails on a book whose newest verdict at its current bytes
+# is a failure, which is what stops a lane committing over a known red.
+# `--table` is the whole list; deliberately generates nothing committed, since
+# every archived manifest and every edited book would stale it.  Mechanical,
+# no ACL2, about three seconds.
+	$(PYTHON) tools/green_check.py --summary
 
 # The integration labs.  Deliberately NOT part of `check`: the quick tier is
 # about two and a half minutes and the box tier is hours, while `check` is
@@ -523,7 +540,8 @@ model-test: certify
 tooling-test:
 	$(PYTHON) tools/run_command.py --timeout 120 -- $(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
-	    tests.test_evidence_manifests tests.test_process_supervisor -v
+	    tests.test_evidence_manifests tests.test_green_check \
+	    tests.test_process_supervisor -v
 
 test: check certify
 	$(PYTHON) tools/run_simulator.py
