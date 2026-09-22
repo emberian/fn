@@ -19,8 +19,13 @@ red in four books no lane had certified at their current digests
 the first two are repaired (28fb4bd0), the other two are the freeze lane's.
 Opus lanes run under `build/lanes/w31-*`: freeze (hbox: the image closure,
 then production, developer and DTN images; it writes `IMAGE-READY.txt` in
-its worktree when `build/fn-host` exists), treewide-reds (the roots outside
-the image closure; it has certified `msgid-index` for the first time), and
+its worktree when `build/fn-host` exists), treewide-reds (landed ad0cdefd: five proof repairs
+outside the image closure with their manifests, `msgid-index` certified for
+the first time; its territory reads 186 of 243 roots green, and every root
+still red sits above `hybrid-store` or `feed-connection-invariants`, which
+are the freeze lane's; `feed-connection-invariants` is red by the 1800 s
+timeout because its hint opens every state recognizer, a diagnosis handed
+to the freeze lane), and
 matrix-driver (landed 8935d992: AUTHINFO, live groups, the wildcard listener
 and an independent client are measurements on the native slice; on 915 the
 credential rows carry that image's exit 5, `V0-CFG-LIVE` is a real refusal
@@ -37,7 +42,9 @@ found and did not fix: `fn-store-article-match` in `host/store-host.lisp`,
 the duplicate-versus-conflict comparison, is program-mode host code with no
 theorem naming it, against "one owner per decision").
 green-audit landed earlier (d667a874, `tools/green_check.py` in `make
-check`). Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
+check`); with the treewide manifests in the tree it reads dev as 298 green,
+95 red, 8 never and 6 absent at current digests, the reds being the
+cascade above `hybrid-store`. Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
 step runs from the laptop: STARTTLS, the 483 before it, login, a post and a
 fresh-connection reread, on the deploy gate's exit scale. The hbox freeze,
 matrix-provision and node-deploy sequences are `tools/runbooks/`. persvati
