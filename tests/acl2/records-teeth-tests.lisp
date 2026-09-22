@@ -134,3 +134,67 @@
                      (fn-record-encode-impl *rec-teeth-record*)))
 (assert-event (equal (fn-record-decode-exact *rec-teeth-refused*)
                      (fn-record-decode-exact-impl *rec-teeth-refused*)))
+
+; -----------------------------------------------------------------------------
+; Teeth for `fn-record-accepted-input-magic'
+;   (implies (fn-record-result-okp (fn-record-decode-exact octets))
+;            (equal (take 5 octets) *fn-record-magic-octets*))
+; and `fn-record-accepted-schema-is-the-stamp-kind'
+;   (implies (fn-record-result-okp (fn-record-decode-exact octets))
+;            (equal (nth 5 octets)
+;                   (fn-record-schema-octet
+;                    (fn-record-result-record (fn-record-decode-exact octets)))))
+
+; The witness: an accepted encoding carries the magic and the schema octet
+; its record needs (0 at schema 0).
+(assert-event (equal (take 5 *rec-teeth-octets*) *fn-record-magic-octets*))
+(assert-event (equal (nth 5 *rec-teeth-octets*)
+                     (fn-record-schema-octet
+                      (fn-record-result-record
+                       (fn-record-decode-exact *rec-teeth-octets*)))))
+(assert-event (equal (nth 5 *rec-teeth-octets*) 0))
+
+; The hypothesis dropped, for the magic: a Store event of another kind
+; (`fn-e', books/store-events.lisp), refused by the record decoder.
+(defconst *rec-teeth-event-octets* '(68 102 110 45 101 0))
+(assert-event (not (fn-record-result-okp
+                    (fn-record-decode-exact *rec-teeth-event-octets*))))
+
+(local
+ (must-fail
+  (defthm rec-teeth-magic-without-accepted-decode
+    (equal (take 5 *rec-teeth-event-octets*) *fn-record-magic-octets*))))
+
+; The hypothesis dropped, for the schema octet: the right magic followed by
+; a version octet no grammar has (refused as `:unknown-version').
+(defconst *rec-teeth-unknown-version* '(68 102 110 45 114 1))
+(assert-event (equal (fn-record-decode-exact *rec-teeth-unknown-version*)
+                     '(:error :unknown-version)))
+
+(local
+ (must-fail
+  (defthm rec-teeth-schema-without-accepted-decode
+    (equal (nth 5 *rec-teeth-unknown-version*)
+           (fn-record-schema-octet
+            (fn-record-result-record
+             (fn-record-decode-exact *rec-teeth-unknown-version*)))))))
+
+; The magic case is ground and needs no decoder.  The schema case of the
+; implementation, where the conclusion is decided by evaluation and is
+; false: the refused input's sixth octet is 1 where the schema-0 record
+; needs 0.
+(local
+ (must-fail
+  (defthm rec-teeth-impl-schema-without-accepted-decode
+    (equal (nth 5 *rec-teeth-unknown-version*)
+           (fn-record-schema-octet
+            (fn-record-result-record
+             (fn-record-decode-exact-impl *rec-teeth-unknown-version*))))
+    :hints (("Goal" :in-theory (enable fn-record-schema-octet))))))
+(assert-event (not (equal (nth 5 *rec-teeth-unknown-version*)
+                          (fn-record-schema-octet
+                           (fn-record-result-record
+                            (fn-record-decode-exact-impl
+                             *rec-teeth-unknown-version*))))))
+(assert-event (not (equal (take 5 *rec-teeth-event-octets*)
+                          *fn-record-magic-octets*)))

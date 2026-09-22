@@ -31,6 +31,14 @@
 (defconst *fn-record-max-groups* 16)
 (defconst *fn-record-max-metadata* 256)
 (defconst *fn-record-max-octets* 65538)
+;
+; The five octets every accepted record begins with: the CBOR byte-string
+; head of length 4 (h'44') and "fn-r".  The sixth octet is the schema
+; version, and which one a record needs is a fact about the record, not
+; about the codec: `fn-record-schema-octet' below.  Both are named here so
+; the seam (books/records-seam.lisp) can state its dispatch constraints
+; without opening the codec.
+(defconst *fn-record-magic-octets* '(68 102 110 45 114))
 
 ; -----------------------------------------------------------------------------
 ; Exact string/octet domains
@@ -123,6 +131,19 @@
 
 (defun fn-record-uint32p (n)
   (and (natp n) (<= n *fn-cbor-max-uint*)))
+
+; The schema octet a record's encoding carries.  At schema 0 every record
+; needs version 0.  The acceptance stamp (specs/acceptance-stamp.md §1.4)
+; makes it a function of the stamp's kind (0 for a `:legacy' stamp, 1 for a
+; natural one); the seam constraint `fn-record-accepted-schema-is-the-stamp-kind'
+; is stated through this function so that the change is a change here and
+; behind the seam, and no statement above the seam moves.  Withdrawn on
+; export with the recognizers: no book above the seam may depend on the
+; value 0.
+(defun fn-record-schema-octet (record)
+  (declare (xargs :guard t)
+           (ignore record))
+  0)
 
 ; -----------------------------------------------------------------------------
 ; Logical record and field accessors
@@ -355,7 +376,8 @@
     (:d fn-record-group-namep) (:d fn-record-groupsp)
     (:d fn-record-groups-validp) (:d fn-record-metadata-bytes-p)
     (:d fn-record-uint32p) (:d fn-record-ascii-stringp)
-    (:d fn-record-octet-stringp) (:d fn-record-nonempty-at-mostp)))
+    (:d fn-record-octet-stringp) (:d fn-record-nonempty-at-mostp)
+    (:d fn-record-schema-octet)))
 
 (in-theory (disable (:d fn-record-p) (:d fn-record-msgidp)
                     (:d fn-record-payloadp) (:d fn-record-group-namep)
@@ -363,6 +385,7 @@
                     (:d fn-record-metadata-bytes-p) (:d fn-record-uint32p)
                     (:d fn-record-ascii-stringp) (:d fn-record-octet-stringp)
                     (:d fn-record-nonempty-at-mostp)
+                    (:d fn-record-schema-octet)
                     fn-record-cbor-octet-list-true-listp
                     fn-record-cbor-octet-listp-of-nthcdr
                     fn-record-cbor-octet-listp-of-take

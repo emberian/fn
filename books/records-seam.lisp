@@ -2,7 +2,7 @@
 ;
 ; Every book above the record codec calls `fn-record-encode' and
 ; `fn-record-decode-exact', and every proof above the codec reasons about them
-; through the five constraints of the `encapsulate' below and nothing else.
+; through the six constraints of the `encapsulate' below and nothing else.
 ; They are constrained functions: no book can open them, so a goal that only
 ; dispatches on a record kind cannot carry the codec, which is the growth
 ; that stopped proofs returning on 2026-09-21 (review 2026-09-22, F3; plan
@@ -23,9 +23,18 @@
 ;   fn-record-accepted-input-is-canonical    an accepted input is the encoding of what it decodes to
 ;   fn-record-accepted-input-bounds          an accepted input is a nonempty octet list of at most
 ;                                            *fn-record-max-octets* octets
-;   fn-record-accepted-input-header          an accepted input begins with the six header octets
-; Every other exported theorem in this book is derived from those five
-; below the `encapsulate'.
+;   fn-record-accepted-input-magic           an accepted input begins with the five magic octets
+;                                            (*fn-record-magic-octets*, records-shape)
+;   fn-record-accepted-schema-is-the-stamp-kind
+;                                            an accepted input's sixth octet is the schema octet
+;                                            its record needs (`fn-record-schema-octet',
+;                                            records-shape: 0 at schema 0)
+; Every other exported theorem in this book is derived from those six
+; below the `encapsulate'.  The header is two constraints, not one six-octet
+; constraint, so that the acceptance stamp (specs/acceptance-stamp.md §2.1)
+; widens the grammar behind the seam -- schema 1, whose version octet is 1
+; -- by changing `fn-record-schema-octet' and the implementation, and no
+; statement above the seam moves.
 ;
 ; WHAT THEY DO NOT SAY: any particular octet of an encoding past the header,
 ; the error a rejected input receives, or anything about an input no record
@@ -36,8 +45,6 @@
 
 (in-package "ACL2")
 (include-book "records-shape")
-
-(defconst *fn-record-header-octets* '(68 102 110 45 114 0))
 
 (encapsulate
   (((fn-record-encode *) => * :formals (record) :guard t)
@@ -81,14 +88,23 @@
     :hints (("Goal" :use fn-record-impl-accepted-input-bounds))
     :rule-classes nil)
 
-  (defthm fn-record-accepted-input-header
+(defthm fn-record-accepted-input-magic
     (implies (fn-record-result-okp (fn-record-decode-exact octets))
-             (equal (take 6 octets) *fn-record-header-octets*))
-    :hints (("Goal" :use fn-record-impl-accepted-input-header))
+             (equal (take 5 octets) *fn-record-magic-octets*))
+    :hints (("Goal" :use fn-record-impl-accepted-input-magic))
+    :rule-classes nil)
+
+  (defthm fn-record-accepted-schema-is-the-stamp-kind
+    (implies (fn-record-result-okp (fn-record-decode-exact octets))
+             (equal (nth 5 octets)
+                    (fn-record-schema-octet
+                     (fn-record-result-record
+                      (fn-record-decode-exact octets)))))
+    :hints (("Goal" :use fn-record-impl-accepted-schema-is-the-stamp-kind))
     :rule-classes nil))
 
 ; -----------------------------------------------------------------------------
-; Derived facts.  Each is a consequence of the five constraints alone.
+; Derived facts.  Each is a consequence of the six constraints alone.
 
 ; The result shapes of the round trip, in the accessor vocabulary a caller
 ; uses (`fn-record-result-okp', `fn-record-result-record').
@@ -172,25 +188,43 @@
        (true-listp (fn-record-encode record)))
   :hints (("Goal" :cases ((fn-record-p record)))))
 
-; The header, on the encoder's side: every record's encoding begins with it.
-(defthm fn-record-encode-header
+; The magic, on the encoder's side: every record's encoding begins with it.
+(defthm fn-record-encode-magic
   (implies (fn-record-p record)
-           (equal (take 6 (fn-record-encode record))
-                  *fn-record-header-octets*))
+           (equal (take 5 (fn-record-encode record))
+                  *fn-record-magic-octets*))
   :hints (("Goal"
-           :use ((:instance fn-record-accepted-input-header
+           :use ((:instance fn-record-accepted-input-magic
                             (octets (fn-record-encode record)))
                  fn-record-encode-of-a-record-is-accepted)
            :in-theory (disable fn-record-encode-of-a-record-is-accepted
                                fn-record-round-trip)))
   :rule-classes nil)
 
+; The schema octet, on the encoder's side: a record's encoding carries the
+; schema octet the record needs.
+(defthm fn-record-encode-schema-octet
+  (implies (fn-record-p record)
+           (equal (nth 5 (fn-record-encode record))
+                  (fn-record-schema-octet record)))
+  :hints (("Goal"
+           :use ((:instance fn-record-accepted-schema-is-the-stamp-kind
+                            (octets (fn-record-encode record)))
+                 fn-record-encode-of-a-record-is-accepted
+                 fn-record-round-trip-succeeds)
+           :in-theory (disable fn-record-encode-of-a-record-is-accepted
+                               fn-record-round-trip-succeeds
+                               fn-record-round-trip)))
+  :rule-classes nil)
+
 ; The dispatch a decoder for another kind uses: an input that does not begin
-; with the header is not accepted.
-(defthm fn-record-decode-exact-refuses-another-header
-  (implies (not (equal (take 6 octets) *fn-record-header-octets*))
+; with the magic is not accepted.  Every Store event kind other than the
+; record (`fn-e', books/store-events.lisp) differs from `fn-r' in the fifth
+; octet.
+(defthm fn-record-decode-exact-refuses-another-magic
+  (implies (not (equal (take 5 octets) *fn-record-magic-octets*))
            (not (fn-record-result-okp (fn-record-decode-exact octets))))
-  :hints (("Goal" :use fn-record-accepted-input-header))
+  :hints (("Goal" :use fn-record-accepted-input-magic))
   :rule-classes nil)
 
 ; Two records with the same encoding are the same record.

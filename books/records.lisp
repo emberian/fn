@@ -521,6 +521,39 @@
           (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4)))
   :rule-classes nil)
 
+; The same vector as exact wire octets: the concrete conformance fact the
+; seam cannot carry (review 2026-09-22-bp-node-machine-2 §4: a round trip
+; and canonicality hold of any length-preserving permutation of the
+; encodings, so they do not identify this wire language).  Magic h'44666e2d72'
+; ("fn-r"), schema 0, sequence 1, txid 2, generation 3, msgid h'433c613e'
+; ("<a>"), payload h'420908', one group h'4167', obligation, subject and
+; evidence h'416f' h'4173' h'4165', charge 4 -- the layout of
+; specs/encoding.md, octet for octet.
+(defconst *fn-record-schema0-golden-octets*
+  '(68 102 110 45 114 0 1 2 3 67 60 97 62 66 9 8 1 65 103
+    65 111 65 115 65 101 4))
+
+(defthm fn-record-schema0-golden-octets-are-the-encoding
+  (equal (fn-record-encode-impl
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4))
+         *fn-record-schema0-golden-octets*)
+  :rule-classes nil)
+
+(defthm fn-record-schema0-golden-octets-decode
+  (equal (fn-record-decode-exact-impl *fn-record-schema0-golden-octets*)
+         (fn-record-result-ok
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4)))
+  :rule-classes nil)
+
+; Grammar conformance at the header: a wrong magic octet and a version
+; octet other than 0 are refused with their own errors, before any field.
+(defthm fn-record-schema0-golden-grammar-refusals
+  (and (equal (fn-record-decode-exact-impl '(68 102 110 45 115 0))
+              (fn-record-parse-error :magic))
+       (equal (fn-record-decode-exact-impl '(68 102 110 45 114 1))
+              (fn-record-parse-error :unknown-version)))
+  :rule-classes nil)
+
 
 
 

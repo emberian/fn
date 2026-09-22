@@ -758,13 +758,14 @@
 ; The implementation's side of the seam (plan 2026-09-22 §4.1, step T1).
 ;
 ; `books/records-seam.lisp' constrains `fn-record-encode' and
-; `fn-record-decode-exact' by five properties; these are the same five of
+; `fn-record-decode-exact' by six properties; these are the same six of
 ; `fn-record-encode-impl' and `fn-record-decode-exact-impl'.  Two are the
 ; keystones above (`fn-record-impl-round-trip' in records-invariants,
-; `fn-record-impl-accepted-input-is-canonical' here); the other three are
-; below.  The seam's local witness and `books/records-attach.lisp''s
-; `defattach' both discharge their obligations by citing these five, so the
-; codec's proofs are done once, here.  All three are `:rule-classes nil': the
+; `fn-record-impl-accepted-input-is-canonical' here); the other four are
+; below (the magic and the schema octet derived from the six-octet header
+; fact, which stays here, below the seam).  The seam's local witness and `books/records-attach.lisp''s
+; `defattach' both discharge their obligations by citing these six, so the
+; codec's proofs are done once, here.  All are `:rule-classes nil': the
 ; implementation has no caller above the seam to rewrite for.
 
 ; The encoder refuses a value that is not a record.
@@ -814,4 +815,39 @@
                                fn-record-decode-exact-impl
                                fn-record-read-bytes fn-record-read-uint
                                fn-record-decode-after-header)))
+  :rule-classes nil)
+
+; The header split the way the seam states it (plan 2026-09-22 §4.1;
+; specs/acceptance-stamp.md §2.1): the five magic octets, and the schema
+; octet as the one the decoded record needs.  At schema 0 both follow from
+; the six-octet fact above; the acceptance stamp changes the second one's
+; proof and neither statement.
+(defthm fn-record-impl-accepted-input-magic
+  (implies (fn-record-result-okp (fn-record-decode-exact-impl octets))
+           (equal (take 5 octets) *fn-record-magic-octets*))
+  :hints (("Goal"
+           :use (fn-record-impl-accepted-input-header
+                 fn-record-impl-accepted-input-bounds)
+           :in-theory (disable fn-record-decode-exact-impl)
+           :expand ((take 5 octets) (take 4 (cdr octets))
+                    (take 3 (cddr octets)) (take 2 (cdddr octets))
+                    (take 1 (cddddr octets))
+                    (take 6 octets) (take 5 (cdr octets))
+                    (take 4 (cddr octets)) (take 3 (cdddr octets))
+                    (take 2 (cddddr octets)) (take 1 (cdr (cddddr octets))))))
+  :rule-classes nil)
+
+(defthm fn-record-impl-accepted-schema-is-the-stamp-kind
+  (implies (fn-record-result-okp (fn-record-decode-exact-impl octets))
+           (equal (nth 5 octets)
+                  (fn-record-schema-octet
+                   (fn-record-result-record
+                    (fn-record-decode-exact-impl octets)))))
+  :hints (("Goal"
+           :use (fn-record-impl-accepted-input-header)
+           :in-theory (e/d (fn-record-schema-octet)
+                           (fn-record-decode-exact-impl))
+           :expand ((take 6 octets) (take 5 (cdr octets))
+                    (take 4 (cddr octets)) (take 3 (cdddr octets))
+                    (take 2 (cddddr octets)) (take 1 (cdr (cddddr octets))))))
   :rule-classes nil)
