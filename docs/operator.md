@@ -279,6 +279,19 @@ side wants a 3.12 or older interpreter; the farm boxes have 3.13 and 3.12
 respectively, which is why the deploy gate records `nntplib interpreter NONE`
 on persvati and drives the socket by hand instead.
 
+The tunnel listens on `::1` as well as `127.0.0.1`, so `--node [::1]:PORT`
+reaches the node too; `tools/fn_client.py` takes the RFC 3986 brackets.
+
+Two things about the frozen `915d5c72` image were measured over this tunnel on
+2026-09-22 ([the record](../planning/evidence/fn-client-915-2026-09-22.md)) and
+belong to whoever runs it. A POST whose article passes about 32 KiB **stops the
+owner process** -- `owner core/store fault; process stopped: plaintext owner
+read left a suffix without TLS`, the listener goes away, and the article is not
+stored; ~32 250 octets was accepted and ~33 031 was fatal. And every article
+accepted during one owner run carries the same `Date` and `Injection-Date`,
+taken once at start: `DATE` returns one value for the life of the process.
+Neither is a client fault and neither is fixed in that image.
+
 For a node that listens off loopback with `[auth] required`,
 `protected_only` and a TLS pair, `tools/node_probe.py` is the client to run
 from the other machine. It drives the socket by hand on any Python 3, records

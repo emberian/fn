@@ -120,6 +120,17 @@ class NodeProbeTests(unittest.TestCase):
         self.assertEqual(code, 3, text)
         self.assertEqual(set(self.verdicts(summary).values()), {"undecided"})
 
+    def test_a_node_that_accepts_and_then_closes_decides_nothing_and_exits_3(self):
+        # A stopped owner behind an `ssh -L` forwarder, seen on persvati on
+        # 2026-09-22: accepted on this side, closed before the greeting.  The
+        # greeting is read inside the Session constructor, so this is a
+        # `Disconnected` and not an `OSError`, and the probe used to let it
+        # out as a traceback instead of a gate verdict.
+        node = self.serve(drop_before_greeting=True)
+        code, summary, text = self.probe(node)
+        self.assertEqual(code, 3, text)
+        self.assertEqual(set(self.verdicts(summary).values()), {"undecided"})
+
     def test_no_post_stops_after_the_group_and_is_not_a_pass(self):
         node = self.serve()
         code, summary, text = self.probe(node, extra=["--no-post"])
