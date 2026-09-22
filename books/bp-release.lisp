@@ -311,3 +311,51 @@
           (list nil s nil)
         (list t next (list (list :undertaken (fn-bp-journal-nth 1 r)))))))
    (t (fn-bp-apply-journal-record s r))))
+
+; The three definitions the host release owner calls (host/bp-release-owner-
+; host.lisp), landed from faf16519 (branch w25/bp-obligation-vertical) on
+; 2026-09-22: the host file was on dev and loaded by host/native/build.lisp
+; while these were not, so the production image could not build.  They use
+; only what this book and books/bp-workflow already define.
+; ACL2 authors the exact durable release record from the committed receipt and
+; current pin.  The host never copies fields from an untrusted receipt ADU.
+(defun fn-bprl-release-record (s receipt-id)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((d (fn-bprl-release-decision s receipt-id)))
+    (if (not (fn-bprl-decision-okp d))
+        nil
+      (let ((e (fn-bprl-decision-evidence d)))
+        (list :release
+              (fn-bprl-evidence-receipt-id e)
+              (fn-bprl-evidence-work-id e)
+              (fn-bprl-evidence-subject e)
+              (fn-bprl-evidence-issuer e)
+              (fn-bprl-term-policy-id (fn-bprl-evidence-term e))
+              (fn-bprl-term-terms-id (fn-bprl-evidence-term e))
+              (fn-bprl-evidence-incarnation e))))))
+
+
+(defun fn-bprl-replay-records (s records effects)
+  ; This book defers guards (every recognizer and step above is
+  ; `:verify-guards nil'); the two replay functions keep that posture.
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count records)))
+  (if (endp records)
+      (let ((answer (fn-bp-step s (fn-bp-restart-event))))
+        (list t (fn-bp-result-state answer)
+              (append effects (fn-bp-result-effects answer))))
+    (let ((answer (fn-bprl-apply-journal-record s (car records))))
+      (if (not (car answer))
+          (list nil s effects)
+        (fn-bprl-replay-records
+         (fn-bp-journal-nth 1 answer) (cdr records)
+         (append effects (fn-bp-journal-nth 2 answer)))))))
+
+(defun fn-bprl-replay-journal (node records)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (or (endp records) (not (fn-bp-config-recordp (car records))))
+      (list nil nil nil)
+    (let ((s (fn-bp-initial-state node
+                                  (fn-bp-config-from-record (car records)))))
+      (if (not (fn-bp-statep s))
+          (list nil nil nil)
+        (fn-bprl-replay-records s (cdr records) nil)))))
