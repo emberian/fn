@@ -328,6 +328,7 @@
     "tests/acl2/served-tls-prefix-tests",
     "books/nntp-auth-invariants",
     "tests/acl2/served-tests",
+    "tests/acl2/nntp-auth-teeth-tests",
     "books/config-stream",
     "tests/acl2/config-stream-tests",
     "books/owner-config",
@@ -406,24 +407,24 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 404,
-    "books_in_root_closure": 403,
-    "roots": 402,
-    "theorems": 6658,
-    "functions": 5226,
-    "assert_events": 7211,
-    "must_fails": 198,
+    "books": 405,
+    "books_in_root_closure": 404,
+    "roots": 403,
+    "theorems": 6672,
+    "functions": 5235,
+    "assert_events": 7352,
+    "must_fails": 221,
     "encapsulates": 19,
     "guards": {
       "verified": 1731,
       "declared-off": 279,
       "default-guarded": 2605,
-      "default-unguarded": 611
+      "default-unguarded": 620
     },
     "suspect_theorems": 61,
-    "export_hygiene_warnings": 87,
+    "export_hygiene_warnings": 88,
     "enabled_projection_warnings": 27,
-    "teeth_form_warnings": 10,
+    "teeth_form_warnings": 13,
     "include_hygiene_warnings": 150,
     "host_names_warnings": 646,
     "hand_written_record_warnings": 18
@@ -4150,7 +4151,7 @@
       "book": "books/nntp-auth.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 70,
+      "theorems": 84,
       "functions": 54,
       "guards": {
         "verified": 37,
@@ -9438,6 +9439,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 9
+      },
+      "verify_guards_events": 0,
+      "assert_events": 141,
+      "must_fails": 23,
+      "defconsts": 46,
+      "defmacros": 2,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-auth-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-auth-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -11845,6 +11873,12 @@
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
+        "theorem": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines",
+        "book": "books/nntp-auth.lisp",
+        "line": 1659,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-nov-lines-counts-the-retained-body-lines",
         "book": "books/nntp-overview.lisp",
         "line": 147,
@@ -12414,6 +12448,24 @@
         "check": "hsigi-preimage-without-byte-equality",
         "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
         "line": 124,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "aut-peer-open-pins-the-open-config",
+        "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
+        "line": 1067,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "aut-k1-without-not-posting",
+        "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
+        "line": 1171,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "aut-k1-without-the-post-command-event",
+        "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
+        "line": 1212,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       }
     ],
