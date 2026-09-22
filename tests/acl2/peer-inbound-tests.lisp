@@ -597,8 +597,8 @@
 ; Through the transfer to the durable article a reader is served.
 (defconst *pt-inn-node*
   (fn-node-complete
-   (mv-nth 0 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-inn-id* *pt-inn-fed*
-                               nil 1 "ob-inn" "subject-inn"))
+   (nth 0 (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-inn-id*
+                                       *pt-inn-fed* nil 1 "ob-inn" "subject-inn")))
    0 1 :durable))
 (assert-event (equal (fn-article-payload
                       (car (fn-state-articles (fn-node-acceptance *pt-inn-node*))))
