@@ -19,9 +19,10 @@
 
 ; `fn-jrec-p' must conclude `true-listp' of a record body to discharge
 ; `fn-replay-apply-record's guard, and `books/records' exports the shape
-; recognizer withdrawn.  Opened locally, for that guard obligation only.
-(local (in-theory (enable fn-record-record-vocabulary
-                          fn-record-codec-vocabulary)))
+; recognizer withdrawn.  The record vocabulary is opened in the hint of the
+; one lemma that decodes that shape (`fn-jrec-article-body-is-a-true-list'
+; below) and nowhere else (AGENTS.md: a codec is opened in a hint, never at
+; the top of a book).
 
 ; The two total selectors `books/config' withdraws on export; the journal
 ; record's accessor lemmas and the `(result config)' pair selectors below are
@@ -76,7 +77,8 @@
 (defthm fn-jrec-article-body-is-a-true-list
   (implies (and (fn-jrec-p j) (equal (fn-jrec-kind j) :article))
            (and (fn-record-p (fn-jrec-body j))
-                (true-listp (fn-jrec-body j)))))
+                (true-listp (fn-jrec-body j))))
+  :hints (("Goal" :in-theory (enable fn-record-record-vocabulary))))
 
 ; `fn-store-event-p' is withdrawn on export (books/store-events) and the
 ; keystones below keep `fn-jrec-p' closed, so the two facts a journal article

@@ -1,6 +1,6 @@
 # Assured live reconfiguration
 
-Status: design. This document contains no proved theorem. Every ACL2 form below
+Status: design, with the two headline theorems of section 8's last update proved (T8). Otherwise this document states proposed theorems only. Every ACL2 form below
 is a proposed definition or a proposed theorem *statement*; none has been
 submitted to ACL2, and nothing here licenses a claim under the
 [assurance rules](../AGENTS.md#assurance-rules-adopted-2026-09-18-after-the-independent-review).
@@ -1227,3 +1227,51 @@ regression `tests/native_admin_authorize_boundary.lisp` exercises the deployed
 wrapper, its octet-list marshalling, and both accepted and refused observations.
 This catches an ABI mismatch found by the native two-node gate; it does not
 establish the logical authorization predicate or physical publication safety.
+
+### The two headline theorems (T8, 2026-09-22)
+
+Both are stated over the functions the host calls and are PRF-028 events;
+the statements are in [`books/owner-config.lisp`](../books/owner-config.lisp)
+and their teeth in `tests/acl2/owner-config-tests.lisp`.
+
+- **No reader observes a half change.**
+  `fn-ocfg-no-reader-observes-a-half-change`: the two `fn-ocfg-step` events a
+  live reconfiguration consists of (`host/owner-host.lisp:214`, driven by
+  `fn-owner-reconfigure-deltas` and `fn-owner-reconfigure-complete`) leave the
+  owner (every connection's record, session and pinned archive) and every pin
+  unchanged; staging leaves the live configuration unchanged; publication
+  moves it to the old configuration or to `fn-cfg-apply-record` of the whole
+  record. One hypothesis: that a record was staged. With
+  `fn-ocfg-pin-is-stable-without-advance`, a connection keeps its generation
+  across any event list until its own advance, close or fault.
+- **A crash at any instant recovers the live generation.**
+  `fn-ocfg-crash-at-any-instant-recovers-the-live-generation`: if nothing is
+  staged and the durable configuration history replays through
+  `fn-cnode-config-replay` (`host/owner-host.lisp:172`, `fn-owner-recover`)
+  to the live configuration, then over the live arm's exact events
+  (reconfigure, close the private connection, complete;
+  `host/native/admin.lisp:123-146`) the old history replays to the live
+  configuration until the record is durable, and afterwards the history with
+  the record appended replays `:ok` to exactly the configuration completion
+  publishes, at the record's generation, with nothing staged. The statement
+  chains from `fn-owner-recover` across every later live reconfiguration.
+
+Two defects were found and fixed on the way. `fn-ocfg-complete` published
+through `fn-cnode-apply-config` on the live node, which is not a configured
+node after a live group creation or capacity change (below), so every later
+completion kept the old configuration while its record was already durable;
+it now publishes `fn-ocfg-published-config`, the configuration step recovery
+replays. And the live arm passed argv octets as configuration labels, so live
+`group create`, `group retire` and `peer remove` were refused
+`:malformed-delta`; the delta list is now `fn-native-admin-plan-deltas`
+(`fn-native-admin-live-group-delta-is-a-typed-delta`).
+
+**Open, and the reason `V0-CFG-LIVE` is not claimed:** publication moves the
+owner's configuration, not the live node's allocation domain or retention
+capacity (`fn-sn-groups`, `fn-sn-capacity`, which `fn-own-relation` ties to
+every connection's archive). A group created live is published and reaches
+the injection configuration, but GROUP and LIST ACTIVE answer from the
+acceptance state's group list and do not show it until a restart; a capacity
+change reaches the retention ledger only at restart. Closing it needs a
+per-connection domain in `fn-own-conn-okp` and a store re-parameterisation
+proved against `fn-snt-relation`: an owner and store cluster step.

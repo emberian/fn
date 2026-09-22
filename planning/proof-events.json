@@ -984,23 +984,38 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-ocfg-open-pins-the-live-configuration",
-          "note": "host lines host/owner-host.lisp:1005 (fn-ocfg-open)"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ocfg-advance-observes-the-live-configuration",
-          "note": "host lines host/owner-host.lisp:214 (fn-ocfg-step)"
+          "name": "fn-ocfg-no-reader-observes-a-half-change",
+          "note": "headline 1; subject fn-ocfg-step, called at host/owner-host.lisp:214 (fn-owner-step) for (:reconfigure ...) from fn-owner-reconfigure-deltas and (:complete) from fn-owner-reconfigure-complete"
         },
         {
           "kind": "theorem",
           "name": "fn-ocfg-pin-is-stable-without-advance",
-          "note": "host lines host/owner-host.lisp:232 (fn-ocfg-reconfig-refusal)"
+          "note": "headline 1, the until-advance half; subject fn-ocfg-run, the fold of fn-ocfg-step (host/owner-host.lisp:214)"
         },
         {
           "kind": "theorem",
-          "name": "fn-ocfg-list-active-lists-the-pinned-served-table",
-          "note": "host lines host/owner-host.lisp:610 (fn-ocfg-open-peer)"
+          "name": "fn-ocfg-crash-at-any-instant-recovers-the-live-generation",
+          "note": "headline 2; subjects fn-ocfg-step (host/owner-host.lisp:214) over the live arm's event sequence (host/native/admin.lisp:123-146) and fn-cnode-config-replay (host/owner-host.lisp:172, fn-owner-recover)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-config-replay-of-one-more-record",
+          "note": "the replay keystone headline 2 uses; subject fn-cnode-config-replay (host/owner-host.lisp:172)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-open-pins-the-live-configuration",
+          "note": "host line host/owner-host.lisp:1005 (fn-ocfg-open)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-advance-observes-the-live-configuration",
+          "note": "subject fn-ocfg-advance through fn-ocfg-step (host/owner-host.lisp:214, fn-owner-advance)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-live-group-delta-is-a-typed-delta",
+          "note": "subject fn-native-admin-plan-deltas, called at host/native-admin-host.lisp:29 (the live arm)"
         }
       ]
     },
