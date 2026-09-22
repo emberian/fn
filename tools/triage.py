@@ -594,7 +594,9 @@ def markdown(report: dict) -> str:
         "for that reason; the farm run ids below locate the logs on the box.",
         "",
         f"Closure: {report['books_in_closure']} books under "
-        f"{len(report['roots'])} roots ({', '.join(report['roots'])}), "
+        f"{len(report['roots'])} root"
+        f"{'' if len(report['roots']) == 1 else 's'} "
+        f"({', '.join(report['roots'])}), "
         f"per-book budget {report['budget_seconds']} s, remote root "
         f"`{report['remote_root']}`.",
         "",
@@ -616,6 +618,10 @@ def markdown(report: dict) -> str:
             + ".")
     lines.append("")
 
+    if not (report["findings"] or report["untriageable"]
+            or report["still_unanswered"]):
+        lines += ["No book in this closure failed on its own account in the "
+                  "rounds above.", ""]
     by_kind = {kind: [one for one in report["findings"] if one["kind"] == kind]
                for kind in KINDS}
     titles = {
@@ -681,7 +687,8 @@ def plan(root: Path, roots: list[str]) -> list[str]:
     report = green_check.audit(root, roots)
     runs = {run.run_id: run for run, _ in green_check.manifests(root)}
     counts = report["counts"]
-    lines = [f"triage: {len(digests)} books under {len(roots)} roots; "
+    lines = [f"triage: {len(digests)} books under {len(roots)} root"
+             f"{'' if len(roots) == 1 else 's'}; "
              f"{counts['green']} green at their digest, {counts['red']} red, "
              f"{counts['never']} never, {counts['absent']} absent."]
     for book, entry in report["books_by_verdict"].items():
