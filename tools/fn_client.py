@@ -93,7 +93,7 @@ class Client:
 
     @property
     def node(self) -> str:
-        return "%s:%d" % (self.args.host, self.args.port)
+        return node_name(self.args.host, self.args.port)
 
     def record(self, status: str) -> str:
         self.lines.append(status)
@@ -112,7 +112,12 @@ class Client:
     def open(self) -> None:
         try:
             self.session = Session(self.args.host, self.args.port, self.args.timeout)
-        except OSError as exc:
+        except (OSError, Disconnected) as exc:
+            # `Disconnected` and not only `OSError`: a node whose owner has
+            # stopped behind a forwarder -- the `ssh -L` tunnel of
+            # docs/operator.md -- accepts the connection and then closes it
+            # before the greeting, which is a reachability failure and must
+            # land on uncertain like any other, never on a traceback.
             raise Stop(UNCERTAIN, "could not connect to %s: %s" % (self.node, exc))
         self.record(self.session.greeting)
         labels = self.capabilities()
@@ -342,6 +347,31 @@ def number(text: str):
         return None
 
 
+def split_node(text: str):
+    """(host, port) for HOST, HOST:PORT, [HOST] or [HOST]:PORT, or (None, None).
+
+    RFC 3986 section 3.2.2 puts an IPv6 literal in brackets precisely so a
+    colon can still separate a port, and `[listener] host` admits `::1`
+    (docs/operator.md).  A bare token holding more than one colon therefore
+    has exactly one reading -- the address, with the default port -- and
+    `::1` must never be taken apart into the host `::` at port 1.
+    """
+    if text.startswith("["):
+        host, closed, rest = text[1:].partition("]")
+        if not closed or rest not in ("",) and not rest.startswith(":"):
+            return None, None
+        return host, rest[1:] if rest else str(DEFAULT_PORT)
+    if text.count(":") > 1:
+        return text, str(DEFAULT_PORT)
+    host, marked, port = text.rpartition(":")
+    return (host, port) if marked else (text, str(DEFAULT_PORT))
+
+
+def node_name(host: str, port: int) -> str:
+    """How this client writes a node down, brackets and all."""
+    return "[%s]:%d" % (host, port) if ":" in host else "%s:%d" % (host, port)
+
+
 def span(low, high):
     if low is None or high is None or high < low:
         return 0
@@ -493,12 +523,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def resolve(args, parser) -> None:
-    host, _, port = str(args.node).rpartition(":")
-    if not host:
-        host, port = args.node, str(DEFAULT_PORT)
-    if not host.strip() or number(port) is None:
-        parser.error("--node %s: expected HOST or HOST:PORT" % args.node)
+    host, port = split_node(str(args.node))
+    if host is None or not host.strip() or number(port) is None or not 0 < int(port) < 65536:
+        parser.error("--node %s: expected HOST, HOST:PORT or [IPV6-ADDRESS]:PORT" % args.node)
     args.host, args.port = host, int(port)
+    if getattr(args, "since", None) is not None and args.since < 0:
+        # RFC 3977 section 6: article numbers start at 1, so a negative
+        # window is a command line to fix here and not a range to put on the
+        # wire for the node to call a syntax error.
+        parser.error("--since %d: an article number is never negative" % args.since)
     if args.plain and args.cafile:
         parser.error("--plain and --cafile are two different nodes; give one")
     if not args.plain and not args.cafile:
@@ -588,7 +621,7 @@ def main(argv=None) -> int:
 
 def report(args, result: Result) -> int:
     if args.json:
-        document = {"node": "%s:%d" % (args.host, args.port), "command": args.command,
+        document = {"node": node_name(args.host, args.port), "command": args.command,
                     "outcome": result.word, "exit": EXIT[result.word],
                     "detail": result.detail, "status_lines": result.status_lines}
         document.update(result.data)
@@ -598,7 +631,16 @@ def report(args, result: Result) -> int:
     sys.stdout.flush()
     sys.stderr.write("%s %s\n" % (result.word, result.detail))
     if result.commit is not None and result.word in (DONE, ACCEPTED):
-        result.commit()
+        try:
+            result.commit()
+        except OSError as exc:
+            # The node answered and the articles are out; only this side's
+            # note of how far it got failed.  That is neither a refusal by
+            # the node nor an uncertain outcome -- what happened is known
+            # exactly -- so the node's word and exit code stand and the cost
+            # is the repeat the watermark exists to avoid, said out loud.
+            sys.stderr.write("the watermark was not saved (%s); the next read offers "
+                             "these articles again\n" % exc)
     return EXIT[result.word]
 
 

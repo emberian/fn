@@ -29,9 +29,19 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
         self.assertEqual(positions, sorted(positions), tokens)
 
     def test_actual_owner_calls_the_three_native_persistence_subjects(self):
-        body = function_body(self.owner, "fnn-owner-attempt")
-        self.assert_ordered(body, ["(fnn-advance-frontier ",
-                                   "(fnn-publish ", "(fnn-finish "])
+        # The frontier advance stays in each committing arm; the publish and
+        # the finish moved together into fnn-owner-publish-prepared, which
+        # every arm calls after its advance.  Read the call, then the callee,
+        # so the three subjects are still shown in order on every path: this
+        # check had been red since that move and nothing ran it (found by
+        # the owner-defects lane, 2026-09-22).
+        for arm in ("fnn-owner-attempt", "fnn-owner-retention-commit",
+                    "fnn-owner-identity-commit"):
+            self.assert_ordered(function_body(self.owner, arm),
+                                ["(fnn-advance-frontier ",
+                                 "(fnn-owner-publish-prepared "])
+        self.assert_ordered(function_body(self.owner, "fnn-owner-publish-prepared"),
+                            ["(fnn-publish ", "(fnn-finish "])
 
     def test_native_observation_wrapper_calls_composed_subject(self):
         body = function_body(self.bridge, "fn-store-sn-io")

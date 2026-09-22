@@ -33,6 +33,7 @@ store and a supported minimal configuration, its component commands are:
 
 ```sh
 packaging/fn-native operator /path/to/fn.toml help
+packaging/fn-native operator /path/to/fn.toml init fn.letters fn.test
 packaging/fn-native operator /path/to/fn.toml status
 packaging/fn-native operator /path/to/fn.toml recover
 packaging/fn-native operator /path/to/fn.toml group create fn.announce
@@ -40,9 +41,39 @@ packaging/fn-native operator /path/to/fn.toml group retire fn.announce
 packaging/fn-native operator /path/to/fn.toml capacity 1048576
 packaging/fn-native operator /path/to/fn.toml peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false
 packaging/fn-native operator /path/to/fn.toml peer remove NAME
+packaging/fn-native operator /path/to/fn.toml peer list
 packaging/fn-native operator /path/to/fn.toml policy set path-identity news.example.invalid
 packaging/fn-native operator /path/to/fn.toml run
 ```
+
+`init` creates the store `[store] path` names and admits the groups the
+operator named, so a node is stood up with the same binary that runs it; the
+image's low-level `--fn store ROOT init` entry stays a diagnostic. There is no
+default group table: `init` with no group is a usage error (5) rather than a
+store whose served groups nobody chose. The names it admits are the store's
+own -- `fn-record-group-namep`, bounded at 128 octets, the same predicate
+`group create` applies and the same duplicate rule `fn-record-groupsp`
+imposes -- so this verb does not own a second idea of what a group may be
+called. An `init` over a store that already
+exists is refused (1), and it is refused on the presence of the store's own
+entries -- `config.json`, `writer.lock`, `allocation-frontier.json`,
+`transactions/`, `config/` -- so a store a live owner holds is never opened or
+locked to find that out. An existing store is adopted by `run` and repaired by
+`recover`; `init` does not reinitialise one.
+
+`peer list` prints the peer records the durable configuration holds, one line
+per peer, in the order `peer add` takes its arguments:
+
+```
+far path-identity=far.example address=192.0.2.44 port=1119 security=starttls inbound=fn.* outbound=fn.* auth=source-address:192.0.2.44
+```
+
+A half the record does not carry is `-`. The line is rendered by ACL2
+(`fn-native-admin-peer-report`, books/native-admin.lisp) from the replayed
+configuration's own peer rows. `peer list` is a read: it opens the store
+without the exclusive writer lock and never reaches the live owner, so while
+an owner is running it refuses (1) exactly as `status` does, and it can neither
+publish a configuration record nor take the lock away from the owner.
 
 `policy set path-identity` gives the node its own RFC 5537 section 3.2
 `<path-identity>`. Until it is set, the owner cannot recognise its own name in
@@ -279,6 +310,19 @@ side wants a 3.12 or older interpreter; the farm boxes have 3.13 and 3.12
 respectively, which is why the deploy gate records `nntplib interpreter NONE`
 on persvati and drives the socket by hand instead.
 
+The tunnel listens on `::1` as well as `127.0.0.1`, so `--node [::1]:PORT`
+reaches the node too; `tools/fn_client.py` takes the RFC 3986 brackets.
+
+Two things about the frozen `915d5c72` image were measured over this tunnel on
+2026-09-22 ([the record](../planning/evidence/fn-client-915-2026-09-22.md)) and
+belong to whoever runs it. A POST whose article passes about 32 KiB **stops the
+owner process** -- `owner core/store fault; process stopped: plaintext owner
+read left a suffix without TLS`, the listener goes away, and the article is not
+stored; ~32 250 octets was accepted and ~33 031 was fatal. And every article
+accepted during one owner run carries the same `Date` and `Injection-Date`,
+taken once at start: `DATE` returns one value for the life of the process.
+Neither is a client fault and neither is fixed in that image.
+
 For a node that listens off loopback with `[auth] required`,
 `protected_only` and a TLS pair, `tools/node_probe.py` is the client to run
 from the other machine. It drives the socket by hand on any Python 3, records
@@ -311,6 +355,41 @@ telnet 127.0.0.1 1119
 GROUP fn.letters
 ARTICLE 1
 ```
+
+An agent that polls rather than browses asks for what is new, by
+Message-ID, with `NEWNEWS` (RFC 3977 §7.4):
+
+```
+NEWNEWS fn.* 20260919 000000 GMT
+230 list of new articles by message-id follows
+<2026-09-19.1@example.invalid>
+.
+```
+
+Two things to know before you build a poller on it. First, the instant fn
+compares against is the **article's own** `Injection-Date`, or its `Date` when
+that field is absent: fn's store keeps no arrival stamp beside an article, so
+`NEWNEWS` reports when the injecting agent says the article was injected, not
+when this node received it. An article carrying neither field, or a date-time
+fn cannot decode exactly, is not reported at all. Second, one `NEWNEWS` will
+read at most 256 articles; a wildmat and date that select more than that are
+refused with `503` and the command reads nothing, rather than answering a
+shorter list that would look complete:
+
+```
+NEWNEWS fn.* 19700101 000000 GMT
+503 more matching articles than this command may read
+```
+
+Narrow the wildmat, or move the date forward, and poll again. A `501` from
+`NEWNEWS` is a syntax error in the arguments and a `503` is fn declining to
+do the work or lacking a wall clock for a two-digit year; the two are
+different and a poller should not retry the first.
+
+`LIST NEWSGROUPS` lists the served groups with a description field. fn's
+group table carries no description, so every line reads
+`name<TAB>(no description)`; the marker is a statement about the server, and
+fn does not invent a sentence about a group.
 
 Post through fn, which routes to the running owner's control socket when one
 is live and opens the store directly when one is not:

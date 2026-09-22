@@ -21,8 +21,17 @@ Opus lanes run under `build/lanes/w31-*`: freeze (landed 27dc5a21 without
 an image: the closure went from 111 to 130 of 164 books, one shape under
 every red, [record](evidence/native-freeze-c28ffc30-2026-09-22.md); still
 red by name: `store-node-invariants` at `fn-sn-finish-preserves-state` and
-`nntp-auth` at `fn-auth-clear-principal-peer`), freeze-2 (a fresh lane on
-those two books, then the closure, then the images and `IMAGE-READY.txt`), treewide-reds (landed ad0cdefd: five proof repairs
+`nntp-auth` at `fn-auth-clear-principal-peer`), freeze-2 (landed 13f50de7, 140 of
+164: five commits on 2026-09-21 had changed the machine under invariant
+books nobody recertified, so exported statements were false in the shape
+the machine has; four books now certify, five theorems carry the
+hypotheses their arms need and `fn-sn-finish-preserves-indexedp` is
+registered open on the accepted-statement arm under PRF-023,
+[record](evidence/native-freeze-01fbdad4-2026-09-22.md); still red by
+name: `store-node-traces` at `fn-snt-record-directory-preserves-relation`,
+whose relation predates the retention and identity arms, and `checkpoint`
+at `fn-checkpoint-restore-rejects-frontier-reuse`), freeze-3 (a fresh lane
+on those two, the 22 books behind them, then the images), treewide-reds (landed ad0cdefd: five proof repairs
 outside the image closure with their manifests, `msgid-index` certified for
 the first time; its territory reads 186 of 243 roots green, and every root
 still red sits above `hybrid-store` or `feed-connection-invariants`, which
@@ -44,10 +53,63 @@ octets it was given every time,
 found and did not fix: `fn-store-article-match` in `host/store-host.lisp`,
 the duplicate-versus-conflict comparison, is program-mode host code with no
 theorem naming it, against "one owner per decision").
+Morning of 2026-09-22 (ember awake): the night's yield was repairs, not
+features, and [the proof-engineering review](review-2026-09-22-proof-engineering.md)
+says why with the tools' numbers: one red hides everything above it so each
+run reveals one layer; timeouts are the round time; 74 books open a codec
+theory book-wide; behaviour landed on the 21st under invariant books nobody
+recertified. Three of its changes are in: `green_check --changed-since REV
+--strict`, the merge gate; `tools/theory_check.py` in `make check`; and
+`tools/proof_repl.py`, a live ACL2 session over a book driven a form at a
+time from the shell, fourteen seconds to the red theorem of
+`store-node-traces` against cached certificates. The triage lane is
+spiking ACL2's provisional certification, which would make every red in a
+closure visible in one wave. Five
+Opus lanes now run under `build/lanes/`: w31-freeze-3 (the last two closure
+reds, then the images), w32-reader-polling (landed 39a61346: NEWNEWS from the article's own
+injection stamp under a parse budget it refuses past, five keystones with
+teeth, 77 books certified on persvati; LIST NEWSGROUPS already existed and
+the spec now says what it does; the merge was discharged by two provisional
+triage waves over the 95-book native closure, before and after, naming the
+same eight reds on the same forms: `store-node-traces`,
+`store-node-resolution`, `store-observed`, and guard conjectures in
+`native-admin`, `native-control`, `native-hybrid-control` and
+`native-operator`, plus one `native-operator-tests` assertion, all the
+freeze-3 lane's), w32-operator-verbs (landed a52138a9: `init`, `peer list`, and a
+developer-image fault that makes an uncertain outcome observable at exit 3
+with ACL2's word; its books sit above `store-node-traces`, so the merge was
+discharged the same way, a provisional wave naming the same eight reds on
+the same forms as before it),
+w32-owner-defects (landed: three node defects the client found against
+the real 915 node, [record](evidence/owner-defects-2026-09-22.md); the
+host now carries an unconsumed suffix into the next step, supplies a fresh
+clock reading per submission, and listens with a backlog of sixteen; no
+book changed; [record](evidence/fn-client-915-2026-09-22.md): a POST over about
+32 KiB stops the owner with a plaintext-read suffix fault, and every
+article in one owner run carries the same Date; the client lane itself
+landed at 13c5ea43 with four client defects fixed), and w32-triage (landed: ACL2's provisional certification is the discovery
+mode, `certify_books --pcert` and `tools/triage.py`; one provisional run
+over the 63-book store-node closure named four independent reds with
+nothing hidden where the ordinary loop showed one per round,
+[record](evidence/triage-2026-09-22.md); the four are `store-node-traces`,
+`store-node-resolution`, `store-observed` and `store-prepare-correspondence`,
+all the freeze-3 lane's).
+Late afternoon: native-guards landed (the four `native-*` guard reds and
+the operator test, [record](evidence/triage-20260922T160924Z-9c1e/report.md)); the only reds
+left in the native closure are `store-node-traces`, `store-node-resolution`
+and `store-observed`, all freeze-3's. ember answered the plan's eight
+questions (DTN is v0; signatures are v0; the checklist and fiber records
+retire; worktrees go, branches stay and get dispositions; LTP after DTN;
+the acceptance stamp is a v0 step; five lanes, converge every two or three
+batches; peering on one box first) and the plan is being revised to them.
+93 worktrees removed; 8 with uncommitted work stay pending disposition.
 green-audit landed earlier (d667a874, `tools/green_check.py` in `make
-check`); with the treewide and freeze manifests in the tree it reads dev as 315
-green, 75 red, 11 never and 6 absent at current digests; the treewide
-territory is being recertified on persvati from this head. Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
+check`); with the treewide and freeze manifests in the tree it reads dev as 323
+green, 84 red, 0 never and 0 absent at current digests; the reds are the
+cascade behind the two books above. Recertifying the whole treewide
+territory on persvati from 13f50de7 confirms it: exactly two independent
+reds in the tree, `store-node-traces` and `checkpoint`, and fifty-one
+books behind them. Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
 step runs from the laptop: STARTTLS, the 483 before it, login, a post and a
 fresh-connection reread, on the deploy gate's exit scale. The hbox freeze,
 matrix-provision and node-deploy sequences are `tools/runbooks/`. persvati

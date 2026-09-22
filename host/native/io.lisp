@@ -2041,7 +2041,15 @@ close a descriptor that another worker has cached and the kernel may reuse."
 (defun fnn-listen (port &key (family :inet) (backlog 1) (address nil))
   "A bound, listening socket and the port the kernel chose.  ADDRESS defaults
 to loopback: a listener reachable off the box is the operator's decision, made
-by passing one, not this file's default."
+by passing one, not this file's default.
+
+BACKLOG is the kernel's accept queue.  The default of 1 suits a listener that
+serves one client at a time and accepts the next only when that one is gone --
+fnn-command-reader, the diagnostic reader, is the caller it is written for.  A
+service whose accept thread hands each connection to a worker must pass a
+depth: with 1, a client arriving while the accept thread is launching the
+previous worker is dropped.  The owner passes
++fnn-owner-listen-backlog+ (host/native/owner.lisp)."
   (let ((listener (make-instance (fnn-socket-class family) :type :stream :protocol :tcp)))
     (handler-case
         (progn

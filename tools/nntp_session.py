@@ -33,7 +33,15 @@ class Session:
         self.sock.settimeout(timeout)
         self.buf = b""
         self.tls = None
-        self.greeting = self.line()
+        try:
+            self.greeting = self.line()
+        except BaseException:
+            # The greeting is read here, so a node that accepts and then
+            # closes leaves this constructor without a Session for anyone to
+            # close.  Let go of the descriptor before the caller sees the
+            # failure; the failure itself is the caller's to name.
+            self.sock.close()
+            raise
 
     def line(self) -> str:
         while b"\r\n" not in self.buf:

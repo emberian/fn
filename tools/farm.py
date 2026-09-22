@@ -44,6 +44,7 @@ sweep that found nothing.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 import datetime as dt
 import json
 import os
@@ -313,16 +314,36 @@ def push(host: str, root: Path, remote: Path) -> None:
                         f"{mirrored.returncode}: {mirrored.stdout.strip()}")
 
 
+def publishes(script: str) -> bool:
+    """Would this runner script put certificates into a cache?
+
+    The runner publishes each pair as it certifies unless `--no-publish` is
+    on its command line, so that word is the whole difference between a run
+    that seeds the box and one that does not.  `submit` checks this against
+    the script it is about to start rather than against its own argument,
+    which is the check `tools/triage.py` needs: a triage run certifies a
+    tree whose sources have been substituted, and a pair from it is about a
+    tree nobody has.
+    """
+    return "--no-publish" not in script
+
+
 def remote_script(host: str, root: Path, identifier: str, books: list[str],
                   jobs: int, timeout_seconds: int, affected_by: list[str],
                   closure: bool = False, cache: str | None = None,
-                  acl2: str | None = None) -> str:
+                  acl2: str | None = None, no_publish: bool = False,
+                  pcert: bool = False, budget_seconds: int | None = None) -> str:
     """The submit script: every step that can fail exits with its own code.
 
     `cd X && ... &` backgrounds the whole list, so ssh returned 0 whatever
     happened -- a missing directory, a tree with no runner in it, a runner
     that died on its first line -- and `submit` printed a run id for a run
     that did not exist.  Each guard here is a distinct non-zero exit.
+
+    `no_publish` passes `--no-publish` to the runner, which is what stops the
+    per-book publication into the box's cache.  `pcert` runs the closure as
+    ACL2's three provisional waves, whose Convert wave is where the proofs
+    are and what `budget_seconds` bounds.
     """
     settings = host_settings(host, cache, acl2)
     runner = ["python3", "tools/certify_books.py", "--jobs", str(jobs)]
@@ -330,6 +351,12 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         runner.extend(["--affected-by", path])
     if closure:
         runner.append("--closure")
+    if no_publish:
+        runner.append("--no-publish")
+    if pcert:
+        runner.append("--pcert")
+    if budget_seconds is not None:
+        runner.extend(["--budget-seconds", str(budget_seconds)])
     runner.extend(books)
     if settings["wrap"]:
         runner = [settings["wrap"]] + runner
@@ -366,19 +393,40 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
 def submit(host: str, root: Path, books: list[str], jobs: int,
            timeout_seconds: int, affected_by: list[str],
            remote: Path | None = None, closure: bool = False,
-           cache: str | None = None, acl2: str | None = None) -> str:
+           cache: str | None = None, acl2: str | None = None,
+           no_publish: bool = False,
+           prepare: Callable[[str, Path], None] | None = None,
+           pcert: bool = False, budget_seconds: int | None = None) -> str:
+    """Mirror, install a coherent input set, and start the detached runner.
+
+    `prepare(host, remote)` runs between the mirror and ACL2, on the box's
+    copy only.  `tools/triage.py` substitutes a red book's last green source
+    through this seam: the substitution has to be in the tree the runner
+    reads, it must never be in this worktree, and `push`'s `--delete` would
+    undo anything written before the mirror.
+
+    `no_publish` is checked against the script that is about to run, not
+    against the argument, so a runner invocation that would seed the box's
+    cache cannot start under a caller that asked for no publication.
+    """
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
     push(host, root, remote)
+    if prepare is not None:
+        prepare(host, remote)
     cached = install_from_cache(
         host, remote, books, affected_by, closure, cache, acl2)
     print(f"{identifier}: from {host}'s cache, "
           + ", ".join(f"{name} {value}" for name, value in cached.items()),
           file=sys.stderr)
-    started = ssh(host, remote_script(host, remote, identifier, books, jobs,
-                                      timeout_seconds, affected_by, closure,
-                                      cache, acl2),
-                  check=False)
+    script = remote_script(host, remote, identifier, books, jobs,
+                           timeout_seconds, affected_by, closure, cache, acl2,
+                           no_publish, pcert, budget_seconds)
+    if no_publish and publishes(script):
+        raise FarmError(
+            f"{host}: {identifier} was asked not to publish and its runner "
+            f"command would publish anyway; ACL2 was not started")
+    started = ssh(host, script, check=False)
     if started.returncode != 0:
         raise FarmError(f"{host}: {identifier} did not start under {remote}: "
                         f"ssh exited {started.returncode}: "
@@ -391,6 +439,9 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
         "books": books,
         "affected_by": affected_by,
         "closure": closure,
+        "no_publish": no_publish,
+        "pcert": pcert,
+        "budget_seconds": budget_seconds,
         # What the box's cache already held: the run certifies the rest.
         "cache_install": cached,
         "cache": host_settings(host, cache)["cache"],
@@ -407,13 +458,26 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
 
 
 def progress_script(root: Path, identifier: str) -> str:
+    """The run's status file, its success count, its started count, its tail.
+
+    The runner captures each ACL2's output into that book's own log under
+    the run directory, `build/acl2/certify-<stamp>-<pid>/<book>.certify.log`,
+    and writes the success marker there; the farm log carries nothing per
+    book until the end.  Until 2026-09-22 this counted markers in the farm
+    log and every progress line read "0 books certified" (three real runs
+    checked, all 0).  The running run's directory is the newest one.
+    """
     log = f"build/farm/{identifier}.log"
+    newest = "$(ls -td build/acl2/certify-*/ 2>/dev/null | head -1)"
     return (
         f"cd {remote_quote(root)} 2>/dev/null || exit 9; "
         f"printf 'STATUS %s\\n' \"$(cat build/farm/{identifier}.status "
         f"2>/dev/null || echo running)\"; "
-        f"printf 'MARKERS %s\\n' \"$(grep -c FN_CERTIFY_SUCCESS {log} 2>/dev/null "
-        f"|| echo 0)\"; "
+        f"d={newest}; "
+        f"printf 'MARKERS %s\\n' \"$(grep -l FN_CERTIFY_SUCCESS \"$d\"*.certify.log "
+        f"2>/dev/null | wc -l | tr -d ' ')\"; "
+        f"printf 'STARTED %s\\n' \"$(ls \"$d\"*.certify.log 2>/dev/null | wc -l "
+        f"| tr -d ' ')\"; "
         f"printf 'TAIL %s\\n' \"$(tail -c 300 {log} 2>/dev/null | tr '\\n' ' ')\""
     )
 
@@ -421,7 +485,7 @@ def progress_script(root: Path, identifier: str) -> str:
 def parse_progress(output: str) -> dict[str, str]:
     fields: dict[str, str] = {}
     for line in output.splitlines():
-        for key in ("STATUS", "MARKERS", "TAIL"):
+        for key in ("STATUS", "MARKERS", "STARTED", "TAIL"):
             if line.startswith(key + " "):
                 fields[key] = line[len(key) + 1:].strip()
     return fields
@@ -429,7 +493,9 @@ def parse_progress(output: str) -> dict[str, str]:
 
 def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
          timeout_seconds: int = DEFAULT_WAIT_SECONDS,
-         cache: str | None = None) -> int:
+         cache: str | None = None,
+         collect: Callable[[str, str, Path, Path, str | None], None] | None = None
+         ) -> int:
     """Block until the remote run writes its status file, then fetch evidence.
 
     The timeout path fetches too.  Returning 3 without fetching loses every
@@ -437,7 +503,13 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
     the next lane there re-certifies what this one had finished.  So the
     timeout brings home what exists at that moment and says what it left
     running, and the run id stays usable for a second `wait`.
+
+    `collect` is what "fetch evidence" means for this caller, and it defaults
+    to `fetch`.  `tools/triage.py` passes `fetch_logs`, which brings home the
+    logs and the manifest and publishes nothing: the same wait, over a run
+    whose output is not evidence.
     """
+    collect = collect or fetch
     started = time.monotonic()
     remote = remote_root(root, identifier)
     cache = cache or run_record(root, identifier).get("cache")
@@ -449,11 +521,12 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
             break
         elapsed = int(time.monotonic() - started)
         print(f"{identifier} on {host}: running, {progress.get('MARKERS', '0')} "
-              f"books certified, {elapsed}s elapsed", flush=True)
+              f"books certified of {progress.get('STARTED', '0')} started, "
+              f"{elapsed}s elapsed", flush=True)
         if time.monotonic() - started >= timeout_seconds:
             print(f"{identifier} on {host}: still running after "
                   f"{timeout_seconds}s; not waiting further", file=sys.stderr)
-            fetch(host, identifier, root, remote, cache)
+            collect(host, identifier, root, remote, cache)
             print(f"{identifier} on {host}: left running under {remote}; "
                   f"{progress.get('MARKERS', '0')} books were certified when "
                   f"this wait gave up, and their pairs are fetched and "
@@ -465,7 +538,7 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
         code = int(state)
     except ValueError:
         code = 1
-    fetch(host, identifier, root, remote, cache)
+    collect(host, identifier, root, remote, cache)
     print(f"{identifier} on {host}: finished with exit code {code}")
     return code
 
@@ -524,6 +597,37 @@ def fetch(host: str, identifier: str, root: Path,
                            origin_kind="run")
     for line in report.lines():
         print(line)
+
+
+def fetch_logs(host: str, identifier: str, root: Path, remote: Path,
+               into: Path) -> list[Path]:
+    """One run's per-book logs and manifest, brought home and nothing else.
+
+    `fetch` is the evidence path: it archives the manifest under
+    `planning/evidence/manifests/`, rsyncs the run's new certificate pairs
+    into this worktree and publishes them to the box's cache and to the local
+    one.  None of that may happen for a triage run, which certifies a tree
+    whose sources have been substituted: its pairs are about a tree nobody
+    has, and its manifest is not a claim about this revision.  This brings
+    back the two files a triage round reads -- `manifest.json` and the
+    `<book>.certify.log` per book -- into a directory the caller names, and
+    touches neither cache.  The combined `certify.log` is excluded: it is the
+    same bytes again, concatenated, and on a wide run it is hundreds of
+    megabytes.
+    """
+    log = ssh(host, f"cat {remote_quote(remote)}/build/farm/{identifier}.log",
+              check=False).stdout
+    into.mkdir(parents=True, exist_ok=True)
+    (into / f"{identifier}.log").write_text(log, encoding="utf-8")
+    brought: list[Path] = []
+    for directory in sorted(set(EVIDENCE.findall(log))):
+        local = into / Path(directory).name
+        local.mkdir(parents=True, exist_ok=True)
+        run(["rsync", "-a", "--include=*/", "--include=manifest.json",
+             "--include=*.certify.log", "--exclude=*",
+             f"{host}:{remote}/{directory}/", f"{local}/"], check=False)
+        brought.append(local)
+    return brought
 
 
 def status(host: str, root: Path) -> int:

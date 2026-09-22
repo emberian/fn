@@ -286,6 +286,18 @@
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-newgroups-response)))))
 
+; NEWNEWS answers from the archive and the environment; RFC 3977 section
+; 7.4.2 assigns it no state change, and it makes none -- not the selected
+; group, not the article cursor, and not on the 503 budget refusal either.
+(defthm fn-nntp-newnews-response-preserves-session
+  (equal (fn-nntp-result-session
+          (fn-nntp-newnews-response session archive env args))
+         session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-newnews-response)))))
+
 (defthm fn-nntp-list-overview-fmt-preserves-session
   (equal (fn-nntp-result-session (fn-nntp-list-overview-fmt session)) session))
 
@@ -411,7 +423,8 @@
                                   (fn-nntp-list-active-times)))))
 
 (in-theory (disable fn-nntp-date-response fn-nntp-mode-response
-                    fn-nntp-newgroups-response fn-nntp-list-overview-fmt
+                    fn-nntp-newgroups-response fn-nntp-newnews-response
+                    fn-nntp-list-overview-fmt
                     fn-nntp-over-current fn-nntp-over-range
                     fn-nntp-over-msgid fn-nntp-over-response
                     fn-nntp-list-headers fn-nntp-xover-range

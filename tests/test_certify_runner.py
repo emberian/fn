@@ -31,24 +31,55 @@ case "$driver" in
     exit 0 ;;
 esac
 book=$(printf '%s\n' "$driver" | sed -n 's/.*(certify-book "\([^"]*\)".*/\1/p' | head -1)
-marker=$(printf '%s\n' "$driver" | grep -o 'FN_CERTIFY_SUCCESS [0-9a-f]* [0-9a-f]*' | head -1)
-printf 'start %s\n' "$book" >> "$FAKE_EVENTS"
+marker=$(printf '%s\n' "$driver" | grep -oE '(FN_CERTIFY_SUCCESS|FN_PCERT_WAVE (CREATE|CONVERT)) [0-9a-f]+ [0-9a-f]+' | head -1)
+# Which provisional wave, if any, this invocation is.  Create skips proofs,
+# Convert does them and writes no certificate, Complete writes the
+# certificate and refuses while an included book has none.
+wave=$(printf '%s\n' "$driver" | sed -n 's/.*:pcert :\([a-z]*\).*/\1/p' | head -1)
+printf 'start %s%s\n' "$book" "${wave:+ $wave}" >> "$FAKE_EVENTS"
 sleep "${FAKE_DELAY:-0.2}"
 case " ${FAKE_FAIL:-} " in
   *" $book "*)
-    printf 'end %s\n' "$book" >> "$FAKE_EVENTS"
+    printf 'end %s%s\n' "$book" "${wave:+ $wave}" >> "$FAKE_EVENTS"
     echo "ACL2 Error in ( CERTIFY-BOOK ...):  the fake harness refused this book."
     exit 1 ;;
 esac
+if [ "$wave" = convert ]; then
+  case " ${FAKE_CONVERT_FAIL:-} " in
+    *" $book "*)
+      printf 'end %s %s\n' "$book" "$wave" >> "$FAKE_EVENTS"
+      echo "ACL2 Error [Failure] in ( DEFTHM FAKE-HOLDS ...):  See :DOC failure."
+      exit 0 ;;
+  esac
+fi
+if [ "$wave" = complete ]; then
+  dir=$(dirname "$book")
+  for inc in $(sed -n 's/^(include-book "\([^"]*\)").*/\1/p' "$book.lisp"); do
+    if [ ! -f "$dir/$inc.cert" ]; then
+      printf 'end %s %s\n' "$book" "$wave" >> "$FAKE_EVENTS"
+      # ACL2 wraps this sentence at its pretty-printer margin; the wrap is
+      # part of what the triage classifier has to survive.
+      echo "ACL2 Error in ( INCLUDE-BOOK \"$inc\" ...):  There is"
+      echo "no certificate on file for"
+      echo "\"$PWD/$dir/$inc.lisp\"."
+      exit 0
+    fi
+  done
+fi
 # Real ACL2's shape when certify-book fails: the inner ld returns, the marker
 # form is never reached, no certificate is written -- and the driver's (quit)
 # still exits 0.
 case " ${FAKE_QUIET_FAIL:-} " in
   *" $book "*)
-    printf 'end %s\n' "$book" >> "$FAKE_EVENTS"
+    printf 'end %s%s\n' "$book" "${wave:+ $wave}" >> "$FAKE_EVENTS"
     echo "ACL2 Error in ( CERTIFY-BOOK ...):  assertion failed."
     exit 0 ;;
 esac
+if [ "$wave" = create ] || [ "$wave" = convert ]; then
+  printf 'end %s %s\n' "$book" "$wave" >> "$FAKE_EVENTS"
+  echo "ACL2 !>$marker"
+  exit 0
+fi
 # A certificate shaped like ACL2's, so the cache hook has something to judge.
 cat > "$book.cert" <<CERT
 (IN-PACKAGE "ACL2")
@@ -64,7 +95,7 @@ printf '(in-package "ACL2")\n' > "$book.port"
 case "${FAKE_EDIT_AFTER:-}" in
   "$book:"*) printf '; edited mid-run\n' >> "${FAKE_EDIT_AFTER#*:}.lisp" ;;
 esac
-printf 'end %s\n' "$book" >> "$FAKE_EVENTS"
+printf 'end %s%s\n' "$book" "${wave:+ $wave}" >> "$FAKE_EVENTS"
 echo "ACL2 !>$marker"
 exit 0
 """
@@ -94,7 +125,8 @@ class FakeRepository:
 
     def certify(self, books: list[str], jobs: int, fail: str = "",
                 slots: int = 16, extra: list[str] | None = None,
-                quiet_fail: str = "", edit_after: str = "") -> tuple[int, dict]:
+                quiet_fail: str = "", edit_after: str = "",
+                convert_fail: str = "") -> tuple[int, dict]:
         extra = extra or []
         self.runs += 1
         self.events.write_text("")
@@ -104,6 +136,7 @@ class FakeRepository:
             "FAKE_EVENTS": str(self.events),
             "FAKE_FAIL": fail,
             "FAKE_QUIET_FAIL": quiet_fail,
+            "FAKE_CONVERT_FAIL": convert_fail,
             "FAKE_EDIT_AFTER": edit_after,
             "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
             # A private slot pool and a private certificate cache: a unit test
@@ -157,9 +190,14 @@ class FakeRepository:
     def event_log(self) -> list[str]:
         return self.events.read_text().split()
 
-    def index(self, event: str, book: str) -> int:
+    def index(self, event: str, book: str, wave: str = "") -> int:
         log = self.events.read_text().splitlines()
-        return log.index(f"{event} {book}")
+        return log.index(f"{event} {book}" + (f" {wave}" if wave else ""))
+
+    def waves(self) -> list[tuple[str, str, str]]:
+        """Every recorded event as (start|end, book, wave)."""
+        return [tuple(line.split()) for line in
+                self.events.read_text().splitlines() if line]
 
     def peak_concurrency(self) -> int:
         live = peak = 0
@@ -318,6 +356,83 @@ class ParallelScheduleTests(unittest.TestCase):
                                  manifest["expected_success_markers"])
                 self.assertEqual([marker.split()[-1] for marker in manifest["observed_success_markers"]],
                                  [runner.success_token(book, "n").split()[-1] for book in self.ORDER])
+
+
+class ProvisionalCertificationTests(unittest.TestCase):
+    """`--pcert`: the proofs stop being a chain, and one run names every red.
+
+    A closure run stops at the first failing book, so it reports one layer of
+    independent reds and nothing about the books above.  Under provisional
+    certification only Create is dependency-ordered; Convert takes a
+    sub-book's `.pcert0` in place of a certificate, so every book's proofs
+    run in one wave and a book above the failure comes back *proved* with no
+    certificate rather than unknown.  Measured on a real 63-book fn closure
+    on persvati on 2026-09-22, that was four independent reds instead of one.
+    """
+
+    CHAIN = {"books/base": [], "books/mid": ["base"], "books/leaf": ["mid"]}
+    ORDER = ["books/base", "books/mid", "books/leaf"]
+
+    def run_chain(self, **extra):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        repository = FakeRepository(directory.name, self.CHAIN)
+        code, manifest = repository.certify(
+            self.ORDER, jobs=3, extra=["--pcert", "--no-publish"], **extra)
+        return repository, code, manifest
+
+    def test_a_convert_failure_leaves_the_books_above_it_proved(self):
+        repository, code, manifest = self.run_chain(convert_fail="books/mid")
+        self.assertEqual(code, 1)
+        self.assertTrue(manifest["pcert"])
+        self.assertEqual(manifest["pcert_reached"],
+                         {"books/base": "complete", "books/mid": "create",
+                          "books/leaf": "convert"})
+        self.assertEqual(manifest["book_results"],
+                         {"books/base": "passed", "books/mid": "failed",
+                          "books/leaf": "failed"})
+        self.assertEqual(sorted(manifest["pcert_wall_seconds"]),
+                         ["complete", "convert", "create"])
+
+    def test_create_respects_dependencies_and_convert_does_not(self):
+        repository, _, _ = self.run_chain(convert_fail="books/mid")
+        for child, parent in (("books/mid", "books/base"),
+                              ("books/leaf", "books/mid")):
+            self.assertGreater(repository.index("start", child, "create"),
+                               repository.index("end", parent, "create"),
+                               f"{child} was Created before {parent} finished")
+        converts = [event for event in repository.waves() if event[2] == "convert"]
+        live = peak = 0
+        for kind, _, _ in converts:
+            live += 1 if kind == "start" else -1
+            peak = max(peak, live)
+        self.assertGreater(peak, 1, "the Convert wave did not run in parallel")
+
+    def test_the_run_keeps_one_log_and_one_verdict_per_book(self):
+        repository, _, manifest = self.run_chain(convert_fail="books/mid")
+        run_dir = next((repository.root / "build").glob("acl2-*/certify-*"))
+        for book in self.ORDER:
+            flat = book.replace("/", "--")
+            self.assertTrue((run_dir / f"{flat}.certify.log").is_file())
+            for wave in runner.PCERT_ORDER:
+                self.assertTrue(
+                    (run_dir / f"{flat}.pcert-{wave}.certify.log").is_file()
+                    or wave != "create")
+        combined = (run_dir / "books--leaf.certify.log").read_text()
+        self.assertIn("FN_PCERT_WAVE CONVERT books/leaf", combined)
+        # The cascade sentence ACL2 wraps, as the Complete wave prints it.
+        self.assertIn("There is\nno certificate on file", combined)
+        self.assertEqual(len(runner.success_markers(
+            combined, manifest["expected_success_markers"][0].split()[1])), 0)
+
+    def test_a_clean_chain_certifies_and_the_token_still_means_certified(self):
+        repository, code, manifest = self.run_chain()
+        self.assertEqual((code, manifest["status"]), (0, "passed"))
+        self.assertEqual(set(manifest["pcert_reached"].values()), {"complete"})
+        self.assertEqual(manifest["observed_success_markers"],
+                         manifest["expected_success_markers"])
+        for book in self.ORDER:
+            self.assertTrue((repository.root / f"{book}.cert").is_file())
 
 
 class AffectedByTests(unittest.TestCase):
