@@ -28,7 +28,7 @@ news service.
 An [actual BP-to-fn receiver](tests/evidence/2026-09-18-bp-ingress.md) now passes
 restart and duplicate-delivery tests with real loopback BPAs. Durable sender jobs
 and application receipts remain active work.
-The [closure inventory](planning/assurance-closure.md) tracks the next obligations.
+The [closure inventory](planning/archive/assurance-closure.md) tracks the next obligations.
 Earlier evidence retains independent NNTP client traffic and maximum-profile replay.
 
 Start with the [project guide](docs/README.md), then the

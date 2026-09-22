@@ -13,7 +13,7 @@ be resumed as they are: bigger steps, properties stated up front, no partial or
 placeholder rows. The v0 checklist in [milestones](milestones.md) is a table of
 `partial`, `open`, `blocked` and `done (with a caution)` cells, several walked
 back in place; [now.md](now.md) is 384 lines of dated narrative that supersede
-one another; the [wide capability cycle](wide-capability-cycle-2026-09-21.md)
+one another; the [wide capability cycle](archive/wide-capability-cycle-2026-09-21.md)
 ran twelve capability lanes at once and produced the five commits of
 2026-09-21 that landed behaviour under invariant books nobody recertified
 (review F4). None of those is the plan.

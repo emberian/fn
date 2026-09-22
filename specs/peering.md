@@ -1057,7 +1057,7 @@ relaying an article that claims to.
 
 ## 7. Packets
 
-Owners are roles of [swarm-cycles](../planning/swarm-cycles.md); acceptance
+Owners are roles of [swarm-cycles](../planning/archive/swarm-cycles.md); acceptance
 criteria are checkable without the implementer's summary. Every packet that
 touches the session or config shape builds the whole tree.
 

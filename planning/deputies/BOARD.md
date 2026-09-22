@@ -2,7 +2,7 @@
 
 ## 2026-09-21 W12/W13 integration ownership
 
-Root coordinates the [active cycles](../swarm-cycles.md). Lane worktrees own
+Root coordinates the [active cycles](../archive/swarm-cycles.md). Lane worktrees own
 code; root owns this board, registry identifiers and the integrated ledger.
 
 CLAIM root -> everyone: `PRF-043` is reserved for FNFD bounded recovery and

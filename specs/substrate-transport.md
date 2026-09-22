@@ -888,7 +888,7 @@ squeamish.
 
 ## 8. Packets
 
-Owners are roles of [swarm-cycles](../planning/swarm-cycles.md); acceptance
+Owners are roles of [swarm-cycles](../planning/archive/swarm-cycles.md); acceptance
 criteria are checkable without the implementer's summary. Dependencies name
 [peering](peering.md)'s packets K0–K8 as that design numbers them. Any packet
 that touches the session, evidence or overview shape builds the whole tree, not

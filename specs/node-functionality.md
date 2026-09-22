@@ -1103,7 +1103,7 @@ requires.
 
 ## 6. Packets
 
-Owners use the roles of [swarm-cycles](../planning/swarm-cycles.md): the
+Owners use the roles of [swarm-cycles](../planning/archive/swarm-cycles.md): the
 service integrator owns `books/nntp.lisp`, the wire dispatcher and
 `tools/run_reader.py`; the storage integrator owns the store host; the
 assurance-tooling lane owns `tools/ledger.py` and the test-book conventions;

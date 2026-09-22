@@ -645,8 +645,13 @@
 ; -----------------------------------------------------------------------------
 ; Teeth: one concrete violating value per hypothesis
 ;
-; fn-auth-gated-command-is-refused-and-not-performed has four hypotheses that
-; can be separated by a value.
+; fn-auth-gated-command-is-refused-and-not-performed has seven hypotheses
+; since 2026-09-22 and every one of them has a violating value; the four
+; below are the ones this book already had, and the complete set, with a
+; `must-fail' per hypothesis, is tests/acl2/nntp-auth-teeth-tests.lisp.
+; Value (4) below drops fn-nntp-command-inputp together with the two
+; hypotheses about the tokens, which is why the teeth book builds an
+; over-long line that drops only one.
 
 ; (1) fn-auth-config-requiredp.  With it false the same command is performed:
 ; the group IS selected.

@@ -2,7 +2,7 @@
 
 Root has taken over development at `8b474e2`. The feed and transit candidates
 have both landed; their merged certification record is
-[the owner batch manifest](evidence/manifests/certify-20260921T051833Z-3941584.json).
+[the owner batch manifest](../evidence/manifests/certify-20260921T051833Z-3941584.json).
 That is book evidence, not a measurement of the merged running service. The
 older C1–C3 plan below remains design history; its opening implementation
 inventory is not current.
@@ -28,7 +28,7 @@ user after recovery; the following table remains the pre-crash handoff record.
 D07 selects a Python-free production runtime. Frozen integration source
 `03eb3ba3` combines native owner/operator, safe feed filenames, application
 journals, BP receive evidence, checkpoint and anchor persistence. Its combined farm gate, both image builds and scoped runtime suites passed;
-see [the frozen evidence](evidence/native-owner-integrated-2026-09-21.md). The earlier `76901c1` closure/build succeeded; runtime testing
+see [the frozen evidence](../evidence/native-owner-integrated-2026-09-21.md). The earlier `76901c1` closure/build succeeded; runtime testing
 required a listener-shutdown repair now integrated. Later source changes remain separate from that frozen result.
 The packaged Python entry remains development infrastructure until native
 operator coverage and the selected two-peer release gate are complete.
@@ -55,7 +55,7 @@ and keeps independent work moving. These are assignments, not assurance levels.
 Use both farms with owned closures; integrated certification follows a frozen
 batch rather than each intermediate commit.
 
-The [consolidation audit](duplication-audit-2026-09-21.md) tracks concrete
+The [consolidation audit](../duplication-audit-2026-09-21.md) tracks concrete
 competing decisions and their repairs. A separately proved logical model and
 concrete representation remain intentional; a second host implementation of
 identity, durability or policy does not. New native paths inherit the existing
@@ -166,7 +166,7 @@ assurance. This is an executable work plan, not new implementation evidence or a
 claim that the decisions below have been selected. Task IDs here identify work
 packets; requirement, proof and scenario IDs retain their existing meanings.
 
-The [current evidence](../tests/evidence/2026-09-18-bp-composition-assurance.md)
+The [current evidence](../../tests/evidence/2026-09-18-bp-composition-assurance.md)
 closes sender binding, fixed-Store receiver replay and five process-death cuts.
 The next work should widen beyond BP proofs alone. NNTP is still read-only;
 checkpoint/index and fragment assembly have logical foundations without their

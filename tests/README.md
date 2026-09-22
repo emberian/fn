@@ -52,7 +52,7 @@ Exercise rejection before mutation and lost completions after publication.
 Passing an endpoint example is not coverage of every cut in its composition.
 
 Behavior-changing batches use the [assurance scope rules](../docs/proofs.md#assurance-grows-with-the-implemented-surface)
-and update the [closure inventory](../planning/assurance-closure.md). Avoid a
+and update the [closure inventory](../planning/archive/assurance-closure.md). Avoid a
 single coverage percentage combining proofs, tests and platform assumptions.
 
 ## Contact scheduling
