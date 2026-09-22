@@ -345,13 +345,18 @@
   ; READER covers ARTICLE, BODY, DATE, GROUP, LAST, LISTGROUP, NEWGROUPS and
   ; NEXT; OVER MSGID covers OVER in all three forms and LIST OVERVIEW.FMT;
   ; HDR covers HDR in all three forms and LIST HEADERS (section 8.6); LIST
-  ; names exactly the variants that answer with data.  POST (section 5.2.2)
+  ; names exactly the variants that answer with data; NEWNEWS (section 7.4.1)
+  ; covers the one command it indicates, in its three-argument and GMT forms.
+  ; A NEWNEWS whose matching articles exceed the parse budget is answered
+  ; with section 3.2.1's 503, which that section assigns to a server that
+  ; "only handles a subset of legitimate cases": that is a reply inside the
+  ; label's promise, not a withdrawal of it.  POST (section 5.2.2)
   ; is advertised exactly when this connection's pinned configuration allows
   ; posting, which is the same bit fn-nntp-post-step reads before it answers
   ; a POST command with 340 rather than 440, so the label is a promise this
-  ; server keeps.  No IHAVE, NEWNEWS, MODE-READER, TLS, authentication or
-  ; compression capability is advertised, and this reader is not
-  ; mode-switching (section 3.4.2).  XOVER and XHDR carry no capability
+  ; server keeps.  No IHAVE, MODE-READER, TLS, authentication or compression
+  ; capability is advertised, and this reader is not mode-switching
+  ; (section 3.4.2).  XOVER and XHDR carry no capability
   ; label: RFC 2980 predates section 3.3 and names no label for them, and a
   ; client discovers them by trying them.
   ; Two ground lists rather than an append of a conditional: every caller's
@@ -364,6 +369,7 @@
             (fn-nntp-string-octets "POST")
             (fn-nntp-string-octets "OVER MSGID")
             (fn-nntp-string-octets "HDR")
+            (fn-nntp-string-octets "NEWNEWS")
             (fn-nntp-string-octets
              "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT")
             (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab"))
@@ -371,6 +377,7 @@
           (fn-nntp-string-octets "READER")
           (fn-nntp-string-octets "OVER MSGID")
           (fn-nntp-string-octets "HDR")
+          (fn-nntp-string-octets "NEWNEWS")
           (fn-nntp-string-octets
            "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT")
           (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab"))))
@@ -395,7 +402,7 @@
                  (list (fn-nntp-string-octets
                         "CAPABILITIES HELP QUIT MODE DATE POST")
                        (fn-nntp-string-octets
-                        "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS")
+                        "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS")
                        (fn-nntp-string-octets
                         "ARTICLE HEAD BODY STAT")
                        (fn-nntp-string-octets
@@ -1647,6 +1654,374 @@
               (fn-nntp-single session "501 syntax error"))))))))
 
 ; -----------------------------------------------------------------------------
+; NEWNEWS (RFC 3977 section 7.4)
+;
+; "The message-ids of articles posted or received on the server, in the
+; newsgroups whose names match the wildmat, since the specified date and
+; time."  Three decisions are taken here and none of them is taken by a host.
+;
+; WHICH INSTANT.  fn's committed article record (books/acceptance.lisp) is
+; (message-id payload groups memberships pin): the store keeps no arrival
+; stamp beside an article, so there is no acceptance time to read.  The
+; instant fn has is the one inside the retained octets -- Injection-Date, and
+; where that is absent Date -- which is the field and the fallback order RFC
+; 5537 sections 3.6 and 3.7 fix for staleness and which books/path.lisp
+; already reads.  For an article this node injected that stamp was written by
+; books/injection.lisp from the node's own clock; for an article a peer fed,
+; it is the injecting agent's claim and nothing stronger.  specs/nntp.md says
+; so; this comment is not a claim that NEWNEWS reports a locally witnessed
+; arrival.  An article whose stamp fn cannot read exactly is not reported:
+; section 7.4.2 makes the list a set the client may see more than once and
+; permits it to be empty, so omission stays inside the response, and it is
+; recorded as a limitation rather than hidden.
+;
+; HOW MUCH WORK.  A command must not be able to buy an unbounded parse.  The
+; scan below walks the committed article list once, tests membership of a
+; matching group from the article's own membership list (no parse, the same
+; test GROUP, LISTGROUP and OVER pay), and parses ONLY the articles that pass
+; that test, at most *fn-nntp-newnews-parse-budget* of them.  A request with
+; more matching articles than the budget is refused with RFC 3977 section
+; 3.2.1's 503 -- the code that section assigns to a server that "only handles
+; a subset of legitimate cases" -- and parses nothing at all, because the
+; refusal is decided on the way down the list and every parse happens on the
+; way back up.  The bound and its scope are stated in specs/nntp.md.
+;
+; WHICH IDENTIFIER.  The rendered line is the stored identifier, octet for
+; octet, exactly as STAT and NEXT render it.  An article that is not
+; available at a number in a matching group -- no membership number, a number
+; outside RFC 3977 section 6, or an identifier this profile cannot render --
+; is not a candidate, so no unrenderable identifier can reach a line.
+
+(defconst *fn-nntp-injection-date-name*
+  ; "injection-date".  fn-article-parse stores field names downcased, so the
+  ; lookup key is lower case; *fn-nov-date-name* above is the Date key.
+  '(105 110 106 101 99 116 105 111 110 45 100 97 116 101))
+
+; How many committed articles one NEWNEWS may parse.  A request that matches
+; more than this is refused rather than served more slowly: see the 503 arm of
+; fn-nntp-newnews-response and the bound sentence in specs/nntp.md.
+(defconst *fn-nntp-newnews-parse-budget* 256)
+
+; -----------------------------------------------------------------------------
+; The RFC 5322 section 3.3 date-time carried by Injection-Date and Date
+;
+; RFC 5536 section 2.2 restricts what a Netnews agent may generate; section
+; 3.1.1 requires an agent to ACCEPT the deprecated "GMT" zone and points at
+; RFC 5322 section 4.3, which compares an unknown zone as "-0000".  Both are
+; implemented.  What is not accepted is a comment: RFC 5322 permits CFWS
+; around the components and this decoder takes folding white space only, so a
+; date-time carrying a parenthesized comment reads as unparsed and its
+; article is not reported.  That is the stated limitation above.
+
+(defun fn-nntp-dt-nth (n xs)
+  (declare (xargs :guard t :verify-guards nil :measure (nfix n)))
+  (if (not (posp n))
+      (fn-ag-car xs)
+    (fn-nntp-dt-nth (- n 1) (fn-ag-cdr xs))))
+
+(defun fn-nntp-dt-alphap (byte)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((lower (fn-article-ascii-downcase-byte byte)))
+    (and (integerp lower) (<= 97 lower) (<= lower 122))))
+
+(defun fn-nntp-dt-lower3 (bytes)
+  ; The three leading octets downcased, or NIL when there are not three.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (consp bytes) (consp (fn-ag-cdr bytes))
+           (consp (fn-ag-cdr (fn-ag-cdr bytes))))
+      (list (fn-article-ascii-downcase-byte (fn-nntp-dt-nth 0 bytes))
+            (fn-article-ascii-downcase-byte (fn-nntp-dt-nth 1 bytes))
+            (fn-article-ascii-downcase-byte (fn-nntp-dt-nth 2 bytes)))
+    nil))
+
+(defun fn-nntp-dt-month-index (triple)
+  ; RFC 5322 section 3.3 month names, case folded.  0 is "not a month".
+  (declare (xargs :guard t :verify-guards nil))
+  (cond ((equal triple '(106 97 110)) 1)
+        ((equal triple '(102 101 98)) 2)
+        ((equal triple '(109 97 114)) 3)
+        ((equal triple '(97 112 114)) 4)
+        ((equal triple '(109 97 121)) 5)
+        ((equal triple '(106 117 110)) 6)
+        ((equal triple '(106 117 108)) 7)
+        ((equal triple '(97 117 103)) 8)
+        ((equal triple '(115 101 112)) 9)
+        ((equal triple '(111 99 116)) 10)
+        ((equal triple '(110 111 118)) 11)
+        ((equal triple '(100 101 99)) 12)
+        (t 0)))
+
+(defun fn-nntp-dt-named-zone (triple)
+  ; RFC 5322 section 4.3's obs-zone offsets, in seconds.  Every other
+  ; alphabetic zone -- including "UT" and "UTC" -- is the unknown zone, which
+  ; that section directs is compared as "-0000", so its offset is zero.
+  (declare (xargs :guard t :verify-guards nil))
+  (cond ((equal triple '(103 109 116)) 0)
+        ((equal triple '(101 115 116)) -18000)
+        ((equal triple '(101 100 116)) -14400)
+        ((equal triple '(99 115 116)) -21600)
+        ((equal triple '(99 100 116)) -18000)
+        ((equal triple '(109 115 116)) -25200)
+        ((equal triple '(109 100 116)) -21600)
+        ((equal triple '(112 115 116)) -28800)
+        ((equal triple '(112 100 116)) -25200)
+        (t 0)))
+
+(defun fn-nntp-dt-digits (n bytes acc)
+  ; Exactly N decimal digits: (:ok value rest) or (:error).
+  (declare (xargs :guard t :verify-guards nil :measure (nfix n)))
+  (if (not (posp n))
+      (list :ok (nfix acc) bytes)
+    (if (and (consp bytes) (fn-nntp-decimal-digitp (fn-ag-car bytes)))
+        (fn-nntp-dt-digits (- n 1) (fn-ag-cdr bytes)
+                           (+ (* 10 (nfix acc)) (- (fn-ag-car bytes) 48)))
+      (list :error))))
+
+(defun fn-nntp-dt-day (bytes)
+  ; day = 1*2DIGIT.  Two are taken where two are present, so "02" and "2"
+  ; both read as the second of the month.
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((two (fn-nntp-dt-digits 2 bytes 0)))
+    (if (fn-nntp-parse-okp two) two (fn-nntp-dt-digits 1 bytes 0))))
+
+(defun fn-nntp-dt-drop-alpha (bytes)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count bytes)))
+  (if (and (consp bytes) (fn-nntp-dt-alphap (fn-ag-car bytes)))
+      (fn-nntp-dt-drop-alpha (fn-ag-cdr bytes))
+    bytes))
+
+(defun fn-nntp-dt-skip-day-of-week (bytes)
+  ; [ day-name "," ].  The name is not checked against the seven: it carries
+  ; no part of the instant, and a decoder that rejected "Xyz," would report
+  ; fewer articles for no gain.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (fn-nntp-dt-alphap (fn-nntp-dt-nth 0 bytes))
+           (fn-nntp-dt-alphap (fn-nntp-dt-nth 1 bytes))
+           (fn-nntp-dt-alphap (fn-nntp-dt-nth 2 bytes))
+           (equal (fn-nntp-dt-nth 3 bytes) 44))
+      (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr bytes))))
+    bytes))
+
+(defun fn-nntp-dt-zone (bytes)
+  ; (:ok offset-seconds rest) or (:error :zone).
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (consp bytes)
+           (or (equal (fn-ag-car bytes) 43) (equal (fn-ag-car bytes) 45)))
+      (let ((digits (fn-nntp-dt-digits 4 (fn-ag-cdr bytes) 0)))
+        (if (not (fn-nntp-parse-okp digits))
+            (list :error :zone)
+          (let ((secs (+ (* 3600 (fn-nntp-div (fn-nntp-parse-1 digits) 100))
+                         (* 60 (fn-nntp-mod (fn-nntp-parse-1 digits) 100)))))
+            (list :ok (if (equal (fn-ag-car bytes) 45) (- secs) secs)
+                  (fn-nntp-parse-2 digits)))))
+    (if (and (consp bytes) (fn-nntp-dt-alphap (fn-ag-car bytes)))
+        (let ((rest (fn-nntp-dt-drop-alpha bytes)))
+          (if (equal rest (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr bytes))))
+              (list :ok (fn-nntp-dt-named-zone (fn-nntp-dt-lower3 bytes)) rest)
+            (list :ok 0 rest)))
+      (list :error :zone))))
+
+(defun fn-nntp-dt-date (bytes)
+  ; [ day-name "," ] day month year: (:ok (year month day) rest) | (:error r).
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((day (fn-nntp-dt-day
+              (fn-af-skip-wsp
+               (fn-nntp-dt-skip-day-of-week (fn-af-skip-wsp bytes))))))
+    (if (not (fn-nntp-parse-okp day))
+        (list :error :day)
+      (let* ((at-month (fn-af-skip-wsp (fn-nntp-parse-2 day)))
+             (month (fn-nntp-dt-month-index (fn-nntp-dt-lower3 at-month))))
+        (if (not (posp month))
+            (list :error :month)
+          (let ((year (fn-nntp-dt-digits
+                       4
+                       (fn-af-skip-wsp
+                        (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr at-month))))
+                       0)))
+            (if (not (fn-nntp-parse-okp year))
+                (list :error :year)
+              (list :ok
+                    (list (fn-nntp-parse-1 year) month (fn-nntp-parse-1 day))
+                    (fn-nntp-parse-2 year)))))))))
+
+(defun fn-nntp-dt-time (bytes)
+  ; time-of-day zone: (:ok (hour minute second offset) rest) | (:error r).
+  ; RFC 5322 section 3.3 makes the seconds field optional; an absent one is
+  ; the top of the minute.
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((hour (fn-nntp-dt-digits 2 (fn-af-skip-wsp bytes) 0)))
+    (if (not (fn-nntp-parse-okp hour))
+        (list :error :hour)
+      (let ((at-minute (fn-nntp-parse-2 hour)))
+        (if (not (equal (fn-ag-car at-minute) 58))
+            (list :error :minute)
+          (let ((minute (fn-nntp-dt-digits 2 (fn-ag-cdr at-minute) 0)))
+            (if (not (fn-nntp-parse-okp minute))
+                (list :error :minute)
+              (let* ((at-second (fn-nntp-parse-2 minute))
+                     (second (if (equal (fn-ag-car at-second) 58)
+                                 (fn-nntp-dt-digits
+                                  2 (fn-ag-cdr at-second) 0)
+                               (list :ok 0 at-second))))
+                (if (not (fn-nntp-parse-okp second))
+                    (list :error :second)
+                  (let ((zone (fn-nntp-dt-zone
+                               (fn-af-skip-wsp (fn-nntp-parse-2 second)))))
+                    (if (not (fn-nntp-parse-okp zone))
+                        (list :error :zone)
+                      (list :ok
+                            (list (fn-nntp-parse-1 hour)
+                                  (fn-nntp-parse-1 minute)
+                                  (fn-nntp-parse-1 second)
+                                  (fn-nntp-parse-1 zone))
+                            (fn-nntp-parse-2 zone)))))))))))))
+
+(defun fn-nntp-dt-parse (value)
+  ; The unfolded value of an Injection-Date or Date field, as DTN
+  ; milliseconds: (:ok ms) or (:error reason).  The DTN epoch is the floor,
+  ; exactly as fn-nntp-civil-dtn-ms fixes it for NEWGROUPS, so a date-time
+  ; before 2000-01-01 reads as the epoch.
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((date (fn-nntp-dt-date value)))
+    (if (not (fn-nntp-parse-okp date))
+        date
+      (let ((time (fn-nntp-dt-time (fn-nntp-parse-2 date))))
+        (if (not (fn-nntp-parse-okp time))
+            time
+          (if (consp (fn-af-skip-wsp (fn-nntp-parse-2 time)))
+              (list :error :trailing)
+            (let ((ymd (fn-nntp-parse-1 date))
+                  (hmsz (fn-nntp-parse-1 time)))
+              (if (not (and (fn-nntp-ymd-okp (fn-nntp-dt-nth 0 ymd)
+                                             (fn-nntp-dt-nth 1 ymd)
+                                             (fn-nntp-dt-nth 2 ymd))
+                            (fn-nntp-hms-okp (fn-nntp-dt-nth 0 hmsz)
+                                             (fn-nntp-dt-nth 1 hmsz)
+                                             (fn-nntp-dt-nth 2 hmsz))))
+                  (list :error :range)
+                (list :ok
+                      (nfix (- (fn-nntp-civil-dtn-ms
+                                (fn-nntp-dt-nth 0 ymd) (fn-nntp-dt-nth 1 ymd)
+                                (fn-nntp-dt-nth 2 ymd) (fn-nntp-dt-nth 0 hmsz)
+                                (fn-nntp-dt-nth 1 hmsz)
+                                (fn-nntp-dt-nth 2 hmsz))
+                               (* 1000 (ifix (fn-nntp-dt-nth 3 hmsz))))))))))))))
+
+; -----------------------------------------------------------------------------
+; The article's own injection instant
+
+(defun fn-nntp-newnews-field-value (view name)
+  ; The first field of NAME, unfolded, or NIL when the view carries none.
+  (declare (xargs :guard (fn-article-syntax-p view) :verify-guards nil))
+  (let ((fields (fn-article-get-headers view name)))
+    (if (consp fields)
+        (fn-article-field-unfolded-value (car fields))
+      nil)))
+
+(defun fn-nntp-newnews-stamp (article)
+  ; (:ok ms) or (:error reason).  Injection-Date, then Date: RFC 5537
+  ; sections 3.6 and 3.7's order, the one books/path.lisp reads.
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((parsed (fn-article-parse (fn-article-payload article))))
+    (if (not (and (true-listp parsed)
+                  (fn-article-result-okp parsed)
+                  (fn-article-syntax-p (fn-article-result-article parsed))))
+        (list :error :unparsed)
+      (let* ((view (fn-article-result-article parsed))
+             (injection (fn-nntp-newnews-field-value
+                         view *fn-nntp-injection-date-name*)))
+        (if (consp injection)
+            (fn-nntp-dt-parse injection)
+          (let ((date (fn-nntp-newnews-field-value view *fn-nov-date-name*)))
+            (if (consp date)
+                (fn-nntp-dt-parse date)
+              (list :error :no-date))))))))
+
+; -----------------------------------------------------------------------------
+; The bounded scan
+
+(defun fn-nntp-newnews-candidatep (groups article)
+  ; Available at a number in one of the matching groups.  This reads the
+  ; article's membership list only: no parse, and no payload octet.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp groups)
+      (or (posp (fn-nntp-article-number (fn-ag-car groups) article))
+          (fn-nntp-newnews-candidatep (fn-ag-cdr groups) article))
+    nil))
+
+(defun fn-nntp-newnews-scan (groups threshold articles fuel)
+  ; (:ok lines) or (:over-budget).  The fuel is spent on candidates only, and
+  ; the decision to refuse is taken on the way down, before any article is
+  ; parsed; a refused scan therefore parses nothing.
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count articles)))
+  (if (not (consp articles))
+      (list :ok nil)
+    (if (not (fn-nntp-newnews-candidatep groups (fn-ag-car articles)))
+        (fn-nntp-newnews-scan groups threshold (fn-ag-cdr articles) fuel)
+      (if (not (posp fuel))
+          (list :over-budget)
+        (let ((rest (fn-nntp-newnews-scan groups threshold
+                                          (fn-ag-cdr articles) (- fuel 1))))
+          (if (not (fn-nntp-parse-okp rest))
+              rest
+            (let ((stamp (fn-nntp-newnews-stamp (fn-ag-car articles))))
+              (if (and (fn-nntp-parse-okp stamp)
+                       (fn-ng-less-equal threshold (fn-nntp-parse-1 stamp)))
+                  (list :ok
+                        (cons (fn-nntp-string-octets
+                               (fn-article-msgid (fn-ag-car articles)))
+                              (fn-nntp-parse-1 rest)))
+                rest))))))))
+
+; -----------------------------------------------------------------------------
+; The command
+
+(defun fn-nntp-newnews-response (session archive env args)
+  ; NEWNEWS wildmat date time [GMT].  The date and time grammar is section
+  ; 7.3's, so the parse is NEWGROUPS' parse and not a second one; fn's local
+  ; time zone is UTC, so the GMT token changes nothing but is accepted
+  ; exactly where the grammar allows it.  This function is what
+  ; books/nntp.lisp's fn-nntp-archive-command calls for NEWNEWS.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (and (consp args) (consp (cdr args)) (consp (cdr (cdr args)))
+                (or (null (cdr (cdr (cdr args))))
+                    (and (consp (cdr (cdr (cdr args))))
+                         (null (cdr (cdr (cdr (cdr args)))))
+                         (fn-nntp-keywordp (car (cdr (cdr (cdr args))))
+                                           "GMT")))))
+      (fn-nntp-single session "501 syntax error")
+    (let ((date (fn-nntp-newgroups-date-parse
+                 (car (cdr args))
+                 (fn-nntp-observed-year (fn-nntp-env-observation env))))
+          (time (fn-nntp-newgroups-time-parse (car (cdr (cdr args)))))
+          (patterns (fn-wildmat-parse (car args))))
+      (if (and (not (fn-nntp-parse-okp date))
+               (equal (car (cdr date)) :no-century))
+          (fn-nntp-single
+           session "503 two-digit year needs a wall clock reading")
+        (if (or (not (fn-nntp-parse-okp date))
+                (not (fn-nntp-parse-okp time))
+                (not (fn-wildmat-result-okp patterns)))
+            (fn-nntp-single session "501 syntax error")
+          (let ((scan (fn-nntp-newnews-scan
+                       (fn-nntp-filter-groups-by-wildmat
+                        (fn-wildmat-result-value patterns)
+                        (fn-state-groups archive))
+                       (fn-nntp-civil-dtn-ms
+                        (fn-nntp-parse-1 date) (fn-nntp-parse-2 date)
+                        (fn-nntp-parse-3 date) (fn-nntp-parse-1 time)
+                        (fn-nntp-parse-2 time) (fn-nntp-parse-3 time))
+                       (fn-state-articles archive)
+                       *fn-nntp-newnews-parse-budget*)))
+            (if (not (fn-nntp-parse-okp scan))
+                (fn-nntp-single
+                 session
+                 "503 more matching articles than this command may read")
+              (fn-nntp-multi
+               session "230 list of new articles by message-id follows"
+               (fn-nntp-parse-1 scan)))))))))
+
+; -----------------------------------------------------------------------------
 ; LIST ACTIVE.TIMES (RFC 3977 section 7.6.4, RFC 2980 section 2.1.3)
 ;
 ; The list is exactly the persisted group-creation facts the host supplies,
@@ -1765,6 +2140,33 @@
 (verify-guards fn-nntp-list-active-times)
 (verify-guards fn-nntp-list-command)
 
+; NEWNEWS.  The article accessors stay closed here for the reason recorded
+; above fn-nov-overview: fn-nov-get-headers-car-is-a-field (local) is what
+; discharges the field obligation, and opening fn-article-get-headers buries
+; it.
+(verify-guards fn-nntp-dt-nth)
+(verify-guards fn-nntp-dt-alphap)
+(verify-guards fn-nntp-dt-lower3)
+(verify-guards fn-nntp-dt-month-index)
+(verify-guards fn-nntp-dt-named-zone)
+(verify-guards fn-nntp-dt-digits)
+(verify-guards fn-nntp-dt-day)
+(verify-guards fn-nntp-dt-drop-alpha)
+(verify-guards fn-nntp-dt-skip-day-of-week)
+(verify-guards fn-nntp-dt-zone)
+(verify-guards fn-nntp-dt-date)
+(verify-guards fn-nntp-dt-time)
+(verify-guards fn-nntp-dt-parse)
+(verify-guards fn-nntp-newnews-field-value
+  :hints (("Goal" :in-theory (disable fn-article-get-headers
+                                      fn-article-syntax-p))))
+(verify-guards fn-nntp-newnews-stamp
+  :hints (("Goal" :in-theory (disable fn-article-get-headers
+                                      fn-article-syntax-p))))
+(verify-guards fn-nntp-newnews-candidatep)
+(verify-guards fn-nntp-newnews-scan)
+(verify-guards fn-nntp-newnews-response)
+
 ; ---------------------------------------------------------------------------
 ; Export theory
 ;
@@ -1820,6 +2222,13 @@
     fn-nntp-xpat-response fn-nntp-dtn-unix-seconds
     fn-nntp-active-times-line fn-nntp-active-times-lines
     fn-nntp-filter-facts-by-wildmat fn-nntp-list-active-times
-    fn-nntp-list-command))
+    fn-nntp-list-command
+    fn-nntp-dt-nth fn-nntp-dt-alphap fn-nntp-dt-lower3
+    fn-nntp-dt-month-index fn-nntp-dt-named-zone fn-nntp-dt-digits
+    fn-nntp-dt-day fn-nntp-dt-drop-alpha fn-nntp-dt-skip-day-of-week
+    fn-nntp-dt-zone fn-nntp-dt-date fn-nntp-dt-time fn-nntp-dt-parse
+    fn-nntp-newnews-field-value fn-nntp-newnews-stamp
+    fn-nntp-newnews-candidatep fn-nntp-newnews-scan
+    fn-nntp-newnews-response))
 
 (in-theory (disable fn-nntp-responses-vocabulary))

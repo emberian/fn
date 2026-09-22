@@ -1206,6 +1206,30 @@
       "note": "books/served certifies and fn-served-open now pins config and observation into the five-field connection, but no named theorem states that the verdict a session carries is the one decided at open, and the host that would exercise it (books/owner) does not certify."
     },
     {
+      "id": "NNT-008",
+      "title": "NEWNEWS answers from the article's own injection stamp under a work budget",
+      "specification": "specs/nntp.md#polling-newnews",
+      "milestone": "M3",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-052"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/nntp-newnews.lisp",
+        "books/nntp-responses.lisp",
+        "tests/acl2/nntp-newnews-tests.lisp",
+        "tests/test_reader.py",
+        "specs/nntp.md",
+        "specs/nntp-audit.md"
+      ],
+      "implementation_note": "RFC 3977 section 7.4 over the same section 7.3.2 date and time parse NEWGROUPS uses and the same wildmat matcher LIST ACTIVE uses. The instant compared is the article's own Injection-Date, falling back to Date (RFC 5537 sections 3.6 and 3.7), because the committed article record carries no arrival stamp. One command costs one pass over the committed article list plus at most *fn-nntp-newnews-parse-budget* = 256 article parses; a request with more candidates is refused with 503 and parses nothing.",
+      "note": "Open: a durable acceptance stamp beside the article, which would make NEWNEWS a statement about this node rather than about the injecting agent's claim; and the per-group index of books/nntp-index.lisp, which is not on the dispatcher's path, so the membership walk is still one pass over every committed article. No native run has measured the V0-READ-NEWNEWS rows: no image exists on this commit."
+    },
+    {
       "id": "HST-001",
       "title": "Host executes the proved core or a justified refinement",
       "specification": "specs/host.md#core-interface",
