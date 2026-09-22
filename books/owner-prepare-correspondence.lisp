@@ -101,6 +101,125 @@
 ; owner relation.  The configuration wrapper sometimes handles connection
 ; pins or a staged configuration record specially, but its owner component
 ; is always one of the already proved owner transitions (or unchanged).
+; -----------------------------------------------------------------------------
+; The session a configured open installs on a reader connection.  Local
+; restatements of the owner-invariants session facts (those are local there)
+; and the constructor facts this arm needs, with the recognizers closed.
+
+(local
+ (defthm fn-opc-peer-open-session-is-a-session
+   (fn-peer-sessionp (fn-peer-open-session archive peer node cfg))
+   :hints (("Goal" :use fn-peer-open-session-is-consistent
+            :in-theory (e/d (fn-peer-session-consistentp)
+                            (fn-peer-open-session fn-peer-sessionp
+                             fn-peer-open-session-is-consistent))))))
+
+(local
+ (defthm fn-opc-peer-open-session-base
+   (equal (fn-peer-session-base (fn-peer-open-session archive peer node cfg))
+          (fn-post-open-session archive))
+   :hints (("Goal" :in-theory (e/d (fn-peer-open-session)
+                                   (fn-post-open-session fn-node-statep
+                                    fn-cfgp))))))
+
+(local
+ (defthm fn-opc-auth-base-of-with-base
+   (equal (fn-auth-session-base (fn-auth-with-base as base)) base)
+   :hints (("Goal" :in-theory (enable (:d fn-auth-with-base))))))
+
+(local
+ (defthm fn-opc-auth-with-base-is-a-session
+   (implies (and (fn-auth-sessionp as) (fn-peer-sessionp base))
+            (fn-auth-sessionp (fn-auth-with-base as base)))
+   :hints (("Goal" :in-theory (e/d (fn-auth-sessionp fn-auth-with-base)
+                                   (fn-peer-sessionp fn-auth-configp
+                                    fn-nntp-printable-tokenp fn-prin-idp))))))
+
+(local
+ (defthm fn-opc-reader-context-session-boundedp
+   (implies (fn-auth-sessionp as)
+            (fn-own-conn-boundedp
+             (fn-own-conn-make cid version frontier wire
+                               (fn-auth-with-base
+                                as (fn-peer-open-session archive nil node cfg))
+                               archive config observation)
+             groups))
+   :hints (("Goal" :in-theory (e/d (fn-own-conn-boundedp fn-post-open-session
+                                    fn-nntp-open-session fn-nntp-make-session
+                                    fn-nntp-session-group
+                                    fn-nntp-session-current)
+                                   (fn-auth-sessionp fn-peer-sessionp
+                                    fn-peer-open-session fn-auth-with-base
+                                    fn-nntp-sessionp fn-post-sessionp))))))
+
+(local
+ (defthm fn-opc-reader-context-conn-okp
+   (implies (fn-own-conn-okp conn groups capacity records)
+            (fn-own-conn-okp
+             (fn-own-conn-make (fn-own-conn-id conn) (fn-own-conn-version conn)
+                               (fn-own-conn-frontier conn) (fn-own-conn-wire conn)
+                               (fn-auth-with-base
+                                (fn-own-conn-session conn)
+                                (fn-peer-open-session (fn-own-conn-archive conn)
+                                                      nil node cfg))
+                               (fn-own-conn-archive conn) (fn-own-conn-config conn)
+                               (fn-own-conn-observation conn))
+             groups capacity records))
+   :hints (("Goal" :in-theory (e/d (fn-own-conn-okp (:d fn-own-conn-boundedp))
+                                   (fn-auth-with-base fn-peer-open-session
+                                    fn-auth-sessionp fn-peer-sessionp
+                                    fn-own-prefix-archive
+                                    fn-nntp-session-group fn-nntp-session-current
+                                    fn-opc-reader-context-session-boundedp))
+            :use ((:instance fn-opc-reader-context-session-boundedp
+                             (as (fn-own-conn-session conn))
+                             (cid (fn-own-conn-id conn))
+                             (version (fn-own-conn-version conn))
+                             (frontier (fn-own-conn-frontier conn))
+                             (wire (fn-own-conn-wire conn))
+                             (archive (fn-own-conn-archive conn))
+                             (config (fn-own-conn-config conn))
+                             (observation (fn-own-conn-observation conn))))))))
+
+(local
+ (defthm fn-opc-conn-id-of-conn-make
+   (equal (fn-own-conn-id (fn-own-conn-make id version frontier wire session
+                                            archive config observation))
+          id)
+   :hints (("Goal" :in-theory (enable fn-own-conn-id fn-own-conn-make)))))
+
+; The configured open's reader arm (books/owner-config.lisp fn-ocfg-open)
+; since `64a80197': it rebuilds the new connection's session over the live
+; node and configuration.  The connection keeps its identifier, version,
+; frontier and archive, and the fresh reader session has no group and no
+; cursor, so the connection list stays well formed.
+(defthm fn-opc-reader-context-preserves-relation
+  (implies (fn-own-relation o)
+           (fn-own-relation (fn-own-reader-context o id cfg)))
+  :hints (("Goal"
+           :use ((:instance fn-own-find-conn-okp
+                            (conns (fn-own-conns o))
+                            (groups (fn-sn-groups (fn-own-store o)))
+                            (capacity (fn-sn-capacity (fn-own-store o)))
+                            (records (fn-sf-records (fn-sn-files (fn-own-store o)))))
+                 (:instance fn-own-find-conn-id-below-next
+                            (conns (fn-own-conns o))
+                            (n (fn-own-next-id o)))
+                 (:instance fn-opc-reader-context-conn-okp
+                            (conn (fn-own-find-conn id (fn-own-conns o)))
+                            (node (fn-sn-node (fn-own-store o)))
+                            (groups (fn-sn-groups (fn-own-store o)))
+                            (capacity (fn-sn-capacity (fn-own-store o)))
+                            (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
+           :in-theory (e/d (fn-own-relation fn-own-reader-context fn-own-set-conns
+                            fn-own-replace-conn-okp fn-own-replace-conn-len
+                            fn-own-replace-conn-ids-below-next
+                            fn-own-find-conn-id)
+                           (fn-own-conn-okp fn-own-conn-boundedp fn-own-find-conn-okp
+                            fn-opc-reader-context-conn-okp
+                            fn-auth-with-base fn-peer-open-session
+                            fn-auth-sessionp fn-peer-sessionp fn-cfgp)))))
+
 (defthm fn-opc-configured-step-preserves-owner-relation
   (implies (fn-own-relation (fn-ocfg-owner oc))
            (fn-own-relation (fn-ocfg-owner (fn-ocfg-step oc event))))
@@ -124,7 +243,13 @@
           (:instance fn-own-complete-preserves-relation
                      (o (fn-ocfg-owner oc)))
           (:instance fn-own-step-preserves-relation
-                     (o (fn-ocfg-owner oc))))
+                     (o (fn-ocfg-owner oc)))
+          ; the configured open re-derives a new reader's session from
+          ; the live node and configuration (`64a80197')
+          (:instance fn-opc-reader-context-preserves-relation
+                     (o (cdr (fn-own-open (fn-ocfg-owner oc) (cadr event))))
+                     (id (fn-own-next-id (fn-ocfg-owner oc)))
+                     (cfg (fn-ocfg-config oc))))
     :in-theory
     (e/d (fn-ocfg-step fn-ocfg-open fn-ocfg-open-peer fn-ocfg-read
                         fn-ocfg-read-step fn-ocfg-advance fn-ocfg-close
@@ -136,7 +261,8 @@
           fn-own-open-peer-preserves-relation fn-own-read-preserves-relation
           fn-own-read-step-preserves-relation fn-own-advance-preserves-relation
           fn-own-close-preserves-relation fn-own-complete-preserves-relation
-          fn-own-step-preserves-relation)))))
+          fn-own-step-preserves-relation fn-own-reader-context
+          fn-opc-reader-context-preserves-relation)))))
 
 (defthm fn-opc-configured-run-preserves-owner-relation
   (implies (fn-own-relation (fn-ocfg-owner oc))

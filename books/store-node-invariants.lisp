@@ -1586,8 +1586,10 @@
 
 ; The step fact the loop's induction needs, over every arm of
 ; `fn-replay-apply-record' rather than over an article record alone.
-(local
- (defthm fn-snt-apply-event-from-idle-is-idle-and-monotone
+; Exported, not local: `books/store-node-traces' needs the same fact of the
+; same function for the deferred publications `6ab2c783' and `4bb7bb3d'
+; added, whose whole node effect IS this step.
+(defthm fn-snt-apply-event-from-idle-is-idle-and-monotone
    (implies (and (fn-node-statep node)
                  (equal (fn-node-stage node) nil)
                  (equal (fn-state-pending (fn-node-acceptance node)) nil)
@@ -1619,7 +1621,7 @@
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
                              fn-record-record-vocabulary
-                             fn-record-codec-vocabulary))))))
+                             fn-record-codec-vocabulary)))))
 
 ; A preparation that actually staged moved the next transaction id by exactly
 ; one: `fn-accept-prepare' writes `(1+ (fn-state-next-txid s))' and pins the
@@ -1655,8 +1657,7 @@
 ; the record accessors open the arm's transaction id reaches the goal as
 ; `(cadr record)' and every rule stated over `fn-record-txid' or
 ; `fn-store-event-txid' stops matching.
-(local
- (defthm fn-snt-apply-event-from-idle-is-at-the-successor
+(defthm fn-snt-apply-event-from-idle-is-at-the-successor
    (implies (and (fn-node-statep node)
                  (equal (fn-node-stage node) nil)
                  (equal (fn-state-pending (fn-node-acceptance node)) nil)
@@ -1679,7 +1680,7 @@
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
                              fn-record-record-vocabulary
-                             fn-record-codec-vocabulary))))))
+                             fn-record-codec-vocabulary)))))
 
 ; And the same step's other arithmetic half: a node the step accepted was not
 ; past the event's transaction id.  With the successor equation above, this is
@@ -2018,5 +2019,7 @@
     fn-snt-replayed-node-idle-and-frontier fn-snt-advance-replayed-node
     fn-snt-successful-replay-sequence fn-snt-successful-replay-history-length
     fn-snt-prepared-abort-is-frontier-advance
-    fn-snt-prepared-durable-is-idle-at-successor))
+    fn-snt-prepared-durable-is-idle-at-successor
+    fn-snt-apply-event-from-idle-is-idle-and-monotone
+    fn-snt-apply-event-from-idle-is-at-the-successor))
 (in-theory (disable fn-store-node-invariants-vocabulary fn-sn-committed-recordp))

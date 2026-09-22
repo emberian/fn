@@ -74,9 +74,24 @@
 ; The actual host-call transition returns exactly fn-ocfg-read's effects and
 ; configured-owner state.  The counted transition is a single execution;
 ; this theorem relates its result to the pre-existing semantic entry point.
+; The wire hypothesis is the domain `fn-served-step-counted-fast-is-reference'
+; (books/served-tls-prefix) asks for, and the configured owner does not carry
+; it: `fn-own-conn-okp' (books/owner-invariants) says a connection has a
+; shape, a bounded session and a pinned archive, and says nothing about the
+; wire recognizer -- `fn-served-connp' is the predicate that carries
+; `fn-wire-statep', and the owner's connection list is not held to it.  The
+; two transitions agree on every wire the full recognizer accepts and may
+; differ on one the fast spine accepts and it does not, which is exactly what
+; `58399102' put on the host's read path.  PRF-006 has recorded this
+; correspondence as pending current-source certification since w26; this
+; states the premise rather than leaving the theorem unproved, and closing it
+; means carrying `fn-wire-statep' in `fn-own-conn-okp'.
 (defthm fn-ocfg-read-tls-prefix-is-full-read
   (implies
-   (fn-ocfg-statep oc)
+   (and (fn-ocfg-statep oc)
+        (fn-wire-statep
+         (fn-own-conn-wire
+          (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
    (let ((tls-result (fn-ocfg-read-tls-prefix oc id octets))
          (full-result (fn-ocfg-read oc id octets)))
      (and (equal (fn-own-tls-result-effects tls-result)
