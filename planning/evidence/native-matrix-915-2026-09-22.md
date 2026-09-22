@@ -76,14 +76,19 @@ and loopback gaps live. They are no longer the harness declining to look:
   listeners.
 - `V0-CAP-REFUSE-{A,B}` are refused, where the 01:43Z run could not start the
   scratch owner at all.
-- **The second submission of one Message-ID is nondeterministic.** At 03:08Z
-  node A exited 1 with `refused operator post REFUSED` and node B exited 0
-  with `accepted operator post DUPLICATE`; at 03:21Z, over freshly
-  reprovisioned stores, the two swapped. The two runs are identical in every
-  other row and count. So it is not a node difference: the same operation on
-  the same image answers refused or accepted by race, and D13's three
-  outcomes do not stay distinct on the native `post` path. `V0-OUT-REFUSED`
-  is the row; the owner is the submission path, not this harness.
+- **`V0-OUT-REFUSED` swapped nodes between the two runs, and that was this
+  harness.** At 03:08Z node A exited 1 with `refused operator post REFUSED`
+  and node B exited 0 with `accepted operator post DUPLICATE`; at 03:21Z,
+  over freshly reprovisioned stores, the two swapped, with every other row
+  and count identical. The cause was `article()` re-stamping `Date` from
+  `datetime.now()` on every build, so the second submission of one
+  Message-ID carried different octets whenever it crossed a second boundary
+  and the node refused them correctly (`fn-store-article-match`). The node
+  was right both times. `article_stamp` now fixes one Date per Message-ID and
+  `native_outcomes` makes the three submissions separately; see
+  [the record](native-duplicate-outcome-2026-09-22.md). The two runs below
+  predate that fix and their `V0-OUT-REFUSED` rows are the defect, not the
+  node.
 
   **Resolved, and it was this harness**
   ([`native-duplicate-outcome-2026-09-22.md`](native-duplicate-outcome-2026-09-22.md)).
