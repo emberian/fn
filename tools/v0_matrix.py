@@ -67,11 +67,17 @@ and one dry-run row that way.
 Native first slice. ``--backend native-operator`` takes an explicitly named
 saved image and two preprovisioned native configuration paths.  Its only
 server candidate is ``packaging/fn-native operator CONFIG run``.  It exercises
-the public native status action, NNTP POST, and the reader profile on both
-listeners.  It never initializes a store through Python and never falls back
-to ``bin/fn``, ``tools/run_owner.py`` or ``tools/run_reader.py``.  Native
-init/admin, orderly stop and outbound-feed activation remain named non-outcomes
-until their public composition exists.  Schema-1 records are historical Python
+the public native status action, NNTP POST, the reader profile on both
+listeners, AUTHINFO with a credential the public operator enrolled, live group
+administration through the running owner, the wildcard-listener refusal and an
+independent stdlib-nntplib client.  It never initializes a store through
+Python and never falls back to ``bin/fn``, ``tools/run_owner.py`` or
+``tools/run_reader.py``.  The two supplied configurations are never rewritten:
+where a row needs a policy they do not set -- ``[auth] required``, a wildcard
+listener host, a control path nothing has bound -- the slice synthesizes a
+scratch store and configuration of its own and says so in the row's ``limit``.
+Native init/reinit and outbound-feed activation remain named non-outcomes until
+their public composition exists.  Schema-1 records are historical Python
 evidence; new schema-2 records label backend, source revision and image digest
 separately.
 """
@@ -1047,6 +1053,17 @@ def auth(args):
 
     gate = Conn(args.port, timeout=SOCKET_TIMEOUT)
     out["POST BEFORE"] = gate.cmd("POST")[0]
+    # A 3xx means posting is permitted WITHOUT a login and this connection is
+    # now inside a transfer.  Terminate it with an empty block, exactly as
+    # `pins` does for its POST probe, rather than dropping the socket
+    # mid-article: an empty article is refused and stores nothing, while a
+    # server left holding a half-open transfer is what wedged this tree twice.
+    if out["POST BEFORE"][:1] == "3":
+        gate.sock.sendall(b".\r\n")
+        try:
+            out["POST BEFORE CLOSE"] = gate.line()
+        except Exception as error:
+            out["POST BEFORE CLOSE"] = "{}: {}".format(type(error).__name__, error)
     drop(gate)
 
     conn = Conn(args.port, timeout=SOCKET_TIMEOUT)
@@ -1153,9 +1170,16 @@ def main():
         one.add_argument("--absent", default="<absent@example.invalid>")
         one.add_argument("--user", default="")
         one.add_argument("--secret", default="matrix-secret")
+        one.add_argument("--secret-file", default="")
         one.add_argument("--socket", default="")
         one.add_argument("--line", default="VERSION")
     args = parser.parse_args()
+    # A secret may reach this driver as a PATH and never as a command word:
+    # the gate renders every command it ran in `report.md`, so a secret that
+    # entered an argument would enter the evidence with it.
+    if args.secret_file:
+        with open(args.secret_file) as handle:
+            args.secret = handle.read().strip()
     handler = {"surface": surface, "pins": pins, "postcycle": postcycle,
                "concurrent": concurrent, "auth": auth, "stream": stream,
                "control": control}[args.phase]
@@ -1341,6 +1365,12 @@ class V0Matrix(twonode_gate.TwoNodeGate):
             name: "<native-matrix-{}-{}@example.invalid>".format(
                 uuid.uuid4().hex[:12], name) for name in ("a", "b")
         }
+        # The native AUTHINFO credential: the login is fixed so `principal
+        # list` can be read for it, and the secret is generated ON the
+        # execution host (see `native_secret_files`) so that this process
+        # never holds it and no recorded command can carry it.
+        self._native_secret_ready = False
+        self.native_credential: dict = {}
         self.want_scale = scale
         self.want_inn = inn
         self.want_campaign = campaign
@@ -3097,6 +3127,41 @@ else echo NONE; fi
                   exit_code=step.rc, client="InterNetNews",
                   limit="one INN version on one box; not a Usenet conformance audit")
 
+    def served_group(self) -> str:
+        """The group both nodes serve on this backend."""
+        return self.native_group if self.backend == NATIVE_BACKEND else GROUPS[0]
+
+    def nntplib_interpreter(self) -> str:
+        """An interpreter on the execution host whose stdlib still has nntplib.
+
+        `probe_tree` finds one on the development backend.  The native slice
+        does not run that probe -- it consumes an explicitly named saved
+        image and asks the deployed tree nothing -- so the same question is
+        asked here, over the versioned interpreters `preflight` found plus
+        `python3` itself: on a box whose `python3` IS 3.12 the versioned name
+        need not exist, and PEP 594 removed nntplib in 3.13.
+        """
+        if self.support.get("nntplib"):
+            return self.support["nntplib"]
+        candidates = list(getattr(self, "alt_pythons", [])) + ["python3"]
+        step = self.sh("nntplib interpreter", " ".join(
+            ["for p in"] + candidates
+            + ["; do command -v $p >/dev/null 2>&1 && $p -c 'import nntplib' 2>/dev/null",
+               "&& { echo USE $p; exit 0; }; done; echo NONE"]), expect=None)
+        match = re.search(r"^USE (\S+)", step.output, re.M)
+        self.support["nntplib"] = match.group(1) if match else ""
+        return self.support["nntplib"]
+
+    def has_client(self, name: str) -> bool:
+        """Is this newsreader on the execution host?
+
+        `probe_tree` records it as yes/no; `preflight` records the path or
+        ABSENT for every backend, and the native slice runs only the second.
+        """
+        if name in self.support:
+            return self.support[name] == "yes"
+        return getattr(self, "clients", {}).get(name, "ABSENT") != "ABSENT"
+
     def independent_clients(self):
         """The one observation in this matrix that fn did not make itself.
 
@@ -3112,7 +3177,9 @@ else echo NONE; fi
         the Python standard library's own NNTP implementation against both
         nodes and the rows it produces are the ones marked `independent`.
         """
-        interpreter = self.support.get("nntplib", "")
+        interpreter = self.nntplib_interpreter()
+        group = self.served_group()
+        user, secret = self.credential()
         if not interpreter:
             self.blocked(("V0-CLIENT-NNTPLIB",),
                          "no interpreter on {} has a stdlib nntplib: PEP 594 removed "
@@ -3134,9 +3201,9 @@ else echo NONE; fi
                     node.upper), self.cd(
                         "{} {}/independent.py --port {} --group {} --msgid '{}' "
                         "--absent '{}' --user {} --secret {}".format(
-                            interpreter, self.run, node.port, GROUPS[0],
+                            interpreter, self.run, node.port, shlex.quote(group),
                             node.accepted[0] if node.accepted else ART[node.name],
-                            ABSENT_ID, AUTH_USER, AUTH_SECRET)),
+                            ABSENT_ID, shlex.quote(user), shlex.quote(secret))),
                     timeout=600, expect=None)
                 result = self.payload(step)
                 self.emit("V0-CLIENT-NNTPLIB", exit_verdict(step.rc), step.command,
@@ -3155,7 +3222,7 @@ else echo NONE; fi
                                 "posted or fed by a foreign client. Its framing, "
                                 "folding and response parsing are the standard "
                                 "library's, not fn's, which is the point of the row")
-        if self.support.get("slrn") != "yes":
+        if not self.has_client("slrn"):
             self.emit("V0-CLIENT-SLRN", NOT_EXERCISED, "slrn -h <host> -p <port>",
                       "(slrn is not installed)",
                       blocker="slrn is not installed on {} (nor on hbox, measured "
@@ -3164,7 +3231,7 @@ else echo NONE; fi
             return
         step = self.sh("slrn client", self.cd(
             "python3 tests/interop_slrn.py --port {} --group {} 2>&1 | tail -20".format(
-                self.a.port, GROUPS[0])), timeout=900, expect=None)
+                self.a.port, shlex.quote(group))), timeout=900, expect=None)
         self.emit("V0-CLIENT-SLRN", exit_verdict(step.rc), step.command,
                   step.first_line or "(no output)", exit_code=step.rc,
                   client="slrn", limit="one newsreader against node A only")
@@ -3575,6 +3642,11 @@ exit "$rc"
     # needs; the two preprovisioned nodes carry their own ports in their
     # configurations and these must not collide with them.
     CAPACITY_OWNER_PORTS = {"a": 11290, "b": 11291}
+    # The scratch owner that carries `[auth] required = true`, one per node
+    # (`native_auth_gate`), and the port the wildcard-listener configuration
+    # names and never reaches a bind for (`native_loopback_refusal`).
+    AUTH_GATE_PORTS = {"a": 11292, "b": 11293}
+    LOOPBACK_DECLARED_PORT = 11294
 
     def native_capacity(self, node: NodeSpec):
         """`capacity` on a scratch store beside the served one, and its refusal."""
@@ -3629,17 +3701,333 @@ exit "$rc"
         payload = "{}/capacity.article".format(scratch)
         self.push_file(article(msgid, self.native_group, "over the capacity", "x" * 4096),
                        payload)
-        over = self.sh("node {} post beyond the capacity".format(node.upper),
-                       self.cd(self.native_command(
-                           self.Raw(config), "post", "--message-id", msgid,
-                           "--payload", self.Raw(payload), "--group", self.native_group)),
-                       timeout=900, expect=None)
-        self.from_step("V0-CAP-REFUSE", over, node=node.name,
-                       limit="the capacity was set to 1 (rc={}) on a scratch store served "
-                             "by an owner of its own on port {}; the article's own charge "
-                             "is what has to exceed it, and the charge is ACL2's".format(
-                                 tight.rc, port))
-        self.stop_server(tag, run=scratch)
+        try:
+            over = self.sh("node {} post beyond the capacity".format(node.upper),
+                           self.cd(self.native_command(
+                               self.Raw(config), "post", "--message-id", msgid,
+                               "--payload", self.Raw(payload), "--group",
+                               self.native_group)), timeout=900, expect=None)
+            self.from_step("V0-CAP-REFUSE", over, node=node.name,
+                           limit="the capacity was set to 1 (rc={}) on a scratch store "
+                                 "served by an owner of its own on port {}; the "
+                                 "article's own charge is what has to exceed it, and "
+                                 "the charge is ACL2's".format(tight.rc, port))
+        finally:
+            # The scratch owner holds a port on a box this gate shares, so it
+            # is stopped even if the row above raised.
+            self.stop_server(tag, run=scratch)
+
+    # -- F-AUTH on the packaged native image --------------------------------
+    #
+    # The two supplied configurations are this slice's subject and are never
+    # rewritten, so F-AUTH's credential half and its policy half have two
+    # different subjects and every row says which one it had.
+    #
+    #   * The credential is enrolled through the public operator into each
+    #     SUPPLIED node's own registry (`[auth] path`, default
+    #     `<store>/auth.toml`) before either owner starts: the native owner
+    #     loads credentials once, after recovery and before the listener
+    #     opens (specs/native-config.md), so an enrolment after the start
+    #     would not be visible to a login.  V0-AUTH-PASSWORD, V0-AUTH-LIST,
+    #     V0-AUTH-ADVERTISED, V0-AUTH-LOGIN, V0-AUTH-WITHDRAWN, V0-AUTH-POST
+    #     and V0-AUTH-WRONG are therefore about the served node.  Because
+    #     neither supplied configuration sets `[auth] required`, the reader
+    #     and POST rows keep working unauthenticated exactly as before:
+    #     `fn-auth-postingp` (books/nntp-auth.lisp) leaves an unauthenticated
+    #     connection with its pinned injection configuration unless the
+    #     policy requires authentication, and `AUTHINFO USER` is advertised
+    #     as soon as a credential exists.
+    #   * V0-AUTH-GATED is the one row that is ABOUT the policy: `480
+    #     authentication required` answers an unauthenticated POST only on a
+    #     node whose configuration requires authentication (Astra,
+    #     planning/astra-reorientation-2026-09-21.md).  The slice therefore
+    #     synthesizes a scratch store and configuration beside each node with
+    #     `[auth] required = true` and serves it with an owner of its own on
+    #     a port of its own, exactly as `native_capacity` does for the
+    #     capacity refusal.  A third preprovisioned configuration or a
+    #     `--native-auth-required-node` option was rejected for two reasons:
+    #     it would make the row's subject depend on how the operator invoked
+    #     the harness, and on the named node it would put every reader and
+    #     POST row behind a login, which is the one thing this task must not
+    #     do.  The row's `limit` names the scratch owner as its subject.
+    #
+    # The secret is never a command word: see `native_secret_files`.
+
+    AUTH_SESSION_KEYS = ("V0-AUTH-ADVERTISED", "V0-AUTH-LOGIN",
+                         "V0-AUTH-WITHDRAWN", "V0-AUTH-POST", "V0-AUTH-WRONG")
+
+    def native_secret_files(self):
+        """The run's AUTHINFO secret, generated on the host, as two paths.
+
+        Nothing in this process ever holds it: 16 octets of the execution
+        host's own `/dev/urandom` under `umask 077`, in one file with the
+        secret and one with the secret twice.  `principal set-password` reads
+        the password and its confirmation from standard input when there is
+        no controlling terminal (host/native/auth-admin.lisp,
+        `fnn-native-auth-admin-prompt-secrets`), and the gate's scripts reach
+        the host on bash's OWN stdin, so every caller redirects the pair file
+        explicitly.  `report.md` renders every command in full, so a secret
+        in an argument -- or in the base64 of a file this gate installed --
+        would be in the evidence.
+        """
+        one = "{}/auth.secret".format(self.run)
+        pair = "{}/auth.secret.pair".format(self.run)
+        if not self._native_secret_ready:
+            step = self.sh("native AUTHINFO secret", self.cd(
+                "umask 077 && od -An -tx1 -N16 /dev/urandom | tr -d ' \\n' > {one}"
+                " && printf '%s\\n%s\\n' \"$(cat {one})\" \"$(cat {one})\" > {pair}"
+                " && test -s {one} && test -s {pair} && echo SECRET-READY".format(
+                    one=one, pair=pair)), expect=None)
+            self._native_secret_ready = "SECRET-READY" in step.output
+        return (one, pair) if self._native_secret_ready else ("", "")
+
+    def native_principals(self, node: NodeSpec):
+        """Enrol one AUTHINFO credential in the supplied node's own registry."""
+        keys = ("V0-AUTH-PASSWORD", "V0-AUTH-LIST") + self.AUTH_SESSION_KEYS
+        one, pair = self.native_secret_files()
+        if not pair:
+            self.blocked(keys,
+                         "the execution host produced no secret file for this run, and "
+                         "a secret must not enter a recorded command, so no credential "
+                         "was enrolled", nodes=(node.name,),
+                         invocation="od -An -tx1 -N16 /dev/urandom")
+            return
+        # `timeout` on the REMOTE side, not only the gate's: the image reads
+        # two lines of standard input, and an image that waited for a third
+        # would otherwise be killed locally while the remote process kept the
+        # credential lock and made the next attempt refuse for the wrong
+        # reason.  124 is not one of the three outcomes and says so.
+        setpw = self.sh(
+            "node {} principal set-password {}".format(node.upper, AUTH_USER),
+            self.cd("timeout 120 {} < {}".format(
+                self.native_operator(node, "principal", "set-password", AUTH_USER),
+                pair)), timeout=240, expect=None)
+        self.from_step("V0-AUTH-PASSWORD", setpw, node=node.name,
+                       limit="the password and its confirmation are read from a file on "
+                             "the execution host (two lines, umask 077) because the "
+                             "image reads them from standard input when there is no "
+                             "tty; what is stored is books/auth-secret.lisp's salted "
+                             "verifier and the row is about the operator writing it, "
+                             "not about the digest's strength or the secret's "
+                             "protection on the wire")
+        self.native_credential[node.name] = setpw.rc == EXIT_OK
+        listing = self.sh("node {} principal list".format(node.upper),
+                          self.cd(self.native_operator(node, "principal", "list")),
+                          timeout=900, expect=None)
+        shows = AUTH_USER in listing.output
+        verdict = exit_verdict(listing.rc)
+        if verdict == ACCEPTED and not shows:
+            verdict = REFUSED
+        self.emit("V0-AUTH-LIST", verdict, listing.command,
+                  "rc={} {}; lists {}: {}".format(
+                      listing.rc, listing.first_line or "(no output)", AUTH_USER, shows),
+                  node=node.name, exit_code=listing.rc, client=CLIENT_CLI,
+                  limit="one registry: `set-password` writes and `list` reads the "
+                        "credential file the running owner loads at startup; the "
+                        "listing prints the login, its principal and its posting flag "
+                        "and never the verifier")
+        if not self.native_credential[node.name]:
+            self.blocked(self.AUTH_SESSION_KEYS,
+                         "node {}: `principal set-password` exited {} ({}), so no "
+                         "credential this run knows exists on the node and an AUTHINFO "
+                         "session would measure the absence of a credential rather than "
+                         "the login".format(node.upper, setpw.rc, setpw.first_line),
+                         nodes=(node.name,), invocation=setpw.command)
+
+    def native_auth_session(self, node: NodeSpec):
+        """AUTHINFO on the served node, with the credential enrolled above."""
+        one, _ = self.native_secret_files()
+        step = self.matrix("auth", "--port {} --group {} --user {} --secret-file {} "
+                           "--msgid '{}'".format(node.port, shlex.quote(self.native_group),
+                                                 AUTH_USER, one, AUTH_POST[node.name]),
+                           name="node {} AUTHINFO session".format(node.upper),
+                           expect=None)
+        result = self.payload(step)
+        if not result or "AUTHINFO USER" not in result:
+            self.blocked(self.AUTH_SESSION_KEYS,
+                         "the AUTHINFO driver produced no result on node {}: {}".format(
+                             node.upper, result.get("error", step.first_line)),
+                         nodes=(node.name,), invocation=step.command)
+            return
+        self.emit("V0-AUTH-ADVERTISED",
+                  ACCEPTED if result.get("AUTHINFO ADVERTISED") else REFUSED,
+                  step.command, "CAPABILITIES before the login: {}".format(
+                      ", ".join(result.get("advertised_before", [])) or "(none)"),
+                  node=node.name,
+                  limit="RFC 4643 section 2.1 as books/nntp-auth.lisp reads it: the "
+                        "label is offered while the connection is unauthenticated AND a "
+                        "credential is configured, so this row depends on the enrolment "
+                        "above and says nothing about a node with no credential")
+        self.from_reply("V0-AUTH-LOGIN", result.get("AUTHINFO PASS", ""), step.command,
+                        node=node.name,
+                        limit="USER/PASS over an unprotected loopback connection; the "
+                              "secret reached the driver as a file path and is in no "
+                              "recorded command")
+        self.emit("V0-AUTH-WITHDRAWN",
+                  ACCEPTED if result.get("AUTHINFO WITHDRAWN") else REFUSED,
+                  step.command, "CAPABILITIES after the login: {}".format(
+                      ", ".join(result.get("advertised_after", [])) or "(none)"),
+                  node=node.name)
+        self.from_reply("V0-AUTH-POST", result.get("POST AFTER COMMIT", ""),
+                        step.command, node=node.name,
+                        limit="the posting allowance of an authenticated connection is "
+                              "the credential's own bit and nothing else "
+                              "(`fn-auth-postingp`); `set-password` defaults it to true "
+                              "and this run did not pass `--no-posting`")
+        if str(result.get("POST AFTER COMMIT", "")).startswith("240"):
+            node.accepted.append(AUTH_POST[node.name])
+        self.from_reply("V0-AUTH-WRONG", result.get("AUTHINFO WRONG", ""),
+                        step.command, node=node.name,
+                        limit="one wrong password; no rate limit or lockout is tested")
+
+    def native_auth_gate(self, node: NodeSpec):
+        """V0-AUTH-GATED, on a scratch owner that requires authentication."""
+        scratch = "{}/authgate".format(node.dir)
+        store = "{}/store".format(scratch)
+        config = "{}/fn.toml".format(scratch)
+        port = self.AUTH_GATE_PORTS[node.name]
+        one, pair = self.native_secret_files()
+        if not pair:
+            self.blocked(("V0-AUTH-GATED",),
+                         "the execution host produced no secret file for this run, so "
+                         "the auth-required subject had no credential and a 480 on it "
+                         "could not be told from a node with an empty registry",
+                         nodes=(node.name,), invocation="od -An -tx1 -N16 /dev/urandom")
+            return
+        # Every path here is a `$HOME/...` shell expression by construction
+        # (see `Raw`), so none of them is quoted.
+        init = self.sh("node {} auth-required scratch store".format(node.upper), self.cd(
+            "mkdir -p {scratch} && env FN_NATIVE_HOST={image} packaging/fn-native store "
+            "{store} init {group} && printf '[store]\\npath = \"%s\"\\n[listener]\\n"
+            "host = \"127.0.0.1\"\\nport = %s\\n[auth]\\nrequired = true\\n[control]\\n"
+            "path = \"%s\"\\n' \"{store}\" {port} \"{scratch}/control.sock\" > {config}"
+            .format(scratch=scratch, image=shlex.quote(self.native_image), store=store,
+                    group=shlex.quote(self.native_group), port=port, config=config)),
+            timeout=900, expect=None)
+        enrol = self.sh("node {} auth-required scratch credential".format(node.upper),
+                        self.cd("timeout 120 {} < {}".format(
+                            self.native_command(self.Raw(config), "principal",
+                                                "set-password", AUTH_USER), pair)),
+                        timeout=240, expect=None)
+        if init.rc != 0 or enrol.rc != EXIT_OK:
+            self.blocked(("V0-AUTH-GATED",),
+                         "the auth-required subject was not prepared: the image's store "
+                         "entry exited {} ({}) and `principal set-password` exited {} "
+                         "({})".format(init.rc, init.first_line, enrol.rc,
+                                       enrol.first_line),
+                         nodes=(node.name,), invocation=enrol.command)
+            return
+        tag = "authgate-{}".format(node.name)
+        started = self.start_server("node {} auth-required owner".format(node.upper),
+                                    self.native_command(self.Raw(config), "run"),
+                                    tag, run=scratch)
+        if not started:
+            self.blocked(("V0-AUTH-GATED",),
+                         "the scratch owner over the auth-required configuration did "
+                         "not reach LISTENING on port {}: {}".format(
+                             port, self.server_failure),
+                         nodes=(node.name,),
+                         invocation=self.native_command(self.Raw(config), "run"))
+            return
+        # From here the scratch owner is running, so every exit goes through
+        # `stop_server`: a row that raised must not leave an owner holding a
+        # port on a box this gate shares.
+        try:
+            self.native_auth_gate_rows(node, port, one)
+        finally:
+            self.stop_server(tag, run=scratch)
+
+    def native_auth_gate_rows(self, node: NodeSpec, port: int, one: str):
+        """V0-AUTH-GATED, against the auth-required owner `native_auth_gate` started."""
+        step = self.matrix("auth", "--port {} --group {} --user {} --secret-file {} "
+                           "--msgid '{}'".format(
+                               port, shlex.quote(self.native_group), AUTH_USER, one,
+                               "<auth-gate-{}@example.invalid>".format(node.name)),
+                           name="node {} auth-required AUTHINFO gate".format(node.upper),
+                           expect=None)
+        result = self.payload(step)
+        if not result or "POST BEFORE" not in result:
+            self.blocked(("V0-AUTH-GATED",),
+                         "the AUTHINFO driver produced no result against the "
+                         "auth-required owner on port {}: {}".format(
+                             port, result.get("error", step.first_line)),
+                         nodes=(node.name,), invocation=step.command)
+        else:
+            self.from_reply(
+                "V0-AUTH-GATED", result.get("POST BEFORE", ""), step.command,
+                node=node.name,
+                limit="the subject is a scratch store beside node {}'s, served by an "
+                      "owner of its own on port {} under `[auth] required = true`; the "
+                      "supplied configuration is not rewritten and does not set that "
+                      "policy, which is why its reader and POST rows stay "
+                      "unauthenticated. The same owner answered '{}' to the login and "
+                      "'{}' to POST after it, so the refusal above is the policy and "
+                      "not a dead node. RFC 4643 section 2.3 does not require the same "
+                      "code for every gated verb".format(
+                          node.upper, port,
+                          result.get("AUTHINFO PASS", "(no reply)"),
+                          result.get("POST AFTER", "(not attempted)")))
+
+    def native_config_store(self, node: NodeSpec) -> str:
+        """The store path a supplied configuration declares, read as text.
+
+        `[store] path` is what an offline command over the same store has to
+        name, and only the node itself knows it: this slice never created the
+        configuration and must not assume a layout for it.
+        """
+        config = self.native_configs[node.name]
+        step = self.sh("node {} configured store".format(node.upper),
+                       "awk '/^\\[/ {{t=$0}} t==\"[store]\" && /^path *=/ "
+                       "{{sub(/^path *= *\"/, \"\"); sub(/\".*$/, \"\"); print; exit}}' {}"
+                       .format(shlex.quote(config)), expect=None)
+        lines = [x.strip() for x in step.output.splitlines() if x.strip()]
+        return lines[-1] if lines else ""
+
+    def native_loopback_refusal(self):
+        """A wildcard listener host, offered to the public operator's own `run`."""
+        root = "{}/loopback".format(self.deploy)
+        store = "{}/store".format(root)
+        config = "{}/fn.toml".format(root)
+        init = self.sh("loopback refusal: scratch store", self.cd(
+            "mkdir -p {root} && env FN_NATIVE_HOST={image} packaging/fn-native store "
+            "{store} init {group} && printf '[store]\\npath = \"%s\"\\n[listener]\\n"
+            "host = \"0.0.0.0\"\\nport = %s\\n[control]\\npath = \"%s\"\\n' "
+            "\"{store}\" {port} \"{root}/control.sock\" > {config}".format(
+                root=root, image=shlex.quote(self.native_image), store=store,
+                group=shlex.quote(self.native_group),
+                port=self.LOOPBACK_DECLARED_PORT, config=config)),
+            timeout=900, expect=None)
+        if init.rc != 0:
+            self.blocked(("V0-NODE-LOOPBACK",),
+                         "the image's store entry did not initialise the store the "
+                         "wildcard configuration names (rc={} {}), so a refusal could "
+                         "not be attributed to the listener host".format(
+                             init.rc, init.first_line),
+                         invocation=init.command)
+            return
+        step = self.sh("loopback refusal: run", self.cd(
+            "timeout 60 " + self.native_command(self.Raw(config), "run")),
+            timeout=180, expect=None)
+        # Both commands are the invocation: a reader of the row has to see
+        # that the configuration the operator was handed declared `0.0.0.0`.
+        self.emit(
+            "V0-NODE-LOOPBACK", exit_verdict(step.rc),
+            "{}\n{}".format(init.command, step.command),
+            "rc={} {}".format(step.rc, step.first_line or "(no output)"),
+            exit_code=step.rc, client=CLIENT_CLI,
+            limit="the wildcard is refused at configuration admission "
+                  "(`fn-native-config-listener-hostp`, books/native-config.lisp), not "
+                  "at bind: `0.0.0.0` never reaches a listener, and the operator "
+                  "reports an inadmissible "
+                  "configuration as a usage error (5) rather than as one of the three "
+                  "outcomes -- so unless the image answers 1 this row is not-exercised "
+                  "with that code named, and the refusal it wanted has still happened "
+                  "at admission. A numeric non-loopback IPv4 address is ADMITTED by "
+                  "design and would be bound: this row is about the wildcard, not "
+                  "about fn declining to serve a network interface. Nothing here tests "
+                  "a bind the kernel would refuse for a different reason")
+
+    LIVE_GROUP = "fn.matrix.live"
 
     def native_peer_records(self):
         """A peer record on each node naming the other, in the operator's grammar."""
@@ -3749,19 +4137,76 @@ exit "$rc"
                                                    step.rc, step.first_line))
 
     def native_live_reconfiguration(self):
-        self.blocked(("V0-CFG-LIVE",),
-                     "the native owner's control socket carries ACL2-framed submissions "
-                     "(host/native/control.lisp), not the line protocol the matrix's "
-                     "`control` phase speaks, and this image has no public verb that "
-                     "declares a group on a live owner", verdict=NOT_BUILT,
-                     owner="native live administration",
-                     invocation="matrix.py control --socket ... --line 'DECLARE-GROUP ...'")
-        offline = self.sh("offline group create while the owner holds the store",
-                          self.cd(self.cli(self.a, "group create fn.matrix.offline")),
-                          timeout=900, expect=None)
-        self.from_step("V0-CFG-LIVE-REFUSE", offline,
-                       limit="the refusal is the writer lock's; a different server that "
-                             "does not take the writer lock would not produce it")
+        """The two halves, and one verb with two executors.
+
+        `operator CONFIG group create G` dispatches on the configuration's
+        `[control] path`: when that path is a live socket the request goes to
+        the running owner (`fnn-owner-live-admin-serialized`,
+        host/native/admin.lisp, through `fnn-operator-execute-admin`), and
+        otherwise the command opens the store itself and takes the writer
+        lock.  So the accepted half is the supplied configuration while its
+        own owner is live, read back over the socket; and the refused half
+        needs a configuration over the SAME store whose control path is a
+        name nothing has bound.  Neither half rewrites a supplied
+        configuration, and an image whose operator does not dispatch live
+        administration answers the first half with the writer-lock refusal,
+        which is recorded as the disagreement it is.
+        """
+        declare = self.sh(
+            "live reconfiguration: declare {} on node A".format(self.LIVE_GROUP),
+            self.cd(self.native_operator(self.a, "group", "create", self.LIVE_GROUP)),
+            timeout=900, expect=None)
+        probe = self.feed("presence", "--port {} --groups {}".format(
+            self.a.port, self.LIVE_GROUP),
+            name="node A serves {} without a restart".format(self.LIVE_GROUP),
+            expect=None)
+        served = self.payload(probe).get("groups", {}).get(self.LIVE_GROUP, "(no reply)")
+        invocation = "{}\n{}".format(declare.command, probe.command)
+        observed = "rc={} {}; GROUP {} -> {}".format(
+            declare.rc, declare.first_line or "(no output)", self.LIVE_GROUP, served)
+        limit = ("one group declared on one live owner: the operator verb's exit code is "
+                 "the acceptance and the service is then asked over its own socket "
+                 "whether the group reached the served configuration. No concurrent "
+                 "reader was observed across the change, and nothing here says the "
+                 "change survives a restart")
+        if declare.rc == EXIT_OK:
+            # The verb accepted; what decides the row is whether the RUNNING
+            # service serves the group, and that observation is the socket's.
+            self.emit("V0-CFG-LIVE", reply_verdict(served), invocation, observed,
+                      exit_code=declare.rc, limit=limit)
+        else:
+            self.emit("V0-CFG-LIVE", exit_verdict(declare.rc), invocation, observed,
+                      exit_code=declare.rc, client=CLIENT_CLI,
+                      limit=limit + "; the verb did not accept, so the socket reply "
+                                    "above is the state the node was left in")
+        store = self.native_config_store(self.a)
+        if not store:
+            self.emit("V0-CFG-LIVE-REFUSE", NOT_EXERCISED,
+                      "awk '[store] path' {}".format(self.native_configs["a"]),
+                      "(no store path)",
+                      blocker="node A's supplied configuration did not yield a "
+                              "`[store] path`, so no second configuration could name "
+                              "the same store and the offline half could not be put on "
+                              "the offline executor")
+            return
+        offline = "{}/offline".format(self.a.dir)
+        self.sh("offline configuration over node A's store", self.cd(
+            "mkdir -p {offline} && printf '[store]\\npath = \"%s\"\\n[control]\\n"
+            "path = \"%s\"\\n' {store} \"{offline}/never-bound.sock\" > {offline}/fn.toml"
+            .format(offline=offline, store=shlex.quote(store))), expect=None)
+        step = self.sh("offline group create while the owner holds the store", self.cd(
+            self.native_command(self.Raw("{}/fn.toml".format(offline)),
+                                "group", "create", "fn.matrix.offline")),
+            timeout=900, expect=None)
+        self.from_step(
+            "V0-CFG-LIVE-REFUSE", step,
+            limit="a second configuration over node A's OWN store whose `[control] "
+                  "path` names a socket nothing has bound, so the verb takes the "
+                  "offline executor while the live owner holds the writer lock; the "
+                  "refusal is that lock's and a server that does not take it would not "
+                  "produce it. The supplied configuration is unchanged, and with its "
+                  "own live control path the same words reach the live owner instead -- "
+                  "which is the row above")
 
     def native_stop(self, node: NodeSpec):
         """SIGTERM from the harness, then the offline operator reopens the store."""
@@ -3806,12 +4251,17 @@ exit "$rc"
     def execute_native_acceptance(self):
         """The native slice: packaged run, the operator verbs it has, and the sockets.
 
-        Init and live administration do not yet have a public native
-        composition on the images this slice targets.  They stay explicit
-        non-outcomes instead of falling back to a Python runtime peer or a
-        diagnostic native verb.  The order is the development gate's: read-only
-        socket phases before anything that can put an article into the owner's
-        drain, and the capability audit after the transit rows.
+        Init and reinit do not yet have a public native composition on the
+        images this slice targets.  They stay explicit non-outcomes instead
+        of falling back to a Python runtime peer or a diagnostic native verb.
+        The order is the development gate's: read-only socket phases before
+        anything that can put an article into the owner's drain, and the
+        capability audit after the transit rows.  Everything that must be in
+        place before a listener opens -- the groups, the capacity, the peer
+        records and the AUTHINFO credential, which the owner loads once at
+        startup -- runs in the offline window at the top, and the
+        auth-required and wildcard-listener subjects are scratch owners of
+        their own so that neither supplied configuration is rewritten.
         """
         self.configured = set()
         self.preflight()
@@ -3832,7 +4282,8 @@ exit "$rc"
                          nodes=(node.name,), invocation="packaging/fn-native operator CONFIG")
             if node.name not in self.native_configs:
                 self.blocked(("V0-NODE-STATUS", "V0-NODE-START") + self.POST_KEYS
-                             + self.READ_KEYS,
+                             + self.READ_KEYS + self.AUTH_KEYS
+                             + ("V0-AUTH-PASSWORD", "V0-AUTH-LIST"),
                              "no preprovisioned config was supplied for this optional "
                              "served-node slice; the native peering witness creates its "
                              "own temporary stores/configs through the public image",
@@ -3840,17 +4291,39 @@ exit "$rc"
             elif self.native_config_status(node):
                 self.configured.add(node.name)
 
-        self.blocked(("V0-NODE-LOOPBACK",),
-                     "this slice consumes existing configs and does not synthesize a "
-                     "second config solely to test the loopback refusal",
-                     invocation="packaging/fn-native operator CONFIG run")
+        self.emit("V0-AUTH-NEW", NOT_BUILT,
+                  "packaging/fn-native operator CONFIG principal new --seed FILE",
+                  "(not run)",
+                  blocker="the packaged native operator has no `principal new`: the "
+                          "local principal id is derived by ACL2 inside `set-password` "
+                          "(`fn-native-auth-admin-principal`, "
+                          "books/native-auth-admin.lisp) and no public verb derives one "
+                          "from a seed",
+                  owner="native principal derivation surface")
+        self.phase("loopback refusal", self.native_loopback_refusal)
 
-        # Offline administration, while no owner holds the writer lock.
+        # Offline administration, while no owner holds the writer lock.  The
+        # credential is enrolled here and nowhere later: the native owner
+        # loads `[auth] path` once, before its listener opens.
         for node in self.nodes:
             if node.name in self.configured:
                 self.phase("native groups {}".format(node.name), self.groups, node)
                 self.phase("native capacity {}".format(node.name),
                            self.native_capacity, node)
+                self.phase("native principals {}".format(node.name),
+                           self.native_principals, node)
+                self.phase("native auth gate {}".format(node.name),
+                           self.native_auth_gate, node)
+            elif node.name in self.native_configs:
+                # A supplied configuration the offline operator could not open
+                # is a named reason, not the end-of-run sweep's silence.
+                self.blocked(("V0-AUTH-PASSWORD", "V0-AUTH-LIST", "V0-AUTH-GATED"),
+                             "node {}'s supplied configuration did not open cleanly for "
+                             "the pre-start public status action, so this run wrote no "
+                             "credential into its registry".format(node.upper),
+                             nodes=(node.name,),
+                             invocation=self.native_operator(
+                                 node, "principal", "set-password", AUTH_USER))
         if all(n.name in self.configured for n in self.nodes):
             self.phase("native peer records", self.native_peer_records)
 
@@ -3863,7 +4336,8 @@ exit "$rc"
         for node in self.nodes:
             if not node.port:
                 blocker = self.node_blocker(node)
-                self.blocked(self.POST_KEYS + self.READ_KEYS + ("V0-GROUP-SERVED",),
+                self.blocked(self.POST_KEYS + self.READ_KEYS
+                             + self.AUTH_SESSION_KEYS + ("V0-GROUP-SERVED",),
                              blocker, nodes=(node.name,),
                              invocation=self.native_operator(node, "run"))
                 continue
@@ -3881,6 +4355,15 @@ exit "$rc"
                     "article-number and Message-ID reader rows would otherwise test a "
                     "guessed pre-existing store state",
                     nodes=(node.name,), invocation="matrix.py surface")
+            # AUTHINFO after the read-only rows and after POST: this phase
+            # posts an authenticated article, and a phase that can put an
+            # article into the owner's drain runs once the rows that only
+            # read have been taken.
+            if (self.native_credential.get(node.name)
+                    and self.require_live(node, self.AUTH_SESSION_KEYS,
+                                          nodes=(node.name,))):
+                self.phase("native AUTHINFO {}".format(node.name),
+                           self.native_auth_session, node)
             if self.require_live(node, ("V0-OUT-ACCEPTED", "V0-OUT-REFUSED"),
                                  nodes=(node.name,)):
                 self.phase("native outcomes {}".format(node.name),
@@ -3889,6 +4372,7 @@ exit "$rc"
 
         live = [n for n in self.nodes if n.port and self.alive(n)]
         if len(live) == 2:
+            self.phase("independent clients", self.independent_clients)
             for source, target, way in ((self.a, self.b, "ab"), (self.b, self.a, "ba")):
                 if self.require_live(target, self.TRANSIT_KEYS, directions=(way,)):
                     self.phase("transit {}".format(way.upper()),
@@ -3918,7 +4402,8 @@ exit "$rc"
                 "fewer than two nodes were live when the paired phases would "
                 "have run: {} of 2 live".format(len(live)))
             self.blocked(("V0-POST-CONCURRENT", "V0-CFG-LIVE", "V0-CFG-LIVE-REFUSE",
-                          "V0-PIN-DISPATCHED", "V0-PIN-ADVERTISED")
+                          "V0-PIN-DISPATCHED", "V0-PIN-ADVERTISED",
+                          "V0-CLIENT-NNTPLIB", "V0-CLIENT-SLRN")
                          + self.TRANSIT_KEYS, blocker)
 
         self.phase("native transit/feed/restart", self.native_peering_suite)

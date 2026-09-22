@@ -5,7 +5,10 @@ boundary so that such a run cannot silently select a Python server, lose its
 image/source labels, or label an unmeasured native feed as accepted.
 """
 import json
+import os
 from pathlib import Path
+import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -112,11 +115,77 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
                 '"core_sha256":"' + "b" * 64 + '"}}}',
             ))
 
-    def sh(self, name, script, timeout=600, note="", expect=0):
-        output = ""
+    # Canned host output, by step name.  A native row that is a real
+    # measurement needs the observation its phase reads -- a driver payload,
+    # a LISTENING line, a configured path -- and a fixture that returns an
+    # empty string for all of them tests only the not-exercised branch.
+    AUTH_PAYLOAD = json.dumps({
+        "CAPABILITIES BEFORE": "101 capabilities",
+        "advertised_before": ["READER", "POST", "AUTHINFO"],
+        "AUTHINFO ADVERTISED": True,
+        "POST BEFORE": "480 authentication required",
+        "AUTHINFO USER": "381 password required",
+        "AUTHINFO PASS": "281 authentication accepted",
+        "CAPABILITIES AFTER": "101 capabilities",
+        "advertised_after": ["READER", "POST"],
+        "AUTHINFO WITHDRAWN": True,
+        "POST AFTER": "340 send it",
+        "POST AFTER COMMIT": "240 article received",
+        "AUTHINFO WRONG": "481 authentication failed",
+        "ok": True,
+    })
+    UNGATED_AUTH_PAYLOAD = json.dumps({
+        "CAPABILITIES BEFORE": "101 capabilities",
+        "advertised_before": ["READER", "POST", "AUTHINFO"],
+        "AUTHINFO ADVERTISED": True,
+        "POST BEFORE": "340 send it",
+        "AUTHINFO USER": "381 password required",
+        "AUTHINFO PASS": "281 authentication accepted",
+        "advertised_after": ["READER", "POST"],
+        "AUTHINFO WITHDRAWN": True,
+        "POST AFTER": "340 send it",
+        "POST AFTER COMMIT": "240 article received",
+        "AUTHINFO WRONG": "481 authentication failed",
+        "ok": True,
+    })
+
+    def canned(self, name):
         if name == "native public peering/restart witness":
-            output = self.witness_output()
-        step = Step(name, script, 0, output, 0.0, note, expect)
+            return self.witness_output()
+        if name == "native AUTHINFO secret":
+            return "SECRET-READY"
+        if name.startswith("start server"):
+            return "LISTENING 11292"
+        if name.endswith("principal list"):
+            return "matrix principal=" + "c" * 64 + " posting=true"
+        if name.endswith("configured store"):
+            return "/srv/fn/a-store"
+        if "auth-required AUTHINFO gate" in name:
+            return self.AUTH_PAYLOAD
+        if "AUTHINFO session" in name:
+            return self.UNGATED_AUTH_PAYLOAD
+        if "serves fn.matrix.live" in name:
+            return json.dumps({"groups": {"fn.matrix.live": "211 1 1 1 fn.matrix.live"},
+                               "ok": True})
+        if name == "nntplib interpreter":
+            return "USE python3.12"
+        if name.startswith("independent nntplib client"):
+            return json.dumps({"client": "stdlib nntplib", "python": "3.12.7",
+                               "commands": ["CAPABILITIES", "GROUP", "ARTICLE"],
+                               "group": {"count": 1}, "article_lines": 9,
+                               "absent": "430 no such article", "ok": True})
+        return ""
+
+    # The exit code a real image gives, where it is not 0 and the row's
+    # honesty depends on it: the wildcard listener is refused at
+    # configuration ADMISSION and reported as a usage error, and an offline
+    # administrative command against a store a live owner holds is refused.
+    CANNED_RC = {"loopback refusal: run": v0_matrix.EXIT_USAGE,
+                 "offline group create while the owner holds the store": 1}
+
+    def sh(self, name, script, timeout=600, note="", expect=0):
+        step = Step(name, script, self.CANNED_RC.get(name, 0), self.canned(name),
+                    0.0, note, expect)
         self.steps.append(step)
         return step
 
@@ -288,7 +357,7 @@ class NativeSliceAccountingTests(unittest.TestCase):
                 self.assertNotIn("bin/fn", rows[rid].invocation, rid)
             self.assertEqual(rows["V0-OUT-UNCERTAIN-A"].verdict, v0_matrix.NOT_BUILT)
             self.assertEqual(rows["V0-PEER-LIST-A"].verdict, v0_matrix.NOT_BUILT)
-            self.assertEqual(rows["V0-CFG-LIVE"].verdict, v0_matrix.NOT_BUILT)
+            self.assertEqual(rows["V0-CFG-LIVE"].verdict, v0_matrix.ACCEPTED)
             # The node's own path identity is a real operator step now, before
             # the peer records and before either owner starts.
             identity = rows["V0-TRANSIT-IDENTITY-A"]
@@ -300,6 +369,206 @@ class NativeSliceAccountingTests(unittest.TestCase):
                             order.index("V0-PEER-ADD-A"))
             self.assertLess(order.index("V0-PEER-ADD-A"),
                             order.index("V0-NODE-START-A"))
+
+    def test_native_authinfo_rows_are_measured_and_name_their_two_subjects(self):
+        """F-AUTH: the credential half on the served node, the policy half on
+        a scratch owner that requires authentication.  The supplied
+        configuration is never rewritten and no secret is in an invocation."""
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.structured_gate(home)
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            self.assertEqual(rows["V0-AUTH-NEW"].verdict, v0_matrix.NOT_BUILT)
+            self.assertIn("principal new", rows["V0-AUTH-NEW"].blocker)
+            for node in ("A", "B"):
+                enrol = rows["V0-AUTH-PASSWORD-" + node]
+                self.assertEqual(enrol.verdict, v0_matrix.ACCEPTED)
+                self.assertIn("principal set-password matrix", enrol.invocation)
+                self.assertIn("auth.secret.pair", enrol.invocation)
+                self.assertEqual(rows["V0-AUTH-LIST-" + node].verdict,
+                                 v0_matrix.ACCEPTED)
+                self.assertIn("principal list", rows["V0-AUTH-LIST-" + node].invocation)
+                # The five session rows come from the SERVED node's listener.
+                self.assertEqual(rows["V0-AUTH-ADVERTISED-" + node].verdict,
+                                 v0_matrix.ACCEPTED)
+                self.assertEqual(rows["V0-AUTH-LOGIN-" + node].verdict,
+                                 v0_matrix.ACCEPTED)
+                self.assertEqual(rows["V0-AUTH-WITHDRAWN-" + node].verdict,
+                                 v0_matrix.ACCEPTED)
+                self.assertEqual(rows["V0-AUTH-POST-" + node].verdict,
+                                 v0_matrix.ACCEPTED)
+                self.assertEqual(rows["V0-AUTH-WRONG-" + node].verdict,
+                                 v0_matrix.REFUSED)
+                self.assertIn("--secret-file",
+                              rows["V0-AUTH-LOGIN-" + node].invocation)
+                # The gated row is the policy row, and it says whose policy.
+                gated = rows["V0-AUTH-GATED-" + node]
+                self.assertEqual(gated.verdict, v0_matrix.REFUSED)
+                self.assertIn("480", gated.observed)
+                self.assertIn("[auth] required = true", gated.limit)
+                self.assertIn("scratch store beside node", gated.limit)
+            for row in gate.rows:
+                self.assertIsNone(re.search(r"--secret (?!'')\S", row.invocation),
+                                  row.id)
+            # Every credential step ran before either owner started, because
+            # the native owner loads the registry once, before its listener.
+            order = [row.id for row in gate.rows]
+            self.assertLess(order.index("V0-AUTH-PASSWORD-A"),
+                            order.index("V0-NODE-START-A"))
+            self.assertLess(order.index("V0-AUTH-GATED-A"),
+                            order.index("V0-NODE-START-A"))
+
+    def test_no_recorded_command_of_the_native_slice_carries_the_secret(self):
+        """The secret is generated on the execution host and read from a file:
+        `report.md` renders every command in full, so a secret in a command
+        word or in an installed file's base64 would be in the evidence."""
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.structured_gate(home)
+            gate.execute_native_acceptance()
+            secret = [step for step in gate.steps
+                      if step.name == "native AUTHINFO secret"]
+            self.assertEqual(len(secret), 1)
+            self.assertIn("/dev/urandom", secret[0].command)
+            self.assertNotIn("install auth.secret",
+                             [step.name for step in gate.steps])
+
+    def test_live_group_administration_is_the_verb_plus_a_socket_probe(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.structured_gate(home)
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            live = rows["V0-CFG-LIVE"]
+            self.assertEqual(live.verdict, v0_matrix.ACCEPTED)
+            self.assertIn("group create fn.matrix.live", live.invocation)
+            self.assertIn("presence", live.invocation)
+            self.assertIn("211", live.observed)
+            self.assertEqual(live.client, v0_matrix.CLIENT_DRIVER)
+            # The refusal half is on the OFFLINE executor: a second
+            # configuration over the same store whose control path is unbound.
+            refuse = rows["V0-CFG-LIVE-REFUSE"]
+            self.assertEqual(refuse.verdict, v0_matrix.REFUSED)
+            self.assertIn("/offline/fn.toml", refuse.invocation)
+            self.assertIn("offline executor", refuse.limit)
+            self.assertIn("never-bound.sock", "\n".join(
+                step.command for step in gate.steps))
+            self.assertNotIn("/srv/fn/a.toml", refuse.invocation)
+
+    def test_a_declared_group_the_service_does_not_serve_is_not_accepted(self):
+        class SilentReconfiguration(HarnessOnlyNativeGate):
+            def canned(self, name):
+                if "serves fn.matrix.live" in name:
+                    return json.dumps({"groups": {"fn.matrix.live": "411 no such group"},
+                                       "ok": False})
+                return super().canned(name)
+        with tempfile.TemporaryDirectory() as home:
+            gate = SilentReconfiguration(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+            gate.execute_native_acceptance()
+            row = {r.id: r for r in gate.rows}["V0-CFG-LIVE"]
+            # The verb exited 0; the running service is what decides the row.
+            self.assertEqual(row.verdict, v0_matrix.REFUSED)
+            self.assertIn("411", row.observed)
+
+    def test_wildcard_listener_is_measured_and_its_usage_code_is_named(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.structured_gate(home)
+            gate.execute_native_acceptance()
+            row = {r.id: r for r in gate.rows}["V0-NODE-LOOPBACK"]
+            # 5 is not one of the three outcomes, so the row is not-exercised
+            # with the code named -- never a refusal read off a usage error.
+            self.assertEqual(row.verdict, v0_matrix.NOT_EXERCISED)
+            self.assertEqual(row.exit_code, v0_matrix.EXIT_USAGE)
+            self.assertIn("exited 5", row.blocker)
+            self.assertIn('host = "0.0.0.0"', row.invocation)
+            self.assertIn("packaging/fn-native operator", row.invocation)
+            self.assertIn("run", row.invocation)
+            self.assertIn("configuration admission", row.limit)
+            self.assertIn("non-loopback IPv4", row.limit)
+
+    def test_the_independent_client_runs_on_the_native_backend(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.structured_gate(home)
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            for node in ("A", "B"):
+                row = rows["V0-CLIENT-NNTPLIB-" + node]
+                self.assertEqual(row.verdict, v0_matrix.ACCEPTED)
+                self.assertIn("independent.py", row.invocation)
+                self.assertIn("python3.12", row.invocation)
+                self.assertIn("--group fn.letters", row.invocation)
+                # The only row in the matrix fn did not observe itself.
+                self.assertTrue(row.independent)
+            self.assertEqual(rows["V0-CLIENT-SLRN"].verdict, v0_matrix.NOT_EXERCISED)
+
+    def test_no_interpreter_with_nntplib_blocks_the_client_rows_honestly(self):
+        class NoNntplib(HarnessOnlyNativeGate):
+            def canned(self, name):
+                if name == "nntplib interpreter":
+                    return "NONE"
+                return super().canned(name)
+        with tempfile.TemporaryDirectory() as home:
+            gate = NoNntplib(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+            gate.execute_native_acceptance()
+            rows = [row for row in gate.rows if row.id.startswith("V0-CLIENT-NNTPLIB")]
+            self.assertEqual(len(rows), 2)
+            for row in rows:
+                self.assertEqual(row.verdict, v0_matrix.NOT_EXERCISED)
+                self.assertIn("stdlib nntplib", row.blocker)
+
+    def test_an_image_without_the_principal_verb_reads_as_not_exercised(self):
+        """A usage error is not an outcome: the credential rows carry the
+        code and the session rows name the enrolment that did not happen."""
+        class NoPrincipalVerb(HarnessOnlyNativeGate):
+            def sh(self, name, script, timeout=600, note="", expect=0):
+                step = super().sh(name, script, timeout, note, expect)
+                if "principal" in script:
+                    step = Step(name, script, v0_matrix.EXIT_USAGE,
+                                "usage: fn operator CONFIG "
+                                "{help|run|post|status|recover|group|capacity|peer}",
+                                0.0, note, expect)
+                    self.steps[-1] = step
+                return step
+        with tempfile.TemporaryDirectory() as home:
+            gate = NoPrincipalVerb(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            for rid in ("V0-AUTH-PASSWORD-A", "V0-AUTH-LIST-A", "V0-AUTH-LOGIN-A",
+                        "V0-AUTH-ADVERTISED-B", "V0-AUTH-GATED-B"):
+                self.assertEqual(rows[rid].verdict, v0_matrix.NOT_EXERCISED, rid)
+                self.assertTrue(rows[rid].blocker, rid)
+            self.assertIn("exited 5", rows["V0-AUTH-PASSWORD-A"].blocker)
+            self.assertIn("set-password", rows["V0-AUTH-LOGIN-A"].blocker)
+
+    def test_a_config_that_does_not_open_names_the_credential_rows_reason(self):
+        class UnopenableConfig(HarnessOnlyNativeGate):
+            def native_config_status(self, node):
+                if node.name == "b":
+                    self.emit("V0-NODE-STATUS", v0_matrix.UNCERTAIN,
+                              self.native_operator(node, "status"),
+                              "uncertain operator status", node=node.name,
+                              exit_code=3, client=v0_matrix.CLIENT_CLI)
+                    return False
+                return super().native_config_status(node)
+        with tempfile.TemporaryDirectory() as home:
+            gate = UnopenableConfig(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            for rid in ("V0-AUTH-PASSWORD-B", "V0-AUTH-LIST-B", "V0-AUTH-GATED-B"):
+                self.assertEqual(rows[rid].verdict, v0_matrix.NOT_EXERCISED, rid)
+                self.assertIn("did not open cleanly", rows[rid].blocker, rid)
+            # Node A is unaffected: one node's configuration is not the other's.
+            self.assertEqual(rows["V0-AUTH-PASSWORD-A"].verdict, v0_matrix.ACCEPTED)
 
     def test_successful_shared_witness_maps_only_the_cases_it_exercises(self):
         with tempfile.TemporaryDirectory() as home:
@@ -319,6 +588,97 @@ class NativeSliceAccountingTests(unittest.TestCase):
                              v0_matrix.ACCEPTED)
             self.assertEqual(rows["V0-TRANSIT-TAKETHIS-AB"].verdict,
                              v0_matrix.NOT_EXERCISED)
+
+
+class AuthDriverTests(unittest.TestCase):
+    """The shipped `auth` phase itself, driven against a fake Conn.
+
+    The two things the native slice depends on and that no gate-level stub
+    can show: the secret arrives as a FILE and never as an argument, and the
+    unauthenticated POST probe does not leave the server inside a transfer.
+    """
+
+    FAKE_DRIVER = r'''
+import json, os
+
+def note(kind, value=""):
+    with open(os.environ["AUTH_LOG"], "a", encoding="utf-8") as out:
+        out.write(json.dumps([kind, value]) + "\n")
+
+class Sock:
+    def sendall(self, payload):
+        note("sendall", payload.decode("ascii"))
+    def close(self):
+        note("close")
+
+class Conn:
+    def __init__(self, port, timeout=30):
+        self.sock = Sock()
+        self.greeting = "200 ready"
+    def cmd(self, text, multiline=False):
+        note("cmd", text)
+        if text == "CAPABILITIES":
+            return "101 capability list follows", ["READER", "POST", "AUTHINFO USER"]
+        if text.startswith("AUTHINFO USER"):
+            return "381 password required", []
+        if text.startswith("AUTHINFO PASS"):
+            return ("281 authentication accepted"
+                    if text == "AUTHINFO PASS 0f0f0f0f0f0f0f0f" else
+                    "481 authentication failed"), []
+        if text == "POST":
+            return "340 send article", []
+        return "500 command not recognized", []
+    def send(self, text):
+        note("send", text)
+    def line(self):
+        note("line")
+        return "441 posting failed"
+    def close(self):
+        self.sock.close()
+'''
+
+    def run_auth(self, directory, extra):
+        (directory / "drive.py").write_text(self.FAKE_DRIVER)
+        (directory / "matrix.py").write_text(v0_matrix.MATRIX_DRIVER)
+        log = directory / "auth.log"
+        done = subprocess.run(
+            [sys.executable, "matrix.py", "auth", "--port", "1",
+             "--group", "fn.letters", "--user", "matrix",
+             "--msgid", "<auth@example.invalid>"] + extra,
+            cwd=directory, env=dict(os.environ, AUTH_LOG=str(log)), text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        return done, calls
+
+    def test_the_secret_is_read_from_a_file_and_used_as_the_password(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            secret = directory / "auth.secret"
+            secret.write_text("0f0f0f0f0f0f0f0f\n")
+            done, calls = self.run_auth(directory, ["--secret-file", str(secret)])
+            self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+            result = json.loads(done.stdout.strip().splitlines()[-1])
+            self.assertEqual(result["AUTHINFO PASS"], "281 authentication accepted")
+            # The wrong-password probe must be a DIFFERENT password, or the
+            # 481 row would be measuring the same secret as the 281 row.
+            self.assertEqual(result["AUTHINFO WRONG"], "481 authentication failed")
+            self.assertIn(["cmd", "AUTHINFO PASS 0f0f0f0f0f0f0f0f"], calls)
+            self.assertIn(["cmd", "AUTHINFO PASS not-0f0f0f0f0f0f0f0f"], calls)
+
+    def test_a_permitted_unauthenticated_post_is_closed_not_abandoned(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            secret = directory / "auth.secret"
+            secret.write_text("0f0f0f0f0f0f0f0f\n")
+            done, calls = self.run_auth(directory, ["--secret-file", str(secret)])
+            result = json.loads(done.stdout.strip().splitlines()[-1])
+            self.assertEqual(result["POST BEFORE"], "340 send article")
+            # Not a bare `close` after the 340: the empty block terminates
+            # the transfer the 340 opened, and the reply is recorded.
+            first = calls.index(["cmd", "POST"])
+            self.assertEqual(calls[first + 1], ["sendall", ".\r\n"])
+            self.assertEqual(calls[first + 2], ["line", ""])
+            self.assertEqual(result["POST BEFORE CLOSE"], "441 posting failed")
 
 
 if __name__ == "__main__":
