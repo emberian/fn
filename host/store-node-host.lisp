@@ -391,19 +391,13 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 ; The listing.  Names first, then one slot at a time in the codec's own
 ; vocabulary (books/peer-config, `fn-cfg-peer-rows'): nothing about a peer is
-; rendered by Python from a shape it guessed.
-(defun fn-store-cfg-peer-name-list (rows)
-  (declare (xargs :mode :program))
-  (if (consp rows)
-      (if (equal (fn-cfg-row-b (car rows)) "path-identity")
-          (cons (fn-cfg-row-a (car rows)) (fn-store-cfg-peer-name-list (cdr rows)))
-        (fn-store-cfg-peer-name-list (cdr rows)))
-    nil))
-
+; rendered by Python from a shape it guessed.  The enumeration was a
+; :program-mode copy of the same fold and is now books/peer-config's
+; `fn-cfg-peer-names', so the peer table has one way of being listed.
 (defun fn-store-cfg-peer-names (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-store-cfg-join-names
-          (fn-store-cfg-peer-name-list
+          (fn-cfg-peer-names
            (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state)))))))
 
 (defun fn-store-cfg-peer-rows-of (name-octets state)

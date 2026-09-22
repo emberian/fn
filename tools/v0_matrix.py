@@ -1376,12 +1376,19 @@ class V0Matrix(twonode_gate.TwoNodeGate):
     def __init__(self, *args, scale=False, inn=False, campaign=True,
                  backend=DEVELOPMENT_BACKEND, native_image=None,
                  native_configs=None, native_group=GROUPS[0],
-                 native_image_source=None, native_runtime=None, **kwargs):
+                 native_image_source=None, native_runtime=None,
+                 native_developer_image=None, **kwargs):
         super().__init__(*args, **kwargs)
         if backend not in BACKENDS:
             raise GateError("unknown execution backend {!r}".format(backend))
         self.backend = backend
         self.native_image = native_image
+        # The developer image, when the operator supplied one.  It is the
+        # subject of exactly one row: the uncertain outcome is a cut the
+        # production image refuses rather than honours, so measuring it needs
+        # an owner built with the developer profile.  Nothing else in this
+        # slice runs on it.
+        self.native_developer_image = native_developer_image
         self.native_configs = dict(native_configs or {})
         self.native_group = native_group
         self.native_image_source = native_image_source
@@ -1389,6 +1396,9 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         self.image_identity = ("development Python entry points from {}".format(self.rev)
                                if backend == DEVELOPMENT_BACKEND else
                                "{} (digest not probed)".format(native_image or "(missing)"))
+        # What the init/uncertain phase observed per node, for the D13 fact
+        # the outcomes phase records.
+        self.native_uncertain: dict = {}
         self.native_post_ids = {
             name: "<native-matrix-{}-{}@example.invalid>".format(
                 uuid.uuid4().hex[:12], name) for name in ("a", "b")
@@ -1541,7 +1551,7 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         were.
         """
 
-    def native_command(self, config, *words) -> str:
+    def native_command(self, config, *words, image=None, env=None) -> str:
         """The packaged public native command against one named configuration.
 
         `env` in front: the gate starts a node as `nohup <command> &`, and
@@ -1551,8 +1561,10 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         """
         def word(one):
             return one if isinstance(one, self.Raw) else shlex.quote(one)
-        return "env FN_NATIVE_HOST={} packaging/fn-native operator {} {}".format(
-            shlex.quote(self.native_image), word(config),
+        return "env {}FN_NATIVE_HOST={} packaging/fn-native operator {} {}".format(
+            "".join("{}={} ".format(name, shlex.quote(value))
+                    for name, value in sorted((env or {}).items())),
+            shlex.quote(image or self.native_image), word(config),
             " ".join(word(one) for one in words))
 
     def cli(self, node, args) -> str:
@@ -3676,6 +3688,187 @@ exit "$rc"
     AUTH_GATE_PORTS = {"a": 11292, "b": 11293}
     LOOPBACK_DECLARED_PORT = 11294
 
+    # One loopback port per node for the scratch owner the init/uncertain
+    # phase serves; it must collide with neither supplied configuration nor
+    # the capacity and auth-gate scratch owners above.
+    INIT_OWNER_PORTS = {"a": 11295, "b": 11296}
+
+    def native_init_lifecycle(self, node: NodeSpec):
+        """A whole node, stood up and taken apart by the public operator alone.
+
+        `init` creates the store the configuration names; an owner of its own
+        serves it; one submission's durable outcome is made unknown to its
+        caller; `recover` reopens the store that owner released when it fenced
+        itself; and a second `init` over the store is refused with its history
+        intact.  Every step is one public verb against one configuration --
+        the image's low-level `store ROOT init` entry appears nowhere in this
+        phase, which is the point of it.
+
+        The subject is a scratch node beside the served one.  The uncertain
+        half needs a developer-profile image, because the cut that produces
+        it (`FN_NATIVE_CONTROL_FAULT`, host/native/owner.lisp) is refused by a
+        production image rather than honoured; with no `--native-developer-image`
+        the phase posts an ordinary article instead, so the init and reinit
+        rows are still measured and V0-OUT-UNCERTAIN stays not-built with the
+        image it wanted named.
+        """
+        scratch = "{}/init".format(node.dir)
+        store = "{}/store".format(scratch)
+        config = "{}/fn.toml".format(scratch)
+        port = self.INIT_OWNER_PORTS[node.name]
+        # Every path here is a `$HOME/...` shell expression by construction
+        # (see `Raw`), so none of them is quoted.
+        self.sh("node {} init scratch configuration".format(node.upper), self.cd(
+            "mkdir -p {scratch} && printf '[store]\\npath = \"%s\"\\n[listener]\\n"
+            "host = \"127.0.0.1\"\\nport = {port}\\n[control]\\npath = \"%s\"\\n' "
+            "\"{store}\" \"{scratch}/control.sock\" > {config}".format(
+                scratch=scratch, store=store, port=port, config=config)),
+            timeout=900, expect=None)
+        created = self.sh("node {} operator init".format(node.upper), self.cd(
+            self.native_command(self.Raw(config), "init", self.native_group)),
+            timeout=900, expect=None)
+        self.from_step("V0-NODE-INIT", created, node=node.name,
+                       limit="the store `[store] path` names, created by the public "
+                             "operator verb rather than by the image's low-level "
+                             "`store ROOT init` diagnostic; the groups are the ones "
+                             "this command named and there is no default table, so an "
+                             "`init` with no group is a usage error and not a store "
+                             "nobody chose the contents of. A scratch node beside the "
+                             "served one: nothing here changes what the node serves")
+        self.emit("V0-NODE-CONFIG", NOT_BUILT,
+                  self.native_command(self.Raw(config), "init", self.native_group),
+                  "(not run)", node=node.name,
+                  blocker="the native configuration has no `[acl2] path`: ACL2 is "
+                          "inside the image, so half of this row has no native "
+                          "subject. The `[store] path` half is what the row above "
+                          "consumed, and no native verb writes an fn.toml",
+                  owner="native configuration schema")
+        if created.rc != EXIT_OK:
+            self.blocked(("V0-NODE-REINIT", "V0-NODE-REINIT-SAFE"),
+                         "the operator could not create the scratch store (rc={} {}), "
+                         "so a second init over it would not have been the subject "
+                         "this row names".format(created.rc, created.first_line),
+                         nodes=(node.name,), invocation=created.command)
+            self.blocked(("V0-OUT-UNCERTAIN",),
+                         "the operator could not create the scratch store the "
+                         "uncertain submission needs (rc={} {})".format(
+                             created.rc, created.first_line),
+                         verdict=NOT_BUILT, owner="native operator init surface",
+                         nodes=(node.name,), invocation=created.command)
+            return
+
+        developer = self.native_developer_image
+        tag = "init-{}".format(node.name)
+        command = self.native_command(
+            self.Raw(config), "run", image=developer or self.native_image,
+            env={"FN_NATIVE_CONTROL_FAULT": "postpublish"} if developer else None)
+        started = self.start_server("node {} init owner".format(node.upper),
+                                    command, tag, run=scratch)
+        if not started:
+            self.blocked(("V0-NODE-REINIT", "V0-NODE-REINIT-SAFE"),
+                         "the scratch owner over the freshly initialised store did not "
+                         "reach LISTENING on port {}: {}; without an accepted article "
+                         "the reinit rows would be about an empty store".format(
+                             port, self.server_failure),
+                         nodes=(node.name,), invocation=command)
+            self.blocked(("V0-OUT-UNCERTAIN",),
+                         "the scratch owner that carries the cut did not reach "
+                         "LISTENING on port {}: {}".format(port, self.server_failure),
+                         verdict=NOT_BUILT, owner="native developer cut campaign",
+                         nodes=(node.name,), invocation=command)
+            return
+
+        msgid = "<init-{}@example.invalid>".format(node.name)
+        payload = "{}/init.article".format(scratch)
+        self.push_file(article(msgid, self.native_group, "one durable outcome",
+                               "Submitted on the {} init scratch node by the v0 "
+                               "matrix.".format(node.upper)), payload)
+        try:
+            submitted = self.sh(
+                "node {} submission to the init scratch owner".format(node.upper),
+                self.cd(self.native_command(
+                    self.Raw(config), "post", "--message-id", msgid,
+                    "--payload", self.Raw(payload), "--group", self.native_group)),
+                timeout=900, expect=None)
+        finally:
+            # The fenced owner exits on its own; this is for every other path.
+            self.stop_server(tag, run=scratch)
+        self.native_uncertain[node.name] = submitted.rc
+        if developer:
+            self.from_step(
+                "V0-OUT-UNCERTAIN", submitted, node=node.name,
+                limit="the OWNER is the developer image and carries "
+                      "`FN_NATIVE_CONTROL_FAULT=postpublish`, one entry of the same "
+                      "named cut table `store post --inject-fault` selects from: "
+                      "FNN-STORE-INDETERMINATE after the final publication, so the "
+                      "record is durable and its report is not. The CLIENT is the "
+                      "production image and invents nothing: the word is ACL2's "
+                      "`fn-own-control-outcome-result`, carried as the :UNCERTAIN "
+                      "status of books/native-control.lisp and projected to 3 by "
+                      "`fn-native-control-status-exit-code`. The article is asserted "
+                      "in neither direction afterwards; an indeterminate outcome is "
+                      "evidence about the report. This is not a power loss")
+        else:
+            self.blocked(("V0-OUT-UNCERTAIN",),
+                         "this run supplied no --native-developer-image: the cut that "
+                         "makes one submission's durable outcome unknown to its caller "
+                         "is developer-only and a production image refuses the "
+                         "variable that selects it rather than honouring it "
+                         "(host/native/owner.lisp, `fnn-owner-control-test-fault`). "
+                         "The submission above ran against a production owner and was "
+                         "an ordinary outcome (rc={})".format(submitted.rc),
+                         verdict=NOT_BUILT, owner="native developer cut campaign",
+                         nodes=(node.name,), invocation=command)
+
+        recover = self.sh("node {} recover the init scratch store".format(node.upper),
+                          self.cd(self.native_command(self.Raw(config), "recover")),
+                          timeout=900, expect=None)
+        if "V0-OUT-RECOVER-" + node.upper not in self.emitted:
+            self.from_step("V0-OUT-RECOVER", recover, node=node.name,
+                           limit="recovery of the store the scratch owner released"
+                                 + (" when it fenced itself on the uncertain "
+                                    "publication above" if developer else
+                                    "; no uncertain publication preceded it, because "
+                                    "this run had no developer image"))
+        again = self.sh("node {} second operator init".format(node.upper), self.cd(
+            self.native_command(self.Raw(config), "init", self.native_group)),
+            timeout=900, expect=None)
+        self.from_step("V0-NODE-REINIT", again, node=node.name,
+                       limit="a second `init` over the store the first one made, "
+                             "which by then holds a submission. The refusal is on the "
+                             "presence of the store's own entries -- `config.json`, "
+                             "`writer.lock`, `allocation-frontier.json`, "
+                             "`transactions/`, `config/` -- so no lock is opened to "
+                             "reach it; the next row is whether that is true")
+        after = self.sh("node {} recover after the second init".format(node.upper),
+                        self.cd(self.native_command(self.Raw(config), "recover")),
+                        timeout=900, expect=None)
+        held = recover.first_line or ""
+        kept = after.first_line or ""
+        counted = re.search(r"articles=(\d+)", held)
+        safe = (recover.rc == EXIT_OK and after.rc == EXIT_OK and held == kept
+                and counted is not None and int(counted.group(1)) > 0)
+        if safe:
+            self.emit("V0-NODE-REINIT-SAFE", ACCEPTED,
+                      "{}\n{}".format(again.command, after.command),
+                      "before: {} / after: {}".format(held, kept),
+                      node=node.name, exit_code=after.rc, client=CLIENT_CLI,
+                      limit="the whole recovery line is compared, not only a count: "
+                            "transactions, articles, staging orphans, anchor and "
+                            "checkpoint are all as they were before the refused "
+                            "init. The store held {} article(s), so the comparison "
+                            "separates more than an empty store from itself".format(
+                                counted.group(1)))
+        else:
+            self.emit("V0-NODE-REINIT-SAFE", NOT_EXERCISED,
+                      "{}\n{}".format(again.command, after.command),
+                      "before: {} / after: {}".format(held or "(no output)",
+                                                      kept or "(no output)"),
+                      node=node.name, exit_code=after.rc, client=CLIENT_CLI,
+                      blocker="the two recoveries around the refused init did not "
+                              "both report a store with articles in it, so this run "
+                              "has no non-degenerate before/after to compare")
+
     def native_capacity(self, node: NodeSpec):
         """`capacity` on a scratch store beside the served one, and its refusal."""
         scratch = "{}/capacity".format(node.dir)
@@ -4103,12 +4296,35 @@ exit "$rc"
                     "node {} could not write a peer record for {} (rc={}, {}); the "
                     "transit rows below run without the peer table they name"
                     .format(node.upper, other.upper, add.rc, add.first_line))
-            self.blocked(("V0-PEER-LIST",),
-                         "the packaged native operator has no `peer list` verb; the "
-                         "record's effect is observed by whether the peer's transit "
-                         "is dispatched", verdict=NOT_BUILT,
-                         owner="native peer listing", nodes=(node.name,),
-                         invocation=self.native_operator(node, "peer", "list"))
+            listed = self.sh("node {} lists its peers".format(node.upper),
+                             self.cd(self.native_operator(node, "peer", "list")),
+                             timeout=900, expect=None)
+            # The row is whether the record READS BACK, so an accepted listing
+            # that does not name the peer is a refusal of the row, not of the
+            # command: a listing nobody is in is still a listing.
+            shows = other.path_identity in listed.output
+            self.emit("V0-PEER-LIST",
+                      ACCEPTED if (listed.rc == EXIT_OK and shows)
+                      else REFUSED if listed.rc == EXIT_OK
+                      else exit_verdict(listed.rc), listed.command,
+                      "rc={} names {}: {}".format(listed.rc, other.path_identity, shows),
+                      node=node.name, exit_code=listed.rc, client=CLIENT_CLI,
+                      limit="the record read back out of the durable configuration, in "
+                            "the order `peer add` takes its arguments and rendered by "
+                            "ACL2 (`fn-native-admin-peer-report`, "
+                            "books/native-admin.lisp); the <path-identity> is what is "
+                            "matched, not the one-letter node name. It is a read: the "
+                            "store is opened without the exclusive writer lock and the "
+                            "live owner is never reached, so it runs in this offline "
+                            "window and would refuse while an owner held the store, "
+                            "exactly as `status` does")
+            if listed.rc == EXIT_OK and not shows and add.rc == EXIT_OK:
+                self.limitation(
+                    None,
+                    "node {} accepted `peer add {}` but `peer list` does not name it: "
+                    "the record did not survive the replay ({})".format(
+                        node.upper, other.upper,
+                        listed.first_line or "(no output)"))
 
     def native_submit(self, node: NodeSpec, msgid: str, subject: str, body: str,
                       name: str, tag: str = "") -> Step:
@@ -4170,15 +4386,21 @@ exit "$rc"
             "Message-ID: rc={} {}".format(
                 duplicate.rc, duplicate.first_line or "no output",
                 refused.rc, refused.first_line or "no output"))
+        # The uncertain outcome is `native_init_lifecycle`'s, on a scratch
+        # node of its own: the cut fences the owner that serves it, and this
+        # node's owner is the subject of every other row below.
         self.blocked(("V0-OUT-UNCERTAIN",),
-                     "the production image has no fault-injection option; an uncertain "
-                     "publication is the developer image's cut campaign, not a public "
-                     "operator outcome", verdict=NOT_BUILT,
+                     "the init/uncertain phase did not reach a submission on this "
+                     "node's scratch owner, so nothing here made one submission's "
+                     "durable outcome unknown to its caller",
+                     verdict=NOT_BUILT,
                      owner="native developer cut campaign", nodes=(node.name,),
-                     invocation=self.native_operator(node, "post", "--inject-fault",
-                                                     "postpublish"))
+                     invocation="packaging/fn-native operator SCRATCH-CONFIG post")
         self.facts["three outcomes {}".format(node.name)] = (
-            "accepted={} refused={} uncertain=not-built".format(accepted.rc, refused.rc))
+            "accepted={} refused={} uncertain={} (uncertain is the init scratch "
+            "node's, not this one's)".format(
+                accepted.rc, refused.rc,
+                self.native_uncertain.get(node.name, "not-built")))
 
     def native_seed(self, node: NodeSpec):
         """The streaming article the CHECK/TAKETHIS rows offer."""
@@ -4287,9 +4509,13 @@ exit "$rc"
         recover = self.sh("node {} recover after the stop".format(node.upper),
                           self.cd(self.native_operator(node, "recover")),
                           timeout=900, expect=None)
-        self.from_step("V0-OUT-RECOVER", recover, node=node.name,
-                       limit="recovery of a store the owner released on SIGTERM; no "
-                             "uncertain publication preceded it on this image")
+        # The init/uncertain phase has the better subject for this row -- a
+        # store the owner released by fencing itself on an uncertain
+        # publication -- so this is the fallback, not the measurement.
+        if "V0-OUT-RECOVER-" + node.upper not in self.emitted:
+            self.from_step("V0-OUT-RECOVER", recover, node=node.name,
+                           limit="recovery of a store the owner released on SIGTERM; "
+                                 "no uncertain publication preceded it in this run")
         self.sh("node {} log tail".format(node.upper),
                 "tail -12 {}/server-{}-main.log 2>/dev/null || echo NO-LOG".format(
                     node.dir, node.name), expect=None)
@@ -4328,17 +4554,21 @@ exit "$rc"
         self.push_file(MATRIX_DRIVER, "{}/matrix.py".format(self.run), mode="755")
         self.probe_native_subject()
 
-        setup_blocker = (
-            "the public native operator has no init/reinit command; this native slice "
-            "uses the two explicitly supplied, preprovisioned configurations")
         for node in self.nodes:
             self.sh("node {} native run directory".format(node.upper),
                     "mkdir -p {}".format(node.dir))
-            self.blocked(("V0-NODE-INIT", "V0-NODE-CONFIG", "V0-NODE-REINIT",
-                          "V0-NODE-REINIT-SAFE"), setup_blocker,
-                         verdict=NOT_BUILT, owner="native operator init surface",
-                         nodes=(node.name,), invocation="packaging/fn-native operator CONFIG")
             if node.name not in self.native_configs:
+                # The init rows are measured on a scratch node the operator
+                # stands up itself, but it still needs somewhere to stand it
+                # up: the deployment directory this slice was given.
+                self.blocked(("V0-NODE-INIT", "V0-NODE-CONFIG", "V0-NODE-REINIT",
+                              "V0-NODE-REINIT-SAFE"),
+                             "no preprovisioned configuration was supplied for this "
+                             "optional served-node slice, so the run has no deployment "
+                             "for the operator to stand a scratch node up beside",
+                             verdict=NOT_BUILT, owner="native operator init surface",
+                             nodes=(node.name,),
+                             invocation="packaging/fn-native operator CONFIG init GROUP")
                 self.blocked(("V0-NODE-STATUS", "V0-NODE-START") + self.POST_KEYS
                              + self.READ_KEYS + self.AUTH_KEYS
                              + ("V0-AUTH-PASSWORD", "V0-AUTH-LIST"),
@@ -4359,6 +4589,16 @@ exit "$rc"
                           "from a seed",
                   owner="native principal derivation surface")
         self.phase("loopback refusal", self.native_loopback_refusal)
+
+        # A whole node through the public operator, on a scratch store beside
+        # each supplied one: init, one submission whose outcome may be lost,
+        # recover, and the refused second init.  It runs before the served
+        # owners start, and before `native_stop`, which is why it and not the
+        # stop phase owns V0-OUT-RECOVER when it reaches it.
+        for node in self.nodes:
+            if node.name in self.native_configs:
+                self.phase("native init lifecycle {}".format(node.name),
+                           self.native_init_lifecycle, node)
 
         # Offline administration, while no owner holds the writer lock.  The
         # credential is enrolled here and nowhere later: the native owner
@@ -5061,6 +5301,10 @@ def main(argv=None) -> int:
                         help="execution-host path to node B's preprovisioned config")
     parser.add_argument("--native-group", default=GROUPS[0],
                         help="served group already present in both native stores")
+    parser.add_argument("--native-developer-image", default=None,
+                        help="execution-host path to a developer-profile image; the "
+                             "uncertain-outcome row needs one, because the production "
+                             "image refuses the cut that selects it")
     parser.add_argument("--native-image-source", default=None,
                         help="externally declared source-content digest for --native-image; "
                              "without it the native peering witness is not exercised")
@@ -5130,7 +5374,8 @@ def main(argv=None) -> int:
                                      ("b", args.native_config_b)) if config},
                     native_group=args.native_group,
                     native_image_source=args.native_image_source,
-                    native_runtime=args.native_runtime)
+                    native_runtime=args.native_runtime,
+                    native_developer_image=args.native_developer_image)
     try:
         gate._evidence_name = str(target.resolve().relative_to(repo))
     except ValueError:

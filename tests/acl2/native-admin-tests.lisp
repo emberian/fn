@@ -243,3 +243,87 @@
 ; The other kinds carry no value.
 (assert-event (null (fn-native-admin-result-value *fn-na-create*)))
 (assert-event (null (fn-native-admin-result-value *fn-na-capacity*)))
+
+; -----------------------------------------------------------------------------
+; `peer list': the read side of the same table, and what keeps it read-only.
+
+(defconst *fn-na-peer-list*
+  (fn-native-admin-plan (fn-na-test-argv '("peer" "list"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-peer-list*) :accepted))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-peer-list*) :list-peers))
+(assert-event (fn-native-admin-result-queryp *fn-na-peer-list*))
+; A query carries no label, no number and no record: there is nothing for an
+; executor to publish even if it tried.
+(assert-event (null (fn-native-admin-result-name *fn-na-peer-list*)))
+(assert-event (null (fn-native-admin-result-peer *fn-na-peer-list*)))
+(assert-event (null (fn-native-admin-result-value *fn-na-peer-list*)))
+
+; Teeth: every mutation this grammar admits fails the query test, so the
+; read-only executor cannot be reached by a plan that writes a record.
+(assert-event (not (fn-native-admin-result-queryp *fn-na-create*)))
+(assert-event (not (fn-native-admin-result-queryp *fn-na-retire*)))
+(assert-event (not (fn-native-admin-result-queryp *fn-na-capacity*)))
+(assert-event (not (fn-native-admin-result-queryp *fn-na-peer-add*)))
+(assert-event (not (fn-native-admin-result-queryp *fn-na-policy*)))
+(assert-event
+ (not (fn-native-admin-result-queryp
+       (fn-native-admin-plan (fn-na-test-argv '("peer" "remove" "far"))))))
+; And a refused plan is not a query either, however it is spelled.
+(assert-event
+ (not (fn-native-admin-result-queryp
+       (fn-native-admin-plan (fn-na-test-argv '("peer" "list" "far"))))))
+
+; Teeth: `list' takes no argument, and `peer' alone is not a listing.
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan
+                       (fn-na-test-argv '("peer" "list" "far"))))
+                     :refused))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("peer"))))
+                     :refused))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("peer" "show")))
+                      )
+                     :refused))
+
+; The report: the record `peer add` wrote, read back in the order `peer add`
+; takes its arguments.  The rows are the codec's own.
+(defconst *fn-na-peer-rows*
+  (fn-cfg-peer-rows (fn-native-admin-result-peer *fn-na-peer-add*)))
+(assert-event (equal (fn-cfg-peer-names *fn-na-peer-rows*) (list "far")))
+(assert-event
+ (equal (fn-native-admin-peer-report *fn-na-peer-rows*)
+        (append (fn-record-string-octets
+                 "far path-identity=far.example address=192.0.2.44 port=1119 security=starttls inbound=fn.* outbound=fn.* auth=source-address:192.0.2.44")
+                (list 10))))
+
+; A record whose outbound half is absent and whose auth is a principal: the
+; absent half is `-`, and the principal id is the exact configured label.
+(defconst *fn-na-peer-principal-rows*
+  (fn-cfg-peer-rows (fn-native-admin-result-peer *fn-na-peer-principal*)))
+(assert-event
+ (equal (fn-native-admin-peer-report *fn-na-peer-principal-rows*)
+        (append (fn-record-string-octets
+                 (string-append
+                  "principal-peer path-identity=principal.example address=192.0.2.45 port=1119 security=implicit inbound=fn.* outbound=- auth=principal:"
+                  *fn-na-principal-hex*))
+                (list 10))))
+
+; Two peers are two lines, in the table's row order; an empty table is no
+; output at all, not a header and not a placeholder row.
+(assert-event
+ (equal (fn-native-admin-peer-report
+         (append *fn-na-peer-rows* *fn-na-peer-principal-rows*))
+        (append (fn-native-admin-peer-report *fn-na-peer-rows*)
+                (fn-native-admin-peer-report *fn-na-peer-principal-rows*))))
+(assert-event (equal (fn-native-admin-peer-report nil) nil))
+; Rows that denote no well-formed record contribute no line rather than a
+; half-rendered one: the name is enumerated, the record is not found.
+(assert-event
+ (equal (fn-cfg-peer-names
+         (list (fn-cfg-row-make "ghost" "path-identity" "ghost.example" 0)))
+        (list "ghost")))
+(assert-event
+ (equal (fn-native-admin-peer-report
+         (list (fn-cfg-row-make "ghost" "path-identity" "ghost.example" 0)))
+        nil))

@@ -243,13 +243,136 @@ decoded as source-address for durable command compatibility."
        ((and (consp words) (equal (car words) "policy"))
         (fn-native-admin-result :refused :policy nil nil 0 nil nil))
        ((and (consp words) (equal (car words) "peer"))
-        (if (and (equal (len words) 3)
-                 (equal (cadr words) "remove")
-                 (stringp (caddr words))
-                 (not (equal (caddr words) "")))
-            (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil)
-          (fn-native-admin-peer-plan words)))
+        (cond
+         ; `peer list' is the table's read side.  It carries no name, no
+         ; capacity and no record: it is a query over the durable
+         ; configuration, and `fn-native-admin-result-queryp' below is what
+         ; keeps its executor off the writer lock and off the owner mutex.
+         ((and (equal (len words) 2) (equal (cadr words) "list"))
+          (fn-native-admin-result :accepted nil :list-peers nil 0 nil nil))
+         ((and (equal (len words) 3)
+               (equal (cadr words) "remove")
+               (stringp (caddr words))
+               (not (equal (caddr words) "")))
+          (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
+         (t (fn-native-admin-peer-plan words))))
        (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))))))
+
+(defun fn-native-admin-result-queryp (result)
+  "Does this accepted plan only read the durable configuration?
+
+A query publishes no configuration record, so its executor opens the store
+without the exclusive writer lock and never reaches the live owner's
+serialized reconfiguration.  The host asks this question rather than deciding
+for itself which kinds are safe to read: the plan kinds are ACL2's."
+  (declare (xargs :guard t))
+  (and (equal (fn-native-admin-result-status result) :accepted)
+       (equal (fn-native-admin-result-kind result) :list-peers)))
+
+; -----------------------------------------------------------------------------
+; `peer list': the public projection of the durable peer table.
+;
+; The fields are the ones `peer add' takes, in that order, so an operator can
+; read a record back and see the command that would write it again.  Raw Lisp
+; supplies the configuration value's peer rows and writes these octets to a
+; descriptor; it renders no field, formats no number, and supplies no name for
+; an absent half.  Wildmats and identities are printed as the configuration
+; holds them (books/peer-config.lisp is the codec); nothing here re-derives a
+; transport, an auth kind or a security mode.
+
+(defconst *fn-native-admin-peer-absent* (list 45)) ; "-"
+
+(defun fn-native-admin-peer-label-octets (text)
+  "One configuration label as octets, or `-' when the slot holds no label."
+  (declare (xargs :guard t))
+  (if (and (stringp text) (consp (fn-record-string-octets text)))
+      (fn-record-string-octets text)
+    *fn-native-admin-peer-absent*))
+
+(defun fn-native-admin-peer-security-octets (security)
+  (declare (xargs :guard t))
+  (cond ((equal security '(:clear)) (fn-record-string-octets "clear"))
+        ((equal (fn-ag-car (fn-ag-cdr security)) :implicit)
+         (fn-record-string-octets "implicit"))
+        ((equal (fn-ag-car (fn-ag-cdr security)) :starttls)
+         (fn-record-string-octets "starttls"))
+        (t *fn-native-admin-peer-absent*)))
+
+(defun fn-native-admin-peer-transport-octets (transport)
+  "address, port and security for one peer's transport half.
+
+The three transport shapes `fn-cfg-peer-transportp' admits are the three
+arms here: the explicit NNTP endpoint with its security mode, the legacy
+durable NNTP endpoint (explicit cleartext), and a BP endpoint, whose EID is
+the address and which has no port or TLS mode of its own."
+  (declare (xargs :guard t))
+  (let ((kind (fn-ag-car transport)))
+    (cond
+     ((and (equal kind :nntp) (equal (len transport) 5))
+      (append (fn-record-string-octets " address=")
+              (fn-native-admin-peer-label-octets
+               (fn-ag-car (fn-ag-cdr (fn-ag-cdr transport))))
+              (fn-record-string-octets " port=")
+              (fn-nntp-decimal-field
+               (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr transport)))))
+              (fn-record-string-octets " security=")
+              (fn-native-admin-peer-security-octets
+               (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                                                 (fn-ag-cdr transport))))))))
+     ((and (equal kind :nntp) (equal (len transport) 3))
+      (append (fn-record-string-octets " address=")
+              (fn-native-admin-peer-label-octets (fn-ag-car (fn-ag-cdr transport)))
+              (fn-record-string-octets " port=")
+              (fn-nntp-decimal-field
+               (fn-ag-car (fn-ag-cdr (fn-ag-cdr transport))))
+              (fn-record-string-octets " security=clear")))
+     ((equal kind :bp)
+      (append (fn-record-string-octets " address=")
+              (fn-native-admin-peer-label-octets (fn-ag-car (fn-ag-cdr transport)))
+              (fn-record-string-octets " port=0 security=-")))
+     (t (fn-record-string-octets " address=- port=0 security=-")))))
+
+(defun fn-native-admin-peer-auth-octets (auth)
+  (declare (xargs :guard t))
+  (append (fn-record-string-octets " auth=")
+          (if (equal (fn-ag-car auth) :principal)
+              (fn-record-string-octets "principal:")
+            (fn-record-string-octets "source-address:"))
+          (fn-native-admin-peer-label-octets (fn-ag-car (fn-ag-cdr auth)))))
+
+(defun fn-native-admin-peer-row-octets (p)
+  (declare (xargs :guard t))
+  (append (fn-native-admin-peer-label-octets (fn-cfg-peer-name p))
+          (fn-record-string-octets " path-identity=")
+          (fn-native-admin-peer-label-octets (fn-cfg-peer-path-identity p))
+          (fn-native-admin-peer-transport-octets (fn-cfg-peer-transport p))
+          (fn-record-string-octets " inbound=")
+          (if (fn-cfg-peer-inbound p)
+              (fn-native-admin-peer-label-octets (fn-cfg-peer-inbound-groups p))
+            *fn-native-admin-peer-absent*)
+          (fn-record-string-octets " outbound=")
+          (if (fn-cfg-peer-outbound p)
+              (fn-native-admin-peer-label-octets (fn-cfg-peer-outbound-groups p))
+            *fn-native-admin-peer-absent*)
+          (fn-native-admin-peer-auth-octets (fn-cfg-peer-auth p))
+          (list 10)))
+
+(defun fn-native-admin-peer-report-rows (names peers)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let ((p (fn-cfg-peer-find (car names) peers)))
+        (append (if p (fn-native-admin-peer-row-octets p) nil)
+                (fn-native-admin-peer-report-rows (cdr names) peers)))
+    nil))
+
+(defun fn-native-admin-peer-report (peers)
+  "The `peer list' report for a configuration value's peer rows.
+
+The enumeration is `fn-cfg-peer-names' and each record is `fn-cfg-peer-find';
+a row group that denotes no well-formed record contributes no line rather
+than a partially rendered one."
+  (declare (xargs :guard t))
+  (fn-native-admin-peer-report-rows (fn-cfg-peer-names peers) peers))
 
 ; Config record names are a fixed-width namespace.  The digit renderer is the
 ; existing ACL2 byte-store renderer; no host formatter derives a durable name.
