@@ -58,12 +58,19 @@ features, and [the proof-engineering review](review-2026-09-22-proof-engineering
 says why with the tools' numbers: one red hides everything above it so each
 run reveals one layer; timeouts are the round time; 74 books open a codec
 theory book-wide; behaviour landed on the 21st under invariant books nobody
-recertified. Two of its changes are in: `green_check --changed-since REV
---strict`, the merge gate, and `tools/theory_check.py` in `make check`. Five
+recertified. Three of its changes are in: `green_check --changed-since REV
+--strict`, the merge gate; `tools/theory_check.py` in `make check`; and
+`tools/proof_repl.py`, a live ACL2 session over a book driven a form at a
+time from the shell, fourteen seconds to the red theorem of
+`store-node-traces` against cached certificates. The triage lane is
+spiking ACL2's provisional certification, which would make every red in a
+closure visible in one wave. Five
 Opus lanes now run under `build/lanes/`: w31-freeze-3 (the last two closure
 reds, then the images), w32-reader-polling (NEWNEWS and LIST NEWSGROUPS,
-absent from the books), w32-operator-verbs (`init`, `peer list`, and a
-developer-image fault that makes an uncertain outcome observable),
+absent from the books), w32-operator-verbs (done at 683a1bf0: `init`, `peer list`, and a
+developer-image fault that makes an uncertain outcome observable at exit 3
+with ACL2's word; held unmerged because its books sit above
+`store-node-traces` and the merge gate waits for the closure),
 w32-owner-defects (two node defects the client found against the real
 915 node, [record](evidence/fn-client-915-2026-09-22.md): a POST over about
 32 KiB stops the owner with a plaintext-read suffix fault, and every
