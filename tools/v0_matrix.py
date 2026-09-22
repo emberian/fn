@@ -1053,6 +1053,17 @@ def auth(args):
 
     gate = Conn(args.port, timeout=SOCKET_TIMEOUT)
     out["POST BEFORE"] = gate.cmd("POST")[0]
+    # A 3xx means posting is permitted WITHOUT a login and this connection is
+    # now inside a transfer.  Terminate it with an empty block, exactly as
+    # `pins` does for its POST probe, rather than dropping the socket
+    # mid-article: an empty article is refused and stores nothing, while a
+    # server left holding a half-open transfer is what wedged this tree twice.
+    if out["POST BEFORE"][:1] == "3":
+        gate.sock.sendall(b".\r\n")
+        try:
+            out["POST BEFORE CLOSE"] = gate.line()
+        except Exception as error:
+            out["POST BEFORE CLOSE"] = "{}: {}".format(type(error).__name__, error)
     drop(gate)
 
     conn = Conn(args.port, timeout=SOCKET_TIMEOUT)
