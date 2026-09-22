@@ -1,0 +1,40 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_slots": 4,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/acl2/certify-20260921T162424Z-40629",
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "failure": "missing requested source book: tests/acl2/checkpoint-compaction-tests.lisp",
+  "git_branch": "dev",
+  "git_dirty": false,
+  "git_revision": "924315d1dc7b689efce7f1ff41556402b244ad22",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "662e8ef911ffe2cef222a48b8a279a01f86a4557dcf1fc00bc8002c8d8dfacb4",
+  "requested_before_filter": [
+    "books/checkpoint-compaction",
+    "tests/acl2/checkpoint-compaction-tests"
+  ],
+  "requested_books": [
+    "books/checkpoint-compaction",
+    "tests/acl2/checkpoint-compaction-tests"
+  ],
+  "run_id": "certify-20260921T162424Z-40629",
+  "runner_sha256": "cb79d3bea9e5a531e33e44c882f8f615d4c0258db2c4f7361746ff1e2416c7d6",
+  "started_utc": "2026-09-21T16:24:24+00:00",
+  "status": "failed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn"
+}
