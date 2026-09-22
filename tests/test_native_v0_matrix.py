@@ -151,6 +151,23 @@ class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
     def stop_node(self, node, tag="main"):
         node.pid = ""
 
+    def transit_direction(self, source, target, way):
+        """No socket driver here: leave the transit rows to the witness."""
+        return None
+
+    def capability_pins(self, node):
+        self.blocked(("V0-PIN-DISPATCHED", "V0-PIN-ADVERTISED"),
+                     "socket driver stubbed in harness unit test",
+                     nodes=(node.name,), invocation="matrix.py pins")
+
+    def post_concurrent(self):
+        self.blocked(("V0-POST-CONCURRENT",), "socket driver stubbed in harness unit test",
+                     invocation="matrix.py concurrent")
+
+    def group_served(self, node):
+        self.blocked(("V0-GROUP-SERVED",), "socket driver stubbed in harness unit test",
+                     nodes=(node.name,), invocation="feed.py presence")
+
 
 class NativeSliceAccountingTests(unittest.TestCase):
     def structured_gate(self, home):
@@ -239,6 +256,40 @@ class NativeSliceAccountingTests(unittest.TestCase):
             self.assertEqual({row.node for row in starts}, {"a", "b"})
             self.assertTrue(all("packaging/fn-native operator" in row.invocation
                                 for row in starts))
+
+    def test_the_matrix_own_transit_measurement_is_not_overwritten_by_the_witness(self):
+        class MeasuredTransit(HarnessOnlyNativeGate):
+            def transit_direction(self, source, target, way):
+                self.from_reply("V0-TRANSIT-OFFER", "502 transit not permitted",
+                                "feed.py relay", direction=way)
+        with tempfile.TemporaryDirectory() as home:
+            gate = MeasuredTransit(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            # The matrix's own A/B observation stands; the witness's 335 does not replace it.
+            self.assertEqual(rows["V0-TRANSIT-OFFER-AB"].verdict, v0_matrix.REFUSED)
+            self.assertIn("relay", rows["V0-TRANSIT-OFFER-AB"].invocation)
+            # Rows the matrix did not reach are still the witness's to fill.
+            self.assertEqual(rows["V0-TRANSIT-TRANSFER-AB"].verdict, v0_matrix.ACCEPTED)
+            self.assertEqual(rows["V0-FEED-JOURNAL"].verdict, v0_matrix.ACCEPTED)
+
+    def test_offline_native_administration_rows_come_from_the_operator_verbs(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.structured_gate(home)
+            gate.execute_native_acceptance()
+            rows = {row.id: row for row in gate.rows}
+            for rid in ("V0-GROUP-CREATE-A", "V0-GROUP-RETIRE-B", "V0-PEER-ADD-A",
+                        "V0-CAP-SET-B", "V0-OUT-ACCEPTED-A", "V0-NODE-STOP-B",
+                        "V0-OUT-RECOVER-A", "V0-PEER-REMOVE", "V0-CFG-LIVE-REFUSE"):
+                self.assertIn("packaging/fn-native operator", rows[rid].invocation, rid)
+                self.assertNotIn("bin/fn", rows[rid].invocation, rid)
+            self.assertEqual(rows["V0-OUT-UNCERTAIN-A"].verdict, v0_matrix.NOT_BUILT)
+            self.assertEqual(rows["V0-PEER-LIST-A"].verdict, v0_matrix.NOT_BUILT)
+            self.assertEqual(rows["V0-TRANSIT-IDENTITY-A"].verdict, v0_matrix.NOT_BUILT)
+            self.assertEqual(rows["V0-CFG-LIVE"].verdict, v0_matrix.NOT_BUILT)
 
     def test_successful_shared_witness_maps_only_the_cases_it_exercises(self):
         with tempfile.TemporaryDirectory() as home:
