@@ -98,6 +98,25 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
                          result.stdout.decode("utf-8", "replace"))
 
 
+    def test_developer_selectors_gate_arm_the_owner_and_stop_synchronously(self):
+        # tests/native_developer_selectors_raw.lisp evaluates the deployed
+        # fnn-main, fnn-developer-selector and its gate, fnn-post-entry-fault,
+        # fnn-owner-run-normalized, the control reply and the control stop
+        # against recording stubs; the stop itself runs for real in forked
+        # children.  Campaign dabebb84 findings F1 and F3 to F7.
+        sbcl = shutil.which("sbcl")
+        if sbcl is None:
+            raise unittest.SkipTest("sbcl is not on PATH")
+        result = subprocess.run(
+            [sbcl, "--noinform", "--script",
+             "tests/native_developer_selectors_raw.lisp"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            timeout=300, check=False)
+        output = result.stdout.decode("utf-8", "replace")
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn("native developer selectors passed", output)
+
+
 class NativeOwnerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

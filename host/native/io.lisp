@@ -956,7 +956,9 @@ resolves the names against `domain' and the host carries that list verbatim."
   (when (eq point (fnn-store-fault-point store))
     (cond ((eq (fnn-store-fault-class store) 'fnn-os-error)
            (fnn-os-fail sb-posix:eio))
-          ;; FN_NATIVE_INIT_FAULT is a developer-test seam.  SIGKILL is
+          ;; Only a developer-image selector arms this class
+          ;; (fnn-post-entry-fault, fnn-recovery-test-fault,
+          ;; fnn-init-test-fault).  SIGKILL is
           ;; deliberate: unlike an exception it cannot run unwind-protect
           ;; cleanup, so the next command tests an actual new process.
           ((eq (fnn-store-fault-class store) :fnn-test-kill)
@@ -1600,7 +1602,7 @@ from the live ACL2 configuration; the native host does not name a provenance."
 This is intentionally not a command-line option or an operator configuration
 field.  The external native fidelity test uses it to stop one child process at
 a source-pinned post-syscall cut."
-  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_INIT_FAULT")))
+  (let ((raw (fnn-developer-selector "FN_NATIVE_INIT_FAULT")))
     (when raw
       (let ((colon (position #\: raw :from-end t)))
         (unless colon
@@ -1616,16 +1618,24 @@ a source-pinned post-syscall cut."
                       (t (fnn-fault "invalid FN_NATIVE_INIT_FAULT action: ~a" action)))
                 "developer-only native initializer fault"))))))
 
+;; In the order fnn-recover reaches them.  `recover-replayed' and
+;; `recover-barrier' are fn-bs-recover-program's own cuts
+;; (books/byte-store-programs.lisp); `recover-barrier' names five sites and a
+;; store fault fires at the first one reached.  `recovery-stage-unlinked' is
+;; fn-bs-recover-stage-cleanup-program's cut, and that program runs once per
+;; removed orphan AFTER fn-bs-recover-program has completed: fnn-recover
+;; sweeps only once the fifth barrier observation has reached :ready.
 (defparameter +fnn-recovery-model-cuts+
-  '("recovery-stage-unlinked"))
+  '("recover-replayed" "recover-barrier" "recovery-stage-unlinked"))
 
 (defun fnn-recovery-test-fault ()
   "Developer-only FN_NATIVE_RECOVERY_FAULT=MODEL-CUT:eio|kill selector.
 
-This is not an operator option.  It exists solely to make a recovery cleanup
-cut explicit: the selected outcome is raised after the real unlink, and a
-subsequent command is a fresh process rather than an in-process retry."
-  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_RECOVERY_FAULT")))
+This is not an operator option.  It selects one of fnn-recover's `fnn-at'
+cuts: after replay, after a recovery barrier, or after the real unlink of a
+staging orphan.  A subsequent command is a fresh process rather than an
+in-process retry."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_RECOVERY_FAULT")))
     (when raw
       (let ((colon (position #\: raw :from-end t)))
         (unless colon
@@ -1670,10 +1680,8 @@ subsequent command is a fresh process rather than an in-process retry."
 The point is one of fnn-advance-frontier/fnn-publish/fnn-finish's actual
 fnn-at boundaries.  SIGKILL cannot run unwind-protect, so the next command
 observes a genuine new-process image."
-  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_POST_FAULT")))
+  (let ((raw (fnn-developer-selector "FN_NATIVE_POST_FAULT")))
     (when raw
-      (unless (fnn-developer-image-p)
-        (fnn-fault "FN_NATIVE_POST_FAULT requires a developer image"))
       (let ((colon (position #\: raw :from-end t)))
         (unless colon
           (fnn-fault "invalid FN_NATIVE_POST_FAULT (expected MODEL-CUT:eio|kill)"))
@@ -1689,11 +1697,39 @@ observes a genuine new-process image."
                           "invalid FN_NATIVE_POST_FAULT action: ~a" action)))
                 "developer-only native post fault"))))))
 
+(defun fnn-post-entry-fault (inject)
+  "The one store fault a posting entry arms, or NIL.
+
+Both posting entries call this: `store ROOT post' (fnn-command-post) and the
+served owner (fnn-owner-run-normalized, fnn-command-owner in owner.lisp).  So
+both read the same selectors, from the same tables, into the same store slot
+that `fnn-at' tests; the cut sites themselves are in fnn-recover,
+fnn-advance-frontier, fnn-publish and fnn-finish, which both entries call.
+
+INJECT is the positional `store post' FAULT argument (one of
++fnn-cli-faults+).  FN_NATIVE_POST_FAULT selects a post cut and
+FN_NATIVE_RECOVERY_FAULT a recovery cut.  A store has one fault slot, so two
+selections at once are a usage error rather than one silently winning.  On a
+production image the environment selectors read as NIL (the startup gate
+`fnn-developer-selector-gate' has already refused them) and INJECT is a usage
+error for the same reason."
+  (when (and inject (not (fnn-developer-image-p)))
+    (error 'fnn-usage-error
+           :message "the store post FAULT argument requires a developer image"))
+  (let* ((positional
+           (when inject
+             (or (cdr (assoc inject +fnn-cli-faults+ :test #'string=))
+                 (error 'fnn-usage-error :message "unknown fault point"))))
+         (selected (remove nil (list positional (fnn-post-test-fault)
+                                     (fnn-recovery-test-fault)))))
+    (when (cdr selected)
+      (error 'fnn-usage-error
+             :message "select at most one of the FAULT argument, FN_NATIVE_POST_FAULT and FN_NATIVE_RECOVERY_FAULT"))
+    (first selected)))
+
 (defun fnn-command-post (root message-id payload-path charge-text inject groups)
   (let* ((msgid (fnn-octets (fnn-ascii-octet-list message-id)))
-         (fault (or (and inject (cdr (assoc inject +fnn-cli-faults+ :test #'string=)))
-                    (fnn-post-test-fault))))
-    (when (and inject (null fault)) (error 'fnn-usage-error :message "unknown fault point"))
+         (fault (fnn-post-entry-fault inject)))
     (multiple-value-bind (store records) (fnn-open-live-store root t fault)
       (unwind-protect
            (let* ((payload (fnn-read-regular-bounded payload-path
@@ -2299,6 +2335,55 @@ serialized profile when the saved image later starts."
 (defun fnn-developer-image-p ()
   (eq *fnn-image-profile* :developer))
 
+(defun fnn-dash-nil (text) (if (string= text "-") nil text))
+
+;;; Developer selectors: one table, one gate.
+;;;
+;;; Each name below arms a developer-only cut or fault: a process death, an
+;;; injected EIO, a stop, a pause.  A developer image honours them.  A
+;;; production image refuses to START with any of them in its environment, or
+;;; with a `store post' FAULT argument: `fnn-main' calls
+;;; `fnn-developer-selector-gate' before `fnn-dispatch', so the refusal is a
+;;; usage exit (5) naming the variable, and no store, socket or request is
+;;; ever reached.  Readers go through `fnn-developer-selector', which answers
+;;; NIL on a production image, so no reader has a production branch of its own
+;;; and no refusal can arrive in the middle of a request as an outcome it is
+;;; not (review of the dabebb84 campaign, F4 to F6).
+(defparameter +fnn-developer-selectors+
+  '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+    "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
+    "FN_NATIVE_AUTH_ADMIN_FAULT"
+    "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"))
+
+(defun fnn-developer-selector (name)
+  "The value of developer selector NAME on a developer image, else NIL."
+  (unless (member name +fnn-developer-selectors+ :test #'string=)
+    (fnn-fault "~a is not a registered developer selector" name))
+  (and (fnn-developer-image-p) (sb-ext:posix-getenv name)))
+
+(defun fnn-store-post-fault-argument (argv)
+  "The positional FAULT of `store ROOT post MSGID PAYLOAD CHARGE FAULT ...'."
+  (and (>= (length argv) 7)
+       (string= (first argv) "store")
+       (string= (third argv) "post")
+       (fnn-dash-nil (nth 6 argv))))
+
+(defun fnn-developer-selector-refusal (argv)
+  "NIL, or what a production image finds that only a developer image honours."
+  (unless (fnn-developer-image-p)
+    (or (dolist (name +fnn-developer-selectors+)
+          (when (sb-ext:posix-getenv name) (return name)))
+        (and (fnn-store-post-fault-argument argv)
+             "the store post FAULT argument"))))
+
+(defun fnn-developer-selector-gate (argv)
+  "Refuse, before any store is opened, a production start that names a cut."
+  (let ((found (fnn-developer-selector-refusal argv)))
+    (when found
+      (error 'fnn-usage-error
+             :message (format nil "~a is a developer-image selector; this production image does not start with it"
+                              found)))))
+
 (defun fnn-register-developer-verb (verb handler)
   "Register a diagnostic entry only in an explicitly selected developer image."
   (when (fnn-developer-image-p)
@@ -2308,7 +2393,6 @@ serialized profile when the saved image later starts."
 (defun fnn-verb-handler (verb)
   (cdr (assoc verb *fnn-verbs* :test #'string=)))
 
-(defun fnn-dash-nil (text) (if (string= text "-") nil text))
 
 (defun fnn-dispatch (args)
   (flet ((need (n) (when (< (length args) n) (error 'fnn-usage-error :message "missing arguments"))))
@@ -2377,6 +2461,7 @@ serialized profile when the saved image later starts."
          (code
            (handler-case
                (progn
+                 (fnn-developer-selector-gate argv)
                  (unless (eq (fnn-global 'guard-checking-on) t)
                    (fnn-fault "guard-checking-on is not t in the saved image"))
                  (fnn-dispatch argv))

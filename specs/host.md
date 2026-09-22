@@ -217,7 +217,12 @@ posting projections come from the ACL2 native-operator/configuration plan.
 `FN_NATIVE_PROFILE=developer tools/build_native_host.sh` writes the separate
 `build/fn-host-developer` image with those two diagnostic entries enabled.
 Changing that environment variable when a saved image restarts does not change
-its serialized profile. Store diagnostics and the existing BP/TCPCL/application
+its serialized profile. The developer image also honours the developer
+selectors (the environment variables of `+fnn-developer-selectors+` and the
+`store ROOT post` FAULT argument; [the operator guide](../docs/operator.md#developer-selectors)
+lists them). A production image refuses to start with any of them: `fnn-main`
+runs `fnn-developer-selector-gate` before dispatch and exits 5 naming the
+selector, before any store or socket is opened. Store diagnostics and the existing BP/TCPCL/application
 verbs remain available in the production image; this split does not claim full
 operator parity for them.
 

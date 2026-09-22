@@ -11,16 +11,22 @@ fresh stores, each seeded with one prior article posted through
 
 served   the owner restarted with the cut's selector in its environment and
          the candidate posted through `operator CFG post`: the path the node
-         serves.  What the owner does with the selector is the observation.
-cut      the candidate posted through `store ROOT post` with the selector,
-         the entry that reads it (`fnn-command-post`, host/native/io.lisp),
-         then `operator CFG recover`, `store ROOT inspect`, a restarted
-         owner's NNTP ARTICLE, and a resubmission through `operator CFG post`.
+         serves.  Since the fix of campaign dabebb84 F1 the served owner reads
+         the same selectors `store ROOT post` reads (`fnn-post-entry-fault`,
+         host/native/io.lisp, called by `fnn-owner-run-normalized`), so the
+         owner itself dies at the cut.  A recovery cut is taken by the owner's
+         own recovery at start.  Then `operator CFG recover`, `store ROOT
+         inspect`, a restarted owner's NNTP ARTICLE, and a resubmission.
+cut      the candidate posted through `store ROOT post` with the selector
+         (`fnn-command-post`), or `operator CFG recover` for a recovery cut,
+         then the same recovery and rereads.
 
-It also runs the developer faults once each and the same selectors against the
-production image.  It judges nothing: the evidence file compares the
-observations with the table.  Exit codes are recorded raw; a negative code is
-the signal that ended the process (subprocess convention).
+It also runs the developer faults once each, and every registered developer
+selector against the production image, which must refuse to start with it
+(exit 5, `fnn-developer-selector-gate`) before any store is opened.  It
+judges nothing: the evidence file compares the observations with the table.
+Exit codes are recorded raw; a negative code is the signal that ended the
+process (subprocess convention).
 """
 from __future__ import annotations
 
@@ -248,54 +254,55 @@ def reread(node: Node, prior: bytes, candidate: bytes, out: dict):
     out["reread_owner"] = node.stop_owner(owner)
 
 
+def settle(node: Node, prior: Path, candidate: Path, out: dict):
+    """After a death: the image, recovery, and every reread of both articles."""
+    out["killed"] = snapshot(node.store)
+    recovered = node.operator("recover")
+    out["recover"] = public(recovered)
+    out["recover_counts"] = parse_recover(recovered["_out"])
+    out["recovered"] = snapshot(node.store)
+    reread(node, prior.read_bytes(), candidate.read_bytes(), out)
+
+
+def orphan(node: Node, candidate: Path, out: dict):
+    """A `.stage-` orphan for recovery to sweep: a post killed after staging."""
+    out["orphan_post"] = public(node.store_post(
+        CANDIDATE_ID, candidate,
+        {"FN_NATIVE_POST_FAULT": "record-staged-durable:kill"}))
+    out["orphaned"] = snapshot(node.store)
+
+
 def run_cut(image: Path, base: Path, cut, prior: Path, candidate: Path) -> dict:
-    variable = ("FN_NATIVE_RECOVERY_FAULT" if cut in native_cuts.RECOVERY_CUTS
-                else "FN_NATIVE_POST_FAULT")
+    recovery = cut in native_cuts.RECOVERY_CUTS
+    variable = "FN_NATIVE_RECOVERY_FAULT" if recovery else "FN_NATIVE_POST_FAULT"
     selector = {variable: cut.name + ":kill"}
-    row = {"cut": cut.name, "program": cut.program,
+    row = {"cut": cut.name, "program": cut.program, "follows": cut.follows,
            "table_candidate": cut.candidate, "variable": variable}
     served = row["served"] = {}
     node = Node(image, base, cut.name + "-served")
     try:
         seed(node, prior, served)
-        if variable == "FN_NATIVE_POST_FAULT":
-            owner = node.start_owner(selector)
-            served["owner_ready"] = owner["ready"]
+        if recovery:
+            orphan(node, candidate, served)
+        owner = node.start_owner(selector)
+        served["owner_ready"] = owner["ready"]
+        if owner["ready"]:
             served["post"] = public(node.post(CANDIDATE_ID, candidate))
             served["owner_alive_after_post"] = owner["proc"].poll() is None
-            served["owner"] = node.stop_owner(owner)
-        else:
-            # An orphan for recovery to unlink, then the owner's own recovery
-            # with the selector in its environment.
-            served["orphan_post"] = public(node.store_post(
-                CANDIDATE_ID, candidate,
-                {"FN_NATIVE_POST_FAULT": "record-staged-durable:kill"}))
-            served["orphaned"] = snapshot(node.store)
-            owner = node.start_owner(selector)
-            served["owner_ready"] = owner["ready"]
-            served["owner"] = node.stop_owner(owner)
-        served["after"] = snapshot(node.store)
-        served["recover"] = public(node.operator("recover"))
+        served["owner"] = node.stop_owner(owner)
+        settle(node, prior, candidate, served)
     finally:
         node.reap()
     cutrow = row["cut_run"] = {}
     node = Node(image, base, cut.name + "-cut")
     try:
         seed(node, prior, cutrow)
-        if variable == "FN_NATIVE_POST_FAULT":
-            cutrow["killed_post"] = public(node.store_post(CANDIDATE_ID, candidate, selector))
-        else:
-            cutrow["orphan_post"] = public(node.store_post(
-                CANDIDATE_ID, candidate,
-                {"FN_NATIVE_POST_FAULT": "record-staged-durable:kill"}))
-            cutrow["orphaned"] = snapshot(node.store)
+        if recovery:
+            orphan(node, candidate, cutrow)
             cutrow["killed_recover"] = public(node.operator("recover", extra=selector))
-        cutrow["killed"] = snapshot(node.store)
-        recovered = node.operator("recover")
-        cutrow["recover"] = public(recovered)
-        cutrow["recover_counts"] = parse_recover(recovered["_out"])
-        cutrow["recovered"] = snapshot(node.store)
-        reread(node, prior.read_bytes(), candidate.read_bytes(), cutrow)
+        else:
+            cutrow["killed_post"] = public(node.store_post(CANDIDATE_ID, candidate, selector))
+        settle(node, prior, candidate, cutrow)
     finally:
         node.reap()
     return row
@@ -310,16 +317,24 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
         seed(node, prior, row)
         return node, row
 
-    # Developer FN_NATIVE_POST_FAULT, an EIO after the final link.
+    # Developer FN_NATIVE_POST_FAULT, an EIO after the final link, through
+    # `store ROOT post` and through the served owner.
     node, row = fresh(dev, "dev-post-fault-eio")
     try:
         row["post"] = public(node.store_post(
             CANDIDATE_ID, candidate, {"FN_NATIVE_POST_FAULT": "record-attempted:eio"}))
-        row["after"] = snapshot(node.store)
-        recovered = node.operator("recover")
-        row["recover"] = public(recovered)
-        row["recover_counts"] = parse_recover(recovered["_out"])
-        reread(node, prior.read_bytes(), candidate.read_bytes(), row)
+        settle(node, prior, candidate, row)
+    finally:
+        node.reap()
+    rows.append(row)
+    node, row = fresh(dev, "dev-owner-post-fault-eio")
+    try:
+        owner = node.start_owner({"FN_NATIVE_POST_FAULT": "record-attempted:eio"})
+        row["owner_ready"] = owner["ready"]
+        row["post"] = public(node.post(CANDIDATE_ID, candidate))
+        row["owner_alive_after_post"] = owner["proc"].poll() is None
+        row["owner"] = node.stop_owner(owner)
+        settle(node, prior, candidate, row)
     finally:
         node.reap()
     rows.append(row)
@@ -332,91 +347,65 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
         row["post"] = public(node.post(CANDIDATE_ID, candidate))
         row["owner_alive_after_post"] = owner["proc"].poll() is None
         row["owner"] = node.stop_owner(owner)
-        row["after"] = snapshot(node.store)
-        recovered = node.operator("recover")
-        row["recover"] = public(recovered)
-        row["recover_counts"] = parse_recover(recovered["_out"])
-        reread(node, prior.read_bytes(), candidate.read_bytes(), row)
+        settle(node, prior, candidate, row)
     finally:
         node.reap()
     rows.append(row)
 
-    # Developer FN_NATIVE_CONTROL_TEST_STOP: the owner stops itself after a
-    # durable completion and before its reply; then it is killed.
-    node, row = fresh(dev, "dev-control-test-stop-kill")
-    try:
-        owner = node.start_owner({"FN_NATIVE_CONTROL_TEST_STOP": "after-submit"})
-        row["owner_ready"] = owner["ready"]
-        client = subprocess.Popen(
-            [str(dev), "--fn", "operator", str(node.config), "post", "--message-id",
-             CANDIDATE_ID, "--payload", str(candidate), "--group", GROUP],
-            env=node.env(), cwd=node.dir, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        deadline = time.monotonic() + 240
-        stopped = False
-        while time.monotonic() < deadline and not stopped:
-            state = Path("/proc/{}/stat".format(owner["pid"])).read_text().split()[2]
-            stopped = state == "T"
-            if not stopped:
-                time.sleep(0.5)
-        row["owner_stopped_itself"] = stopped
-        row["at_stop"] = snapshot(node.store)
-        row["owner"] = node.stop_owner(owner, signal.SIGKILL)
-        out, err = client.communicate(timeout=300)
-        row["post"] = {"rc": client.returncode, "stdout": out.decode()[-500:],
-                       "stderr": err.decode()[-500:]}
-        row["after"] = snapshot(node.store)
-        recovered = node.operator("recover")
-        row["recover"] = public(recovered)
-        row["recover_counts"] = parse_recover(recovered["_out"])
-        reread(node, prior.read_bytes(), candidate.read_bytes(), row)
-    finally:
-        node.reap()
-    rows.append(row)
-
-    # Production image: each selector once.
-    node, row = fresh(prod, "prod-post-fault")
-    try:
-        row["post"] = public(node.store_post(
-            CANDIDATE_ID, candidate, {"FN_NATIVE_POST_FAULT": "record-attempted:kill"}))
-        row["after"] = snapshot(node.store)
-    finally:
-        node.reap()
-    rows.append(row)
-    for name, variable, value in (
-            ("prod-control-fault", "FN_NATIVE_CONTROL_FAULT", "postpublish"),
-            ("prod-control-test-stop", "FN_NATIVE_CONTROL_TEST_STOP", "after-submit")):
-        node, row = fresh(prod, name)
+    # Developer FN_NATIVE_CONTROL_TEST_STOP: the worker that holds the reply
+    # stops the owner after a durable completion and before its reply; then
+    # the owner is killed.  Since F3's fix the client must answer 3.
+    for repetition in range(5):
+        node, row = fresh(dev, "dev-control-test-stop-kill-{}".format(repetition))
         try:
-            owner = node.start_owner({variable: value})
+            owner = node.start_owner({"FN_NATIVE_CONTROL_TEST_STOP": "after-submit"})
             row["owner_ready"] = owner["ready"]
-            row["post"] = public(node.post(CANDIDATE_ID, candidate, timeout=240))
-            row["owner_alive_after_post"] = owner["proc"].poll() is None
-            row["owner"] = node.stop_owner(owner)
-            row["after"] = snapshot(node.store)
+            client = subprocess.Popen(
+                [str(dev), "--fn", "operator", str(node.config), "post", "--message-id",
+                 CANDIDATE_ID, "--payload", str(candidate), "--group", GROUP],
+                env=node.env(), cwd=node.dir, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+            deadline = time.monotonic() + 240
+            stopped = False
+            while time.monotonic() < deadline and not stopped:
+                state = Path("/proc/{}/stat".format(owner["pid"])).read_text().split()[2]
+                stopped = state == "T"
+                if not stopped:
+                    time.sleep(0.5)
+            row["owner_stopped_itself"] = stopped
+            row["client_exited_before_kill"] = client.poll()
+            row["at_stop"] = snapshot(node.store)
+            row["owner"] = node.stop_owner(owner, signal.SIGKILL)
+            out, err = client.communicate(timeout=300)
+            row["post"] = {"rc": client.returncode, "stdout": out.decode()[-500:],
+                           "stderr": err.decode()[-500:]}
+            settle(node, prior, candidate, row)
         finally:
             node.reap()
         rows.append(row)
-    # Production: the selectors and argument the image does not gate.
-    node, row = fresh(prod, "prod-recovery-fault")
+
+    # Production image: every registered developer selector, and the store
+    # post FAULT argument, must be refused at startup with exit 5 and the
+    # store's bytes unchanged.  `operator CFG run`, `operator CFG recover` and
+    # `store ROOT post` each meet each selector.
+    node, row = fresh(prod, "prod-selectors-refused-at-start")
     try:
-        orphan = Node(dev, base, "prod-recovery-fault-orphaner")
-        orphan.store = node.store
-        row["orphan_post_dev_image"] = public(orphan.store_post(
-            CANDIDATE_ID, candidate, {"FN_NATIVE_POST_FAULT": "record-staged-durable:kill"}))
-        row["orphaned"] = snapshot(node.store)
-        row["recover"] = public(node.operator(
-            "recover", extra={"FN_NATIVE_RECOVERY_FAULT": "recovery-stage-unlinked:kill"}))
+        row["before"] = snapshot(node.store)
+        row["starts"] = []
+        for variable in native_cuts.developer_selectors():
+            extra = {variable: "x"}
+            owner = node.start_owner(extra)
+            started = node.stop_owner(owner)
+            row["starts"].append({
+                "variable": variable,
+                "operator_run": {k: started[k] for k in ("rc", "lines", "stderr")},
+                "operator_recover": public(node.operator("recover", extra=extra)),
+                "store_post": public(node.store_post(CANDIDATE_ID, candidate, extra)),
+            })
+        row["store_post_fault_argument"] = public(
+            node.store_post(CANDIDATE_ID, candidate, inject="postpublish"))
         row["after"] = snapshot(node.store)
-        row["recover_clean"] = public(node.operator("recover"))
-    finally:
-        node.reap()
-    rows.append(row)
-    node, row = fresh(prod, "prod-store-post-inject")
-    try:
-        row["post"] = public(node.store_post(CANDIDATE_ID, candidate, inject="postpublish"))
-        row["after"] = snapshot(node.store)
-        row["recover"] = public(node.operator("recover"))
+        row["unchanged"] = row["after"] == row["before"]
     finally:
         node.reap()
     rows.append(row)
@@ -424,7 +413,7 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
     row = {"name": "prod-init-fault", "image": prod.name}
     row["init"] = public(node.operator(
         "init", GROUP, extra={"FN_NATIVE_INIT_FAULT": "init-config-written:kill"}))
-    row["after"] = snapshot(node.store) if node.store.is_dir() else None
+    row["store_created"] = node.store.exists()
     rows.append(row)
     return rows
 
