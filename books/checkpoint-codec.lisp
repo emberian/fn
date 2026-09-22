@@ -123,6 +123,13 @@
                             (fn-cbor-decode-argument
                              fn-cbor-canonical-argumentp))))))
 
+; `fn-cbor-decode-bytes' is the legacy entry point of the bounded decoder
+; since the 2026-09-21 bounded profile: it supplies `*fn-cbor-max-bytes*' to
+; `fn-cbor-decode-bytes-bounded' and does nothing else, so the remainder fact
+; is about that function and the goal stopped at
+; `(FN-CBOR-DECODE-BYTES-BOUNDED ADDITIONAL TAIL 65535)' with it closed
+; (hbox certify-20260922T145811Z-3032393).  books/checkpoint-codec has not
+; certified since.
 (local
  (defthm fn-cpc-decode-bytes-rest-len
    (implies (equal (car (fn-cbor-decode-bytes additional tail)) :ok)
@@ -130,7 +137,8 @@
                 (len tail)))
    :rule-classes :linear
    :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-cbor-decode-bytes fn-cbor-ok
+            :in-theory (e/d (fn-cbor-decode-bytes
+                             fn-cbor-decode-bytes-bounded fn-cbor-ok
                              fn-cbor-error fn-cbor-result-okp
                              fn-cbor-result-value fn-cbor-result-rest)
                             (fn-cbor-decode-argument

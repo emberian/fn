@@ -408,12 +408,12 @@
     "books_in_root_closure": 401,
     "roots": 400,
     "theorems": 6664,
-    "functions": 5185,
+    "functions": 5186,
     "assert_events": 7090,
     "must_fails": 187,
     "encapsulates": 19,
     "guards": {
-      "verified": 1713,
+      "verified": 1714,
       "declared-off": 279,
       "default-guarded": 2588,
       "default-unguarded": 605
@@ -5902,14 +5902,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 39,
-      "functions": 13,
+      "functions": 14,
       "guards": {
-        "verified": 12,
+        "verified": 13,
         "declared-off": 0,
         "default-guarded": 1,
         "default-unguarded": 0
       },
-      "verify_guards_events": 12,
+      "verify_guards_events": 13,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -11197,7 +11197,7 @@
     {
       "theorem": "fn-cpc-uint32p-bridge",
       "book": "books/checkpoint-codec.lisp",
-      "line": 1193,
+      "line": 1201,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p"
       ]
@@ -11452,7 +11452,7 @@
     {
       "theorem": "fn-sn-open-observed-invalid-history-refuses",
       "book": "books/store-observed.lisp",
-      "line": 454,
+      "line": 471,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value"
       ]

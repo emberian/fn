@@ -151,7 +151,15 @@
       (if (not (fn-record-parse-okp counted))
           (fn-record-parse-error :arguments)
         (let ((count (fn-record-parse-value counted)))
-          (if (or (zp count) (< *fn-native-admin-max-arguments* count))
+          ; `(not (posp count))' rather than `(zp count)': they are the same
+          ; predicate on every object -- both say "not a positive integer" --
+          ; and `posp' is `:guard t' while `zp' owes a natural.  The bounded
+          ; CBOR profile of 2026-09-21 left no rule saying the value a
+          ; successful `fn-record-read-uint' carries is one, so the guard
+          ; conjecture stopped on `(fn-record-parse-value (fn-record-read-uint
+          ; octets))' being non-negative; books/native-control has not
+          ; certified since.  No value changes.
+          (if (or (not (posp count)) (< *fn-native-admin-max-arguments* count))
               (fn-record-parse-error :arguments)
             (let ((parsed (fn-nctrl-admin-words-decode
                            count (fn-record-parse-rest counted))))

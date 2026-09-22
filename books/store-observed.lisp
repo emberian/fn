@@ -134,6 +134,23 @@
 
 (verify-guards fn-sn-observed-seed)
 
+; The other half of what the composed recovery needs of an image's history,
+; and it is NOT structural: `40bb3f74` made `fn-sn-recover' publish `:fault'
+; rather than `:recovering' when the ARTICLE replay succeeds and the IDENTITY
+; replay does not, because observed open uses `:recovering' to authorize its
+; durability barriers and must never show it on half a recovery.  Every reopen
+; guarantee below therefore carries this beside
+; `fn-sf-history-recoverablep'; before that commit there was nothing to carry
+; and books/store-observed has not certified since 2026-09-21.  A history
+; that fails it is reachable and witnessed:
+; `tests/acl2/store-identity-traces-tests' builds a structurally bound signed
+; article with no durable enrollment before it.
+(defun fn-sn-observed-identity-okp (records)
+  (declare (xargs :guard t :verify-guards nil))
+  (equal (fn-stxk-context-kind (fn-replay-identity records)) :ok))
+
+(verify-guards fn-sn-observed-identity-okp)
+
 (defun fn-sn-observed-historyp (frontier records)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-record-uint32p frontier)
@@ -616,19 +633,21 @@
                 (equal (fn-sf-phase (fn-sn-files st)) :replaying)
                 (fn-sf-history-recoverablep (fn-sn-groups st) (fn-sn-capacity st)
                                             (fn-sf-records (fn-sn-files st))
-                                            (fn-sf-frontier (fn-sn-files st))))
+                                            (fn-sf-frontier (fn-sn-files st)))
+                (fn-sn-observed-identity-okp (fn-sf-records (fn-sn-files st))))
            (equal (fn-sf-phase (fn-sn-files (fn-sn-recover st))) :recovering))
   :hints (("Goal"
            :use ((:instance fn-sn-statep-implies-files-statep (st st)))
-           :in-theory (e/d (fn-sn-recover fn-sf-recover fn-sn-update 
-                                           )
+           :in-theory (e/d (fn-sn-recover fn-sf-recover fn-sn-update
+                            fn-sn-observed-identity-okp)
                             (fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
                              fn-sf-replay-node)))))
 
 (defthm fn-sn-open-observed-succeeds-on-recoverable-image
   (implies (and (fn-sn-observed-configurationp groups capacity)
                 (fn-sn-observed-historyp frontier records)
-                (fn-sf-history-recoverablep groups capacity records frontier))
+                (fn-sf-history-recoverablep groups capacity records frontier)
+                (fn-sn-observed-identity-okp records))
            (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records)))
   :hints (("Goal"
            :use (fn-sn-observed-seed-is-state
@@ -671,6 +690,7 @@
 (defthm fn-sn-acknowledged-record-survives-observed-reopen
   (implies (and (fn-snt-relation s)
                 (fn-sf-crash-imagep (fn-sn-files s) frontier records)
+                (fn-sn-observed-identity-okp records)
                 (member-equal pair (fn-sf-successes (fn-sn-files s))))
            (and (fn-sn-open-okp
                  (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
@@ -720,7 +740,8 @@
 ; which says it over every arm without a vacuous one.
 (defthm fn-sn-recovery-admissible-image-reopens
   (implies (and (fn-snt-relation s)
-                (fn-sf-recovery-crash-imagep (fn-sn-files s) frontier records))
+                (fn-sf-recovery-crash-imagep (fn-sn-files s) frontier records)
+                (fn-sn-observed-identity-okp records))
            (fn-sn-open-okp
             (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
                                  frontier records)))

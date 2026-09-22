@@ -14,9 +14,17 @@
   (if (fn-native-admin-decimalp text)
       (fn-native-admin-decimal-value (coerce text 'list)) nil))
 
+; The kind is checked here as `fn-nctrl-seal' (books/native-control) checks
+; its own: `fn-frame-protected' is guarded by `fn-cbor-octetp' on it, and
+; nothing in this gate said so, which is what the guard conjecture stopped
+; on.  Both callers pass a constant (`*fn-nhctrl-enroll-kind*' 4 and
+; `*fn-nhctrl-author-kind*' 5), so no frame this book can build changes; a
+; kind outside an octet now refuses instead of framing a value the header
+; cannot encode.
 (defun fn-nhctrl-seal (kind specs values)
   (declare (xargs :guard t))
-  (if (not (and (fn-frame-spec-listp specs)
+  (if (not (and (fn-cbor-octetp kind)
+                (fn-frame-spec-listp specs)
                 (fn-frame-values-okp specs values))) :bad
     (let ((payload (fn-frame-fields-octets specs values)))
       (if (< *fn-nhctrl-max-payload* (len payload)) :bad
