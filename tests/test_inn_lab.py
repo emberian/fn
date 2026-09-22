@@ -358,6 +358,8 @@ class LabTests(DryRun, unittest.TestCase):
         self.assertIn("| native image | {}".format(FAKE_IMAGE), self.text)
         self.assertIn("| inn version |", self.text)
         self.assertIn("C: IHAVE <inn-lab-fn-post-", self.text)
+        self.assertIn("C: TAKETHIS <inn-lab-fed-", self.text)
+        self.assertNotIn("(the relay carried nothing)", self.text)
         self.assertIn("INN and fn are on ONE host", self.text)
 
     def test_the_box_is_left_clean_and_the_install_is_left_alone(self):
