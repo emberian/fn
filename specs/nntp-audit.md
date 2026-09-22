@@ -33,7 +33,7 @@ probes supply different evidence from those pure transcripts.
 | §7.1, §7.5 | DATE, clock observations, exact formatting | Implemented over an explicit `fn-clock-observationp` input. With `has-wall` false the reply is `503`, stated, never a fabricated timestamp; the 111 line is always eighteen octets (`fn-nntp-date-octets-length`) and is response text for any reading (`fn-nntp-date-octets-is-response-text`). The calendar conversion is closed-form and is pinned by transcripts, not proved |
 | §7.2 | HELP multiline response, unsupported arguments | Implemented/tested; the text lists every keyword `fn-nntp-session-command` and `fn-nntp-archive-command` recognize and nothing else, and `tests/acl2/nntp-legacy-tests.lisp` pins the two lists against each other so a new command that is not listed fails the test book. The control for that pin is XPATH (RFC 2980 §2.10), a real legacy keyword this reader refuses; it was XPAT until this lane implemented XPAT. **Open**: AUTHINFO and STARTTLS are answered by `books/nntp-auth.lisp`, above the dispatcher, so the HELP text the dispatcher renders does not list them and the pin cannot see them |
 | §7.3, §7.5 | NEWGROUPS time forms, GMT/local semantics, group creation metadata | Implemented over persisted `fn-nntp-group-factp` records supplied as an input list. Both year forms with §7.3.2's century rule; a two-digit year with no wall reading is `503`, not a guess. fn's local time zone is UTC, so the optional GMT token changes nothing and is accepted only in third position. Emitted names are renderable with no environment hypothesis (`fn-nntp-facts-since-are-facts`) |
-| §7.4 | NEWNEWS filtering/time forms | Deferred; no capability claim |
+| §7.4 | NEWNEWS filtering/time forms | Implemented over the same §7.3.2 date and time parse NEWGROUPS uses, the same wildmat matcher LIST ACTIVE uses, and an explicit per-command parse budget. The instant compared is the article's own `Injection-Date`, falling back to `Date` (RFC 5537 §§3.6/3.7): the committed article record carries no arrival stamp, so there is none to read, and specs/nntp.md states that limitation and the articles it omits. Proved: every rendered line is a stored identifier and carries no CR, LF or NUL (`fn-nntp-newnews-lines-are-clean`); nothing is reported that is not a committed article available in a matched group with a stamp at or after the instant (`fn-nntp-newnews-scan-reports-only-witnessed-lines`); the refusal is decided by an independent candidate count against the budget (`fn-nntp-newnews-scan-answers-exactly-within-the-budget`), bounds the answer (`fn-nntp-newnews-scan-reports-at-most-the-budget`) and is the only other outcome (`fn-nntp-newnews-refusal-is-the-only-other-outcome`); the dispatcher arm is an equation (`fn-nntp-step-dispatches-newnews-to-the-newnews-response`); no state changes (`fn-nntp-newnews-response-preserves-session`). A request over the budget is §3.2.1's 503 and parses nothing |
 | §7.6.1 | LIST defaults, keyword variants, syntax/availability errors, no state changes | Default, ACTIVE (with and without a wildmat), ACTIVE.TIMES, NEWSGROUPS, HEADERS and OVERVIEW.FMT implemented; DISTRIB.PATS and DISTRIBUTIONS are recognized-but-unmaintained 503; malformed or unknown variants are 501. The variant keyword is dispatched by `fn-nntp-list-command`, which is what `books/nntp.lisp` calls, so that ACTIVE.TIMES can read the environment; session preservation proved (`fn-nntp-list-response-preserves-session`) |
 | §4, §§7.6.3/7.6.6 | Wildmat grammar/semantics and filtered ACTIVE/NEWSGROUPS | Bounded strict UTF-8 parser and dynamic-programming matcher integrated; RFC, malformed, boundary, socket and independent-client cases pass; general DP/reference equivalence, UTF-8 progress/scalar bounds and parser-output recognition are proved; matcher work and runtime guard graphs have scoped certification; parser work and complete protocol refinement remain open |
 | §§8.3–8.4 | OVER by range/Message-ID/current, missing fields, byte/line metadata, OVERVIEW.FMT | Implemented over the proved `fields` view in `books/article.lisp`/`books/article-fields.lisp`. All three forms; §8.3.2's escaping is proved total (`fn-nov-scrub-is-clean`), a missing header yields the empty field (`fn-nov-missing-header-is-empty`), `:bytes` and `:lines` are the exact retained octets (`fn-nov-bytes-is-the-retained-octet-count`, `fn-nov-lines-counts-the-retained-body-lines`), and the eight-field line carries no CR, LF or NUL (`fn-nov-line-is-a-clean-line`). Xref is omitted, so exactly eight fields are emitted and OVERVIEW.FMT lists exactly the seven fixed lines. §§8.1/8.2's overview database as a stored structure is not implemented: each line is projected on demand |
@@ -108,6 +108,7 @@ articles inside the range the command's own argument names.
 | ARTICLE / HEAD / BODY / STAT *n* | `O(A · m)` to locate, plus, for ARTICLE/HEAD/BODY only, `O(P)` in that one article's payload length `P`. |
 | ARTICLE / HEAD / BODY / STAT *message-id* | `O(A)` identifier comparisons, plus `O(P)` for that article. |
 | LIST, LIST ACTIVE [*wildmat*] | `O(G · A · (m + 251))`: one pass over the articles for each listed group. LIST NEWSGROUPS does not touch the articles. |
+| NEWNEWS *wildmat* *date* *time* | `O(G' · A)` membership tests for the `G'` groups the wildmat matched, plus at most 256 article parses at `O(P)` each, and nothing at all when the candidate count exceeds 256. The parse budget is `*fn-nntp-newnews-parse-budget*` and the refusal is `503`. |
 
 What was removed: the per-command `fn-nntp-projectionp` call, which re-ran
 `fn-statep` (whose `fn-article-listp` conjunct is quadratic in `A` through
@@ -194,6 +195,10 @@ after QUIT. `fn-nntp-opened-finite-trace-is-consistent` roots that at
 | No HDR or XHDR line carries TAB, CR, LF or NUL, whatever the stored article | proved (`fn-nntp-hdr-content-is-clean`, `fn-nntp-hdr-line-is-a-clean-field`, `fn-nntp-hdr-lines-for-numbers-are-clean`) — unconditional |
 | A field the article does not carry gives an empty HDR value | proved (`fn-nntp-hdr-of-a-missing-field-is-empty`) |
 | No LIST ACTIVE.TIMES or LIST NEWSGROUPS line carries CR, LF or NUL | proved (`fn-nntp-active-times-lines-are-clean`; `fn-nntp-newsgroup-lines-are-clean` under `fn-nntp-safe-group-listp`) |
+| No NEWNEWS line carries CR, LF or NUL, whatever the store holds | proved (`fn-nntp-newnews-lines-are-clean`) - unconditional, because a candidate is projectable (`fn-nntp-newnews-candidate-is-projectable`) |
+| A NEWNEWS answer names only articles of the matched groups, newer than the requested instant | proved (`fn-nntp-newnews-scan-reports-only-witnessed-lines`) |
+| A NEWNEWS over the work budget is refused whole, and parses nothing | proved (`fn-nntp-newnews-scan-answers-exactly-within-the-budget`, `fn-nntp-newnews-refusal-is-the-only-other-outcome`); that the refusal costs no parse is read off the definition's order, not certified by a cost theorem |
+| Which articles a NEWNEWS omits because fn cannot decode their date-time | tested, not proved (`tests/acl2/nntp-newnews-tests.lisp` pins the decoder on eleven forms); the stated limitation is in specs/nntp.md |
 | Every LIST ACTIVE.TIMES stamp is the group's persisted creation fact, never the reader's clock | proved by construction: `fn-nntp-active-times-line` reads `fn-nntp-fact-created` and no other input; the served connection supplies no facts yet, so the served block is empty |
 | LIST ACTIVE.TIMES on the served path lists the configured groups' created stamps | **open**: the served environment is built with an empty fact list (`books/nntp-post.lisp`), so the served reply is the empty block. Wiring `fn-cnode-config`'s created stamps into the served conn is the mutable-owner lane's |
 | 412 precedes 420/423; 430 for an absent Message-ID; 501 for leading/trailing white space and for an over-long line | tested (expected transcripts in `tests/acl2/nntp-tests.lisp` and socket partitions) |
@@ -211,7 +216,8 @@ ARTICLE, BODY, DATE, GROUP, LAST, LISTGROUP, NEWGROUPS and NEXT. HDR, NEWNEWS,
 OVER and POST each indicate their *own* capability and are not part of READER;
 LIST ACTIVE and LIST NEWSGROUPS belong to LIST, and LIST OVERVIEW.FMT to OVER.
 The earlier text listing HDR, NEWNEWS, OVER and POST as READER requirements was
-wrong, and it is what kept the label unadvertised after the commands existed.
+wrong, and it is what kept the label unadvertised after the commands existed. NEWNEWS's own label is advertised since w32 implemented
+the command (§7.4 row above).
 
 Every clause below is marked **proved** (with the theorem that carries it),
 **tested** (with where the expectation lives), or **open**. "Tested" means an
@@ -393,8 +399,15 @@ leaves open, the §6.1.1.2 count *theorem*, is an assurance gap about a value th
 transcripts pin exactly; it is not a missing command or an unimplemented branch.
 OVER is advertised as `OVER MSGID` because the message-id form is implemented;
 §8.3.2 requires the MSGID argument exactly when that form works. LIST is
-advertised with the three variants that answer with data. POST, IHAVE, NEWNEWS,
-HDR and MODE-READER stay unadvertised; this reader is not mode-switching.
+advertised with the three variants that answer with data. NEWNEWS is advertised
+because §7.4's command is implemented in both its argument forms; a request
+over the parse budget is §3.2.1's 503, which that section assigns to a server
+handling a subset of legitimate cases, and is a reply inside the label's
+promise rather than a withdrawal of it. IHAVE and MODE-READER stay
+unadvertised; this reader is not mode-switching. (This paragraph listed POST
+and HDR as unadvertised until w32 corrected it: HDR is advertised
+unconditionally and POST exactly on the connections that may use it, both
+since the lanes that implemented them.)
 XPAT and XHDR carry no capability label at all: RFC 2980 predates §3.3 and names
 none, and a client discovers them by trying them.
 

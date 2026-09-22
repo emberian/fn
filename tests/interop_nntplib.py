@@ -27,7 +27,8 @@ def main():
                                 "NEWSGROUPS", "OVERVIEW.FMT"], caps
         assert caps["HDR"] == [], caps
         assert "POST" not in caps and "IHAVE" not in caps, caps
-        assert "MODE-READER" not in caps and "NEWNEWS" not in caps, caps
+        assert caps["NEWNEWS"] == [], caps
+        assert "MODE-READER" not in caps, caps
         response, count, first, last, name = client.group("fn.letters")
         assert (count, first, last, name) == (1, 1, 1, "fn.letters")
         response, number, msgid = client.stat()
@@ -55,6 +56,19 @@ def main():
         assert [g.group for g in new_groups] == [], new_groups
         response, none_new = client.newgroups(datetime.date(2099, 1, 1))
         assert none_new == [], none_new
+
+        # Section 7.4: NEWNEWS over a wildmat, read by an independent client.
+        # The seed article carries no Injection-Date and no Date, so fn
+        # cannot read an injection instant for it and does not report it --
+        # the stated limitation of specs/nntp.md's NEWNEWS paragraph.  What
+        # this probe establishes is the framing: 230 and a well-formed
+        # multi-line block that nntplib parses, from both the wildmat that
+        # matches the group and one that matches nothing.
+        response, ids = client.newnews("fn.*", datetime.datetime(1970, 1, 1))
+        assert response.startswith("230 "), response
+        assert ids == [], ids
+        response, ids = client.newnews("no.such.*", datetime.datetime(2099, 1, 1))
+        assert response.startswith("230 ") and ids == [], (response, ids)
 
         # Sections 8.3 and 8.4.  nntplib reads LIST OVERVIEW.FMT and keys the
         # OVER result by those field names, so a disagreement between the two
@@ -129,7 +143,8 @@ def main():
                       "commands": ["CAPABILITIES", "GROUP", "STAT", "HEAD", "BODY",
                                    "ARTICLE", "LIST", "LIST ACTIVE.TIMES",
                                    "LIST HEADERS", "LIST NEWSGROUPS", "DATE",
-                                   "NEWGROUPS", "LIST OVERVIEW.FMT", "OVER",
+                                   "NEWGROUPS", "NEWNEWS",
+                                   "LIST OVERVIEW.FMT", "OVER",
                                    "XOVER", "XHDR", "MODE READER",
                                    "QUIT"]}, sort_keys=True))
 
