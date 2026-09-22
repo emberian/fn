@@ -626,6 +626,34 @@ shared immutable publication state before raw Lisp may execute an I/O action."
                 (t (fn-native-admin-publication-result
                     :accepted nil generation name (fn-jpub-initial t)))))))))
 
+;; KEYSTONE.  An administrative configuration record is published only by a
+;; process that observed its own exclusive writer lock.  Raw Lisp executes a
+;; publication only from an `:accepted' result and only with its jpub state
+;; (host/native/admin.lisp `fnn-admin-authorize' refuses anything else, and
+;; `fnn-admin-publish' takes the jpub from this result); both require
+;; LOCK-OWNED, on every accepting path, not only the first branch.  The host
+;; passes `fnn-admin-lock-observation' (the store is writable and its lock
+;; descriptor is live) through `fn-store-cfg-native-admin-authorize'
+;; (host/store-node-host.lisp), which hands LOCK-OWNED on unchanged; both the
+;; offline executor (`fnn-admin-execute') and the live owner's arm
+;; (`fnn-owner-live-admin-serialized') reach publication only through that
+;; call.  A second process over a live owner's store never gets that far:
+;; its nonblocking exclusive lock is refused `already locked' when the store
+;; is opened, the word the query executor also reports.  This theorem is what
+;; makes an unlocked process's publication unreachable even past that point.
+;; Teeth: tests/acl2/native-admin-tests.lisp.
+(defthm fn-native-admin-publication-is-authorized-only-under-the-lock
+  (let ((result (fn-native-admin-publication-authorize
+                 records frontier config-records record lock-owned observed-names)))
+    (and (implies (equal (fn-native-admin-publication-status result) :accepted)
+                  lock-owned)
+         (implies (fn-native-admin-publication-jpub result)
+                  lock-owned)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
+                                  (fn-cnode-config-replay fn-native-admin-candidate-openp
+                                   fn-native-admin-config-name fn-cfg-recordp)))))
+
 (defthm fn-native-admin-config-name-of-one
   (equal (fn-native-admin-config-name 1) "00000001.cfg"))
 

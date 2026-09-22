@@ -154,6 +154,23 @@ environment, in the image the operator deploys."
         (fnn-graceful-close fd))
     (error () nil)))
 
+(defun fnn-control-answering (control socket)
+  "Withdraw SOCKET from the set a stop wakes, once its whole frame is read.
+
+`fnn-control-stop' shuts every socket in that set so that a worker blocked in
+its read returns.  A worker that has read its frame is no longer blocked on
+the socket; it is computing the reply, and the request it is answering may be
+the very one whose fault or uncertain observation stops the owner.  Shutting
+its socket then threw away the owner's own terminal word: on the dabebb84
+image a live `group create' that faulted the owner before publishing anything
+reached the operator as a closed connection, which the client can only call
+uncertain (exit 3), not the fault (exit 4) the owner had classified.  The
+worker still ends its I/O under the reply deadline and `fnn-control-close'
+joins it before the process exits."
+  (fnn-with-control (control)
+    (setf (fnn-control-state-clients control)
+          (delete socket (fnn-control-state-clients control) :test #'eq))))
+
 (defun fnn-control-handle-client (control socket)
   (let* ((service (fnn-control-state-service control))
          (maximum (if (fboundp 'fn-native-hybrid-control-host-max-frame)
@@ -161,7 +178,8 @@ environment, in the image the operator deploys."
                     (fnn-core 'fn-native-control-host-max-frame)))
          (status
            (handler-case
-               (let* ((frame (fnn-control-read-frame socket maximum))
+               (let* ((frame (prog1 (fnn-control-read-frame socket maximum)
+                               (fnn-control-answering control socket)))
                       (request
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-control-host-request-decode
@@ -188,8 +206,15 @@ environment, in the image the operator deploys."
                    ((and (consp admin) (eq (car admin) :admin))
                     (fnn-owner-live-admin-serialized service (second admin)))
                    (t :refused)))
-             (fnn-store-indeterminate () :uncertain)
-             (fnn-store-fault () :fault)
+             ;; The owner has already fenced itself on these two (exit 3 and
+             ;; exit 4, `fnn-owner-shared-action-locked'); the reason goes to
+             ;; the owner's log, and the caller gets the status word.
+             (fnn-store-indeterminate (condition)
+               (fnn-err "control request uncertain; owner fenced: ~a" condition)
+               :uncertain)
+             (fnn-store-fault (condition)
+               (fnn-err "control request fault; owner stopped: ~a" condition)
+               :fault)
              (fnn-store-error () :refused)
              (fnn-os-error () :refused)
              (sb-bsd-sockets:socket-error () :refused)

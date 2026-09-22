@@ -553,6 +553,36 @@ class NativeSliceAccountingTests(unittest.TestCase):
             self.assertEqual(row.verdict, v0_matrix.REFUSED)
             self.assertIn("411", row.observed)
 
+    def test_an_owner_the_live_verb_killed_leaves_the_refusal_half_unexercised(self):
+        # The dabebb84 run: the live verb exited 3 because the owner faulted
+        # and exited, and the offline command then found the writer lock free
+        # and was accepted.  With no live owner the refusal half is not a
+        # statement about a held store, so the offline command is not run.
+        class OwnerKilledByTheVerb(HarnessOnlyNativeGate):
+            CANNED_RC = dict(HarnessOnlyNativeGate.CANNED_RC)
+            CANNED_RC["live reconfiguration: declare fn.matrix.live on node A"] = 3
+
+            def alive(self, node, tag="main"):
+                if node.name == "a" and self.step_named(
+                        "live reconfiguration: declare fn.matrix.live on node A"):
+                    self.dead[node.name] = "fault operator run"
+                    return False
+                return bool(node.pid)
+        with tempfile.TemporaryDirectory() as home:
+            gate = OwnerKilledByTheVerb(
+                v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234", "dev",
+                backend=v0_matrix.NATIVE_BACKEND, native_image="/opt/fn/fn-host",
+                native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+            gate.execute_native_acceptance()
+            rows = {r.id: r for r in gate.rows}
+            self.assertEqual(rows["V0-CFG-LIVE"].verdict, v0_matrix.UNCERTAIN)
+            self.assertIn("DIED", rows["V0-CFG-LIVE"].observed)
+            refuse = rows["V0-CFG-LIVE-REFUSE"]
+            self.assertEqual(refuse.verdict, v0_matrix.NOT_EXERCISED)
+            self.assertIn("owner died", refuse.blocker)
+            self.assertNotIn("offline group create while the owner holds the store",
+                             [step.name for step in gate.steps])
+
     def test_wildcard_listener_is_measured_and_its_usage_code_is_named(self):
         with tempfile.TemporaryDirectory() as home:
             gate = self.structured_gate(home)
