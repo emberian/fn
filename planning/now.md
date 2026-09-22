@@ -56,8 +56,10 @@ theorem naming it, against "one owner per decision").
 green-audit landed earlier (d667a874, `tools/green_check.py` in `make
 check`); with the treewide and freeze manifests in the tree it reads dev as 323
 green, 84 red, 0 never and 0 absent at current digests; the reds are the
-cascade behind the two books above, and the treewide territory is being
-recertified on persvati from this head. Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
+cascade behind the two books above. Recertifying the whole treewide
+territory on persvati from 13f50de7 confirms it: exactly two independent
+reds in the tree, `store-node-traces` and `checkpoint`, and fifty-one
+books behind them. Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
 step runs from the laptop: STARTTLS, the 483 before it, login, a post and a
 fresh-connection reread, on the deploy gate's exit scale. The hbox freeze,
 matrix-provision and node-deploy sequences are `tools/runbooks/`. persvati
