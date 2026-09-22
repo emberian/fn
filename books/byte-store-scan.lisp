@@ -360,7 +360,14 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (consp names)
       (if (equal (car names) (fn-bs-txn-name sequence))
-          (let ((rest (fn-bs-txn-observation-pairs (cdr names) (1+ sequence))))
+          ; `nfix': `fn-bs-txn-observation-covered' (books/byte-store-txn-name)
+          ; reaches this function in the branch where its own `natp' checks
+          ; failed, so `:guard t' here leaves (acl2-numberp sequence) with
+          ; nothing to prove it and the guard conjecture suggests no induction.
+          ; The two callers start at 0 or at a checked lower bound, so `nfix'
+          ; is the identity on the composed machine.
+          (let ((rest (fn-bs-txn-observation-pairs (cdr names)
+                                                   (1+ (nfix sequence)))))
             (if (equal rest :invalid)
                 :invalid
               (cons (list sequence (car names)) rest)))

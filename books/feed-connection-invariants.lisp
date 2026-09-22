@@ -147,11 +147,33 @@
                                       fn-fc-table-memberp fn-fc-tablep
                                       fn-fc-table-entryp)))))
 
+(local
+ (defthm fn-fc-tablep-implies-unique-names
+   (implies (fn-fc-tablep table)
+            (fn-fc-table-unique-namesp (fn-fc-table-names table)))
+   :hints (("Goal" :in-theory (e/d (fn-fc-tablep fn-fc-table-names
+                                    fn-fc-table-unique-namesp)
+                                   (fn-fc-statep fn-fwi-statep
+                                    fn-wire-octet-listp fn-wire-octetp))))))
+
+; The table recognizers open here; the state recognizers must not.  With
+; `fn-fc-statep' left enabled this goal splits it, `fn-fwi-statep' and the
+; wire octet recognizers on every branch -- 101 subgoals for Goal, 104 for
+; Subgoal 101, and the book is killed at the 1800 s per-book limit (hbox
+; certify-20260922T025220Z-2602458 and certify-20260922T031240Z-2615431,
+; 1800.041 s in the second; the same source certified in 21.4 s on
+; 2026-09-21, certify-20260921T170420Z-2003857, before seven of its
+; dependencies moved).  The `fn-fc-statep' hypothesis is the
+; whole fact the put needs about `st', and the entry recognizer asks for
+; exactly it, so the recognizer stays closed: AGENTS.md, no whole-state
+; revalidation on a served path.
 (defthm fn-fc-table-put-preserves-table
   (implies (and (stringp peer)
                 (fn-fc-statep st)
                 (fn-fc-tablep table))
            (fn-fc-tablep (fn-fc-table-put peer st table)))
-  :hints (("Goal" :in-theory (enable fn-fc-table-put fn-fc-tablep
-                                     fn-fc-table-entryp fn-fc-table-names
-                                     fn-fc-table-unique-namesp))))
+  :hints (("Goal" :in-theory (e/d (fn-fc-table-put fn-fc-tablep
+                                   fn-fc-table-entryp fn-fc-table-names
+                                   fn-fc-table-unique-namesp)
+                                  (fn-fc-statep fn-fwi-statep
+                                   fn-wire-octet-listp fn-wire-octetp)))))

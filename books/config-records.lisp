@@ -78,12 +78,35 @@
            (and (fn-record-p (fn-jrec-body j))
                 (true-listp (fn-jrec-body j)))))
 
+; `fn-store-event-p' is withdrawn on export (books/store-events) and the
+; keystones below keep `fn-jrec-p' closed, so the two facts a journal article
+; record carries about its body are stated here: it is a Store event, and a
+; record that is not a configuration record is an article record.
+(defthm fn-jrec-article-body-is-a-store-event
+  (implies (and (fn-jrec-p j) (equal (fn-jrec-kind j) :article))
+           (fn-store-event-p (fn-jrec-body j)))
+  :hints (("Goal" :in-theory (enable fn-store-event-p))))
+
+(defthm fn-jrec-non-config-is-article
+  (implies (and (fn-jrec-p j) (not (equal (fn-jrec-kind j) :config)))
+           (equal (fn-jrec-kind j) :article)))
+
 ; The two sequence facts `fn-jrec-p' carries, stated so the keystones below
 ; can keep the recognizer closed: the body's own sequence field is the
 ; journal sequence.
 (defthm fn-jrec-article-sequence-agrees
   (implies (and (fn-jrec-p j) (equal (fn-jrec-kind j) :article))
            (equal (fn-record-sequence (fn-jrec-body j)) (fn-jrec-sequence j))))
+; `fn-store-event-sequence' is withdrawn on export too, so the same agreement
+; is stated over the accessor `fn-replay-loop' actually applies to the body.
+(defthm fn-jrec-article-store-event-sequence-agrees
+  (implies (and (fn-jrec-p j) (equal (fn-jrec-kind j) :article))
+           (equal (fn-store-event-sequence (fn-jrec-body j))
+                  (fn-jrec-sequence j)))
+  :hints (("Goal" :in-theory (e/d (fn-store-event-sequence)
+                                  (fn-record-p fn-stxe-p fn-stxk-p fn-stxa-p
+                                   fn-store-retention-event-p)))))
+
 (defthm fn-jrec-config-sequence-agrees
   (implies (and (fn-jrec-p j) (equal (fn-jrec-kind j) :config))
            (equal (fn-cfg-record-sequence (fn-jrec-body j))
@@ -169,12 +192,19 @@
           (list (fn-replay-ok node expected) cfg)
         (list (fn-replay-fault node expected :improper-record-list) cfg)))))
 
+; `fn-store-event-p' is withdrawn on export (books/store-events); this
+; conjecture needs it, to carry `fn-jrec-p's article branch to the used
+; lemma's hypothesis.  Its three statement kind recognizers stay closed:
+; opening them here unfolds the statement codec on every branch and the
+; conjecture does not return (measured 2026-09-22, past 900 s at Goal'').
 (verify-guards fn-config-aware-loop
   :hints (("Goal"
            :use ((:instance fn-replay-apply-record-statep-iff-consp
                             (record (fn-jrec-body (car js)))))
-           :in-theory (disable fn-node-statep fn-replay-apply-record
-                               fn-cfg-record-acceptablep))))
+           :in-theory (e/d (fn-store-event-p)
+                           (fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-node-statep fn-replay-apply-record
+                            fn-cfg-record-acceptablep)))))
 
 (defun fn-config-aware-replay (groups capacity reserved ceiling js)
   (declare (xargs :guard t :verify-guards nil))

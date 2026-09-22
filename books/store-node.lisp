@@ -476,12 +476,23 @@
   (fn-lace-p (fn-sn-accepted-delta s))
   :hints (("Goal" :in-theory (enable fn-sn-accepted-delta))))
 
+; `fn-stx-delta' (books/stx-lace) is guarded by `fn-prin-keyringp', so under
+; `:guard t' this function has to say what it does without one; it contributes
+; no statements, which is what `fn-stx-delta' itself returns for a keyring
+; that verifies nothing.  Every caller passes `(fn-sn-keyring s)' of a state
+; that satisfies `fn-sn-statep', so the branch is not reachable in the
+; composed machine.  The decoder stays closed in the guard proof: opening
+; `fn-replay-composite-record' unfolds the record codec into the conjecture
+; (measured 2026-09-22, hbox certify-20260922T054916Z-2704241).
 (defun fn-sn-composite-delta (event keyring)
-  (declare (xargs :guard t))
-  (let ((record (fn-replay-composite-record event)))
-    (if (fn-record-p record)
-        (fn-stx-delta (fn-record-payload record) keyring)
-      (fn-stx-delta nil keyring))))
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal" :in-theory (disable fn-replay-composite-record)))))
+  (if (not (fn-prin-keyringp keyring)) nil
+    (let ((record (fn-replay-composite-record event)))
+      (if (fn-record-p record)
+          (fn-stx-delta (fn-record-payload record) keyring)
+        (fn-stx-delta nil keyring)))))
 
 (defun fn-sn-finish-identity (s files record node)
   (declare (xargs :guard t))
