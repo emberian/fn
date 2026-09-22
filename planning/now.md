@@ -71,8 +71,11 @@ absent from the books), w32-operator-verbs (done at 683a1bf0: `init`, `peer list
 developer-image fault that makes an uncertain outcome observable at exit 3
 with ACL2's word; held unmerged because its books sit above
 `store-node-traces` and the merge gate waits for the closure),
-w32-owner-defects (two node defects the client found against the real
-915 node, [record](evidence/fn-client-915-2026-09-22.md): a POST over about
+w32-owner-defects (landed: three node defects the client found against
+the real 915 node, [record](evidence/owner-defects-2026-09-22.md); the
+host now carries an unconsumed suffix into the next step, supplies a fresh
+clock reading per submission, and listens with a backlog of sixteen; no
+book changed; [record](evidence/fn-client-915-2026-09-22.md): a POST over about
 32 KiB stops the owner with a plaintext-read suffix fault, and every
 article in one owner run carries the same Date; the client lane itself
 landed at 13c5ea43 with four client defects fixed), and w32-triage (`tools/triage.py`, review finding F1: every
