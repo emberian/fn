@@ -22,33 +22,13 @@
   (value (fn-native-admin-peer-report
           (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state))))))
 (defun fn-native-admin-host-owner-reconfigure (id plan state)
+  ; The live arm.  The delta list, labels as strings, is ACL2's
+  ; (`fn-native-admin-plan-deltas', books/native-admin.lisp); this bridge
+  ; only hands it to the owner's staging step.
   (declare (xargs :stobjs state :mode :program))
-  (let* ((kind (fn-native-admin-result-kind plan))
-         (delta
-          (cond ((equal kind :set-peer)
-                 (fn-cfg-set-peer-delta (fn-native-admin-result-peer plan)))
-                ((equal kind :remove-peer)
-                 (fn-cfg-remove-peer-delta (fn-native-admin-result-name plan)))
-                ((equal kind :create-group)
-                 (fn-cfg-create-group (fn-native-admin-result-name plan)
-                                      *fn-cfg-default-policy-id*))
-                ((equal kind :remove-group)
-                 (fn-cfg-remove-group (fn-native-admin-result-name plan)))
-                ((equal kind :set-capacity)
-                 (fn-cfg-set-capacity (fn-native-admin-result-capacity plan)))
-                ; `fn-cfg-set-policy' takes the two labels as strings, as
-                ; `fn-store-cfg-set-policy' (store-node-host.lisp) hands them.
-                ((equal kind :set-policy)
-                 (let ((slot (fn-store-octets->string
-                              (fn-native-admin-result-name plan)))
-                       (id (fn-store-octets->string
-                            (fn-native-admin-result-value plan))))
-                   (if (or (equal slot :bad) (equal id :bad))
-                       nil
-                     (fn-cfg-set-policy slot id))))
-                (t nil))))
-    (if delta
-        (fn-owner-reconfigure-deltas id (list delta) state)
+  (let ((deltas (fn-native-admin-plan-deltas plan)))
+    (if deltas
+        (fn-owner-reconfigure-deltas id deltas state)
       (value :refused))))
 (defun fn-native-admin-host-apply (plan monotonic wall state)
   (declare (xargs :stobjs state :mode :program))

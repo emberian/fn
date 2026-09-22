@@ -266,6 +266,112 @@ decoded as source-address for durable command compatibility."
          (t (fn-native-admin-peer-plan words))))
        (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))))))
 
+; The delta list the LIVE owner stages for an accepted plan.
+;
+; The live arm (host/native-admin-host.lisp
+; `fn-native-admin-host-owner-reconfigure') hands this list to
+; `fn-owner-reconfigure-deltas'.  A plan carries its labels as the argv
+; OCTETS the operator typed (the offline executor, `fn-store-cfg-reconfigure'
+; and its siblings in host/store-node-host.lisp, takes octets and converts
+; them itself); a configuration delta's labels are STRINGS (`fn-cfg-labelp',
+; books/config.lisp).  The live arm used to pass the octets straight into
+; `fn-cfg-create-group', `fn-cfg-remove-group' and `fn-cfg-remove-peer-delta',
+; which built deltas `fn-cfg-deltap' refuses, so every live `group create',
+; `group retire' and `peer remove' was refused `:malformed-delta' by
+; `fn-ocfg-reconfig-refusal' (measured 2026-09-22, the ground witness in
+; tests/acl2/native-admin-tests.lisp).  The conversion is the same
+; `fn-record-octets-string' the plan's own recognizers were applied to, so
+; the label a delta carries is exactly the word the plan admitted.
+(defun fn-native-admin-plan-deltas (plan)
+  (declare (xargs :guard t))
+  (if (not (equal (fn-native-admin-result-status plan) :accepted))
+      nil
+    (let ((kind (fn-native-admin-result-kind plan))
+          (name (fn-record-octets-string (fn-native-admin-result-name plan))))
+      (cond ((equal kind :set-peer)
+             (list (fn-cfg-set-peer-delta (fn-native-admin-result-peer plan))))
+            ((equal kind :remove-peer)
+             (list (fn-cfg-remove-peer-delta name)))
+            ((equal kind :create-group)
+             (list (fn-cfg-create-group name *fn-cfg-default-policy-id*)))
+            ((equal kind :remove-group)
+             (list (fn-cfg-remove-group name)))
+            ((equal kind :set-capacity)
+             (list (fn-cfg-set-capacity (fn-native-admin-result-capacity plan))))
+            ((equal kind :set-policy)
+             (list (fn-cfg-set-policy
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
+            (t nil)))))
+
+(encapsulate ()
+(local (defthm kind-of-result
+  (equal (fn-native-admin-result-kind (fn-native-admin-result s r k n c p v)) k)))
+(local (defthm status-of-result
+  (equal (fn-native-admin-result-status (fn-native-admin-result s r k n c p v)) s)))
+(local (defthm name-of-result
+  (equal (fn-native-admin-result-name (fn-native-admin-result s r k n c p v)) n)))
+(local (in-theory (disable fn-native-admin-result fn-native-admin-result-kind
+                           fn-native-admin-result-status fn-native-admin-result-name)))
+(defthm fn-native-admin-peer-plan-kind
+  (member-equal (fn-native-admin-result-kind (fn-native-admin-peer-plan words))
+                '(:set-peer nil))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-peer-plan)
+                                  (fn-cfg-peerp fn-cfg-peer-make nth len
+                                   fn-native-admin-decimalp fn-native-admin-decimal-value
+                                   fn-native-config-ipv4-address fn-id-hex-listp)))))
+(defthm fn-native-admin-plan-group-name-is-a-group-name
+  (implies (and (equal (fn-native-admin-result-status (fn-native-admin-plan argv)) :accepted)
+                (member-equal (fn-native-admin-result-kind (fn-native-admin-plan argv))
+                              '(:create-group :remove-group)))
+           (fn-record-group-namep
+            (fn-record-octets-string (fn-native-admin-result-name (fn-native-admin-plan argv)))))
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-plan fn-native-admin-words)
+                                  (fn-native-admin-peer-plan fn-record-group-namep
+                                   fn-path-identityp fn-native-admin-decimalp
+                                   fn-native-admin-decimal-value fn-native-admin-argvp))
+           :use ((:instance fn-native-admin-peer-plan-kind
+                            (words (fn-native-admin-words argv)))))))
+)
+
+; KEYSTONE.  Every delta the live arm stages for an accepted `group create'
+; or `group retire' is a typed delta: its name label is the admitted group
+; name as a STRING, so `fn-ocfg-reconfig-refusal' cannot refuse it
+; `:malformed-delta' for the octet/string confusion described above.  The
+; teeth, including the old octet delta that `fn-cfg-deltap' refuses, are in
+; tests/acl2/native-admin-tests.lisp.  (`peer remove' and `policy set' carry
+; labels the plan bounds at 512 octets and the configuration at 256, so a
+; long one is a well-typed refusal of the configuration book, not a type
+; confusion; they are witnessed on ground values, not in this theorem.)
+(encapsulate ()
+(local (defthm group-name-is-label
+  (implies (fn-record-group-namep s) (fn-cfg-labelp s))
+  :hints (("Goal" :in-theory (enable fn-record-group-namep fn-cfg-labelp
+                                     fn-record-nonempty-at-mostp)))))
+(local (defthm group-deltas-typed
+  (implies (fn-record-group-namep s)
+           (and (fn-cfg-delta-listp (list (fn-cfg-create-group s *fn-cfg-default-policy-id*)))
+                (fn-cfg-delta-listp (list (fn-cfg-remove-group s)))))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-deltap fn-cfg-delta-listp
+                                   fn-cfg-create-group fn-cfg-remove-group)
+                                  (fn-record-group-namep fn-cfg-labelp))))))
+(defthm fn-native-admin-live-group-delta-is-a-typed-delta
+  (implies (and (equal (fn-native-admin-result-status (fn-native-admin-plan argv)) :accepted)
+                (member-equal (fn-native-admin-result-kind (fn-native-admin-plan argv))
+                              '(:create-group :remove-group)))
+           (and (consp (fn-native-admin-plan-deltas (fn-native-admin-plan argv)))
+                (fn-cfg-delta-listp (fn-native-admin-plan-deltas (fn-native-admin-plan argv)))))
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-plan-deltas)
+                                  (fn-native-admin-plan fn-record-group-namep
+                                   fn-cfg-delta-listp fn-cfg-create-group fn-cfg-remove-group
+                                   fn-record-octets-string))
+           :use (fn-native-admin-plan-group-name-is-a-group-name
+                 (:instance group-deltas-typed
+                            (s (fn-record-octets-string
+                                (fn-native-admin-result-name (fn-native-admin-plan argv)))))))))
+)
+
 (defun fn-native-admin-result-queryp (result)
   "Does this accepted plan only read the durable configuration?
 
