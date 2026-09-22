@@ -1,0 +1,214 @@
+{
+ "books_in_closure": 97,
+ "budget_seconds": 800,
+ "directory": "/Users/ember/dev/fn/build/lanes/w32-native-guards/build/triage/triage-20260922T160924Z-9c1e",
+ "evidence_disclaimer": "A triage run certifies a tree whose sources were substituted on the box. Its certificates are published nowhere, its manifest is not archived, and nothing in this report is a certification claim about this revision.",
+ "findings": [
+  {
+   "acl2_exit_code": 0,
+   "assuming": [],
+   "blocked_by": [
+    "books/store-node-traces"
+   ],
+   "book": "books/native-admin",
+   "error_log_line": null,
+   "first_error": null,
+   "key_checkpoint": null,
+   "kind": "blocked",
+   "pcert_reached": "convert",
+   "proofs_done": true,
+   "round": 1,
+   "wall_seconds": 3.594
+  },
+  {
+   "acl2_exit_code": 0,
+   "assuming": [],
+   "blocked_by": [
+    "books/store-node-traces"
+   ],
+   "book": "books/native-control",
+   "error_log_line": null,
+   "first_error": null,
+   "key_checkpoint": null,
+   "kind": "blocked",
+   "pcert_reached": "convert",
+   "proofs_done": true,
+   "round": 1,
+   "wall_seconds": 1.711
+  },
+  {
+   "acl2_exit_code": 0,
+   "assuming": [],
+   "blocked_by": [
+    "books/store-node-traces"
+   ],
+   "book": "books/native-hybrid-control",
+   "error_log_line": null,
+   "first_error": null,
+   "key_checkpoint": null,
+   "kind": "blocked",
+   "pcert_reached": "convert",
+   "proofs_done": true,
+   "round": 1,
+   "wall_seconds": 1.781
+  },
+  {
+   "acl2_exit_code": 0,
+   "assuming": [],
+   "blocked_by": [
+    "books/store-node-traces"
+   ],
+   "book": "books/native-operator",
+   "error_log_line": null,
+   "first_error": null,
+   "key_checkpoint": null,
+   "kind": "blocked",
+   "pcert_reached": "convert",
+   "proofs_done": true,
+   "round": 1,
+   "wall_seconds": 2.187
+  },
+  {
+   "acl2_exit_code": 0,
+   "assuming": [],
+   "blocked_by": [],
+   "book": "books/store-node-resolution",
+   "error_log_line": 1450,
+   "first_error": "ACL2 Error [Failure] in (DEFTHM FN-SN-KNOWN-ABORT-IS-EXACT-NODE-ABORT ...): See :DOC failure.",
+   "key_checkpoint": "*** Key checkpoint before reverting to proof by induction: ***\nSubgoal 8'\n(IMPLIES\n (AND\n  (FN-SN-STATEP S)\n  (EQUAL (FN-SF-PHASE (FN-SN-FILES S))\n         :RECORD-STAGED)\n  (FN-STORE-RETENTION-EVENT-P (FN-SF-RECORD-CANDIDATE (FN-SN-FILES S)))\n  (EQUAL\n   (FN-STATE-NEXT-TXID\n    (FN-NODE-ACCEPTANCE\n       (FN-REPLAY-ADVANCE-TXID\n            (FN-SN-NODE S)\n            (FN-STORE-EVENT-TXID (FN-SF-RECORD-CANDIDATE (FN-SN-FILES S))))))\n   (FN-STORE-EVENT-TXID (FN-SF-RECORD-CANDIDATE (FN-SN-FILES S))))\n  (NOT\n   (FN-NODE-STAGE\n       (FN-REPLAY-ADVANCE-TXID\n            (FN-SN-NODE S)\n            (FN-STORE-EVENT-TXID (FN-SF-RECORD-CANDIDATE (FN-SN-FILES S))))))\n  (NOT\n   (MEMBER-EQUAL\n      (FN-STORE-EVENT-OBLIGATION-ID (FN-SF-RECORD-CANDIDATE (FN-SN-FILES S)))\n      (FN-NODE-BINDING-IDS (FN-NODE-BINDINGS (FN-SN-NODE S)))))\n  (EQUAL (FN-STORE-EVENT-KIND (FN-SF-RECORD-CANDIDATE (FN-SN-FILES S)))\n... (13 more lines, in the run log on the box)",
+   "kind": "independent",
+   "pcert_reached": "create",
+   "proofs_done": false,
+   "round": 1,
+   "wall_seconds": 1.653
+  },
+  {
+   "acl2_exit_code": 0,
+   "assuming": [],
+   "blocked_by": [],
+   "book": "books/store-node-traces",
+   "error_log_line": 61514,
+   "first_error": "ACL2 Error [Failure] in (DEFTHM FN-SNT-RECORD-DIRECTORY-PRESERVES-RELATION ...): See :DOC failure.",
+   "key_checkpoint": "*** Key checkpoint before reverting to proof by induction: ***\nSubgoal 4844.3740.1250'\n(IMPLIES\n (AND\n  (EQUAL (FN-SF-PHASE (FN-SN-FILES S))\n         :RECORD-ATTEMPTED)\n  (FN-SN-STATEP\n   (FN-SN-MAKE-V2\n    (FN-SN-GROUPS S)\n    (FN-SN-CAPACITY S)\n    (FN-SF-MAKE\n     :COMPLETING\n     (FN-SF-FRONTIER (FN-SN-FILES S))\n     NIL\n     (APPEND (FN-SF-RECORDS (FN-SN-FILES S))\n             (LIST (FN-SF-RECORD-CANDIDATE (FN-SN-FILES S))))\n     NIL\n     (CONS (FN-STORE-EVENT-SEQUENCE (FN-SF-RECORD-CANDIDATE (FN-SN-FILES S)))\n           (FN-STORE-EVENT-TXID (FN-SF-RECORD-CANDIDATE (FN-SN-FILES S))))\n     (FN-SF-SUCCESSES (FN-SN-FILES S))\n     (FN-SF-BARRIERS (FN-SN-FILES S)))\n    (FN-SN-NODE S)\n    (FN-SN-KEYRING S)\n    (FN-SN-INDEX S)\n    (FN-SN-KEYRING-GENERATION S)\n... (54 more lines, in the run log on the box)",
+   "kind": "independent",
+   "pcert_reached": "create",
+   "proofs_done": false,
+   "round": 1,
+   "wall_seconds": 101.799
+  },
+  {
+   "acl2_exit_code": 0,
+   "assuming": [],
+   "blocked_by": [],
+   "book": "books/store-observed",
+   "error_log_line": 941,
+   "first_error": "ACL2 Error [Failure] in (DEFTHM FN-SN-OBSERVED-SEED-IS-STATE ...): See :DOC failure.",
+   "key_checkpoint": "*** Key checkpoint before reverting to proof by induction: ***\nSubgoal 6\n(IMPLIES\n   (AND (FN-STRING-LISTP GROUPS)\n        (FN-NO-DUPLICATESP GROUPS)\n        (INTEGERP CAPACITY)\n        (<= 0 CAPACITY)\n        (INTEGERP FRONTIER)\n        (<= 0 FRONTIER)\n        (<= FRONTIER 4294967295)\n        (FN-SF-RECORD-LISTP RECORDS 0 0 FRONTIER))\n   (INTEGERP (FN-SN-KEYRING-GENERATION\n                  (FN-SN-MAKE GROUPS CAPACITY\n                              (FN-SF-MAKE :REPLAYING\n                                          FRONTIER NIL RECORDS NIL NIL NIL 0)\n                              (FN-NODE-INITIAL-STATE GROUPS CAPACITY)\n                              NIL '(NIL NIL NIL)))))",
+   "kind": "independent",
+   "pcert_reached": "create",
+   "proofs_done": false,
+   "round": 1,
+   "wall_seconds": 1.336
+  },
+  {
+   "acl2_exit_code": 0,
+   "assuming": [],
+   "blocked_by": [
+    "books/store-node-traces"
+   ],
+   "book": "tests/acl2/native-admin-tests",
+   "error_log_line": null,
+   "first_error": null,
+   "key_checkpoint": null,
+   "kind": "blocked",
+   "pcert_reached": "convert",
+   "proofs_done": true,
+   "round": 1,
+   "wall_seconds": 1.771
+  },
+  {
+   "acl2_exit_code": 0,
+   "assuming": [],
+   "blocked_by": [
+    "books/store-node-traces"
+   ],
+   "book": "tests/acl2/native-control-tests",
+   "error_log_line": null,
+   "first_error": null,
+   "key_checkpoint": null,
+   "kind": "blocked",
+   "pcert_reached": "convert",
+   "proofs_done": true,
+   "round": 1,
+   "wall_seconds": 1.728
+  },
+  {
+   "acl2_exit_code": 0,
+   "assuming": [],
+   "blocked_by": [
+    "books/store-node-traces"
+   ],
+   "book": "tests/acl2/native-hybrid-control-tests",
+   "error_log_line": null,
+   "first_error": null,
+   "key_checkpoint": null,
+   "kind": "blocked",
+   "pcert_reached": "convert",
+   "proofs_done": true,
+   "round": 1,
+   "wall_seconds": 1.723
+  },
+  {
+   "acl2_exit_code": 0,
+   "assuming": [],
+   "blocked_by": [
+    "books/store-node-traces"
+   ],
+   "book": "tests/acl2/native-operator-tests",
+   "error_log_line": null,
+   "first_error": null,
+   "key_checkpoint": null,
+   "kind": "blocked",
+   "pcert_reached": "convert",
+   "proofs_done": true,
+   "round": 1,
+   "wall_seconds": 2.013
+  }
+ ],
+ "host": "persvati",
+ "provisional": true,
+ "remote_root": "/home/ember/fn-gates/w32-native-guards-triage",
+ "roots": [
+  "books/native-operator",
+  "books/native-hybrid-control",
+  "tests/acl2/native-operator-tests",
+  "tests/acl2/native-admin-tests",
+  "tests/acl2/native-control-tests",
+  "tests/acl2/native-hybrid-control-tests"
+ ],
+ "rounds": [
+  {
+   "assumptions": [],
+   "books_failed": 11,
+   "books_requested": 97,
+   "certify_wall_seconds": 721.752,
+   "exit_code": 1,
+   "farm_run": "run-20260922T160925Z-cf8c",
+   "kinds": {
+    "blocked": 8,
+    "cascade": 0,
+    "independent": 3,
+    "timeout": 0,
+    "unexplained": 0
+   },
+   "round": 1,
+   "timeout_seconds": 600
+  }
+ ],
+ "rounds_requested": 1,
+ "schema": "fn-triage-v1",
+ "still_unanswered": [],
+ "substitutions": [],
+ "triage_run": "triage-20260922T160924Z-9c1e",
+ "untriageable": {}
+}
