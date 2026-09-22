@@ -198,6 +198,9 @@
         "fn-record-accepted-input-is-canonical",
         "fn-record-impl-round-trip",
         "fn-record-impl-accepted-input-is-canonical",
+        "fn-record-accepted-input-magic",
+        "fn-record-accepted-schema-is-the-stamp-kind",
+        "fn-record-schema0-golden-octets-are-the-encoding",
         "fn-bpa-round-trip",
         "fn-bpa-success-is-canonical"
       ],

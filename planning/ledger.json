@@ -383,6 +383,7 @@
     "books/statement-seam",
     "books/statement-attach",
     "books/codec-attach",
+    "tests/acl2/codec-seam-tests",
     "books/statement",
     "books/statement-invariants",
     "tests/acl2/statement-tests",
@@ -416,25 +417,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 414,
-    "books_in_root_closure": 413,
-    "roots": 412,
-    "theorems": 6835,
-    "functions": 5289,
-    "assert_events": 7620,
-    "must_fails": 256,
+    "books": 415,
+    "books_in_root_closure": 414,
+    "roots": 413,
+    "theorems": 6842,
+    "functions": 5293,
+    "assert_events": 7642,
+    "must_fails": 259,
     "encapsulates": 23,
     "guards": {
       "verified": 1737,
       "declared-off": 284,
-      "default-guarded": 2633,
-      "default-unguarded": 635
+      "default-guarded": 2634,
+      "default-unguarded": 638
     },
     "suspect_theorems": 65,
     "export_hygiene_warnings": 90,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 13,
-    "include_hygiene_warnings": 253,
+    "include_hygiene_warnings": 255,
     "host_names_warnings": 645,
     "hand_written_record_warnings": 18
   },
@@ -2768,7 +2769,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
-      "defmacros": 0,
+      "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "records-attach",
@@ -5255,7 +5256,7 @@
       "book": "books/records-canonicality.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 27,
+      "theorems": 29,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -5309,7 +5310,7 @@
       "book": "books/records-seam.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
+      "theorems": 18,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -5320,7 +5321,7 @@
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 1,
+      "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 1,
       "includes": [
@@ -5336,17 +5337,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 31,
-      "functions": 40,
+      "functions": 41,
       "guards": {
         "verified": 38,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 3,
         "default-unguarded": 0
       },
       "verify_guards_events": 38,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 8,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5361,7 +5362,7 @@
       "book": "books/records.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
+      "theorems": 16,
       "functions": 8,
       "guards": {
         "verified": 8,
@@ -5372,7 +5373,7 @@
       "verify_guards_events": 8,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 0,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -8695,6 +8696,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/codec-seam-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/records-canonicality",
+        "../../books/statement-codec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/config-stream-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -10289,9 +10317,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 13,
-      "must_fails": 6,
-      "defconsts": 5,
+      "assert_events": 20,
+      "must_fails": 9,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -11831,7 +11859,7 @@
     {
       "theorem": "fn-record-impl-encode-domain",
       "book": "books/records-canonicality.lisp",
-      "line": 771,
+      "line": 772,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value"
       ]
@@ -14020,6 +14048,20 @@
         "line": 9,
         "include": "../../books/clock-invariants",
         "included": "books/clock-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/codec-seam-tests.lisp",
+        "line": 25,
+        "include": "../../books/statement-codec",
+        "included": "books/statement-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/codec-seam-tests.lisp",
+        "line": 26,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -19260,7 +19302,7 @@
       },
       {
         "book": "books/records-shape.lisp",
-        "line": 167,
+        "line": 188,
         "shape": "fn-record-parse-shapep",
         "shapes": 1,
         "accessors": 3,
