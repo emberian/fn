@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 405 |
-| Certification roots in the Makefile | 403 |
-| Books inside the root closure | 404 |
-| `defthm` and `defthmd` events | 6696 |
-| `defun` events | 5244 |
+| Books read | 406 |
+| Certification roots in the Makefile | 404 |
+| Books inside the root closure | 405 |
+| `defthm` and `defthmd` events | 6725 |
+| `defun` events | 5264 |
 | Functions with verified guards | 1731 |
 | Functions declared `:verify-guards nil` and never verified | 284 |
-| Functions left at the default with an explicit guard | 2607 |
+| Functions left at the default with an explicit guard | 2627 |
 | Functions left at the default with no guard | 622 |
-| `assert-event` checks | 7423 |
-| `must-fail` checks | 221 |
+| `assert-event` checks | 7482 |
+| `must-fail` checks | 237 |
 | `encapsulate` events | 21 |
 | Theorems flagged SUSPECT by shape | 61 |
 | Export-hygiene warnings | 88 |
 | Enabled-projection warnings | 27 |
 | Teeth-form warnings | 13 |
-| Include-hygiene warnings | 150 |
+| Include-hygiene warnings | 151 |
 | Host-names warnings | 645 |
 | Hand-written-record warnings | 18 |
 
@@ -184,8 +184,8 @@ that `make certify` requests.
 | `books/deftransition.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/exchange.lisp` | root | 40 | 43 | 34/0/9/0 | 0 | 0 | 1 |
-| `books/feed-auth-profile.lisp` | root | 0 | 8 | 8/0/0/0 | 0 | 0 | 0 |
-| `books/feed-connection-invariants.lisp` | root | 18 | 1 | 0/0/1/0 | 0 | 0 | 1 |
+| `books/feed-auth-profile.lisp` | root | 4 | 8 | 8/0/0/0 | 0 | 0 | 0 |
+| `books/feed-connection-invariants.lisp` | root | 43 | 21 | 0/0/21/0 | 0 | 0 | 1 |
 | `books/feed-connection.lisp` | root | 2 | 39 | 39/0/0/0 | 0 | 0 | 0 |
 | `books/feed-correspondence.lisp` | root | 26 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/feed-events.lisp` | root | 0 | 19 | 0/0/19/0 | 0 | 0 | 0 |
@@ -395,6 +395,7 @@ that `make certify` requests.
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
 | `tests/acl2/feed-auth-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/feed-connection-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 7 | 0 |
+| `tests/acl2/feed-connection-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 59 | 16 | 0 |
 | `tests/acl2/feed-connection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 26 | 0 | 0 |
 | `tests/acl2/feed-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
 | `tests/acl2/feed-filename-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 0 | 0 |

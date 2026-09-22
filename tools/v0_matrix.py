@@ -485,6 +485,36 @@ PLAN = (
     S("V0-TRANSIT-TAKETHIS-DUP", "F-TRANSIT",
       "TAKETHIS that ignores that advice answers 439, never a 2xx and never a retry",
       ("REP-002",), ("SCN-023",), REFUSED, "direction"),
+    # The owner's own feed over the protected channel (PRF-047, PRF-051;
+    # plan 2026-09-22 T9c).  Measured by tests/test_native_protected_peering
+    # on two saved-image owners of its own, never on the supplied nodes: the
+    # target requires authentication and refuses AUTHINFO before TLS, the
+    # source's peer record names STARTTLS, the target's certificate as its
+    # only anchor, server name `localhost`, and a credential profile, and the
+    # target's record binds the inbound peer role to that principal.
+    S("V0-TRANSIT-TLS", "F-TRANSIT",
+      "the owner's feed reaches the peer over STARTTLS, the peer's certificate "
+      "verified against the record's anchor and server name",
+      ("REP-005", "HST-004"), ("SCN-024",), ACCEPTED, "direction",
+      "the article's arrival under a target that refuses AUTHINFO before TLS and "
+      "answers an unauthenticated IHAVE 480 is what shows the channel; the matrix "
+      "does not see the feed's own socket, and OpenSSL's chain and hostname checks "
+      "are trusted integration (PRF-047)"),
+    S("V0-TRANSIT-AUTHINFO", "F-TRANSIT",
+      "the owner's feed logs in with AUTHINFO as the principal the peer's record "
+      "binds before it offers, and the peer takes the offer in that role",
+      ("REP-005", "HST-004"), ("SCN-024",), ACCEPTED, "direction",
+      "the same arrival: an unauthenticated offer of the same article is 480 on "
+      "the target, so the feed's offer came on a connection that logged in; "
+      "PRF-051's keystones are what say the feed sends no offer before the 281"),
+    S("V0-TRANSIT-TLS-WRONG-ANCHOR", "F-TRANSIT",
+      "a feed whose record names an anchor that did not issue the peer's "
+      "certificate delivers nothing, and both owners stay up",
+      ("HST-004",), ("SCN-024",), REFUSED),
+    S("V0-TRANSIT-AUTHINFO-WRONG", "F-TRANSIT",
+      "a feed whose profile carries a wrong password delivers nothing, and both "
+      "owners stay up",
+      ("HST-004",), ("SCN-024",), REFUSED),
 
     # -- F-FEED ----------------------------------------------------------
     S("V0-FEED-QUEUE", "F-FEED",
@@ -3657,6 +3687,127 @@ exit "$rc"
                      "435 answers a manually opened inbound IHAVE; this witness does not "
                      "observe the owner queue after acknowledgement", invocation=step.command)
 
+    PROTECTED_KEYS = ("V0-TRANSIT-TLS", "V0-TRANSIT-AUTHINFO",
+                      "V0-TRANSIT-TLS-WRONG-ANCHOR", "V0-TRANSIT-AUTHINFO-WRONG")
+    PROTECTED_TESTS = (
+        "tests.test_native_protected_peering.NativeProtectedPeeringTests."
+        "test_reciprocal_starttls_authinfo_transfer_and_reconnect",
+        "tests.test_native_protected_peering.NativeProtectedPeeringTests."
+        "test_bad_outbound_password_yields_authenticated_430_observation",
+        "tests.test_native_protected_peering.NativeProtectedPeeringTests."
+        "test_untrusted_certificate_yields_430_and_feed_journal_evidence")
+
+    def native_protected_peering_suite(self):
+        """The owner's feed over STARTTLS and AUTHINFO, both ways, and its refusals.
+
+        tests/test_native_protected_peering stands up two saved-image owners
+        of its own with certificates, enrolled principals and credential
+        profiles, and prints one `NATIVE-PROTECTED-WITNESS` line per test
+        whose assertions passed.  Only those lines become rows; an exit code
+        without them, or a line whose live owner is not the image this run
+        names, is a blocker.
+        """
+        image = shlex.quote(self.native_image)
+        step = self.sh("native protected peering witness", self.cd(r"""
+image={image}
+digest() {{
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{{print $1}}'
+  else shasum -a 256 "$1" | awk '{{print $1}}'; fi
+}}
+runtime_path={runtime}
+test -x "$runtime_path" || exit 4
+runtime_expected=$(digest "$runtime_path")
+core_before=$(digest "$image.core")
+echo "NATIVE-PROTECTED-EXPECTED-RUNTIME $runtime_expected"
+echo "NATIVE-PROTECTED-EXPECTED-CORE $core_before"
+FN_NATIVE_HOST="$image" FN_NATIVE_IMAGE_SOURCE_SHA={source} \
+FN_NATIVE_LAUNCHER_SHA256="$(digest "$image")" FN_NATIVE_CORE_SHA256="$core_before" \
+FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
+  python3 -m unittest {tests} -v
+""".format(image=image, source=shlex.quote(self.native_image_source or ""),
+             runtime=shlex.quote(self.native_runtime or ""),
+             tests=" ".join(self.PROTECTED_TESTS))), timeout=900, expect=None)
+        expected, witnesses = {}, []
+        for line in step.output.splitlines():
+            if line.startswith("NATIVE-PROTECTED-EXPECTED-") and " " in line:
+                key, value = line.split(" ", 1)
+                expected[key.rsplit("-", 1)[-1].lower()] = value.strip()
+            elif line.startswith("NATIVE-PROTECTED-WITNESS "):
+                try:
+                    witnesses.append(json.loads(line.split(" ", 1)[1]))
+                except json.JSONDecodeError:
+                    pass
+        digest = re.compile(r"[0-9A-Fa-f]{64}\Z")
+        runtime, core = expected.get("runtime"), expected.get("core")
+
+        def owners_are_the_image(witness):
+            if not (isinstance(runtime, str) and isinstance(core, str)
+                    and digest.fullmatch(runtime) and digest.fullmatch(core)):
+                return False
+            identities = witness.get("identity")
+            return (isinstance(identities, dict)
+                    and all(isinstance(identities.get(role), dict)
+                            and identities[role].get("status") == "observed"
+                            and identities[role].get("runtime_sha256") == runtime
+                            and identities[role].get("core_sha256") == core
+                            for role in ("a", "b")))
+
+        observed = "witnesses={} rc={}".format(len(witnesses), step.rc)
+        feed = next((w for w in witnesses if w.get("kind") == "protected-feed"), None)
+        if feed is None or not owners_are_the_image(feed):
+            self.blocked(("V0-TRANSIT-TLS", "V0-TRANSIT-AUTHINFO"),
+                         "the protected peering witness produced no protected-feed "
+                         "observation whose two live owners are this run's image ({})"
+                         .format(observed), invocation=step.command)
+        elif not (feed.get("security") == "starttls" and feed.get("auth") == "authinfo"
+                  and feed.get("target_policy") == {"required": True,
+                                                    "protected_only": True}):
+            self.blocked(("V0-TRANSIT-TLS", "V0-TRANSIT-AUTHINFO"),
+                         "the protected-feed witness did not run under STARTTLS, "
+                         "AUTHINFO and a target that refuses both without them: {}"
+                         .format(json.dumps(feed, sort_keys=True)),
+                         invocation=step.command)
+        else:
+            for way in ("ab", "ba"):
+                fact = feed.get("transit", {}).get(way, {})
+                again = feed.get("reconnect", {}).get(way, {})
+                if not (fact.get("identical") is True and again.get("identical") is True
+                        and str(fact.get("unauthenticated_offer", "")).startswith("480")):
+                    self.blocked(("V0-TRANSIT-TLS", "V0-TRANSIT-AUTHINFO"),
+                                 "malformed protected-feed {} observation {} {}"
+                                 .format(way, fact, again), directions=(way,),
+                                 invocation=step.command)
+                    continue
+                evidence = json.dumps({"transit": fact, "reconnect": again},
+                                      sort_keys=True)
+                self.emit_once("V0-TRANSIT-TLS", ACCEPTED, step.command, evidence,
+                               direction=way, client=CLIENT_DRIVER,
+                               limit="the article arrived, and again after both owners "
+                                     "restarted, at a target with `protected_only`; the "
+                                     "chain and hostname check is OpenSSL's")
+                self.emit_once("V0-TRANSIT-AUTHINFO", ACCEPTED, step.command, evidence,
+                               direction=way, client=CLIENT_DRIVER,
+                               limit="the target answered the same offer 480 on a "
+                                     "connection that did not log in")
+        for key, case in (("V0-TRANSIT-TLS-WRONG-ANCHOR", "wrong-anchor"),
+                          ("V0-TRANSIT-AUTHINFO-WRONG", "wrong-password")):
+            fact = next((w for w in witnesses if w.get("kind") == "protected-refusal"
+                         and w.get("case") == case), None)
+            if fact is None or not owners_are_the_image(fact):
+                self.blocked((key,), "the protected peering witness produced no {} "
+                             "observation whose two live owners are this run's image "
+                             "({})".format(case, observed), invocation=step.command)
+            elif (fact.get("delivered") is False and fact.get("source_alive") is True
+                  and fact.get("target_alive") is True):
+                self.emit_once(key, REFUSED, step.command,
+                               json.dumps(fact, sort_keys=True), client=CLIENT_DRIVER,
+                               limit="absence is observed for three seconds through a "
+                                     "protected reader session; a longer delay is not "
+                                     "excluded")
+            else:
+                self.blocked((key,), "malformed {} observation {}".format(case, fact),
+                             invocation=step.command)
+
     def native_config_status(self, node):
         """Exercise the public native offline action for a supplied config."""
         config = self.native_configs[node.name]
@@ -4736,6 +4887,7 @@ exit "$rc"
                          + self.TRANSIT_KEYS, blocker)
 
         self.phase("native transit/feed/restart", self.native_peering_suite)
+        self.phase("native protected transit", self.native_protected_peering_suite)
 
         for node in self.nodes:
             if node.pid:

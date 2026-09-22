@@ -672,6 +672,125 @@ class NativeSliceAccountingTests(unittest.TestCase):
                              v0_matrix.NOT_EXERCISED)
 
 
+class ProtectedTransitTests(unittest.TestCase):
+    """The owner's feed over STARTTLS and AUTHINFO (PRF-047, PRF-051; T9c).
+
+    These pin the planning and the mapping of the protected rows.  No image
+    runs here, so the only measured verdicts below come from canned witness
+    lines; the first test is what a run without an image records.
+    """
+
+    IDS = ("V0-TRANSIT-TLS-AB", "V0-TRANSIT-TLS-BA", "V0-TRANSIT-AUTHINFO-AB",
+           "V0-TRANSIT-AUTHINFO-BA", "V0-TRANSIT-TLS-WRONG-ANCHOR",
+           "V0-TRANSIT-AUTHINFO-WRONG")
+
+    @staticmethod
+    def identity(core="b" * 64):
+        one = {"status": "observed", "runtime_sha256": "a" * 64, "core_sha256": core}
+        return {"a": dict(one), "b": dict(one)}
+
+    @classmethod
+    def witness_lines(cls, alter=None):
+        feed = {"kind": "protected-feed", "security": "starttls", "auth": "authinfo",
+                "target_policy": {"required": True, "protected_only": True},
+                "transit": {"ab": {"identical": True,
+                                   "unauthenticated_offer": "480 authentication required"},
+                            "ba": {"identical": True,
+                                   "unauthenticated_offer": "480 authentication required"}},
+                "reconnect": {"ab": {"identical": True}, "ba": {"identical": True}},
+                "identity": cls.identity()}
+        password = {"kind": "protected-refusal", "case": "wrong-password",
+                    "delivered": False, "source_alive": True, "target_alive": True,
+                    "identity": cls.identity()}
+        anchor = {"kind": "protected-refusal", "case": "wrong-anchor",
+                  "delivered": False, "journal": True, "source_alive": True,
+                  "target_alive": True, "identity": cls.identity()}
+        if alter:
+            alter(feed, password, anchor)
+        return "\n".join(["NATIVE-PROTECTED-EXPECTED-RUNTIME " + "a" * 64,
+                          "NATIVE-PROTECTED-EXPECTED-CORE " + "b" * 64]
+                         + ["NATIVE-PROTECTED-WITNESS " + json.dumps(one)
+                            for one in (feed, password, anchor)])
+
+    def gate(self, home, output=None):
+        class Protected(HarnessOnlyNativeGate):
+            def canned(self, name):
+                if name == "native protected peering witness" and output is not None:
+                    return output
+                return super().canned(name)
+        return Protected(v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234",
+                         "dev", backend=v0_matrix.NATIVE_BACKEND,
+                         native_image="/opt/fn/fn-host",
+                         native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+
+    def rows(self, output=None):
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.gate(home, output)
+            gate.execute_native_acceptance()
+            return {row.id: row for row in gate.rows}
+
+    def test_the_rows_are_planned_per_direction_with_the_refusals_single(self):
+        planned = set(v0_matrix.PLANNED_IDS)
+        for rid in self.IDS:
+            self.assertIn(rid, planned)
+        self.assertEqual(v0_matrix.PLAN_BY_KEY["V0-TRANSIT-TLS"].expected,
+                         v0_matrix.ACCEPTED)
+        self.assertEqual(v0_matrix.PLAN_BY_KEY["V0-TRANSIT-AUTHINFO-WRONG"].expected,
+                         v0_matrix.REFUSED)
+
+    def test_without_an_image_every_protected_row_is_not_exercised_with_a_blocker(self):
+        rows = self.rows()
+        for rid in self.IDS:
+            self.assertEqual(rows[rid].verdict, v0_matrix.NOT_EXERCISED, rid)
+            self.assertIn("protected peering witness", rows[rid].blocker, rid)
+            self.assertIn("test_native_protected_peering", rows[rid].invocation, rid)
+
+    def test_a_structured_witness_measures_both_directions_and_both_refusals(self):
+        rows = self.rows(self.witness_lines())
+        for rid in self.IDS[:4]:
+            self.assertEqual(rows[rid].verdict, v0_matrix.ACCEPTED, rid)
+            self.assertIn("480", rows[rid].observed, rid)
+        for rid in self.IDS[4:]:
+            self.assertEqual(rows[rid].verdict, v0_matrix.REFUSED, rid)
+        self.assertIn("test_reciprocal_starttls_authinfo_transfer_and_reconnect",
+                      rows["V0-TRANSIT-TLS-AB"].invocation)
+
+    def test_owners_that_are_not_this_image_are_not_evidence(self):
+        def alter(feed, password, anchor):
+            for one in (feed, password, anchor):
+                one["identity"] = self.identity(core="c" * 64)
+        rows = self.rows(self.witness_lines(alter))
+        for rid in self.IDS:
+            self.assertEqual(rows[rid].verdict, v0_matrix.NOT_EXERCISED, rid)
+            self.assertIn("this run's image", rows[rid].blocker, rid)
+
+    def test_a_target_that_does_not_refuse_the_clear_channel_is_not_evidence(self):
+        def alter(feed, password, anchor):
+            feed["target_policy"] = {"required": True, "protected_only": False}
+        rows = self.rows(self.witness_lines(alter))
+        for rid in self.IDS[:4]:
+            self.assertEqual(rows[rid].verdict, v0_matrix.NOT_EXERCISED, rid)
+            self.assertIn("refuses both without them", rows[rid].blocker, rid)
+
+    def test_a_direction_whose_clear_offer_was_taken_is_not_measured(self):
+        def alter(feed, password, anchor):
+            feed["transit"]["ba"]["unauthenticated_offer"] = "335 send it"
+        rows = self.rows(self.witness_lines(alter))
+        self.assertEqual(rows["V0-TRANSIT-TLS-AB"].verdict, v0_matrix.ACCEPTED)
+        self.assertEqual(rows["V0-TRANSIT-AUTHINFO-AB"].verdict, v0_matrix.ACCEPTED)
+        self.assertEqual(rows["V0-TRANSIT-TLS-BA"].verdict, v0_matrix.NOT_EXERCISED)
+        self.assertEqual(rows["V0-TRANSIT-AUTHINFO-BA"].verdict, v0_matrix.NOT_EXERCISED)
+        self.assertIn("malformed protected-feed ba", rows["V0-TRANSIT-TLS-BA"].blocker)
+
+    def test_a_delivered_refusal_case_is_not_read_as_a_refusal(self):
+        def alter(feed, password, anchor):
+            password["delivered"] = True
+        rows = self.rows(self.witness_lines(alter))
+        self.assertEqual(rows["V0-TRANSIT-AUTHINFO-WRONG"].verdict,
+                         v0_matrix.NOT_EXERCISED)
+        self.assertEqual(rows["V0-TRANSIT-TLS-WRONG-ANCHOR"].verdict, v0_matrix.REFUSED)
+
+
 class AuthDriverTests(unittest.TestCase):
     """The shipped `auth` phase itself, driven against a fake Conn.
 

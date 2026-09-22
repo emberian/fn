@@ -1617,22 +1617,31 @@
     {
       "id": "PRF-047",
       "title": "Outbound NNTP TLS phase ordering and no protocol downgrade",
-      "statement": "fn-fc-step emits STARTTLS only after an accepted greeting in the configured STARTTLS profile, requires 382 before entering the handshake-owed phase, and fn-fc-after-tls alone advances that phase to MODE or ready; implicit TLS begins handshake-owed before greeting. Host failures are reported through the existing peer-local loss and durable requeue path.",
+      "statement": "fn-fc-offers-and-credentials-wait-for-tls-and-login: for a connection in the phase fn-owner-feed-dial-open installs (greeting, or handshake-owed for implicit TLS) whose peer record requires a protected channel (STARTTLS or implicit TLS, or a credential whose profile did not permit clear text), and for EVERY sequence of socket reads and TLS reports fed to the two functions the host calls -- fn-fc-step (host/owner-host.lisp:1374, in fn-owner-feed-reply-chunk, called by host/native/feed-service.lisp:256) and fn-fc-after-tls (owner-host.lisp:1279, in fn-owner-feed-tls-established, feed-service.lisp:194) -- the kinds the host acts on satisfy fn-fc-gate-okp, a property written over observations only: no MODE, no ready and no delivered reply (so, through the :feed-conn install at owner-host.lisp:1237 that fn-feed-offer's natp conn test waits on, no IHAVE, CHECK or TAKETHIS) before a line coded 382 was answered :tls, a TLS report was accepted after it, and, when the record carries a credential, a line coded 281 was read; and no AUTHINFO USER or PASS before the 382 and the TLS report (implicit TLS starts past the 382). A clear transport with a credential and no clear-text permission therefore never sends it and never goes live. fn-fc-starttls-refusal-closes-before-the-credential: in the STARTTLS phase, a complete line whose code is not 382 (RFC 4642 2.2.1's 502 or 580) is :refused -- the host records the peer-local loss and closes (feed-service.lisp:391-395) -- the connection is closed, and the observations of any later reads and TLS reports on it contain no command, handshake or offer, so nothing falls back to clear text. fn does not read CAPABILITIES before STARTTLS; the peer's answer to STARTTLS is the advertisement the machine acts on. Trusted, not proved: that the host reports TLS up only after fnn-tls-connect verified the chain against the record's anchor and the server name (OpenSSL; tests/test_native_tls_transport.py's wrong-anchor and wrong-hostname witnesses), and that the socket carries the rendered bytes. Covered scope: one connection incarnation's phase machine; the composition with owner-feed's offer (fn-feed-offer and fn-feed-send need a natp fn-feed-conn, set only at :ready and cleared by fn-feed-lost) is read from the definitions, not proved here.",
       "milestone": "M4",
       "requirements": [
         "HST-004"
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
+      "status": "in-progress",
       "evidence": [
+        "planning/evidence/manifests/certify-20260922T202647Z-3725626.json",
+        "planning/evidence/feed-tls-teeth-2026-09-22.md",
+        "books/feed-connection-invariants.lisp",
+        "tests/acl2/feed-connection-teeth-tests.lisp",
         "books/feed-connection.lisp",
         "tests/acl2/feed-connection-tests.lisp",
         "host/native/tls.lisp",
-        "tests/test_native_tls_transport.py"
+        "tests/test_native_tls_transport.py",
+        "tests/test_native_protected_peering.py"
       ],
-      "pending_subject": "Add and certify named keystones for TLS phase ordering and loss-to-requeue composition over the host-called owner functions; OpenSSL chain/hostname behavior remains trusted integration evidence, not an ACL2 proof.",
-      "progress_note": "Ground witnesses cover accepted 382, refusal, authenticated client success, wrong anchor and wrong hostname. Focused integrated batch certification is pending. No fn-fc-step theorem by the names the status text uses exists in the books; planned (2026-09-22), T9c."
+      "pending_subject": "The image gate (plan T9): the matrix's V0-TRANSIT-TLS-AB/BA and V0-TRANSIT-TLS-WRONG-ANCHOR rows measured on a frozen image, two nodes on one box, including a kill -9 of the sender mid-transfer and exactly one copy after restart. OpenSSL chain and hostname behavior remains trusted integration evidence, not an ACL2 proof.",
+      "progress_note": "T9c, 2026-09-22: the two keystones above over the functions the host calls, with tests/acl2/feed-connection-teeth-tests.lisp as the teeth book -- a reachable non-degenerate witness per keystone (a connection built from a decoded profile and driven through a real peer's replies, STARTTLS and implicit), and one must-fail per hypothesis under the keystone's own hints, each preceded by the keystone itself through the same macro so that no must-fail passes on a broken hint. The earlier status text named fn-fc-step theorems that did not exist; these replace them. Status stays in-progress until an image measures the matrix rows.",
+      "events": [
+        "fn-fc-offers-and-credentials-wait-for-tls-and-login",
+        "fn-fc-starttls-refusal-closes-before-the-credential"
+      ]
     },
     {
       "id": "PRF-049",
@@ -1722,7 +1731,7 @@
     {
       "id": "PRF-051",
       "title": "Outbound AUTHINFO phase ordering and secret custody",
-      "statement": "fn-fc-step emits AUTHINFO USER/PASS only after the configured transport phase, refuses clear transport unless the durable policy explicitly allows it, and reaches MODE or ready only after 281; the host reads an owner-only bounded profile and ACL2 decodes it, while failure follows peer-local loss and durable requeue.",
+      "statement": "WHEN: fn-fc-offers-and-credentials-wait-for-tls-and-login (PRF-047's keystone) says the AUTHINFO lines are sent only after the 382 and the TLS report, and that the feed makes no MODE, no ready and no offer until a 281 is read, on every sequence of reads and TLS reports fed to fn-fc-step and fn-fc-after-tls; a credential on a clear transport without the profile's explicit permission is never sent. REFUSAL: fn-fc-refused-login-closes-without-an-offer: in either login phase, a complete line whose code is not 281 (and, answering USER, not 381) is :refused, which fn-owner-feed-connection-result-kind (owner-host.lisp:1356) reports as :connection-refused and feed-service.lisp:391-395 answers with the peer-local loss and a close; the connection is closed and nothing fed to it afterwards produces a command, a handshake or an offer. WHAT: fn-fc-auth-user-command-sends-the-configured-name-alone and fn-fc-auth-pass-command-sends-the-configured-secret-alone: on a state whose name (secret) is an fn-fap-tokenp true list, the renderer the host calls (owner-host.lisp:1288, 1388, 1393) returns exactly the prefix, the token and CRLF, one line, so a credential cannot carry a second command; fn-fc-decoded-profile-renders-verbatim-in-every-state composes it with what the host does, with no hypothesis: the profile bytes go through fn-fap-decode (feed-service.lisp:172), the decoded fields are installed by fn-fc-initial-auth-state (owner-host.lisp:1267), and in every state any sequence of reads and TLS reports reaches, the USER and PASS lines are the prefix, the decoded field and CRLF. Not proved here: that the profile file is owner-only and bounded (feed-service.lisp:161-168, native integration evidence), the secrecy of the secret on the wire beyond the TLS ordering above, and the loss-to-requeue composition of fn-feed-lost.",
       "milestone": "M4",
       "requirements": [
         "HST-004"
@@ -1731,18 +1740,30 @@
         "PRF-047"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "in-progress",
       "evidence": [
+        "planning/evidence/manifests/certify-20260922T202647Z-3725626.json",
+        "planning/evidence/feed-tls-teeth-2026-09-22.md",
+        "books/feed-connection-invariants.lisp",
         "books/feed-auth-profile.lisp",
+        "tests/acl2/feed-connection-teeth-tests.lisp",
         "books/feed-connection.lisp",
         "books/peer-config.lisp",
         "host/owner-host.lisp",
         "host/native/feed-service.lisp",
         "tests/acl2/feed-auth-profile-tests.lisp",
-        "tests/acl2/feed-connection-tests.lisp"
+        "tests/acl2/feed-connection-tests.lisp",
+        "tests/test_native_protected_peering.py"
       ],
-      "pending_subject": "Certify named keystones for AUTHINFO ordering and the host-called loss-to-requeue composition; filesystem ownership and mode checks remain native integration evidence.",
-      "progress_note": " No fn-fc-step theorem by the names the status text uses exists in the books; planned (2026-09-22), T9c."
+      "pending_subject": "The image gate (plan T9): the matrix's V0-TRANSIT-AUTHINFO-AB/BA and V0-TRANSIT-AUTHINFO-WRONG rows measured on a frozen image. Filesystem ownership and mode checks on the profile remain native integration evidence; the loss-to-requeue composition is PRF-029/K5's (T9a).",
+      "progress_note": "T9c, 2026-09-22: events are the five theorems above; the teeth book is tests/acl2/feed-connection-teeth-tests.lisp (for the unconditional composition, the must-fail is the false neighbour: the same claim over a name and secret that did not come through fn-fap-decode, refuted by a name carrying CRLF and a second command). fn-fap-decode-yields-two-renderable-tokens and fn-fap-decode-refusal-yields-no-credential in books/feed-auth-profile.lisp are the decode facts the composition uses. Status stays in-progress until an image measures the matrix rows.",
+      "events": [
+        "fn-fc-offers-and-credentials-wait-for-tls-and-login",
+        "fn-fc-refused-login-closes-without-an-offer",
+        "fn-fc-auth-user-command-sends-the-configured-name-alone",
+        "fn-fc-auth-pass-command-sends-the-configured-secret-alone",
+        "fn-fc-decoded-profile-renders-verbatim-in-every-state"
+      ]
     },
     {
       "id": "PRF-052",
