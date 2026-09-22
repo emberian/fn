@@ -291,3 +291,94 @@ class RealManifestsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MergeGateTests(unittest.TestCase):
+    """--changed-since: a changed book merges with everything that includes it.
+
+    Finding F4 of planning/review-2026-09-22-proof-engineering.md: on
+    2026-09-21 behaviour landed under invariant books nobody recertified.  The
+    gate reads the branch's changed books, the audited books whose closure
+    reaches one, and each verdict at the bytes a merge would carry.
+    """
+
+    def tree(self, root: Path) -> dict:
+        dep = book(root, "books/dep", '(in-package "ACL2")')
+        top = book(root, "books/top", '(in-package "ACL2")\n(include-book "dep")\n')
+        aside = book(root, "books/aside", '(in-package "ACL2") ; unrelated')
+        manifest(root, "certify-20260901T010000Z-1", status="passed",
+                 passed={"books/top": top, "books/dep": dep, "books/aside": aside})
+        return green_check.audit(root, roots=["books/top", "books/aside"])
+
+    def test_a_changed_book_names_the_books_that_include_it_and_nothing_else(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            report = self.tree(root)
+            deps = green_check.dependents(root, report, ["books/dep"])
+            self.assertEqual(deps, {"books/top": ["books/dep"]})
+
+    def test_the_gate_is_green_only_when_every_row_is_green(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            report = self.tree(root)
+            answer = green_check.gate(report, ["books/dep"],
+                                      green_check.dependents(root, report, ["books/dep"]))
+            self.assertEqual(answer["not_green"], [])
+            # Now the dependency's bytes move and nobody certifies: the changed
+            # book reads `never`, its dependent stays green at its own bytes
+            # (the audit's rule), and the gate refuses on the changed book.
+            book(root, "books/dep", '(in-package "ACL2") ; edited')
+            report = green_check.audit(root, roots=["books/top", "books/aside"])
+            answer = green_check.gate(report, ["books/dep"],
+                                      green_check.dependents(root, report, ["books/dep"]))
+            self.assertEqual(answer["not_green"], ["books/dep"])
+            roles = {row["book"]: row["role"] for row in answer["rows"]}
+            self.assertEqual(roles, {"books/dep": "changed", "books/top": "dependent"})
+            self.assertNotIn("books/aside", roles)
+
+    def test_a_changed_book_no_root_reaches_is_unaudited_and_not_green(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            report = self.tree(root)
+            answer = green_check.gate(report, ["tests/acl2/orphan-tests"], {})
+            self.assertEqual(answer["rows"][0]["verdict"], "unaudited")
+            self.assertEqual(answer["not_green"], ["tests/acl2/orphan-tests"])
+
+    def test_changed_books_reads_the_working_tree_against_the_merge_base(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            git = lambda *words: subprocess.run(  # noqa: E731
+                ["git", *words], cwd=root, check=True, capture_output=True, text=True)
+            git("init", "-q", "-b", "main")
+            git("config", "user.email", "t@example.invalid")
+            git("config", "user.name", "t")
+            book(root, "books/dep", '(in-package "ACL2")')
+            book(root, "tests/acl2/dep-tests", '(in-package "ACL2")')
+            (root / "notes.md").write_text("x")
+            git("add", "-A")
+            git("commit", "-q", "-m", "base")
+            git("checkout", "-q", "-b", "lane")
+            book(root, "books/dep", '(in-package "ACL2") ; committed on the lane')
+            git("commit", "-q", "-am", "lane edit")
+            book(root, "tests/acl2/dep-tests", '(in-package "ACL2") ; uncommitted')
+            (root / "notes.md").write_text("prose does not count")
+            self.assertEqual(green_check.changed_books(root, "main"),
+                             ["books/dep", "tests/acl2/dep-tests"])
+
+    def test_the_gate_lines_say_the_counts_and_every_row(self):
+        answer = green_check.gate(
+            {"books_by_verdict": {"books/a": {"verdict": "green"},
+                                  "books/b": {"verdict": "red"}}},
+            ["books/a"], {"books/b": ["books/a"]})
+        lines = green_check.gate_lines(answer)
+        self.assertIn("1 changed books, 1 books include one; 1 not green", lines[0])
+        self.assertTrue(any("red" in line and "books/b" in line and "<- books/a" in line
+                            for line in lines[1:]))
+
+    def test_the_command_line_gate_runs_on_this_tree(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "tools" / "green_check.py"),
+             "--changed-since", "HEAD"],
+            capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.startswith("green-gate:"), result.stdout)

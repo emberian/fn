@@ -349,6 +349,19 @@ verdict is about the book's own digest -- comes with `deps_moved`, the closure
 members whose bytes have moved since, because same book over a changed
 dependency is a different key.
 
+**And the same audit is the merge gate.** `python3 tools/green_check.py
+--changed-since REV --strict` lists the books and test books whose bytes differ
+from the merge base with `REV`, every audited book whose include closure
+reaches one, and each one's verdict at the bytes a merge would carry; it exits
+1 unless every row is green. It is finding F4 of
+[the proof-engineering review](../planning/review-2026-09-22-proof-engineering.md):
+on 2026-09-21 five commits changed the machine under invariant books nobody
+recertified, and `git log` read as green for a day. Root's procedure: merge a
+lane locally with `--no-ff`, run the gate against the pre-merge head
+(`ORIG_HEAD`), and push only when it is green; otherwise `git reset --hard
+ORIG_HEAD` and the lane certifies what it changed and what includes it first.
+Behaviour and the invariants over it land together or the merge waits.
+
 `tools/verdict.py --reuse-gate [REV]` reads a gate directory that already
 exists and builds its per-fiber table from it, shipping nothing and starting
 no ACL2. It reads the shape both kinds of gate share (`certify.log`,
