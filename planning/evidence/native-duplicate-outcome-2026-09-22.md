@@ -30,7 +30,7 @@ against.
 | node | fresh store per run (`store init fn.letters` through the image), loopback listener on 11317 and 11318, own control socket |
 | owner | `nohup env FN_NATIVE_HOST=IMG packaging/fn-native operator CFG run`, stopped with `SIGTERM` by recorded pid |
 | submissions | `packaging/fn-native operator CFG post --message-id ID --payload FILE --group fn.letters`, the matrix's own verb |
-| scratch | `/home/ember/fn-gates/w31-duplicate/` (`dup-exp.sh`, `dup-exp2.sh`, `exp-run1.log`, `exp-run2.log`) |
+| scripts and raw output | [`native-duplicate-outcome-2026-09-22/`](native-duplicate-outcome-2026-09-22/) -- `dup-exp.sh` (E1--E3, E5), `dup-exp2.sh` (E4), and each run's whole log |
 
 Every article was built by hand with an explicit `Date`, so the octets are the
 experiment's variable rather than the clock's.
@@ -209,6 +209,13 @@ assertions name.
   lane's and `build/lanes/w31-freeze/IMAGE-READY.txt` had not appeared. The
   next native matrix run is what turns `V0-OUT-REFUSED` into a deterministic
   row on the record.
+- **The scratch directory is gone.** The experiment ran under
+  `/home/ember/fn-gates/w31-duplicate/` on persvati and the certification
+  submit later rsynced a repository tree over it, which is why the scripts and
+  logs are committed here instead. Anything rerunning them should pick a
+  directory that is not a farm `--remote-root`, and should keep the port out
+  of the ranges the other lanes use (this lane used 11317 and 11318). No
+  process, socket or store of this lane is left on persvati.
 - **`V0-OUT-UNCERTAIN` is still not-built** on the production image, so D13's
   third outcome remains unobserved on the operator surface; that is unchanged
   by this lane.
