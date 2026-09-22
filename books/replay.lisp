@@ -21,12 +21,17 @@
 ; loop's guard proof needs only that a record is a true list.  Interim
 ; local fact applied by the store deputy so its closure certifies; the
 ; convergence lane owns the final form.
-(local
- (defthm fn-replay-record-is-a-true-list
+; Exported: with `fn-store-event-p' withdrawn on export (books/store-events)
+; these are the facts a book above needs about an event, and proving them
+; there means opening the recognizer again -- which is a 15018-way splitter
+; case in books/store-files (measured 2026-09-22).
+(defthm fn-replay-record-is-a-true-list
    (implies (fn-store-event-p record) (true-listp record))
    :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory (enable fn-record-codec-vocabulary
-                                      fn-record-record-vocabulary)))))
+   :hints (("Goal" :in-theory (enable fn-store-event-p
+                                      fn-store-retention-event-p
+                                      fn-record-codec-vocabulary
+                                      fn-record-record-vocabulary))))
 (local
  (defthm fn-replay-article-counters-are-natural
    (implies (fn-record-p record)
@@ -64,8 +69,7 @@
                  (natp (fn-stxa-txid record))
                  (natp (fn-stxa-generation record))))
    :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
-(local
- (defthm fn-replay-record-counters-are-natural
+(defthm fn-replay-record-counters-are-natural
    (implies (fn-store-event-p record)
             (and (natp (fn-store-event-sequence record))
                  (natp (fn-store-event-txid record))
@@ -96,7 +100,7 @@
                               fn-replay-retention-counters-are-natural
                               fn-replay-stxe-counters-are-natural
                               fn-replay-stxk-counters-are-natural
-                              fn-replay-stxa-counters-are-natural))))))
+                              fn-replay-stxa-counters-are-natural)))))
 
 ; Convergence (board, codecs CHANGE on records): `fn-store-event-p' is opaque and exports no forward shape rule; the loop guard needs true-listp from it.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))

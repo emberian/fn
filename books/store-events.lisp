@@ -221,3 +221,22 @@
               (let ((snapshot (fn-stxk-decode-exact octets)))
                 (if (fn-stmt-okp snapshot) snapshot
                   (fn-stxa-decode-exact octets))))))))))
+
+; Export withdrawal.  Every book above reasons about an event through this
+; recognizer, never by opening it: `fn-store-event-p' unfolds into five kind
+; recognizers, and `fn-record-p', `fn-stxe-p', `fn-stxk-p' and `fn-stxa-p'
+; each unfold into a codec that the bounded CBOR profile made much larger.  A
+; goal that merely dispatches on the event kind then carries the whole record
+; and statement codec.  Measured 2026-09-22: `fn-sfg-record-values-are-a-true-
+; list' (books/store-files) and the guard of `fn-config-aware-loop'
+; (books/config-records) each ran past 900 s at one subgoal, and the closure
+; above them missed the 1800 s and 2400 s per-book limits on hbox
+; (run-20260922T031236Z-c1fb, certify-20260922T034701Z-2641627).  A book that
+; needs the definition enables it by name, as books/store-files already does
+; for its field typing lemmas.
+(in-theory (disable (:d fn-store-event-p) (:d fn-store-retention-event-p)
+                    (:d fn-store-event-kind) (:d fn-store-event-sequence)
+                    (:d fn-store-event-txid) (:d fn-store-event-generation)
+                    (:d fn-store-event-obligation-id)
+                    (:d fn-store-event-subject) (:d fn-store-event-evidence)
+                    (:d fn-store-event-charge)))
