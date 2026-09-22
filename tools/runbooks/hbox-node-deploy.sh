@@ -44,13 +44,21 @@ path = "$NODE/store/auth.toml"
 [posting]
 enabled = true
 
+[log]
+path = "$NODE/log/fn.log"
+
 [control]
 path = "$NODE/store/control.sock"
 TOML
-# No [log] and no [posting] agent: the native image's supported profile
-# (books/native-config.lisp fn-native-config-operator-availablep) refuses a
-# log path and any agent but the default, and `run` answers
-# UNSUPPORTED-PROFILE. stderr goes to the user journal.
+# [log] path: `run` opens it append-only before the store (absolute paths
+# only; books/native-config.lisp fn-native-config-unsupported-key) and the
+# owner writes one line per post and per accepted connection there instead of
+# the journal.  fn never rotates it.
+# [posting] agent is deliberately absent: the injecting agent is the node's
+# <path-identity>, set below as the `path-identity` policy (one slot, read by
+# Path, Injection-Info and loop suppression alike), and `run` refuses an
+# `agent` key as `UNSUPPORTED-PROFILE agent`.  `fn@hbox.ember.software` would
+# not be a <path-identity> anyway (RFC 5536 section 3.1.6 has no `@`).
 echo "== configuration records: identity and groups"
 "$FN" operator "$NODE/fn.toml" policy set path-identity hbox.ember.software
 for g in fn.agents fn.humans fn.announce; do "$FN" operator "$NODE/fn.toml" group create "$g"; done

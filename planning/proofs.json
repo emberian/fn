@@ -1805,6 +1805,58 @@
         "fn-nntp-newnews-response-preserves-session",
         "fn-nntp-effects-newnews-response"
       ]
+    },
+    {
+      "id": "PRF-053",
+      "title": "A served POST's Injection-Info names the node's path-identity",
+      "statement": "fn-oag-post-config-agent-is-the-path-identity: when the replayed configuration's path-identity policy is set, the posting configuration fn-oag-post-config installs (called by host/owner-host.lisp fn-owner-post-config, which fn-owner-recover and fn-owner-reconfigure-complete install with fn-own-configure) has that identity's octets as its agent; unset, the agent is fn.example.invalid. fn-oag-open-pins-the-owner-config: a connection fn-ocfg-open opens (host/owner-host.lisp fn-owner-open) at an identifier no connection already holds pins the owner's installed configuration; fn-oag-configured-open-pins-the-path-identity composes the two. fn-oag-served-post-names-the-pinned-agent: for any socket read fn-ocfg-read-tls-prefix performs (host/owner-host.lisp fn-owner-chunk), if the connection's served state satisfies fn-served-connp, the submission the read hands the owner, when it is an injected article, carries the Injection-Info line generated from the agent the connection pinned; the chain runs through fn-served-step, fn-served-feed, fn-served-dispatch, fn-auth-step, fn-peer-step and fn-nntp-post-step to fn-inj-injected-article-names-the-configured-agent over fn-inj-decide. Covered scope: the served POST path; the fn-served-connp premise is the served invariant the owner does not carry (the premise PRF-006 records for fn-ocfg-read-tls-prefix), and no value is known on which the conclusion fails without it. fn.toml's [posting] agent is refused by run (fn-native-config-unsupported-key), so the path-identity policy is the only agent.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-004"
+      ],
+      "depends_on": [
+        "PRF-006"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/owner-agent.lisp",
+        "books/injection-invariants.lisp",
+        "tests/acl2/owner-agent-tests.lisp",
+        "tests/test_native_profile.py"
+      ],
+      "progress_note": "Lane t6b-profile, 2026-09-22: the served-POST keystone is proved over the host-called fn-ocfg-read-tls-prefix under the fn-served-connp premise; tests/acl2/owner-agent-tests.lisp carries a reachable witness built as the host builds it (a replayed history with the policy set path-identity delta, fn-oag-post-config, fn-ocfg-open, one POST read through fn-ocfg-read-tls-prefix whose queued article says Injection-Info: hbox.ember.software) and a must-fail per hypothesis, with a refuting value for the identity and freshness hypotheses and none known for the served premise. The image measurement is tests/test_native_profile.py and V0-NODE-PROFILE.",
+      "events": [
+        "fn-inj-injected-article-names-the-configured-agent",
+        "fn-oag-post-config-agent-is-the-path-identity",
+        "fn-oag-open-pins-the-owner-config",
+        "fn-oag-served-post-names-the-pinned-agent"
+      ]
+    },
+    {
+      "id": "PRF-054",
+      "title": "The native service log says what the reply says, one line per event",
+      "statement": "fn-olog-served-post-line-says-accepted-iff-durable: the line host/owner-host.lisp fn-owner-outcome renders for a served submission begins with the word accepted exactly when fn-own-outcome-completion of the host's word is :durable, the completion fn-own-outcome renders into the 240; a host word alone never makes it say accepted. fn-olog-control-post-line-says-the-control-result: the control line's first word is the word of fn-own-control-outcome-result, the value the control reply carries. fn-olog-served-post-line-is-one-line, fn-olog-control-post-line-is-one-line and fn-olog-connection-line-is-one-line: no line contains CR or LF, whatever octets the Message-ID, agent or peer name held. Covered scope: the rendered octets; that host/native/owner.lisp fnn-owner-log writes them and one LF to the file run opened append-only is measured by tests/test_native_profile.py, not proved.",
+      "milestone": "M3",
+      "requirements": [
+        "HST-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/owner-log.lisp",
+        "tests/acl2/owner-log-tests.lisp",
+        "tests/test_native_profile.py"
+      ],
+      "progress_note": "Lane t6b-profile, 2026-09-22: the keystones have no hypotheses; tests/acl2/owner-log-tests.lisp evaluates each renderer on a real injected decision and a real control decision, and its must-fails name the weaker statements a host-word log would satisfy (the line echoes the host word; the control line uses the served classification) with the refuting owner evaluated beside each.",
+      "events": [
+        "fn-olog-served-post-line-says-accepted-iff-durable",
+        "fn-olog-control-post-line-says-the-control-result",
+        "fn-olog-served-post-line-is-one-line",
+        "fn-olog-control-post-line-is-one-line",
+        "fn-olog-connection-line-is-one-line"
+      ]
     }
   ]
 }

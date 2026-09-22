@@ -45,6 +45,29 @@
   peer path fd phase (replayed 0))
 
 (defvar *fnn-owner-startup-hooks* nil)
+;;; The service log.  `fn operator CONFIG run' opens `[log] path' append-only
+;;; before the store (host/native/operator.lisp) and leaves its descriptor
+;;; here; NIL means stderr.  The line is ACL2's (books/owner-log.lisp), left
+;;; in the global `fn-owner-log-line' by the wrapper that just ran under the
+;;; owner mutex; this writes its octets and one LF and decides nothing.  A
+;;; failed write is reported on stderr and does not stop the owner: the log
+;;; is an operator's record, never evidence of durable acceptance.
+(defvar *fnn-owner-log-fd* nil)
+
+(defun fnn-owner-log ()
+  (let ((line (fnn-global 'fn-owner-log-line)))
+    (unless (fnn-octet-list-p line)
+      (fnn-fault "owner returned a malformed log line"))
+    (let ((octets (concatenate 'fnn-octets (fnn-octets line)
+                               (fnn-octets (list 10)))))
+      (if *fnn-owner-log-fd*
+          (handler-case (fnn-write-all *fnn-owner-log-fd* octets)
+            (error (condition)
+              (fnn-err "service log write failed: ~a" condition)))
+        (when *fnn-stderr*
+          (write-sequence octets *fnn-stderr*)
+          (finish-output *fnn-stderr*))))))
+
 
 (defun fnn-owner-run-startup-hooks (service)
   "Run ACL2-backed lifecycle adapters after recovery and before listen."
@@ -825,7 +848,8 @@ the current connection."
                     (if transitp
                         (fnn-owner-action 'fn-owner-transit-outcome
                                           cid :want transit-reason :refused)
-                      (fnn-owner-action 'fn-owner-outcome cid :refused))
+                      (progn (fnn-owner-action 'fn-owner-outcome cid :refused)
+                             (fnn-owner-log)))
                     (values cid (fnn-owner-octets-global 'fn-owner-output) nil))
                 (progn
                   ;; Durable intent before the first Store mutation.  Empty is
@@ -839,7 +863,8 @@ the current connection."
                     (if transitp
                         (fnn-owner-action 'fn-owner-transit-outcome
                                           cid :want transit-reason word)
-                      (fnn-owner-action 'fn-owner-outcome cid word))
+                      (progn (fnn-owner-action 'fn-owner-outcome cid word)
+                             (fnn-owner-log)))
                     (values cid (fnn-owner-octets-global 'fn-owner-output)
                             (eq word :uncertain))))))))))))
 
@@ -871,6 +896,7 @@ and control-outcome sequence."
         (unless (eq intent :ready)
           (let ((result
                   (fnn-owner-action 'fn-owner-control-outcome :refused)))
+            (fnn-owner-log)
             (unless (eq result :refused)
               (fnn-fault "owner bound intent refusal changed outcome"))
             (return-from fnn-owner-complete-bound-submission result)))
@@ -882,6 +908,7 @@ and control-outcome sequence."
                             word (fnn-octet-list evidence) generation txid)
           (fnn-owner-feed-flush service)
           (let ((result (fnn-owner-action 'fn-owner-control-outcome word)))
+            (fnn-owner-log)
             (unless (member result
                             '(:accepted :duplicate :refused :uncertain))
               (fnn-fault "owner bound completion returned ~a" result))
@@ -1054,6 +1081,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                 (fnn-owner-core 'fn-owner-open))))
                         (unless (or (null peer) (fnn-octet-list-p peer))
                           (fnn-fault "owner returned a malformed peer identity"))
+                        (when opened (fnn-owner-log))
                         (values opened
                                 (if opened (fnn-owner-octets-global 'fn-owner-output)
                                   (fnn-make-octets 0))))))

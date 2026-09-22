@@ -34,6 +34,10 @@
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
 (include-book "../books/feed-connection-invariants")
+; The injecting agent (the path-identity policy, fn-oag-post-config) and the
+; service log lines (fn-olog-*): both ACL2's, read here and nowhere computed.
+(include-book "../books/owner-agent")
+(include-book "../books/owner-log")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -46,42 +50,16 @@
 ; re-admits identical definitions, which ACL2 accepts as redundant.
 (ld "store-node-host.lisp" :ld-error-action :error)
 
-; The injecting-agent identity this owner uses (books/injection.lisp reads
-; it for Path, Injection-Info and any generated Message-ID).  Configuration,
-; not a decision.
-(defconst *fn-owner-agent*
-  '(102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100))
-
-(defun fn-owner-group-octets (names)
-  (declare (xargs :mode :program))
-  (if (consp names)
-      (cons (fn-nntp-string-octets (car names))
-            (fn-owner-group-octets (cdr names)))
-    nil))
-
 ; The posting configuration: the groups served at the live configuration
-; generation (books/node-config, fn-cnode-served-of), the store's payload
-; bound.  Derived from the replayed configuration by ACL2.
-; The node's own <path-identity>, from the ONE slot that holds it: the
-; configuration policy `path-identity`, which `fn-peer-local-identity`
-; (books/peer-inbound.lisp) and `fn-store-prov-post` also read.
-; `*fn-owner-agent*` was a second copy of a node's identity, and that is how
-; two fn nodes on one gate came to write the SAME Path -- so neither could
-; recognise itself in the other's articles and RFC 5537 section 3.5 loop
-; suppression had nothing to compare. The constant is now only the fallback
-; for a store whose slot is unset.
-(defun fn-owner-agent-of (cfg)
-  (declare (xargs :mode :program))
-  (let ((identity (fn-cfg-policy (fn-cfg-value cfg) "path-identity")))
-    (if (and (stringp identity) (not (equal identity "")))
-        (fn-record-string-octets identity)
-      *fn-owner-agent*)))
-
+; generation, the node's own <path-identity> from the ONE slot that holds it
+; (the configuration policy `path-identity', which `fn-peer-local-identity'
+; and `fn-store-prov-post' also read), and the store's payload bound.  ACL2
+; derives all of it (books/owner-agent.lisp fn-oag-post-config, whose agent
+; is the path-identity by fn-oag-post-config-agent-is-the-path-identity);
+; this wrapper only supplies the payload bound.
 (defun fn-owner-post-config (cfg)
   (declare (xargs :mode :program))
-  (fn-inj-make-config t (fn-owner-agent-of cfg)
-                      (fn-owner-group-octets (fn-cnode-served-of cfg))
-                      *fn-store-max-payload*))
+  (fn-oag-post-config cfg *fn-store-max-payload*))
 
 (defun fn-owner-ocfg (state)
   ; Internal, single-valued accessor for host wrappers.
@@ -610,7 +588,11 @@
              (opened (fn-ocfg-open-peer (fn-owner-ocfg state) peer
                                         (fn-owner-auth state)))
              (state (fn-owner-install-ocfg (cdr opened) state))
-             (state (fn-owner-install-effects (car opened) state)))
+             (state (fn-owner-install-effects (car opened) state))
+             (state (f-put-global 'fn-owner-log-line
+                                  (fn-olog-connection-line
+                                   (fn-owner-core state) id peer-octets)
+                                  state)))
         (if (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))
             (value id)
           (value nil))))))
@@ -671,11 +653,11 @@
                  ; `w11/twonode-feed' and `w11/owner-survival' diagnosed and
                  ; fixed this independently on the same evening, and the two
                  ; fixes differed only in which of two identical helpers they
-                 ; called.  The duplicate is folded: `fn-owner-group-octets'
-                 ; above is the one, and `fn-owner-group-octet-list' is gone.
+                 ; called.  The duplicate is folded into ACL2:
+                 ; `fn-oag-group-octets' (books/owner-agent.lisp) is the one.
                  (state (f-put-global 'fn-owner-submit-groups
                                       (if (equal (fn-peer-decision-kind d) :want)
-                                          (fn-owner-group-octets (nth 3 args))
+                                          (fn-oag-group-octets (nth 3 args))
                                         nil)
                                       state))
                  (state (f-put-global 'fn-owner-transit-evidence
@@ -876,6 +858,10 @@
 (defun fn-owner-outcome (id word state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
+         ; The service log line, read before the event consumes the
+         ; submission in flight (books/owner-log.lisp).
+         (state (f-put-global 'fn-owner-log-line
+                              (fn-olog-served-post-line owner id word) state))
          (records (fn-own-outcome-journal-records
                    owner id word
                    (f-get-global 'fn-owner-shared-resolution-id state)))
@@ -895,6 +881,8 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
          (result (fn-own-control-outcome-result owner word))
+         (state (f-put-global 'fn-owner-log-line
+                              (fn-olog-control-post-line owner word) state))
          (state (fn-owner-step (list :control-outcome word) state)))
     (value result)))
 
@@ -1005,7 +993,11 @@
          (opened (fn-ocfg-open (fn-owner-ocfg state)
                                (fn-owner-auth state)))
          (state (fn-owner-install-ocfg (cdr opened) state))
-         (state (fn-owner-install-effects (car opened) state)))
+         (state (fn-owner-install-effects (car opened) state))
+         (state (f-put-global 'fn-owner-log-line
+                              (fn-olog-connection-line (fn-owner-core state)
+                                                       id nil)
+                              state)))
     (if (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))
         (value id)
       (value nil))))

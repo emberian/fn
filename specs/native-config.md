@@ -26,20 +26,46 @@ configuration:
 | `store` | `path` | Required nonempty path, at most 512 octets. |
 | `listener` | `host`, `port`, `tls_cert`, `tls_key` | Host defaults to `127.0.0.1` and is a numeric IPv4 address other than `0.0.0.0`, or one of the aliases `localhost` (the IPv4 loopback) and `::1` (`fn-native-config-listener-hostp`); names are never resolved and the wildcard is refused, so a node binds exactly the address it was given. Port defaults to 1119 and is 1..65535; TLS paths are paired or absent. |
 | `auth` | `required`, `protected_only`, `path` | Booleans default false; path defaults to `<store>/auth.toml`. |
-| `posting` | `enabled`, `agent` | Defaults true and `fn-operator@localhost`. |
+| `posting` | `enabled`, `agent` | `enabled` defaults true. `agent` is parsed and retained, has no default, and is refused by `run` (below). |
 | `anchor` | `server` | Optional bounded server name. |
 | `acl2` | `path`, `slots` | Parsed so a migration cannot silently discard it; a direct saved image cannot consume either. |
-| `log` | `path` | Optional bounded path. |
+| `log` | `path` | Optional bounded path; `run` admits it only when absolute. |
 | `control` | `path` | Optional bounded path, default `<store>/control.sock`. |
 
 Every path is bounded to 512 octets, ordinary text to 256, and an anchor name
 to 128. `fn-native-config-operator-availablep` is a separate ACL2 decision
-that refuses use of settings whose native consumer does not exist yet. The
-native owner now consumes `auth.required` and the selected `auth.path` through
-`books/native-auth-profile.lisp`. It also consumes the paired TLS paths and
-admits `auth.protected_only` when a certificate path is present. Non-default
-posting agent, anchor, log, and `[acl2]` remain unavailable rather than being
-silently ignored. Both Boolean posting policies and the bounded control path
+that refuses use of settings whose native consumer does not exist; it is
+`fn-native-config-unsupported-key` returning nil, and `run` refuses a
+profile with `usage operator run (UNSUPPORTED-PROFILE KEY)`, KEY the first of
+`protected_only`, `enabled`, `agent`, `anchor`, `log`, `acl2` the owner cannot
+consume. The native owner consumes `auth.required` and the selected
+`auth.path` through `books/native-auth-profile.lisp`. It also consumes the
+paired TLS paths and admits `auth.protected_only` when a certificate path is
+present. It consumes an absolute `[log] path`: `run` opens it append-only
+(`O_APPEND|O_CREAT|O_NOFOLLOW`, mode 0640) before the store, and the owner
+writes there, instead of to stderr, one line per served post, control post
+and accepted connection, each rendered by `books/owner-log.lisp` with the
+reply's outcome word first; fn never truncates or rotates the file. A
+relative path is refused (`log`), since the service's working directory is
+not part of the profile.
+
+`[posting] agent` is refused (`agent`) whatever it says, the former default
+`fn-operator@localhost` included, and that is a decision, not a missing
+consumer. The injecting agent a served POST writes into Path and
+Injection-Info (RFC 5537 section 3.2.1, RFC 5536 section 3.2.8) is the
+node's `<path-identity>`, and fn keeps it in one slot: the replayed
+configuration policy `path-identity` (`fn operator CONFIG policy set
+path-identity IDENTITY`), which peer loop suppression reads too. The owner
+installs it through `fn-oag-post-config` (books/owner-agent.lisp), and
+`fn-oag-served-post-names-the-pinned-agent` with
+`fn-oag-configured-open-pins-the-path-identity` carry it to every injected
+article's Injection-Info, the read under the served-connection invariant the
+owner does not yet carry (`fn-served-connp` of the connection's served state;
+the premise PRF-006 records for `fn-ocfg-read-tls-prefix`). A value in fn.toml could only disagree with Path.
+An agent with `@` is not a `<path-identity>` at all.
+
+The anchor server and `[acl2]` remain unavailable rather than being silently
+ignored. Both Boolean posting policies and the bounded control path
 are consumed by the local control service. Path presence does not make a socket protected: the native
 operator must first load and key-check an OpenSSL 3 context, and each owner
 connection becomes protected only after its own successful handshake and the
