@@ -366,6 +366,17 @@
                body-limit))
   :hints (("Goal" :in-theory (enable fn-wire-lines-size))))
 
+; `fn-wire-list-length' counts conses and stops at a non-cons, which is what
+; `len' does on every object; books/wire keeps its own recursion so the line
+; cost function does not depend on the arithmetic vocabulary.  The stuffing
+; bound above is stated in `len' and `fn-wire-line-cost' is stated in
+; `fn-wire-list-length', so the cumulative bound below cannot see that its two
+; halves measure the same list without this bridge.  Local: the equality is
+; proof vocabulary here, not a fact this book exports.
+(local (defthm fn-wire-list-length-is-len
+         (equal (fn-wire-list-length xs) (len xs))
+         :hints (("Goal" :in-theory (enable fn-wire-list-length)))))
+
 (defthm fn-wire-stuffed-first-line-length-at-most-lines-size
   (implies (consp lines)
            (<= (len (fn-wire-stuff-line (car lines)))
@@ -604,6 +615,20 @@
            :in-theory (e/d (fn-wire-statep)
                            (fn-wire-stuffed-line-fits-article-profile)))))
 
+; `fn-wire-reverse-lines-aux' IS `revappend': books/wire keeps its own
+; tail-recursion so the state machine does not depend on the list library.
+; The theorem below states the delivered body in `reverse' -- the spelling a
+; reader can check without the model -- and ACL2 turns that into
+; `(revappend x nil)', so the two spellings meet only through this bridge.
+; books/wire e2e96b83 put `fn-wire-reverse-lines' where the article event
+; used to render `reverse' directly.  Disabled immediately: the lemmas above
+; reason about `fn-wire-reverse-lines-aux' itself and must keep seeing it.
+(local (defthm fn-wire-reverse-lines-aux-is-revappend
+         (equal (fn-wire-reverse-lines-aux lines accumulator)
+                (revappend lines accumulator))
+         :hints (("Goal" :in-theory (enable fn-wire-reverse-lines-aux)))))
+(local (in-theory (disable fn-wire-reverse-lines-aux-is-revappend)))
+
 (defthm fn-wire-feed-proper-of-article-terminator
   (implies
    (and (fn-wire-statep wire-state)
@@ -627,7 +652,9 @@
                  (:instance fn-wire-statep-has-true-list-body))
            :in-theory (e/d (fn-wire-after-line
                              fn-wire-clear-line-state
-                             fn-wire-line-contentp)
+                             fn-wire-line-contentp
+                             fn-wire-reverse-lines
+                             fn-wire-reverse-lines-aux-is-revappend)
                             (fn-wire-feed-proper
                              fn-wire-statep
                              fn-wire-statep-has-positive-line-limit
