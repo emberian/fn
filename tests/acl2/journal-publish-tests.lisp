@@ -2,6 +2,7 @@
 (include-book "../../books/journal-publish")
 (include-book "../../books/app-journal")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 (defconst *fn-t-jpub-link-window*
   (fn-jpub-step

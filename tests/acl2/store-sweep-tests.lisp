@@ -7,6 +7,7 @@
 (in-package "ACL2")
 
 (include-book "../../books/store-sweep")
+(include-book "../../books/codec-attach")
 
 (local (in-theory (enable fn-sn-staging-namep fn-sn-final-namespace-namep
                           fn-sn-sweep-enabledp fn-sn-sweep-staging)))

@@ -1,6 +1,7 @@
 ; The native host wrapper calls the exact ACL2 credential-profile subject.
 (in-package "ACL2")
 (include-book "../../host/native-auth-host")
+(include-book "../../books/codec-attach")
 
 (defconst *fn-native-auth-host-empty*
   (fn-native-auth-host-load nil nil t nil nil))

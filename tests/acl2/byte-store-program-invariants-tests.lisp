@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "byte-store-relation-tests")
 (include-book "../../books/byte-store-program-invariants")
+(include-book "../../books/codec-attach")
 
 (defun fn-bs-test-failure-outcomes (index outcome)
   (declare (xargs :guard t :verify-guards nil))

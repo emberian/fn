@@ -6,12 +6,13 @@
 
 (in-package "ACL2")
 (include-book "store-files")
+(include-book "records-seam")
 (local (include-book "arithmetic/top" :dir :system))
 ; The codecs cluster withdraws the article-record definitions at export
 ; (2026-09-19).  Some later proofs still open that vocabulary, while the
 ; ordered publication history below is stated over the authoritative tagged
 ; store-event grammar and its total accessors.
-(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
+(local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
 
 ; The preservation keystones open the kernel definitions locally (docs/
 ; proof-style.md s2); the record stays opaque, so goals are in accessor

@@ -24,6 +24,7 @@
 (in-package "ACL2")
 (include-book "crypto-seam-tests")
 (include-book "../../books/store-node-invariants")
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; One principal, one keyring, one signed article

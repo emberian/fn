@@ -16,12 +16,13 @@
 (in-package "ACL2")
 (include-book "config")
 (include-book "replay")
+(include-book "records-seam")
 
 ; `fn-jrec-p' must conclude `true-listp' of a record body to discharge
 ; `fn-replay-apply-record's guard, and `books/records' exports the shape
 ; recognizer withdrawn.  Opened locally, for that guard obligation only.
 (local (in-theory (enable fn-record-record-vocabulary
-                          fn-record-codec-vocabulary)))
+                          fn-record-shape-vocabulary)))
 
 ; The two total selectors `books/config' withdraws on export; the journal
 ; record's accessor lemmas and the `(result config)' pair selectors below are

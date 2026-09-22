@@ -398,6 +398,9 @@ class Book:
     assert_events: int = 0
     must_fails: int = 0
     defconsts: int = 0
+    # Functions an `encapsulate' signature introduces: constrained, with no
+    # definition outside it (a codec seam's public names, a named assumption).
+    constrained: set[str] = field(default_factory=set)
     defmacros: int = 0
     encapsulates: int = 0
     read_error: str | None = None
@@ -657,6 +660,8 @@ def record(book: Book, form: object, line: int, *, local: bool,
             book.encapsulates += 1
             if len(form) >= 2:
                 book.definitions |= encapsulated_names(form[1])
+                if not local:
+                    book.constrained |= encapsulated_names(form[1])
         for item in form[2:]:
             record(book, item, line, local=local, suppressed=suppressed,
                    generated=generated)
@@ -785,7 +790,11 @@ class Tree:
         self.hosts: dict[str, HostFile] = {} if hosts is None else hosts
         self.functions: dict[str, Function] = {}
         self.theorems: dict[str, Theorem] = {}
+        # Constrained function name -> the book whose `encapsulate' introduces it.
+        self.constrained: dict[str, str] = {}
         for book in books.values():
+            for name in book.constrained:
+                self.constrained.setdefault(name, book.path)
             for function in book.functions:
                 # A `local' defun inside an `encapsulate' is a witness, not a
                 # definition: outside the encapsulate the function is
@@ -2359,6 +2368,15 @@ def check_theorem_event(tree: Tree, ident: str, name: str) -> list[str]:
 
 def check_function_event(tree: Tree, ident: str, name: str) -> list[str]:
     function = tree.functions.get(name)
+    if function is None and name in tree.constrained:
+        # A constrained function (a codec seam's public name): ACL2 treats it
+        # as guard-verified against its signature's guard, and it has no body
+        # to be anything else.  It must still be reachable from a root.
+        book = tree.constrained[name]
+        if book not in tree.closure:
+            return [f"{ident}: {name} lives in {book}, which no Makefile "
+                    f"certification root reaches"]
+        return []
     if function is None:
         return [f"{ident}: no such function in books/: {name}"]
     problems = []

@@ -7,6 +7,7 @@
 ; makes the conclusion fail on an executable counterexample.
 (in-package "ACL2")
 (include-book "../../books/checkpoint-codec")
+(include-book "../../books/codec-attach")
 
 (defconst *cpc-groups* '("fn.letters" "fn.test"))
 (defconst *cpc-r0*

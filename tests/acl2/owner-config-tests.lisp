@@ -15,6 +15,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-config")
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit: the pin table, the recognizer and the three connection

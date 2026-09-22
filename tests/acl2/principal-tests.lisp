@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "crypto-seam-tests")
 (include-book "../../books/principal-invariants")
+(include-book "../../books/codec-attach")
 
 ; cluster-local theory: this book is inside the substrate cluster and opens
 ; the definitions its neighbours withdraw at export (docs/proof-style.md 2).

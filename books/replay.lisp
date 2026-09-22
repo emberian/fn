@@ -17,6 +17,7 @@
 (include-book "node-retention-transitions")
 (include-book "store-events")
 (include-book "hybrid-store")
+(include-book "records-seam")
 ; The codecs cluster withdraws (:d fn-store-event-p) at export (2026-09-19); the
 ; loop's guard proof needs only that a record is a true list.  Interim
 ; local fact applied by the store deputy so its closure certifies; the
@@ -30,7 +31,7 @@
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-store-event-p
                                       fn-store-retention-event-p
-                                      fn-record-codec-vocabulary
+                                      fn-record-shape-vocabulary
                                       fn-record-record-vocabulary))))
 (local
  (defthm fn-replay-article-counters-are-natural
@@ -39,7 +40,7 @@
                  (natp (fn-record-txid record))
                  (natp (fn-record-generation record))))
    :hints (("Goal" :in-theory (enable fn-record-record-vocabulary
-                                      fn-record-codec-vocabulary)))))
+                                      fn-record-shape-vocabulary)))))
 (local
  (defthm fn-replay-retention-counters-are-natural
    (implies (fn-store-retention-event-p record)
@@ -103,7 +104,7 @@
                               fn-replay-stxa-counters-are-natural)))))
 
 ; Convergence (board, codecs CHANGE on records): `fn-store-event-p' is opaque and exports no forward shape rule; the loop guard needs true-listp from it.
-(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
+(local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
 (local (in-theory (enable fn-retention-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------

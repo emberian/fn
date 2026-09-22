@@ -12,6 +12,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/served")
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit

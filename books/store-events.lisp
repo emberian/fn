@@ -6,7 +6,7 @@
 ; therefore supplies one publication and recovery order rather than a second
 ; obligation log.
 (in-package "ACL2")
-(include-book "records")
+(include-book "records-seam")
 (include-book "stx-accept-records")
 
 (defconst *fn-store-event-magic* '(102 110 45 101)) ; fn-e

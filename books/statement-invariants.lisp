@@ -121,194 +121,15 @@
       (fn-stmt-items-fuel-induct (1- fuel) (cdr items))
     (list fuel items)))
 
-(defthm fn-stmt-encode-items-of-append
-  (equal (fn-stmt-encode-items (append a b))
-         (append (fn-stmt-encode-items a) (fn-stmt-encode-items b)))
-  :hints (("Goal" :in-theory (disable fn-cbor-encode))))
-
-; The streaming primitive is the old one-item decoder after its caller has
-; discharged the legacy outer bound and octet-list checks.  Keeping this
-; bridge opaque lets the established sequence proofs reason about one CBOR
-; item at a time without expanding the bounded preflight implementation.
-(defthm fn-stmt-decode-prechecked-is-legacy
-  (implies (and (fn-cbor-octet-listp octets)
-                (<= (len octets) *fn-cbor-max-input*))
-           (equal (fn-cbor-decode-prechecked octets *fn-cbor-max-bytes*)
-                  (fn-cbor-decode octets)))
-  :hints (("Goal"
-           :use ((:instance fn-cbor-at-mostp-from-length
-                            (xs octets)
-                            (bound *fn-cbor-max-input*)))
-           :in-theory (enable fn-cbor-decode fn-cbor-decode-bounded))))
-
-(defthm fn-stmt-prechecked-reencode-prefix
-  (implies (and (fn-cbor-octet-listp octets)
-                (<= (len octets) *fn-cbor-max-input*)
-                (fn-cbor-result-okp
-                 (fn-cbor-decode-prechecked octets *fn-cbor-max-bytes*)))
-           (equal (append
-                   (fn-cbor-encode
-                    (fn-cbor-result-value
-                     (fn-cbor-decode-prechecked
-                      octets *fn-cbor-max-bytes*)))
-                   (fn-cbor-result-rest
-                    (fn-cbor-decode-prechecked
-                     octets *fn-cbor-max-bytes*)))
-                  octets))
-  :hints (("Goal"
-           :use ((:instance fn-cbor-decode-reencode-prefix))
-           :in-theory (disable fn-cbor-decode fn-cbor-encode
-                               fn-cbor-decode-prechecked))))
-
-(defthm fn-stmt-octet-listp-of-append-right
-  (implies (fn-cbor-octet-listp (append a b))
-           (fn-cbor-octet-listp b))
-  :hints (("Goal" :induct (append a b)))
-  :rule-classes nil)
-
-(defthm fn-stmt-prechecked-rest-is-octet-list
-  (implies (and (fn-cbor-octet-listp octets)
-                (<= (len octets) *fn-cbor-max-input*)
-                (fn-cbor-result-okp
-                 (fn-cbor-decode-prechecked octets *fn-cbor-max-bytes*)))
-           (fn-cbor-octet-listp
-            (fn-cbor-result-rest
-             (fn-cbor-decode-prechecked octets *fn-cbor-max-bytes*))))
-  :hints (("Goal"
-           :use ((:instance fn-stmt-prechecked-reencode-prefix)
-                 (:instance fn-stmt-octet-listp-of-append-right
-                  (a (fn-cbor-encode
-                      (fn-cbor-result-value
-                       (fn-cbor-decode-prechecked
-                        octets *fn-cbor-max-bytes*))))
-                  (b (fn-cbor-result-rest
-                      (fn-cbor-decode-prechecked
-                       octets *fn-cbor-max-bytes*)))))
-           :in-theory (disable fn-cbor-decode fn-cbor-decode-bounded
-                               fn-cbor-decode-prechecked fn-cbor-encode
-                               fn-stmt-decode-prechecked-is-legacy
-                               fn-stmt-prechecked-reencode-prefix))))
-
-(defthm fn-stmt-prechecked-rest-length-bound
-  (implies (and (fn-cbor-octet-listp octets)
-                (<= (len octets) *fn-cbor-max-input*)
-                (fn-cbor-result-okp
-                 (fn-cbor-decode-prechecked octets *fn-cbor-max-bytes*)))
-           (<= (len (fn-cbor-result-rest
-                     (fn-cbor-decode-prechecked
-                      octets *fn-cbor-max-bytes*)))
-               *fn-cbor-max-input*))
-  :hints (("Goal"
-           :use ((:instance fn-stmt-prechecked-reencode-prefix))
-           :in-theory (disable fn-cbor-decode fn-cbor-decode-bounded
-                               fn-cbor-decode-prechecked fn-cbor-encode
-                               fn-stmt-decode-prechecked-is-legacy
-                               fn-stmt-prechecked-reencode-prefix)))
-  :rule-classes :linear)
-
-(defthm fn-stmt-prechecked-value-is-cbor-value
-  (implies (and (fn-cbor-octet-listp octets)
-                (fn-cbor-result-okp
-                 (fn-cbor-decode-prechecked octets *fn-cbor-max-bytes*)))
-           (fn-cbor-valuep
-            (fn-cbor-result-value
-             (fn-cbor-decode-prechecked octets *fn-cbor-max-bytes*))))
-  :hints (("Goal"
-           :in-theory (enable fn-cbor-decode-prechecked
-                              fn-cbor-decode-unsigned
-                              fn-cbor-decode-bytes-bounded
-                              fn-cbor-valuep fn-cbor-valuep-bounded))))
-
-(defthm fn-stmt-decode-items-of-encode-items
-  (implies (and (fn-stmt-item-listp items)
-                (natp fuel)
-                (<= (len items) fuel)
-                (<= (len (fn-stmt-encode-items items)) *fn-cbor-max-input*))
-           (equal (fn-stmt-decode-items fuel (fn-stmt-encode-items items))
-                  (fn-stmt-ok items)))
-  :hints (("Goal" :induct (fn-stmt-items-fuel-induct fuel items)
-           :in-theory (disable fn-cbor-decode fn-cbor-encode
-                               fn-cbor-decode-prechecked
-                               fn-cbor-decode-bounded))))
-
-(defthm fn-stmt-encode-items-of-decode-items-prechecked
-  (implies (and (fn-cbor-octet-listp octets)
-                (<= (len octets) *fn-cbor-max-input*)
-                (fn-stmt-okp
-                 (fn-stmt-decode-items-prechecked
-                  fuel octets *fn-cbor-max-bytes*)))
-           (equal (fn-stmt-encode-items
-                   (fn-stmt-value
-                    (fn-stmt-decode-items-prechecked
-                     fuel octets *fn-cbor-max-bytes*)))
-                  octets))
-  :hints (("Goal" :induct (fn-stmt-decode-items-prechecked
-                            fuel octets *fn-cbor-max-bytes*)
-           :in-theory (disable fn-cbor-decode fn-cbor-encode
-                               fn-cbor-decode-prechecked
-                               fn-cbor-decode-bounded
-                               fn-stmt-decode-prechecked-is-legacy
-                               fn-cbor-result-okp fn-cbor-result-value
-                               fn-cbor-result-rest
-                               fn-stmt-okp fn-stmt-value fn-stmt-rest
-                               fn-stmt-ok fn-stmt-ok2 fn-stmt-error))))
-
-(defthm fn-stmt-encode-items-of-decode-items
-  (implies (fn-stmt-okp (fn-stmt-decode-items fuel octets))
-           (equal (fn-stmt-encode-items
-                   (fn-stmt-value (fn-stmt-decode-items fuel octets)))
-                  octets))
-  :hints (("Goal"
-           :use ((:instance fn-stmt-encode-items-of-decode-items-prechecked))
-           :in-theory (enable fn-stmt-decode-items
-                              fn-stmt-decode-items-bounded))))
-
 (defthm fn-stmt-decode-ok-implies-octets
   (implies (fn-cbor-result-okp (fn-cbor-decode octets))
            (fn-cbor-octet-listp octets))
   :hints (("Goal" :in-theory (enable fn-cbor-decode))))
 
-(defthm fn-stmt-decode-items-prechecked-value-is-item-list
-  (implies (and (fn-cbor-octet-listp octets)
-                (<= (len octets) *fn-cbor-max-input*)
-                (fn-stmt-okp
-                 (fn-stmt-decode-items-prechecked
-                  fuel octets *fn-cbor-max-bytes*)))
-           (fn-stmt-item-listp
-            (fn-stmt-value
-             (fn-stmt-decode-items-prechecked
-              fuel octets *fn-cbor-max-bytes*))))
-  :hints (("Goal" :induct (fn-stmt-decode-items-prechecked
-                            fuel octets *fn-cbor-max-bytes*)
-           :in-theory (disable fn-cbor-decode fn-cbor-encode
-                               fn-cbor-decode-prechecked
-                               fn-cbor-decode-bounded
-                               fn-stmt-decode-prechecked-is-legacy
-                               fn-cbor-result-okp fn-cbor-result-value
-                               fn-cbor-result-rest
-                               fn-stmt-okp fn-stmt-value fn-stmt-rest
-                               fn-stmt-ok fn-stmt-ok2 fn-stmt-error))))
-
-(defthm fn-stmt-decode-items-value-is-item-list
-  (implies (fn-stmt-okp (fn-stmt-decode-items fuel octets))
-           (fn-stmt-item-listp
-            (fn-stmt-value (fn-stmt-decode-items fuel octets))))
-  :hints (("Goal"
-           :use ((:instance
-                  fn-stmt-decode-items-prechecked-value-is-item-list))
-           :in-theory (enable fn-stmt-decode-items
-                              fn-stmt-decode-items-bounded))))
-
-; These streaming bridge rules are local proof machinery.  Leaving them active
-; after the three public sequence theorems makes unrelated statement proofs
-; backchain into decoder length arithmetic.
-(local (in-theory (disable fn-stmt-decode-prechecked-is-legacy
-                           fn-stmt-prechecked-reencode-prefix
-                           fn-stmt-prechecked-rest-is-octet-list
-                           fn-stmt-prechecked-rest-length-bound
-                           fn-stmt-prechecked-value-is-cbor-value
-                           fn-stmt-encode-items-of-decode-items-prechecked
-                           fn-stmt-decode-items-prechecked-value-is-item-list)))
+; The item-sequence codec's own facts -- the streaming round trip, its
+; canonicality, the item-list shape of what it decodes -- are the constraints
+; of books/statement-seam.lisp now, proved of the implementation in
+; books/statement-codec.lisp; they keep their names there.
 
 ; -----------------------------------------------------------------------------
 ; Predecessor lists
@@ -444,7 +265,7 @@
                  (:instance fn-stmt-headerp-preds-bound))
            :in-theory (disable fn-stmt-header-items fn-stmt-headerp
                                fn-stmt-decode-items fn-stmt-header-of-items
-                               fn-stmt-encode-items
+                               fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp
                                fn-stmt-decode-items-of-encode-items
                                fn-stmt-header-encoding-bound
                                fn-stmt-header-items-length))))
@@ -462,7 +283,7 @@
                                     (fn-stmt-decode-items
                                      *fn-stmt-max-header-items* octets)))))
            :in-theory (disable fn-stmt-decode-items fn-stmt-header-of-items
-                               fn-stmt-header-items fn-stmt-encode-items
+                               fn-stmt-header-items fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp
                                fn-stmt-headerp
                                fn-stmt-encode-items-of-decode-items
                                fn-stmt-header-of-items-sound))))
@@ -538,7 +359,7 @@
                  (:instance fn-stmt-items-length))
            :in-theory (disable fn-stmt-items fn-stmt-p
                                fn-stmt-decode-items fn-stmt-of-items
-                               fn-stmt-encode-items
+                               fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp
                                fn-stmt-decode-items-of-encode-items
                                fn-stmt-encoding-bound
                                fn-stmt-items-length))))
@@ -577,7 +398,7 @@
                                     (fn-stmt-decode-items
                                      *fn-stmt-max-items* octets)))))
            :in-theory (disable fn-stmt-decode-items fn-stmt-of-items
-                               fn-stmt-items fn-stmt-encode-items fn-stmt-p
+                               fn-stmt-items fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp fn-stmt-p
                                fn-stmt-encode-items-of-decode-items
                                fn-stmt-of-items-sound))))
 
@@ -656,7 +477,7 @@
                  (:instance fn-stmt-receipt-encoding-bound))
            :in-theory (disable fn-stmt-receipt-items fn-stmt-receipt-p
                                fn-stmt-decode-items fn-stmt-receipt-of-items
-                               fn-stmt-encode-items
+                               fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp
                                fn-stmt-decode-items-of-encode-items
                                fn-stmt-receipt-encoding-bound))))
 
@@ -679,7 +500,7 @@
                             (items (fn-stmt-value
                                     (fn-stmt-decode-items 4 octets)))))
            :in-theory (disable fn-stmt-decode-items fn-stmt-receipt-of-items
-                               fn-stmt-receipt-items fn-stmt-encode-items
+                               fn-stmt-receipt-items fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp
                                fn-stmt-receipt-p
                                fn-stmt-encode-items-of-decode-items
                                fn-stmt-receipt-of-items-sound))))
@@ -753,6 +574,9 @@
     fn-stmt-encode-items-of-decode-items
     fn-stmt-decode-ok-implies-octets
     fn-stmt-decode-items-value-is-item-list
+    fn-stmt-decode-items-bounded-of-encode
+    fn-stmt-decode-items-bounded-canonical
+    fn-stmt-decode-items-bounded-items
     fn-stmt-take-id-items-of-id-items
     fn-stmt-take-id-items-reconstruct
     fn-stmt-encode-items-of-id-items-bound

@@ -10,6 +10,7 @@
 (in-package "ACL2")
 (include-book "../../books/config-stream")
 (include-book "../../books/store-config")
+(include-book "../../books/codec-attach")
 
 (local (in-theory (enable fn-cfg-vocabulary fn-cfg-invariants-vocabulary
                           fn-cnode-vocabulary fn-cstr-vocabulary)))

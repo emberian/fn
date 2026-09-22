@@ -14,9 +14,10 @@
 
 (include-book "store-observed")
 (include-book "store-sweep")
+(include-book "records-seam")
 
 (local (in-theory (enable fn-record-record-vocabulary
-                          fn-record-codec-vocabulary)))
+                          fn-record-shape-vocabulary)))
 
 ; The optimized file projection.  Its body retains the specification's exact
 ; candidate predicate and omits only the appended-history replay.  The guard

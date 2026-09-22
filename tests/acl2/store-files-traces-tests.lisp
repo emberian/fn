@@ -1,6 +1,7 @@
 ; Executable finite-trace scenarios for the immutable-file storage kernel.
 (in-package "ACL2")
 (include-book "../../books/store-files-traces")
+(include-book "../../books/codec-attach")
 
 (defconst *sf-trace-groups* '("fn.letters" "fn.test"))
 

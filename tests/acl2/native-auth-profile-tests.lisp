@@ -1,6 +1,7 @@
 ; Executable cases for the native AUTHINFO credential-file boundary.
 (in-package "ACL2")
 (include-book "../../books/native-auth-profile")
+(include-book "../../books/codec-attach")
 
 ; These are the executable subjects the saved image reaches through the host
 ; wrapper.  Admission without Common Lisp compliance would not be deployment

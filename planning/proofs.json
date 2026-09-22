@@ -210,6 +210,8 @@
         "tests/evidence/2026-09-18-articles.json",
         "books/article-invariants.lisp",
         "books/records-canonicality.lisp",
+        "books/records-seam.lisp",
+        "books/records-attach.lisp",
         "tests/interop_cbor.py",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",

@@ -68,9 +68,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/node-retention-transitions \
 	tests/acl2/node-tests \
 	books/node-traces \
+	books/records-shape \
 	books/records \
 	books/records-invariants \
 	books/records-canonicality \
+	books/records-seam \
+	books/records-attach \
 	books/store-events \
 	tests/acl2/store-events-tests \
 	tests/acl2/records-tests \
@@ -377,6 +380,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/crypto-attach \
 	books/auth-secret \
 	tests/acl2/auth-secret-tests \
+	books/statement-items \
+	books/statement-codec \
+	books/statement-seam \
+	books/statement-attach \
+	books/codec-attach \
 	books/statement \
 	books/statement-invariants \
 	tests/acl2/statement-tests \

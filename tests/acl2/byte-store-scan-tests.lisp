@@ -17,6 +17,7 @@
 (include-book "../../books/byte-store-keystones")
 (include-book "../../books/byte-store-programs")
 (include-book "../../books/byte-store-txn-name")
+(include-book "../../books/codec-attach")
 
 ; The byte scanner consumes the shared Store-event dispatcher, so one
 ; immutable namespace may contain a legacy article followed by retention
@@ -27,14 +28,12 @@
 (defconst *bsk-event-retention*
   (fn-store-retention-event-make :undertake 1 1 1
                                  "obligation-1" "article-0" "local" 1))
-(defconst *bsk-event-article-frame*
-  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+(make-event `(defconst *bsk-event-article-frame* ',(fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
                  *fn-frame-store-kind*
-                 (fn-store-event-encode *bsk-event-article*)))
-(defconst *bsk-event-retention-frame*
-  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+                 (fn-store-event-encode *bsk-event-article*))))
+(make-event `(defconst *bsk-event-retention-frame* ',(fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
                  *fn-frame-store-kind*
-                 (fn-store-event-encode *bsk-event-retention*)))
+                 (fn-store-event-encode *bsk-event-retention*))))
 (defconst *bsk-mixed-event-store*
   (fn-bs-make 4
               (list (cons 10 *bsk-event-article-frame*)
@@ -55,10 +54,9 @@
 (defconst *bsk-wrong-event-sequence*
   (fn-store-retention-event-make :undertake 7 1 1
                                  "obligation-1" "article-0" "local" 1))
-(defconst *bsk-wrong-event-frame*
-  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+(make-event `(defconst *bsk-wrong-event-frame* ',(fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
                  *fn-frame-store-kind*
-                 (fn-store-event-encode *bsk-wrong-event-sequence*)))
+                 (fn-store-event-encode *bsk-wrong-event-sequence*))))
 (defconst *bsk-wrong-event-store*
   (fn-bs-make 4 (list (cons 10 *bsk-wrong-event-frame*))
               (list (cons :transactions

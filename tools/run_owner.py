@@ -115,6 +115,7 @@ class Acl2Owner(Acl2Store):
         # books/owner-fault includes books/owner; `fn-own-fault' is what the
         # host-fault boundary in `Owner.guard' below calls.
         self.call('(include-book "books/owner-fault")')
+        self.call('(include-book "books/codec-attach")')
         self.call('(ld "host/owner-host.lisp" :ld-error-action :return :ld-error-triples t)')
         self.call('(ld "host/feed-filename-host.lisp" :ld-error-action :return :ld-error-triples t)')
 

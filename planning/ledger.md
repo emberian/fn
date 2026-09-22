@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 405 |
-| Certification roots in the Makefile | 403 |
-| Books inside the root closure | 404 |
-| `defthm` and `defthmd` events | 6673 |
-| `defun` events | 5238 |
+| Books read | 413 |
+| Certification roots in the Makefile | 411 |
+| Books inside the root closure | 412 |
+| `defthm` and `defthmd` events | 6722 |
+| `defun` events | 5245 |
 | Functions with verified guards | 1731 |
 | Functions declared `:verify-guards nil` and never verified | 282 |
-| Functions left at the default with an explicit guard | 2605 |
-| Functions left at the default with no guard | 620 |
-| `assert-event` checks | 7358 |
-| `must-fail` checks | 221 |
-| `encapsulate` events | 19 |
-| Theorems flagged SUSPECT by shape | 61 |
+| Functions left at the default with an explicit guard | 2611 |
+| Functions left at the default with no guard | 621 |
+| `assert-event` checks | 7360 |
+| `must-fail` checks | 224 |
+| `encapsulate` events | 21 |
+| Theorems flagged SUSPECT by shape | 63 |
 | Export-hygiene warnings | 88 |
 | Enabled-projection warnings | 27 |
 | Teeth-form warnings | 13 |
-| Include-hygiene warnings | 150 |
+| Include-hygiene warnings | 252 |
 | Host-names warnings | 645 |
 | Hand-written-record warnings | 18 |
 
@@ -172,6 +172,7 @@ that `make certify` requests.
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 0 |
+| `books/codec-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-invariants.lisp` | root | 34 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/config-records.lisp` | root | 15 | 15 | 2/0/13/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
@@ -263,9 +264,12 @@ that `make certify` requests.
 | `books/principal.lisp` | root | 6 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/provenance-codec.lisp` | root | 27 | 25 | 1/0/24/0 | 0 | 0 | 1 |
 | `books/provenance.lisp` | root | 68 | 35 | 12/0/23/0 | 0 | 0 | 1 |
-| `books/records-canonicality.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/records-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/records-canonicality.lisp` | root | 27 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `books/records-invariants.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/records.lisp` | root | 44 | 48 | 46/0/2/0 | 0 | 0 | 0 |
+| `books/records-seam.lisp` | root | 16 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/records-shape.lisp` | root | 31 | 40 | 38/0/2/0 | 0 | 0 | 0 |
+| `books/records.lisp` | root | 13 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/relay-crash-invariants.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/relay-invariants.lisp` | root | 52 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/relay.lisp` | root | 0 | 32 | 0/15/17/0 | 0 | 0 | 0 |
@@ -279,8 +283,12 @@ that `make certify` requests.
 | `books/served-tls-prefix.lisp` | root | 12 | 7 | 1/0/6/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 71 | 38 | 2/4/32/0 | 0 | 0 | 0 |
 | `books/sha256.lisp` | root | 26 | 30 | 0/0/30/0 | 0 | 0 | 0 |
-| `books/statement-invariants.lisp` | root | 69 | 1 | 0/0/0/1 | 0 | 0 | 0 |
-| `books/statement.lisp` | root | 34 | 69 | 0/0/69/0 | 0 | 0 | 0 |
+| `books/statement-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/statement-codec.lisp` | root | 38 | 7 | 0/0/6/1 | 0 | 0 | 1 |
+| `books/statement-invariants.lisp` | root | 57 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/statement-items.lisp` | root | 2 | 7 | 0/0/7/0 | 0 | 0 | 0 |
+| `books/statement-seam.lisp` | root | 12 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/statement.lisp` | root | 24 | 56 | 0/0/56/0 | 0 | 0 | 0 |
 | `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-events.lisp` | root | 1 | 22 | 10/10/2/0 | 0 | 0 | 0 |
 | `books/store-files-invariants.lisp` | root | 62 | 4 | 0/1/0/3 | 0 | 0 | 2 |
@@ -446,7 +454,7 @@ that `make certify` requests.
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
-| `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 3 | 0 |
+| `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 6 | 0 |
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 62 | 4 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
@@ -522,7 +530,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bs-names-outcomes-of-no-ops` | `books/byte-store-scan.lisp` | 302 | branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value |
 | `fn-bs-pack-reclaim-plan-is-selected-covered-names` | `books/byte-store-compaction-correspondence.lisp` | 47 | branch-of-definition: the hypothesis negates a branch test of fn-bs-pack-reclaim-plan and the conclusion is that branch's value |
 | `fn-clock-drop-permission-is-exactly-expired-by-definition` | `books/clock-invariants.lisp` | 164 | definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp; reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-cnode-inadmissible-config-changes-nothing` | `books/node-config.lisp` | 423 | branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value |
+| `fn-cnode-inadmissible-config-changes-nothing` | `books/node-config.lisp` | 424 | branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value |
 | `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1193 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
 | `fn-drt-mark-unfolds-to-a-tagged-list` | `tests/acl2/defrecord-tests.lisp` | 119 | definition-restated: the conclusion is the body of fn-drt-mark; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-drt-point-unfolds-to-a-list` | `tests/acl2/defrecord-tests.lisp` | 124 | definition-restated: the conclusion is the body of fn-drt-point; reflexive-conclusion: a conjunct is (equal X X) |
@@ -547,15 +555,17 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 215 | branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
 | `fn-prov-transit-kindp-forward` | `books/provenance.lisp` | 56 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-prov-transit-kindp |
 | `fn-prov-wire-of-a-string-is-itself-by-definition` | `books/provenance-codec.lisp` | 563 | branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value |
+| `fn-record-impl-encode-domain` | `books/records-canonicality.lisp` | 771 | branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value |
 | `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 600 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-retain-admission-refusal-is-no-op` | `books/retention.lisp` | 287 | branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value |
 | `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 327 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
-| `fn-sf-frontier-rollback-visiblep-unfolds` | `books/store-files-invariants.lisp` | 410 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep |
-| `fn-sf-stable-records-outside-the-window` | `books/store-files-invariants.lisp` | 90 | branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value |
-| `fn-sn-finish-disabled-is-no-op` | `books/store-node-invariants.lisp` | 429 | branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value |
-| `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 136 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
-| `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 454 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
-| `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 130 | branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
+| `fn-sf-frontier-rollback-visiblep-unfolds` | `books/store-files-invariants.lisp` | 411 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep |
+| `fn-sf-stable-records-outside-the-window` | `books/store-files-invariants.lisp` | 91 | branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value |
+| `fn-sn-finish-disabled-is-no-op` | `books/store-node-invariants.lisp` | 430 | branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value |
+| `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 137 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
+| `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 455 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
+| `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 131 | branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
+| `fn-stmt-impl-encode-items-of-atom` | `books/statement-codec.lisp` | 394 | branch-of-definition: the hypothesis negates a branch test of fn-stmt-encode-items-impl and the conclusion is that branch's value |
 | `fn-stx-admission-is-peer-independent-by-definition` | `books/stx-policy.lisp` | 57 | definition-restated: the conclusion is the body of fn-stx-transit-authority-ok |
 | `fn-stx-index-lookup-cost-is-index-bounded` | `books/stx-index.lisp` | 784 | instance-corollary: the statement is fn-stx-alist-steps-is-len-bounded instantiated, discharging nothing |
 | `fn-stx-index-query-is-store-free-by-definition` | `books/stx-index.lisp` | 801 | definition-restated: the conclusion is the body of fn-stx-index-lookup; reflexive-conclusion: a conjunct is (equal X X) |

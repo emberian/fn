@@ -17,6 +17,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/store-observed")
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness: the composed store driven from its

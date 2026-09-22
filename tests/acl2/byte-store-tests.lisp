@@ -11,6 +11,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-invariants")
 (include-book "../../books/byte-store-programs")
+(include-book "../../books/codec-attach")
 
 ; A syscall returns (mv result state); ground forms bind the pair.
 (defmacro bst-res (call) `(mv-let (r s) ,call (declare (ignore s)) r))

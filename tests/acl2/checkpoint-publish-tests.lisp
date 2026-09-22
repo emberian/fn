@@ -6,6 +6,7 @@
 ; digest is a host value (A-CRYPTO); the model only compares it.
 (in-package "ACL2")
 (include-book "../../books/checkpoint-publish")
+(include-book "../../books/codec-attach")
 
 (defconst *cpp-groups* '("fn.letters" "fn.test"))
 (defconst *cpp-r0*

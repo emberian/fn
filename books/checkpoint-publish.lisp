@@ -29,9 +29,11 @@
 (include-book "journal-publish")
 (include-book "byte-store-txn-name")
 (include-book "defrecord")
-; The codec withdraws its reader and encoder vocabulary at export
-; (docs/proof-style.md s2); the proofs here induct with it.
-(local (in-theory (enable fn-checkpoint-codec-vocabulary)))
+; The checkpoint codec's reader and encoder vocabulary stays closed here
+; (plan 2026-09-22 §4.1): the proofs below reason about the codec through
+; `fn-cpc-frame-decode-of-encode' and the frame and summary shapes, never
+; through its readers, so a book-wide opening only put the codec into every
+; goal (review 2026-09-22, F3).
 
 (defconst *fn-cpp-phases*
   '(:idle :candidate-staged :candidate-data-durable :candidate-attempted

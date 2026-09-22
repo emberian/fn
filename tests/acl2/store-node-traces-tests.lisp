@@ -1,6 +1,7 @@
 ; Mixed actual-wrapper traces, including allocator gaps and lost publication.
 (in-package "ACL2")
 (include-book "../../books/store-node-traces")
+(include-book "../../books/codec-attach")
 
 (defconst *snt-groups* '("fn.letters" "fn.test"))
 (defconst *snt-first*
