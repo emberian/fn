@@ -51,3 +51,4 @@ cannot check, and its owner re-runs it or walks it back.
 
 Every `.json` companion of a row above is the authoritative machine-readable
 record; this table summarizes it and is not a substitute for reading it.
+- [node-hbox-dabebb84-2026-09-22](evidence/node-hbox-dabebb84-2026-09-22.md) — the first native node deployed on hbox from the dabebb84 image; the probe from the Mac holds on every row; the full matrix on the image with its two live-configuration disagreements by name
