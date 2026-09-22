@@ -33,6 +33,7 @@ class Session:
         self.sock.settimeout(timeout)
         self.buf = b""
         self.tls = None
+        self.broken = False
         try:
             self.greeting = self.line()
         except BaseException:
@@ -71,16 +72,30 @@ class Session:
 
     def starttls(self, context: ssl.SSLContext) -> str:
         status = self.cmd("STARTTLS")[0]
-        if not status.startswith("382"):
-            return status
+        if status.startswith("382"):
+            self.upgrade(context)
+        return status
+
+    def upgrade(self, context: ssl.SSLContext) -> None:
+        """The handshake that follows a 382.  If it fails, this session is over.
+
+        A failed handshake leaves a stream the node reads as TLS records, so
+        not one more octet goes onto it -- not even the QUIT `close` would
+        otherwise send in the clear.  RFC 4642 section 2.2.2: the client
+        that cannot complete the negotiation closes the connection.
+        """
         if self.buf:
             # RFC 4642 section 2.2.1: the TLS layer starts with the first
             # octet after the 382's CRLF; anything already buffered is a
             # pipelined leak the node must not have produced.
+            self.broken = True
             raise Disconnected("octets followed the 382 before the handshake")
-        self.sock = context.wrap_socket(self.sock, server_hostname=self.host)
+        try:
+            self.sock = context.wrap_socket(self.sock, server_hostname=self.host)
+        except BaseException:
+            self.broken = True
+            raise
         self.tls = {"version": self.sock.version(), "cipher": self.sock.cipher()[0]}
-        return status
 
     def login(self, user: str, password: str) -> str:
         status = self.cmd("AUTHINFO USER " + user)[0]
@@ -89,8 +104,9 @@ class Session:
         return status
 
     def close(self) -> None:
-        try:
-            self.cmd("QUIT")
-        except (OSError, Disconnected):
-            pass
+        if not self.broken:
+            try:
+                self.cmd("QUIT")
+            except (OSError, Disconnected):
+                pass
         self.sock.close()

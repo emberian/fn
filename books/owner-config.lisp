@@ -620,6 +620,65 @@
                   (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
   :hints (("Goal" :in-theory (enable (:d fn-ocfg-open)))))
 
+; KEYSTONE.  EVERY CONNECTION BEGINS UNBOUND (PRF-049).
+;
+; host/owner-host.lisp fn-owner-open calls fn-ocfg-open for every accepted
+; socket the host did not resolve to a source-address peer record.  If the
+; open was accepted -- it returned a greeting -- the connection it installed
+; at the identifier the owner allocated is a reader with no peer role, no
+; authenticated subject, no cached AUTHINFO name, no TLS layer and no
+; handshake in progress.  Nothing about the owner's other connections enters:
+; a client whose previous connection logged in, bound a principal-derived
+; peer role (books/nntp-auth.lisp
+; fn-auth-step-binds-a-peer-role-only-by-a-principal-login) and then dropped,
+; reconnects as a reader and must log in again for the role.
+;
+; One hypothesis, and without it the statement fails: an owner at its
+; connection bound refuses the open and installs nothing, so no connection
+; sits at the identifier (tests/acl2/owner-config-tests.lisp).
+(defthm fn-ocfg-open-begins-unbound
+  (implies (car (fn-ocfg-open oc acfg))
+           (and (fn-own-find-conn
+                 (fn-own-next-id (fn-ocfg-owner oc))
+                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg)))))
+                (not (fn-auth-session-peer
+                      (fn-own-conn-session
+                       (fn-own-find-conn
+                        (fn-own-next-id (fn-ocfg-owner oc))
+                        (fn-own-conns
+                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))
+                (not (fn-auth-session-subject
+                      (fn-own-conn-session
+                       (fn-own-find-conn
+                        (fn-own-next-id (fn-ocfg-owner oc))
+                        (fn-own-conns
+                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))
+                (not (fn-auth-session-pending
+                      (fn-own-conn-session
+                       (fn-own-find-conn
+                        (fn-own-next-id (fn-ocfg-owner oc))
+                        (fn-own-conns
+                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))
+                (not (fn-auth-session-tlsp
+                      (fn-own-conn-session
+                       (fn-own-find-conn
+                        (fn-own-next-id (fn-ocfg-owner oc))
+                        (fn-own-conns
+                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))
+                (not (fn-auth-session-handshakingp
+                      (fn-own-conn-session
+                       (fn-own-find-conn
+                        (fn-own-next-id (fn-ocfg-owner oc))
+                        (fn-own-conns
+                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (enable (:d fn-ocfg-open) (:d fn-own-open)
+                              (:d fn-own-reader-context) (:d fn-served-open) (:d fn-own-set-conns) (:d fn-auth-with-base)
+                              (:d fn-auth-open-session)
+                              (:d fn-peer-open-session)))))
+
 ; KEYSTONE.  A RECONFIGURATION NEVER CHANGES WHAT AN OPEN CONNECTION SERVES.
 ; Staging and publishing a configuration record moves the owner's live
 ; configuration and leaves every pin, and therefore every served table,

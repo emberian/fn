@@ -414,6 +414,8 @@
 (assert-event (equal (fn-fc-auth-pass-command *fct-improper-state*) nil))
 ; As above: the keystones through the macro first, then one hypothesis
 ; dropped from each.
+;
+; fn-fc-auth-user-command-sends-the-configured-name-alone
 (defmacro fct-render-thm (name command field prefix hyps)
   `(defthm ,name
      (implies (and ,@hyps)
@@ -434,6 +436,7 @@
  (must-fail
   (fct-render-thm fct-user-command-without-true-listp fn-fc-auth-user-command
     fn-fc-user *fn-fc-auth-user-prefix* ((fn-fap-tokenp (fn-fc-user st))))))
+; fn-fc-auth-pass-command-sends-the-configured-secret-alone
 (local
  (must-fail
   (fct-render-thm fct-pass-command-without-tokenp fn-fc-auth-pass-command
