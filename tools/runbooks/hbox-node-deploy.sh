@@ -43,14 +43,14 @@ path = "$NODE/store/auth.toml"
 
 [posting]
 enabled = true
-agent = "fn@hbox.ember.software"
 
 [control]
 path = "$NODE/store/control.sock"
-
-[log]
-path = "$NODE/log/fn.log"
 TOML
+# No [log] and no [posting] agent: the native image's supported profile
+# (books/native-config.lisp fn-native-config-operator-availablep) refuses a
+# log path and any agent but the default, and `run` answers
+# UNSUPPORTED-PROFILE. stderr goes to the user journal.
 echo "== configuration records: identity and groups"
 "$FN" operator "$NODE/fn.toml" policy set path-identity hbox.ember.software
 for g in fn.agents fn.humans fn.announce; do "$FN" operator "$NODE/fn.toml" group create "$g"; done
