@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 404 |
 | Certification roots in the Makefile | 402 |
 | Books inside the root closure | 403 |
-| `defthm` and `defthmd` events | 6682 |
+| `defthm` and `defthmd` events | 6683 |
 | `defun` events | 5229 |
 | Functions with verified guards | 1734 |
 | Functions declared `:verify-guards nil` and never verified | 279 |
@@ -292,7 +292,7 @@ that `make certify` requests.
 | `books/store-node.lisp` | root | 28 | 48 | 32/2/14/0 | 0 | 0 | 0 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 39 | 14 | 13/0/1/0 | 0 | 0 | 1 |
-| `books/store-prepare-correspondence.lisp` | root | 16 | 4 | 2/0/0/2 | 0 | 0 | 0 |
+| `books/store-prepare-correspondence.lisp` | root | 17 | 4 | 2/0/0/2 | 0 | 0 | 0 |
 | `books/store-sweep.lisp` | root | 9 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/stx-accept-records.lisp` | root | 14 | 17 | 8/0/9/0 | 0 | 0 | 0 |
 | `books/stx-authority.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
