@@ -406,37 +406,88 @@ fold, so pipelined CHECKs are answered in order with no state (each `238`
 increments `inflight`, each `TAKETHIS` decrements it); an `IHAVE` while
 `transfer` is non-nil is `501`, which is the RFC's "MUST NOT" enforced.
 
-### 2.3 Path: prepending, the loop check, no rewriting of the source
+### 2.3 Path: the update at acceptance, the loop check, Xref never stored
 
-D01 fixes that mutable Path/Xref live in a separate projection from the
-signed source bytes. RFC 5537 §3.6.7 requires the relaying agent to update
-Path. These compose as: the stored payload is the received octets exactly;
-the Path update is *rendered* when the article leaves (§3.2), from the
-provenance record and the node's own identity, deterministically. The
-inbound side stores the diagnostic it would have prepended:
+**Decided 2026-09-22 (lane T13-conform), replacing the render-on-the-way-out
+design this section carried until then.** The INN lab of that day
+([inn-lab-dabebb84](../planning/evidence/inn-lab-dabebb84-2026-09-22.md),
+findings 2 and 3) found fn serving an article it took from INN with INN's
+`Path` (no `fnA.hbox.test` in it) and INN's `Xref`: the received octets were
+stored exactly, the prepend was to be rendered on the way out to a peer, and
+the reader was served the stored octets. RFC 5537 §3.7 step 6 has a serving
+agent update Path and step 7 has it remove Xref; §3.6 steps 7 and 8 say the
+same of a relaying agent.
 
-```lisp
-;; books/path.lisp (K1): a bounded parser for RFC 5537 §3.2 / RFC 5536 §3.1.6 Path content.
-;; path-identity = 1*( alnum / "-" / "_" / "." ) with no leading/trailing "."; separators "!";
-;; diagnostics ".POSTED", ".SEEN.", ".MISMATCH." after a "!"; the tail-entry is the rightmost.
-(defun fn-path-identityp (octets) ...)
-(defun fn-path-parse (octets fuel) ...)          ; (:ok entries) | (:error why); entries left to right
-;; The loop test of §3.6: identity appears as a <path-identity>, excluding the
-;; tail-entry and anything to the right of a "POSTED" diag-keyword.
-(defun fn-path-names-p (path-octets identity) ...)
+fn's relaying agent (the transit port, `books/peer-inbound.lisp`) and its
+serving agent (the reader, `books/nntp.lisp`) are one news server over one
+store. So the update is made **once, when the article is accepted**, and the
+stored octets are the served octets and the octets the outbound feed offers.
+RFC 5537 §3.2.1's first sentence permits exactly this: "If a relaying or
+serving agent receives an article from an injecting or serving agent that is
+part of the same news server, it MAY leave the Path header field of the
+article unchanged." Serving-time rewriting was rejected because it puts a
+transformation on every served read (the rule against whole-state work on a
+served path), makes the stored bytes differ from the served ones so that the
+reader keystones would no longer describe what a client receives, and gives
+the reader, the outbound feed and replay three renderings to keep in
+agreement where there is now one owner.
 
-;; §3.2.1 step 3, decided from the connection's peer record, never from the article:
-(defun fn-path-diagnostic (peer-record path-octets)
-  (cond ((null peer-record) (list :seen))                                          ; "!.SEEN.<addr>"
-        ((equal (fn-path-leftmost path-octets) (fn-cfg-peer-path-identity peer-record)) (list :match))   ; "!!"
-        (t (list :mismatch (fn-cfg-peer-path-identity peer-record)))))             ; "!.MISMATCH.<id>"
+The update is `fn-pu-relay-article` (`books/path-update.lisp`), reached as
+`fn-peer-relayed-octets cfg peer octets` (`books/peer-inbound.lisp`):
 
-;; The outbound rendering (§3.2): the article as offered to a peer.
-;; render = source with the Path header's content replaced by
-;;   <our identity> "!" <diag> "!" <original content>
-;; and any Xref header removed (§3.7.7); every other octet identical.
-(defun fn-peer-render-outbound (source provenance identity) ...)
-```
+- a field line named Path (ASCII case-insensitive) has, after `Path:` and its
+  whitespace, this node's `<path-identity>` (the policy slot
+  `path-identity`), `!`, the §3.2.1 step 3 `<path-diagnostic>` and `!`
+  prepended: `fnA!!inn!...` when the leftmost entry is the peer record's
+  expected identity (`<diag-match>`), `fnA!.MISMATCH.<expected>!inn!...`
+  otherwise, decided by `fn-path-diagnostic` (`books/path.lisp`), the one
+  owner of that decision; a Path that already begins with `<identity>!` is
+  left alone, which is what makes a second pass change nothing;
+- every field line named Xref is removed with its continuation lines;
+- every other line, the blank line and the body are copied octet for octet.
+
+It is a walk over the raw header lines, never a parse and a
+re-serialization. A node with no `path-identity` updates no Path and only
+removes Xref. An article with no Path field gets none: RFC 5537 §3.6's last
+paragraph forbids adding fields, and RFC 5537 §3.7 step 1's rejection of an
+article missing a mandatory field is open (below).
+
+`fn-peer-injection-arguments` stages the updated octets as the payload of
+`fn-node-prepare`, and charges retention for them;
+`host/owner-host.lisp` `fn-owner-take` hands the same octets to the host as
+`fn-owner-submit-octets`, which the native drain digests and stores, and the
+drain faults if they differ from the payload the transfer decision staged
+(`fn-owner-transit-payload`). The loop check (§3.6) still reads the
+**received** Path, before the update, and the outbound feed's offer check
+reads the Path of the received octets too; the update adds only this node's
+identity and a diagnostic, which never names a target peer, so the answer is
+the same on either.
+
+If the updated article no longer fits the article bounds of
+`books/article.lisp` (a Path line past 998 octets, the header block past its
+limit), the transfer is refused `:refuse :oversize` ("article exceeds the
+configured size"), `437`/`439`: "If an article is not acceptable as is, the
+article MUST be rejected rather than modified" (§3.6), and it is never stored
+without the update.
+
+| RFC clause | What fn does | Where |
+| --- | --- | --- |
+| 5537 §3.6 step 7, §3.7 step 6 | prepends its identity and the §3.2.1 diagnostic to Path, once, at acceptance | `fn-pu-relay-article`, `fn-peer-relayed-octets` |
+| 5537 §3.6 step 8, §3.7 step 7 | removes every received Xref; fn adds none (RFC 5536 §3.2.14 permits omitting it; OVER omits it too, specs/nntp-audit.md §§8.3–8.4) | same |
+| 5537 §3.6, last paragraph | nothing but Path and Xref changes; an article the update would push past the bounds is refused, not stored unchanged | same; the `:oversize` arm of `fn-peer-decide-transfer` |
+| 5537 §3.2.1, first sentence | the serving agent is the same server, so what is stored is served | this section |
+
+Keystones (`books/path-update.lisp`, and over the called function in
+`books/peer-inbound-invariants.lisp`):
+`fn-peer-relayed-octets-change-only-path-and-xref` (removing every Path and
+Xref field from what arrived and from what is stored leaves the same octets),
+`fn-peer-relayed-octets-are-idempotent`,
+`fn-peer-relayed-octets-carry-no-xref`,
+`fn-peer-relayed-octets-name-this-node-in-every-path` (when the node has an
+identity), each the article-level `fn-pu-relay-article-*` theorem at this
+node's identity and the peer record's; the staged payload is the relayed
+octets by `fn-peer-injection-arguments-payload-unfolds`. Teeth, from INN's
+own octets: `tests/acl2/peer-inbound-tests.lisp`, last section.
 
 Provenance is a record, not a header. As built (w10/provenance) it is
 `(fn-prov-make-transit peer kind diagnostic generation)`, and its WIRE form
@@ -444,9 +495,21 @@ Provenance is a record, not a header. As built (w10/provenance) it is
 argument of `fn-node-prepare`, so it is inside the stored transaction record,
 replayed, and `fn-node-stage-evidence` carries it while staged with no change
 to the record grammar. An article accepted through POST has
-`(fn-prov-make-post principal generation)`; the outbound renderer treats both
-the same way, reading them with `fn-prov-of-wire` and `fn-prov-kind`. `Injection-Date`
-is never touched by transit; `Xref` is never stored.
+`(fn-prov-make-post principal generation)`. `Injection-Date` is never touched
+by transit; `Xref` is never stored.
+
+**D01.** D01 keeps mutable Path/Xref out of the *signed source*: a native
+author signature binds the authored octets, and Path and Xref are exactly the
+fields every relay may change, so a verifier strips them (as it must for any
+article that crossed INN). Storing the updated Path does not touch the
+authored fields, and the signed path (`hybrid-control`, BP applications) is
+not a transit path.
+
+Open: RFC 5537 §3.7 step 1 (a serving agent rejects an article missing a
+mandatory header field, Path included) is not implemented for transit; the
+v0 matrix offers articles without Path and they are accepted unchanged. The
+outbound rendering to a second peer of an article taken by transit is not
+exercised by a lab with one peer.
 
 ### 2.4 The record
 
