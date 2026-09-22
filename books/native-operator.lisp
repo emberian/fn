@@ -156,12 +156,17 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
+  ; The argv here is the raw host vector `fn-native-operator-run' was handed,
+  ; so this boundary stays total: `fn-ncfg-rest' is the tail of a cons and nil
+  ; of anything else, which is what `cdr' means in the logic and what `cdr'
+  ; cannot be called on under a verified guard (the conjecture asked for
+  ; (implies (not (consp argv)) (not argv))).
   (declare (xargs :guard t))
-  (let ((plan (fn-native-auth-admin-parse-argv (cdr argv))))
+  (let ((plan (fn-native-auth-admin-parse-argv (fn-ncfg-rest argv))))
     (if (equal (fn-native-auth-admin-plan-status plan) :accepted)
         (fn-nop-result :accepted :plan "principal" config (list plan))
       (fn-nop-usage (list :principal (fn-native-auth-admin-plan-reason plan))
-                    "principal" config (cdr argv)))))
+                    "principal" config (fn-ncfg-rest argv)))))
 
 (defun fn-nop-parse-administration (command argv config)
   "Delegate the exact bounded argv vector to the ACL2 durable-admin grammar."
@@ -465,15 +470,18 @@ formed and the operator asked for something the node declined to do."
 
 (defun fn-native-operator-result-admin-plan (result)
   "The exact ACL2 administrative plan; no raw argv reaches the executor."
+  ; The arguments field is whatever the plan put there, so the total
+  ; accessors of books/native-config read it: `car' of it cannot run under a
+  ; verified guard, and these three read a result the host may hand back.
   (declare (xargs :guard t))
   (if (fn-native-operator-result-admin-planp result)
-      (car (fn-native-operator-result-arguments result))
+      (fn-ncfg-first (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-native-operator-result-admin-argv (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-admin-planp result)
-      (cadr (fn-native-operator-result-arguments result))
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-native-operator-result-principal-planp (result)
@@ -484,7 +492,7 @@ formed and the operator asked for something the node declined to do."
 (defun fn-native-operator-result-principal-plan (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-principal-planp result)
-      (car (fn-native-operator-result-arguments result))
+      (fn-ncfg-first (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-native-operator-result-principal-auth-path-octets (result)

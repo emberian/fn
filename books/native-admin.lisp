@@ -129,6 +129,15 @@
 The explicit grammar carries auth-kind/auth-value.  The older grammar is
 decoded as source-address for durable command compatibility."
   (declare (xargs :guard t))
+  ; The vector is decided before any `nth' of it.  `fn-native-admin-plan' only
+  ; ever hands over `fn-native-admin-words' of a recognized argv, which is a
+  ; proper list; the raw boundary stays total, and an improper vector is the
+  ; same :syntax refusal it has been since e34523a1.  Leading with the test is
+  ; what lets `nth' run under a verified guard: the conjunct this replaces sat
+  ; below the `nth' calls in the `let*', so the guard conjecture asked for
+  ; (implies (equal (len words) 13) (true-listp words)), which is false.
+  (if (not (true-listp words))
+      (fn-native-admin-result :refused :syntax nil nil 0 nil nil)
   (let* ((count (len words))
          (v2p (and (member-equal count '(13 16))
                    (member-equal (nth 8 words) '("source-address" "principal"))))
@@ -140,8 +149,7 @@ decoded as source-address for durable command compatibility."
          (streaming (if v2p (nth 12 words)
                       (if explicitp (nth 10 words) (nth 9 words))))
          (security-index (if v2p 13 (if explicitp 11 10))))
-    (if (and (true-listp words)
-             (member-equal count '(10 11 13 14 16))
+    (if (and (member-equal count '(10 11 13 14 16))
              (equal (car words) "peer")
              (equal (cadr words) "add")
              (fn-native-admin-decimalp (nth 5 words))
@@ -198,7 +206,7 @@ decoded as source-address for durable command compatibility."
           (if (fn-cfg-peerp peer)
               (fn-native-admin-result :accepted nil :set-peer nil 0 peer nil)
             (fn-native-admin-result :refused :peer-record nil nil 0 nil nil)))
-      (fn-native-admin-result :refused :syntax nil nil 0 nil nil))))
+      (fn-native-admin-result :refused :syntax nil nil 0 nil nil)))))
 
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
