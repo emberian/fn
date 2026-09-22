@@ -1,7 +1,8 @@
 # The full v0 matrix against the native 915 image — 2026-09-22
 
-Five runs of `tools/v0_matrix.py --backend native-operator` from `dev`
-(`2202a95f`, then `783db508`) against the immutable `915d5c72` production
+Seven runs of `tools/v0_matrix.py --backend native-operator` from `dev`
+(`2202a95f`, `783db508`, then `6c5df887`/`5f1e6c48`) against the immutable
+`915d5c72` production
 image on persvati, with two preprovisioned stores (`store init fn.letters`
 through the image, `fn.toml` with a loopback listener and a control socket).
 Each run's rows, invocations and logs are its own directory under
@@ -14,6 +15,8 @@ Each run's rows, invocations and logs are its own directory under
 | `20260922T013727` | `783db508` | 99 | 4 | 4 | offline admin, outcomes, transit, pins, stop added; `$HOME` quoted |
 | `20260922T014155` | `783db508` | 121 | 12 | 2 | quoting fixed; peer records carried an outbound feed |
 | `20260922T014358` | `783db508` | 123 | 4 | 0 | outbound `-`; the four loop rows remain |
+| `20260922T030846` | `6c5df887` | 128 | 6 | 7 | AUTHINFO, live groups, the wildcard listener and the independent client became measurements |
+| `20260922T032121` | `5f1e6c48` | 128 | 6 | 7 | same rows, same counts; the duplicate submission swapped nodes |
 
 Counts are the tool's (`summary` in each `matrix.json`); "exercised" is
 accepted plus refused plus uncertain.
@@ -48,10 +51,40 @@ offer and journal rows. None of it needed a Python process in the node.
 ## What the slice still does not reach, and why
 
 `not-built` on this image: init/reinit (no operator verb), uncertain outcome
-(no public fault injection), `peer list`, live group declaration (the control
-socket is ACL2-framed), path identity. `not-exercised` by the slice: the
-loopback refusal, capacity refusal (needs an owner over the scratch store),
-AUTH (the 915 image predates `principal`), crash, BP, statements, media,
-scale, INN, independent clients. The 915 image is 210 commits behind `dev`;
-`principal`, STARTTLS and live administration exist there and need their own
-image before their rows can move.
+(no public fault injection), `peer list`, and `principal new` (the local
+principal id is derived inside `set-password`, so no verb derives one from a
+seed). `not-exercised` by the slice: crash, BP, statements, media, scale, INN
+and slrn.
+
+What the 03:08Z run changed is where the remaining F-AUTH, live-configuration
+and loopback gaps live. They are no longer the harness declining to look:
+
+- The two credential rows and the wildcard-listener row now carry this
+  image's own exit code 5 (`operator principal UNSUPPORTED-COMMAND`, and
+  `operator request (CONFIGURATION INVALID)`), and the six AUTHINFO session
+  rows name the enrolment that did not happen. A usage error is not an
+  outcome, so none of them reads as a refusal.
+- `V0-CFG-LIVE` disagrees rather than being not-built: `group create` against
+  the live node's own configuration exits 1 with `store is already locked`
+  and `GROUP fn.matrix.live` then answers 411, so this image does not
+  dispatch live administration. `V0-CFG-LIVE-REFUSE` keeps its property on a
+  second configuration over the same store whose control path is unbound,
+  which is the executor that can still show it once an image does dispatch.
+- `V0-CLIENT-NNTPLIB-{A,B}` are accepted and are the first two `independent`
+  rows the native slice has had: stdlib nntplib 3.12.13 drove CAPABILITIES,
+  GROUP, STAT, ARTICLE, HEAD, BODY, OVER, LIST and an absent lookup on both
+  listeners.
+- `V0-CAP-REFUSE-{A,B}` are refused, where the 01:43Z run could not start the
+  scratch owner at all.
+- **The second submission of one Message-ID is nondeterministic.** At 03:08Z
+  node A exited 1 with `refused operator post REFUSED` and node B exited 0
+  with `accepted operator post DUPLICATE`; at 03:21Z, over freshly
+  reprovisioned stores, the two swapped. The two runs are identical in every
+  other row and count. So it is not a node difference: the same operation on
+  the same image answers refused or accepted by race, and D13's three
+  outcomes do not stay distinct on the native `post` path. `V0-OUT-REFUSED`
+  is the row; the owner is the submission path, not this harness.
+
+The 915 image is 210 commits behind `dev`; `principal`, `policy set
+path-identity`, STARTTLS and live administration exist there and need their
+own image before those rows can move.
