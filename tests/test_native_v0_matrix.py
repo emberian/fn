@@ -5,8 +5,10 @@ boundary so that such a run cannot silently select a Python server, lose its
 image/source labels, or label an unmeasured native feed as accepted.
 """
 import json
+import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -563,6 +565,97 @@ class NativeSliceAccountingTests(unittest.TestCase):
                              v0_matrix.ACCEPTED)
             self.assertEqual(rows["V0-TRANSIT-TAKETHIS-AB"].verdict,
                              v0_matrix.NOT_EXERCISED)
+
+
+class AuthDriverTests(unittest.TestCase):
+    """The shipped `auth` phase itself, driven against a fake Conn.
+
+    The two things the native slice depends on and that no gate-level stub
+    can show: the secret arrives as a FILE and never as an argument, and the
+    unauthenticated POST probe does not leave the server inside a transfer.
+    """
+
+    FAKE_DRIVER = r'''
+import json, os
+
+def note(kind, value=""):
+    with open(os.environ["AUTH_LOG"], "a", encoding="utf-8") as out:
+        out.write(json.dumps([kind, value]) + "\n")
+
+class Sock:
+    def sendall(self, payload):
+        note("sendall", payload.decode("ascii"))
+    def close(self):
+        note("close")
+
+class Conn:
+    def __init__(self, port, timeout=30):
+        self.sock = Sock()
+        self.greeting = "200 ready"
+    def cmd(self, text, multiline=False):
+        note("cmd", text)
+        if text == "CAPABILITIES":
+            return "101 capability list follows", ["READER", "POST", "AUTHINFO USER"]
+        if text.startswith("AUTHINFO USER"):
+            return "381 password required", []
+        if text.startswith("AUTHINFO PASS"):
+            return ("281 authentication accepted"
+                    if text == "AUTHINFO PASS 0f0f0f0f0f0f0f0f" else
+                    "481 authentication failed"), []
+        if text == "POST":
+            return "340 send article", []
+        return "500 command not recognized", []
+    def send(self, text):
+        note("send", text)
+    def line(self):
+        note("line")
+        return "441 posting failed"
+    def close(self):
+        self.sock.close()
+'''
+
+    def run_auth(self, directory, extra):
+        (directory / "drive.py").write_text(self.FAKE_DRIVER)
+        (directory / "matrix.py").write_text(v0_matrix.MATRIX_DRIVER)
+        log = directory / "auth.log"
+        done = subprocess.run(
+            [sys.executable, "matrix.py", "auth", "--port", "1",
+             "--group", "fn.letters", "--user", "matrix",
+             "--msgid", "<auth@example.invalid>"] + extra,
+            cwd=directory, env=dict(os.environ, AUTH_LOG=str(log)), text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        return done, calls
+
+    def test_the_secret_is_read_from_a_file_and_used_as_the_password(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            secret = directory / "auth.secret"
+            secret.write_text("0f0f0f0f0f0f0f0f\n")
+            done, calls = self.run_auth(directory, ["--secret-file", str(secret)])
+            self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+            result = json.loads(done.stdout.strip().splitlines()[-1])
+            self.assertEqual(result["AUTHINFO PASS"], "281 authentication accepted")
+            # The wrong-password probe must be a DIFFERENT password, or the
+            # 481 row would be measuring the same secret as the 281 row.
+            self.assertEqual(result["AUTHINFO WRONG"], "481 authentication failed")
+            self.assertIn(["cmd", "AUTHINFO PASS 0f0f0f0f0f0f0f0f"], calls)
+            self.assertIn(["cmd", "AUTHINFO PASS not-0f0f0f0f0f0f0f0f"], calls)
+
+    def test_a_permitted_unauthenticated_post_is_closed_not_abandoned(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            secret = directory / "auth.secret"
+            secret.write_text("0f0f0f0f0f0f0f0f\n")
+            done, calls = self.run_auth(directory, ["--secret-file", str(secret)])
+            result = json.loads(done.stdout.strip().splitlines()[-1])
+            self.assertEqual(result["POST BEFORE"], "340 send article")
+            # Not a bare `close` after the 340: the empty block terminates
+            # the transfer the 340 opened, and the reply is recorded.
+            first = calls.index(["cmd", "POST"])
+            self.assertEqual(calls[first + 1], ["sendall", ".\r\n"])
+            self.assertEqual(calls[first + 2], ["line", ""])
+            self.assertEqual(result["POST BEFORE CLOSE"], "441 posting failed")
 
 
 if __name__ == "__main__":
