@@ -1102,12 +1102,49 @@
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp))))))
 
+; The reader case of `fn-peer-sessionp' is a null peer with a null node and a
+; null configuration, which is what `fn-peer-open-session' builds (line 539);
+; a null peer beside an arbitrary node and configuration is not a session, so
+; the free `node' and `cfg' this lemma carried made it false rather than hard.
+; The peer case, where the node and configuration are checked, is the sibling
+; below.
 (local (defthm fn-peer-sessionp-of-make-session-reader
   (implies (and (fn-post-sessionp base)
                 (fn-peer-transferp transfer)
                 (natp inflight))
            (fn-peer-sessionp
+            (fn-peer-make-session base nil transfer inflight nil nil)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+
+; And the configured reader: a null peer beside a checked node and
+; configuration is the recognizer's second reader form.
+(local (defthm fn-peer-sessionp-of-make-session-reader-configured
+  (implies (and (fn-post-sessionp base)
+                (fn-peer-transferp transfer)
+                (natp inflight)
+                (fn-node-statep node)
+                (fn-cfgp cfg))
+           (fn-peer-sessionp
             (fn-peer-make-session base nil transfer inflight node cfg)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+
+; The other reader shape a step rebuilds: the node and configuration of a
+; reader session it already has, whichever of the two reader forms that
+; session is in.
+(local (defthm fn-peer-sessionp-of-make-session-reader-from-session
+  (implies (and (fn-post-sessionp base)
+                (fn-peer-transferp transfer)
+                (natp inflight)
+                (fn-peer-sessionp ps)
+                (not (fn-peer-session-peer ps)))
+           (fn-peer-sessionp
+            (fn-peer-make-session base nil transfer inflight
+                                  (fn-peer-session-node ps)
+                                  (fn-peer-session-cfg ps))))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp)))))))
