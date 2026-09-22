@@ -63,9 +63,26 @@
           (if (fn-stxk-p event) event nil))
       nil)))
 
+; The guard hint carries the one fact the extraction below needs and the
+; decoder cannot supply by induction on a literal fuel: a successful decode's
+; value is an item sequence, so it is proper and each index lands on an item
+; pair or off the end (books/statement-invariants).  The wrappers stay folded
+; so the fact's subject is the term this guard conjecture holds.
 (defun fn-hsig-keyring-snapshot-value (snapshot)
   "Return (principal keys) only for the exact canonical selected snapshot."
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal"
+                    :use ((:instance fn-stmt-decode-items-value-is-item-list
+                                     (fuel 5)
+                                     (octets (fn-stxk-snapshot snapshot))))
+                    :in-theory
+                    (e/d (fn-stmt-item-listp-implies-true-listp
+                          fn-stmt-item-listp-nth-is-item-or-nil)
+                         (fn-stmt-decode-items
+                          fn-stmt-decode-items-bounded
+                          fn-stmt-item-listp
+                          nth))))))
   (if (not (fn-stxk-p snapshot)) nil
     (let ((decoded (fn-stmt-decode-items 5 (fn-stxk-snapshot snapshot))))
       (if (not (fn-stmt-okp decoded)) nil
@@ -93,11 +110,15 @@
 (defun fn-hsig-verdict-detail (principal keys signatures)
   (declare (xargs :guard t
                   :guard-hints
+                  ; `fn-cbor-valuep-bounded' for the same reason as
+                  ; `fn-hsig-keyring-snapshot' above: the item encoder checks
+                  ; the bounded recognizer, whose definition is withdrawn.
                   (("Goal" :in-theory (enable fn-hsig-exact-octets-p
                                                fn-hsig-keyset-p
                                                fn-hsig-signatures-p
                                                fn-stmt-item-listp
-                                               fn-cbor-valuep)))))
+                                               fn-cbor-valuep
+                                               fn-cbor-valuep-bounded)))))
   (if (and (fn-hsig-exact-octets-p principal 32)
            (fn-hsig-keyset-p keys)
            (fn-hsig-signatures-p signatures))

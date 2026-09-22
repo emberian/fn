@@ -58,6 +58,23 @@
   (implies (fn-stmt-uint-item-p x)
            (equal (cons :uint (cdr x)) x)))
 
+; A recognized item is a pair, so a consumer that has just checked one may
+; take its `cdr'.  Both recognizers are withdrawn (`fn-stmt-internals'), so
+; without these the check a caller makes in its own branch test does not
+; decide the guard of the conjunct after it: measured on 2026-09-22, where
+; `fn-hsig-article-event-snapshot-bindsp' (books/hybrid-store) checks
+; `fn-stmt-bytes-item-p' and then takes the `cdr' of the same item.  Forward
+; chaining, and outside the vocabulary below: the fact is wanted in the
+; context of whatever goal already carries the check, and it puts no new rule
+; on `consp' goals.
+(defthm fn-stmt-uint-item-p-implies-consp
+  (implies (fn-stmt-uint-item-p x) (consp x))
+  :rule-classes :forward-chaining)
+
+(defthm fn-stmt-bytes-item-p-implies-consp
+  (implies (fn-stmt-bytes-item-p x) (consp x))
+  :rule-classes :forward-chaining)
+
 ; -----------------------------------------------------------------------------
 ; The item-sequence codec
 
