@@ -356,11 +356,16 @@ reaches one, and each one's verdict at the bytes a merge would carry; it exits
 1 unless every row is green. It is finding F4 of
 [the proof-engineering review](../planning/review-2026-09-22-proof-engineering.md):
 on 2026-09-21 five commits changed the machine under invariant books nobody
-recertified, and `git log` read as green for a day. Root's procedure: merge a
-lane locally with `--no-ff`, run the gate against the pre-merge head
-(`ORIG_HEAD`), and push only when it is green; otherwise `git reset --hard
-ORIG_HEAD` and the lane certifies what it changed and what includes it first.
-Behaviour and the invariants over it land together or the merge waits.
+recertified, and `git log` read as green for a day. Root's procedure: a lane
+certifies what it changed and its test books on the farm before it reports;
+root merges locally with `--no-ff`, runs `make check` and the gate against
+the pre-merge head (`ORIG_HEAD`) to see what the merge carries, pushes, and
+runs one provisional wave (`tools/triage.py`) over the image closure per
+batch of merges, comparing red sets and forms with the previous wave's. A
+new red belongs to that batch and is fixed before the next merge. A
+dependent already red for a reason the branch did not cause does not hold
+the merge: on 2026-09-22 that reading held a finished lane for four hours
+and added nothing, since its own books had certified inside the lane.
 
 **And one habit is read statically.** [`tools/theory_check.py`](../tools/theory_check.py)
 lists every book that opens a theory at its top for every proof in it, and

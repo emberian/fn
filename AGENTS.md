@@ -90,11 +90,17 @@ that motivated it. Green is not true; these rules are how a claim earns its name
   sentence.** A bound is stated with its exponent and its distance from the
   measured cost; a "certified" claim names the theorem and its hypothesis
   stack. Report the collision figure, not the second-preimage figure.
-- **Behaviour and its invariants land together.** A branch that changed a
-  book merges when that book and every book that includes it are green at
-  the bytes the merge carries: `tools/green_check.py --changed-since REV
-  --strict` before the push, never `git log`. (Review of 2026-09-22, F4:
-  five commits changed the machine under uncertified invariant books.)
+- **Behaviour and its invariants land together.** A lane that changed a
+  book certifies that book, its test book and their closure on the farm
+  before it reports, and cites the manifest; root merges on that and
+  `make check`, and runs one provisional wave (`tools/triage.py`) over the
+  image closure per batch of merges, comparing its red set and forms with
+  the previous wave's: a new red is the batch's to fix before the next
+  merge. `tools/green_check.py --changed-since REV` shows what a merge
+  carries; a dependent already red for a reason the branch did not cause
+  does not hold the merge, since holding it adds no evidence. Never
+  `git log`. (Review of 2026-09-22, F4: five commits changed the machine
+  under invariant books nobody certified at all.)
 - **Open a codec in a hint, never at the top of a book.** A book-wide
   `(in-theory (enable ...-vocabulary))` puts the record and statement codecs
   into every proof in the book, and a goal that only dispatches on a kind
