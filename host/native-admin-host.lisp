@@ -11,6 +11,7 @@
 (defun fn-native-admin-host-name (result) (fn-native-admin-result-name result))
 (defun fn-native-admin-host-capacity (result) (fn-native-admin-result-capacity result))
 (defun fn-native-admin-host-peer (result) (fn-native-admin-result-peer result))
+(defun fn-native-admin-host-value (result) (fn-native-admin-result-value result))
 (defun fn-native-admin-host-owner-reconfigure (id plan state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((kind (fn-native-admin-result-kind plan))
@@ -26,6 +27,16 @@
                  (fn-cfg-remove-group (fn-native-admin-result-name plan)))
                 ((equal kind :set-capacity)
                  (fn-cfg-set-capacity (fn-native-admin-result-capacity plan)))
+                ; `fn-cfg-set-policy' takes the two labels as strings, as
+                ; `fn-store-cfg-set-policy' (store-node-host.lisp) hands them.
+                ((equal kind :set-policy)
+                 (let ((slot (fn-store-octets->string
+                              (fn-native-admin-result-name plan)))
+                       (id (fn-store-octets->string
+                            (fn-native-admin-result-value plan))))
+                   (if (or (equal slot :bad) (equal id :bad))
+                       nil
+                     (fn-cfg-set-policy slot id))))
                 (t nil))))
     (if delta
         (fn-owner-reconfigure-deltas id (list delta) state)
@@ -40,6 +51,10 @@
           ((equal kind :remove-peer)
            (fn-store-cfg-remove-peer (fn-native-admin-result-name plan)
                                      monotonic wall state))
+          ((equal kind :set-policy)
+           (fn-store-cfg-set-policy (fn-native-admin-result-name plan)
+                                    (fn-native-admin-result-value plan)
+                                    monotonic wall state))
           (t (fn-store-cfg-reconfigure
               kind (fn-native-admin-result-name plan)
               (fn-native-admin-result-capacity plan)

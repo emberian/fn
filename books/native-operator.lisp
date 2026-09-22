@@ -109,7 +109,7 @@
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "run" "post" "status" "recover" "group" "capacity" "peer" "principal")))
+  (member-equal subject '("help" "run" "post" "status" "recover" "group" "capacity" "peer" "policy" "principal")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -123,10 +123,12 @@
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "peer")
          "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME")
+        ((equal subject "policy")
+         "usage: fn operator CONFIG policy set path-identity IDENTITY")
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list|set-password NAME [--principal HEX] [--posting|--no-posting]}")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|run|post|status|recover|group|capacity|peer|principal}")))
+        (t "usage: fn operator CONFIG {help|run|post|status|recover|group|capacity|peer|policy|principal}")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -174,7 +176,7 @@
                  (fn-nop-result :accepted :plan "recover" config (list :recover))
                (fn-nop-usage :unexpected-arguments "recover" config rest)))
             ((or (equal command "group") (equal command "capacity")
-                 (equal command "peer"))
+                 (equal command "peer") (equal command "policy"))
              (fn-nop-parse-administration command argv config))
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
@@ -366,7 +368,8 @@ is installed into the owner for both served and control submission."
   (and (equal (fn-native-operator-result-status result) :accepted)
        (or (equal (fn-native-operator-result-command result) "group")
            (equal (fn-native-operator-result-command result) "capacity")
-           (equal (fn-native-operator-result-command result) "peer"))))
+           (equal (fn-native-operator-result-command result) "peer")
+           (equal (fn-native-operator-result-command result) "policy"))))
 
 (defun fn-native-operator-result-admin-plan (result)
   "The exact ACL2 administrative plan; no raw argv reaches the executor."
@@ -414,6 +417,7 @@ callbacks.  Neither is translated into a direct Store call."
           ((equal (fn-native-operator-result-command result) "recover") :recover)
           ((or (equal (fn-native-operator-result-command result) "group")
                (equal (fn-native-operator-result-command result) "capacity")
-               (equal (fn-native-operator-result-command result) "peer")) :admin)
+               (equal (fn-native-operator-result-command result) "peer")
+               (equal (fn-native-operator-result-command result) "policy")) :admin)
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           (t :owner-required))))

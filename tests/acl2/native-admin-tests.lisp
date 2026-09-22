@@ -201,3 +201,45 @@
           '("peer" "add" "near" "near" "localhost" "119"
             "*" "*" "127.0.0.1" "true" . improper-tail)))
         :refused))
+
+; The node's own <path-identity>: a `:set-policy' plan whose slot and value
+; are the exact argv octets, and whose value must itself be a path identity.
+(defconst *fn-na-policy*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("policy" "set" "path-identity" "a.gate.example.invalid"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-policy*) :accepted))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-policy*) :set-policy))
+(assert-event (equal (fn-native-admin-result-name *fn-na-policy*)
+                     (fn-record-string-octets "path-identity")))
+(assert-event (equal (fn-native-admin-result-value *fn-na-policy*)
+                     (fn-record-string-octets "a.gate.example.invalid")))
+(assert-event (fn-path-identityp (fn-native-admin-result-value *fn-na-policy*)))
+; Teeth: each hypothesis of the accepting arm, removed, refuses.
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "path-identity" ".leading-dot"))))
+        :policy))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "path-identity" "trailing-dot."))))
+        :policy))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "other-slot" "a.gate.example.invalid"))))
+        :policy))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "get" "path-identity"))))
+        :policy))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "path-identity"))))
+        :policy))
+; The other kinds carry no value.
+(assert-event (null (fn-native-admin-result-value *fn-na-create*)))
+(assert-event (null (fn-native-admin-result-value *fn-na-capacity*)))
