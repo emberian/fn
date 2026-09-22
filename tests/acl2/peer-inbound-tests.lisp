@@ -344,6 +344,13 @@
 ; (b) the peer hypothesis: a reader connection carries no node and gets the
 ; reader's answer to a transit keyword, not a duplicate refusal.
 (assert-event (null (fn-peer-session-peer (fn-peer-with-node *pt-reader* *pt-node1*))))
+; The must-fail for `fn-peer-sessionp-of-fn-peer-with-node's configuration
+; hypothesis: this object is what `fn-peer-with-node' makes of a reader that
+; carries no configuration, and it is not a session.  It is stepped above only
+; to read the reader's 502; the machine never stores it, because
+; `fn-own-conn-live-session' refreshes a session's node only when the session
+; has a configuration.  `*pt-ps0-live*' above is the witness with it.
+(assert-event (not (fn-peer-sessionp (fn-peer-with-node *pt-reader* *pt-node1*))))
 (assert-event (equal (fn-post-result-effects
                       (fn-peer-step (fn-peer-with-node *pt-reader* *pt-node1*)
                                     (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs*
