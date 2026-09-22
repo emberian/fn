@@ -420,6 +420,18 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/scheduler-peers-tests
 
 .PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test labs labs-quick
+# The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
+# opens a codec theory at the top or names a seam's implementation, and
+# `make check` fails if one starts to.  Each cluster lane of the step appends
+# its books; when the list is every book, `--strict` runs without `--books`.
+THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
+	books/store-files books/store-files-invariants books/store-files-traces \
+	books/store-node books/store-node-invariants books/store-node-traces \
+	books/store-node-resolution books/store-observed books/store-observed-traces \
+	books/store-prepare-correspondence books/config-records books/node-config \
+	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \
+	books/records-shape books/statement books/statement-invariants
+
 check:
 	$(PYTHON) tools/check_scaffold.py
 # Every host file loaded alone in its own ACL2: the dynamic half of the
@@ -517,6 +529,7 @@ check:
 # no ACL2, about three seconds.
 	$(PYTHON) tools/green_check.py --summary
 	$(PYTHON) tools/theory_check.py --summary
+	$(PYTHON) tools/theory_check.py --strict --books $(THEORY_STRICT_BOOKS)
 
 # The integration labs.  Deliberately NOT part of `check`: the quick tier is
 # about two and a half minutes and the box tier is hours, while `check` is
