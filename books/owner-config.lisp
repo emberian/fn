@@ -378,6 +378,37 @@
 
 ; -----------------------------------------------------------------------------
 ; Completion publishes the staged record
+;
+; WHAT IS PUBLISHED IS WHAT RECOVERY REPLAYS.  The host calls `:complete'
+; only after the staged record is durable in the configuration directory
+; (host/owner-host.lisp `fn-owner-reconfigure-complete'), and at the next
+; open `fn-owner-recover' replays that directory through
+; `fn-cnode-config-replay', whose step on a configuration record is
+; `fn-cnode-apply-config' over a configured node with no reservation and no
+; stage.  So the live configuration after `:complete' is that step's
+; configuration: `fn-cfg-apply-record' of the WHOLE record when the record
+; is acceptable at reservation 0 (the gate replay applies), and the old
+; configuration otherwise.  Never a prefix of the delta list.
+;
+; This used to be `(fn-cnode-config (fn-cnode-apply-config (fn-ocfg-live-cnode
+; oc) record ...))', which gates on `fn-cnode-statep' of the LIVE node.  The
+; live node's allocation domain and retention capacity are the store's
+; recovery parameters (`fn-sn-groups', `fn-sn-capacity') and no live
+; transition moves them, so after the first live `:create-group' or
+; `:set-capacity' the live pair was no longer a `fn-cnode-statep' and every
+; later completion kept the old configuration while the host had already
+; made the record durable: a restart then recovered a generation the live
+; owner never published.  Measured 2026-09-22 on the ground scenario in
+; tests/acl2/owner-config-tests.lisp: the second of two live group
+; creations violated `fn-cnode-apply-config''s guard at `:complete'.  The
+; node half of that call was discarded here anyway; only its configuration
+; was kept, and that half never depended on the live node.
+
+(defun fn-ocfg-published-config (config record)
+  (declare (xargs :guard t))
+  (if (fn-cfg-record-acceptablep config record 0 (fn-cnode-line-ceiling))
+      (fn-cfg-apply-record config record)
+    config))
 
 (defun fn-ocfg-complete (oc)
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
@@ -389,9 +420,7 @@
         ; not publish: the process must reopen and replay the observed prefix.
         (fn-ocfg-make
          (fn-ocfg-owner oc)
-         (fn-cnode-config
-          (fn-cnode-apply-config (fn-ocfg-live-cnode oc) record
-                                 (fn-cnode-line-ceiling)))
+         (fn-ocfg-published-config (fn-ocfg-config oc) record)
          (fn-ocfg-pins oc) nil)
       (fn-ocfg-make (fn-own-complete (fn-ocfg-owner oc))
                     (fn-ocfg-config oc) (fn-ocfg-pins oc) nil))))
@@ -716,6 +745,304 @@
   :hints (("Goal" :in-theory (enable (:d fn-ocfg-reconfigure)))))
 
 ; -----------------------------------------------------------------------------
+; THE TWO HEADLINE THEOREMS of specs/reconfiguration.md (plan T8).
+;
+; The subject of both is the function the host calls.  host/owner-host.lisp
+; `fn-owner-step' calls `fn-ocfg-step' (the line under `(defun
+; fn-owner-step'), and the live administrative arm drives it with exactly
+; three events under the owner mutex (host/native/admin.lisp
+; `fnn-owner-live-admin-serialized'): `(:reconfigure cid deltas)' through
+; `fn-owner-reconfigure-deltas', `(:close cid)' through `fn-owner-close',
+; and, after the immutable publisher reports the record durable,
+; `(:complete)' through `fn-owner-reconfigure-complete'.  Recovery is
+; `fn-owner-recover', which replays the configuration directory through
+; `fn-cnode-config-replay' and installs exactly that configuration with no
+; staged record: the base case of the second theorem's hypothesis stack.
+;
+; The recovery half is proved with the record codec CLOSED: nothing below
+; enables `fn-record-codec-vocabulary' or `fn-record-record-vocabulary'.  The
+; replay loop, the journal-record recognizer and the configured-node
+; transition are opened in the hints of the lemmas that step them.
+
+; The replay-side vocabulary.  Admission of a configuration record depends on
+; the reservation total only through `:set-capacity''s floor, so a record the
+; live owner admitted under its real reservation total is admitted by the
+; configuration-only replay, whose node reserves nothing.
+
+(local (defthm fn-ocfg-delta-reason-at-zero
+  (implies (not (fn-cfg-delta-reason v gen stamp reserved ceiling d))
+           (not (fn-cfg-delta-reason v gen stamp 0 ceiling d)))
+  :hints (("Goal" :in-theory (enable fn-cfg-delta-reason)))))
+
+(defthm fn-ocfg-admissible-at-any-reservation-is-admissible-at-zero
+  (implies (not (fn-cfg-admissible-reason v gen stamp reserved ceiling deltas))
+           (not (fn-cfg-admissible-reason v gen stamp 0 ceiling deltas)))
+  :hints (("Goal" :induct (fn-cfg-admissible-reason v gen stamp reserved ceiling deltas)
+           :in-theory (e/d (fn-cfg-admissible-reason) (fn-cfg-delta-reason fn-cfg-apply-delta)))))
+
+(defthm fn-ocfg-acceptable-record-is-acceptable-at-zero-reservation
+  (implies (fn-cfg-record-acceptablep cfg r reserved ceiling)
+           (fn-cfg-record-acceptablep cfg r 0 ceiling))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-record-acceptablep fn-cfg-admissiblep)
+                                  (fn-cfgp fn-cfg-recordp))
+           :use ((:instance fn-ocfg-admissible-at-any-reservation-is-admissible-at-zero
+                            (v (fn-cfg-value cfg)) (gen (fn-cfg-record-generation r))
+                            (stamp (fn-cfg-record-stamp r))
+                            (deltas (fn-cfg-record-change r)))))))
+
+
+; What a configuration-only replay carries: a configured node with nothing
+; reserved and nothing staged, whose generation is the replay's next
+; journal sequence.  That last conjunct is why the live owner's record,
+; whose sequence is the live generation (`fn-ocfg-reconfig-record'), lands
+; exactly where the replay expects its next record.
+
+(defun fn-ocfg-replay-cnode-okp (cn seq)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-cnode-statep cn)
+       (equal (fn-retain-reserved (fn-node-retention (fn-cnode-node cn))) 0)
+       (null (fn-node-stage (fn-cnode-node cn)))
+       (equal (fn-cfg-generation (fn-cnode-config cn)) seq)))
+
+(defthm fn-ocfg-replay-cnode-okp-of-apply-config
+  (implies (and (fn-ocfg-replay-cnode-okp cn seq)
+                (fn-cnode-record-acceptablep cn r ceiling))
+           (fn-ocfg-replay-cnode-okp (fn-cnode-apply-config cn r ceiling) (+ 1 seq)))
+  :hints (("Goal" :in-theory (e/d (fn-cnode-apply-config)
+                                  (fn-cnode-statep fn-cnode-record-acceptablep fn-cfg-apply-record))
+           :use ((:instance fn-cnode-apply-config-preserves-state (record r))
+                 (:instance fn-cnode-apply-config-bumps-the-generation (record r))))))
+
+(defun fn-ocfg-cr-induct (cn ceiling records expected)
+  (declare (xargs :verify-guards nil))
+  (if (consp records)
+      (fn-ocfg-cr-induct (fn-cnode-apply-config cn (car records) ceiling)
+                         ceiling (cdr records) (+ 1 expected))
+    (list cn ceiling expected)))
+
+(defthm fn-ocfg-config-replay-loop-keeps-okp
+  (implies (and (fn-ocfg-replay-cnode-okp cn expected)
+                (equal (fn-replay-result-kind
+                        (fn-cnode-replay-loop cn ceiling (fn-cnode-config-jrecs records) expected))
+                       :ok))
+           (fn-ocfg-replay-cnode-okp
+            (fn-replay-result-node
+             (fn-cnode-replay-loop cn ceiling (fn-cnode-config-jrecs records) expected))
+            (fn-replay-result-sequence
+             (fn-cnode-replay-loop cn ceiling (fn-cnode-config-jrecs records) expected))))
+  :hints (("Goal" :induct (fn-ocfg-cr-induct cn ceiling records expected)
+           :in-theory (e/d (fn-cnode-replay-loop fn-cnode-config-jrecs)
+                           (fn-ocfg-replay-cnode-okp fn-cnode-apply-config
+                            fn-cnode-record-acceptablep fn-jrec-p fn-cnode-apply-record)))
+          ("Subgoal *1/1" :use ((:instance fn-ocfg-replay-cnode-okp-of-apply-config
+                                           (r (car records)) (seq expected))))))
+
+(defthm fn-ocfg-config-jrecs-of-append
+  (equal (fn-cnode-config-jrecs (append a b))
+         (append (fn-cnode-config-jrecs a) (fn-cnode-config-jrecs b)))
+  :hints (("Goal" :in-theory (enable fn-cnode-config-jrecs))))
+(defthm fn-ocfg-true-listp-of-config-jrecs
+  (true-listp (fn-cnode-config-jrecs a))
+  :hints (("Goal" :in-theory (enable fn-cnode-config-jrecs))))
+(defthm fn-ocfg-initial-replay-cnode-okp
+  (fn-ocfg-replay-cnode-okp (fn-cnode-initial (fn-cfg-initial)) 0))
+(defthm fn-ocfg-config-replay-okp
+  (implies (equal (fn-replay-result-kind (fn-cnode-config-replay h)) :ok)
+           (fn-ocfg-replay-cnode-okp
+            (fn-replay-result-node (fn-cnode-config-replay h))
+            (fn-replay-result-sequence (fn-cnode-config-replay h))))
+  :hints (("Goal" :in-theory (e/d (fn-cnode-config-replay fn-cnode-replay)
+                                  (fn-ocfg-replay-cnode-okp fn-cnode-initial fn-cfg-initial
+                                   fn-cnode-statep))
+           :use ((:instance fn-ocfg-config-replay-loop-keeps-okp
+                            (cn (fn-cnode-initial (fn-cfg-initial)))
+                            (ceiling (fn-cnode-line-ceiling))
+                            (records h) (expected 0))))))
+
+(local (defthm one-step
+  (implies (and (fn-ocfg-replay-cnode-okp cn seq)
+                (fn-cfg-record-acceptablep (fn-cnode-config cn) r reserved ceiling)
+                (equal (fn-cfg-record-sequence r) seq))
+           (equal (fn-cnode-replay-loop cn ceiling (fn-cnode-config-jrecs (list r)) seq)
+                  (fn-replay-ok (fn-cnode-apply-config cn r ceiling) (+ 1 seq))))
+  :hints (("Goal" :in-theory (e/d (fn-cnode-replay-loop fn-cnode-config-jrecs
+                                   fn-cnode-record-acceptablep fn-jrec-p
+                                   fn-ocfg-replay-cnode-okp fn-cfgp)
+                                  (fn-cnode-apply-config fn-cnode-statep
+                                   fn-cfg-record-acceptablep fn-cfg-valuep fn-cfg-recordp))
+           :use ((:instance fn-ocfg-admissible-at-any-reservation-is-admissible-at-zero
+                            (v (fn-cfg-value (fn-cnode-config cn)))
+                            (gen (fn-cfg-record-generation r))
+                            (stamp (fn-cfg-record-stamp r))
+                            (deltas (fn-cfg-record-change r))))
+           :expand ((:free (x) (fn-cfg-record-acceptablep (fn-cnode-config cn) r x ceiling))
+                    (:free (x) (fn-cfg-admissiblep (fn-cfg-value (fn-cnode-config cn))
+                                                   (fn-cfg-record-generation r)
+                                                   (fn-cfg-record-stamp r) x ceiling
+                                                   (fn-cfg-record-change r))))))))
+(local (defthm one-step-config
+  (implies (and (fn-ocfg-replay-cnode-okp cn seq)
+                (fn-cfg-record-acceptablep (fn-cnode-config cn) r reserved ceiling))
+           (equal (fn-cnode-config (fn-cnode-apply-config cn r ceiling))
+                  (fn-cfg-apply-record (fn-cnode-config cn) r)))
+  :hints (("Goal" :in-theory (e/d (fn-cnode-apply-config fn-cnode-record-acceptablep
+                                   fn-ocfg-replay-cnode-okp)
+                                  (fn-cnode-statep fn-cfg-record-acceptablep fn-cfg-apply-record))
+           :use ((:instance fn-ocfg-acceptable-record-is-acceptable-at-zero-reservation (cfg (fn-cnode-config cn))))))))
+(local (defthm one-step-general
+  (implies (and (fn-ocfg-replay-cnode-okp m s)
+                (fn-cfg-record-acceptablep (fn-cnode-config m) r reserved ceiling)
+                (equal (fn-cfg-record-sequence r) (fn-cfg-generation (fn-cnode-config m))))
+           (and (equal (fn-replay-result-kind
+                        (fn-cnode-replay-loop m ceiling (fn-cnode-config-jrecs (list r)) s))
+                       :ok)
+                (equal (fn-cnode-config
+                        (fn-replay-result-node
+                         (fn-cnode-replay-loop m ceiling (fn-cnode-config-jrecs (list r)) s)))
+                       (fn-cfg-apply-record (fn-cnode-config m) r))))
+  :hints (("Goal" :in-theory (disable fn-cnode-replay-loop fn-cnode-config-jrecs
+                                      fn-cnode-apply-config fn-cfg-record-acceptablep
+                                      fn-cfg-apply-record)
+           :use ((:instance one-step (cn m) (seq s))
+                 (:instance one-step-config (cn m) (seq s)))
+           :expand ((fn-ocfg-replay-cnode-okp m s))))))
+(defthm fn-ocfg-config-replay-of-one-more-record
+  (implies (and (equal (fn-replay-result-kind (fn-cnode-config-replay h)) :ok)
+                (fn-cfg-record-acceptablep
+                 (fn-cnode-config (fn-replay-result-node (fn-cnode-config-replay h)))
+                 r reserved (fn-cnode-line-ceiling))
+                (equal (fn-cfg-record-sequence r)
+                       (fn-cfg-generation
+                        (fn-cnode-config (fn-replay-result-node (fn-cnode-config-replay h))))))
+           (and (equal (fn-replay-result-kind (fn-cnode-config-replay (append h (list r)))) :ok)
+                (equal (fn-cnode-config
+                        (fn-replay-result-node (fn-cnode-config-replay (append h (list r)))))
+                       (fn-cfg-apply-record
+                        (fn-cnode-config (fn-replay-result-node (fn-cnode-config-replay h)))
+                        r))))
+  :hints (("Goal" :in-theory (e/d (fn-cnode-config-replay fn-cnode-replay)
+                                  (fn-cnode-replay-loop fn-cnode-initial fn-cfg-initial
+                                   fn-cnode-statep fn-ocfg-replay-cnode-okp
+                                   fn-cfg-record-acceptablep fn-cfg-apply-record
+                                   fn-cnode-apply-config fn-cnode-config-jrecs
+                                   one-step one-step-config one-step-general
+                                   fn-ocfg-config-replay-okp
+                                   fn-cnode-replay-loop-splits-at-any-prefix))
+           :use ((:instance fn-ocfg-config-replay-okp)
+                 (:instance one-step-general
+                            (m (fn-replay-result-node (fn-cnode-config-replay h)))
+                            (s (fn-replay-result-sequence (fn-cnode-config-replay h)))
+                            (ceiling (fn-cnode-line-ceiling)))
+                 (:instance fn-cnode-replay-loop-splits-at-any-prefix
+                            (cn (fn-cnode-initial (fn-cfg-initial)))
+                            (ceiling (fn-cnode-line-ceiling))
+                            (a (fn-cnode-config-jrecs h))
+                            (b (fn-cnode-config-jrecs (list r)))
+                            (expected 0))))))
+
+
+; KEYSTONE (headline 1).  NO READER OBSERVES A HALF CHANGE.  The two owner
+; events a live reconfiguration consists of, `(:reconfigure other deltas)'
+; and `(:complete)', leave the owner itself -- every open connection's
+; record, hence its session, its pinned archive and every reply it will give
+; to any input -- and every configuration pin exactly as they were; staging
+; does not move the live configuration; and publication moves it to
+; `fn-ocfg-published-config' of the staged record, which is the old
+; configuration or `fn-cfg-apply-record' of the WHOLE record and nothing in
+; between.  One hypothesis: that something was staged, which is the
+; condition under which the host calls `(:complete)' at all
+; (`fn-owner-reconfigure-complete' refuses otherwise); without it
+; `(:complete)' is the article completion `fn-own-complete', which moves
+; the owner.  The pin moves only at the connection's own `(:advance id)',
+; `(:close id)' or `(:fault id)': `fn-ocfg-pin-is-stable-without-advance'
+; above, over any finite list of `fn-ocfg-step' events, is the other half
+; of the headline and is cited with this one.
+
+(defthm fn-ocfg-no-reader-observes-a-half-change
+  (implies (fn-ocfg-staged (fn-ocfg-step oc (list :reconfigure other deltas)))
+           (let* ((staged (fn-ocfg-step oc (list :reconfigure other deltas)))
+                  (published (fn-ocfg-step staged (list :complete))))
+             (and (equal (fn-ocfg-owner published) (fn-ocfg-owner oc))
+                  (equal (fn-ocfg-pins published) (fn-ocfg-pins oc))
+                  (equal (fn-ocfg-config staged) (fn-ocfg-config oc))
+                  (equal (fn-ocfg-config published)
+                         (fn-ocfg-published-config (fn-ocfg-config oc)
+                                                   (fn-ocfg-staged staged))))))
+  :hints (("Goal" :in-theory (enable (:d fn-ocfg-step) (:d fn-ocfg-reconfigure)
+                                     (:d fn-ocfg-complete)))))
+
+
+; KEYSTONE (headline 2).  A CRASH AT ANY INSTANT RECOVERS THE LIVE
+; GENERATION, AND NEVER A PARTIAL ONE.  Hypotheses: nothing is staged, and the
+; durable configuration history replays (`fn-cnode-config-replay', the
+; function `fn-owner-recover' calls) to the owner's live configuration --
+; both established by `fn-owner-recover' and re-established by the
+; theorem's own last three conjuncts, so the statement chains across every
+; later live reconfiguration.  Over the host's exact event sequence
+; (reconfigure, close the private connection, complete):
+;
+;   before the record is durable, the durable history still replays to
+;   the live configuration, which staging did not move;
+;
+;   once the record is durable -- whether or not `(:complete)' has run --
+;   the durable history (the old one with the staged record appended, or
+;   the old one when nothing was staged) replays :ok, to exactly the
+;   configuration `(:complete)' publishes, whose generation is the one the
+;   last durable record names.
+;
+; A-DURABILITY enters where it always does: that a record the immutable
+; publisher reported :durable is in the directory the next open reads, and
+; that a torn staging file is not (the sweep of `.stage-' names).  An
+; uncertain publication fences the owner and forces the reopen whose result
+; is one of the two histories above.
+
+(defthm fn-ocfg-crash-at-any-instant-recovers-the-live-generation
+  (implies (and (not (fn-ocfg-staged oc))
+                (equal (fn-replay-result-kind (fn-cnode-config-replay history)) :ok)
+                (equal (fn-cnode-config
+                        (fn-replay-result-node (fn-cnode-config-replay history)))
+                       (fn-ocfg-config oc)))
+           (let* ((staged (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas))
+                                       (list :close id)))
+                  (record (fn-ocfg-staged staged))
+                  (published (fn-ocfg-step staged (list :complete)))
+                  (durable (if record (append history (list record)) history)))
+             (and (equal (fn-cnode-config
+                          (fn-replay-result-node (fn-cnode-config-replay history)))
+                         (fn-ocfg-config staged))
+                  (equal (fn-replay-result-kind (fn-cnode-config-replay durable)) :ok)
+                  (equal (fn-cnode-config
+                          (fn-replay-result-node (fn-cnode-config-replay durable)))
+                         (fn-ocfg-config published))
+                  (equal (fn-cfg-generation (fn-ocfg-config published))
+                         (if record
+                             (fn-cfg-record-generation record)
+                           (fn-cfg-generation (fn-ocfg-config oc))))
+                  (not (fn-ocfg-staged published)))))
+  :hints (("Goal" :in-theory (e/d ((:d fn-ocfg-step) (:d fn-ocfg-reconfigure)
+                                   (:d fn-ocfg-complete) (:d fn-ocfg-reconfig-okp) (:d fn-ocfg-close)
+                                   (:d fn-ocfg-reconfig-record)
+                                   (:d fn-ocfg-published-config)
+                                   (:d fn-ocfg-live-cnode)
+                                   fn-cnode-record-acceptablep)
+                                  (fn-cfg-record-acceptablep fn-cfg-apply-record
+                                   fn-cnode-config-replay fn-own-complete fn-own-close
+                                   fn-ocfg-acceptable-record-is-acceptable-at-zero-reservation))
+           :use ((:instance fn-ocfg-acceptable-record-is-acceptable-at-zero-reservation
+                            (cfg (fn-ocfg-config oc))
+                            (r (fn-ocfg-reconfig-record oc deltas))
+                            (reserved (fn-retain-reserved
+                                       (fn-node-retention
+                                        (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))))
+                            (ceiling 510))
+                 (:instance fn-ocfg-config-replay-of-one-more-record
+                            (h history)
+                            (r (fn-ocfg-reconfig-record oc deltas))
+                            (reserved (fn-retain-reserved
+                                       (fn-node-retention
+                                        (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))))))))))
+
+; -----------------------------------------------------------------------------
 ; OPEN, recorded rather than claimed (specs/reconfiguration.md section 8).
 ;
 ; 1. THE WIRE.  `fn-ocfg-list-active' is not the function the host calls.
@@ -739,17 +1066,26 @@
 ;    seam.  Until then the domain is what a reader sees, as
 ;    specs/reconfiguration.md section 8 item (3) already records.
 ;
-; 2. RECOVERY.  `fn-own-reopen' replays the ARTICLE history only; the owner's
-;    crash image carries no configuration records, so this book cannot state
-;    the reopened generation.  Section 3.5's owner statement
-;    (`fn-own-acknowledged-reconfiguration-survives-reopen') therefore has no
-;    subject here and is NOT stated.  Its store-level half is proved:
-;    `fn-cnode-recovered-generation-is-at-most-the-live-generation'
-;    (books/node-config.lisp) is STO-004's `<=' over the configuration
-;    history, and `fn-cstr-ok-merged-replay-ends-in-a-configured-node'
-;    (books/config-stream.lisp) is the merged-stream form.  Closing the owner
-;    half needs `fn-own-reopen' to take the configuration records, which is a
-;    `books/owner' signature change and belongs to the owner lane.
+; 2. RECOVERY: CLOSED at the configuration level by
+;    `fn-ocfg-crash-at-any-instant-recovers-the-live-generation' above, over
+;    `fn-cnode-config-replay', which is what `fn-owner-recover' replays.
+;    `fn-own-reopen' still replays the article history only; the owner's
+;    reopen is the host's process restart, not a model event.
+;
+; 3. THE LIVE NODE DOES NOT ADOPT A NEW DOMAIN OR CAPACITY.  Publication
+;    moves the configuration and nothing else: the store's allocation
+;    domain `fn-sn-groups' and capacity `fn-sn-capacity' are the recovery
+;    parameters, `fn-own-relation' ties every connection's pinned archive to
+;    them, and no owner transition changes them.  So a group created live is
+;    in the published served table (and in the injection configuration
+;    `fn-own-configure' is refreshed with) but not in the acceptance state's
+;    group list: GROUP and LIST ACTIVE on any connection answer from that
+;    list, and the node's prepare refuses the group, until a restart
+;    replays the configuration first.  A capacity change likewise reaches
+;    the retention ledger only at restart.  Closing this is an owner and
+;    store cluster step (a per-connection domain in `fn-own-conn-okp', and a
+;    store re-parameterisation proved against `fn-snt-relation'), not an
+;    owner-config one.
 
 ; -----------------------------------------------------------------------------
 ; Export theory.
@@ -762,7 +1098,8 @@
     (:d fn-ocfg-config-stamp) (:d fn-ocfg-reconfig-record) (:d fn-ocfg-delta-names-group)
     (:d fn-ocfg-deltas-touch-groupp) (:d fn-ocfg-group-pinned-by-readerp)
     (:d fn-ocfg-reconfig-okp) (:d fn-ocfg-reconfig-refusal)
-    (:d fn-ocfg-reconfigure) (:d fn-ocfg-complete) (:d fn-ocfg-open)
+    (:d fn-ocfg-reconfigure) (:d fn-ocfg-published-config) (:d fn-ocfg-complete)
+    (:d fn-ocfg-open) (:d fn-ocfg-replay-cnode-okp)
     (:d fn-ocfg-advance) (:d fn-ocfg-close) (:d fn-ocfg-pass) (:d fn-ocfg-step)
     (:d fn-ocfg-run) (:d fn-ocfg-list-active) (:d fn-ocfg-repins-forp)))
 
