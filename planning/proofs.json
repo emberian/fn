@@ -1623,6 +1623,8 @@
       "assumptions": [],
       "status": "in-progress",
       "evidence": [
+        "planning/evidence/manifests/certify-20260922T202647Z-3725626.json",
+        "planning/evidence/feed-tls-teeth-2026-09-22.md",
         "books/feed-connection-invariants.lisp",
         "tests/acl2/feed-connection-teeth-tests.lisp",
         "books/feed-connection.lisp",
@@ -1737,6 +1739,8 @@
       "assumptions": [],
       "status": "in-progress",
       "evidence": [
+        "planning/evidence/manifests/certify-20260922T202647Z-3725626.json",
+        "planning/evidence/feed-tls-teeth-2026-09-22.md",
         "books/feed-connection-invariants.lisp",
         "books/feed-auth-profile.lisp",
         "tests/acl2/feed-connection-teeth-tests.lisp",
