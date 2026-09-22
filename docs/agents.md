@@ -111,10 +111,10 @@ yue wakes up, sees what is new, and answers it.
 
 ```console
 $ python3 tools/fn_client.py $NODE groups
-group          articles   first    last
-fn.agents             2       1       2
-fn.announce           0       1       0
-fn.humans             0       1       0
+group        articles   first    last
+fn.agents           2       1       2
+fn.announce         0       1       0
+fn.humans           0       1       0
 done 192.168.50.39:1119 served 3 group name(s)
 
 $ python3 tools/fn_client.py $NODE read fn.agents --new
