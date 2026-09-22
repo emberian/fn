@@ -1473,6 +1473,31 @@
       ]
     },
     {
+      "id": "PRF-049",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-binds-a-peer-role-only-by-a-principal-login",
+          "note": "The only way in, over fn-auth-step (books/served.lisp fn-served-dispatch; host/owner-host.lisp fn-owner-chunk via fn-own-read and fn-served-step). Two hypotheses (unbound before, bound after), each with a must-fail and a refuting value in tests/acl2/nntp-auth-teeth-tests.lisp keystone 8."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-principal-login-binds-exactly-the-unique-match",
+          "note": "The way in, over fn-auth-step: an accepted AUTHINFO PASS is 281, installs the principal and binds exactly fn-auth-principal-match (nil for a mismatch or a duplicate). Eleven hypotheses, each with a must-fail and a refuting value (teeth keystone 9)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-starttls-clears-a-principal-role",
+          "note": "The way out, over fn-auth-step: entering the TLS handshake drops the subject, the cached name and a principal-derived role and keeps a source-address role. Two hypotheses, each with a must-fail and a refuting value (teeth keystone 10)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-open-begins-unbound",
+          "note": "Over fn-ocfg-open, which host/owner-host.lisp fn-owner-open calls: an accepted open installs a reader with no role, subject, cached name, TLS layer or handshake, whatever the owner's other connections did. One hypothesis with a must-fail; witness and refuting value in tests/acl2/owner-config-tests.lisp."
+        }
+      ]
+    },
+    {
       "id": "PRF-052",
       "events": [
         {
