@@ -138,6 +138,17 @@ owner armed. The `owner run ... INJECT` developer verb
 (`host/native/owner.lisp:1371-1387`) takes only the four `+fnn-cli-faults+`
 exceptions, not the kill cuts.
 
+*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+`fnn-post-entry-fault` (`host/native/io.lisp`) reads the positional FAULT,
+`FN_NATIVE_POST_FAULT` and `FN_NATIVE_RECOVERY_FAULT` into the store's one
+fault slot; `fnn-command-post`, `fnn-owner-run-normalized` (the `operator
+CFG run` callee) and the developer `owner run` verb all call it, so a
+developer image kills the served owner at the same `fnn-at` line in
+`fnn-recover`, `fnn-advance-frontier`, `fnn-publish` or `fnn-finish`.  No
+equation between the two attempts is claimed: they are driven by different
+ACL2 subjects (the store-node bridge, `fn-owner`), and the campaign driver
+now runs every row against the served owner itself.
+
 **F2 — a death between the allocation stage and its rename leaves a file
 that recovery never removes, and 65 of them make the store unopenable (a
 defect of the model's sweep policy; the host follows it faithfully).**
@@ -178,6 +189,13 @@ transactions at the stop, which is the image at the end of
 `fn-bs-finish-program`. The byte model has no coordinate for the control
 reply.
 
+*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+The stop is `pthread_kill(pthread_self(), SIGSTOP)` from the worker that
+holds the reply (`fnn-control-stop-calling-thread`), so that thread takes the
+stop on its return from the call and the reply cannot leave first.
+`tests/native_developer_selectors_raw.lisp` observes this twenty times in
+forked children on macOS; the Linux image has not run it.
+
 **F4 — the production image reports a durable article as a fault (a host
 defect against D13).** With `FN_NATIVE_CONTROL_TEST_STOP=after-submit` in a
 production owner, the article is committed (2 transactions) and the caller
@@ -188,6 +206,11 @@ the status into `:fault`. So "the production image refuses the variable"
 holds in the sense that the owner does not stop. What it costs is that an
 accepted article reaches its caller as a non-outcome. The owner has refused
 nothing: it accepted.
+
+*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+A production image refuses to start with `FN_NATIVE_CONTROL_TEST_STOP` set
+(exit 5, `fnn-developer-selector-gate` in `fnn-main`, before dispatch), and
+the reply expression no longer converts the owner's status.
 
 **F5 — the production image's control-fault refusal answers uncertain and
 stops the node (a host defect against its own stated contract).** The
@@ -205,6 +228,11 @@ where a fault fences the owner and stops the service. It is not raised at
 the reply. An environment variable on a production node thus turns the next
 post into an uncertain answer and a stopped service.
 
+*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+A production image refuses to start with `FN_NATIVE_CONTROL_FAULT` set (exit
+5, before any store or socket is opened); the serialized action has no
+production branch.
+
 **F6 — three more developer selectors are honoured by the production image
 (host defects, the class of the owner-defects lane's fourth).**
 `fnn-recovery-test-fault` (`host/native/io.lisp:1622-1640`) and
@@ -220,6 +248,12 @@ article durable. `FN_NATIVE_AUTH_ADMIN_FAULT`
 (`host/native/auth-admin.lisp:20-45`) has the same ungated shape in source.
 It was not run.
 
+*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+Every selector, including these four, is in `+fnn-developer-selectors+`
+and read through `fnn-developer-selector`; a production image refuses to
+start with any of them, or with a `store post` FAULT argument, with exit 5
+naming it.
+
 **F7 — the recovery cut has no position in the recovery program (a fidelity
 defect of the table's coordinate).** `recovery-stage-unlinked` names
 `fn-bs-recover-stage-cleanup-program` (`books/byte-store-programs.lisp:256`),
@@ -234,6 +268,14 @@ that does say disagrees with the host. The recovery program's own cuts,
 (`host/native/io.lisp:1337`, `:1352`) that the developer image cannot
 select: `+fnn-recovery-model-cuts+` (`host/native/io.lisp:1619-1620`) lists
 only the cleanup cut.
+
+*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+`+fnn-recovery-model-cuts+` now lists `recover-replayed`, `recover-barrier`
+(the first of its five sites) and `recovery-stage-unlinked`;
+`tests/campaign/native_cuts.py` places `recovery-stage-unlinked` after the
+whole of `fn-bs-recover-program` (`follows`) and checks that `fnn-recover`
+still sweeps after its barriers; the comment above
+`fn-bs-recover-stage-cleanup-program` says so (commit `9cbd53b9`).
 
 No cut contradicted its record expectation, and every process death in the
 table has an `fn-bs-*-program` coordinate. The contradictions are about

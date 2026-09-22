@@ -414,11 +414,15 @@ obligation release, the receipt outbox, the scheduler runner and K6
 service loop, routes, the three-process gate with the sender's carrier
 discarded and with reports dropped (hbox, Fable, 5 to 7); C1 fragment
 lemmas, the fast reassembler and the limits table (2 to 3); C2 the fragment
-families in the machine (after B, 3 to 4); D1 the status-report codec (1 to
-2); D2 reports, the administrative path and independent wire vectors (2 to
-3); E journal exhaustion and the operating envelope (after B, 2 to 3). The
-slices total 32 to 44 lane-days against the 20 to 31 the four steps
-carried; the receive path merges only with A2's replay theorems certified.
+families in the machine (after B, 3 to 4); D1a the status-report codec (1 to
+2) and D1b minimal deletion-report generation and consumption as B's first
+batch; D2 the rest of the reports, the administrative path and independent
+wire vectors (2 to 3); E journal exhaustion, rotation and the operating
+envelope (after B, 2 to 3). After the second review's contract patch the
+slices total 37 to 50 lane-days against the 20 to 31 the four steps
+carried; each slice's first commit is its rows of the spec's counterexample
+suite (§11.1); the receive path merges only with A2's replay theorems
+certified.
 D07 stands: the scheduler's policy is `books/scheduler` behind a prepare,
 publish, complete runner called from the native host; `tools/scheduler.py`
 retires with B. LTP follows (decision 5).

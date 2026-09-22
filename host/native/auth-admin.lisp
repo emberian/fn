@@ -18,8 +18,11 @@
     "final-directory-durable"))
 
 (defun fnn-native-auth-admin-test-cut ()
-  "Developer-only FN_NATIVE_AUTH_ADMIN_FAULT=CUT:eio|kill selector."
-  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_AUTH_ADMIN_FAULT")))
+  "Developer-only FN_NATIVE_AUTH_ADMIN_FAULT=CUT:eio|kill selector.
+
+Read through `fnn-developer-selector' (host/native/io.lisp): NIL on a
+production image, which refuses to start with the variable set."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_AUTH_ADMIN_FAULT")))
     (when raw
       (let ((colon (position #\: raw :from-end t)))
         (unless colon
