@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 27 |
 | Teeth-form warnings | 10 |
 | Include-hygiene warnings | 150 |
-| Host-names warnings | 636 |
+| Host-names warnings | 637 |
 | Hand-written-record warnings | 18 |
 
 ## Lints

@@ -3,9 +3,11 @@
 [`fn-client-915-2026-09-22.md`](fn-client-915-2026-09-22.md) ends with three
 findings it called the node's and did not touch. This record reproduces each
 one against the same node, names the line that causes it, and records the
-change. No book changed here and nothing here is a certification record; one
-ACL2 process was started, to read an answer out of an already certified book,
-and it proved nothing.
+change. A fourth, found by the `w32/operator-verbs` lane in the same file
+family and handed to this one, is recorded with them: a developer-only
+process-death cut that a production image honoured. No book changed here and
+nothing here is a certification record; one ACL2 process was started, to read
+an answer out of an already certified book, and it proved nothing.
 
 ## The node these were reproduced against
 
@@ -225,6 +227,64 @@ constant: this is the kernel's accept queue, not a connection limit — how many
 connections the owner holds is `fn-own-open`'s `max-conns` and stays there.
 `fnn-listen`'s docstring now says what its default is for.
 
+## 4. A production image honoured a process-death cut from the environment
+
+Not from the client exercise: the `w32/operator-verbs` lane found it while
+gating its own `FN_NATIVE_CONTROL_FAULT`, and it is in the same file family.
+Not reproduced against a node — that would mean standing up a production image
+and stopping it on purpose, and the source says enough.
+
+`fnn-control-test-after-submit` (`host/native/control.lisp:141`, before this change at 121) called itself
+"Developer-only deterministic process-death cut after owner completion" in its
+docstring and then read `FN_NATIVE_CONTROL_TEST_STOP` with no gate at all. The
+cut is `SIGSTOP` to the node's own pid at the one moment that makes an outcome
+unknowable: after the owner has completed the submission and before the reply
+reaches the caller. In the image an operator deploys, anyone who could set the
+environment of the node process could arm it.
+
+The two neighbouring selectors are gated on the saved image's profile, which is
+serialized at build time so a restart-time environment cannot change it
+(`fnn-select-image-profile`, `host/native/io.lisp:2286`):
+
+- `FN_NATIVE_POST_FAULT` — `fnn-post-test-fault` (`host/native/io.lisp:1667`):
+  `(unless (fnn-developer-image-p) (fnn-fault "FN_NATIVE_POST_FAULT requires a
+  developer image"))`;
+- `FN_NATIVE_CONTROL_FAULT` — `fnn-owner-control-test-fault`, the same shape,
+  on `w32/operator-verbs`.
+
+`fnn-control-stop-cut-armed-p` is now that shape for this variable: a
+production image faults on it, an unknown value faults, and `t` means the
+developer cut is armed. `fnn-control-test-after-submit` asks the gate instead
+of the environment, and every mention of the variable is inside the gate.
+
+The fault is raised where the file already classifies one. The cut is called
+after the `handler-case` that computes the reply status, on a control worker
+thread where an escaping condition is nobody's exit code, so the call is
+wrapped:
+
+```
+(handler-case (progn (fnn-control-test-after-submit status) status)
+  (fnn-store-fault () :fault))
+```
+
+A production image handed the variable therefore answers ACL2's `:fault`
+status, which `fn-native-control-status-class` projects to exit 4 at the
+caller — the same way the caller learns `FN_NATIVE_CONTROL_FAULT`'s refusal.
+The owner is not stopped: nothing about its state went wrong.
+
+`tests/test_native_control.py`'s
+`test_lost_reply_after_submission_is_uncertain_and_recovers` is the one test
+that arms the cut. It ran the owner from `build/fn-host`, the production image,
+which now refuses the variable, so it asks for `build/fn-host-developer` and
+skips with that exact reason when it is absent — the shape
+`tests/test_native_operator_verbs.py` uses for its uncertain-outcome witness.
+`start_owner` takes an `image` argument for it; the store, the `operator post`
+client and `inspect` stay on the production image.
+
+Two always-active source checks land with it, in a new
+`NativeControlCutGateTests`: the gate exists and names the developer image, and
+the refusal reaches the caller as `:fault`.
+
 ## Tests
 
 - `tests/native_owner_chunk_loop_raw.lisp` (new) reads the deployed
@@ -269,6 +329,13 @@ connections the owner holds is `fn-own-open`'s `max-conns` and stays there.
   be a queue of one with no reason recorded.
 - Neither the TLS-channel arm nor the TLS-context plaintext arm changed, and
   neither was exercised against a node: the 915 image has no STARTTLS.
+- **The cut gate has run in no image either.** A production image was not built
+  and not handed `FN_NATIVE_CONTROL_TEST_STOP`, so exit 4 on that variable is
+  the classification this file gives it, read from the source, and not a
+  witnessed exit code. The developer path is equally unwitnessed: the one test
+  that arms the cut now skips for want of `build/fn-host-developer`, so it went
+  from running against the wrong image to not running at all until an image
+  pair exists.
 - Clock refusal (D10-a's `:refused`) is now reachable for the first time, since
   a host that reads the clock once can never contradict itself. No test steps a
   wall clock backwards under a running owner.
