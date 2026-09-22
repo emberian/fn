@@ -89,6 +89,77 @@
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
+; The injecting agent an injected article names
+;
+; RFC 5536 section 3.2.8: Injection-Info begins with the <path-identity> of
+; the injecting agent.  fn writes one Injection-Info field, generated from
+; the configuration's agent and nothing else, and the proto-article check
+; refuses a source that already carries one (fn-af-proto-article-check,
+; :injection-info), so the line below is the article's only Injection-Info.
+; The statement is about fn-inj-decide, which fn-nntp-post-step calls for
+; every article body a served POST delivers (books/nntp-post.lisp); which
+; agent the owner installs is books/owner-agent.lisp.
+
+(defun fn-inj-prefixp (x y)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (and (consp y) (equal (car x) (car y)) (fn-inj-prefixp (cdr x) (cdr y)))
+    t))
+
+(defun fn-inj-infixp (x y)
+  (declare (xargs :guard t :measure (acl2-count y)))
+  (or (fn-inj-prefixp x y)
+      (and (consp y) (fn-inj-infixp x (cdr y)))))
+
+(local
+ (defthm fn-inj-prefixp-of-append-left
+   (fn-inj-prefixp a (fn-inj-append a b))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-inj-infixp-of-append-left
+   (fn-inj-infixp a (fn-inj-append a b))
+   :hints (("Goal" :expand ((fn-inj-infixp a (fn-inj-append a b)))))))
+
+(local
+ (defthm fn-inj-infixp-of-append-right
+   (implies (fn-inj-infixp x b)
+            (fn-inj-infixp x (fn-inj-append a b)))
+   :hints (("Goal" :in-theory (enable fn-inj-append)
+            :induct (fn-inj-append a b)))))
+
+(local
+ (defthm fn-inj-prefixp-of-append-extends
+   (implies (fn-inj-prefixp x a) (fn-inj-prefixp x (fn-inj-append a b)))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-inj-infixp-of-append-extends
+   (implies (fn-inj-infixp x a) (fn-inj-infixp x (fn-inj-append a b)))
+   :hints (("Goal" :in-theory (enable fn-inj-append)
+            :induct (fn-inj-infixp x a)))))
+
+(local
+ (defthm fn-inj-prefix-carries-the-injection-info-line
+   (fn-inj-infixp (fn-inj-injection-info-line agent)
+                  (fn-inj-append (fn-inj-prefix date msgid agent
+                                                generate-id generate-date)
+                                 source))
+   :hints (("Goal" :in-theory (e/d (fn-inj-prefix)
+                                   (fn-inj-injection-info-line
+                                    fn-inj-path-line
+                                    fn-inj-injection-date-line))))))
+
+(defthm fn-inj-injected-article-names-the-configured-agent
+  (implies (fn-inj-injectedp (fn-inj-decide source config observation))
+           (fn-inj-infixp (fn-inj-injection-info-line
+                           (fn-inj-config-agent config))
+                          (fn-inj-decision-octets
+                           (fn-inj-decide source config observation))))
+  :hints (("Goal" :in-theory (e/d (fn-inj-decide-theory)
+                                  (fn-inj-prefix fn-inj-injection-info-line)))))
+
+; -----------------------------------------------------------------------------
 ; Retry identity
 ;
 ; RFC 5537 section 3.5 item 6 forbids altering an existing Message-ID header
