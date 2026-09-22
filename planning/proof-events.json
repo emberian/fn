@@ -1046,6 +1046,63 @@
       ]
     },
     {
+      "id": "PRF-031",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-auth-gated-command-is-refused-and-not-performed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-post-without-permission-is-not-offered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-post-without-permission-is-not-offered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-dispatch-of-a-refused-post-leaves-the-wire-in-place"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-protected-only-refuses-authinfo-before-tls"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-pass-before-user-is-482"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-failed-pass-leaves-the-session-unauthenticated"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-pass-accepts-only-a-checking-secret"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-starttls-is-not-advertised-under-tls-on-any-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-starttls-is-not-advertised-without-a-certificate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-authinfo-is-not-advertised-once-authenticated-on-any-connection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-authinfo-is-not-advertised-before-tls-under-protected-only"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines"
+        }
+      ]
+    },
+    {
       "id": "PRF-032",
       "events": [
         {
@@ -1198,6 +1255,10 @@
         {
           "kind": "theorem",
           "name": "fn-served-open-greets-200-exactly-when-the-connection-may-post"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-step-preserves-the-config"
         }
       ]
     },
