@@ -53,6 +53,20 @@ octets it was given every time,
 found and did not fix: `fn-store-article-match` in `host/store-host.lisp`,
 the duplicate-versus-conflict comparison, is program-mode host code with no
 theorem naming it, against "one owner per decision").
+Morning of 2026-09-22 (ember awake): the night's yield was repairs, not
+features, and [the proof-engineering review](review-2026-09-22-proof-engineering.md)
+says why with the tools' numbers: one red hides everything above it so each
+run reveals one layer; timeouts are the round time; 74 books open a codec
+theory book-wide; behaviour landed on the 21st under invariant books nobody
+recertified. Two of its changes are in: `green_check --changed-since REV
+--strict`, the merge gate, and `tools/theory_check.py` in `make check`. Five
+Opus lanes now run under `build/lanes/`: w31-freeze-3 (the last two closure
+reds, then the images), w32-reader-polling (NEWNEWS and LIST NEWSGROUPS,
+absent from the books), w32-operator-verbs (`init`, `peer list`, and a
+developer-image fault that makes an uncertain outcome observable),
+w32-client-real-node (`tools/fn_client.py` against the real 915 node on
+persvati), and w32-triage (`tools/triage.py`, review finding F1: every
+independent red of a closure in one report).
 green-audit landed earlier (d667a874, `tools/green_check.py` in `make
 check`); with the treewide and freeze manifests in the tree it reads dev as 323
 green, 84 red, 0 never and 0 absent at current digests; the reds are the
