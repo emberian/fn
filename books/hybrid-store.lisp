@@ -35,10 +35,14 @@
 (defun fn-hsig-keyring-snapshot (principal keys)
   (declare (xargs :guard t
                   :guard-hints
+                  ; `fn-cbor-valuep-bounded' too: the item encoder checks
+                  ; the bounded recognizer since the bounded codec landed,
+                  ; and its definition is withdrawn on export (books/cbor).
                   (("Goal" :in-theory (enable fn-hsig-exact-octets-p
                                                fn-hsig-keyset-p
                                                fn-stmt-item-listp
-                                               fn-cbor-valuep)))))
+                                               fn-cbor-valuep
+                                               fn-cbor-valuep-bounded)))))
   (if (and (fn-hsig-exact-octets-p principal 32)
            (fn-hsig-keyset-p keys))
       (fn-stmt-encode-items
