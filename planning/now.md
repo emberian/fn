@@ -1,7 +1,17 @@
 # Current work: native service composition and consolidation
 
-**Paused at user request, 2026-09-21.** See the [quiescence checkpoint](quiescence-2026-09-21.md)
-for preserved lane tips, stopped jobs and restart order. No autonomous work is active.
+**Resumed 2026-09-21 evening (Claude session), narrowly.** The [quiescence
+checkpoint](quiescence-2026-09-21.md) still describes every lane's preserved
+tip; none has been restarted. The one active line of work is the native v0
+matrix: the full driver now runs against the native image and reaches 123 of
+192 rows on the frozen `915d5c72` image
+([record](evidence/native-matrix-915-2026-09-22.md)). Its four disagreements
+are one gap, the native node's missing path identity. The next steps in order
+are: give the native node a path identity (config key or operator verb) so
+loop suppression can fire; freeze `dev` once into a new image so the AUTH,
+live-administration and STARTTLS rows can move; run the matrix on it; stand
+up one reachable node and use it. The v0.5/v0.6 lanes stay checkpointed until
+that node exists.
 
 Updated 2026-09-21. The goal remains the full selected two-peer v0 and v1/M6
 scope in [milestones](milestones.md#release-shape-v0-and-v1). Component tests
