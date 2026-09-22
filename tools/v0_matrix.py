@@ -1435,7 +1435,11 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         config = self.native_configs.get(node.name)
         if not self.native_image or not config:
             raise GateError("native image and both node configs are required")
-        return "FN_NATIVE_HOST={} packaging/fn-native operator {} {}".format(
+        # `env` in front: the gate starts a node as `nohup <command> &`, and
+        # nohup execs its first word, so a bare `VAR=x cmd` is "no such
+        # command" and the server is reported dead in 0.3 s.  This is the
+        # line that kept every native POST/reader row at not-exercised.
+        return "env FN_NATIVE_HOST={} packaging/fn-native operator {} {}".format(
             shlex.quote(self.native_image), shlex.quote(config),
             " ".join(shlex.quote(word) for word in words))
 

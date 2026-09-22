@@ -40,7 +40,7 @@ class NativeCommandTests(unittest.TestCase):
         candidates = self.gate.server_candidates(self.gate.a)
         self.assertEqual(candidates, [(
             v0_matrix.NATIVE_BACKEND,
-            "FN_NATIVE_HOST=/opt/fn/fn-host packaging/fn-native operator "
+            "env FN_NATIVE_HOST=/opt/fn/fn-host packaging/fn-native operator "
             "/srv/fn/a.toml run",
         )])
         command = candidates[0][1]
@@ -52,7 +52,7 @@ class NativeCommandTests(unittest.TestCase):
     def test_operator_offline_action_uses_the_same_public_subject(self):
         self.assertEqual(
             self.gate.native_operator(self.gate.b, "status"),
-            "FN_NATIVE_HOST=/opt/fn/fn-host packaging/fn-native operator "
+            "env FN_NATIVE_HOST=/opt/fn/fn-host packaging/fn-native operator "
             "/srv/fn/b.toml status",
         )
 
