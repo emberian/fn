@@ -200,7 +200,11 @@
 ; Author a succession from the current chain state with seed `sk`.
 (defun fn-prin-sign-succession (sk st new-pk)
   (declare (xargs :guard (and (fn-prin-statep st)
-                              (fn-sig-public-key-p new-pk))))
+                              (fn-sig-public-key-p new-pk))
+                  ; The payload is an octet list
+                  ; (`fn-stmt-encode-items-is-octet-list'), as for `fn-prin-id'.
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn-stmt-encode-items-of-cons)))))
   (fn-stmt-sign sk
                 (fn-prin-state-id st)
                 (fn-prin-state-incarnation st)
