@@ -17,9 +17,12 @@ The first freeze attempts (hbox, 2026-09-22 02:15Z and 02:29Z) found `dev`
 red in four books no lane had certified at their current digests
 (stx-evidence-records, checkpoint-compaction, hybrid-store, feed-connection);
 the first two are repaired (28fb4bd0), the other two are the freeze lane's.
-Opus lanes run under `build/lanes/w31-*`: freeze (hbox: the image closure,
-then production, developer and DTN images; it writes `IMAGE-READY.txt` in
-its worktree when `build/fn-host` exists), treewide-reds (landed ad0cdefd: five proof repairs
+Opus lanes run under `build/lanes/w31-*`: freeze (landed 27dc5a21 without
+an image: the closure went from 111 to 130 of 164 books, one shape under
+every red, [record](evidence/native-freeze-c28ffc30-2026-09-22.md); still
+red by name: `store-node-invariants` at `fn-sn-finish-preserves-state` and
+`nntp-auth` at `fn-auth-clear-principal-peer`), freeze-2 (a fresh lane on
+those two books, then the closure, then the images and `IMAGE-READY.txt`), treewide-reds (landed ad0cdefd: five proof repairs
 outside the image closure with their manifests, `msgid-index` certified for
 the first time; its territory reads 186 of 243 roots green, and every root
 still red sits above `hybrid-store` or `feed-connection-invariants`, which
@@ -42,9 +45,9 @@ found and did not fix: `fn-store-article-match` in `host/store-host.lisp`,
 the duplicate-versus-conflict comparison, is program-mode host code with no
 theorem naming it, against "one owner per decision").
 green-audit landed earlier (d667a874, `tools/green_check.py` in `make
-check`); with the treewide manifests in the tree it reads dev as 298 green,
-95 red, 8 never and 6 absent at current digests, the reds being the
-cascade above `hybrid-store`. Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
+check`); with the treewide and freeze manifests in the tree it reads dev as 315
+green, 75 red, 11 never and 6 absent at current digests; the treewide
+territory is being recertified on persvati from this head. Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
 step runs from the laptop: STARTTLS, the 483 before it, login, a post and a
 fresh-connection reread, on the deploy gate's exit scale. The hbox freeze,
 matrix-provision and node-deploy sequences are `tools/runbooks/`. persvati
