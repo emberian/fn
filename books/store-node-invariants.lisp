@@ -1375,6 +1375,38 @@
                              fn-snx-core-definitions)
                             (fn-record-codec-vocabulary))))))
 
+; `fn-replay-advance-txid' returns its argument unchanged unless that argument
+; is a node, so an advance that IS a node was given one.  The retention arm
+; needs this of the intermediate node it builds: the arm's own hypothesis is
+; about the advance, and the rule above is about what the advance was given.
+(local
+ (defthm fn-snt-advance-of-a-node-came-from-a-node
+   (implies (fn-node-statep (fn-replay-advance-txid node k))
+            (fn-node-statep node))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (e/d (fn-replay-advance-txid)
+                                   (fn-record-codec-vocabulary))))))
+
+; Both arms test that the advance landed exactly on the event's transaction
+; id.  That test is also what says the node was not already past it, which is
+; the hypothesis the rule above needs: either the advance moved, and
+; `fn-replay-advance-txid' moves only from at-or-before `k', or it did not
+; move and the node was already exactly at `k'.
+(local
+ (defthm fn-snt-advance-that-lands-was-not-past-it
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (natp k)
+                 (equal (fn-state-next-txid
+                         (fn-node-acceptance (fn-replay-advance-txid node k)))
+                        k))
+            (<= (fn-state-next-txid (fn-node-acceptance node)) k))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-replay-advance-txid)
+                                   (fn-record-codec-vocabulary))))))
+
 (local
  (defthm fn-snt-identity-neutral-from-idle-is-idle-at-successor
    (implies (and (fn-node-statep node)
@@ -1396,6 +1428,8 @@
                           (fn-replay-apply-identity-neutral node event)))
                         (1+ (fn-store-event-txid event)))))
    :hints (("Goal"
+            :use ((:instance fn-snt-advance-that-lands-was-not-past-it
+                             (k (fn-store-event-txid event))))
             :in-theory (e/d (fn-replay-apply-identity-neutral)
                             (fn-replay-advance-txid fn-node-statep
                              fn-record-codec-vocabulary))))))
@@ -1421,6 +1455,8 @@
                           (fn-replay-apply-retention-event node event)))
                         (1+ (fn-store-event-txid event)))))
    :hints (("Goal"
+            :use ((:instance fn-snt-advance-that-lands-was-not-past-it
+                             (k (fn-store-event-txid event))))
             :in-theory (e/d (fn-replay-apply-retention-event
                              fn-replay-complete-retention
                              fn-replay-node-with-retention)
@@ -1431,7 +1467,318 @@
                              fn-retain-matching-releasep
                              fn-record-codec-vocabulary))))))
 
-; The loop carries idleness and only moves the next txid forward.
+; The same two arms, as the linear half: each refuses unless the advance
+; landed on the event's transaction id, so a node they accepted was not past
+; it.  Stated separately from the idleness lemmas above because a `:rewrite'
+; rule from a `<=' conclusion only fires on a literal match, and the step
+; lemma below needs the fact as a linear assumption.
+(local
+ (defthm fn-snt-identity-neutral-from-idle-was-not-past-its-txid
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (natp (fn-store-event-txid event))
+                 (fn-node-statep (fn-replay-apply-identity-neutral node event)))
+            (<= (fn-state-next-txid (fn-node-acceptance node))
+                (fn-store-event-txid event)))
+   :rule-classes :linear
+   :hints (("Goal"
+            :use ((:instance fn-snt-advance-that-lands-was-not-past-it
+                             (k (fn-store-event-txid event))))
+            :in-theory (e/d (fn-replay-apply-identity-neutral)
+                            (fn-replay-advance-txid fn-node-statep
+                             fn-record-codec-vocabulary))))))
+
+(local
+ (defthm fn-snt-retention-from-idle-was-not-past-its-txid
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (natp (fn-store-event-txid event))
+                 (fn-node-statep (fn-replay-apply-retention-event node event)))
+            (<= (fn-state-next-txid (fn-node-acceptance node))
+                (fn-store-event-txid event)))
+   :rule-classes :linear
+   :hints (("Goal"
+            :use ((:instance fn-snt-advance-that-lands-was-not-past-it
+                             (k (fn-store-event-txid event))))
+            :in-theory (e/d (fn-replay-apply-retention-event
+                             fn-replay-complete-retention
+                             fn-replay-node-with-retention)
+                            (fn-replay-advance-txid fn-node-statep
+                             fn-store-retention-event-p
+                             fn-retain-admissiblep fn-retain-admit
+                             fn-retain-release fn-retain-find-id
+                             fn-retain-matching-releasep
+                             fn-record-codec-vocabulary))))))
+
+; Every store event carries a uint32 transaction id, whichever of the five
+; shapes it has.
+(local
+ (defthm fn-snt-store-event-txid-is-a-natural
+   (implies (fn-store-event-p record)
+            (natp (fn-store-event-txid record)))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal"
+            :in-theory (e/d (fn-store-event-p fn-store-event-txid
+                             fn-store-retention-event-p fn-record-p
+                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-record-uint32p)
+                            (fn-record-codec-vocabulary
+                             fn-record-msgidp fn-record-payloadp
+                             fn-record-groups-validp
+                             fn-record-metadata-bytes-p
+                             fn-stxe-bounded-octetsp fn-stxe-tokenp))))))
+
+; The three steps that can move the next transaction id only ever move it
+; forward, and the durable completion leaves it where the preparation put it.
+; Chained, that is the monotonicity half of the loop's step: the article and
+; composite arms advance, prepare and complete, and the other two advance
+; twice.
+(local
+ (defthm fn-snt-advance-is-txid-monotone
+   (<= (fn-state-next-txid (fn-node-acceptance node))
+       (fn-state-next-txid
+        (fn-node-acceptance (fn-replay-advance-txid node k))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (e/d (fn-replay-advance-txid)
+                                   (fn-record-codec-vocabulary))))))
+
+(local
+ (defthm fn-snt-prepare-is-txid-monotone
+   (<= (fn-state-next-txid (fn-node-acceptance s))
+       (fn-state-next-txid
+        (fn-node-acceptance
+         (fn-node-prepare s generation msgid payload groups
+                          obligation-id subject evidence charge))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (e/d (fn-node-prepare fn-accept-prepare
+                                    fn-node-statep fn-statep
+                                    fn-snx-core-definitions)
+                                   (fn-record-codec-vocabulary))))))
+
+(local
+ (defthm fn-snt-durable-completion-is-idle-and-keeps-the-txid
+   (implies (fn-node-pending-matchesp p txid generation)
+            (and (equal (fn-node-stage
+                         (fn-node-complete p txid generation :durable)) nil)
+                 (equal (fn-state-pending
+                         (fn-node-acceptance
+                          (fn-node-complete p txid generation :durable))) nil)
+                 (equal (fn-state-fenced
+                         (fn-node-acceptance
+                          (fn-node-complete p txid generation :durable))) nil)
+                 (equal (fn-state-next-txid
+                         (fn-node-acceptance
+                          (fn-node-complete p txid generation :durable)))
+                        (fn-state-next-txid (fn-node-acceptance p)))))
+   ; `fn-state-pending' stays CLOSED, for the reason the note further down
+   ; gives about `fn-state-next-txid': enabled, the goal becomes
+   ; (car (cddddr (fn-make-state ...))) and the accessor-of-constructor rule
+   ; the record generates no longer matches.
+   :hints (("Goal" :in-theory (e/d (fn-node-complete fn-node-pending-matchesp
+                                    fn-node-statep fn-statep
+                                    fn-snx-core-definitions)
+                                   (fn-state-pending fn-state-next-txid
+                                    fn-node-stage fn-state-fenced
+                                    fn-record-codec-vocabulary))))))
+
+; The step fact the loop's induction needs, over every arm of
+; `fn-replay-apply-record' rather than over an article record alone.
+(local
+ (defthm fn-snt-apply-event-from-idle-is-idle-and-monotone
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (fn-store-event-p record)
+                 (fn-node-statep (fn-replay-apply-record node record)))
+            (and (equal (fn-node-stage
+                         (fn-replay-apply-record node record)) nil)
+                 (equal (fn-state-pending
+                         (fn-node-acceptance
+                          (fn-replay-apply-record node record))) nil)
+                 (equal (fn-state-fenced
+                         (fn-node-acceptance
+                          (fn-replay-apply-record node record))) nil)
+                 (<= (fn-state-next-txid (fn-node-acceptance node))
+                     (fn-state-next-txid
+                      (fn-node-acceptance
+                       (fn-replay-apply-record node record))))))
+   :hints (("Goal"
+            :use ((:instance fn-snt-advance-that-lands-was-not-past-it
+                             (k (fn-store-event-txid record))))
+            :in-theory (e/d (fn-replay-apply-record)
+                            (fn-replay-advance-txid fn-node-prepare
+                             fn-node-complete fn-node-statep
+                             fn-node-pending-matchesp
+                             fn-replay-apply-retention-event
+                             fn-replay-apply-identity-neutral
+                             fn-replay-composite-record
+                             fn-store-event-p fn-store-retention-event-p
+                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-record-record-vocabulary
+                             fn-record-codec-vocabulary))))))
+
+; A preparation that actually staged moved the next transaction id by exactly
+; one: `fn-accept-prepare' writes `(1+ (fn-state-next-txid s))' and pins the
+; pending there.  A preparation that refused returns its argument, whose stage
+; is empty, and `fn-node-pending-matchesp' wants a stage.
+(local
+ (defthm fn-snt-prepare-that-stages-advances-by-one
+   (implies (and (equal (fn-node-stage s) nil)
+                 (equal (fn-state-pending (fn-node-acceptance s)) nil)
+                 (fn-node-pending-matchesp
+                  (fn-node-prepare s generation msgid payload groups
+                                   obligation-id subject evidence charge)
+                  txid gen))
+            (equal (fn-state-next-txid
+                    (fn-node-acceptance
+                     (fn-node-prepare s generation msgid payload groups
+                                      obligation-id subject evidence charge)))
+                   (1+ (fn-state-next-txid (fn-node-acceptance s)))))
+   :hints (("Goal" :in-theory (e/d (fn-node-prepare fn-accept-prepare
+                                    fn-node-pending-matchesp
+                                    fn-node-statep fn-statep
+                                    fn-snx-core-definitions)
+                                   (fn-state-next-txid fn-state-pending
+                                    fn-node-stage fn-state-fenced
+                                    fn-record-codec-vocabulary))))))
+
+; And so every arm of the step lands the node at the successor of the event's
+; own transaction id: the two that only advance land there directly, and the
+; two that prepare and complete land there because the advance put the node at
+; the event's id, the preparation moved it by one and the durable completion
+; left it alone.
+; `fn-record-record-vocabulary' is withdrawn in both step lemmas below: with
+; the record accessors open the arm's transaction id reaches the goal as
+; `(cadr record)' and every rule stated over `fn-record-txid' or
+; `fn-store-event-txid' stops matching.
+(local
+ (defthm fn-snt-apply-event-from-idle-is-at-the-successor
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (fn-store-event-p record)
+                 (fn-node-statep (fn-replay-apply-record node record)))
+            (equal (fn-state-next-txid
+                    (fn-node-acceptance (fn-replay-apply-record node record)))
+                   (1+ (fn-store-event-txid record))))
+   :hints (("Goal"
+            :use ((:instance fn-snt-advance-that-lands-was-not-past-it
+                             (k (fn-store-event-txid record))))
+            :in-theory (e/d (fn-replay-apply-record)
+                            (fn-replay-advance-txid fn-node-prepare
+                             fn-node-complete fn-node-statep
+                             fn-node-pending-matchesp
+                             fn-replay-apply-retention-event
+                             fn-replay-apply-identity-neutral
+                             fn-replay-composite-record
+                             fn-store-event-p fn-store-retention-event-p
+                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-record-record-vocabulary
+                             fn-record-codec-vocabulary))))))
+
+; And the same step's other arithmetic half: a node the step accepted was not
+; past the event's transaction id.  With the successor equation above, this is
+; what closes the loop's monotonicity by linear arithmetic.
+(local
+ (defthm fn-snt-apply-event-from-idle-was-not-past-its-txid
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (fn-store-event-p record)
+                 (fn-node-statep (fn-replay-apply-record node record)))
+            (<= (fn-state-next-txid (fn-node-acceptance node))
+                (fn-store-event-txid record)))
+   :rule-classes :linear
+   :hints (("Goal"
+            :use ((:instance fn-snt-advance-that-lands-was-not-past-it
+                             (k (fn-store-event-txid record))))
+            :in-theory (e/d (fn-replay-apply-record)
+                            (fn-replay-advance-txid fn-node-prepare
+                             fn-node-complete fn-node-statep
+                             fn-node-pending-matchesp
+                             fn-replay-apply-retention-event
+                             fn-replay-apply-identity-neutral
+                             fn-replay-composite-record
+                             fn-store-event-p fn-store-retention-event-p
+                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-record-record-vocabulary
+                             fn-record-codec-vocabulary))))))
+
+; The same step's arithmetic half as a linear fact: the loop induction closes
+; its monotonicity conjunct by transitivity with the induction hypothesis, and
+; a `:rewrite' rule from a `<=' conclusion does not reach that.
+(local
+ (defthm fn-snt-apply-event-from-idle-is-txid-monotone
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (fn-store-event-p record)
+                 (fn-node-statep (fn-replay-apply-record node record)))
+            (<= (fn-state-next-txid (fn-node-acceptance node))
+                (fn-state-next-txid
+                 (fn-node-acceptance (fn-replay-apply-record node record)))))
+   :rule-classes :linear
+   :hints (("Goal"
+            :use fn-snt-apply-event-from-idle-is-idle-and-monotone
+            :in-theory (disable fn-replay-apply-record fn-node-statep
+                                fn-snt-apply-event-from-idle-is-idle-and-monotone)))))
+
+; The loop carries idleness, and separately it only moves the next txid
+; forward.  The two halves induct apart: with all five conclusions under one
+; induction the arithmetic conjunct pushes a subgoal less general than its own
+; parent and the attempt fails (hbox certify-20260922T110406Z-2884310).  The
+; combined statement below is their conjunction and is what the callers cite.
+(local
+ (defthm fn-snt-replay-loop-from-idle-is-idle
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (equal (fn-replay-result-kind
+                         (fn-replay-loop node records sequence)) :ok))
+            (and (fn-node-statep
+                  (fn-replay-result-node (fn-replay-loop node records sequence)))
+                 (equal (fn-node-stage
+                         (fn-replay-result-node
+                          (fn-replay-loop node records sequence))) nil)
+                 (equal (fn-state-pending
+                         (fn-node-acceptance
+                          (fn-replay-result-node
+                           (fn-replay-loop node records sequence)))) nil)
+                 (equal (fn-state-fenced
+                         (fn-node-acceptance
+                          (fn-replay-result-node
+                           (fn-replay-loop node records sequence)))) nil)))
+   :hints (("Goal" :induct (fn-replay-loop node records sequence)
+            :in-theory (e/d (fn-replay-loop)
+                            (fn-replay-apply-record fn-node-statep))))))
+
+(local
+ (defthm fn-snt-replay-loop-from-idle-is-txid-monotone
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (equal (fn-replay-result-kind
+                         (fn-replay-loop node records sequence)) :ok))
+            (<= (fn-state-next-txid (fn-node-acceptance node))
+                (fn-state-next-txid
+                 (fn-node-acceptance
+                  (fn-replay-result-node
+                   (fn-replay-loop node records sequence))))))
+   :rule-classes (:rewrite :linear)
+   :hints (("Goal" :induct (fn-replay-loop node records sequence)
+            :in-theory (e/d (fn-replay-loop)
+                            (fn-replay-apply-record fn-node-statep))))))
+
 (local
  (defthm fn-snt-replay-loop-from-idle-is-idle-and-monotone
    (implies (and (fn-node-statep node)
@@ -1458,9 +1805,13 @@
                       (fn-node-acceptance
                        (fn-replay-result-node
                         (fn-replay-loop node records sequence)))))))
-   :hints (("Goal" :induct (fn-replay-loop node records sequence)
-            :in-theory (e/d (fn-replay-loop)
-                            (fn-replay-apply-record fn-node-statep))))))
+   :hints (("Goal"
+            :use (fn-snt-replay-loop-from-idle-is-idle
+                  fn-snt-replay-loop-from-idle-is-txid-monotone)
+            :in-theory (disable fn-replay-loop fn-replay-apply-record
+                                fn-node-statep
+                                fn-snt-replay-loop-from-idle-is-idle
+                                fn-snt-replay-loop-from-idle-is-txid-monotone)))))
 
 ; The txid bound, as its own list recursion.  fn-sf-record-listp carries a
 ; `lower' that the loop's induction does not move, so the induction hypothesis
@@ -1472,8 +1823,11 @@
        ; the natp is carried, not forward chained: in the loop induction the
        ; contradiction that discharges the step is txid < bound < txid+1,
        ; which linear arithmetic sees only over integers.
-       (and (natp (fn-record-txid (car records)))
-            (< (fn-record-txid (car records)) bound)
+       ; `fn-store-event-txid', not `fn-record-txid': `fn-sf-record-listp'
+       ; bounds the transaction id of every store event in the history, and
+       ; since 6ab2c783 and 4bb7bb3d those are not all article records.
+       (and (natp (fn-store-event-txid (car records)))
+            (< (fn-store-event-txid (car records)) bound)
             (fn-snt-txids-below (cdr records) bound))
      t)))
 
@@ -1482,7 +1836,7 @@
    (implies (fn-sf-record-listp records sequence lower bound)
             (fn-snt-txids-below records bound))
    :hints (("Goal" :induct (fn-sf-record-listp records sequence lower bound)
-            :in-theory (disable fn-record-txid)))))
+            :in-theory (disable fn-record-txid fn-store-event-txid)))))
 
 (local
  (defthm fn-snt-replay-loop-from-idle-is-under-bound
@@ -1502,7 +1856,7 @@
    :hints (("Goal" :induct (fn-replay-loop node records sequence)
             :in-theory (e/d (fn-replay-loop)
                             (fn-replay-apply-record fn-node-statep
-                             fn-record-txid))))))
+                             fn-record-txid fn-store-event-txid))))))
 
 (local
  (defthm fn-snt-initial-node-is-idle
