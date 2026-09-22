@@ -75,10 +75,11 @@ same eight reds on the same forms: `store-node-traces`,
 `store-node-resolution`, `store-observed`, and guard conjectures in
 `native-admin`, `native-control`, `native-hybrid-control` and
 `native-operator`, plus one `native-operator-tests` assertion, all the
-freeze-3 lane's), w32-operator-verbs (done at 683a1bf0: `init`, `peer list`, and a
+freeze-3 lane's), w32-operator-verbs (landed a52138a9: `init`, `peer list`, and a
 developer-image fault that makes an uncertain outcome observable at exit 3
-with ACL2's word; held unmerged because its books sit above
-`store-node-traces` and the merge gate waits for the closure),
+with ACL2's word; its books sit above `store-node-traces`, so the merge was
+discharged the same way, a provisional wave naming the same eight reds on
+the same forms as before it),
 w32-owner-defects (landed: three node defects the client found against
 the real 915 node, [record](evidence/owner-defects-2026-09-22.md); the
 host now carries an unconsumed suffix into the next step, supplies a fresh
