@@ -66,8 +66,16 @@ time from the shell, fourteen seconds to the red theorem of
 spiking ACL2's provisional certification, which would make every red in a
 closure visible in one wave. Five
 Opus lanes now run under `build/lanes/`: w31-freeze-3 (the last two closure
-reds, then the images), w32-reader-polling (NEWNEWS and LIST NEWSGROUPS,
-absent from the books), w32-operator-verbs (done at 683a1bf0: `init`, `peer list`, and a
+reds, then the images), w32-reader-polling (landed 39a61346: NEWNEWS from the article's own
+injection stamp under a parse budget it refuses past, five keystones with
+teeth, 77 books certified on persvati; LIST NEWSGROUPS already existed and
+the spec now says what it does; the merge was discharged by two provisional
+triage waves over the 95-book native closure, before and after, naming the
+same eight reds on the same forms: `store-node-traces`,
+`store-node-resolution`, `store-observed`, and guard conjectures in
+`native-admin`, `native-control`, `native-hybrid-control` and
+`native-operator`, plus one `native-operator-tests` assertion, all the
+freeze-3 lane's), w32-operator-verbs (done at 683a1bf0: `init`, `peer list`, and a
 developer-image fault that makes an uncertain outcome observable at exit 3
 with ACL2's word; held unmerged because its books sit above
 `store-node-traces` and the merge gate waits for the closure),
