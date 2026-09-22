@@ -130,11 +130,11 @@
  (equal (fn-fc-drive *fct-clear-refused* (list *fct-200* :tls-up *fct-281*))
         '((:refused 200 nil) (:invalid nil t) (:closed 281 nil))))
 
-; Out of order, and the gate says so: the machine's own states only ever
-; produce the witnesses above, and these hand-written lists are what the
-; property rejects.  A ready before the 382; a credential before the TLS
-; report; a 281 read before the TLS report does not count as the login; a
-; TLS report the machine refused does not count as the handshake.
+; The property has teeth of its own: these hand-written observation lists,
+; which no connection above produced, are the orders it rejects.  A ready
+; before the 382; a credential before the TLS report; a 281 read before the
+; TLS report does not count as the login; a TLS report the machine refused
+; does not count as the handshake.
 (assert-event (not (fn-fc-gate-okp 0 t '((:ready 200 nil)))))
 (assert-event (not (fn-fc-gate-okp 0 t '((:starttls 200 nil) (:tls 382 nil)
                                          (:auth-user 381 nil)))))
