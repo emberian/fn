@@ -1123,8 +1123,10 @@
                                    (:d fn-node-statep) (:d fn-cfgp)))))))
 
 ; And the configured reader: a null peer beside a checked node and
-; configuration is the recognizer's second reader form.
-(local (defthm fn-peer-sessionp-of-make-session-reader-configured
+; configuration is the recognizer's second reader form.  Exported, not local:
+; books/nntp-auth.lisp drops a principal-derived peer role back to this shape
+; (fn-auth-clear-principal-peer, 64a80197) and cannot open the recognizer.
+(defthm fn-peer-sessionp-of-make-session-reader-configured
   (implies (and (fn-post-sessionp base)
                 (fn-peer-transferp transfer)
                 (natp inflight)
@@ -1134,7 +1136,7 @@
             (fn-peer-make-session base nil transfer inflight node cfg)))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
-                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+                                   (:d fn-node-statep) (:d fn-cfgp))))))
 
 ; The other reader shape a step rebuilds: the node and configuration of a
 ; reader session it already has, whichever of the two reader forms that

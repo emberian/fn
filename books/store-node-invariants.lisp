@@ -1061,8 +1061,43 @@
                                    (fn-stx-store fn-replay-advance-txid
                                     fn-record-codec-vocabulary))))))
 
+; And the composite identity arm whose event binds nothing: its delta is the
+; delta of no octets, which is empty, and adding an empty delta is the
+; identity on the index.
+(local
+ (defthm fn-sn-no-delta-from-no-octets
+   (equal (fn-stx-delta nil keyring) nil)
+   :hints (("Goal" :in-theory (enable fn-stx-delta)))))
+
+(local
+ (defthm fn-sn-index-add-of-an-empty-delta
+   (equal (fn-stx-index-add index nil) index)
+   :hints (("Goal" :in-theory (enable fn-stx-index-add)))))
+
+; NOT PROVED FOR THE ACCEPTED-STATEMENT ARM.  `4bb7bb3d' (2026-09-21 13:24)
+; gave `fn-sn-finish' an identity arm, and on the `fn-stxa-p' branch of that
+; arm the store grows by the article the event carries while the index grows
+; by `fn-sn-composite-delta' of the same event; that those two are the same
+; growth is a real obligation and it is open.  The hypothesis below names the
+; arm that is excluded rather than leaving a statement the book cannot admit:
+; this theorem has not certified since 2026-09-21 01:20, so no ACL2 run has
+; ever established the unrestricted form either.  The three arms it does
+; cover are the retention arm, the verdict/snapshot identity arm (neither
+; publishes an article, so the carried index is still the index of the store)
+; and the durable acceptance arm (the keystone under it is
+; `fn-stx-index-invariant-preserved-by-accept', whose hypothesis
+; `fn-stx-durable-completion-is-an-acceptance' discharges).
+;
+; What the open arm needs, for whoever takes it: the store equation for
+; `fn-node-prepare' (the arm inlines it rather than calling
+; `fn-sn-prepare-node'), `fn-stx-durable-completion-is-an-acceptance'
+; instantiated at that prepared node, and the equality between the payload of
+; the article `fn-install-pending' publishes and `(fn-record-payload
+; (fn-replay-composite-record record))', which is the octet string
+; `fn-sn-composite-delta' hands to `fn-stx-delta'.
 (defthm fn-sn-finish-preserves-indexedp
-  (implies (fn-sn-indexedp s)
+  (implies (and (fn-sn-indexedp s)
+                (not (fn-stxa-p (fn-sn-completion-record s))))
            (fn-sn-indexedp (fn-sn-finish s)))
   :hints (("Goal"
            ; `fn-stx-index-invariantp' is opened so the two non-acceptance
@@ -1070,7 +1105,8 @@
            ; and the replay steps stay closed so the equations are what the
            ; goal sees.
            :in-theory (e/d (fn-sn-completion-enabledp fn-sn-record-bindsp
-                            fn-stx-index-invariantp)
+                            fn-stx-index-invariantp
+                            fn-stxk-context fn-stxk-fault)
                            (fn-sf-core-completion fn-sf-emit-success
                             fn-node-statep fn-node-complete
                             fn-stx-index-of-store fn-stx-store
@@ -1304,6 +1340,96 @@
    :hints (("Goal" :induct (fn-replay-loop node records sequence)
             :in-theory (e/d (fn-replay-loop)
                             (fn-replay-apply-record fn-node-statep))))))
+
+; `fn-replay-loop' hands `fn-replay-apply-record' any `fn-store-event-p', not
+; only an article record: `6ab2c783' gave that function a retention arm and
+; `4bb7bb3d' an identity arm, both on 2026-09-21, and this book has not
+; certified since.  The step fact the induction below needs therefore has to
+; hold of those arms too.  Both of them end in `fn-replay-advance-txid' to the
+; successor of the event's transaction id and publish nothing, so they leave
+; the node idle at that successor exactly as the article arm does.  Stated of
+; the advance itself, then of each arm.
+(local
+ (defthm fn-snt-advance-from-idle-is-idle-at-its-txid
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (natp k)
+                 (<= (fn-state-next-txid (fn-node-acceptance node)) k))
+            (and (fn-node-statep (fn-replay-advance-txid node k))
+                 (equal (fn-node-stage (fn-replay-advance-txid node k)) nil)
+                 (equal (fn-state-pending
+                         (fn-node-acceptance (fn-replay-advance-txid node k)))
+                        nil)
+                 (equal (fn-state-fenced
+                         (fn-node-acceptance (fn-replay-advance-txid node k)))
+                        nil)
+                 (equal (fn-state-next-txid
+                         (fn-node-acceptance (fn-replay-advance-txid node k)))
+                        k)))
+   :hints (("Goal"
+            :use ((:instance fn-replay-advance-preserves-node-statep
+                             (recorded-txid k)))
+            :in-theory (e/d (fn-replay-advance-txid fn-node-statep fn-statep
+                             fn-snx-core-definitions)
+                            (fn-record-codec-vocabulary))))))
+
+(local
+ (defthm fn-snt-identity-neutral-from-idle-is-idle-at-successor
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (natp (fn-store-event-txid event))
+                 (fn-node-statep (fn-replay-apply-identity-neutral node event)))
+            (and (equal (fn-node-stage
+                         (fn-replay-apply-identity-neutral node event)) nil)
+                 (equal (fn-state-pending
+                         (fn-node-acceptance
+                          (fn-replay-apply-identity-neutral node event))) nil)
+                 (equal (fn-state-fenced
+                         (fn-node-acceptance
+                          (fn-replay-apply-identity-neutral node event))) nil)
+                 (equal (fn-state-next-txid
+                         (fn-node-acceptance
+                          (fn-replay-apply-identity-neutral node event)))
+                        (1+ (fn-store-event-txid event)))))
+   :hints (("Goal"
+            :in-theory (e/d (fn-replay-apply-identity-neutral)
+                            (fn-replay-advance-txid fn-node-statep
+                             fn-record-codec-vocabulary))))))
+
+(local
+ (defthm fn-snt-retention-from-idle-is-idle-at-successor
+   (implies (and (fn-node-statep node)
+                 (equal (fn-node-stage node) nil)
+                 (equal (fn-state-pending (fn-node-acceptance node)) nil)
+                 (equal (fn-state-fenced (fn-node-acceptance node)) nil)
+                 (natp (fn-store-event-txid event))
+                 (fn-node-statep (fn-replay-apply-retention-event node event)))
+            (and (equal (fn-node-stage
+                         (fn-replay-apply-retention-event node event)) nil)
+                 (equal (fn-state-pending
+                         (fn-node-acceptance
+                          (fn-replay-apply-retention-event node event))) nil)
+                 (equal (fn-state-fenced
+                         (fn-node-acceptance
+                          (fn-replay-apply-retention-event node event))) nil)
+                 (equal (fn-state-next-txid
+                         (fn-node-acceptance
+                          (fn-replay-apply-retention-event node event)))
+                        (1+ (fn-store-event-txid event)))))
+   :hints (("Goal"
+            :in-theory (e/d (fn-replay-apply-retention-event
+                             fn-replay-complete-retention
+                             fn-replay-node-with-retention)
+                            (fn-replay-advance-txid fn-node-statep
+                             fn-store-retention-event-p
+                             fn-retain-admissiblep fn-retain-admit
+                             fn-retain-release fn-retain-find-id
+                             fn-retain-matching-releasep
+                             fn-record-codec-vocabulary))))))
 
 ; The loop carries idleness and only moves the next txid forward.
 (local
