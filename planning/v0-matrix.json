@@ -24,9 +24,9 @@
     "accepted": 141,
     "refused": 34,
     "uncertain": 3,
-    "not-exercised": 21,
+    "not-exercised": 27,
     "not-built": 1,
-    "total": 200,
+    "total": 206,
     "disagreed": 7,
     "faulted": 0,
     "independent": 2,
@@ -310,13 +310,19 @@
         "V0-TRANSIT-CHECK-DUP-AB",
         "V0-TRANSIT-CHECK-DUP-BA",
         "V0-TRANSIT-TAKETHIS-DUP-AB",
-        "V0-TRANSIT-TAKETHIS-DUP-BA"
+        "V0-TRANSIT-TAKETHIS-DUP-BA",
+        "V0-TRANSIT-TLS-AB",
+        "V0-TRANSIT-TLS-BA",
+        "V0-TRANSIT-AUTHINFO-AB",
+        "V0-TRANSIT-AUTHINFO-BA",
+        "V0-TRANSIT-TLS-WRONG-ANCHOR",
+        "V0-TRANSIT-AUTHINFO-WRONG"
       ],
       "counts": {
         "accepted": 16,
         "refused": 10,
         "uncertain": 0,
-        "not-exercised": 0,
+        "not-exercised": 6,
         "not-built": 0
       },
       "disagreed": 0
@@ -4964,6 +4970,190 @@
       "owner": null
     },
     {
+      "id": "V0-TRANSIT-TLS-AB",
+      "feature": "F-TRANSIT",
+      "feature_title": "transit inbound, A to B and B to A",
+      "title": "the owner's feed reaches the peer over STARTTLS, the peer's certificate verified against the record's anchor and server name",
+      "node": null,
+      "direction": "ab",
+      "requirements": [
+        "REP-005",
+        "HST-004"
+      ],
+      "scenarios": [
+        "SCN-024"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "the article's arrival under a target that refuses AUTHINFO before TLS and answers an unauthenticated IHAVE 480 is what shows the channel; the matrix does not see the feed's own socket, and OpenSSL's chain and hostname checks are trusted integration (PRF-047)",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-TRANSIT-TLS-BA",
+      "feature": "F-TRANSIT",
+      "feature_title": "transit inbound, A to B and B to A",
+      "title": "the owner's feed reaches the peer over STARTTLS, the peer's certificate verified against the record's anchor and server name",
+      "node": null,
+      "direction": "ba",
+      "requirements": [
+        "REP-005",
+        "HST-004"
+      ],
+      "scenarios": [
+        "SCN-024"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "the article's arrival under a target that refuses AUTHINFO before TLS and answers an unauthenticated IHAVE 480 is what shows the channel; the matrix does not see the feed's own socket, and OpenSSL's chain and hostname checks are trusted integration (PRF-047)",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-TRANSIT-AUTHINFO-AB",
+      "feature": "F-TRANSIT",
+      "feature_title": "transit inbound, A to B and B to A",
+      "title": "the owner's feed logs in with AUTHINFO as the principal the peer's record binds before it offers, and the peer takes the offer in that role",
+      "node": null,
+      "direction": "ab",
+      "requirements": [
+        "REP-005",
+        "HST-004"
+      ],
+      "scenarios": [
+        "SCN-024"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "the same arrival: an unauthenticated offer of the same article is 480 on the target, so the feed's offer came on a connection that logged in; PRF-051's keystones are what say the feed sends no offer before the 281",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-TRANSIT-AUTHINFO-BA",
+      "feature": "F-TRANSIT",
+      "feature_title": "transit inbound, A to B and B to A",
+      "title": "the owner's feed logs in with AUTHINFO as the principal the peer's record binds before it offers, and the peer takes the offer in that role",
+      "node": null,
+      "direction": "ba",
+      "requirements": [
+        "REP-005",
+        "HST-004"
+      ],
+      "scenarios": [
+        "SCN-024"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "the same arrival: an unauthenticated offer of the same article is 480 on the target, so the feed's offer came on a connection that logged in; PRF-051's keystones are what say the feed sends no offer before the 281",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-TRANSIT-TLS-WRONG-ANCHOR",
+      "feature": "F-TRANSIT",
+      "feature_title": "transit inbound, A to B and B to A",
+      "title": "a feed whose record names an anchor that did not issue the peer's certificate delivers nothing, and both owners stay up",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "HST-004"
+      ],
+      "scenarios": [
+        "SCN-024"
+      ],
+      "verdict": "not-exercised",
+      "expected": "refused",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-TRANSIT-AUTHINFO-WRONG",
+      "feature": "F-TRANSIT",
+      "feature_title": "transit inbound, A to B and B to A",
+      "title": "a feed whose profile carries a wrong password delivers nothing, and both owners stay up",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "HST-004"
+      ],
+      "scenarios": [
+        "SCN-024"
+      ],
+      "verdict": "not-exercised",
+      "expected": "refused",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
       "id": "V0-FEED-QUEUE",
       "feature": "F-FEED",
       "feature_title": "the owner-driven outbound feed",
@@ -5963,7 +6153,13 @@
     ],
     "HST-004": [
       "V0-NODE-CONFIG-A",
-      "V0-NODE-CONFIG-B"
+      "V0-NODE-CONFIG-B",
+      "V0-TRANSIT-TLS-AB",
+      "V0-TRANSIT-TLS-BA",
+      "V0-TRANSIT-AUTHINFO-AB",
+      "V0-TRANSIT-AUTHINFO-BA",
+      "V0-TRANSIT-TLS-WRONG-ANCHOR",
+      "V0-TRANSIT-AUTHINFO-WRONG"
     ],
     "NNT-001": [
       "V0-AUTH-ADVERTISED-A",
@@ -6149,6 +6345,10 @@
       "V0-MEDIA-IMPORT"
     ],
     "REP-005": [
+      "V0-TRANSIT-TLS-AB",
+      "V0-TRANSIT-TLS-BA",
+      "V0-TRANSIT-AUTHINFO-AB",
+      "V0-TRANSIT-AUTHINFO-BA",
       "V0-FEED-QUEUE",
       "V0-FEED-OFFER",
       "V0-FEED-ONCE"
@@ -6432,6 +6632,12 @@
       "V0-INN-INTEROP"
     ],
     "SCN-024": [
+      "V0-TRANSIT-TLS-AB",
+      "V0-TRANSIT-TLS-BA",
+      "V0-TRANSIT-AUTHINFO-AB",
+      "V0-TRANSIT-AUTHINFO-BA",
+      "V0-TRANSIT-TLS-WRONG-ANCHOR",
+      "V0-TRANSIT-AUTHINFO-WRONG",
       "V0-FEED-QUEUE",
       "V0-FEED-OFFER",
       "V0-FEED-ONCE",
@@ -6447,5 +6653,5 @@
       "V0-BP-REPLAY"
     ]
   },
-  "rows_digest": "1d6873facd1bdfe4ab62cadb8dfe82f36edc930aafc055bdc6031a999cc761a7"
+  "rows_digest": "38368b328eacb58b620d8f5f6e5d0267ce736783d6351449434df2ae487d6cc2"
 }

@@ -2,7 +2,16 @@
 
 Both peers are saved-image owner processes. Python creates private credentials,
 certificates and configuration, starts the processes, and observes public NNTP.
+
+Each test prints one `NATIVE-PROTECTED-WITNESS <json>` line when its
+assertions have passed; tools/v0_matrix.py's native slice maps those lines,
+and nothing else, to its V0-TRANSIT-TLS / V0-TRANSIT-AUTHINFO rows.  What a
+line establishes is stated by the configuration it ran under: the target
+requires authentication and refuses AUTHINFO before TLS (`required = true`,
+`protected_only = true`), and the source's record for it names STARTTLS,
+the target's certificate as the only anchor, and the credential profile.
 """
+import json
 import os
 from pathlib import Path
 import re
@@ -153,6 +162,10 @@ class NativeProtectedPeeringTests(unittest.TestCase):
                             return bytes(article)
                         article.extend(line[1:] if line.startswith(b"..") else line)
 
+    @staticmethod
+    def witness(record):
+        print("NATIVE-PROTECTED-WITNESS " + json.dumps(record, sort_keys=True), flush=True)
+
     def test_reciprocal_starttls_authinfo_transfer_and_reconnect(self):
         a = self.initialize("protected-a", free_port(), "b-at-a", "b-secret")
         b = self.initialize("protected-b", free_port(), "a-at-b", "a-secret")
@@ -161,23 +174,41 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         self.start(a)
         self.start(b)
 
-        for source, target, label in ((a, b, "a-to-b"), (b, a, "b-to-a")):
+        transit = {}
+        for source, target, way in ((a, b, "ab"), (b, a, "ba")):
+            label = "a-to-b" if way == "ab" else "b-to-a"
             message_id = "<protected-{}@example.invalid>".format(label)
             self.post(source, message_id, label)
-            self.assertEqual(self.await_article(target, message_id),
-                             self.await_article(source, message_id))
-            self.assertTrue(self.duplicate_offer(target, message_id).startswith(b"480 "))
+            identical = (self.await_article(target, message_id)
+                         == self.await_article(source, message_id))
+            self.assertTrue(identical)
+            # The same offer on a connection that did not log in is 480: the
+            # article above arrived on one that did.
+            reader_offer = self.duplicate_offer(target, message_id)
+            self.assertTrue(reader_offer.startswith(b"480 "))
+            transit[way] = {"identical": identical,
+                            "unauthenticated_offer": reader_offer.decode(
+                                "ascii", "replace").strip()}
 
         # Drop both processes after durable acknowledgements, then demonstrate
         # fresh TLS and AUTHINFO sessions in both directions after restart.
         self.stop_all()
         self.start(a)
         self.start(b)
-        for source, target, label in ((a, b, "a-reconnect"), (b, a, "b-reconnect")):
+        reconnect = {}
+        for source, target, way in ((a, b, "ab"), (b, a, "ba")):
+            label = "a-reconnect" if way == "ab" else "b-reconnect"
             message_id = "<protected-{}@example.invalid>".format(label)
             self.post(source, message_id, label)
-            self.assertEqual(self.await_article(target, message_id),
-                             self.await_article(source, message_id))
+            identical = (self.await_article(target, message_id)
+                         == self.await_article(source, message_id))
+            self.assertTrue(identical)
+            reconnect[way] = {"identical": identical}
+        self.witness({
+            "kind": "protected-feed", "security": "starttls", "auth": "authinfo",
+            "target_policy": {"required": True, "protected_only": True},
+            "transit": transit, "reconnect": reconnect,
+            "identity": {"a": a["identities"][-1], "b": b["identities"][-1]}})
 
     def test_bad_outbound_password_yields_authenticated_430_observation(self):
         a = self.initialize("bad-auth-a", free_port(), "b-at-a", "b-secret")
@@ -191,6 +222,9 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         self.assert_not_received(b, message_id)
         self.assertIsNone(a["process"].poll())
         self.assertIsNone(b["process"].poll())
+        self.witness({"kind": "protected-refusal", "case": "wrong-password",
+                      "delivered": False, "source_alive": True, "target_alive": True,
+                      "identity": {"a": a["identities"][-1], "b": b["identities"][-1]}})
 
     def test_untrusted_certificate_yields_430_and_feed_journal_evidence(self):
         a = self.initialize("bad-cert-a", free_port(), "b-at-a", "b-secret")
@@ -207,6 +241,10 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         self.assertTrue(journal.is_file(), "accepted post produced no feed journal evidence")
         self.assertIsNone(a["process"].poll())
         self.assertIsNone(b["process"].poll())
+        self.witness({"kind": "protected-refusal", "case": "wrong-anchor",
+                      "delivered": False, "journal": True, "source_alive": True,
+                      "target_alive": True,
+                      "identity": {"a": a["identities"][-1], "b": b["identities"][-1]}})
 
 
 if __name__ == "__main__":
