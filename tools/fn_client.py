@@ -21,8 +21,10 @@ that answers `441 posting failed; the outcome is uncertain, do not repost`
 The three outcomes stay distinct out to the exit code (AGENTS.md, D13):
 
     0   done, or accepted -- the node answered and the action happened
-    1   refused -- the node answered 4xx or 5xx to the action; its line is printed
-    3   uncertain -- the connection or the TLS layer failed, or an article's
+    1   refused -- the node answered 4xx or 5xx to the action; its line is printed.
+        Also the node's certificate failing to verify against --cafile: nothing
+        was sent after STARTTLS, so what happened is known.
+    3   uncertain -- the connection or the TLS handshake failed, or an article's
         text was sent and no final reply came back.  An uncertain post prints
         the Message-ID it used so the caller can settle it with `show`.
     2   usage
@@ -154,13 +156,23 @@ class Client:
 
     def start_tls(self) -> None:
         context = ssl.create_default_context(cafile=self.args.cafile)
+        # The 382 is recorded before the handshake, so a handshake that fails
+        # still shows the node agreed to one.
+        status = self.cmd("STARTTLS")[0]
+        if not status.startswith("382"):
+            raise Stop(UNCERTAIN, "no TLS layer: the node answered %s to STARTTLS" % status)
         try:
-            status = self.session.starttls(context)
+            self.session.upgrade(context)
+        except ssl.SSLCertVerificationError as exc:
+            # Not uncertain: what happened is known exactly.  The peer did not
+            # prove it holds the certificate --cafile names, this side ended
+            # the handshake, and no command went to it after the 382.  The
+            # action was refused, by this client, before it began.
+            raise Stop(REFUSED, "the certificate %s presented did not verify against --cafile "
+                                "%s (%s); nothing was sent after STARTTLS"
+                       % (self.node, self.args.cafile, exc.verify_message or exc))
         except (ssl.SSLError, OSError, Disconnected) as exc:
             raise Stop(UNCERTAIN, "the TLS handshake with %s failed: %s" % (self.node, exc))
-        self.record(status)
-        if self.session.tls is None:
-            raise Stop(UNCERTAIN, "no TLS layer: the node answered %s to STARTTLS" % status)
 
     def log_in(self) -> None:
         # unreachable-in-composition: `open` reaches here only after
@@ -297,7 +309,10 @@ class Client:
         if not status.startswith("220"):
             return Result(REFUSED, status, {"article": token}, "")
         fields = status.split()
-        one = article(number(fields[1]) if len(fields) > 1 else None, body)
+        # RFC 3977 section 6.2.1: retrieval by Message-ID answers `220 0`,
+        # and 0 is not an article number; --json says null, as `render` does.
+        found = number(fields[1]) if len(fields) > 1 else None
+        one = article(found or None, body)
         return Result(DONE, "%s %s" % (self.node, one["message_id"] or token),
                       {"articles": [one]}, render(one))
 
