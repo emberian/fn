@@ -156,6 +156,16 @@
                            (fn-cbor-decode-unsigned
                             fn-cbor-decode-bytes)))))
 
+; `fn-cbor-valuep' is `fn-cbor-valuep-bounded' at `*fn-cbor-max-bytes*' since
+; the 2026-09-21 bounded CBOR profile, so every hint in this book that opens
+; the recognizer opens the bounded one with it; otherwise the goal stops at
+; `(FN-CBOR-VALUEP-BOUNDED (FN-CBOR-RESULT-VALUE ...) 65535)' with the
+; success-domain facts sitting unused beside it (hbox
+; certify-20260922T154019Z-3059897).  Only the three domain lemmas below open
+; it: with it open in the re-encoding lemmas further down the goal inducts
+; without end (`fn-cpc-read-uint-of-encoding' past the 900 s budget, hbox
+; certify-20260922T161701Z-3081079), and those lemmas do not need to look
+; inside the recognizer at all.
 (defthm fn-cpc-read-item-domain
   (implies (and (fn-cbor-octet-listp octets)
                 (fn-cbor-result-okp (fn-cpc-read-item octets)))
@@ -171,7 +181,8 @@
                             (additional (- (car octets) 64))
                             (tail (cdr octets)))
                  fn-cpc-read-item-shrinks)
-           :in-theory (e/d (fn-cpc-read-item fn-cbor-valuep fn-cbor-error
+           :in-theory (e/d (fn-cpc-read-item fn-cbor-valuep
+                            fn-cbor-valuep-bounded fn-cbor-error
                             fn-cbor-result-okp)
                            (fn-cbor-decode-unsigned fn-cbor-decode-bytes
                             fn-cbor-result-value fn-cbor-result-rest
@@ -210,7 +221,8 @@
                 (< (len (fn-record-parse-rest (fn-cpc-read-uint octets)))
                    (len octets))))
   :hints (("Goal" :use fn-cpc-read-item-domain
-           :in-theory (e/d (fn-cbor-valuep) (fn-cpc-read-item-domain)))))
+           :in-theory (e/d (fn-cbor-valuep fn-cbor-valuep-bounded)
+                           (fn-cpc-read-item-domain)))))
 
 (defthm fn-cpc-read-bytes-domain
   (implies (and (fn-cbor-octet-listp octets)
@@ -224,7 +236,8 @@
                 (< (len (fn-record-parse-rest (fn-cpc-read-bytes octets)))
                    (len octets))))
   :hints (("Goal" :use fn-cpc-read-item-domain
-           :in-theory (e/d (fn-cbor-valuep) (fn-cpc-read-item-domain)))))
+           :in-theory (e/d (fn-cbor-valuep fn-cbor-valuep-bounded)
+                           (fn-cpc-read-item-domain)))))
 
 (local
  (defthm fn-cpc-uint-value-reassembles
