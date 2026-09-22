@@ -1,0 +1,116 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:13:23.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>
+Note: Writing .port file, /home/ember/fn-gates/w31-treewide/books/bp-
+ingress.port.
+
+CERTIFICATION ATTEMPT FOR 
+"/home/ember/fn-gates/w31-treewide/books/bp-ingress.lisp"
+ACL2 Version 8.7
+
+* Step 1: Read "/home/ember/fn-gates/w31-treewide/books/bp-ingress.lisp"
+and compute its book-hash.
+
+* Step 2:  There were 117 forms in the file.  We now attempt to establish
+that each form, whether local or non-local, is indeed an admissible
+embedded event form in the context of the previously admitted ones.
+
+
+ACL2 !>>>(INCLUDE-BOOK "article-fields")
+
+Summary
+Form:  ( INCLUDE-BOOK "article-fields" ...)
+Rules: NIL
+Time:  0.10 seconds (prove: 0.00, print: 0.00, other: 0.10)
+"/home/ember/fn-gates/w31-treewide/books/article-fields.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "store-node")
+
+Summary
+Form:  ( INCLUDE-BOOK "store-node" ...)
+Rules: NIL
+Time:  0.47 seconds (prove: 0.00, print: 0.00, other: 0.47)
+"/home/ember/fn-gates/w31-treewide/books/store-node.lisp"
+
+
+ACL2 !>>>(LOCAL (INCLUDE-BOOK "article-properties"))
+
+Summary
+Form:  ( INCLUDE-BOOK "article-properties" ...)
+Rules: NIL
+Time:  0.01 seconds (prove: 0.00, print: 0.00, other: 0.01)
+"/home/ember/fn-gates/w31-treewide/books/article-properties.lisp"
+
+
+ACL2 !>>>(LOCAL (INCLUDE-BOOK "store-node-invariants"))
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "store-node-invariants"
+...):  Unable to load compiled file for book
+  /home/ember/fn-gates/w31-treewide/books/store-node-invariants.lisp
+because that book is not certified.  See :DOC include-book.  No load
+was in progress for any parent book.
+
+
+
+ACL2 Error in ( INCLUDE-BOOK "store-node-invariants" ...):  There is
+no certificate on file for 
+"/home/ember/fn-gates/w31-treewide/books/store-node-invariants.lisp".
+See :DOC uncertified-books.  This is illegal because we are currently
+attempting certify-book; see :DOC certify-book.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "store-node-invariants" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+
+ACL2 Error [Failure] in ( INCLUDE-BOOK "store-node-invariants" ...):
+See :DOC failure.
+
+******** FAILED ********
+
+ACL2 Warning in CERTIFY-BOOK:  The attempted CERTIFY-BOOK has failed
+while trying to establish the admissibility of one of the (local or
+non-local) forms in the book to be certified.
+
+
+Summary
+Form:  (CERTIFY-BOOK "books/bp-ingress" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.59 seconds (prove: 0.00, print: 0.00, other: 0.59)
+
+ACL2 Error [Failure] in (CERTIFY-BOOK "books/bp-ingress" ...):  See
+:DOC failure.
+
+******** FAILED ********
+ :ERROR
+ACL2 !>
