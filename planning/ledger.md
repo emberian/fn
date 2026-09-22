@@ -14,9 +14,9 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 403 |
 | Books inside the root closure | 404 |
 | `defthm` and `defthmd` events | 6673 |
-| `defun` events | 5235 |
+| `defun` events | 5238 |
 | Functions with verified guards | 1731 |
-| Functions declared `:verify-guards nil` and never verified | 279 |
+| Functions declared `:verify-guards nil` and never verified | 282 |
 | Functions left at the default with an explicit guard | 2605 |
 | Functions left at the default with no guard | 620 |
 | `assert-event` checks | 7358 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 27 |
 | Teeth-form warnings | 13 |
 | Include-hygiene warnings | 150 |
-| Host-names warnings | 646 |
+| Host-names warnings | 645 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -140,7 +140,7 @@ that `make certify` requests.
 | `books/bp-receiver-store-invariants.lisp` | root | 12 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/bp-receiver-trace-invariants.lisp` | root | 6 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-release-invariants.lisp` | root | 46 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-release.lisp` | root | 0 | 34 | 0/13/21/0 | 0 | 0 | 0 |
+| `books/bp-release.lisp` | root | 0 | 37 | 0/16/21/0 | 0 | 0 | 0 |
 | `books/bp-sequence-fidelity.lisp` | root | 22 | 31 | 2/0/29/0 | 0 | 0 | 3 |
 | `books/bp-sequence-persistence.lisp` | root | 10 | 20 | 1/0/19/0 | 0 | 0 | 0 |
 | `books/bp-workflow-binding-core.lisp` | root | 27 | 2 | 0/0/2/0 | 0 | 0 | 0 |
