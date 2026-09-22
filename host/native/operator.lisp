@@ -4,7 +4,10 @@
 ;;; host/native-operator-host.lisp.  ACL2 chooses command grammar, defaults,
 ;;; profile availability, the result tag, and the exit-code projection.  RUN
 ;;; installs the local-control lifecycle and POST calls that control socket;
-;;; neither command has a direct Store path.
+;;; neither command has a direct Store path.  INIT, STATUS and RECOVER are
+;;; the offline store actions: they name the store the configuration declares
+;;; and run the existing store entry against it, so a node is stood up,
+;;; inspected and repaired with the one public verb and one binary.
 
 (in-package "ACL2")
 
@@ -64,6 +67,20 @@
           ((fnn-octet-list-p value) (fnn-octets-string (fnn-octets value)))
           (t (fnn-fault "ACL2 returned malformed optional path from ~a"
                         projection)))))
+
+(defun fnn-operator-init-observed (root)
+  "Which ACL2-named store entries already exist beside ROOT.
+
+This is the whole physical observation the init outcome rests on.  It opens
+nothing and locks nothing: `lstat` on each name ACL2 supplied, in ACL2's
+order, and the names it found handed straight back."
+  (let ((found nil))
+    (dolist (name (fnn-core 'fn-native-operator-host-init-marker-octets)
+                  (nreverse found))
+      (unless (fnn-octet-list-p name)
+        (fnn-fault "ACL2 returned a malformed store marker name"))
+      (when (fnn-lstat (fnn-join root (fnn-octets-string (fnn-octets name))))
+        (push name found)))))
 
 (defun fnn-operator-execute-run (result)
   "Invoke the one owner entry only with ACL2-normalized plan projections."
@@ -157,6 +174,43 @@
          (fnn-operator-status-of-exit-code code) "post" condition)
         code))))
 
+(defun fnn-operator-execute-init (result)
+  "Initialise the store the configuration names, through the ACL2 plan.
+
+The observation is lstat on the ACL2-named store entries and nothing else:
+no lock is opened, so a store a live owner holds is refused on the presence
+of its `writer.lock' rather than on a failed acquisition.  ACL2 turns that
+observation into the outcome and this function only carries it out."
+  (let ((root (fnn-absolute
+               (fnn-core 'fn-native-operator-host-result-store-root result))))
+    (handler-case
+        (let* ((observed (fnn-operator-init-observed root))
+               (outcome (fnn-core 'fn-native-operator-host-init-outcome
+                                  result observed))
+               (status (fnn-core 'fn-native-operator-host-result-status outcome)))
+          (if (not (eq status :accepted))
+              (progn (fnn-operator-emit-result outcome)
+                     (fnn-core 'fn-native-operator-host-result-exit-code outcome))
+            (let ((groups
+                    (mapcar (lambda (name)
+                              (unless (fnn-octet-list-p name)
+                                (fnn-fault "ACL2 returned a malformed init group"))
+                              (fnn-octets-string (fnn-octets name)))
+                            (fnn-core
+                             'fn-native-operator-host-result-init-group-octets
+                             result))))
+              (unless (consp groups)
+                (fnn-fault "ACL2 accepted an init plan that names no group"))
+              (let ((code (fnn-command-init root groups)))
+                (fnn-operator-emit-status
+                 (fnn-operator-status-of-exit-code code) "init")
+                code))))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
+                                    "init" condition)
+          code)))))
+
 (defun fnn-operator-execute-admin (result)
   "Execute only the exact accepted ACL2 administrative plan."
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
@@ -167,16 +221,24 @@
           (fnn-core 'fn-native-operator-host-result-admin-control-path-octets
                     result)))
     (handler-case
-        (let* ((control-path (and (fnn-octet-list-p control-path-list)
+        (let* ((queryp (fnn-core 'fn-native-admin-host-queryp plan))
+               (control-path (and (not queryp)
+                                  (fnn-octet-list-p control-path-list)
                                   (fnn-octets control-path-list)))
                (livep (and control-path
                            (fnn-control-socket-path-p
                             (fnn-lstat (fnn-octets-string control-path)))))
                (code
-                 (if livep
-                     (fnn-core 'fn-native-control-host-status-exit-code
-                               (fnn-control-admin control-path argv))
-                   (fnn-admin-execute root plan))))
+                 (cond
+                   ;; A query publishes no configuration record, so it has
+                   ;; nothing to send the live owner and nothing to serialize
+                   ;; behind its mutex: the read-only executor is the only
+                   ;; one, live socket or not.
+                   (queryp (fnn-admin-query root plan))
+                   (livep
+                    (fnn-core 'fn-native-control-host-status-exit-code
+                              (fnn-control-admin control-path argv)))
+                   (t (fnn-admin-execute root plan)))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command)
           code)
       (error (condition)
@@ -231,6 +293,7 @@ configuration usage result."
       (let ((action (fnn-core 'fn-native-operator-host-result-native-action result)))
         (case action
           (:help (fnn-operator-execute-help result))
+          (:init (fnn-operator-execute-init result))
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
           ((:status :recover) (fnn-operator-execute-store-action result action))

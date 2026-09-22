@@ -13,21 +13,21 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 404 |
 | Certification roots in the Makefile | 402 |
 | Books inside the root closure | 403 |
-| `defthm` and `defthmd` events | 6656 |
-| `defun` events | 5209 |
+| `defthm` and `defthmd` events | 6658 |
+| `defun` events | 5226 |
 | Functions with verified guards | 1731 |
 | Functions declared `:verify-guards nil` and never verified | 279 |
-| Functions left at the default with an explicit guard | 2588 |
+| Functions left at the default with an explicit guard | 2605 |
 | Functions left at the default with no guard | 611 |
-| `assert-event` checks | 7148 |
+| `assert-event` checks | 7206 |
 | `must-fail` checks | 198 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 61 |
-| Export-hygiene warnings | 86 |
+| Export-hygiene warnings | 87 |
 | Enabled-projection warnings | 27 |
 | Teeth-form warnings | 10 |
 | Include-hygiene warnings | 150 |
-| Host-names warnings | 637 |
+| Host-names warnings | 646 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -216,14 +216,14 @@ that `make certify` requests.
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
 | `books/msgid-index.lisp` | root | 20 | 13 | 0/0/13/0 | 0 | 0 | 0 |
-| `books/native-admin.lisp` | root | 5 | 33 | 1/0/32/0 | 0 | 0 | 0 |
+| `books/native-admin.lisp` | root | 5 | 41 | 1/0/40/0 | 0 | 0 | 0 |
 | `books/native-auth-admin.lisp` | root | 6 | 46 | 0/0/46/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 3 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/native-config-observation.lisp` | root | 5 | 17 | 3/0/14/0 | 0 | 0 | 0 |
 | `books/native-config.lisp` | root | 2 | 63 | 0/0/63/0 | 0 | 0 | 0 |
 | `books/native-control.lisp` | root | 5 | 22 | 0/0/22/0 | 0 | 0 | 0 |
 | `books/native-hybrid-control.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
-| `books/native-operator.lisp` | root | 0 | 49 | 0/0/49/0 | 0 | 0 | 0 |
+| `books/native-operator.lisp` | root | 0 | 57 | 0/0/57/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-auth.lisp` | root | 70 | 54 | 37/3/14/0 | 0 | 0 | 2 |
 | `books/nntp-effects.lisp` | root | 141 | 12 | 0/0/0/12 | 0 | 0 | 1 |
@@ -252,7 +252,7 @@ that `make certify` requests.
 | `books/owner-tls-prefix.lisp` | root | 2 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/owner.lisp` | root | 46 | 120 | 0/3/117/0 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
-| `books/peer-config.lisp` | root | 27 | 29 | 0/0/29/0 | 0 | 0 | 0 |
+| `books/peer-config.lisp` | root | 29 | 30 | 0/0/30/0 | 0 | 0 | 0 |
 | `books/peer-feed-invariants.lisp` | root | 127 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/peer-feed.lisp` | root | 35 | 100 | 3/0/97/0 | 0 | 0 | 0 |
 | `books/peer-inbound-invariants.lisp` | root | 15 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -414,7 +414,7 @@ that `make certify` requests.
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 2 | 0 |
-| `tests/acl2/native-admin-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 51 | 0 | 0 |
+| `tests/acl2/native-admin-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 74 | 0 | 0 |
 | `tests/acl2/native-auth-admin-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 42 | 0 | 0 |
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
@@ -425,7 +425,7 @@ that `make certify` requests.
 | `tests/acl2/native-control-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 43 | 0 | 0 |
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
-| `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 52 | 0 | 0 |
+| `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 87 | 0 | 0 |
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 145 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
 | `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 92 | 0 | 0 |
