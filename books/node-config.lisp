@@ -615,11 +615,16 @@
             nil
           (fn-cnode-make next (fn-cnode-config cn)))))))
 
+; `fn-store-event-p' is withdrawn on export (books/store-events); this
+; conjecture needs it to reach the used lemma's hypothesis, and its three
+; statement kind recognizers stay closed so the statement codec does not
+; unfold on every branch (books/config-records carries the same pair).
 (verify-guards fn-cnode-apply-record
   :hints (("Goal" :use ((:instance fn-replay-apply-record-statep-iff-consp
                                    (node (fn-cnode-node cn))))
-           :in-theory (e/d (fn-cnode-statep)
-                           (fn-node-statep fn-replay-apply-record)))))
+           :in-theory (e/d (fn-cnode-statep fn-store-event-p)
+                           (fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-node-statep fn-replay-apply-record)))))
 
 (local (defthm fn-cnode-advance-keeps-groups
   (equal (fn-state-groups
