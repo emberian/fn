@@ -205,8 +205,8 @@
   (fn-record-make 0 0 1 "<cp0@example.invalid>" '(65 13 10)
                   '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2))
 (defconst *cpc-bad-prefix* (list *cpc-r0-bad-generation*))
-(assert-event (not (equal (fn-record-generation *cpc-r0-bad-generation*)
-                          (fn-record-txid *cpc-r0-bad-generation*))))
+(assert-event (not (equal (fn-store-event-generation *cpc-r0-bad-generation*)
+                          (fn-store-event-txid *cpc-r0-bad-generation*))))
 (assert-event (not (fn-sf-record-listp *cpc-bad-prefix* 0 0 3)))
 (assert-event (equal (fn-checkpoint-capture *cpc-groups* 10 *cpc-bad-prefix* 3)
                      '(:error :history)))
@@ -227,7 +227,8 @@
 ; Tooth, mismatch hypothesis dropped: a record that is a member of the
 ; prefix and whose generation is its txid, and validation accepts.
 (assert-event (member-equal *cpc-r0* *cpc-prefix*))
-(assert-event (equal (fn-record-generation *cpc-r0*) (fn-record-txid *cpc-r0*)))
+(assert-event (equal (fn-store-event-generation *cpc-r0*)
+                     (fn-store-event-txid *cpc-r0*)))
 (assert-event (fn-cpc-validp *cpc-value* *cpc-groups* 10 *cpc-prefix*))
 ; Tooth for the clause inside FN-CPC-VALIDP: drop it from the definition and
 ; fn-cpc-valid-is-capture-value is false, because the capture of this prefix
