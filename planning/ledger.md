@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 402 |
 | Certification roots in the Makefile | 400 |
 | Books inside the root closure | 401 |
-| `defthm` and `defthmd` events | 6588 |
+| `defthm` and `defthmd` events | 6589 |
 | `defun` events | 5183 |
 | Functions with verified guards | 1711 |
 | Functions declared `:verify-guards nil` and never verified | 279 |
@@ -185,7 +185,7 @@ that `make certify` requests.
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/exchange.lisp` | root | 40 | 43 | 34/0/9/0 | 0 | 0 | 1 |
 | `books/feed-auth-profile.lisp` | root | 0 | 8 | 8/0/0/0 | 0 | 0 | 0 |
-| `books/feed-connection-invariants.lisp` | root | 17 | 1 | 0/0/1/0 | 0 | 0 | 1 |
+| `books/feed-connection-invariants.lisp` | root | 18 | 1 | 0/0/1/0 | 0 | 0 | 1 |
 | `books/feed-connection.lisp` | root | 2 | 39 | 39/0/0/0 | 0 | 0 | 0 |
 | `books/feed-correspondence.lisp` | root | 26 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/feed-events.lisp` | root | 0 | 19 | 0/0/19/0 | 0 | 0 | 0 |
