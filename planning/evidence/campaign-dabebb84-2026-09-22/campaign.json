@@ -1,0 +1,5289 @@
+{
+ "images": "/tank/fn/gates/freeze-dev-28fb4bd0/build/images/dabebb845adc3e3d6e8dc93c620782f54e6b106a",
+ "cuts": [
+  {
+   "cut": "frontier-staged-durable",
+   "program": "fn-bs-frontier-program",
+   "table_candidate": "absent",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-staged-durable-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/frontier-staged-durable-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.12
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-staged-durable-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290122,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-staged-durable-served/control.sock",
+      "LISTENING 58451",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-staged-durable-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290130,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "frontier-staged-durable:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-staged-durable-served/control.sock",
+      "LISTENING 58451",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-staged-durable-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-staged-durable-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/frontier-staged-durable-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-staged-durable-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290141,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-staged-durable-cut/control.sock",
+      "LISTENING 55681",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/frontier-staged-durable-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "frontier-staged-durable:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.1
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {
+      ".allocation-3290148-84e500776172e08cbd868d9e": "4a379f2d6067995a0cc08df4ee109fb1d9a6f06baf24d9fd7e21a43f79792ae2"
+     },
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-staged-durable-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=1 articles=1 staging-orphans=1 [.allocation-3290148-84e500776172e08cbd868d9e] anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.08
+    },
+    "recover_counts": {
+     "transactions": 1,
+     "articles": 1,
+     "staging_orphans": 1
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {
+      ".allocation-3290148-84e500776172e08cbd868d9e": "4a379f2d6067995a0cc08df4ee109fb1d9a6f06baf24d9fd7e21a43f79792ae2"
+     },
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 1,
+     "identical": false,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "430 no article with that message-id",
+     "identical": false
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-staged-durable-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {
+      ".allocation-3290148-84e500776172e08cbd868d9e": "4a379f2d6067995a0cc08df4ee109fb1d9a6f06baf24d9fd7e21a43f79792ae2"
+     },
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290156,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-staged-durable-cut/control.sock",
+      "LISTENING 55681",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "frontier-replaced",
+   "program": "fn-bs-frontier-program",
+   "table_candidate": "absent",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-replaced-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/frontier-replaced-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.12
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-replaced-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290171,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-replaced-served/control.sock",
+      "LISTENING 54607",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-replaced-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.1
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290222,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "frontier-replaced:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-replaced-served/control.sock",
+      "LISTENING 54607",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-replaced-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.06
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-replaced-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/frontier-replaced-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.12
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-replaced-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290233,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-replaced-cut/control.sock",
+      "LISTENING 42987",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/frontier-replaced-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "frontier-replaced:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.07
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-replaced-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    },
+    "recover_counts": {
+     "transactions": 1,
+     "articles": 1,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 1,
+     "identical": false,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "430 no article with that message-id",
+     "identical": false
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-replaced-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "a25813506543ca40635b4f37f12d017ad0adbfb0ab398ae2062ebd5e9f9281dc"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0003\ufffd[\ufffd;\ufffd\ufffd\ufffd\ufffd\u0003\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd^^\u0013:\ufffdr\u001f\ufffdC8L@\ufffdm1\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290249,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-replaced-cut/control.sock",
+      "LISTENING 42987",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "frontier-attempted",
+   "program": "fn-bs-frontier-program",
+   "table_candidate": "absent",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-attempted-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/frontier-attempted-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-attempted-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290260,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-attempted-served/control.sock",
+      "LISTENING 50741",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-attempted-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290281,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "frontier-attempted:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-attempted-served/control.sock",
+      "LISTENING 50741",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-attempted-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.09
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-attempted-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/frontier-attempted-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.12
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-attempted-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290301,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-attempted-cut/control.sock",
+      "LISTENING 50105",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/frontier-attempted-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "frontier-attempted:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.07
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-attempted-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    },
+    "recover_counts": {
+     "transactions": 1,
+     "articles": 1,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 1,
+     "identical": false,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "430 no article with that message-id",
+     "identical": false
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-attempted-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "a25813506543ca40635b4f37f12d017ad0adbfb0ab398ae2062ebd5e9f9281dc"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0003\ufffd[\ufffd;\ufffd\ufffd\ufffd\ufffd\u0003\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd^^\u0013:\ufffdr\u001f\ufffdC8L@\ufffdm1\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290324,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-attempted-cut/control.sock",
+      "LISTENING 50105",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "frontier-durable",
+   "program": "fn-bs-frontier-program",
+   "table_candidate": "absent",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-durable-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/frontier-durable-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-durable-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "seed_owner": {
+     "pid": 3290335,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-durable-served/control.sock",
+      "LISTENING 57007",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-durable-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290349,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "frontier-durable:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-durable-served/control.sock",
+      "LISTENING 57007",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-durable-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-durable-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/frontier-durable-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-durable-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "seed_owner": {
+     "pid": 3290361,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-durable-cut/control.sock",
+      "LISTENING 44787",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/frontier-durable-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "frontier-durable:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.08
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-durable-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.09
+    },
+    "recover_counts": {
+     "transactions": 1,
+     "articles": 1,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 1,
+     "identical": false,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "430 no article with that message-id",
+     "identical": false
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-durable-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.1
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "a25813506543ca40635b4f37f12d017ad0adbfb0ab398ae2062ebd5e9f9281dc"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0003\ufffd[\ufffd;\ufffd\ufffd\ufffd\ufffd\u0003\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd^^\u0013:\ufffdr\u001f\ufffdC8L@\ufffdm1\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290378,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-durable-cut/control.sock",
+      "LISTENING 44787",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "frontier-reserved",
+   "program": "fn-bs-frontier-program",
+   "table_candidate": "absent",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-reserved-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/frontier-reserved-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-reserved-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "seed_owner": {
+     "pid": 3290389,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-reserved-served/control.sock",
+      "LISTENING 59203",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-reserved-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290396,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "frontier-reserved:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-reserved-served/control.sock",
+      "LISTENING 59203",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-reserved-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-reserved-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/frontier-reserved-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.1
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-reserved-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "seed_owner": {
+     "pid": 3290407,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-reserved-cut/control.sock",
+      "LISTENING 60011",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/frontier-reserved-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "frontier-reserved:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.09
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-reserved-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    },
+    "recover_counts": {
+     "transactions": 1,
+     "articles": 1,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 1,
+     "identical": false,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "430 no article with that message-id",
+     "identical": false
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/frontier-reserved-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "a25813506543ca40635b4f37f12d017ad0adbfb0ab398ae2062ebd5e9f9281dc"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0003\ufffd[\ufffd;\ufffd\ufffd\ufffd\ufffd\u0003\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd^^\u0013:\ufffdr\u001f\ufffdC8L@\ufffdm1\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290422,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/frontier-reserved-cut/control.sock",
+      "LISTENING 60011",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "record-staged-durable",
+   "program": "fn-bs-record-program",
+   "table_candidate": "absent",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staged-durable-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-staged-durable-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.12
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staged-durable-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "seed_owner": {
+     "pid": 3290433,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-staged-durable-served/control.sock",
+      "LISTENING 60881",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staged-durable-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.1
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290447,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-staged-durable:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-staged-durable-served/control.sock",
+      "LISTENING 60881",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staged-durable-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.06
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staged-durable-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-staged-durable-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staged-durable-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290469,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-staged-durable-cut/control.sock",
+      "LISTENING 41793",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/record-staged-durable-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-staged-durable:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.1
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {
+      ".stage-3290476-8edb1e2eb5a83cd5d6ed73a3": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staged-durable-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    },
+    "recover_counts": {
+     "transactions": 1,
+     "articles": 1,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 1,
+     "identical": false,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "430 no article with that message-id",
+     "identical": false
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staged-durable-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "a25813506543ca40635b4f37f12d017ad0adbfb0ab398ae2062ebd5e9f9281dc"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0003\ufffd[\ufffd;\ufffd\ufffd\ufffd\ufffd\u0003\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd^^\u0013:\ufffdr\u001f\ufffdC8L@\ufffdm1\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290484,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-staged-durable-cut/control.sock",
+      "LISTENING 41793",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "record-linked",
+   "program": "fn-bs-record-program",
+   "table_candidate": "either",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-linked-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-linked-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-linked-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290495,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-linked-served/control.sock",
+      "LISTENING 46675",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-linked-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290516,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-linked:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-linked-served/control.sock",
+      "LISTENING 46675",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-linked-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-linked-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-linked-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-linked-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290527,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-linked-cut/control.sock",
+      "LISTENING 41871",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/record-linked-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-linked:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.09
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {
+      ".stage-3290535-8edb1e2eb5a83cd5d6ed73a3": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-linked-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    },
+    "recover_counts": {
+     "transactions": 2,
+     "articles": 2,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "220 0 <candidate@campaign.invalid> article follows",
+     "identical": true
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-linked-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post DUPLICATE\n",
+     "seconds": 0.06
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290546,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-linked-cut/control.sock",
+      "LISTENING 41871",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "record-attempted",
+   "program": "fn-bs-record-program",
+   "table_candidate": "present",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-attempted-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-attempted-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-attempted-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290557,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-attempted-served/control.sock",
+      "LISTENING 46451",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-attempted-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290568,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-attempted:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-attempted-served/control.sock",
+      "LISTENING 46451",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-attempted-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-attempted-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-attempted-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-attempted-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290579,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-attempted-cut/control.sock",
+      "LISTENING 45751",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/record-attempted-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-attempted:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.08
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {
+      ".stage-3290588-8edb1e2eb5a83cd5d6ed73a3": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-attempted-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.06
+    },
+    "recover_counts": {
+     "transactions": 2,
+     "articles": 2,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "220 0 <candidate@campaign.invalid> article follows",
+     "identical": true
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-attempted-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post DUPLICATE\n",
+     "seconds": 0.06
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290598,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-attempted-cut/control.sock",
+      "LISTENING 45751",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "record-durable",
+   "program": "fn-bs-record-program",
+   "table_candidate": "present",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-durable-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-durable-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.13
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-durable-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "seed_owner": {
+     "pid": 3290609,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-durable-served/control.sock",
+      "LISTENING 43969",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-durable-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290619,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-durable:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-durable-served/control.sock",
+      "LISTENING 43969",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-durable-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.06
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-durable-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-durable-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-durable-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290630,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-durable-cut/control.sock",
+      "LISTENING 44771",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/record-durable-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-durable:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.08
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {
+      ".stage-3290637-8edb1e2eb5a83cd5d6ed73a3": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-durable-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    },
+    "recover_counts": {
+     "transactions": 2,
+     "articles": 2,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "220 0 <candidate@campaign.invalid> article follows",
+     "identical": true
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-durable-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post DUPLICATE\n",
+     "seconds": 0.07
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290645,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-durable-cut/control.sock",
+      "LISTENING 44771",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "record-completing",
+   "program": "fn-bs-record-program",
+   "table_candidate": "present",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-completing-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-completing-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.12
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-completing-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290656,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-completing-served/control.sock",
+      "LISTENING 42281",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-completing-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290663,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-completing:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-completing-served/control.sock",
+      "LISTENING 42281",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-completing-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.06
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-completing-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-completing-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.12
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-completing-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "seed_owner": {
+     "pid": 3290674,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-completing-cut/control.sock",
+      "LISTENING 40117",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/record-completing-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-completing:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.09
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {
+      ".stage-3290681-8edb1e2eb5a83cd5d6ed73a3": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-completing-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.06
+    },
+    "recover_counts": {
+     "transactions": 2,
+     "articles": 2,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "220 0 <candidate@campaign.invalid> article follows",
+     "identical": true
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-completing-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post DUPLICATE\n",
+     "seconds": 0.06
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290693,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-completing-cut/control.sock",
+      "LISTENING 40117",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "record-staging-cleaned",
+   "program": "fn-bs-record-program",
+   "table_candidate": "present",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staging-cleaned-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-staging-cleaned-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.12
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staging-cleaned-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "seed_owner": {
+     "pid": 3290706,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-staging-cleaned-served/control.sock",
+      "LISTENING 54957",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staging-cleaned-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290713,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-staging-cleaned:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-staging-cleaned-served/control.sock",
+      "LISTENING 54957",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staging-cleaned-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.08
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staging-cleaned-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/record-staging-cleaned-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.1
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staging-cleaned-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290724,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-staging-cleaned-cut/control.sock",
+      "LISTENING 55669",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/record-staging-cleaned-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-staging-cleaned:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.08
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staging-cleaned-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    },
+    "recover_counts": {
+     "transactions": 2,
+     "articles": 2,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "220 0 <candidate@campaign.invalid> article follows",
+     "identical": true
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/record-staging-cleaned-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post DUPLICATE\n",
+     "seconds": 0.07
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290741,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/record-staging-cleaned-cut/control.sock",
+      "LISTENING 55669",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "finish-consumed",
+   "program": "fn-bs-finish-program",
+   "table_candidate": "present",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-consumed-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/finish-consumed-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.12
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-consumed-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290752,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/finish-consumed-served/control.sock",
+      "LISTENING 36211",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-consumed-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290759,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "finish-consumed:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/finish-consumed-served/control.sock",
+      "LISTENING 36211",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-consumed-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.06
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-consumed-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/finish-consumed-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.11
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-consumed-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290772,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/finish-consumed-cut/control.sock",
+      "LISTENING 33731",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/finish-consumed-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "finish-consumed:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.1
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-consumed-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.06
+    },
+    "recover_counts": {
+     "transactions": 2,
+     "articles": 2,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "220 0 <candidate@campaign.invalid> article follows",
+     "identical": true
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-consumed-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post DUPLICATE\n",
+     "seconds": 0.06
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290787,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/finish-consumed-cut/control.sock",
+      "LISTENING 33731",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "finish-durable",
+   "program": "fn-bs-finish-program",
+   "table_candidate": "present",
+   "variable": "FN_NATIVE_POST_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-durable-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/finish-durable-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.12
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-durable-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290802,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/finish-durable-served/control.sock",
+      "LISTENING 43447",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "owner_ready": true,
+    "post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-durable-served/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "owner_alive_after_post": true,
+    "owner": {
+     "pid": 3290816,
+     "env": {
+      "FN_NATIVE_POST_FAULT": "finish-durable:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/finish-durable-served/control.sock",
+      "LISTENING 43447",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-durable-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-durable-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/finish-durable-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.1
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-durable-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "seed_owner": {
+     "pid": 3290827,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/finish-durable-cut/control.sock",
+      "LISTENING 44295",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "killed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/finish-durable-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "finish-durable:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.09
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-durable-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    },
+    "recover_counts": {
+     "transactions": 2,
+     "articles": 2,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "220 0 <candidate@campaign.invalid> article follows",
+     "identical": true
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/finish-durable-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post DUPLICATE\n",
+     "seconds": 0.06
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290843,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/finish-durable-cut/control.sock",
+      "LISTENING 44295",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  },
+  {
+   "cut": "recovery-stage-unlinked",
+   "program": "fn-bs-recover-stage-cleanup-program",
+   "table_candidate": "n/a",
+   "variable": "FN_NATIVE_RECOVERY_FAULT",
+   "served": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/recovery-stage-unlinked-served/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/recovery-stage-unlinked-served/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.12
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/recovery-stage-unlinked-served/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.08
+    },
+    "seed_owner": {
+     "pid": 3290854,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/recovery-stage-unlinked-served/control.sock",
+      "LISTENING 33113",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "orphan_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/recovery-stage-unlinked-served/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-staged-durable:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.08
+    },
+    "orphaned": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {
+      ".stage-3290861-8edb1e2eb5a83cd5d6ed73a3": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "owner_ready": true,
+    "owner": {
+     "pid": 3290863,
+     "env": {
+      "FN_NATIVE_RECOVERY_FAULT": "recovery-stage-unlinked:kill"
+     },
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/recovery-stage-unlinked-served/control.sock",
+      "LISTENING 33113",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "after": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/recovery-stage-unlinked-served/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    }
+   },
+   "cut_run": {
+    "init": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/recovery-stage-unlinked-cut/fn.toml",
+      "init",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "initialized /home/hbox/fn-campaign/work/recovery-stage-unlinked-cut/store\n",
+     "stderr": "accepted operator init\n",
+     "seconds": 0.1
+    },
+    "seed_owner_ready": true,
+    "seed_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/recovery-stage-unlinked-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<prior@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/prior.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.1
+    },
+    "seed_owner": {
+     "pid": 3290875,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/recovery-stage-unlinked-cut/control.sock",
+      "LISTENING 59877",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    },
+    "seeded": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+    },
+    "orphan_post": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "store",
+      "/home/hbox/fn-campaign/work/recovery-stage-unlinked-cut/store",
+      "post",
+      "<candidate@campaign.invalid>",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "-",
+      "-",
+      "fn.letters"
+     ],
+     "env": {
+      "FN_NATIVE_POST_FAULT": "record-staged-durable:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.07
+    },
+    "orphaned": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {
+      ".stage-3290882-8edb1e2eb5a83cd5d6ed73a3": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+     },
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "killed_recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/recovery-stage-unlinked-cut/fn.toml",
+      "recover"
+     ],
+     "env": {
+      "FN_NATIVE_RECOVERY_FAULT": "recovery-stage-unlinked:kill"
+     },
+     "rc": -9,
+     "stdout": "",
+     "stderr": "",
+     "seconds": 0.07
+    },
+    "killed": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "recover": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/recovery-stage-unlinked-cut/fn.toml",
+      "recover"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none\n",
+     "stderr": "accepted operator RECOVER\n",
+     "seconds": 0.07
+    },
+    "recover_counts": {
+     "transactions": 1,
+     "articles": 1,
+     "staging_orphans": 0
+    },
+    "recovered": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+    },
+    "inspect_prior": {
+     "rc": 0,
+     "identical": true,
+     "stderr": ""
+    },
+    "inspect_candidate": {
+     "rc": 1,
+     "identical": false,
+     "stderr": ""
+    },
+    "reread_owner_ready": true,
+    "nntp_prior": {
+     "status": "220 0 <prior@campaign.invalid> article follows",
+     "identical": true
+    },
+    "nntp_candidate": {
+     "status": "430 no article with that message-id",
+     "identical": false
+    },
+    "resubmit": {
+     "argv": [
+      "IMAGE",
+      "--fn",
+      "operator",
+      "/home/hbox/fn-campaign/work/recovery-stage-unlinked-cut/fn.toml",
+      "post",
+      "--message-id",
+      "<candidate@campaign.invalid>",
+      "--payload",
+      "/home/hbox/fn-campaign/work/candidate.art",
+      "--group",
+      "fn.letters"
+     ],
+     "env": {},
+     "rc": 0,
+     "stdout": "",
+     "stderr": "accepted operator post ACCEPTED\n",
+     "seconds": 0.09
+    },
+    "after_resubmit": {
+     "transactions": {
+      "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+      "00000000000000000001.txn": "a25813506543ca40635b4f37f12d017ad0adbfb0ab398ae2062ebd5e9f9281dc"
+     },
+     "staging": {},
+     "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0003\ufffd[\ufffd;\ufffd\ufffd\ufffd\ufffd\u0003\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd^^\u0013:\ufffdr\u001f\ufffdC8L@\ufffdm1\ufffd"
+    },
+    "reread_owner": {
+     "pid": 3290892,
+     "env": {},
+     "ready": true,
+     "lines": [
+      "CONTROL /home/hbox/fn-campaign/work/recovery-stage-unlinked-cut/control.sock",
+      "LISTENING 59877",
+      ""
+     ],
+     "stopped_by": "SIGTERM",
+     "rc": 0,
+     "stderr": "accepted operator run\n"
+    }
+   }
+  }
+ ],
+ "faults": [
+  {
+   "name": "dev-post-fault-eio",
+   "image": "fn-host-developer",
+   "init": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-post-fault-eio/fn.toml",
+     "init",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "initialized /home/hbox/fn-campaign/work/dev-post-fault-eio/store\n",
+    "stderr": "accepted operator init\n",
+    "seconds": 0.1
+   },
+   "seed_owner_ready": true,
+   "seed_post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-post-fault-eio/fn.toml",
+     "post",
+     "--message-id",
+     "<prior@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/prior.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post ACCEPTED\n",
+    "seconds": 0.08
+   },
+   "seed_owner": {
+    "pid": 3290906,
+    "env": {},
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/dev-post-fault-eio/control.sock",
+     "LISTENING 34087",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   },
+   "seeded": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+   },
+   "post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "store",
+     "/home/hbox/fn-campaign/work/dev-post-fault-eio/store",
+     "post",
+     "<candidate@campaign.invalid>",
+     "/home/hbox/fn-campaign/work/candidate.art",
+     "-",
+     "-",
+     "fn.letters"
+    ],
+    "env": {
+     "FN_NATIVE_POST_FAULT": "record-attempted:eio"
+    },
+    "rc": 3,
+    "stdout": "",
+    "stderr": "store: transaction publication outcome is indeterminate\n",
+    "seconds": 0.09
+   },
+   "after": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+     "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "staging": {
+     ".stage-3290915-8edb1e2eb5a83cd5d6ed73a3": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+   },
+   "recover": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-post-fault-eio/fn.toml",
+     "recover"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+    "stderr": "accepted operator RECOVER\n",
+    "seconds": 0.07
+   },
+   "recover_counts": {
+    "transactions": 2,
+    "articles": 2,
+    "staging_orphans": 0
+   },
+   "inspect_prior": {
+    "rc": 0,
+    "identical": true,
+    "stderr": ""
+   },
+   "inspect_candidate": {
+    "rc": 0,
+    "identical": true,
+    "stderr": ""
+   },
+   "reread_owner_ready": true,
+   "nntp_prior": {
+    "status": "220 0 <prior@campaign.invalid> article follows",
+    "identical": true
+   },
+   "nntp_candidate": {
+    "status": "220 0 <candidate@campaign.invalid> article follows",
+    "identical": true
+   },
+   "resubmit": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-post-fault-eio/fn.toml",
+     "post",
+     "--message-id",
+     "<candidate@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/candidate.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post DUPLICATE\n",
+    "seconds": 0.07
+   },
+   "after_resubmit": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+     "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+   },
+   "reread_owner": {
+    "pid": 3290929,
+    "env": {},
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/dev-post-fault-eio/control.sock",
+     "LISTENING 34087",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   }
+  },
+  {
+   "name": "dev-control-fault",
+   "image": "fn-host-developer",
+   "init": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-control-fault/fn.toml",
+     "init",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "initialized /home/hbox/fn-campaign/work/dev-control-fault/store\n",
+    "stderr": "accepted operator init\n",
+    "seconds": 0.12
+   },
+   "seed_owner_ready": true,
+   "seed_post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-control-fault/fn.toml",
+     "post",
+     "--message-id",
+     "<prior@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/prior.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post ACCEPTED\n",
+    "seconds": 0.08
+   },
+   "seed_owner": {
+    "pid": 3290944,
+    "env": {},
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/dev-control-fault/control.sock",
+     "LISTENING 58001",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   },
+   "seeded": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+   },
+   "owner_ready": true,
+   "post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-control-fault/fn.toml",
+     "post",
+     "--message-id",
+     "<candidate@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/candidate.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 3,
+    "stdout": "",
+    "stderr": "uncertain operator post UNCERTAIN\n",
+    "seconds": 0.08
+   },
+   "owner_alive_after_post": true,
+   "owner": {
+    "pid": 3290957,
+    "env": {
+     "FN_NATIVE_CONTROL_FAULT": "postpublish"
+    },
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/dev-control-fault/control.sock",
+     "LISTENING 58001",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 3,
+    "stderr": "uncertain operator run\n"
+   },
+   "after": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+     "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "staging": {
+     ".stage-3290957-8edb1e2eb5a83cd5d6ed73a3": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+   },
+   "recover": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-control-fault/fn.toml",
+     "recover"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+    "stderr": "accepted operator RECOVER\n",
+    "seconds": 0.06
+   },
+   "recover_counts": {
+    "transactions": 2,
+    "articles": 2,
+    "staging_orphans": 0
+   },
+   "inspect_prior": {
+    "rc": 0,
+    "identical": true,
+    "stderr": ""
+   },
+   "inspect_candidate": {
+    "rc": 0,
+    "identical": true,
+    "stderr": ""
+   },
+   "reread_owner_ready": true,
+   "nntp_prior": {
+    "status": "220 0 <prior@campaign.invalid> article follows",
+    "identical": true
+   },
+   "nntp_candidate": {
+    "status": "220 0 <candidate@campaign.invalid> article follows",
+    "identical": true
+   },
+   "resubmit": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-control-fault/fn.toml",
+     "post",
+     "--message-id",
+     "<candidate@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/candidate.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post DUPLICATE\n",
+    "seconds": 0.06
+   },
+   "after_resubmit": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+     "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+   },
+   "reread_owner": {
+    "pid": 3290973,
+    "env": {},
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/dev-control-fault/control.sock",
+     "LISTENING 58001",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   }
+  },
+  {
+   "name": "dev-control-test-stop-kill",
+   "image": "fn-host-developer",
+   "init": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-control-test-stop-kill/fn.toml",
+     "init",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "initialized /home/hbox/fn-campaign/work/dev-control-test-stop-kill/store\n",
+    "stderr": "accepted operator init\n",
+    "seconds": 0.11
+   },
+   "seed_owner_ready": true,
+   "seed_post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-control-test-stop-kill/fn.toml",
+     "post",
+     "--message-id",
+     "<prior@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/prior.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post ACCEPTED\n",
+    "seconds": 0.08
+   },
+   "seed_owner": {
+    "pid": 3290985,
+    "env": {},
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/dev-control-test-stop-kill/control.sock",
+     "LISTENING 53777",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   },
+   "seeded": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+   },
+   "owner_ready": true,
+   "owner_stopped_itself": true,
+   "at_stop": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+     "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+   },
+   "owner": {
+    "pid": 3290993,
+    "env": {
+     "FN_NATIVE_CONTROL_TEST_STOP": "after-submit"
+    },
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/dev-control-test-stop-kill/control.sock",
+     "LISTENING 53777",
+     "CONTROL-SUBMITTED",
+     ""
+    ],
+    "stopped_by": "SIGKILL",
+    "rc": -9,
+    "stderr": ""
+   },
+   "post": {
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post ACCEPTED\n"
+   },
+   "after": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+     "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+   },
+   "recover": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-control-test-stop-kill/fn.toml",
+     "recover"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+    "stderr": "accepted operator RECOVER\n",
+    "seconds": 0.07
+   },
+   "recover_counts": {
+    "transactions": 2,
+    "articles": 2,
+    "staging_orphans": 0
+   },
+   "inspect_prior": {
+    "rc": 0,
+    "identical": true,
+    "stderr": ""
+   },
+   "inspect_candidate": {
+    "rc": 0,
+    "identical": true,
+    "stderr": ""
+   },
+   "reread_owner_ready": true,
+   "nntp_prior": {
+    "status": "220 0 <prior@campaign.invalid> article follows",
+    "identical": true
+   },
+   "nntp_candidate": {
+    "status": "220 0 <candidate@campaign.invalid> article follows",
+    "identical": true
+   },
+   "resubmit": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/dev-control-test-stop-kill/fn.toml",
+     "post",
+     "--message-id",
+     "<candidate@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/candidate.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post DUPLICATE\n",
+    "seconds": 0.06
+   },
+   "after_resubmit": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+     "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+   },
+   "reread_owner": {
+    "pid": 3291008,
+    "env": {},
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/dev-control-test-stop-kill/control.sock",
+     "LISTENING 53777",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   }
+  },
+  {
+   "name": "prod-post-fault",
+   "image": "fn-host",
+   "init": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-post-fault/fn.toml",
+     "init",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "initialized /home/hbox/fn-campaign/work/prod-post-fault/store\n",
+    "stderr": "accepted operator init\n",
+    "seconds": 0.11
+   },
+   "seed_owner_ready": true,
+   "seed_post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-post-fault/fn.toml",
+     "post",
+     "--message-id",
+     "<prior@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/prior.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post ACCEPTED\n",
+    "seconds": 0.08
+   },
+   "seed_owner": {
+    "pid": 3291023,
+    "env": {},
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/prod-post-fault/control.sock",
+     "LISTENING 34509",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   },
+   "seeded": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+   },
+   "post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "store",
+     "/home/hbox/fn-campaign/work/prod-post-fault/store",
+     "post",
+     "<candidate@campaign.invalid>",
+     "/home/hbox/fn-campaign/work/candidate.art",
+     "-",
+     "-",
+     "fn.letters"
+    ],
+    "env": {
+     "FN_NATIVE_POST_FAULT": "record-attempted:kill"
+    },
+    "rc": 4,
+    "stdout": "",
+    "stderr": "store: FN_NATIVE_POST_FAULT requires a developer image\n",
+    "seconds": 0.06
+   },
+   "after": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+   }
+  },
+  {
+   "name": "prod-control-fault",
+   "image": "fn-host",
+   "init": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-control-fault/fn.toml",
+     "init",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "initialized /home/hbox/fn-campaign/work/prod-control-fault/store\n",
+    "stderr": "accepted operator init\n",
+    "seconds": 0.1
+   },
+   "seed_owner_ready": true,
+   "seed_post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-control-fault/fn.toml",
+     "post",
+     "--message-id",
+     "<prior@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/prior.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post ACCEPTED\n",
+    "seconds": 0.08
+   },
+   "seed_owner": {
+    "pid": 3291052,
+    "env": {},
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/prod-control-fault/control.sock",
+     "LISTENING 50173",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   },
+   "seeded": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+   },
+   "owner_ready": true,
+   "post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-control-fault/fn.toml",
+     "post",
+     "--message-id",
+     "<candidate@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/candidate.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 3,
+    "stdout": "",
+    "stderr": "uncertain operator post UNCERTAIN\n",
+    "seconds": 0.07
+   },
+   "owner_alive_after_post": true,
+   "owner": {
+    "pid": 3291059,
+    "env": {
+     "FN_NATIVE_CONTROL_FAULT": "postpublish"
+    },
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/prod-control-fault/control.sock",
+     "LISTENING 50173",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 4,
+    "stderr": "fault operator run\n"
+   },
+   "after": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+   }
+  },
+  {
+   "name": "prod-control-test-stop",
+   "image": "fn-host",
+   "init": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-control-test-stop/fn.toml",
+     "init",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "initialized /home/hbox/fn-campaign/work/prod-control-test-stop/store\n",
+    "stderr": "accepted operator init\n",
+    "seconds": 0.1
+   },
+   "seed_owner_ready": true,
+   "seed_post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-control-test-stop/fn.toml",
+     "post",
+     "--message-id",
+     "<prior@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/prior.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post ACCEPTED\n",
+    "seconds": 0.08
+   },
+   "seed_owner": {
+    "pid": 3291069,
+    "env": {},
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/prod-control-test-stop/control.sock",
+     "LISTENING 36237",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   },
+   "seeded": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+   },
+   "owner_ready": true,
+   "post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-control-test-stop/fn.toml",
+     "post",
+     "--message-id",
+     "<candidate@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/candidate.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 4,
+    "stdout": "",
+    "stderr": "fault operator post FAULT\n",
+    "seconds": 0.09
+   },
+   "owner_alive_after_post": true,
+   "owner": {
+    "pid": 3291076,
+    "env": {
+     "FN_NATIVE_CONTROL_TEST_STOP": "after-submit"
+    },
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/prod-control-test-stop/control.sock",
+     "LISTENING 36237",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   },
+   "after": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+     "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+   }
+  },
+  {
+   "name": "prod-recovery-fault",
+   "image": "fn-host",
+   "init": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-recovery-fault/fn.toml",
+     "init",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "initialized /home/hbox/fn-campaign/work/prod-recovery-fault/store\n",
+    "stderr": "accepted operator init\n",
+    "seconds": 0.11
+   },
+   "seed_owner_ready": true,
+   "seed_post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-recovery-fault/fn.toml",
+     "post",
+     "--message-id",
+     "<prior@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/prior.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post ACCEPTED\n",
+    "seconds": 0.08
+   },
+   "seed_owner": {
+    "pid": 3291085,
+    "env": {},
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/prod-recovery-fault/control.sock",
+     "LISTENING 38315",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   },
+   "seeded": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+   },
+   "orphan_post_dev_image": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "store",
+     "/home/hbox/fn-campaign/work/prod-recovery-fault/store",
+     "post",
+     "<candidate@campaign.invalid>",
+     "/home/hbox/fn-campaign/work/candidate.art",
+     "-",
+     "-",
+     "fn.letters"
+    ],
+    "env": {
+     "FN_NATIVE_POST_FAULT": "record-staged-durable:kill"
+    },
+    "rc": -9,
+    "stdout": "",
+    "stderr": "",
+    "seconds": 0.09
+   },
+   "orphaned": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {
+     ".stage-3291092-8edb1e2eb5a83cd5d6ed73a3": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+   },
+   "recover": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-recovery-fault/fn.toml",
+     "recover"
+    ],
+    "env": {
+     "FN_NATIVE_RECOVERY_FAULT": "recovery-stage-unlinked:kill"
+    },
+    "rc": -9,
+    "stdout": "",
+    "stderr": "",
+    "seconds": 0.06
+   },
+   "after": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+   },
+   "recover_clean": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-recovery-fault/fn.toml",
+     "recover"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none\n",
+    "stderr": "accepted operator RECOVER\n",
+    "seconds": 0.06
+   }
+  },
+  {
+   "name": "prod-store-post-inject",
+   "image": "fn-host",
+   "init": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-store-post-inject/fn.toml",
+     "init",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "initialized /home/hbox/fn-campaign/work/prod-store-post-inject/store\n",
+    "stderr": "accepted operator init\n",
+    "seconds": 0.1
+   },
+   "seed_owner_ready": true,
+   "seed_post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-store-post-inject/fn.toml",
+     "post",
+     "--message-id",
+     "<prior@campaign.invalid>",
+     "--payload",
+     "/home/hbox/fn-campaign/work/prior.art",
+     "--group",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "",
+    "stderr": "accepted operator post ACCEPTED\n",
+    "seconds": 0.08
+   },
+   "seed_owner": {
+    "pid": 3291100,
+    "env": {},
+    "ready": true,
+    "lines": [
+     "CONTROL /home/hbox/fn-campaign/work/prod-store-post-inject/control.sock",
+     "LISTENING 41373",
+     ""
+    ],
+    "stopped_by": "SIGTERM",
+    "rc": 0,
+    "stderr": "accepted operator run\n"
+   },
+   "seeded": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b"
+    },
+    "staging": {},
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0001\ufffd\u0001CR\ufffd\ufffdE\ufffdf\ufffd\ufffd\ufffd\ufffd~\ufffdPGsr\ufffd\u001f\t\ufffd\ufffd\ufffd/2\ufffd;P\ufffd\ufffd"
+   },
+   "post": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "store",
+     "/home/hbox/fn-campaign/work/prod-store-post-inject/store",
+     "post",
+     "<candidate@campaign.invalid>",
+     "/home/hbox/fn-campaign/work/candidate.art",
+     "-",
+     "postpublish",
+     "fn.letters"
+    ],
+    "env": {},
+    "rc": 3,
+    "stdout": "",
+    "stderr": "store: indeterminate injected failure after final publication\n",
+    "seconds": 0.08
+   },
+   "after": {
+    "transactions": {
+     "00000000000000000000.txn": "6793676c1abaec440998cb1bab1bc627c65e720283a6a940d991b92684d6ac3b",
+     "00000000000000000001.txn": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "staging": {
+     ".stage-3291107-18e48fb420d2a0d7b4d8d677": "627e86d5cd7413f0d7d6986e5d3f0116c42c2bc8232a11643380b98d2ba61f6d"
+    },
+    "frontier": "FNSM\u0001\u0002\u0000\u0000\u0000\u0001\u0002\ufffd\ufffd\ufffd\ufffd\ufffd2\ufffdm\ufffd\ufffd\ufffd!)d\ufffd_y\ufffdr\ufffdN1\ufffd\ufffd\ufffd\ufffd\ufffdol)\u0001\ufffd"
+   },
+   "recover": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-store-post-inject/fn.toml",
+     "recover"
+    ],
+    "env": {},
+    "rc": 0,
+    "stdout": "recovered transactions=2 articles=2 staging-orphans=0 anchor=none checkpoint=none\n",
+    "stderr": "accepted operator RECOVER\n",
+    "seconds": 0.06
+   }
+  },
+  {
+   "name": "prod-init-fault",
+   "image": "fn-host",
+   "init": {
+    "argv": [
+     "IMAGE",
+     "--fn",
+     "operator",
+     "/home/hbox/fn-campaign/work/prod-init-fault/fn.toml",
+     "init",
+     "fn.letters"
+    ],
+    "env": {
+     "FN_NATIVE_INIT_FAULT": "init-config-written:kill"
+    },
+    "rc": -9,
+    "stdout": "",
+    "stderr": "",
+    "seconds": 0.07
+   },
+   "after": {
+    "transactions": {},
+    "staging": {
+     ".init-3291111-f72528fa44d9d4e0a8faa71f": "dcbd90d34e72bd7271891f7ada6fccd39a03dd66e76111f07e4f25dab189e9fc"
+    },
+    "frontier": null
+   }
+  }
+ ]
+}

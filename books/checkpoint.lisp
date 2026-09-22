@@ -424,9 +424,20 @@
 ; (:ERROR :SUFFIX) before FN-REPLAY-LOOP ever runs, for any continuation of
 ; the suffix and regardless of whether the record is otherwise well formed.
 ; FN-SF-RECORD-LISTP's own LOWER bound (:guard (and (natp sequence) (natp
-; lower) (natp frontier)); body clause (<= lower (fn-record-txid record))) is
-; the mechanism: passing the checkpoint's stored frontier as LOWER is what
-; makes reuse impossible to satisfy.
+; lower) (natp frontier)); body clause (<= lower (fn-store-event-txid
+; record))) is the mechanism: passing the checkpoint's stored frontier as
+; LOWER is what makes reuse impossible to satisfy.
+;
+; `fn-store-event-txid', not `fn-record-txid'.  Since `6ab2c783' and
+; `4bb7bb3d' a suffix entry is not always an article record, and
+; `fn-sf-record-listp' orders the composed transaction id of whichever of the
+; five store events it is; stated over `fn-record-txid' the hypothesis reached
+; the rejecting clause as `(CADR RECORD)' against a goal that was otherwise
+; entirely in store-event vocabulary, and nothing closed it.  On an article
+; record the two accessors are the same value by `fn-store-event-txid's first
+; `cond' arm, so this statement covers the one it replaces and the four event
+; kinds besides.  `books/checkpoint' has not certified since before those
+; commits.
 (defthm fn-checkpoint-restore-rejects-frontier-reuse
   (implies
    (and (fn-checkpointp checkpoint)
@@ -434,7 +445,7 @@
         (equal capacity (fn-checkpoint-capacity checkpoint))
         (fn-record-uint32p frontier)
         (<= (fn-checkpoint-frontier checkpoint) frontier)
-        (< (fn-record-txid record) (fn-checkpoint-frontier checkpoint)))
+        (< (fn-store-event-txid record) (fn-checkpoint-frontier checkpoint)))
    (equal
     (fn-checkpoint-restore checkpoint groups capacity
                            (cons record more) frontier)

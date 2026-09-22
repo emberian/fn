@@ -124,6 +124,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-connection-tests \
 	books/feed-connection-invariants \
 	tests/acl2/feed-connection-invariants-tests \
+	tests/acl2/feed-connection-teeth-tests \
 	books/store-files \
 	books/store-files-invariants \
 	tests/acl2/store-files-tests \

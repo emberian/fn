@@ -672,6 +672,125 @@ class NativeSliceAccountingTests(unittest.TestCase):
                              v0_matrix.NOT_EXERCISED)
 
 
+class ProtectedTransitTests(unittest.TestCase):
+    """The owner's feed over STARTTLS and AUTHINFO (PRF-047, PRF-051; T9c).
+
+    These pin the planning and the mapping of the protected rows.  No image
+    runs here, so the only measured verdicts below come from canned witness
+    lines; the first test is what a run without an image records.
+    """
+
+    IDS = ("V0-TRANSIT-TLS-AB", "V0-TRANSIT-TLS-BA", "V0-TRANSIT-AUTHINFO-AB",
+           "V0-TRANSIT-AUTHINFO-BA", "V0-TRANSIT-TLS-WRONG-ANCHOR",
+           "V0-TRANSIT-AUTHINFO-WRONG")
+
+    @staticmethod
+    def identity(core="b" * 64):
+        one = {"status": "observed", "runtime_sha256": "a" * 64, "core_sha256": core}
+        return {"a": dict(one), "b": dict(one)}
+
+    @classmethod
+    def witness_lines(cls, alter=None):
+        feed = {"kind": "protected-feed", "security": "starttls", "auth": "authinfo",
+                "target_policy": {"required": True, "protected_only": True},
+                "transit": {"ab": {"identical": True,
+                                   "unauthenticated_offer": "480 authentication required"},
+                            "ba": {"identical": True,
+                                   "unauthenticated_offer": "480 authentication required"}},
+                "reconnect": {"ab": {"identical": True}, "ba": {"identical": True}},
+                "identity": cls.identity()}
+        password = {"kind": "protected-refusal", "case": "wrong-password",
+                    "delivered": False, "source_alive": True, "target_alive": True,
+                    "identity": cls.identity()}
+        anchor = {"kind": "protected-refusal", "case": "wrong-anchor",
+                  "delivered": False, "journal": True, "source_alive": True,
+                  "target_alive": True, "identity": cls.identity()}
+        if alter:
+            alter(feed, password, anchor)
+        return "\n".join(["NATIVE-PROTECTED-EXPECTED-RUNTIME " + "a" * 64,
+                          "NATIVE-PROTECTED-EXPECTED-CORE " + "b" * 64]
+                         + ["NATIVE-PROTECTED-WITNESS " + json.dumps(one)
+                            for one in (feed, password, anchor)])
+
+    def gate(self, home, output=None):
+        class Protected(HarnessOnlyNativeGate):
+            def canned(self, name):
+                if name == "native protected peering witness" and output is not None:
+                    return output
+                return super().canned(name)
+        return Protected(v0_matrix.LocalHost(Path(home)), ROOT, "a" * 40, "abc1234",
+                         "dev", backend=v0_matrix.NATIVE_BACKEND,
+                         native_image="/opt/fn/fn-host",
+                         native_configs={"a": "/srv/fn/a.toml", "b": "/srv/fn/b.toml"})
+
+    def rows(self, output=None):
+        with tempfile.TemporaryDirectory() as home:
+            gate = self.gate(home, output)
+            gate.execute_native_acceptance()
+            return {row.id: row for row in gate.rows}
+
+    def test_the_rows_are_planned_per_direction_with_the_refusals_single(self):
+        planned = set(v0_matrix.PLANNED_IDS)
+        for rid in self.IDS:
+            self.assertIn(rid, planned)
+        self.assertEqual(v0_matrix.PLAN_BY_KEY["V0-TRANSIT-TLS"].expected,
+                         v0_matrix.ACCEPTED)
+        self.assertEqual(v0_matrix.PLAN_BY_KEY["V0-TRANSIT-AUTHINFO-WRONG"].expected,
+                         v0_matrix.REFUSED)
+
+    def test_without_an_image_every_protected_row_is_not_exercised_with_a_blocker(self):
+        rows = self.rows()
+        for rid in self.IDS:
+            self.assertEqual(rows[rid].verdict, v0_matrix.NOT_EXERCISED, rid)
+            self.assertIn("protected peering witness", rows[rid].blocker, rid)
+            self.assertIn("test_native_protected_peering", rows[rid].invocation, rid)
+
+    def test_a_structured_witness_measures_both_directions_and_both_refusals(self):
+        rows = self.rows(self.witness_lines())
+        for rid in self.IDS[:4]:
+            self.assertEqual(rows[rid].verdict, v0_matrix.ACCEPTED, rid)
+            self.assertIn("480", rows[rid].observed, rid)
+        for rid in self.IDS[4:]:
+            self.assertEqual(rows[rid].verdict, v0_matrix.REFUSED, rid)
+        self.assertIn("test_reciprocal_starttls_authinfo_transfer_and_reconnect",
+                      rows["V0-TRANSIT-TLS-AB"].invocation)
+
+    def test_owners_that_are_not_this_image_are_not_evidence(self):
+        def alter(feed, password, anchor):
+            for one in (feed, password, anchor):
+                one["identity"] = self.identity(core="c" * 64)
+        rows = self.rows(self.witness_lines(alter))
+        for rid in self.IDS:
+            self.assertEqual(rows[rid].verdict, v0_matrix.NOT_EXERCISED, rid)
+            self.assertIn("this run's image", rows[rid].blocker, rid)
+
+    def test_a_target_that_does_not_refuse_the_clear_channel_is_not_evidence(self):
+        def alter(feed, password, anchor):
+            feed["target_policy"] = {"required": True, "protected_only": False}
+        rows = self.rows(self.witness_lines(alter))
+        for rid in self.IDS[:4]:
+            self.assertEqual(rows[rid].verdict, v0_matrix.NOT_EXERCISED, rid)
+            self.assertIn("refuses both without them", rows[rid].blocker, rid)
+
+    def test_a_direction_whose_clear_offer_was_taken_is_not_measured(self):
+        def alter(feed, password, anchor):
+            feed["transit"]["ba"]["unauthenticated_offer"] = "335 send it"
+        rows = self.rows(self.witness_lines(alter))
+        self.assertEqual(rows["V0-TRANSIT-TLS-AB"].verdict, v0_matrix.ACCEPTED)
+        self.assertEqual(rows["V0-TRANSIT-AUTHINFO-AB"].verdict, v0_matrix.ACCEPTED)
+        self.assertEqual(rows["V0-TRANSIT-TLS-BA"].verdict, v0_matrix.NOT_EXERCISED)
+        self.assertEqual(rows["V0-TRANSIT-AUTHINFO-BA"].verdict, v0_matrix.NOT_EXERCISED)
+        self.assertIn("malformed protected-feed ba", rows["V0-TRANSIT-TLS-BA"].blocker)
+
+    def test_a_delivered_refusal_case_is_not_read_as_a_refusal(self):
+        def alter(feed, password, anchor):
+            password["delivered"] = True
+        rows = self.rows(self.witness_lines(alter))
+        self.assertEqual(rows["V0-TRANSIT-AUTHINFO-WRONG"].verdict,
+                         v0_matrix.NOT_EXERCISED)
+        self.assertEqual(rows["V0-TRANSIT-TLS-WRONG-ANCHOR"].verdict, v0_matrix.REFUSED)
+
+
 class AuthDriverTests(unittest.TestCase):
     """The shipped `auth` phase itself, driven against a fake Conn.
 
@@ -867,6 +986,90 @@ class DuplicateOutcomeTests(unittest.TestCase):
         fact = gate.facts["duplicate resubmission a"]
         self.assertIn("identical octets", fact)
         self.assertIn("different octets under the same Message-ID", fact)
+
+
+class InnRowTests(unittest.TestCase):
+    """The INN rows are read from tools/inn_lab.py's findings and nothing else."""
+
+    @staticmethod
+    def findings(overrides=None, verdict="held"):
+        rows = []
+        for _, names in v0_matrix.INN_ROWS:
+            for name in names:
+                key, _, instance = name.partition("[")
+                rows.append({"key": key, "instance": instance.rstrip("]"),
+                             "verdict": "held", "observed": "obs " + name})
+        for row in rows:
+            name = row["key"] + ("[{}]".format(row["instance"]) if row["instance"] else "")
+            if overrides and name in overrides:
+                row["verdict"] = overrides[name]
+        return {"verdict": verdict, "counts": {"held": len(rows)}, "rows": rows}
+
+    def test_every_inn_row_is_planned_and_every_lab_finding_is_named_once(self):
+        for key in v0_matrix.INN_ROW_KEYS:
+            self.assertIn(key, v0_matrix.PLANNED_IDS)
+        names = [name for _, names in v0_matrix.INN_ROWS for name in names]
+        self.assertEqual(len(names), len(set(names)))
+        import inn_lab
+        declared = {key + ("[{}]".format(one) if one else "")
+                    for key, (_, instances) in inn_lab.InnLab.ASSERTIONS.items()
+                    for one in instances}
+        self.assertLessEqual(set(names), declared,
+                             "a row reads a finding the lab never declares")
+
+    def test_all_held_carries_each_row_s_expected_verdict(self):
+        got = {key: (verdict, blocker) for key, verdict, _, blocker in
+               v0_matrix.inn_rows(self.findings())}
+        self.assertEqual(set(got), set(v0_matrix.INN_ROW_KEYS))
+        for key in v0_matrix.INN_ROW_KEYS:
+            self.assertEqual(got[key][0], v0_matrix.PLAN_BY_KEY[key].expected, key)
+            self.assertIsNone(got[key][1])
+
+    def test_a_violated_finding_is_the_opposite_outcome_not_a_pass(self):
+        got = {key: verdict for key, verdict, _, _ in v0_matrix.inn_rows(self.findings(
+            {"fn-serves-no-sender-xref": "violated", "fn-loop-refused": "violated"},
+            verdict="violated"))}
+        self.assertEqual(got["V0-INN-SERVING-AGENT"], v0_matrix.REFUSED)
+        self.assertEqual(got["V0-INN-LOOP-FN"], v0_matrix.ACCEPTED)
+        self.assertEqual(got["V0-INN-INTEROP"], v0_matrix.REFUSED)
+        self.assertEqual(got["V0-INN-FEED-OUT"], v0_matrix.ACCEPTED)
+
+    def test_an_undecided_or_absent_finding_is_not_exercised_with_its_reason(self):
+        doc = self.findings({"innd-died": "not-exercised"}, verdict="inconclusive")
+        doc["rows"] = [row for row in doc["rows"] if row["key"] != "fn-feeds-inn"]
+        got = {key: (verdict, blocker) for key, verdict, _, blocker in
+               v0_matrix.inn_rows(doc)}
+        self.assertEqual(got["V0-INN-RESTART"][0], v0_matrix.NOT_EXERCISED)
+        self.assertIn("innd-died=not-exercised", got["V0-INN-RESTART"][1])
+        self.assertEqual(got["V0-INN-FEED-OUT"][0], v0_matrix.NOT_EXERCISED)
+        self.assertIn("fn-feeds-inn=absent", got["V0-INN-FEED-OUT"][1])
+        self.assertEqual(got["V0-INN-INTEROP"][0], v0_matrix.NOT_EXERCISED)
+
+    def test_without_inn_or_off_the_native_backend_every_row_says_why(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = native_gate(home)
+            gate.inn()
+            rows = {row.id: row for row in gate.rows}
+            self.assertEqual(set(rows), set(v0_matrix.INN_ROW_KEYS))
+            for row in rows.values():
+                self.assertEqual(row.verdict, v0_matrix.NOT_EXERCISED)
+                self.assertIn("--inn", row.blocker)
+            gate = native_gate(home)
+            gate.want_inn = True
+            gate.backend = v0_matrix.DEVELOPMENT_BACKEND
+            gate.inn()
+            for row in gate.rows:
+                self.assertIn("D07", row.blocker)
+
+    def test_the_lab_is_run_from_this_checkout_with_the_image(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = native_gate(home)
+            command = gate.inn_command(Path("/tmp/x/inn-lab.md"))
+            self.assertEqual(command[1], str(ROOT / "tools/inn_lab.py"))
+            self.assertEqual(command[command.index("--native-image") + 1],
+                             "/opt/fn/fn-host")
+            self.assertEqual(command[command.index("--host") + 1], gate.host.label)
+            self.assertEqual(command[-1], "/tmp/x/inn-lab.md")
 
 
 if __name__ == "__main__":

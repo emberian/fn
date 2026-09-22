@@ -121,6 +121,7 @@
     "tests/acl2/feed-connection-tests",
     "books/feed-connection-invariants",
     "tests/acl2/feed-connection-invariants-tests",
+    "tests/acl2/feed-connection-teeth-tests",
     "books/store-files",
     "books/store-files-invariants",
     "tests/acl2/store-files-tests",
@@ -415,25 +416,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 413,
-    "books_in_root_closure": 412,
-    "roots": 411,
-    "theorems": 6722,
-    "functions": 5245,
-    "assert_events": 7360,
-    "must_fails": 224,
-    "encapsulates": 21,
+    "books": 414,
+    "books_in_root_closure": 413,
+    "roots": 412,
+    "theorems": 6835,
+    "functions": 5289,
+    "assert_events": 7620,
+    "must_fails": 256,
+    "encapsulates": 23,
     "guards": {
-      "verified": 1731,
-      "declared-off": 282,
-      "default-guarded": 2611,
-      "default-unguarded": 621
+      "verified": 1737,
+      "declared-off": 284,
+      "default-guarded": 2633,
+      "default-unguarded": 635
     },
-    "suspect_theorems": 63,
-    "export_hygiene_warnings": 88,
+    "suspect_theorems": 65,
+    "export_hygiene_warnings": 90,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 13,
-    "include_hygiene_warnings": 252,
+    "include_hygiene_warnings": 253,
     "host_names_warnings": 645,
     "hand_written_record_warnings": 18
   },
@@ -2592,7 +2593,7 @@
       "book": "books/checkpoint-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 108,
+      "theorems": 110,
       "functions": 32,
       "guards": {
         "verified": 13,
@@ -3092,7 +3093,7 @@
       "book": "books/feed-auth-profile.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 4,
       "functions": 8,
       "guards": {
         "verified": 8,
@@ -3117,12 +3118,12 @@
       "book": "books/feed-connection-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 18,
-      "functions": 1,
+      "theorems": 43,
+      "functions": 21,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 1,
+        "default-guarded": 21,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -3945,12 +3946,12 @@
       "book": "books/native-admin.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
-      "functions": 41,
+      "theorems": 13,
+      "functions": 42,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 40,
+        "default-guarded": 41,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -3958,7 +3959,7 @@
       "must_fails": 0,
       "defconsts": 6,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 2,
       "includes": [
         "byte-store-txn-name",
         "identity",
@@ -4188,15 +4189,15 @@
       "book": "books/nntp-auth.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 84,
-      "functions": 54,
+      "theorems": 107,
+      "functions": 58,
       "guards": {
-        "verified": 37,
+        "verified": 40,
         "declared-off": 3,
         "default-guarded": 14,
-        "default-unguarded": 0
+        "default-unguarded": 1
       },
-      "verify_guards_events": 37,
+      "verify_guards_events": 40,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 1,
@@ -4210,6 +4211,7 @@
       "system_includes": [],
       "suspects": [
         "fn-auth-consistent-forward",
+        "fn-auth-session-peer-folds",
         "fn-auth-token-argp-forward"
       ],
       "read_error": null
@@ -4674,12 +4676,12 @@
       "book": "books/owner-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
-      "functions": 40,
+      "theorems": 38,
+      "functions": 43,
       "guards": {
         "verified": 0,
-        "declared-off": 4,
-        "default-guarded": 36,
+        "declared-off": 6,
+        "default-guarded": 37,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -4789,7 +4791,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 127,
+      "theorems": 128,
       "functions": 8,
       "guards": {
         "verified": 0,
@@ -4818,7 +4820,7 @@
       "book": "books/owner-prepare-correspondence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
+      "theorems": 18,
       "functions": 3,
       "guards": {
         "verified": 1,
@@ -6047,7 +6049,7 @@
       "book": "books/store-node-resolution.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 34,
+      "theorems": 36,
       "functions": 8,
       "guards": {
         "verified": 6,
@@ -6076,15 +6078,15 @@
       "book": "books/store-node-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 55,
-      "functions": 5,
+      "theorems": 71,
+      "functions": 7,
       "guards": {
-        "verified": 2,
+        "verified": 4,
         "declared-off": 0,
         "default-guarded": 1,
         "default-unguarded": 2
       },
-      "verify_guards_events": 2,
+      "verify_guards_events": 4,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -6098,14 +6100,16 @@
       "system_includes": [
         "arithmetic/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-snt-apply-record-of-a-retention-event"
+      ],
       "read_error": null
     },
     {
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 24,
+      "theorems": 28,
       "functions": 48,
       "guards": {
         "verified": 32,
@@ -6158,14 +6162,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 39,
-      "functions": 13,
+      "functions": 14,
       "guards": {
-        "verified": 12,
+        "verified": 13,
         "declared-off": 0,
         "default-guarded": 1,
         "default-unguarded": 0
       },
-      "verify_guards_events": 12,
+      "verify_guards_events": 13,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -6185,7 +6189,7 @@
       "book": "books/store-prepare-correspondence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
+      "theorems": 19,
       "functions": 4,
       "guards": {
         "verified": 2,
@@ -7602,7 +7606,7 @@
       "verify_guards_events": 0,
       "assert_events": 18,
       "must_fails": 0,
-      "defconsts": 5,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7629,7 +7633,7 @@
       "verify_guards_events": 0,
       "assert_events": 18,
       "must_fails": 0,
-      "defconsts": 10,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7864,7 +7868,7 @@
       "verify_guards_events": 0,
       "assert_events": 8,
       "must_fails": 0,
-      "defconsts": 9,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7945,7 +7949,7 @@
       "verify_guards_events": 0,
       "assert_events": 70,
       "must_fails": 12,
-      "defconsts": 33,
+      "defconsts": 24,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7974,7 +7978,7 @@
       "verify_guards_events": 0,
       "assert_events": 18,
       "must_fails": 0,
-      "defconsts": 7,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -8001,7 +8005,7 @@
       "verify_guards_events": 0,
       "assert_events": 15,
       "must_fails": 2,
-      "defconsts": 5,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -8441,7 +8445,7 @@
       "verify_guards_events": 0,
       "assert_events": 20,
       "must_fails": 0,
-      "defconsts": 11,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -8600,7 +8604,7 @@
       "verify_guards_events": 0,
       "assert_events": 15,
       "must_fails": 4,
-      "defconsts": 19,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -8904,6 +8908,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/feed-connection-teeth-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 59,
+      "must_fails": 16,
+      "defconsts": 39,
+      "defmacros": 4,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/feed-connection-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/feed-connection-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -9178,7 +9209,7 @@
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 11,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -9412,9 +9443,9 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 74,
+      "assert_events": 96,
       "must_fails": 0,
-      "defconsts": 14,
+      "defconsts": 17,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -9718,18 +9749,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 9,
+      "functions": 19,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 9
+        "default-unguarded": 19
       },
       "verify_guards_events": 0,
-      "assert_events": 141,
-      "must_fails": 23,
-      "defconsts": 46,
-      "defmacros": 2,
+      "assert_events": 236,
+      "must_fails": 38,
+      "defconsts": 88,
+      "defmacros": 13,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
@@ -9984,24 +10015,26 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 75,
-      "must_fails": 0,
-      "defconsts": 19,
-      "defmacros": 0,
+      "assert_events": 141,
+      "must_fails": 1,
+      "defconsts": 59,
+      "defmacros": 4,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/owner-config"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -10572,7 +10605,7 @@
       "verify_guards_events": 0,
       "assert_events": 11,
       "must_fails": 0,
-      "defconsts": 3,
+      "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -10704,7 +10737,7 @@
       "verify_guards_events": 0,
       "assert_events": 8,
       "must_fails": 0,
-      "defconsts": 14,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -10729,9 +10762,9 @@
         "default-unguarded": 6
       },
       "verify_guards_events": 0,
-      "assert_events": 33,
+      "assert_events": 51,
       "must_fails": 0,
-      "defconsts": 30,
+      "defconsts": 23,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -11434,9 +11467,17 @@
       ]
     },
     {
+      "theorem": "fn-auth-session-peer-folds",
+      "book": "books/nntp-auth.lisp",
+      "line": 2221,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-auth-session-peer"
+      ]
+    },
+    {
       "theorem": "fn-auth-token-argp-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 743,
+      "line": 796,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp"
       ]
@@ -11591,7 +11632,7 @@
     {
       "theorem": "fn-cpc-uint32p-bridge",
       "book": "books/checkpoint-codec.lisp",
-      "line": 1193,
+      "line": 1250,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p"
       ]
@@ -11714,7 +11755,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 713,
+      "line": 801,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]
@@ -11846,7 +11887,7 @@
     {
       "theorem": "fn-sn-known-abort-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 137,
+      "line": 152,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value"
       ]
@@ -11854,7 +11895,7 @@
     {
       "theorem": "fn-sn-open-observed-invalid-history-refuses",
       "book": "books/store-observed.lisp",
-      "line": 455,
+      "line": 472,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value"
       ]
@@ -11862,9 +11903,17 @@
     {
       "theorem": "fn-sn-refuse-reservation-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 131,
+      "line": 146,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-snt-apply-record-of-a-retention-event",
+      "book": "books/store-node-traces.lisp",
+      "line": 613,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value"
       ]
     },
     {
@@ -12138,7 +12187,7 @@
       {
         "theorem": "fn-cpp-crash-marker-is-authority-before-selection-attempted",
         "book": "books/checkpoint-publish.lisp",
-        "line": 774,
+        "line": 776,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -12156,19 +12205,19 @@
       {
         "theorem": "fn-jrec-article-sequence-agrees",
         "book": "books/config-records.lisp",
-        "line": 98,
+        "line": 100,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-jrec-article-store-event-sequence-agrees",
         "book": "books/config-records.lisp",
-        "line": 103,
+        "line": 105,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-jrec-config-sequence-agrees",
         "book": "books/config-records.lisp",
-        "line": 111,
+        "line": 113,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -12202,9 +12251,21 @@
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
+        "theorem": "fn-auth-session-peer-of-fn-auth-make-session",
+        "book": "books/nntp-auth.lisp",
+        "line": 491,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-auth-session-peer-of-fn-auth-with-base",
+        "book": "books/nntp-auth.lisp",
+        "line": 496,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines",
         "book": "books/nntp-auth.lisp",
-        "line": 1659,
+        "line": 1715,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -12782,19 +12843,19 @@
       {
         "check": "aut-peer-open-pins-the-open-config",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1068,
+        "line": 1072,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-not-posting",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1172,
+        "line": 1176,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-the-post-command-event",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1213,
+        "line": 1217,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       }
     ],
@@ -13997,6 +14058,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/feed-connection-teeth-tests.lisp",
+        "line": 34,
+        "include": "../../books/feed-connection-invariants",
+        "included": "books/feed-connection-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/feed-connection-tests.lisp",
         "line": 3,
         "include": "../../books/feed-connection",
@@ -14194,7 +14262,7 @@
       },
       {
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 45,
+        "line": 49,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

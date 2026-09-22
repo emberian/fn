@@ -291,6 +291,113 @@ class MultiValued(unittest.TestCase):
         self.assertIn("fn-bs-fsync-file", teeth_check.mv_functions())
 
 
+class MacroTeeth(unittest.TestCase):
+    """`must-fail` forms a book-local `defmacro` produces rather than writes.
+
+    `tests/acl2/feed-connection-teeth-tests.lisp` (T9c, 2026-09-22) writes its
+    sixteen must-fails as calls of three macros wrapped in `must-fail` at the
+    call site, plus one macro (`fct-custody-thm`) with one more; the literal
+    text `must-fail` never appears at thirteen of those call sites, so the
+    static lint counted zero teeth for six keystones until this.  These cases
+    are the two shapes a macro can carry a must-fail: written into the
+    template itself (every call is one, whether or not the call site also
+    wraps it), and written only at the call site (a call counts only when it
+    does).
+    """
+
+    def teeth(self, source: str, book: str = "tests/acl2/y-tests.lisp"):
+        path = ROOT / book
+        return teeth_check.macro_teeth_for_book(_Fake(path, source))
+
+    def test_a_must_fail_in_the_template_counts_every_call(self):
+        source = '''(in-package "ACL2")
+(defmacro foo-thm (name)
+  `(progn (defthm ,name (equal 1 1))
+          (must-fail (thm (equal 1 2)))))
+(foo-thm foo-a)
+(foo-thm foo-b)
+(foo-thm foo-c)
+'''
+        teeth, macros = self.teeth(source)
+        self.assertIn("foo-thm", macros)
+        self.assertTrue(macros["foo-thm"].has_must_fail)
+        must_fails = [t for t in teeth if t.kind == "must-fail"]
+        witnesses = [t for t in teeth if t.kind == "witness"]
+        self.assertEqual(len(must_fails), 3)
+        self.assertEqual({t.theorem for t in must_fails},
+                         {"foo-a", "foo-b", "foo-c"})
+        # The same template also admits a `defthm` outright, so each call is
+        # a witness too: the macro does both at once.
+        self.assertEqual(len(witnesses), 3)
+
+    def test_a_macro_with_no_must_fail_anywhere_counts_zero(self):
+        source = '''(in-package "ACL2")
+(defmacro bar-thm (name)
+  `(defthm ,name (equal 1 1)))
+(bar-thm bar-a)
+(bar-thm bar-b)
+'''
+        teeth, macros = self.teeth(source)
+        self.assertFalse(macros["bar-thm"].has_must_fail)
+        self.assertEqual([t for t in teeth if t.kind == "must-fail"], [])
+        self.assertEqual(len([t for t in teeth if t.kind == "witness"]), 2)
+
+    def test_a_call_of_a_macro_defined_elsewhere_counts_zero(self):
+        # `baz-thm` is not a `defmacro` this book reads: whatever it expands
+        # to, this reader never saw its definition, so it is not credited.
+        source = '''(in-package "ACL2")
+(local (must-fail (baz-thm some-name)))
+'''
+        teeth, macros = self.teeth(source)
+        self.assertEqual(macros, {})
+        self.assertEqual(teeth, [])
+
+    def test_a_must_fail_only_in_a_comment_or_string_does_not_count(self):
+        source = '''(in-package "ACL2")
+(defmacro quux-thm (name)
+  `(defthm ,name (equal (foo "must-fail") 1))) ; not a must-fail: (must-fail x)
+(quux-thm quux-a)
+'''
+        teeth, macros = self.teeth(source)
+        self.assertFalse(macros["quux-thm"].has_must_fail)
+        self.assertEqual([t for t in teeth if t.kind == "must-fail"], [])
+
+    def test_a_call_site_must_fail_counts_once_per_hypothesis_dropped(self):
+        source = '''(in-package "ACL2")
+(defmacro wobble-thm (name hyps)
+  `(defthm ,name (implies (and ,@hyps) (equal 1 1))))
+(wobble-thm wobble-full ((f x) (g x)))
+(local (must-fail (wobble-thm wobble-without-f ((g x)))))
+(local (must-fail (wobble-thm wobble-without-g ((f x)))))
+'''
+        teeth, macros = self.teeth(source)
+        self.assertFalse(macros["wobble-thm"].has_must_fail)
+        must_fails = [t for t in teeth if t.kind == "must-fail"]
+        witnesses = [t for t in teeth if t.kind == "witness"]
+        self.assertEqual({t.theorem for t in must_fails},
+                         {"wobble-without-f", "wobble-without-g"})
+        self.assertEqual([t.theorem for t in witnesses], ["wobble-full"])
+
+    def test_the_real_feed_connection_book_counts_sixteen(self):
+        path = ROOT / "tests/acl2/feed-connection-teeth-tests.lisp"
+        teeth, macros = teeth_check.macro_teeth_for_book(path)
+        must_fails = [t for t in teeth if t.kind == "must-fail"]
+        self.assertEqual(len(must_fails), 16)
+        self.assertEqual({"fct-gate-thm", "fct-closes-quietly-thm",
+                          "fct-render-thm", "fct-custody-thm"},
+                         set(macros))
+
+    def test_the_summary_reports_the_macro_teeth_line(self):
+        # `--summary` is what `make check` runs; the macro-teeth line must
+        # not need `--table` to be visible there.
+        totals = teeth_check.macro_teeth_totals(
+            {"tests/acl2/feed-connection-teeth-tests.lisp":
+             teeth_check.macro_teeth_for_book(
+                 ROOT / "tests/acl2/feed-connection-teeth-tests.lisp")[0]})
+        self.assertEqual(totals["must_fails"], 16)
+        self.assertEqual(totals["macros"], 4)
+
+
 class Acl2Errors(unittest.TestCase):
     def test_a_translate_error_names_its_form(self):
         log = ("ACL2 Error [Translate] in ( DEFCONST *FF2* ...):  It is\n"

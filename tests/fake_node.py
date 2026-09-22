@@ -24,6 +24,7 @@ Every switch names one thing about a node a client has to survive:
     uncertain_post      the article is taken and the outcome is uncertain, 441
     drop_after_article  the article is taken and the socket closes: no reply
     drop_before_greeting  the connection is accepted and closed, unspoken
+    close_after_382     STARTTLS is agreed to and the socket then closes
     host                where it listens, so `::1` can be reached as `::1`
 
 The last two arrived from the frozen 915d5c72 node on 2026-09-22
@@ -50,7 +51,8 @@ class FakeNode(threading.Thread):
                  offer_starttls=True, require_auth=True, refuse_post=False,
                  uncertain_post=False, drop_after_article=False, fail_article=None,
                  echo_password=False, groups=("fn.agents",), drop_before_greeting=False,
-                 host="127.0.0.1", refusal="441 posting failed; the article was refused"):
+                 host="127.0.0.1", refusal="441 posting failed; the article was refused",
+                 close_after_382=False):
         super().__init__(daemon=True)
         self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.context.load_cert_chain(cert, key)
@@ -64,6 +66,7 @@ class FakeNode(threading.Thread):
         self.uncertain_post = uncertain_post
         self.drop_after_article = drop_after_article
         self.drop_before_greeting = drop_before_greeting
+        self.close_after_382 = close_after_382
         self.fail_article = fail_article
         self.echo_password = echo_password
         self.articles = {}
@@ -205,6 +208,8 @@ class FakeNode(threading.Thread):
                         send("502 already or never")
                         continue
                     send("382 continue with TLS negotiation")
+                    if self.close_after_382:
+                        return
                     assert buf == b"", "the fake never takes pipelined octets"
                     conn = self.context.wrap_socket(conn, server_side=True)
                     tls = True

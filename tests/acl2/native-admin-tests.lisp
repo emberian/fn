@@ -328,3 +328,69 @@
  (equal (fn-native-admin-peer-report
          (list (fn-cfg-row-make "ghost" "path-identity" "ghost.example" 0)))
         nil))
+
+; -----------------------------------------------------------------------------
+; The LIVE arm's delta labels (plan T8; `fn-native-admin-plan-deltas').
+;
+; The finding, evaluated.  A plan carries the name the operator typed as argv
+; OCTETS.  The delta the live arm used to build from it -- the octets passed
+; straight to the constructor -- is not a `fn-cfg-deltap', because a
+; configuration label is a string; `fn-ocfg-reconfig-refusal' refused every
+; such request `:malformed-delta'.  The same name as a string is a typed delta.
+(assert-event (not (fn-cfg-deltap
+                    (fn-cfg-create-group (fn-native-admin-result-name *fn-na-create*)
+                                         *fn-cfg-default-policy-id*))))
+(assert-event (not (fn-cfg-deltap
+                    (fn-cfg-remove-group (fn-native-admin-result-name *fn-na-retire*)))))
+(assert-event (not (fn-cfg-deltap
+                    (fn-cfg-remove-peer-delta
+                     (fn-native-admin-result-name *fn-na-peer-remove*)))))
+
+; What the live arm stages now, kind by kind: one typed delta whose label is
+; the admitted word.
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-create*)
+                     (list (fn-cfg-create-group "fn.admin" *fn-cfg-default-policy-id*))))
+(assert-event (fn-cfg-delta-listp (fn-native-admin-plan-deltas *fn-na-create*)))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-retire*)
+                     (list (fn-cfg-remove-group "fn.admin"))))
+(assert-event (fn-cfg-delta-listp (fn-native-admin-plan-deltas *fn-na-retire*)))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-peer-remove*)
+                     (list (fn-cfg-remove-peer-delta "far"))))
+(assert-event (fn-cfg-delta-listp (fn-native-admin-plan-deltas *fn-na-peer-remove*)))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-capacity*)
+                     (list (fn-cfg-set-capacity 1048576))))
+(assert-event (fn-cfg-delta-listp (fn-native-admin-plan-deltas *fn-na-capacity*)))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-policy*)
+                     (list (fn-cfg-set-policy "path-identity" "a.gate.example.invalid"))))
+(assert-event (fn-cfg-delta-listp (fn-native-admin-plan-deltas *fn-na-policy*)))
+(assert-event (fn-cfg-delta-listp (fn-native-admin-plan-deltas *fn-na-peer-add*)))
+(assert-event (equal (len (fn-native-admin-plan-deltas *fn-na-peer-add*)) 1))
+; A query stages nothing.
+(assert-event (null (fn-native-admin-plan-deltas *fn-na-peer-list*)))
+
+; fn-native-admin-live-group-delta-is-a-typed-delta: the two witnesses are
+; the create and retire assertions above.  One violating value per
+; hypothesis.
+;
+; Hypothesis 1, the plan was accepted: a refused `group create' (a 200-octet
+; name, over the 128-octet group-name bound) stages nothing, so the
+; conclusion's `consp' fails.
+(defconst *fn-na-create-overlong*
+  (fn-native-admin-plan
+   (fn-na-test-argv (list "group" "create"
+                          (coerce (make-list 200 :initial-element #\g) 'string)))))
+(assert-event (member-equal (fn-native-admin-result-kind *fn-na-create-overlong*)
+                            '(nil)))
+(assert-event (not (equal (fn-native-admin-result-status *fn-na-create-overlong*) :accepted)))
+(assert-event (not (consp (fn-native-admin-plan-deltas *fn-na-create-overlong*))))
+; Hypothesis 2, the kind is a group kind: an ACCEPTED `peer remove' whose
+; name is 300 octets.  The plan admits any non-empty word up to 512 octets
+; there, the configuration label holds 256, and the staged delta is not
+; typed -- so the theorem is about the group kinds and says so.
+(defconst *fn-na-long-name*
+  (coerce (make-list 300 :initial-element #\p) 'string))
+(defconst *fn-na-peer-remove-long*
+  (fn-native-admin-plan (fn-na-test-argv (list "peer" "remove" *fn-na-long-name*))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-peer-remove-long*) :accepted))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-peer-remove-long*) :remove-peer))
+(assert-event (not (fn-cfg-delta-listp (fn-native-admin-plan-deltas *fn-na-peer-remove-long*))))

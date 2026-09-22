@@ -1,0 +1,240 @@
+"""Live reconfiguration on a running owner (plan T8).
+
+Subjects, in the order the live arm meets them:
+
+* `operator CONFIG group create NAME` and `operator CONFIG peer add ...` while
+  an owner holds the store go over its control socket to
+  `fnn-owner-live-admin-serialized` (host/native/admin.lisp), which stages
+  `fn-native-admin-plan-deltas` (books/native-admin.lisp) through
+  `fn-ocfg-step`, publishes the record and completes it.
+* A reader connection opened before the change keeps answering exactly what it
+  answered before (`fn-ocfg-no-reader-observes-a-half-change`,
+  books/owner-config.lisp).
+* The second of two live reconfigurations is published: the one the old
+  `fn-ocfg-complete` could not publish after a live group creation.
+* The durable history is what a restart reads: `peer list` after the owner
+  stops shows the peer the live owner added
+  (`fn-ocfg-crash-at-any-instant-recovers-the-live-generation`).
+
+The source checks are always active.  The executable witnesses need the saved
+image; when it is absent they skip and name the image they wanted, rather than
+a source inspection being reported as runtime evidence.
+"""
+import os
+from pathlib import Path
+import select
+import signal
+import socket
+import subprocess
+import tempfile
+import unittest
+
+
+ROOT = Path(__file__).resolve().parent.parent
+IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+
+EXIT_OK, EXIT_REFUSED = 0, 1
+
+PEER_ADD = ("peer", "add", "far", "far.example.invalid", "192.0.2.44", "1119",
+            "fn.*", "-", "192.0.2.44", "true")
+PEER_ROW = ("far path-identity=far.example.invalid address=192.0.2.44 "
+            "port=1119 security=clear inbound=fn.* outbound=- "
+            "auth=source-address:192.0.2.44")
+
+
+def environment():
+    env = dict(os.environ)
+    env["ACL2_CUSTOMIZATION"] = "NONE"
+    env.pop("ACL2_SYSTEM_BOOKS", None)
+    env.pop("FN_HOST", None)
+    env.pop("FN_NATIVE_CONTROL_FAULT", None)
+    env.pop("FN_NATIVE_CONTROL_TEST_STOP", None)
+    return env
+
+
+def executable(image):
+    return image.is_file() and os.access(image, os.X_OK)
+
+
+def free_port():
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
+class LiveReconfigurationSourceTests(unittest.TestCase):
+    """What the source says, whether or not an image was built."""
+
+    def setUp(self):
+        self.bridge = (ROOT / "host" / "native-admin-host.lisp").read_text(encoding="ascii")
+        self.admin = (ROOT / "books" / "native-admin.lisp").read_text(encoding="ascii")
+        self.owner_config = (ROOT / "books" / "owner-config.lisp").read_text(encoding="ascii")
+        self.native_admin = (ROOT / "host" / "native" / "admin.lisp").read_text(encoding="ascii")
+
+    def test_the_live_arm_stages_acls_delta_list_and_builds_none(self):
+        start = self.bridge.index("(defun fn-native-admin-host-owner-reconfigure")
+        end = self.bridge.index("(defun fn-native-admin-host-apply", start)
+        body = self.bridge[start:end]
+        self.assertIn("(fn-native-admin-plan-deltas plan)", body)
+        self.assertIn("(fn-owner-reconfigure-deltas id deltas state)", body)
+        # No delta constructor and no octet/string conversion in the bridge:
+        # the labels' type is decided once, in the book.
+        for forbidden in ("fn-cfg-create-group", "fn-cfg-remove-group",
+                          "fn-cfg-remove-peer-delta", "fn-cfg-set-peer-delta",
+                          "fn-cfg-set-policy", "octets->string"):
+            self.assertNotIn(forbidden, body)
+        self.assertIn("(defun fn-native-admin-plan-deltas (plan)", self.admin)
+        self.assertIn("(defthm fn-native-admin-live-group-delta-is-a-typed-delta", self.admin)
+
+    def test_completion_publishes_what_recovery_replays(self):
+        start = self.owner_config.index("(defun fn-ocfg-complete (oc)")
+        end = self.owner_config.index("(defun", start + 10)
+        body = self.owner_config[start:end]
+        self.assertIn("(fn-ocfg-published-config (fn-ocfg-config oc) record)", body)
+        self.assertNotIn("fn-cnode-apply-config", body)
+        for name in ("fn-ocfg-no-reader-observes-a-half-change",
+                     "fn-ocfg-crash-at-any-instant-recovers-the-live-generation"):
+            self.assertIn("(defthm " + name, self.owner_config)
+
+    def test_the_live_arm_is_the_event_sequence_the_theorem_names(self):
+        # reconfigure, close the private connection, publish, complete
+        start = self.native_admin.index("(defun fnn-owner-live-admin-serialized")
+        body = self.native_admin[start:self.native_admin.index("(defun fnn-admin-query", start)]
+        order = [body.index(word) for word in (
+            "'fn-owner-open", "'fn-native-admin-host-owner-reconfigure",
+            "'fn-owner-close", "(fnn-admin-publish", "'fn-owner-reconfigure-complete")]
+        self.assertEqual(order, sorted(order))
+
+
+@unittest.skipUnless(executable(IMAGE),
+                     "build/fn-host (or FN_NATIVE_HOST) is required: the live "
+                     "arm runs only in a saved image with a control socket")
+class LiveReconfigurationImageTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="fn-live-reconfig-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.store = self.root / "store"
+        self.control = self.root / "control.sock"
+        self.port = free_port()
+        self.config = self.root / "fn.toml"
+        self.config.write_text(
+            '[store]\npath = "{}"\n'
+            '[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
+            encoding="ascii")
+        self.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
+
+    def operator(self, *words, timeout=180):
+        return subprocess.run(
+            [str(IMAGE), "--fn", "operator", str(self.config), *words],
+            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=timeout, check=False)
+
+    def start_owner(self):
+        process = subprocess.Popen(
+            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
+            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, bufsize=0)
+        self.addCleanup(self.reap, process)
+        for _ in range(4):
+            self.assertTrue(select.select([process.stdout], [], [], 180)[0],
+                            "the owner did not become ready")
+            line = process.stdout.readline()
+            if line.startswith(b"LISTENING "):
+                return process
+            if process.poll() is not None:
+                self.fail("owner failed: {}".format(
+                    process.stderr.read().decode("utf-8", "replace")))
+        self.fail("the owner's readiness output was malformed")
+
+    def stop_owner(self, process):
+        process.send_signal(signal.SIGTERM)
+        self.assertEqual(process.wait(timeout=60), EXIT_OK,
+                         process.stderr.read().decode("utf-8", "replace"))
+
+    def reap(self, process):
+        if process.poll() is None:
+            process.send_signal(signal.SIGKILL)
+            process.wait(timeout=10)
+        for stream in (process.stdout, process.stderr):
+            if stream and not stream.closed:
+                stream.close()
+
+    def reader(self):
+        connection = socket.create_connection(("127.0.0.1", self.port), timeout=60)
+        self.addCleanup(connection.close)
+        stream = connection.makefile("rb")
+        self.addCleanup(stream.close)
+        greeting = stream.readline()
+        self.assertTrue(greeting.startswith(b"20"), greeting)
+        return connection, stream
+
+    @staticmethod
+    def command(connection, stream, line, multiline):
+        connection.sendall(line.encode("ascii") + b"\r\n")
+        status = stream.readline()
+        lines = []
+        if multiline and status[:1] == b"2":
+            while True:
+                row = stream.readline()
+                if row in (b".\r\n", b""):
+                    break
+                lines.append(row)
+        return status, lines
+
+    def test_a_live_peer_add_leaves_a_pinned_reader_unchanged_and_is_durable(self):
+        owner = self.start_owner()
+        connection, stream = self.reader()
+        before = self.command(connection, stream, "LIST ACTIVE", True)
+        self.assertTrue(before[0].startswith(b"215"), before)
+
+        # Two live reconfigurations: the group creation the octet labels used
+        # to refuse, then the peer addition the old completion could not
+        # publish after a group creation.
+        created = self.operator("group", "create", "fn.live")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        added = self.operator(*PEER_ADD)
+        self.assertEqual(added.returncode, EXIT_OK, added.stderr.decode())
+
+        # The reader opened before both changes answers exactly as before.
+        after = self.command(connection, stream, "LIST ACTIVE", True)
+        self.assertEqual(after, before)
+
+        # The query executor never takes the store from the live owner: it is
+        # refused at the lock, which is the documented read side.
+        live_list = self.operator("peer", "list")
+        self.assertEqual(live_list.returncode, EXIT_REFUSED, live_list.stderr.decode())
+        self.assertIn(b"already locked", live_list.stderr)
+
+        self.stop_owner(owner)
+
+        # What a restart reads: both records are durable.
+        listed = self.operator("peer", "list")
+        self.assertEqual(listed.returncode, EXIT_OK, listed.stderr.decode())
+        self.assertEqual(listed.stdout.decode("ascii").splitlines(), [PEER_ROW])
+
+        restarted = self.start_owner()
+        fresh_connection, fresh_stream = self.reader()
+        status, _ = self.command(fresh_connection, fresh_stream, "GROUP fn.live", False)
+        self.assertTrue(status.startswith(b"211"), status)
+        self.stop_owner(restarted)
+
+    @unittest.expectedFailure
+    def test_a_group_created_live_is_served_before_restart(self):
+        # books/owner-config.lisp OPEN item 3: publication moves the owner's
+        # configuration, not the live node's allocation domain, and GROUP
+        # answers from the domain.  This is the V0-CFG-LIVE observation; it
+        # becomes an unexpected success when the owner and store cluster close
+        # that seam.
+        owner = self.start_owner()
+        created = self.operator("group", "create", "fn.live")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        connection, stream = self.reader()
+        status, _ = self.command(connection, stream, "GROUP fn.live", False)
+        self.stop_owner(owner)
+        self.assertTrue(status.startswith(b"211"), status)
+
+
+if __name__ == "__main__":
+    unittest.main()
