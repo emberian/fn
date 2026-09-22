@@ -127,11 +127,38 @@ the real SHA-256 attachment.
   `books/nntp-auth-invariants.lisp` says it waits on, this lane proved the
   first; the other two are a wire lemma in `books/wire-invariants` and a
   reader lemma in `books/nntp-post`, neither of which this lane owns.
-- **`books/owner-tls-prefix` is not certified here.** It is red only behind
-  the store-node cascade (`books/owner-config` to `books/owner` to
-  `books/store-node-*`), which another lane owns; this lane changed nothing
-  in it and nothing it depends on except `books/nntp-auth`, and it certifies
-  when that cascade clears.
+- **`books/owner-tls-prefix` is NOT red only behind the store cascade, and
+  the plan's row for T7 says it is.** Two provisional waves, on the same box
+  and toolchain and with the same 800 s per-book budget, settle it:
+
+  | tree | run | books/owner-tls-prefix |
+  | --- | --- | --- |
+  | this lane, `2ea2706f` | `run-20260922T175556Z-6fd4`, remote root `/home/ember/fn-gates/t7-owner-tls` | FAILED |
+  | `dev`, `a388826f`, as the control | `run-20260922T181335Z-702f`, remote root `/home/ember/fn-gates/t7-owner-tls-ref` | FAILED |
+
+  Both fail at `fn-ocfg-read-tls-prefix-is-full-read`, at the same key
+  checkpoint (`Subgoal 13''`), whose first hypothesis is `(NOT (FN-WIRE-STATEP
+  (FN-OWN-CONN-WIRE (FN-OWN-FIND-CONN ID (FN-OWN-CONNS (FN-OCFG-OWNER OC))))))`
+  -- the proof needs "a connection the owner holds has a wire state" from
+  `(fn-ocfg-statep oc)` and does not get it. `books/owner-invariants` fails
+  its own Convert in both trees too, at
+  `fn-own-read-offers-against-the-live-node`. `books/owner`,
+  `books/owner-config` and `books/owner-fault` prove in both and wait only on
+  `books/store-node-traces`.
+
+  So: the failure predates this lane, the two trees' independent-red sets are
+  the same, and this lane introduced no red. It is also not a defect this
+  lane can repair honestly: the missing fact is an owner invariant, in
+  `books/owner-invariants`, which is T5/T6's book and is itself failing, and
+  a repair proposed against a book whose dependencies do not certify is a
+  guess. The record is `triage-owner-tls-prefix-2026-09-22/`, beside this file. **A wave is not a
+  certification** (`docs/proofs.md`): what it establishes is that the two
+  trees behave the same, not that either book is red at its bytes in a
+  published run.
+
+  The plan's T7 row should read: `owner-tls-prefix` green is blocked on
+  `books/owner-invariants` as well as on the store-node cascade, and the two
+  belong to one step.
 - **Nothing here ran on a node.** `tools/node_probe.py` already asserts
   `483`-before-TLS, `STARTTLS` and `281` against a running node
   (`docs/operator.md`, "Reaching it from a laptop"); the image does not exist
