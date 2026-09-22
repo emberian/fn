@@ -11,3 +11,14 @@
 (in-package "ACL2")
 (include-book "records-attach")
 (include-book "statement-attach")
+
+; A constant computed through a seam.  ACL2 evaluates a `defconst' body
+; without attachments, so `(defconst *x* (fn-record-encode r))' fails with
+; "cannot ev the call of non-executable function" even where this book is
+; included.  A `make-event' expansion is evaluated with them: the constant
+; below is the value the attached codec computes, written into the book's
+; certificate as a quoted literal.  It is a test book's datum, not a
+; theorem: a proof about it reasons about the literal, and an exact-byte
+; fact a proof needs still comes from the concrete codec book.
+(defmacro fn-defconst-attached (name form)
+  `(make-event (list 'defconst ',name (list 'quote ,form))))
