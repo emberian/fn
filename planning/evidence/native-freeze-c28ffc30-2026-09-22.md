@@ -2,8 +2,8 @@
 
 This record preserves what the FREEZE lane established about the native image
 closure of `dev` on 2026-09-22.  **No image was built.**  The closure is not
-certified: 123 of its 164 books certify at the frozen origin, one book in it
-carries a defect this lane did not repair, and 41 books sit above it.  Nothing
+certified: 129 of its 164 books certify at the frozen origin, two books in it
+carry defects this lane did not repair, and the rest sit above them.  Nothing
 here is a server, proof or flight-readiness claim.
 
 ## Sources and toolchain
@@ -34,13 +34,15 @@ here is a server, proof or flight-readiness claim.
 | targeted 1 | `certify-20260922T034701Z-2641627` | 51 | 51 | 2408 |
 | targeted 2 | `certify-20260922T050741Z-2682176` | 51 | 49 | 2404 |
 | targeted 3 | `certify-20260922T054916Z-2704241` | 54 | 45 | 313 |
+| targeted 4 | `certify-20260922T060312Z-2712514` | 51 | 41 | 2434 |
 
 Each targeted run recertified the failures of the one before it in the same
 tree, so the dependencies already certified there were not rebuilt.  The
-manifests are committed beside this file.  123 of the 164 books hold
-certificates at the frozen origin as of this record; the remaining 41 are
-`books/peer-inbound` and the 40 books that cascade behind it and behind the
-books still in flight when this record was written.
+manifests are committed beside this file.  129 of the 164 books hold
+certificates at the frozen origin as of this record; a fifth run
+(`build/farm/w31-targeted-6.log` in the frozen tree) was still certifying
+when it was written, so that number is a floor.  The rest cascade behind the
+two books below and behind the books that run was still working on.
 
 ## What the closure was failing on
 
@@ -105,8 +107,10 @@ it.
 
 ## What is still red
 
-`books/peer-inbound`, `FN-PEER-SESSIONP-OF-FN-PEER-WITH-NODE`, an exported
-theorem.  `fn-peer-with-node` replaces a session's node and keeps its
+### `books/peer-inbound`
+
+`FN-PEER-SESSIONP-OF-FN-PEER-WITH-NODE`, an exported theorem.
+`fn-peer-with-node` replaces a session's node and keeps its
 configuration, so for a reader session whose configuration is `NIL` the result
 has a checked node beside a null configuration and satisfies neither reader
 shape of `fn-peer-sessionp`.  The conjecture reduces to
@@ -115,10 +119,21 @@ theorem needs the configuration hypothesis its statement omits, or
 `fn-peer-with-node` needs to say what it does to a reader session; that is a
 decision about the peering interface `books/owner` depends on.
 
-16 of the 41 uncertified books are above `books/peer-inbound`.  13 were above
-`books/byte-store-frame`, repaired in `8d7c09ba` but not yet recertified at
-the frozen origin; the remaining 12 were still in flight or waiting when this
-record was written and have shown no independent failure.
+### `books/store-node-invariants`
+
+`FN-SN-FINISH-PRESERVES-STATE` does not leave `Goal''` within 600 s, the same
+symptom as the three books repaired above.  `fn-sn-finish` reaches the record
+and statement codecs through several paths, and closing them one at a time --
+`fn-replay-composite-record`, `fn-sn-composite-delta`,
+`fn-replay-identity-step`, `fn-replay-apply-record` -- did not change the
+symptom, so the term this goal is growing was not identified.  Nothing was
+committed for this book; the hint it needs is still to be found.
+
+16 of the uncertified books are above `books/peer-inbound` and the rest above
+`books/store-node-invariants` or still waiting.  `books/byte-store-frame`,
+`books/config-stream` and `books/byte-store-txn-name` certify with the
+repairs above; the first was still uncertified at the frozen origin when the
+counts in this record were taken.
 
 ## Limitations
 
