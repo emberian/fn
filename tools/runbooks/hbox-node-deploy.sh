@@ -10,6 +10,11 @@ PREFIX=$NODE/fn-$REV
 mkdir -p "$NODE/tls" "$NODE/log"
 cd "$TREE"
 export ACL2_CUSTOMIZATION=NONE; unset ACL2_SYSTEM_BOOKS
+# The image was built against OpenSSL 3.5 (ML-DSA-65); the host reads this
+# variable at runtime (host/native/tls.lisp) and falls back to the system
+# library without it, which on hbox is 3.3.1 and has no ML-DSA-65.
+FN_OPENSSL_PREFIX=${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}
+export FN_OPENSSL_PREFIX
 echo "== install the production image under $PREFIX"
 FN_NATIVE_HOST="$TREE/build/fn-host" FN_NATIVE_CORE="$TREE/build/fn-host.core" \
   FN_NATIVE_SOURCE_REVISION="$REV" PREFIX="$PREFIX" sh packaging/install-native.sh
@@ -72,6 +77,7 @@ StartLimitBurst=5
 [Service]
 Type=simple
 Environment=ACL2_CUSTOMIZATION=NONE
+Environment=FN_OPENSSL_PREFIX=$FN_OPENSSL_PREFIX
 ExecStart=$FN operator $NODE/fn.toml run
 Restart=on-failure
 RestartSec=5
