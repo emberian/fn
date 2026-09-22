@@ -21,8 +21,17 @@ Opus lanes run under `build/lanes/w31-*`: freeze (landed 27dc5a21 without
 an image: the closure went from 111 to 130 of 164 books, one shape under
 every red, [record](evidence/native-freeze-c28ffc30-2026-09-22.md); still
 red by name: `store-node-invariants` at `fn-sn-finish-preserves-state` and
-`nntp-auth` at `fn-auth-clear-principal-peer`), freeze-2 (a fresh lane on
-those two books, then the closure, then the images and `IMAGE-READY.txt`), treewide-reds (landed ad0cdefd: five proof repairs
+`nntp-auth` at `fn-auth-clear-principal-peer`), freeze-2 (landed 13f50de7, 140 of
+164: five commits on 2026-09-21 had changed the machine under invariant
+books nobody recertified, so exported statements were false in the shape
+the machine has; four books now certify, five theorems carry the
+hypotheses their arms need and `fn-sn-finish-preserves-indexedp` is
+registered open on the accepted-statement arm under PRF-023,
+[record](evidence/native-freeze-01fbdad4-2026-09-22.md); still red by
+name: `store-node-traces` at `fn-snt-record-directory-preserves-relation`,
+whose relation predates the retention and identity arms, and `checkpoint`
+at `fn-checkpoint-restore-rejects-frontier-reuse`), freeze-3 (a fresh lane
+on those two, the 22 books behind them, then the images), treewide-reds (landed ad0cdefd: five proof repairs
 outside the image closure with their manifests, `msgid-index` certified for
 the first time; its territory reads 186 of 243 roots green, and every root
 still red sits above `hybrid-store` or `feed-connection-invariants`, which
@@ -45,9 +54,10 @@ found and did not fix: `fn-store-article-match` in `host/store-host.lisp`,
 the duplicate-versus-conflict comparison, is program-mode host code with no
 theorem naming it, against "one owner per decision").
 green-audit landed earlier (d667a874, `tools/green_check.py` in `make
-check`); with the treewide and freeze manifests in the tree it reads dev as 315
-green, 75 red, 11 never and 6 absent at current digests; the treewide
-territory is being recertified on persvati from this head. Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
+check`); with the treewide and freeze manifests in the tree it reads dev as 323
+green, 84 red, 0 never and 0 absent at current digests; the reds are the
+cascade behind the two books above, and the treewide territory is being
+recertified on persvati from this head. Root landed `tools/node_probe.py` (a0745f4b), the client the deploy
 step runs from the laptop: STARTTLS, the 483 before it, login, a post and a
 fresh-connection reread, on the deploy gate's exit scale. The hbox freeze,
 matrix-provision and node-deploy sequences are `tools/runbooks/`. persvati
