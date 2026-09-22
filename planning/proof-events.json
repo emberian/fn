@@ -995,7 +995,7 @@
         {
           "kind": "theorem",
           "name": "fn-ocfg-crash-at-any-instant-recovers-the-live-generation",
-          "note": "headline 2; subjects fn-ocfg-step (host/owner-host.lisp:214) over the live arm's event sequence (host/native/admin.lisp:123-146) and fn-cnode-config-replay (host/owner-host.lisp:172, fn-owner-recover)"
+          "note": "headline 2; subjects fn-ocfg-step (host/owner-host.lisp:214) over the live arm's event sequence (host/native/admin.lisp:134-162) and fn-cnode-config-replay (host/owner-host.lisp:172, fn-owner-recover)"
         },
         {
           "kind": "theorem",
@@ -1016,6 +1016,11 @@
           "kind": "theorem",
           "name": "fn-native-admin-live-group-delta-is-a-typed-delta",
           "note": "subject fn-native-admin-plan-deltas, called at host/native-admin-host.lisp:29 (the live arm)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-admin-publication-is-authorized-only-under-the-lock",
+          "note": "T8c; subject fn-native-admin-publication-authorize, which the program-mode byte wrapper fn-store-cfg-native-admin-authorize (host/store-node-host.lisp:110) returns with LOCK-OWNED unchanged or refuses :decode with no jpub; called at host/native/admin.lisp:62-65 with fnn-admin-lock-observation for the offline executor and the live arm; the jpub it constrains is the one host/native/immutable-publish.lisp:24 gates every write on"
         }
       ]
     },

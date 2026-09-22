@@ -16,6 +16,13 @@ Subjects, in the order the live arm meets them:
   stops shows the peer the live owner added
   (`fn-ocfg-crash-at-any-instant-recovers-the-live-generation`).
 
+* The offline executor over the same store, reached through a configuration
+  whose control path nothing has bound, is refused at the writer lock while
+  the owner lives, and the owner is still serving afterwards (V0-CFG-LIVE-REFUSE).
+* The live verb answers and the owner keeps serving: on the dabebb84 image
+  every live request faulted the owner in `fnn-owner-live-admin-serialized'
+  and the caller saw the lost reply as uncertain (V0-CFG-LIVE).
+
 The source checks are always active.  The executable witnesses need the saved
 image; when it is absent they skip and name the image they wanted, rather than
 a source inspection being reported as runtime evidence.
@@ -33,7 +40,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 
-EXIT_OK, EXIT_REFUSED = 0, 1
+EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_FAULT = 0, 1, 3, 4
 
 PEER_ADD = ("peer", "add", "far", "far.example.invalid", "192.0.2.44", "1119",
             "fn.*", "-", "192.0.2.44", "true")
@@ -104,6 +111,35 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
             "'fn-owner-open", "'fn-native-admin-host-owner-reconfigure",
             "'fn-owner-close", "(fnn-admin-publish", "'fn-owner-reconfigure-complete")]
         self.assertEqual(order, sorted(order))
+
+    def test_the_live_arm_reads_the_open_connection_id_as_an_id(self):
+        # `fn-owner-open' answers an integer id or NIL; `fnn-owner-action'
+        # faults on anything but a keyword, so reading the id through it
+        # stopped the owner on every live request (dabebb84, V0-CFG-LIVE).
+        start = self.native_admin.index("(defun fnn-owner-live-admin-serialized")
+        body = self.native_admin[start:self.native_admin.index("(defun fnn-admin-query", start)]
+        self.assertIn("(fnn-owner-core 'fn-owner-open)", body)
+        self.assertNotIn("(fnn-owner-action 'fn-owner-open)", body)
+        bridge = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
+        open_start = bridge.index("(defun fn-owner-open (state)")
+        open_body = bridge[open_start:bridge.index("(defun", open_start + 10)]
+        self.assertIn("(value id)", open_body)
+
+    def test_publication_is_authorized_on_the_stores_own_lock_observation(self):
+        start = self.native_admin.index("(defun fnn-admin-authorize")
+        body = self.native_admin[start:self.native_admin.index("(defun", start + 10)]
+        self.assertIn("(fnn-admin-lock-observation store)", body)
+        self.assertIn(
+            "(defthm fn-native-admin-publication-is-authorized-only-under-the-lock",
+            self.admin)
+
+    def test_a_request_being_answered_is_not_shut_by_the_stop_it_caused(self):
+        control = (ROOT / "host" / "native" / "control.lisp").read_text(encoding="ascii")
+        start = control.index("(defun fnn-control-handle-client")
+        body = control[start:control.index("(defun fnn-control-client-done", start)]
+        self.assertIn("(fnn-control-answering control socket)", body)
+        self.assertLess(body.index("fnn-control-read-frame"),
+                        body.index("(fnn-control-answering control socket)"))
 
 
 @unittest.skipUnless(executable(IMAGE),
@@ -219,6 +255,52 @@ class LiveReconfigurationImageTests(unittest.TestCase):
         status, _ = self.command(fresh_connection, fresh_stream, "GROUP fn.live", False)
         self.assertTrue(status.startswith(b"211"), status)
         self.stop_owner(restarted)
+
+    def config_files(self):
+        directory = self.store / "config"
+        return sorted(p.name for p in directory.iterdir()) if directory.is_dir() else []
+
+    def test_the_live_verb_answers_and_the_owner_keeps_serving(self):
+        # V0-CFG-LIVE on the dabebb84 image: exit 3, and GROUP on the socket
+        # got a refused connection because the owner had stopped.
+        owner = self.start_owner()
+        before = self.config_files()
+        created = self.operator("group", "create", "fn.live")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.assertIsNone(owner.poll(), "the live verb stopped the owner")
+        self.assertEqual(len(self.config_files()), len(before) + 1)
+        connection, stream = self.reader()
+        status, _ = self.command(connection, stream, "GROUP fn.test", False)
+        self.assertTrue(status.startswith(b"211"), status)
+        self.stop_owner(owner)
+
+    def test_an_offline_mutation_is_refused_at_the_lock_while_the_owner_lives(self):
+        # V0-CFG-LIVE-REFUSE: a second configuration over the SAME store whose
+        # control path nothing has bound takes the offline executor.
+        offline = self.root / "offline.toml"
+        offline.write_text(
+            '[store]\npath = "{}"\n[control]\npath = "{}"\n'.format(
+                self.store, self.root / "never-bound.sock"), encoding="ascii")
+
+        def offline_create(name):
+            return subprocess.run(
+                [str(IMAGE), "--fn", "operator", str(offline), "group", "create", name],
+                cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, timeout=180, check=False)
+
+        owner = self.start_owner()
+        before = self.config_files()
+        refused = offline_create("fn.offline")
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+        self.assertIn(b"already locked", refused.stderr)
+        self.assertEqual(self.config_files(), before)
+        self.assertIsNone(owner.poll(), "the offline command disturbed the owner")
+        self.stop_owner(owner)
+        # The separating witness: the same words over the same store, with
+        # no owner, are accepted.  The refusal above was the lock's.
+        accepted = offline_create("fn.offline")
+        self.assertEqual(accepted.returncode, EXIT_OK, accepted.stderr.decode())
+        self.assertEqual(len(self.config_files()), len(before) + 1)
 
     @unittest.expectedFailure
     def test_a_group_created_live_is_served_before_restart(self):
