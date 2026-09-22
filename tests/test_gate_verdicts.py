@@ -68,7 +68,8 @@ class Harness:
 
     def __init__(self, *, arrived=True, accepted_lines=1, end_count=1,
                  start_count=0, cut_taken=True, posted=True, tap=True,
-                 post_enabled=True, restart_ok=True, offers=1, alive=True):
+                 post_enabled=True, restart_ok=True, offers=1, alive=True,
+                 journal_names=1):
         gate = TwoNodeGate.__new__(TwoNodeGate)
         gate.steps, gate.found, gate.facts = [], [], {}
         gate.deploy = "/simulated/deploy"
@@ -92,6 +93,9 @@ class Harness:
         self.restart_ok = restart_ok
         self.offers = offers
         self.alive = alive
+        # How many FNFD records name the queued article before the kill: the
+        # `k5-journal-names` probe greps the journal for the Message-ID.
+        self.journal_names = journal_names
         self.presence_calls = 0
         # One offer line per message-id the two scenarios use: each scenario
         # greps the tap for lines naming ITS article, so a single fixture
@@ -126,6 +130,8 @@ class Harness:
             return self.step(name, "CUT-TAKEN" if self.cut_taken else "STILL-ARMED")
         if "FNFD journal" in name:
             return self.step(name, "-rw-r--r-- 1 x x 120 feed-b.fnfd")
+        if "journal names" in name:
+            return self.step(name, str(self.journal_names))
         if "kill -9" in name:
             return self.step(name, "")
         return self.step(name, "", expect=kwargs.get("expect"))
@@ -227,6 +233,14 @@ class TheRestartScenarioFails(unittest.TestCase):
     def test_two_accepted_transfers_across_the_kill_fails_the_gate(self):
         gate = Harness(arrived=True, accepted_lines=2).restart()
         self.assertEqual(one_verdict(gate, "k5-exactly-one"), VIOLATED)
+        self.assertEqual(gate.exit_code(), GATE_VIOLATED)
+
+    def test_a_journal_that_does_not_name_the_article_fails_the_gate(self):
+        # The FNFD file exists but no record in it names the queued article:
+        # the decision to feed it was in memory only (the gate-15ac399 case).
+        gate = Harness(arrived=True, accepted_lines=1, offers=1, journal_names=0).restart()
+        self.assertEqual(one_verdict(gate, "k5-journal"), HELD)
+        self.assertEqual(one_verdict(gate, "k5-journal-names"), VIOLATED)
         self.assertEqual(gate.exit_code(), GATE_VIOLATED)
 
     def test_no_recorded_offer_is_inconclusive(self):
