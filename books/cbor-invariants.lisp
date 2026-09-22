@@ -325,6 +325,22 @@
                                fn-cbor-decode-bytes-bounded
                                fn-cbor-encode fn-cbor-at-mostp))))
 
+; The bounded encoder's octets are a true list whatever the bound; the
+; unbounded twin below is its instance at *fn-cbor-max-bytes*.  This one is
+; a type-prescription rule and stays ENABLED on export, unlike the rewrite
+; vocabulary withdrawn at the end of this book: a caller's guard obligation
+; `(true-listp (fn-cbor-encode-bounded v budget))' with a FREE budget is not
+; decided by evaluation the way the constant-bound twin's is, and every book
+; that appends the bounded encoding meets exactly that obligation
+; (stx-evidence-records, checkpoint-compaction; measured on the hbox
+; freeze of dev db2e182a, 2026-09-22, where books/stx-evidence-records
+; failed this guard and 55 books above it went uncertified).  A
+; type-prescription rule does not backchain into `len'/`consp' goals, which
+; is the cost the withdrawal below protects against.
+(defthm fn-cbor-bounded-encoding-is-true-list
+  (true-listp (fn-cbor-encode-bounded value max-bytes))
+  :rule-classes :type-prescription)
+
 (defthm fn-cbor-encoding-is-true-list
   (true-listp (fn-cbor-encode value)))
 
