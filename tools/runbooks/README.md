@@ -15,3 +15,8 @@ session. None of them is a gate or a claim; each says what it does at the top.
   groups, principals `ember`/`yue`/`tulip` with generated passwords kept only
   in `/tank/fn/node/credentials.txt` (mode 0600), and a user systemd unit
   `fn-node.service`. Refuses to touch an existing `/tank/fn/node/store`.
+
+After `hbox-node-deploy.sh`, the check from the laptop is `tools/node_probe.py`
+(see docs/operator.md, "Reaching it from a laptop"): STARTTLS, the 483 before
+it, login, a post and a fresh-connection reread, with the password taken from
+the environment and the certificate copied from `/tank/fn/node/tls/cert.pem`.

@@ -279,6 +279,25 @@ side wants a 3.12 or older interpreter; the farm boxes have 3.13 and 3.12
 respectively, which is why the deploy gate records `nntplib interpreter NONE`
 on persvati and drives the socket by hand instead.
 
+For a node that listens off loopback with `[auth] required`,
+`protected_only` and a TLS pair, `tools/node_probe.py` is the client to run
+from the other machine. It drives the socket by hand on any Python 3, records
+every status line, and asserts the policy such a node must carry: `STARTTLS`
+offered before the layer, `AUTHINFO` answered `483` before it, `382` and a
+handshake verified against the node's own certificate, `281` after it, then
+`GROUP`, `POST`, and the article read back on a fresh connection. The
+password comes from the environment only and is never written anywhere.
+
+```sh
+scp hbox:/tank/fn/node/tls/cert.pem /tmp/hbox-cert.pem
+FN_PROBE_USER=ember FN_PROBE_PASSWORD="$(ssh hbox "awk '/^ember /{print \$2}' /tank/fn/node/credentials.txt")" \
+  python3 tools/node_probe.py 192.168.50.39 1119 --cafile /tmp/hbox-cert.pem --group fn.agents --json probe.json
+```
+
+Its exit is the deploy gate's scale: 0 when every assertion was decided and
+held, 1 when one was violated, 3 when something it meant to decide it could
+not (an unreachable node exits 3, never 0), 2 for a usage error.
+
 ## Post and read
 
 Read with any NNTP client against the configured port:
