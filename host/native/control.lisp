@@ -119,31 +119,50 @@
     (fnn-octets reply)))
 
 (defun fnn-control-stop-cut-armed-p ()
-  "Whether FN_NATIVE_CONTROL_TEST_STOP arms the developer process-death cut.
+  "Whether FN_NATIVE_CONTROL_TEST_STOP arms the developer stop cut.
 
-The gate is the saved image's profile, as FN_NATIVE_POST_FAULT's is
-(host/native/io.lisp `fnn-post-test-fault') and FN_NATIVE_CONTROL_FAULT's is:
-a production image FAULTS on the variable rather than honouring it, and the
-profile is serialized at build time, so a restart-time environment cannot
-change it (`fnn-select-image-profile').  Calling the cut developer-only in a
-docstring and then reading the variable anyway left a production node one
-environment variable away from stopping itself between a durable submission
-and its reply -- a process-death cut selected by whoever can set the
-environment, in the image the operator deploys."
-  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_CONTROL_TEST_STOP")))
+The variable is read only through `fnn-developer-selector', which answers NIL
+on a production image; a production image never gets this far with it set,
+because `fnn-developer-selector-gate' refuses to start (host/native/io.lisp).
+So this function has no production branch, and the reply below has no
+production conversion: an earlier version faulted here, after the owner had
+already made the article durable, and the caller got exit 4 for an accepted
+article (campaign dabebb84, F4)."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_CONTROL_TEST_STOP")))
     (when raw
-      (unless (fnn-developer-image-p)
-        (fnn-fault "FN_NATIVE_CONTROL_TEST_STOP requires a developer image"))
       (unless (string= raw "after-submit")
         (fnn-fault "unknown FN_NATIVE_CONTROL_TEST_STOP cut: ~a" raw))
       t)))
 
+(defun fnn-control-stop-calling-thread ()
+  "Stop the process with a SIGSTOP directed at the calling thread.
+
+A process-directed kill(getpid(), SIGSTOP) is delivered to whichever thread
+the kernel picks (the main thread first, when it can take it), and the group
+stop reaches this worker only asynchronously: the worker could return and
+send its reply before it stopped (campaign dabebb84, F3; 2 of 5 clients got
+ACCEPTED by hand).  pthread_kill(pthread_self(), SIGSTOP) queues the signal
+on this thread, which dequeues it on its return from the syscall and starts
+the group stop itself, so no instruction after this call runs until SIGCONT."
+  (let ((code (sb-alien:alien-funcall
+               (sb-alien:extern-alien "pthread_kill"
+                                      (function sb-alien:int sb-alien:unsigned-long
+                                                sb-alien:int))
+               (sb-alien:alien-funcall
+                (sb-alien:extern-alien "pthread_self"
+                                       (function sb-alien:unsigned-long)))
+               sb-posix:sigstop)))
+    ;; This runs on a client worker after the owner answered; a failed stop
+    ;; is reported and the reply goes out with the owner's own status.
+    (unless (zerop code)
+      (fnn-err "developer stop cut: pthread_kill returned ~d" code))))
+
 (defun fnn-control-test-after-submit (status)
-  "Developer-only deterministic process-death cut after owner completion."
+  "Developer-only process-stop cut after owner completion, before the reply."
   (when (and (fnn-control-stop-cut-armed-p)
              (member status '(:accepted :duplicate :refused)))
     (fnn-out "CONTROL-SUBMITTED")
-    (sb-posix:kill (sb-posix:getpid) sb-posix:sigstop)))
+    (fnn-control-stop-calling-thread)))
 
 (defun fnn-control-send-reply (socket status)
   "Transport ACL2's sealed status; the caller retains socket ownership."
@@ -199,15 +218,8 @@ environment, in the image the operator deploys."
     ;; A peer that disappears here creates no uncertainty for the owner: the
     ;; status already records its durable observation.  The client, which did
     ;; not receive it, conservatively reports :uncertain.
-    (fnn-control-send-reply
-     socket
-     (handler-case (progn (fnn-control-test-after-submit status) status)
-       ;; A production image refuses the variable that selects the cut, and
-       ;; the caller learns that refusal the same way it learns
-       ;; FN_NATIVE_CONTROL_FAULT's: as :fault, which
-       ;; `fn-native-control-status-class' projects to exit 4.  The owner is
-       ;; not stopped, because nothing about its state went wrong.
-       (fnn-store-fault () :fault)))))
+    (fnn-control-test-after-submit status)
+    (fnn-control-send-reply socket status)))
 
 (defun fnn-control-client-done (control socket)
   (fnn-with-control (control)
@@ -372,6 +384,10 @@ environment, in the image the operator deploys."
       (fnn-fault "ACL2 returned an invalid control client ceiling"))
     (unless lease-path
       (fnn-fault "ACL2 refused the control lease path"))
+    ;; A developer image validates its control stop selector here, before
+    ;; the store opens, so a malformed value never surfaces on a worker after
+    ;; a durable submission.
+    (fnn-control-stop-cut-armed-p)
     (fnn-owner-run-normalized store-octets listener-host-octets listener-port
                               oncep max-connections tls-context)))
 

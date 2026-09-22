@@ -98,12 +98,21 @@ class NativeOperatorVerbCompositionTests(unittest.TestCase):
             self.assertNotIn(forbidden, body)
 
     def test_uncertain_fault_is_gated_on_the_saved_image_profile(self):
-        self.assertIn('(sb-ext:posix-getenv "FN_NATIVE_CONTROL_FAULT")', self.owner)
+        # Read only through the accessor that answers NIL on a production
+        # image, which refuses to start with the variable set at all
+        # (host/native/io.lisp `fnn-developer-selector-gate').  There is no
+        # production branch in the serialized action any more: the one it had
+        # answered 3 and stopped the node (campaign dabebb84, F5).
+        self.assertIn('(fnn-developer-selector "FN_NATIVE_CONTROL_FAULT")', self.owner)
+        self.assertNotIn('(sb-ext:posix-getenv "FN_NATIVE_CONTROL_FAULT")', self.owner)
         gate = self.owner.index("(defun fnn-owner-control-test-fault ()")
         arm = self.owner.index("(defun fnn-owner-control-arm-fault", gate)
         body = self.owner[gate:arm]
-        self.assertIn("(unless (fnn-developer-image-p)", body)
-        self.assertIn("requires a developer image", body)
+        self.assertNotIn("fnn-developer-image-p", body)
+        io = (ROOT / "host" / "native" / "io.lisp").read_text(encoding="ascii")
+        self.assertIn('"FN_NATIVE_CONTROL_FAULT"', io[io.index(
+            "(defparameter +fnn-developer-selectors+"):io.index(
+            "(defun fnn-developer-selector ")])
         # It selects an existing named model cut rather than inventing one.
         self.assertIn("+fnn-cli-faults+", body)
         self.assertNotIn("FN_NATIVE_CONTROL_FAULT",
@@ -338,13 +347,26 @@ class NativeOperatorUncertainOutcomeTests(NativeOperatorVerbFixture):
                          second.stderr.read().decode("utf-8", "replace"))
 
     def test_the_production_image_refuses_the_selector(self):
-        owner = self.start_owner(IMAGE, {"FN_NATIVE_CONTROL_FAULT": "postpublish"})
-        answered = self.post("<native-operator-production@example.invalid>")
         # The production image has no such cut.  It does not quietly ignore
-        # the variable and it does not honour it: the submission is a fault.
-        self.assertEqual(answered.returncode, EXIT_FAULT, answered.stderr.decode())
-        self.assertIn(b"fault operator post", answered.stderr)
-        self.assertEqual(owner.wait(timeout=60), EXIT_FAULT,
+        # the variable and it does not honour it: it refuses to start, with a
+        # usage exit naming the variable, before the store or the control
+        # socket is opened.  No request can meet the variable, so no request
+        # outcome is spent on it (campaign dabebb84, F4 and F5).
+        env = environment()
+        env["FN_NATIVE_CONTROL_FAULT"] = "postpublish"
+        started = subprocess.run(
+            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
+            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=120, check=False)
+        self.assertEqual(started.returncode, EXIT_USAGE, started.stderr.decode())
+        self.assertIn(b"FN_NATIVE_CONTROL_FAULT", started.stderr)
+        self.assertNotIn(b"LISTENING", started.stdout)
+        # And a node started without it serves an ordinary post.
+        owner = self.start_owner(IMAGE)
+        answered = self.post("<native-operator-production@example.invalid>")
+        self.assertEqual(answered.returncode, EXIT_OK, answered.stderr.decode())
+        owner.send_signal(signal.SIGTERM)
+        self.assertEqual(owner.wait(timeout=60), EXIT_OK,
                          owner.stderr.read().decode("utf-8", "replace"))
 
 
