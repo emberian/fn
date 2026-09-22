@@ -371,6 +371,19 @@ stops returning. `make check` prints its count; `--strict` fails on any codec
 opening and is not yet wired in, because the count on 2026-09-22 was 74 books
 and the rule in AGENTS.md applies to new and touched books first.
 
+**And proof work gets a live session.** [`tools/proof_repl.py`](../tools/proof_repl.py)
+keeps one ACL2 alive behind a Unix socket: `start NAME BOOK --upto EVENT`
+installs the book's certified closure from the local cache, starts ACL2
+through `tools/acl2` (the slot pool holds), sets the connected book directory
+and loads the book's forms up to the named event, stopping at the first one
+ACL2 refuses; `send NAME FORM` delivers one form and answers with the key
+checkpoints and the summary (`--full` for everything), an event wrapped in
+`with-prover-time-limit` so a search that stops returning costs a minute, not
+the session; `status`, `stop`, `list`. It is the loop the freeze lanes did not
+have (the review's F5): seconds per attempt against cached certificates,
+instead of a closure run per attempt on the farm. A form ACL2 admits there is
+not a certificate; the event goes into the book and the book certifies.
+
 `tools/verdict.py --reuse-gate [REV]` reads a gate directory that already
 exists and builds its per-fiber table from it, shipping nothing and starting
 no ACL2. It reads the shape both kinds of gate share (`certify.log`,
