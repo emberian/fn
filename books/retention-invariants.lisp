@@ -123,11 +123,31 @@
   :hints (("Goal" :in-theory (disable fn-retain-statep fn-retain-find-id
                                       fn-retain-remove-id))))
 
+; RET-002's keystone.  `fn-node-prepare' (books/node.lisp:180-205) is the one
+; function through which every reachable caller -- the article/POST path via
+; `fn-sn-prepare-node' (books/store-node.lisp:336-344), peer transit via
+; `fn-peer-decide-transfer' (books/peer-inbound.lisp:351), and the config and
+; BP-receiver replay paths -- proposes an obligation to this ledger; its
+; refusal branch (node.lisp:185-188) tests the identical `fn-retain-admissiblep'
+; call, with the identical arguments, that this book's `fn-retain-admit'
+; (retention.lisp) tests to decide its own no-op.  Stating the capacity
+; refusal of `fn-retain-admit' therefore also accounts for `fn-node-prepare''s
+; refusal, without restating its composition.  The single hypothesis is the
+; capacity comparison; a `(fn-retain-statep s)' hypothesis is not needed,
+; because admission already refuses on every non-state through the first
+; conjunct of `fn-retain-admissiblep' -- the same drop
+; `fn-retain-known-obligation-id-is-not-reused' (retention.lisp) records for
+; its own former hypothesis.
+(defthm fn-retain-admit-refuses-unaffordable-obligation
+  (implies (> (+ (fn-retain-reserved s) charge) (fn-retain-capacity s))
+           (equal (fn-retain-admit s id subject kind evidence charge) s)))
+
 ; -----------------------------------------------------------------------------
 ; Export.  Keystones stay enabled: `fn-retain-release-preserves-statep',
-; `fn-retain-release-preserves-independent-pin' and
-; `fn-retain-release-preserves-known-identity'.  The remove/find/sum lemmas
-; are proof vocabulary and are withdrawn.
+; `fn-retain-release-preserves-independent-pin',
+; `fn-retain-release-preserves-known-identity' and
+; `fn-retain-admit-refuses-unaffordable-obligation'.  The remove/find/sum
+; lemmas are proof vocabulary and are withdrawn.
 (deftheory fn-retention-invariants-vocabulary
   '(fn-retain-release-find-is-obligation
     fn-retain-release-find-id-is-member

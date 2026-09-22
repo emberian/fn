@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 404 |
 | Certification roots in the Makefile | 402 |
 | Books inside the root closure | 403 |
-| `defthm` and `defthmd` events | 6658 |
+| `defthm` and `defthmd` events | 6659 |
 | `defun` events | 5226 |
 | Functions with verified guards | 1731 |
 | Functions declared `:verify-guards nil` and never verified | 279 |
 | Functions left at the default with an explicit guard | 2605 |
 | Functions left at the default with no guard | 611 |
-| `assert-event` checks | 7211 |
+| `assert-event` checks | 7217 |
 | `must-fail` checks | 198 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 61 |
@@ -271,7 +271,7 @@ that `make certify` requests.
 | `books/relay.lisp` | root | 0 | 32 | 0/15/17/0 | 0 | 0 | 0 |
 | `books/replay-invariants.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/replay.lisp` | root | 36 | 25 | 18/0/7/0 | 0 | 0 | 0 |
-| `books/retention-invariants.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/retention-invariants.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention.lisp` | root | 42 | 38 | 38/0/0/0 | 0 | 0 | 2 |
 | `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/scheduler-peers.lisp` | root | 18 | 9 | 0/0/9/0 | 0 | 0 | 0 |
@@ -449,7 +449,7 @@ that `make certify` requests.
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 62 | 4 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
-| `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 0 | 0 |
+| `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 55 | 0 | 0 |
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 116 | 0 | 0 |
