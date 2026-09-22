@@ -249,3 +249,42 @@
  (not (equal (fn-retain-admit *ret-teeth-empty* "archive-2" "object-b" :archive
                               "operator-release-b" 3)
              *ret-teeth-empty*)))
+
+; -----------------------------------------------------------------------------
+; Teeth for `fn-retain-admit-refuses-unaffordable-obligation'
+; (books/retention-invariants.lisp), RET-002's keystone:
+;
+;   (implies (> (+ (fn-retain-reserved s) charge) (fn-retain-capacity s))
+;            (equal (fn-retain-admit s id subject kind evidence charge) s))
+;
+; A reachable, non-degenerate witness: an archive pin already holds 6 of a
+; capacity-10 ledger, leaving 4 of room.  A forwarding obligation charged 5
+; is past the room and hits the theorem's one hypothesis; the same obligation
+; charged 4 fits it exactly.
+(defconst *ret-cap-teeth-empty* (fn-retain-initial-state 10))
+(defconst *ret-cap-teeth-near*
+  (fn-retain-admit *ret-cap-teeth-empty* "archive-1" "object-a" :archive
+                   "operator-release-a" 6))
+(assert-event (equal (fn-retain-reserved *ret-cap-teeth-near*) 6))
+(assert-event (equal (fn-retain-capacity *ret-cap-teeth-near*) 10))
+
+; The hypothesis holds at charge 5 (6 + 5 = 11 > 10): the admit is refused,
+; and the ledger returned is the exact input, pins and all.
+(assert-event
+ (> (+ (fn-retain-reserved *ret-cap-teeth-near*) 5)
+    (fn-retain-capacity *ret-cap-teeth-near*)))
+(assert-event
+ (equal (fn-retain-admit *ret-cap-teeth-near* "forward-1" "object-a" :forward
+                        "receipt-from-successor" 5)
+        *ret-cap-teeth-near*))
+
+; The one hypothesis dropped: charge 4 fits the remaining room exactly
+; (6 + 4 = 10 = capacity), so admission is not a no-op and the conclusion --
+; the ledger unchanged -- fails without the capacity hypothesis.
+(assert-event
+ (not (> (+ (fn-retain-reserved *ret-cap-teeth-near*) 4)
+         (fn-retain-capacity *ret-cap-teeth-near*))))
+(assert-event
+ (not (equal (fn-retain-admit *ret-cap-teeth-near* "forward-1" "object-a" :forward
+                             "receipt-from-successor" 4)
+             *ret-cap-teeth-near*)))
