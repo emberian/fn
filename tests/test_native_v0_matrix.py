@@ -988,5 +988,89 @@ class DuplicateOutcomeTests(unittest.TestCase):
         self.assertIn("different octets under the same Message-ID", fact)
 
 
+class InnRowTests(unittest.TestCase):
+    """The INN rows are read from tools/inn_lab.py's findings and nothing else."""
+
+    @staticmethod
+    def findings(overrides=None, verdict="held"):
+        rows = []
+        for _, names in v0_matrix.INN_ROWS:
+            for name in names:
+                key, _, instance = name.partition("[")
+                rows.append({"key": key, "instance": instance.rstrip("]"),
+                             "verdict": "held", "observed": "obs " + name})
+        for row in rows:
+            name = row["key"] + ("[{}]".format(row["instance"]) if row["instance"] else "")
+            if overrides and name in overrides:
+                row["verdict"] = overrides[name]
+        return {"verdict": verdict, "counts": {"held": len(rows)}, "rows": rows}
+
+    def test_every_inn_row_is_planned_and_every_lab_finding_is_named_once(self):
+        for key in v0_matrix.INN_ROW_KEYS:
+            self.assertIn(key, v0_matrix.PLANNED_IDS)
+        names = [name for _, names in v0_matrix.INN_ROWS for name in names]
+        self.assertEqual(len(names), len(set(names)))
+        import inn_lab
+        declared = {key + ("[{}]".format(one) if one else "")
+                    for key, (_, instances) in inn_lab.InnLab.ASSERTIONS.items()
+                    for one in instances}
+        self.assertLessEqual(set(names), declared,
+                             "a row reads a finding the lab never declares")
+
+    def test_all_held_carries_each_row_s_expected_verdict(self):
+        got = {key: (verdict, blocker) for key, verdict, _, blocker in
+               v0_matrix.inn_rows(self.findings())}
+        self.assertEqual(set(got), set(v0_matrix.INN_ROW_KEYS))
+        for key in v0_matrix.INN_ROW_KEYS:
+            self.assertEqual(got[key][0], v0_matrix.PLAN_BY_KEY[key].expected, key)
+            self.assertIsNone(got[key][1])
+
+    def test_a_violated_finding_is_the_opposite_outcome_not_a_pass(self):
+        got = {key: verdict for key, verdict, _, _ in v0_matrix.inn_rows(self.findings(
+            {"fn-serves-no-sender-xref": "violated", "fn-loop-refused": "violated"},
+            verdict="violated"))}
+        self.assertEqual(got["V0-INN-SERVING-AGENT"], v0_matrix.REFUSED)
+        self.assertEqual(got["V0-INN-LOOP-FN"], v0_matrix.ACCEPTED)
+        self.assertEqual(got["V0-INN-INTEROP"], v0_matrix.REFUSED)
+        self.assertEqual(got["V0-INN-FEED-OUT"], v0_matrix.ACCEPTED)
+
+    def test_an_undecided_or_absent_finding_is_not_exercised_with_its_reason(self):
+        doc = self.findings({"innd-died": "not-exercised"}, verdict="inconclusive")
+        doc["rows"] = [row for row in doc["rows"] if row["key"] != "fn-feeds-inn"]
+        got = {key: (verdict, blocker) for key, verdict, _, blocker in
+               v0_matrix.inn_rows(doc)}
+        self.assertEqual(got["V0-INN-RESTART"][0], v0_matrix.NOT_EXERCISED)
+        self.assertIn("innd-died=not-exercised", got["V0-INN-RESTART"][1])
+        self.assertEqual(got["V0-INN-FEED-OUT"][0], v0_matrix.NOT_EXERCISED)
+        self.assertIn("fn-feeds-inn=absent", got["V0-INN-FEED-OUT"][1])
+        self.assertEqual(got["V0-INN-INTEROP"][0], v0_matrix.NOT_EXERCISED)
+
+    def test_without_inn_or_off_the_native_backend_every_row_says_why(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = native_gate(home)
+            gate.inn()
+            rows = {row.id: row for row in gate.rows}
+            self.assertEqual(set(rows), set(v0_matrix.INN_ROW_KEYS))
+            for row in rows.values():
+                self.assertEqual(row.verdict, v0_matrix.NOT_EXERCISED)
+                self.assertIn("--inn", row.blocker)
+            gate = native_gate(home)
+            gate.want_inn = True
+            gate.backend = v0_matrix.DEVELOPMENT_BACKEND
+            gate.inn()
+            for row in gate.rows:
+                self.assertIn("D07", row.blocker)
+
+    def test_the_lab_is_run_from_this_checkout_with_the_image(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = native_gate(home)
+            command = gate.inn_command(Path("/tmp/x/inn-lab.md"))
+            self.assertEqual(command[1], str(ROOT / "tools/inn_lab.py"))
+            self.assertEqual(command[command.index("--native-image") + 1],
+                             "/opt/fn/fn-host")
+            self.assertEqual(command[command.index("--host") + 1], gate.host.label)
+            self.assertEqual(command[-1], "/tmp/x/inn-lab.md")
+
+
 if __name__ == "__main__":
     unittest.main()

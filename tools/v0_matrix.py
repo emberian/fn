@@ -92,6 +92,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import subprocess
 import sys
 import tempfile
 import time
@@ -612,6 +613,42 @@ PLAN = (
     S("V0-INN-INTEROP", "F-INN",
       "a real INN server exchanges with an fn node as a third peer",
       ("REP-001",), ("SCN-023",), ACCEPTED),
+    # One row per exchange tools/inn_lab.py decides; `INN_ROWS` names the lab
+    # findings each is read from.  The fn side is the native image (D07).
+    S("V0-INN-FEED-OUT", "F-INN",
+      "an article POSTed to fn reaches INN through fn's outbound feed "
+      "(IHAVE 335/235) and nnrpd serves it changed only in Path and Xref",
+      ("REP-001",), ("SCN-023",), ACCEPTED),
+    S("V0-INN-FEED-IN", "F-INN",
+      "INN's innfeed delivers an article to fn (CHECK 238, TAKETHIS 239) and fn "
+      "serves it changed at most in Path and Xref",
+      ("REP-001",), ("SCN-023",), ACCEPTED),
+    S("V0-INN-DUPLICATE-INN", "F-INN",
+      "INN refuses a second IHAVE of the article fn fed it with 435",
+      ("REP-002",), ("SCN-023",), REFUSED),
+    S("V0-INN-DUPLICATE-FN", "F-INN",
+      "fn refuses a second IHAVE of each article it holds (INN's and its own) with 435",
+      ("REP-002",), ("SCN-023",), REFUSED),
+    S("V0-INN-LOOP-INN", "F-INN",
+      "INN refuses an article whose Path names it with 437",
+      ("REP-002",), ("SCN-023",), REFUSED),
+    S("V0-INN-LOOP-FN", "F-INN",
+      "fn refuses an article whose Path names its own path identity, and does not "
+      "serve it",
+      ("REP-002",), ("SCN-023",), REFUSED),
+    S("V0-INN-RESTART", "F-INN",
+      "INN's history survives a SIGKILL of innd, and fn's articles survive a SIGTERM, "
+      "recover and restart byte-identical",
+      ("STO-005", "REP-002"), ("SCN-023",), ACCEPTED),
+    S("V0-INN-SERVING-AGENT", "F-INN",
+      "an article fn took from INN is served with fn's path identity in Path and "
+      "without INN's Xref (RFC 5537 3.7 steps 6 and 7)",
+      ("REP-001",), ("SCN-023",), ACCEPTED, "single",
+      "specs/peering.md 2.3 renders fn's Path prepend on the way out to a peer and "
+      "says Xref is never stored; the reader path is what this row measures"),
+    S("V0-INN-OPERATOR-POST", "F-INN",
+      "an article submitted through `operator post` reaches INN through fn's feed",
+      ("REP-001",), ("SCN-023",), ACCEPTED),
 
     # -- F-CLIENT --------------------------------------------------------
     S("V0-CLIENT-NNTPLIB", "F-CLIENT",
@@ -622,6 +659,67 @@ PLAN = (
 )
 
 PLAN_BY_KEY = {spec.key: spec for spec in PLAN}
+
+# The INN rows, each read from the tools/inn_lab.py findings named here
+# (`key[instance]`).  A row whose findings all held carries its expected
+# verdict; one with a violated finding carries the opposite outcome, which
+# `derive` then reads as a disagreement; anything else is not-exercised.
+INN_ROWS = (
+    ("V0-INN-FEED-OUT", ("fn-post-240", "fn-feeds-inn", "inn-serves-fn-article")),
+    ("V0-INN-FEED-IN", ("innfeed-feeds-fn", "fn-serves-inn-article")),
+    ("V0-INN-DUPLICATE-INN", ("inn-duplicate-435[fn-article]",)),
+    ("V0-INN-DUPLICATE-FN", ("fn-duplicate-435[inn-article]",
+                             "fn-duplicate-435[fn-article]")),
+    ("V0-INN-LOOP-INN", ("inn-loop-437",)),
+    ("V0-INN-LOOP-FN", ("fn-loop-refused",)),
+    ("V0-INN-RESTART", ("fn-term-stopped", "fn-recover",
+                        "fn-articles-survived-term[fn-article]",
+                        "fn-articles-survived-term[inn-article]", "innd-died",
+                        "innd-restarted", "inn-history-survived-kill[inn-article]",
+                        "inn-history-survived-kill[fn-article]")),
+    ("V0-INN-SERVING-AGENT", ("fn-serves-own-path-identity",
+                              "fn-serves-no-sender-xref")),
+    ("V0-INN-OPERATOR-POST", ("operator-post-feeds-inn",)),
+)
+INN_ROW_KEYS = ("V0-INN-INTEROP",) + tuple(key for key, _ in INN_ROWS)
+
+
+def inn_rows(findings: dict) -> list:
+    """(row key, verdict, observed, blocker) for every INN row, from the lab's
+    `<evidence>.findings.json`.  Pure: the lab decided each finding; this only
+    reads them, so the matrix computes nothing about INN of its own."""
+    table = {}
+    for row in findings.get("rows", []):
+        name = row.get("key", "") + ("[{}]".format(row["instance"])
+                                     if row.get("instance") else "")
+        table[name] = row
+    out = []
+    lab = findings.get("verdict")
+    out.append(("V0-INN-INTEROP",
+                {"held": ACCEPTED, "violated": REFUSED}.get(lab, NOT_EXERCISED),
+                "the lab's verdict: {} ({})".format(lab, ", ".join(
+                    "{} {}".format(n, v) for v, n in sorted(
+                        findings.get("counts", {}).items()) if n) or "no findings"),
+                None if lab in ("held", "violated") else
+                "the lab's verdict was {!r}, which decides nothing".format(lab)))
+    for key, names in INN_ROWS:
+        expected = PLAN_BY_KEY[key].expected
+        found = [table.get(name) for name in names]
+        observed = "; ".join("{}={}{}".format(
+            name, row.get("verdict") if row else "absent",
+            " ({})".format(row["observed"]) if row and row.get("observed") else "")
+            for name, row in zip(names, found))
+        verdicts = {row.get("verdict") if row else None for row in found}
+        if verdicts <= {"held"}:
+            out.append((key, expected, observed, None))
+        elif "violated" in verdicts and verdicts <= {"held", "violated"}:
+            out.append((key, REFUSED if expected == ACCEPTED else ACCEPTED,
+                        observed, None))
+        else:
+            out.append((key, NOT_EXERCISED, observed,
+                        "the lab did not decide every finding this row reads: "
+                        + observed))
+    return out
 PLANNED_IDS = [rid for spec in PLAN for rid in spec.ids()]
 assert len(PLANNED_IDS) == len(set(PLANNED_IDS)), "duplicate row id in PLAN"
 
@@ -3209,24 +3307,68 @@ else echo NONE; fi
                   limit="a measured ceiling on one box with one payload grid; it is "
                         "not a bound and not a proof")
 
+    def inn_not_run(self, invocation: str, observed: str, blocker: str):
+        for key in INN_ROW_KEYS:
+            self.emit(key, NOT_EXERCISED, invocation, observed, blocker=blocker)
+
+    def inn_command(self, evidence: Path) -> list:
+        """tools/inn_lab.py, run from THIS checkout against this run's host.
+
+        It runs here and not on the execution host: the lab ships its own
+        tree with `git archive`, which needs a repository, and the deployed
+        tree is an archive.  It drives the host over ssh exactly as this
+        gate does."""
+        return [sys.executable, str(self.repo / "tools/inn_lab.py"), self.commit,
+                "--host", self.host.label, "--native-image", self.native_image,
+                "--evidence", str(evidence)]
+
     def inn(self):
+        invocation = "python3 tools/inn_lab.py {} --host {} --native-image {}".format(
+            self.rev, self.host.label, self.native_image or "IMAGE")
         if not self.want_inn:
-            self.emit("V0-INN-INTEROP", NOT_EXERCISED,
-                      "python3 tools/inn_lab.py {} --host hbox".format(self.rev),
-                      "(not run: --inn was not given)",
-                      blocker="the INN install is a lab that lives on hbox at "
-                              "/tank/fn/inn/2.7.4 and is not shipped; this run is on "
-                              "{}, which has no INN. The last recorded run is "
-                              "planning/evidence/inn-lab-f4e8272-2026-09-20.md"
-                              .format(self.host.label))
+            self.inn_not_run(invocation, "(not run: --inn was not given)",
+                             "the INN install is a lab that lives on hbox at "
+                             "/tank/fn/inn/2.7.4 and is not shipped, and the lab takes "
+                             "its own ports and a few minutes; this run did not ask for "
+                             "it (--inn). The last recorded run is "
+                             "planning/evidence/inn-lab-dabebb84-2026-09-22.md")
             return
-        step = self.sh("inn lab", self.cd(
-            "python3 tools/inn_lab.py {} --host hbox 2>&1 | tail -20".format(self.rev)),
-            timeout=4 * 3600, expect=None)
-        self.emit("V0-INN-INTEROP", exit_verdict(step.rc), step.command,
-                  " | ".join(step.output.strip().splitlines()[-3:]) or "(no output)",
-                  exit_code=step.rc, client="InterNetNews",
-                  limit="one INN version on one box; not a Usenet conformance audit")
+        if self.backend != NATIVE_BACKEND or not self.native_image:
+            self.inn_not_run(invocation, "(not run: no native image)",
+                             "the INN lab's fn side is the native image or the lab does "
+                             "not run (D07); this run's backend is {}".format(self.backend))
+            return
+        if not isinstance(self.host, deploy_gate.SshHost):
+            self.inn_not_run(invocation, "(not run: {} is not a remote host)".format(
+                self.host.label), "the INN lab needs the INN install on a real host")
+            return
+        directory = (self.repo / self.evidence_name).parent
+        evidence = directory / "inn-lab.md"
+        command = self.inn_command(evidence)
+        clock = time.monotonic()
+        done = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              timeout=3600)
+        output = done.stdout.decode("utf-8", "replace")
+        self.steps.append(Step("inn lab", " ".join(shlex.quote(one) for one in command),
+                               done.returncode, output, time.monotonic() - clock,
+                               "", None))
+        sidecar = evidence.with_suffix(".findings.json")
+        try:
+            findings = json.loads(sidecar.read_text())
+        except (OSError, ValueError) as error:
+            self.inn_not_run(" ".join(command), output.strip().splitlines()[-1:] and
+                             output.strip().splitlines()[-1] or "(no output)",
+                             "the lab wrote no findings ({}): exit {}".format(
+                                 error, done.returncode))
+            return
+        for key, verdict, observed, blocker in inn_rows(findings):
+            self.emit(key, verdict, " ".join(command), observed,
+                      exit_code=done.returncode if key == "V0-INN-INTEROP" else None,
+                      log=str(evidence.relative_to(self.repo))
+                      if evidence.is_relative_to(self.repo) else str(evidence),
+                      blocker=blocker, client="InterNetNews",
+                      limit="one INN version on one box over loopback, through the "
+                            "lab's byte-transparent relay; not a Usenet conformance audit")
 
     def served_group(self) -> str:
         """The group both nodes serve on this backend."""
@@ -4898,6 +5040,9 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                              nodes=(node.name,), invocation="harness SIGTERM")
         if all(n.name in self.configured for n in self.nodes):
             self.phase("native peer remove", self.native_peer_remove)
+        # INN, a third node on ports of its own: the lab stands up its own
+        # store from the same image, so it runs after this slice's nodes stop.
+        self.phase("INN", self.inn)
         self.backfill()
 
     # -- the whole gate -----------------------------------------------------

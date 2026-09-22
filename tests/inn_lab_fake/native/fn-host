@@ -1,0 +1,258 @@
+#!/usr/bin/env python3
+"""A stand-in for the saved native image, so tools/inn_lab.py is testable here.
+
+Every reply is this file's.  It says nothing about fn: it exists so the lab's
+sequencing, its relay parsing, its header comparison and its verdicts are
+exercised by tests/test_inn_lab.py on a laptop with no image and no INN.  It
+is reached exactly as the real image is, through `packaging/fn-native`, which
+execs `<image> --fn <words>`.
+
+What it copies from the image, because the lab's assertions are about it
+(measured on dabebb84, planning/evidence/inn-lab-dabebb84-2026-09-22.md):
+
+* POST injects Path, Injection-Date and Injection-Info; `operator post`
+  stores the payload as submitted, and the feed relays both unchanged.
+* IHAVE answers 435 for a held Message-ID, 335 otherwise, and 437 after the
+  article when its Path names this node's own path identity.
+* An article taken by transit is stored and served as it arrived, Path and
+  Xref included -- so the lab's two serving-agent rows are violated here, as
+  they were on the image, and the tests pin that the lab says so.
+* The feed offers every article not taken from the peer to each peer with an
+  outbound pattern, by IHAVE when the record says streaming `false`.
+"""
+import fcntl, json, os, re, signal, socket, sys, threading, time
+
+CRLF = b"\r\n"
+
+
+def config(path):
+    text = open(path).read()
+    store = re.search(r'^\s*path\s*=\s*"([^"]+)"', text, re.M).group(1)
+    port = int(re.search(r'^\s*port\s*=\s*(\d+)', text, re.M).group(1))
+    return store, port
+
+
+class Store:
+    def __init__(self, path):
+        self.path = path
+        self.file = os.path.join(path, "fake-native.json")
+        self.lockfile = os.path.join(path, "fake-native.lock")
+
+    def update(self, change):
+        with open(self.lockfile, "a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            state = self.read()
+            result = change(state)
+            tmp = self.file + ".tmp"
+            with open(tmp, "w") as handle:
+                json.dump(state, handle)
+            os.replace(tmp, self.file)
+            return result
+
+    def read(self):
+        with open(self.file) as handle:
+            return json.load(handle)
+
+
+def path_names(octets):
+    for line in octets.split(b"\r\n"):
+        if not line:
+            break
+        if line.lower().startswith(b"path:"):
+            return [one for one in line.split(b":", 1)[1].strip().decode().split("!") if one]
+    return []
+
+
+def store_article(store, msgid, octets, origin):
+    def add(state):
+        if msgid in state["articles"]:
+            return False
+        state["articles"][msgid] = {"octets": octets.decode("latin-1"), "origin": origin}
+        state["order"].append(msgid)
+        return True
+    return store.update(add)
+
+
+class Session:
+    def __init__(self, sock, store):
+        self.sock, self.store = sock, store
+        self.file = sock.makefile("rb")
+
+    def send(self, text):
+        self.sock.sendall(text.encode() + CRLF)
+
+    def block(self):
+        out = b""
+        while True:
+            raw = self.file.readline()
+            if not raw:
+                return None
+            if raw == b".\r\n":
+                return out
+            out += raw[1:] if raw.startswith(b"..") else raw
+
+    def run(self):
+        self.send("200 fake-native ready")
+        while True:
+            raw = self.file.readline()
+            if not raw:
+                return
+            words = raw.decode("utf-8", "replace").split()
+            verb = words[0].upper() if words else ""
+            arg = words[1] if len(words) > 1 else ""
+            state = self.store.read()
+            if verb == "QUIT":
+                self.send("205 bye")
+                return
+            if verb == "CAPABILITIES":
+                for one in ("101 capability list follows", "VERSION 2", "READER",
+                            "POST", "IHAVE", "STREAMING", "."):
+                    self.send(one)
+            elif verb == "MODE":
+                self.send("203 streaming permitted")
+            elif verb == "POST":
+                self.send("340 send article to be posted")
+                body = self.block()
+                ident = state["identity"]
+                msgid = re.search(rb"^Message-ID:\s*(\S+)", body, re.M | re.I).group(1).decode()
+                injected = ("Path: {}!not-for-mail\r\nInjection-Date: {}\r\n"
+                            "Injection-Info: {}\r\n".format(
+                                ident, time.strftime("%a, %d %b %Y %H:%M:%S +0000",
+                                                     time.gmtime()), ident)).encode() + body
+                store_article(self.store, msgid, injected, "post")
+                self.send("240 article received OK")
+            elif verb == "IHAVE":
+                if arg in state["articles"]:
+                    self.send("435 duplicate")
+                    continue
+                self.send("335 send it")
+                body = self.block()
+                if state["identity"] in path_names(body)[:-1]:
+                    self.send("437 transfer rejected; path loop")
+                    continue
+                store_article(self.store, arg, body, "transit")
+                self.send("235 article transferred")
+            elif verb == "CHECK":
+                self.send("{} {}".format("438" if arg in state["articles"] else "238", arg))
+            elif verb == "TAKETHIS":
+                body = self.block()
+                if arg in state["articles"] or state["identity"] in path_names(body)[:-1]:
+                    self.send("439 {}".format(arg))
+                    continue
+                store_article(self.store, arg, body, "transit")
+                self.send("239 {}".format(arg))
+            elif verb == "ARTICLE":
+                held = state["articles"].get(arg)
+                if not held:
+                    self.send("430 no article with that message-id")
+                    continue
+                self.send("220 0 {} article follows".format(arg))
+                for line in held["octets"].encode("latin-1").split(CRLF)[:-1]:
+                    self.sock.sendall((b"." + line if line.startswith(b".") else line) + CRLF)
+                self.send(".")
+            else:
+                self.send("500 unknown command")
+
+
+def feed(store):
+    while True:
+        time.sleep(0.3)
+        state = store.read()
+        for name, peer in state["peers"].items():
+            if peer["outbound"] == "-":
+                continue
+            for msgid in state["order"]:
+                held = state["articles"][msgid]
+                if held["origin"] == "transit" or msgid in state["fed"].get(name, {}):
+                    continue
+                try:
+                    sock = socket.create_connection(("127.0.0.1", int(peer["port"])), timeout=10)
+                    wire = sock.makefile("rb")
+                    wire.readline()
+                    sock.sendall("IHAVE {}\r\n".format(msgid).encode())
+                    offer = wire.readline().decode().strip()
+                    result = ""
+                    if offer.startswith("335"):
+                        payload = b""
+                        for line in held["octets"].encode("latin-1").split(CRLF)[:-1]:
+                            payload += (b"." + line if line.startswith(b".") else line) + CRLF
+                        sock.sendall(payload + b".\r\n")
+                        result = wire.readline().decode().strip()
+                    sock.sendall(b"QUIT\r\n")
+                    sock.close()
+                except OSError:
+                    continue
+                store.update(lambda s: s["fed"].setdefault(name, {}).__setitem__(
+                    msgid, [offer, result]))
+
+
+def run(cfg):
+    path, port = config(cfg)
+    store = Store(path)
+    signal.signal(signal.SIGTERM, lambda *_: os._exit(0))
+    listener = socket.socket()
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("127.0.0.1", port))
+    listener.listen(16)
+    print("LISTENING {}".format(port), flush=True)
+    threading.Thread(target=feed, args=(store,), daemon=True).start()
+    while True:
+        sock, _ = listener.accept()
+        threading.Thread(target=lambda s=sock: Session(s, store).run(), daemon=True).start()
+
+
+def operator(cfg, words):
+    path, _ = config(cfg)
+    store = Store(path)
+    verb = words[0] if words else ""
+    if verb == "run":
+        return run(cfg)
+    if verb == "policy" and words[1:3] == ["set", "path-identity"]:
+        store.update(lambda s: s.__setitem__("identity", words[3]))
+        print("accepted operator policy")
+    elif verb == "peer" and words[1:2] == ["add"]:
+        name, ident, addr, port, inbound, outbound, source, streaming = words[2:10]
+        store.update(lambda s: s["peers"].__setitem__(name, dict(
+            identity=ident, address=addr, port=port, inbound=inbound,
+            outbound=outbound, source=source, streaming=streaming)))
+        print("accepted operator peer")
+    elif verb == "peer" and words[1:2] == ["list"]:
+        for name, peer in sorted(store.read()["peers"].items()):
+            print("{} path-identity={} address={} port={} inbound={} outbound={}".format(
+                name, peer["identity"], peer["address"], peer["port"], peer["inbound"],
+                peer["outbound"]))
+        print("accepted operator peer")
+    elif verb == "status":
+        count = len(store.read()["articles"])
+        print("transactions={} articles={} (fake native image)".format(count, count))
+    elif verb == "recover":
+        print("accepted operator recover")
+    elif verb == "post":
+        msgid = words[words.index("--message-id") + 1]
+        octets = open(words[words.index("--payload") + 1], "rb").read()
+        store_article(store, msgid, octets, "operator")
+        print("accepted operator post ACCEPTED")
+    else:
+        print("usage: fake native image")
+        return 5
+    return 0
+
+
+def main(argv):
+    if argv[:1] != ["--fn"]:
+        return 5
+    if argv[1:2] == ["store"] and argv[3:4] == ["init"]:
+        os.makedirs(argv[2], exist_ok=True)
+        Store(argv[2]).update(lambda s: None) if os.path.exists(
+            os.path.join(argv[2], "fake-native.json")) else json.dump(
+            {"articles": {}, "order": [], "peers": {}, "identity": None, "fed": {}},
+            open(os.path.join(argv[2], "fake-native.json"), "w"))
+        print("initialized {}".format(argv[2]))
+        return 0
+    if argv[1:2] == ["operator"]:
+        return operator(argv[2], argv[3:])
+    return 5
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]) or 0)
