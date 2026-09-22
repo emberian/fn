@@ -1,6 +1,7 @@
 ; Teeth for the bounded native administrative command plan.
 (in-package "ACL2")
 (include-book "../../books/native-admin")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defun fn-na-test-argv (words)
   (if (consp words)
@@ -193,6 +194,45 @@
           nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* t
           '("00000002.cfg")))
         :refused))
+
+; Teeth for `fn-native-admin-publication-is-authorized-only-under-the-lock'.
+; The witness: an admissible second record, the next name free, the lock
+; observed -- accepted, with a publication state raw Lisp may execute.
+(assert-event (fn-native-admin-publication-jpub *fn-na-publication*))
+; The separating value: the SAME inputs with the lock not observed are refused
+; `:lock' and carry no publication state.  The lock is what decides here, not
+; the record, the generation or the namespace.
+(defconst *fn-na-unlocked-publication*
+  (fn-native-admin-publication-authorize
+   nil 0 (list *fn-cfg-default-record*) *fn-na-second-record* nil nil))
+(assert-event (equal (fn-native-admin-publication-status *fn-na-unlocked-publication*)
+                     :refused))
+(assert-event (equal (fn-native-admin-publication-reason *fn-na-unlocked-publication*)
+                     :lock))
+(assert-event (null (fn-native-admin-publication-jpub *fn-na-unlocked-publication*)))
+; One `must-fail' per hypothesis, the hypothesis dropped and the hints kept.
+; Each is refuted by the unlocked value above (lock-owned = NIL).
+(must-fail
+ (defthm fn-na-lock-without-acceptance
+   (let ((result (fn-native-admin-publication-authorize
+                  records frontier config-records record lock-owned observed-names)))
+     (declare (ignorable result))
+     lock-owned)
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
+                                   (fn-cnode-config-replay fn-native-admin-candidate-openp
+                                    fn-native-admin-config-name fn-cfg-recordp))))))
+(must-fail
+ (defthm fn-na-lock-without-a-publication-state
+   (let ((result (fn-native-admin-publication-authorize
+                  records frontier config-records record lock-owned observed-names)))
+     (and (implies (equal (fn-native-admin-publication-status result) :accepted)
+                   lock-owned)
+          lock-owned))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
+                                   (fn-cnode-config-replay fn-native-admin-candidate-openp
+                                    fn-native-admin-config-name fn-cfg-recordp))))))
 
 ; Length alone does not establish a proper argument vector.
 (assert-event
