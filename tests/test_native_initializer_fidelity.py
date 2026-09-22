@@ -19,6 +19,11 @@ import fcntl
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", str(ROOT / "build" / "fn-host")))
+# A fault selector is a developer-image selector: a production image refuses
+# to start with FN_NATIVE_INIT_FAULT in its environment (exit 5, host/native/io.lisp
+# `fnn-developer-selector-gate'), so every faulted step runs this image.
+DEVELOPER = Path(os.environ.get(
+    "FN_NATIVE_DEVELOPER_HOST", str(ROOT / "build" / "fn-host-developer")))
 sys.path.insert(0, str(ROOT / "tools"))
 import run_store  # noqa: E402
 
@@ -82,8 +87,16 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         env.pop("FN_NATIVE_INIT_FAULT", None)
         if fault is not None:
             env["FN_NATIVE_INIT_FAULT"] = fault
+        image = IMAGE
+        if fault is not None:
+            if not (DEVELOPER.is_file() and os.access(DEVELOPER, os.X_OK)):
+                self.skipTest(
+                    "build/fn-host-developer (or FN_NATIVE_DEVELOPER_HOST) is "
+                    "required: FN_NATIVE_INIT_FAULT is a developer-image selector and a "
+                    "production image refuses to start with it")
+            image = DEVELOPER
         return subprocess.run(
-            [str(IMAGE), "--fn", "store", str(store), command], cwd=ROOT,
+            [str(image), "--fn", "store", str(store), command], cwd=ROOT,
             env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
 
     def test_fresh_init_then_new_process_recover(self):

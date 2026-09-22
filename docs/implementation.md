@@ -1,4 +1,13 @@
-# Executable development status
+# Historical implementation inventory
+
+This page retains the earlier component inventory. It is not current release
+status: in particular, its descriptions of network posting and the native
+service predate the September 22 deployment. Use [current work](../planning/now.md)
+for development, the [hbox node page](nodes/hbox.md) for the deployed image,
+and the [trajectory plan](../planning/plan-2026-09-22-trajectory.md) for v0/v1
+scope. Historical evidence below still describes only the bytes it tested.
+
+## Earlier executable development status
 
 fn has executable ACL2 components and a deterministic simulator. It is still an
 experimental implementation: the components are not yet a durable, authenticated

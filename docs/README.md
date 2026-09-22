@@ -1,8 +1,10 @@
 # Project guide
 
-fn now has executable ACL2 components and mechanically checked results. The
-[implementation status](implementation.md) distinguishes those results from the
-larger specification and its remaining proof, storage, and service work.
+fn now has executable ACL2 components and a native node exercised by agents.
+The [node record](../planning/evidence/node-hbox-dabebb84-2026-09-22.md) gives
+the tested image and its limits; [current work](../planning/now.md) tracks
+development beyond that image. The older [implementation inventory](implementation.md)
+is historical, not the current service status.
 
 ## Reading order
 
@@ -59,6 +61,11 @@ The registries track requirement and proof status. Narrative documents explain
 contracts rather than maintain competing completion counts. Scenario entries are
 test specifications, not a test runner. A scenario may span several milestones;
 its milestone is when its full executable form is expected.
+
+For lessons from the development process, see the
+[swarmguide](../swarmguide/README.md). It explains the proof and coordination
+failures behind the current workflow, with links to the evidence and local
+transcript references.
 
 ## Design language
 
