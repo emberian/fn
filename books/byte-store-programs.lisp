@@ -249,10 +249,16 @@
 ; was lost may still be pending, and 817/818 are what drain it.
 (defconst *fn-bs-recover-on-barrier-error* '((:observe (:recovery-barrier :uncertain))))
 
-; Recovery removes bounded staging orphans before replay barriers.  The
-; native `recovery-stage-unlinked` death point is after this unlink and before
-; any subsequent process can rely on cleanup.  Staging is not an authority
-; directory, but the physical cut still needs a byte-program transition.
+; Recovery removes bounded staging orphans AFTER fn-bs-recover-program has
+; run to its end: the host sweeps only once the fifth recovery barrier
+; observation has reached :ready (host/native/io.lisp `fnn-recover', whose
+; sweep is the model's, enabled only in that phase), and runs this program
+; once per removed orphan.  The native `recovery-stage-unlinked` death point
+; is after this unlink and before any subsequent process can rely on
+; cleanup; its coordinate is the whole of fn-bs-recover-program followed by
+; this program up to the cut (tests/campaign/native_cuts.py).  Staging is not
+; an authority directory, but the physical cut still needs a byte-program
+; transition.
 (defun fn-bs-recover-stage-cleanup-program (stage)
   (declare (xargs :guard t :verify-guards nil))
   (list (list :unlink :staging stage)

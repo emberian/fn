@@ -48,6 +48,9 @@ def raw_prefix() -> str:
 (progn!
  (set-raw-mode t)
  (load \"host/native/io.lisp\")
+ ; FN_NATIVE_AUTH_ADMIN_FAULT is a developer-image selector: it reads as NIL
+ ; under the production profile (host/native/io.lisp fnn-developer-selector).
+ (fnn-select-image-profile \"developer\")
  (load \"host/native/auth-admin.lisp\")
 """
 
