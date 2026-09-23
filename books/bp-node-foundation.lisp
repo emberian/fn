@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "bp-node-machine")
 (set-verify-guards-eagerness 0)
+(defconst *fn-bpnf-max-held-image* 131072)
 
 ; A partition is assigned from the admitted ingress principal before looking
 ; up an RFC 9171 bundle identity.  Nil is its own unauthenticated partition.
@@ -72,6 +73,13 @@
                                       (fn-bpnf-held-id (car held))))
         (car held)
       (fn-bpnf-find-held key (cdr held)))))
+
+(defun fn-bpnf-held-octets (held)
+  (declare (xargs :guard t))
+  (if (atom held)
+      0
+    (+ (len (fn-bpnf-held-wire (car held)))
+       (fn-bpnf-held-octets (cdr held)))))
 
 (defun fn-bpnf-receive-decision (held ingress bundle)
   (declare (xargs :guard t))
@@ -187,13 +195,15 @@
 (defun fn-bpnf-step (st event)
   (declare (xargs :guard t))
   (if (equal (car event) :base)
-      (let ((ans (fn-bpn-step (fn-bpnf-base st) (nth 1 event))))
+      (if (fn-bpnf-issued st)
+          (fn-bpnf-answer st nil)
+        (let ((ans (fn-bpn-step (fn-bpnf-base st) (nth 1 event))))
         (fn-bpnf-answer
          (fn-bpnf-state (fn-bpn-answer-state ans) (fn-bpnf-held-list st)
                         (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
                         (fn-bpnf-correlation st) (fn-bpnf-issued st)
                         (fn-bpnf-waits st) (fn-bpnf-epoch st))
-         (fn-bpn-answer-effects ans)))
+         (fn-bpn-answer-effects ans))))
     (if (equal (car event) :persist-result)
         (let ((issued (fn-bpnf-issued st)))
           (if (not (fn-bpnf-operation-matchp issued (nth 1 event) (nth 2 event)))
@@ -233,11 +243,23 @@
           (if (fn-bpnf-issued st)
               (fn-bpnf-answer st (list (list :receive-answer ingress
                                                 '(:refused :busy))))
-            (if (not decision)
+            (if (or (not (natp (nth 4 event)))
+                    (not (natp (fn-bpnf-epoch st))))
               (fn-bpnf-answer st (list (list :receive-answer ingress
-                                                '(:refused :invalid-bundle))))
+                                                '(:refused :arguments))))
+            (if (not decision)
+                (fn-bpnf-answer st (list (list :receive-answer ingress
+                                                  '(:refused :invalid-bundle))))
             (if (not (equal decision :fresh))
                 (fn-bpnf-answer st (list (list :receive-answer ingress decision)))
+              (if (or (> (len wire) *fn-bpnf-max-held-image*)
+                      (>= (len (fn-bpnf-held-list st))
+                          (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))
+                      (> (+ (fn-bpnf-held-octets (fn-bpnf-held-list st))
+                            (len wire))
+                         (fn-bpn-machine-state-max-octets (fn-bpnf-base st))))
+                  (fn-bpnf-answer st (list (list :receive-answer ingress
+                                                    '(:refused :capacity))))
               (let* ((id (fn-bpb-bundle-id bundle))
                      (principal (fn-bpnf-ingress-principal ingress))
                      (arrival (len (fn-bpnf-held-list st)))
@@ -252,14 +274,17 @@
                                                    (nth 4 event) :store h :pending)
                                 (fn-bpnf-waits st) (fn-bpnf-epoch st))
                  (list (list :persist (fn-bpnf-epoch st)
-                             (nth 4 event) h))))))))
+                             (nth 4 event) h))))))))))
         (fn-bpnf-answer st nil)))))
 
 ; This is a precise bridge to the current host-called outbound subject.
 (defthm fn-bpnf-base-step-is-fn-bpn-step
-  (equal (fn-bpnf-base (fn-bpnf-answer-state
-                        (fn-bpnf-step st (list :base event))))
-         (fn-bpn-answer-state (fn-bpn-step (fn-bpnf-base st) event))))
+  (implies (not (fn-bpnf-issued st))
+           (equal (fn-bpnf-base (fn-bpnf-answer-state
+                                  (fn-bpnf-step st (list :base event))))
+                  (fn-bpn-answer-state (fn-bpn-step (fn-bpnf-base st) event))))
+  :hints (("Goal" :in-theory (disable fn-bpn-step)))
+  :rule-classes nil)
 
 ; Reception cannot discard one principal's evidence because another
 ; principal holds the same bundle id or different content under that id.
@@ -283,14 +308,17 @@
 (defthm fn-bpnf-receive-proposal-does-not-install-held
   (equal (fn-bpnf-held-list
           (fn-bpnf-answer-state (fn-bpnf-step st (list :receive-bundle bundle wire ingress op))))
-         (fn-bpnf-held-list st)))
+         (fn-bpnf-held-list st))
+  :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
+                                     fn-bpb-bundlep fn-bpb-bundle-id))))
 
 (defthm fn-bpnf-stale-publication-does-not-install-held
   (implies (not (fn-bpnf-operation-matchp (fn-bpnf-issued st) epoch op))
            (equal (fn-bpnf-held-list
                    (fn-bpnf-answer-state
                     (fn-bpnf-step st (list :persist-result epoch op :durable))))
-                  (fn-bpnf-held-list st))))
+                  (fn-bpnf-held-list st)))
+  :hints (("Goal" :in-theory (disable fn-bpn-step))))
 
 (defthm fn-bpnf-install-requires-matched-durable-publication
   (implies (not (equal (fn-bpnf-held-list
@@ -300,4 +328,5 @@
            (and (equal result :durable)
                 (fn-bpnf-operation-matchp (fn-bpnf-issued st) epoch op)
                 (equal (nth 5 (fn-bpnf-issued st)) :pending)))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bpn-step))))

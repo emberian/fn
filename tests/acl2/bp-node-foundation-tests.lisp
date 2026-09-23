@@ -29,6 +29,12 @@
                           (fn-bpnf-immutable *bpnf-changed*))))
 (assert-event (equal (fn-bpnf-receive-decision nil *bpnf-ingress-p* *bpnf-bundle*)
                      :fresh))
+(assert-event
+ (equal (third (car (fn-bpnf-answer-effects
+                     (fn-bpnf-step *bpnf-s0*
+                                    (list :receive-bundle *bpnf-bundle* '(1 2)
+                                          *bpnf-ingress-p* 16)))))
+        '(:refused :invalid-bundle)))
 
 ; A receive issues publication but cannot accept before the matched result.
 (defconst *bpnf-proposal*
@@ -40,6 +46,9 @@
 (assert-event (null (fn-bpnf-held-list *bpnf-pending*)))
 (assert-event (fn-bpnf-operation-matchp (fn-bpnf-issued *bpnf-pending*) 3 17))
 (assert-event (fn-bpnf-operationp (fn-bpnf-issued *bpnf-pending*)))
+(assert-event (equal (fn-bpnf-answer-state
+                      (fn-bpnf-step *bpnf-pending* '(:base (:clock :bad))))
+                     *bpnf-pending*))
 (assert-event (equal (fn-bpnf-base
                       (fn-bpnf-answer-state
                        (fn-bpnf-step *bpnf-s0* '(:base (:clock :bad)))))
@@ -73,6 +82,15 @@
 (assert-event (fn-bpnf-heldp (car (fn-bpnf-held-list *bpnf-s1*))))
 (assert-event (equal (third (car (fn-bpnf-answer-effects *bpnf-accepted*)))
                      :stored))
+(defconst *bpnf-capacity-state*
+  (fn-bpnf-state (fn-bpn-initial-machine-state *bpnf-config* 1 1048576)
+                 (fn-bpnf-held-list *bpnf-s1*) nil nil nil nil nil 3))
+(assert-event
+ (equal (third (car (fn-bpnf-answer-effects
+                     (fn-bpnf-step *bpnf-capacity-state*
+                                    (list :receive-bundle *bpnf-bundle*
+                                          *bpnf-wire* *bpnf-ingress-q* 19)))))
+        '(:refused :capacity)))
 (assert-event (equal (fn-bpnf-receive-decision
                       (fn-bpnf-held-list *bpnf-s1*) *bpnf-ingress-p* *bpnf-bundle*)
                      :duplicate))
