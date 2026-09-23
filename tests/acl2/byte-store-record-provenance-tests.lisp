@@ -662,3 +662,49 @@
   (bsk0-attempted-cut-relatedp
    (bsk0-occupied-stage) (bsk6-prepared)
    ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
+
+; Native fnn-owner-publish-prepared passes ACL2's encoded candidate to
+; fnn-publish.  fnn-frame concatenates the ACL2 protected prefix and ACL2
+; trailer; fnn-transaction-name delegates the sequence to ACL2.  This is
+; the typed P-RECORD input for the second served article, not an arbitrary
+; Python or host-side decoder agreement assumption.
+(defun bsk0-article-host-frame (record)
+  (let ((octets (fn-store-event-encode record)))
+    (append (fn-frame-store-protected octets)
+            (fn-frame-trailer (fn-frame-store-protected octets)))))
+(defun bsk0-article-host-inputp (ks record stage)
+  (fn-bs-record-inputp
+   ks stage (fn-bs-txn-name (fn-store-event-sequence record))
+   (bsk0-article-host-frame record)))
+(assert-event
+ (and (fn-record-p *bsk5-record-2*)
+      (equal (fn-sf-phase (bsk6-prepared)) :record-staged)
+      (equal (fn-sf-record-candidate (bsk6-prepared)) *bsk5-record-2*)
+      (bsk0-article-host-inputp (bsk6-prepared) *bsk5-record-2*
+                               ".stage-k5-2")
+      (bsk0-attempted-cut-relatedp
+       (bsk6-start) (bsk6-prepared) ".stage-k5-2"
+       (fn-bs-txn-name (fn-store-event-sequence *bsk5-record-2*))
+       (bsk0-article-host-frame *bsk5-record-2*))))
+
+; Each article call-argument premise has a direct negative witness.
+(must-fail
+ (assert-event
+  (bsk0-article-host-inputp
+   (fn-sf-make :record-staged 2 nil nil :junk nil nil nil)
+   :junk ".stage-k5-2")))
+(must-fail
+ (assert-event
+  (bsk0-article-host-inputp
+   (fn-sf-make :ready (fn-sf-frontier (bsk6-prepared)) nil
+               (fn-sf-records (bsk6-prepared)) *bsk5-record-2* nil nil nil)
+   *bsk5-record-2* ".stage-k5-2")))
+(must-fail
+ (assert-event
+  (bsk0-article-host-inputp
+   (fn-sf-make :record-staged (fn-sf-frontier (bsk6-prepared)) nil
+               (fn-sf-records (bsk6-prepared)) *bsk5-record* nil nil nil)
+   *bsk5-record-2* ".stage-k5-2")))
+(must-fail
+ (assert-event
+  (bsk0-article-host-inputp (bsk6-prepared) *bsk5-record-2* nil)))
