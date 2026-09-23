@@ -984,6 +984,33 @@ class PartialInstallTests(unittest.TestCase):
             self.assertEqual(report.installed_from["books/mid"], "/farm/first")
             self.assertNotEqual(older_base, newer_base)
 
+    def test_compatible_cascade_can_move_one_conflict_before_resolving(self):
+        """A child switch may first move the mismatch to another parent."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = worktree(directory)
+            options = {
+                "books/base": [(Path("base-new"), {}), (Path("base-old"), {})],
+                "books/mid": [(Path("mid-new"), {}), (Path("mid-old"), {})],
+                "tests/acl2/mid-tests": [(Path("test"), {})],
+            }
+
+            def probe(paths, pairs, acl2, probe_root):
+                self.assertEqual(probe_root, root)
+                def matches(parent, child):
+                    p, c = paths[parent].parent.name, paths[child].parent.name
+                    if p == "test" and c.startswith("mid-"):
+                        return c == "mid-old"
+                    if p.startswith("mid-") and c.startswith("base-"):
+                        return p.removeprefix("mid-") == c.removeprefix("base-")
+                    return True
+                return {pair: (True, matches(*pair)) for pair in pairs}
+
+            selected = certs.compatible_partial_choices(
+                root, options, Path("acl2"), pair_checker=probe)
+            self.assertEqual(selected["books/base"][0], Path("base-old"))
+            self.assertEqual(selected["books/mid"][0], Path("mid-old"))
+            self.assertEqual(selected["tests/acl2/mid-tests"][0], Path("test"))
+
     def test_incompatible_cached_parent_is_recertified_if_no_child_matches(self):
         with tempfile.TemporaryDirectory() as one, \
                 tempfile.TemporaryDirectory() as two, \
