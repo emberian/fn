@@ -21,9 +21,10 @@ import feed_wire
 
 
 class BookBridge(Acl2Owner):
-    def __init__(self):
+    def __init__(self, peer=b"inn"):
         self.proc = None
         self.poisoned = False
+        self.peer = peer
         env = dict(os.environ, ACL2_CUSTOMIZATION="NONE", ACL2_BOOK_HASH_ALISTP="NIL")
         self.proc = subprocess.Popen([env.get("FN_ACL2", "acl2")], cwd=ROOT,
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -35,8 +36,9 @@ class BookBridge(Acl2Owner):
     def feed_journal_begin(self):
         super().feed_journal_begin()
         self.call("(f-put-global 'fn-test-feed "
-                  "(fn-feed-open '(105 110 110) (fn-feed-limits 100 1000 3 t) "
-                  '(fn-sched-contact "inn" 0 1000000) nil) state)')
+                  "(fn-feed-open '{} (fn-feed-limits 100 1000 3 t) "
+                  "(fn-sched-contact \"inn\" 0 1000000) nil) state)".format(
+                      self.literal(self.peer)))
 
     def feed_journal_scan(self, peer, prefix, frame):
         self.call("(f-put-global 'fn-test-scan "
@@ -58,6 +60,55 @@ class BookBridge(Acl2Owner):
                "(fn-frame-seal *fn-feed-magic* *fn-frame-version* " \
                "(fn-frame-enum-index :{} *fn-feed-kinds*) payload))"
         return bytes(acl2_octet_list(self.call(form.format(values, kind, kind))))
+
+    def inspect_file(self, path, msgid):
+        """Read an at-rest FNFD through the same ACL2 scanner/replay as recovery.
+
+        Python only supplies bounded file reads of the prefix length ACL2
+        returns.  The record kind, queue state and attempt count all come
+        from the book, so this is an observation of the model's projection
+        of durable bytes rather than a second FNFD parser.
+        """
+        self.feed_journal_begin()
+        if self._symbol_any("(fn-feedp (@ fn-test-feed))") != "t":
+            raise AssertionError("ACL2 inspector initial feed is invalid")
+        counts = {}
+        prefix_size = self._nat("*fn-feed-journal-prefix-size*")
+        with Path(path).open("rb") as source:
+            while True:
+                prefix = source.read(prefix_size)
+                if not prefix:
+                    break
+                plan = self.feed_journal_prefix(list(prefix))
+                if not isinstance(plan, int):
+                    raise AssertionError("ACL2 refused FNFD prefix: {}".format(plan))
+                frame = source.read(plan)
+                if len(frame) != plan:
+                    raise AssertionError("short FNFD frame")
+                state = self.feed_journal_scan(list(self.peer), list(prefix), list(frame))
+                if state != "next":
+                    raise AssertionError("ACL2 refused FNFD frame: {}".format(state))
+                if self._symbol_any("(fn-feedp (@ fn-test-feed))") != "t":
+                    raise AssertionError("ACL2 replay left the feed recognizer")
+                kind = self._symbol_any(
+                    "(fn-feed-journal-kind (caddr (@ fn-test-scan)))")
+                counts[kind] = counts.get(kind, 0) + 1
+        mid = self.literal(list(msgid.encode("ascii")))
+        before = self._symbol_any(
+            "(fn-feed-state-of '{} (fn-feed-queue (@ fn-test-feed)))".format(mid))
+        self.call("(f-put-global 'fn-test-feed "
+                  "(fn-feed-restart (@ fn-test-feed)) state)")
+        after = self._symbol_any(
+            "(fn-feed-state-of '{} (fn-feed-queue (@ fn-test-feed)))".format(mid))
+        return {"records": counts, "state_before_restart": before,
+                "state_after_restart": after,
+                "queue_length": self._nat("(len (fn-feed-queue (@ fn-test-feed)))"),
+                "attempts": self._nat(
+                    "(fn-feed-entry-attempts "
+                    "(fn-feed-find '{} (fn-feed-queue (@ fn-test-feed))))".format(mid)),
+                "next_attempt": self._nat("(fn-feed-next-attempt (@ fn-test-feed))"),
+                "inflight": self._symbol_any(
+                    "(fn-feed-inflightp '{} (@ fn-test-feed))".format(mid))}
 
 
 class FeedJournalLiveTests(unittest.TestCase):
@@ -133,6 +184,16 @@ class FeedJournalLiveTests(unittest.TestCase):
             journal = self.open()
         self.assertEqual(journal.replayed, 2)
         self.assertEqual(self.path.read_bytes(), self.envelope + self.restart_envelope)
+
+    def test_read_only_inspector_reports_replayed_queue_from_real_fnfd_bytes(self):
+        self.path.write_bytes(self.envelope)
+        original = self.path.read_bytes()
+        observed = self.bridge.inspect_file(self.path, "<a@fn>")
+        self.assertEqual(observed["records"], {"feed-enqueue": 1})
+        self.assertEqual(observed["state_before_restart"], "queued")
+        self.assertEqual(observed["state_after_restart"], "queued")
+        self.assertEqual(observed["queue_length"], 1)
+        self.assertEqual(self.path.read_bytes(), original)
 
     def test_each_recovery_barrier_failure_requires_a_fresh_successful_recovery(self):
         for name, effects in (("fsync_file", [OSError("content")]),
