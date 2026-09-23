@@ -311,6 +311,28 @@ These books are low in the graph: a change here recertifies everything
 above them. Since no definition and no enabled exported rule changed, no
 dependent's proof should change; the treewide run is where that is checked.
 
+## Certification: not submitted
+
+The farm refused the lane run before ACL2 started. `farm.py submit persvati`
+with plain roots (the nine books and `tests/acl2/{frame,records,records-teeth,
+codec-seam,statement,peer-inbound}-tests`, `--jobs 4 --timeout-seconds 1800
+--remote-root /home/ember/fn-gates/cost-codec --acl2
+/home/ember/fn-gates/toolchains/w25/acl2-literal --cache
+/home/ember/fn-certcache`) answered "no origin/toolchain-coherent
+certificate set ... Re-run with --closure". 25 books of the closure have no
+pair in the cache at `dev` 1554e2cd's digests: `peer-inbound`,
+`peer-inbound-invariants`, `principal`, `provenance`, `provenance-codec`,
+`records`, `records-attach`, `records-seam`, `records-shape`, `replay`,
+`retention`, `retention-invariants`, `statement-attach`, `statement-items`,
+`statement-seam`, `store-events`, `stx-accept-records`, `stx-carrier`,
+`stx-evidence-records`, `stx-keyring-records`, `stx-lace`, `stx-verify`,
+`wildmat`, `wire`, and `tests/acl2/crypto-seam-tests`. Under
+`planning/how-we-work.md`, "Certification cost", a lane does not
+`--closure`, so the lane stopped there. The run waits on root's treewide
+certification of `dev`; after it, the plain-roots submit above is the gate,
+and since these books sit under most of the tree, the treewide run over the
+merge is the check that no dependent's proof moved.
+
 ## Not verified
 
 - The books were loaded form by form in live sessions, not certified. Books
