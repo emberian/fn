@@ -1,0 +1,21 @@
+{
+  "asset": 0,
+  "authorityCatalogueId": 12,
+  "collector": 99,
+  "domain": 8501,
+  "expectedSeed": 77077614360866899464884210370481142437829018147097381483135621867234479507580,
+  "factoryId": 10,
+  "federation": 9,
+  "genesisHeight": 10,
+  "issuer": 5,
+  "lifetime": 10000,
+  "ownerBudget": 100000,
+  "resourceBookId": 11,
+  "signatureBinary": "",
+  "storageBinary": "",
+  "storageRoot": "",
+  "tariffBase": 3,
+  "tariffPerBirth": 2,
+  "tariffPerGrant": 1,
+  "tariffPerInitialPayloadByte": 0
+}
