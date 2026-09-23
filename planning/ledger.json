@@ -412,8 +412,8 @@
     "books": 407,
     "books_in_root_closure": 406,
     "roots": 405,
-    "theorems": 6839,
-    "functions": 5300,
+    "theorems": 6844,
+    "functions": 5306,
     "assert_events": 7643,
     "must_fails": 253,
     "encapsulates": 22,
@@ -421,7 +421,7 @@
       "verified": 1737,
       "declared-off": 288,
       "default-guarded": 2633,
-      "default-unguarded": 642
+      "default-unguarded": 648
     },
     "suspect_theorems": 63,
     "export_hygiene_warnings": 90,
@@ -2320,7 +2320,7 @@
       "book": "books/byte-store-keystones.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 29,
+      "theorems": 34,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -8186,17 +8186,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
       "assert_events": 20,
       "must_fails": 0,
-      "defconsts": 11,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -8213,12 +8213,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 4,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 4
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
       "assert_events": 8,

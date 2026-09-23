@@ -1318,14 +1318,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-staging-unlink-keeps-relation-and-scan"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-recover-sweep-keeps-relation-at-every-cut"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-sweep-round-keeps-every-cut-reopenable"
         },
         {
