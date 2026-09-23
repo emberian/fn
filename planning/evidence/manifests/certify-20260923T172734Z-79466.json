@@ -1,0 +1,152 @@
+{
+  "acl2_compatibility": null,
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/consumer-position": 0,
+    "tests/acl2/consumer-position-tests": 0
+  },
+  "acl2_slots": 8,
+  "acl2_toolchain": {
+    "launcher": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+    "launcher_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+    "launcher_size": 142,
+    "reason": "shell expansion is outside the recognized launcher subset at /opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2:6",
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "unqualified"
+  },
+  "acl2_toolchain_identity": null,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "book_failures": {},
+  "book_results": {
+    "books/consumer-position": "passed",
+    "tests/acl2/consumer-position-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/consumer-position": 0.242,
+    "tests/acl2/consumer-position-tests": 0.433
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 600,
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [
+      "books/consumer-position: no qualified ACL2 launcher/core/runtime fingerprint",
+      "tests/acl2/consumer-position-tests: no qualified ACL2 launcher/core/runtime fingerprint"
+    ],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/consumer-position",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/consumer-position: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/consumer-position-tests",
+        "published": false,
+        "verdict": "passed",
+        "why": "tests/acl2/consumer-position-tests: no qualified ACL2 launcher/core/runtime fingerprint"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/consumer-position": "3670e59cf238e5dd252d378f93fa55163aa4dbed6e47ac27898e384ec883c3d9",
+    "tests/acl2/consumer-position-tests": "bcd13595bebc635fc27b83e5bc8ab95123a644ed4582e7d2c35b2eb82346fbce"
+  },
+  "certify_wall_seconds": 0.681,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/consumer-position": "2ed8950007cf6f0bba85e170a4fc890293f7711c3e48c01c261c6a9865e5b445",
+    "tests/acl2/consumer-position-tests": "5088f1ab6cf5c24469ca84214358417f34a060e50e9c7cf9ebc802848f1cf578"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 0b78dc22d6df4e3ae787b1e5c1b6f791 2ef33275e00f",
+    "FN_CERTIFY_SUCCESS 0b78dc22d6df4e3ae787b1e5c1b6f791 2ff24c95e24f"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T17:27:35+00:00",
+  "git_branch": "implement/consumer-kernel",
+  "git_dirty": true,
+  "git_revision": "83232c833ebb84beab8612630572072d6638729b",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "incremental": false,
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 0b78dc22d6df4e3ae787b1e5c1b6f791 2ef33275e00f",
+    "FN_CERTIFY_SUCCESS 0b78dc22d6df4e3ae787b1e5c1b6f791 2ff24c95e24f"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/consumer-position",
+    "tests/acl2/consumer-position-tests"
+  ],
+  "requested_books": [
+    "books/consumer-position",
+    "tests/acl2/consumer-position-tests"
+  ],
+  "roots": [
+    "books/consumer-position",
+    "tests/acl2/consumer-position-tests"
+  ],
+  "run_id": "certify-20260923T172734Z-79466",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "books/consumer-position": 0.0,
+    "tests/acl2/consumer-position-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/consumer-position.lisp": "401009253a40b889ad91d68e727827f0cd88bd61a94b43992abec1e6d510eba6",
+    "tests/acl2/consumer-position-tests.lisp": "470a100b891ce4f6e49d286864adddf199f15f6c3e3cd1cab710af61c3a823f0"
+  },
+  "source_digests_sha256_after": {
+    "books/consumer-position.lisp": "401009253a40b889ad91d68e727827f0cd88bd61a94b43992abec1e6d510eba6",
+    "tests/acl2/consumer-position-tests.lisp": "470a100b891ce4f6e49d286864adddf199f15f6c3e3cd1cab710af61c3a823f0"
+  },
+  "start_order": [
+    "books/consumer-position",
+    "tests/acl2/consumer-position-tests"
+  ],
+  "started_utc": "2026-09-23T17:27:34+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/consumer-kernel"
+}
