@@ -1882,7 +1882,9 @@
                             (conns (fn-own-conns o))))
            :in-theory (e/d (fn-own-read fn-own-finish-read
                             fn-own-set-conns fn-own-enqueue)
-                           (fn-served-step fn-own-conn-boundedp)))))
+                           (fn-served-step fn-own-conn-boundedp
+                            fn-own-conn-make-group-indexed
+                            fn-served-make-conn-group-indexed)))))
 
 (defthm fn-own-find-conn-of-replace-same-id
   (implies (and (fn-own-find-conn id conns)
@@ -1910,7 +1912,9 @@
                             (conns (fn-own-conns o))))
            :in-theory (e/d (fn-own-read fn-own-finish-read
                             fn-own-set-conns fn-own-enqueue)
-                           (fn-served-step fn-own-conn-boundedp)))))
+                           (fn-served-step fn-own-conn-boundedp
+                            fn-own-conn-make-group-indexed
+                            fn-served-make-conn-group-indexed)))))
 
 (defthm fn-own-find-conn-of-remove-conn-other
   (implies (not (equal id other))
