@@ -20,23 +20,23 @@ recovery can all change the same state constructor or completion function.
 Assigning one agent to each feature without noticing that overlap produces
 competing fixes and invalidates proofs other agents are trying to repair.
 
-Before dispatch, inspect the current definitions and active claims. Give each
-edited book one owner for that phase. Include closures can overlap; edits
-cannot. Sequence changes to a shared state representation, then let independent
-consumers work against that representation. Reserve work that does not change
-the shared kernel—client exercises, interoperability probes, specification
-review—for parallel progress while that sequence runs.
+Before dispatch, inspect current definitions and tell agents who is working
+nearby. The September 23 user correction matters: shared files are not a
+reason to forbid useful collaboration. Agents should exchange interfaces,
+lemmas, patches and evidence directly, and agree how to assemble a particular
+change. Work claims are visible intentions, not exclusive file reservations.
 
-The coordinator owns this partition. An agent discovering that its assignment
-was already fixed is useful feedback about the brief, not a reason to invent
-more work. If two fixes do collide, choose a coherent implementation and check
-its whole proof/test closure. Splicing one agent's statement into another's
-hints can leave a syntactically plausible book whose intended assertions never
-run.
+An agent discovering that its assignment was already fixed should share that
+finding and move to useful work. If two changes overlap, reconcile the whole
+implementation and its proof/test closure. Splicing one agent's statement into
+another's hints without checking the resulting book can leave intended
+assertions unexercised; the defect is unexamined composition, not overlap itself.
 
-The current five-lane arrangement gives the coordinator room to integrate.
-Five is not a theorem about team size. The important constraint is whether
-changes have clear owners and whether a batch can become a tested service.
+The current plan starts around ten useful agents. Machine slots and proof
+jobs remain separately bounded. The [coordination loop](../planning/how-we-work.md)
+and [swarm board](../planning/swarm-board.md) describe peer messaging, durable
+handoffs and sharing expensive runs. Measure additional progress and iteration
+latency, rather than treating occupied agent slots as throughput.
 
 ## Brief the property, not just the file
 
@@ -48,7 +48,7 @@ Use a short brief with concrete contents:
 
 ```text
 Step and contract: current plan step; requirement/proof IDs; relevant spec.
-Base and ownership: source revision; exact books/files this lane may edit.
+Base and collaborators: revision; expected edits; peers sharing the interface.
 Called subject: host call site; function signature; proposed theorem statement.
 Assurance: reachable positive witness; negative cases; guards; affected arms.
 Integration: dependent books/tests; actual image scenario; known inherited reds.

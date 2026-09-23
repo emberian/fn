@@ -93,10 +93,11 @@ that motivated it. Green is not true; these rules are how a claim earns its name
 - **Behaviour and its invariants land together.** A lane that changed a
   book certifies that book, its test book and their closure on the farm
   before it reports, and cites the manifest; root merges on that and
-  `make check`, and runs one provisional wave (`tools/triage.py`) over the
-  image closure per batch of merges, comparing its red set and forms with
-  the previous wave's: a new red is the batch's to fix before the next
-  merge. `tools/green_check.py --changed-since REV` shows what a merge
+  `make check`, and checks the combined image closure incrementally per
+  convergence batch, comparing failures with the previous batch. Use a
+  provisional wave (`tools/triage.py`) only when dependency failures hide
+  other failures; do not repeat a successful ordinary run. A new regression
+  is the batch's to fix before advancing its dependent work. `tools/green_check.py --changed-since REV` shows what a merge
   carries; a dependent already red for a reason the branch did not cause
   does not hold the merge, since holding it adds no evidence. Never
   `git log`. (Review of 2026-09-22, F4: five commits changed the machine
@@ -111,6 +112,18 @@ that motivated it. Green is not true; these rules are how a claim earns its name
   [`docs/prefixes.md`](docs/prefixes.md); lane worktrees under `build/lanes/`
   are removed when the lane lands; role names used in planning are defined in
   [`planning/swarm-cycles.md`](planning/archive/swarm-cycles.md) or not used.
+
+## Swarm coordination (user correction, 2026-09-23)
+
+- Start around ten useful agents, mostly GPT-6-Sol, with proof/build capacity
+  separately bounded by the existing shared pools and memory limits.
+- File ownership is not exclusive. Agents announce intentions, coordinate
+  overlapping work directly, share useful results and agree how a combined
+  change will be integrated and checked. See [the working loop](planning/how-we-work.md)
+  and [swarm board](planning/swarm-board.md). Root need not broker every handoff.
+- Reuse matching source/closure/toolchain evidence and coordinate expensive
+  runs. Another agent should add progress, not another copy of the same job.
+  Preserve bounded proof attempts and measured edit-to-verdict latency.
 
 ## Evidence and handoff
 

@@ -57,8 +57,10 @@ had made a test book's intended assertions inert. Several agents independently
 noticed duplicate or already-completed work and withdrew it.
 
 This supports a coordination lesson, not a ranking of model capability:
-refresh dispatch against the current tree, give edited books one owner, and
-check a coherent fix rather than interleaving competing proof scripts.
+refresh dispatch against the current tree, coordinate overlapping edits,
+and check the coherent combined proof. The initial response was exclusive
+book ownership; the user's September 23 correction replaces that restriction
+with direct peer coordination and visible intentions.
 
 ## A corrective gate became another bottleneck
 

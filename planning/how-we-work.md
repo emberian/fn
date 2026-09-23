@@ -5,13 +5,13 @@ One page. A lane is briefed from this and from its step in
 phase schedule). The rules below are the five findings of
 [the proof-engineering review](review-2026-09-22-proof-engineering.md) turned
 into practice, plus the assurance rules of [AGENTS.md](../AGENTS.md), which
-still apply in full. ember's decisions of 2026-09-22 (plan §0) set the width
-and the convergence rhythm.
+still apply in full. ember's 2026-09-23 correction below supersedes the old
+five-lane limit and exclusive-file ownership; batched convergence remains.
 
 ## The loop
 
 1. **Start from ground truth, in your own worktree.** The brief names the
-   step, the books you own (and nothing else), the host lines that call the
+   step, the functions/books you expect to change and nearby collaborators, the host lines that call the
    subject, the theorem statements you are to prove, the teeth you owe, the
    box you certify on, and the evidence file you will write. If the brief
    says "put it under a directory" instead of an absolute path, or describes
@@ -24,43 +24,82 @@ and the convergence rhythm.
 3. **Open a codec in a hint, never at the top of a book.** `theory_check`
    names the habit; `--strict` will refuse it once T1 lands. A goal that only
    dispatches on a record kind must not carry the codec (F3).
-4. **Certify your own closure before you report.** `python3 tools/farm.py
-   submit <your box> --remote-root <abs path> --affected-by <book> --closure`,
-   then `python3 tools/green_check.py --changed-since <base> --strict` in your
-   worktree. Discovery runs use a 300 s per-book budget; a book that needs
-   more is a finding you report, not a budget you raise (F2). Only the final
-   closure run uses 1800 s. This is the step that F4 was missing and it is
-   not optional: behaviour and the invariants over it land together.
+4. **Certify the changed behavior and its affected invariants.** Submit an
+   incremental run with explicit changed/dependent book and test roots; reuse
+   content/toolchain-matched cached dependencies. Do not pass `--closure` for
+   ordinary lane work. Until the known `--affected-by` host-root bug is fixed,
+   select the affected set explicitly. Use `green_check --changed-since <base>`
+   to inspect the resulting evidence, not just the edited book. Discovery
+   attempts are bounded; a timeout is a finding to diagnose, not a reason to
+   repeatedly rebuild dependencies. Behavior and invariants land together.
 5. **Report what the tools say.** Your report names: the theorems (their
    statements, not their names), the host lines, the teeth book, the
    `green_check` line, the farm run id and manifest, the evidence file, and
    what you did not do. "Green" is a tool's word; do not use it for a book
    you did not certify at its current bytes.
-6. **Root merges as batches land; converges every two to three.** A batch
-   with its own certification and a clean static gate is merged (`--no-ff`)
-   when it lands. After every two to three merged batches, or at the end of
-   a phase, whichever is sooner, root runs one provisional wave
-   (`tools/triage.py`) over the image closure and reads every independent red
-   in one report (F1); a red goes back to the lane whose books it names, and
-   the image is rebuilt from a frozen tree (`tools/runbooks/hbox-image-build.sh`)
-   only after a clean wave. The deployed node moves only to a frozen image
-   with its manifest, and its page says which properties hold on it.
+6. **Root merges coherent batches; converges every two to three.** Check
+   the combined source with an incremental integrated run and the static gate,
+   comparing failures with the prior batch. A new regression returns to its
+   contributors; an unrelated inherited failure does not hold their work.
+   Use a provisional wave only when failed dependencies hide other failures,
+   not beside a successful ordinary run. A frozen image gets a fresh ordinary
+   closure and its actual runtime qualification. The node page names the
+   tested image and the properties demonstrated on it.
 
-## Width, and why
+## Width and coordination (revised by ember, 2026-09-23)
 
-**Five lanes: two certifying on hbox, two on persvati, one local**, each on
-books it alone edits within the phase (include-closures may overlap; edited
-books may not), declared at launch and listed in the schedule. On 2026-09-21
-twelve capability lanes ran at once and five commits in three hours widened
-`fn-sn-state`, gave `fn-sn-finish` two arms, bound the AUTHINFO peer role and
-gave `fn-sn-recover` a fault arm under invariant books nobody recertified;
-the exported statements were false in the shape the machine had and `git log`
-read as green for a day (F4, [the second freeze record](evidence/native-freeze-01fbdad4-2026-09-22.md)).
-What prevents that is step 4 of the loop, not the number of lanes; what the
-number buys is that one wave can attribute every red to one lane, and one
-root can merge and image in a day. A step whose lanes must edit the same
-book (the codec seam's clusters, T2 then T3 then T4 on `store-node`) runs
-those lanes one after another in one slot of the schedule.
+Start around **ten useful implementation agents**, mostly GPT-6-Sol, and
+expand when another agent has substantive work to advance. Agent count and
+ACL2 process count are separate budgets. We are not increasing machine slot
+pools just because we increase the number of agents.
+
+**Work claims announce intent; they do not reserve territory.** Shared files
+and shared proof targets are allowed. Agents coordinate directly about the
+interface, source revision, planned edit and evidence they can reuse. They
+may pair on a theorem, split a definition from its consumers, exchange a
+small commit, or jointly integrate a change. Only an actual dependency needs
+sequencing. Root is available for disputes and design questions, not required
+as the relay for every conversation.
+
+At dispatch give agents the teammate roster and overlapping goals. In Codex,
+`collaboration.list_agents` discovers peers and `collaboration.send_message`
+lets them talk directly. Announce a changed signature, shared edit, useful
+lemma, failed approach or certification run to affected peers promptly.
+[The swarm board](swarm-board.md) preserves intentions, decisions, run IDs and
+next actions across compaction; it is a summary, not a lock or approval gate.
+
+Use worktrees/checkpoints to reconcile overlapping patches deliberately;
+don't overwrite a peer's in-progress text in a shared checkout. Contributors
+agree who assembles the particular combined change, then certify its resulting
+bytes and affected invariants. That temporary responsibility need not give
+anyone permanent ownership of the file. Reusing a proof result means reusing
+matching content/toolchain evidence, not borrowing another branch's green
+label after changing its definitions.
+
+## Useful parallelism and proof cost
+
+Before starting a duplicate proof/build job, check peer announcements, current
+farm runs and the certificate cache. Reuse a matching result; if needed,
+coordinate one run and share its manifest. Default to incremental selected
+roots. A surprising cache miss or repeated dependency rebuild gets diagnosed
+before blindly escalating to a full closure run. Different source closures
+may legitimately need separate certification; do not deduplicate across them.
+
+Give each submitted run one coordinator who reports the root set, source
+identity, host/path, installed versus certified work and run ID. That agent
+need not sit in repeated polling calls. The existing machine-wide ACL2 slots
+and hbox memory wrapper govern execution; individual agents must not create
+private slot directories or raise shared limits to get around a queue. Release
+idle proof sessions when others need their slots. Reserve wide full-closure
+runs for a shared qualification purpose, not one per agent.
+
+Preserve the under-three-minute edit-to-verdict target. Record queue delay,
+cache/install time, proof time and total elapsed time separately. Investigate
+books over ten seconds through their event logs and enabled rules, with
+bounded interactive attempts; don't mask regressions by raising timeouts or
+weakening theorems. Compare like source/toolchain/cache/job conditions when
+claiming a speedup. A performance regression blocks the affected claim or
+consumer, not unrelated productive engineering.
 
 ## Boxes
 
@@ -71,7 +110,8 @@ absolute; a farm run installs its dependencies from the box's cache, composed
 from several snapshot origins when no one origin holds them all, and never
 from a live worktree on the same machine (`tools/certs.py` refuses
 `foreign-local` for you; `planning/evidence/certificate-cache-2026-09-23.md`). The local lane's pool is
-four slots; a local lane whose closure outgrows it submits to its step's box.
+eight slots by default on Darwin; a configured lower limit still applies.
+A lane whose closure outgrows it submits to its step's box.
 The full trap list is [the freeze recipe](evidence/native-freeze-c28ffc30-2026-09-22.md)
 and the runbooks' headers.
 
@@ -79,10 +119,10 @@ and the runbooks' headers.
 
 | | Finding | Rule |
 | --- | --- | --- |
-| F1 | a failed book hides every book above it | discovery is a provisional wave, never a chain of ordinary runs; one report per convergence names every red |
+| F1 | a failed book hides every book above it | use a provisional wave when dependency failures hide other failures; do not repeat a successful ordinary run |
 | F2 | a proof that stops returning burns the round | 300 s for discovery; a timeout is a finding with the theorem named; `with-prover-time-limit` in the session |
 | F3 | codec vocabularies opened book-wide | a codec is opened in a hint or not at all; the seam books (plan §4.1) make it impossible above them |
-| F4 | behaviour landed under uncertified invariants | a lane certifies its own closure before it reports, every time; root converges every two to three batches; five lanes on disjoint edited books |
+| F4 | behaviour landed under uncertified invariants | a lane certifies its own closure before it reports, every time; root converges every two to three batches; agents coordinate overlapping changes and certify the resulting source |
 | F5 | each lane re-derived the loop | this page and the runbooks; a lane that spends its first hour on the recipe reports that as a defect in the brief |
 
 ## What a step is, and is not
@@ -144,7 +184,8 @@ published a certification of `dev`'s head since. The rules that follow:
   books and test books as plain roots): everything cached at its current
   digest installs, and only the changed books, their dependents and
   anything else the cache lacks certify. Root
-  uses `--closure` for the freeze and the treewide run, nothing else.
+  uses `--closure` for an explicitly fresh qualification such as the freeze;
+  ordinary treewide convergence is incremental.
 - **A book over ten seconds is a defect.** On 2026-09-23 every book over
   a minute turned out to be a recognizer, codec or table left enabled
   where one proof needed a shape fact, and each was repaired with hints,
