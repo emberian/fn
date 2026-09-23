@@ -179,7 +179,34 @@ them: `books/store-node`'s export disable should close
 the graph and recertifies the whole store cluster, so it belongs to root's
 treewide run rather than to a lane.
 
-## Certification
+## Certification: not submitted
 
-The farm run of this book, its test books and their dependents is listed
-below. Root harvests it.
+The farm refused the lane run before ACL2 started. `farm.py submit persvati`
+with plain roots (`books/store-node-resolution`,
+`tests/acl2/store-node-resolution-tests`,
+`tests/acl2/store-node-resolution-traces-tests`, `--jobs 4
+--timeout-seconds 1800 --remote-root /home/ember/fn-gates/t4-snr --acl2
+/home/ember/fn-gates/toolchains/w25/acl2-literal --cache
+/home/ember/fn-certcache`) answered "no origin/toolchain-coherent certificate
+set ... Re-run with --closure". 24 books of this book's closure have no pair
+in `/home/ember/fn-certcache` at `dev` 9a659682's digests:
+
+- `principal`, `provenance`, `records`, `records-invariants`, `replay`,
+  `retention`, `retention-invariants`, `statement`, `statement-invariants`;
+- `store-events`, `store-files`, `store-files-invariants`,
+  `store-files-traces`, `store-node`, `store-node-invariants`,
+  `store-node-traces`;
+- `stx-accept-records`, `stx-carrier`, `stx-evidence-records`, `stx-index`,
+  `stx-keyring-records`, `stx-lace`, `stx-verify`, `wildmat`.
+
+Under `planning/how-we-work.md`, "Certification cost", a lane does not
+`--closure`, so this lane stopped there. The run waits on root's treewide
+certification of `dev`'s head on persvati. After that, the plain-roots
+submit above is the whole gate.
+
+`--affected-by books/store-node-resolution` fails separately, in the cache
+preflight. It expands to `host/native-auth-host`,
+`host/native-auth-admin-host` and `host/native-operator-host`, and
+`certify_books.py` refuses those names ("book names must be
+repository-relative paths below books/ or tests/acl2/"). That is a
+`tools/farm.py` defect, and it is not repaired here.
