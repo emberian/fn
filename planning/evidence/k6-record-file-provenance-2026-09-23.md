@@ -313,3 +313,42 @@ Book/test wall times were 6.948 s/2.154 s. This packet proves the article
 codec path only. Retention and identity event-union encode/decode
 round-trip theorems, physical call-entry relation establishment, and the
 remaining model cuts/outcomes remain open.
+
+The next call-entry packet proves the byte relation is preserved by the
+actual ACL2 preparation transition. `fn-bs-k0-record-prepare-preserves-relation`
+has only the source `fn-bs-store-relation` premise; it covers successful
+`:reserved`→`:record-staged` preparation and the no-op/refusal branches of
+`fn-sf-prepare-record` without changing the byte state.
+`fn-bs-k0-node-article-prepare-preserves-relation` lifts that theorem to
+`fn-sn-prepare`, which the served article path reaches through the owner
+step. A separate shape lemma shows that a successful preparation from
+`:reserved` binds precisely the supplied article candidate; another derives
+its `fn-record-p` condition, so neither is an unexplained premise.
+`fn-bs-k0-served-article-prepare-to-attempted-relation` then composes
+preparation, the ACL2 host frame/name bridge and actual P-RECORD pair 10.
+Its physical starting premise is a related byte/kernel state at the
+reserved call entry, with the source phase `:reserved`, a successful staged
+result, valid stage name and fresh staging slot.
+
+The test runs a real first-article reservation, node preparation and
+P-RECORD attempted cut. It separates the premises with an unfenced
+configuration inode (physical relation absent), an already staged source
+whose second preparation is a no-op, an invalid article that leaves the
+reservation unprepared, and an occupied staging key that stops O_EXCL.
+The malformed-stage tooth for the input-name clause is in the previous
+article frame packet. Hbox selected book and test roots passed under
+`run-20260923T225945Z-6335`, manifest
+`planning/evidence/manifests/certify-20260923T225948Z-405278.json`;
+the extra source-phase tooth passed selected test-root certification under
+`run-20260923T230023Z-de08`, manifest
+`planning/evidence/manifests/certify-20260923T230025Z-407050.json`.
+The ACL2 8.7 book and first test root took 7.358 s and 2.280 s; the
+additional test-only run took 2.325 s. Source/closure/toolchain and core
+digests are in the manifests.
+
+The theorem still assumes the physical relation at the reserved call
+entry. A whole served trace must connect initialization, the frontier
+program, prior record finishes, recovery, and real syscall observations
+to that premise. This packet does not prove every intermediate cut,
+retention/identity event codec round trips, or platform power-loss
+behavior.

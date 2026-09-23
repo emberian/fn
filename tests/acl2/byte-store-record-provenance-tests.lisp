@@ -708,3 +708,118 @@
 (must-fail
  (assert-event
   (bsk0-article-host-inputp (bsk6-prepared) *bsk5-record-2* nil)))
+
+; ACL2 node preparation is the served article caller's logical step. It
+; does not mutate the byte store, and the relation survives both the file
+; kernel prepare and the actual fn-sn-prepare that calls it. The first
+; article witness has a nonempty framed candidate and a durable reservation.
+(defun bsk0-node-reserved ()
+  (let ((s (fn-sn-initial *bsk5-groups* *bsk5-capacity*)))
+    (fn-sn-io
+     (fn-sn-io
+      (fn-sn-io
+       (fn-sn-io s :start-frontier nil)
+       :frontier-file :ok)
+      :frontier-replace :ok)
+     :frontier-directory :ok)))
+(assert-event
+ (let* ((pair (car (last (bsk5-frontier-run))))
+        (bs (car pair))
+        (ks (cdr pair))
+        (node (bsk0-node-reserved))
+        (prepared (fn-sn-prepare node *bsk5-record*)))
+   (and (fn-bs-store-relation bs ks)
+        (equal ks (fn-sn-files node))
+        (equal (fn-sf-phase ks) :reserved)
+        (equal (fn-sf-phase (fn-sf-prepare-record
+                            ks *bsk5-record* *bsk5-groups* *bsk5-capacity*))
+               :record-staged)
+        (equal (fn-sf-phase (fn-sn-files prepared)) :record-staged)
+        (fn-bs-store-relation
+         bs (fn-sf-prepare-record
+             ks *bsk5-record* *bsk5-groups* *bsk5-capacity*))
+        (fn-bs-store-relation bs (fn-sn-files prepared)))))
+
+; Without the physical relation, a valid pending write to an old article
+; remains unfenced across preparation; no ACL2 callback can repair bytes.
+(must-fail
+ (assert-event
+  (fn-bs-store-relation
+   (bsk0-unfenced-old-authority)
+   (fn-sf-prepare-record (cdr (bsk5-frontier-2)) *bsk5-record-2*
+                         *bsk5-groups* *bsk5-capacity*))))
+
+; Compose the actual fn-sn-prepare article call with ACL2's host-facing
+; frame/name values and the actual P-RECORD attempted cut.
+(defun bsk0-node-article-attempted-relatedp (bs s record stage)
+  (let* ((ks (fn-sn-files (fn-sn-prepare s record)))
+         (name (fn-bs-txn-name (fn-store-event-sequence record)))
+         (frame (bsk0-article-host-frame record))
+         (cut (nth 10 (fn-bs-run bs ks
+                                 (fn-bs-record-program stage name frame)
+                                 nil *bsk5-groups* *bsk5-capacity*))))
+    (fn-bs-store-relation (car cut) (cdr cut))))
+(assert-event
+ (let* ((pair (car (last (bsk5-frontier-run))))
+        (bs (car pair))
+        (s (bsk0-node-reserved)))
+   (and (fn-bs-store-relation bs (fn-sn-files s))
+        (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+        (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare s *bsk5-record*)))
+               :record-staged)
+        (not (fn-bs-lookup bs :staging ".stage-k5"))
+        (bsk0-node-article-attempted-relatedp
+         bs s *bsk5-record* ".stage-k5"))))
+
+; Invalid byte authority survives node preparation, so the served cut
+; cannot gain a physical relation from the logical node alone.
+(defun bsk0-unfenced-config-at-reservation ()
+  (let* ((bs (car (car (last (bsk5-frontier-run)))))
+         (config (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*)))
+    (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs) (fn-bs-dirs bs)
+                (append (fn-bs-pending bs)
+                        (list (list :write config 0 '(65))))
+                (fn-bs-next-ino bs))))
+(assert-event
+ (and (fn-bs-statep (bsk0-unfenced-config-at-reservation))
+      (not (fn-bs-store-relation (bsk0-unfenced-config-at-reservation)
+                                 (fn-sn-files (bsk0-node-reserved))))))
+(must-fail
+ (assert-event
+  (bsk0-node-article-attempted-relatedp
+   (bsk0-unfenced-config-at-reservation)
+   (bsk0-node-reserved) *bsk5-record* ".stage-k5")))
+
+; The successful prepare phase matters: an invalid record leaves the
+; reservation unprepared, so the P-RECORD attempted cut is unreachable.
+(must-fail
+ (assert-event
+  (bsk0-node-article-attempted-relatedp
+   (car (car (last (bsk5-frontier-run))))
+   (bsk0-node-reserved) :junk ".stage-k5")))
+
+; Re-entering preparation from an already staged first article is a no-op.
+; Supplying a different second article to the publication program then
+; targets the wrong transaction name, despite the source being related.
+(assert-event
+ (let* ((bs (car (car (last (bsk5-frontier-run)))))
+        (staged (fn-sn-prepare (bsk0-node-reserved) *bsk5-record*)))
+   (and (fn-bs-store-relation bs (fn-sn-files staged))
+        (equal (fn-sf-phase (fn-sn-files staged)) :record-staged)
+        (equal (fn-sf-phase
+                (fn-sn-files (fn-sn-prepare staged *bsk5-record-2*)))
+               :record-staged))))
+(must-fail
+ (assert-event
+  (bsk0-node-article-attempted-relatedp
+   (car (car (last (bsk5-frontier-run))))
+   (fn-sn-prepare (bsk0-node-reserved) *bsk5-record*)
+   *bsk5-record-2* ".stage-k5")))
+
+; An occupied staging key stops O_EXCL before the record-file callback.
+(must-fail
+ (assert-event
+  (let* ((bs (car (car (last (bsk5-frontier-run)))))
+         (occupied (mv-nth 1 (fn-bs-create bs :staging ".stage-k5" :ok))))
+    (bsk0-node-article-attempted-relatedp
+     occupied (bsk0-node-reserved) *bsk5-record* ".stage-k5"))))

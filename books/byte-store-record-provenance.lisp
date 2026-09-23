@@ -2733,3 +2733,99 @@
                                      (fn-frame-store-protected
                                       (fn-store-event-encode record)))))))
            :in-theory (theory 'minimal-theory))))
+
+; K0 call-entry handoff: ACL2 preparation writes no byte state.
+(defthm fn-bs-k0-record-prepare-preserves-relation
+  (implies (fn-bs-store-relation bs ks)
+           (fn-bs-store-relation
+            bs (fn-sf-prepare-record ks record groups capacity)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-store-relation-unfolds)
+                 (:instance fn-sf-prepare-record-preserves-state (s ks))
+                 (:instance fn-bs-store-relation-window-unfolds))
+           :in-theory (e/d (fn-bs-store-relation fn-sf-prepare-record
+                            fn-sf-crash-imagep fn-bs-replay-visiblep
+                            fn-bs-pending-matches-phase
+                            fn-sf-frontier-new-visiblep
+                            fn-sf-record-present-visiblep)
+                           (fn-bs-statep fn-sf-statep fn-bs-durable-records
+                            fn-bs-durable-frontier fn-bs-authority-fencedp
+                            fn-bs-authority-knownp fn-sf-history-recoverablep
+                            fn-sf-candidatep)))))
+
+(include-book "store-node")
+
+(defthm fn-bs-k0-node-article-prepare-preserves-relation
+  (implies (fn-bs-store-relation bs (fn-sn-files s))
+           (fn-bs-store-relation
+            bs (fn-sn-files (fn-sn-prepare s record))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-record-prepare-preserves-relation
+                            (ks (fn-sn-files s))
+                            (groups (fn-sn-groups s))
+                            (capacity (fn-sn-capacity s))))
+           :in-theory (e/d (fn-sn-prepare fn-sn-update)
+                           (fn-sn-statep fn-node-statep
+                            fn-sn-prepare-node fn-sn-record-bindsp
+                            fn-sf-prepare-record fn-bs-store-relation)))))
+
+; K0 served article: reserved node prepare to actual P-RECORD pair 10.
+(local (defthm fn-bs-k0-node-article-prepare-binds-candidate
+  (implies (and (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare s record)))
+                       :record-staged))
+           (equal (fn-sf-record-candidate
+                   (fn-sn-files (fn-sn-prepare s record)))
+                  record))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-sn-prepare fn-sn-update
+                            fn-sf-prepare-record)
+                           (fn-sn-statep fn-node-statep
+                            fn-sn-prepare-node fn-sn-record-bindsp
+                            fn-sf-history-recoverablep fn-sf-candidatep))))))
+
+(local (defthm fn-bs-k0-node-article-prepare-success-has-recordp
+  (implies (and (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare s record)))
+                       :record-staged))
+           (fn-record-p record))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-sn-prepare fn-sn-update
+                            fn-sf-prepare-record)
+                           (fn-sn-statep fn-node-statep
+                            fn-sn-prepare-node fn-sn-record-bindsp
+                            fn-sf-history-recoverablep fn-sf-candidatep))))))
+
+(defthm fn-bs-k0-served-article-prepare-to-attempted-relation
+  (implies
+   (and (fn-bs-store-relation bs (fn-sn-files s))
+        (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+        (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare s record)))
+               :record-staged)
+        (fn-bs-namep stage)
+        (not (fn-bs-lookup bs :staging stage)))
+   (let* ((ks (fn-sn-files (fn-sn-prepare s record)))
+          (frame (append
+                  (fn-frame-store-protected (fn-store-event-encode record))
+                  (fn-frame-trailer
+                   (fn-frame-store-protected (fn-store-event-encode record)))))
+          (name (fn-bs-txn-name (fn-store-event-sequence record))))
+     (fn-bs-store-relation
+      (car (nth 10 (fn-bs-run bs ks
+                              (fn-bs-record-program stage name frame)
+                              nil groups capacity)))
+      (cdr (nth 10 (fn-bs-run bs ks
+                              (fn-bs-record-program stage name frame)
+                              nil groups capacity))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-node-article-prepare-preserves-relation)
+                 (:instance fn-bs-k0-node-article-prepare-binds-candidate)
+                 (:instance fn-bs-k0-node-article-prepare-success-has-recordp)
+                 (:instance fn-bs-k0-article-host-arguments-reach-related-attempted-cut
+                            (ks (fn-sn-files (fn-sn-prepare s record)))))
+           :in-theory (theory 'minimal-theory))))
