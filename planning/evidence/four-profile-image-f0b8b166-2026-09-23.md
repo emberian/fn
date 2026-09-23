@@ -79,3 +79,28 @@ used the production image; only the explicit
 `FN_IMMUTABLE_PUBLISH_TEST_FAIL` fault witnesses used the developer image.
 This is a runtime result for the saved `f0b8b166` cores with a later, separately
 identified test harness.
+
+## Shared protected two-node gate
+
+The matrix lane ran its full protected suite **5/5 passed in 22.500 seconds**
+against this exact frozen image on isolated hbox stores. The test/evidence
+revision is `771171ce` (after `e2775c6f`); its tracked
+`planning/evidence/matrix-protected-f0b8b166-2026-09-23.log` has SHA-256
+`7746ad2478f885d76e436d8a26f3a95d13fadabb4de957d09eb7e256e62f1ead`.
+The harness `tests/test_native_protected_peering.py` has SHA-256
+`b18a74c73c9f1c98b6eea342aa740ab6779800c3499f47e9ce7cb093389b71bd`;
+the FNFD inspector digest recorded by that lane is
+`0b9bb4702e20fe4009ef49af8dd0193d4e89ed55f8b14e172fa2b98413403d92`.
+The r3 command was `python3 -m unittest -v tests.test_native_protected_peering`
+through `run-protected-f0b8b166.sh`; it did not invoke the separate matrix tool.
+The test checkout/harness revision is separate from this image's `f0b8b166`
+core source.
+
+The passing witnesses cover protected reciprocal A↔B article transfer and
+byte-identical reconnect reads; post-ack source death/restart with FNFD `:done`
+and one offer/sent/outcome; a developer cut after durable `:feed-sent` that
+requeues on restart and settles through production with one target article;
+and wrong-password and wrong-anchor refusals while the owners remain live.
+This is process-death and transport behavior on the named Linux fixture, not a
+power-loss claim or a proof that the peer is honest. The matrix lane's companion
+[record](matrix-protected-f0b8b166-2026-09-23.md) owns the detailed observations.
