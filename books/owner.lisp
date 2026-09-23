@@ -1570,6 +1570,7 @@
                 (natp (fn-own-sub-mark sub))
                 (< (fn-own-sub-mark sub) (len (fn-own-ledger o))))
            :durable)
+          ((equal word :clock-unusable) :clock-unusable)
           ((member-equal word '(:refused :duplicate)) :refused)
           (t :uncertain))))
 
@@ -1582,7 +1583,8 @@
   (let* ((sub (fn-own-inflight o))
          (completion (fn-own-outcome-completion o word))
          (kind (cond ((equal completion :durable) :feed-commit)
-                     ((equal completion :refused) :feed-abort)
+                     ((member-equal completion '(:refused :clock-unusable))
+                      :feed-abort)
                      (t nil))))
     (if (or (null sub) (null kind))
         nil
@@ -1652,6 +1654,7 @@
         :duplicate
       (case (fn-own-outcome-completion o word)
         (:durable :accepted)
+        (:clock-unusable :refused)
         (:refused :refused)
         (otherwise :uncertain)))))
 

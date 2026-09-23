@@ -143,13 +143,14 @@
                                fn-record-string-octets-aux floor mod))))
 
 (defthm fn-record-reconstruct
-  (implies (and (true-listp record) (equal (len record) 10))
+  (implies (and (true-listp record) (equal (len record) 11))
            (equal (fn-record-make
                    (fn-record-sequence record) (fn-record-txid record)
                    (fn-record-generation record) (fn-record-msgid record)
                    (fn-record-payload record) (fn-record-groups record)
                    (fn-record-obligation-id record) (fn-record-content-subject record)
-                   (fn-record-release-evidence record) (fn-record-charge record))
+                   (fn-record-release-evidence record) (fn-record-charge record)
+                   (fn-record-stamp record))
                   record)))
 
 (defthm fn-record-read-magic-prefix
@@ -171,6 +172,15 @@
            :use ((:instance fn-record-read-uint-encoded (n 0)))
            :in-theory (disable fn-record-read-uint))))
 
+(defthm fn-record-read-version1-prefix
+  (implies (and (fn-cbor-octet-listp rest)
+                (<= (+ 1 (len rest)) *fn-cbor-max-input*))
+           (equal (fn-record-read-uint (cons 1 rest))
+                  (fn-record-parse-ok 1 rest)))
+  :hints (("Goal"
+           :use ((:instance fn-record-read-uint-encoded (n 1)))
+           :in-theory (disable fn-record-read-uint))))
+
 (defthm fn-record-read-last-uint
   (implies (fn-record-uint32p n)
            (equal (fn-record-read-uint (fn-cbor-encode (cons :uint n)))
@@ -184,6 +194,7 @@
            (equal (fn-record-decode-exact-impl (fn-record-encode-impl record))
                   (list :ok record)))
   :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-record-reconstruct))
            :in-theory (disable fn-cbor-encode fn-cbor-decode
                                fn-record-read-uint fn-record-read-bytes
                                fn-record-parse-groups fn-record-encode-groups
@@ -219,7 +230,8 @@
     fn-record-read-bytes-encoded fn-record-encoded-groups-are-octets
     fn-record-group-encoding-bound fn-record-groups-prefix-round-trip
     fn-record-reconstruct fn-record-read-magic-prefix
-    fn-record-read-version-prefix fn-record-read-last-uint))
+    fn-record-read-version-prefix fn-record-read-version1-prefix
+    fn-record-read-last-uint))
 
 (in-theory (disable fn-record-chars-octets-chars fn-record-string-round-trip
              fn-record-ascii-implies-octets
@@ -237,6 +249,7 @@
              fn-record-group-encoding-bound
              fn-record-groups-prefix-round-trip fn-record-reconstruct
              fn-record-read-magic-prefix fn-record-read-version-prefix
+             fn-record-read-version1-prefix
              fn-record-read-last-uint))
 
 ; -----------------------------------------------------------------------------

@@ -61,6 +61,7 @@
 (include-book "provenance-codec")
 ; fn-pu-relay-article: the Path update and Xref removal of RFC 5537 3.6/3.7.
 (include-book "path-update")
+(include-book "records-stamp")
 
 ; fn-cfg-peer-vocabulary (books/peer-config) stays closed here: no proof in
 ; this book needs the peer table open, and with it open the guard proof of
@@ -372,7 +373,7 @@
 ; The eight arguments after the node, in fn-node-prepare's order:
 ; (generation msgid payload groups obligation-id subject evidence charge).
 (defun fn-peer-injection-arguments (node cfg peer msgid octets generation
-                                         id subject)
+                                         id subject clock)
   (declare (xargs :guard t :verify-guards nil) (ignorable node))
   (let* ((record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
          (parsed (fn-article-parse octets))
@@ -392,7 +393,8 @@
           (fn-peer-scope-groups (fn-peer-check-groups check) record cfg)
           id subject
           (fn-peer-evidence peer cfg)
-          (fn-charge-for-payload (len (fn-peer-relayed-octets cfg peer octets))))))
+          (fn-charge-for-payload (len (fn-peer-relayed-octets cfg peer octets)))
+          (fn-record-stamp-of-observation clock))))
 
 ; (mv node2 decision).  On :want it is exactly one fn-node-prepare; it never
 ; calls fn-accept-prepare directly and never touches retention itself.
@@ -401,11 +403,13 @@
   (let ((d (fn-peer-decide-transfer node cfg peer msgid octets clock id subject)))
     (if (not (equal (fn-peer-decision-kind d) :want))
         (mv node d)
+      (if (not (natp (fn-record-stamp-of-observation clock)))
+          (mv node (fn-peer-decision :defer :no-clock))
       (let ((a (fn-peer-injection-arguments node cfg peer msgid octets
-                                            generation id subject)))
+                                            generation id subject clock)))
         (mv (fn-node-prepare node (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a)
-                             (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a))
-            d)))))
+                             (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a))
+            d))))))
 
 ; -----------------------------------------------------------------------------
 ; The transit submission the served path carries to the owner
@@ -684,6 +688,7 @@
   (let ((dk (fn-peer-decision-kind d)))
     (cond ((equal completion :durable) (if (equal kind :ihave) 235 239))
           ((equal completion :uncertain) 436)
+          ((equal completion :clock-unusable) 436)
           ((equal completion :refused) (if (equal kind :ihave) 437 439))
           ((equal dk :defer) 436)
           (t (if (equal kind :ihave) 437 439)))))
@@ -699,6 +704,8 @@
               ((equal completion :uncertain)
                (append (fn-peer-single ps "436 transfer failed; the outcome is uncertain")
                        (list (fn-nntp-close-effect))))
+              ((equal completion :clock-unusable)
+               (fn-peer-single ps "436 retry later; no usable clock reading"))
               ((equal completion :refused)
                (fn-peer-single ps "437 transfer rejected; refused by acceptance"))
               ((equal code 436)
@@ -708,6 +715,8 @@
             ((equal completion :uncertain)
              (append (fn-peer-echo-reply "436 " msgid)
                      (list (fn-nntp-close-effect))))
+            ((equal completion :clock-unusable)
+             (fn-peer-echo-reply "436 " msgid))
             ((equal code 436) (fn-peer-echo-reply "436 " msgid))
             (t (fn-peer-echo-reply "439 " msgid))))))
 

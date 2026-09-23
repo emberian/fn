@@ -24,7 +24,7 @@
 (include-book "defrecord")
 
 (defconst *fn-record-magic* '(102 110 45 114))
-(defconst *fn-record-schema-version* 0)
+(defconst *fn-record-schema-version* 1)
 (defconst *fn-record-max-msgid* 250)
 (defconst *fn-record-max-payload* 32768)
 (defconst *fn-record-max-group-name* 128)
@@ -131,6 +131,11 @@
 
 (defun fn-record-uint32p (n)
   (and (natp n) (<= n *fn-cbor-max-uint*)))
+(verify-guards fn-record-uint32p)
+
+(defun fn-record-stampp (stamp)
+  (declare (xargs :guard t))
+  (or (equal stamp :legacy) (fn-record-uint32p stamp)))
 
 ; The schema octet a record's encoding carries.  At schema 0 every record
 ; needs version 0.  The acceptance stamp (specs/acceptance-stamp.md §1.4)
@@ -140,11 +145,6 @@
 ; behind the seam, and no statement above the seam moves.  Withdrawn on
 ; export with the recognizers: no book above the seam may depend on the
 ; value 0.
-(defun fn-record-schema-octet (record)
-  (declare (xargs :guard t)
-           (ignore record))
-  0)
-
 ; -----------------------------------------------------------------------------
 ; Logical record and field accessors
 
@@ -164,7 +164,7 @@
 (fn-defrecord fn-record
   :constructor (fn-record-make sequence txid generation msgid payload groups
                                obligation-id content-subject release-evidence
-                               charge)
+                               charge stamp)
   :fields ((fn-record-sequence fn-record-uint32p)
            (fn-record-txid fn-record-uint32p)
            (fn-record-generation fn-record-uint32p)
@@ -174,11 +174,30 @@
            (fn-record-obligation-id fn-record-metadata-bytes-p)
            (fn-record-content-subject fn-record-metadata-bytes-p)
            (fn-record-release-evidence fn-record-metadata-bytes-p)
-           (fn-record-charge fn-record-uint32p))
+           (fn-record-charge fn-record-uint32p)
+           (fn-record-stamp fn-record-stampp))
   :recognizer fn-record-p
   :recognizer-verify-guards nil
   :car-fn fn-cbor-ag-car
   :cdr-fn fn-cbor-ag-cdr)
+
+(defun fn-record-schema-octet (record)
+  (declare (xargs :guard t))
+  (if (equal (fn-record-stamp record) :legacy) 0 1))
+
+(defun fn-record-with-stamp (record stamp)
+  (declare (xargs :guard t))
+  (fn-record-make (fn-record-sequence record)
+                  (fn-record-txid record)
+                  (fn-record-generation record)
+                  (fn-record-msgid record)
+                  (fn-record-payload record)
+                  (fn-record-groups record)
+                  (fn-record-obligation-id record)
+                  (fn-record-content-subject record)
+                  (fn-record-release-evidence record)
+                  (fn-record-charge record)
+                  stamp))
 
 
 ; -----------------------------------------------------------------------------
@@ -244,7 +263,7 @@
 (verify-guards fn-record-groupsp)
 (verify-guards fn-record-groups-validp)
 (verify-guards fn-record-metadata-bytes-p)
-(verify-guards fn-record-uint32p)
+(verify-guards fn-record-stampp)
 (verify-guards fn-record-p)
 (defthm fn-record-cbor-octet-list-true-listp
   (implies (fn-cbor-octet-listp xs)
@@ -365,7 +384,7 @@
     (:d fn-record-txid) (:d fn-record-generation) (:d fn-record-msgid)
     (:d fn-record-payload) (:d fn-record-groups) (:d fn-record-obligation-id)
     (:d fn-record-content-subject) (:d fn-record-release-evidence)
-    (:d fn-record-charge) (:d fn-record-parse-shapep) (:d fn-record-parse-ok)
+    (:d fn-record-charge) (:d fn-record-stamp) (:d fn-record-parse-shapep) (:d fn-record-parse-ok)
     (:d fn-record-parse-error) (:d fn-record-parse-okp)
     (:d fn-record-parse-value) (:d fn-record-parse-rest)
     (:d fn-record-result-ok) (:d fn-record-result-okp)
@@ -377,7 +396,7 @@
     (:d fn-record-groups-validp) (:d fn-record-metadata-bytes-p)
     (:d fn-record-uint32p) (:d fn-record-ascii-stringp)
     (:d fn-record-octet-stringp) (:d fn-record-nonempty-at-mostp)
-    (:d fn-record-schema-octet)))
+    (:d fn-record-schema-octet) (:d fn-record-stampp)))
 
 (in-theory (disable (:d fn-record-p) (:d fn-record-msgidp)
                     (:d fn-record-payloadp) (:d fn-record-group-namep)
@@ -385,9 +404,8 @@
                     (:d fn-record-metadata-bytes-p) (:d fn-record-uint32p)
                     (:d fn-record-ascii-stringp) (:d fn-record-octet-stringp)
                     (:d fn-record-nonempty-at-mostp)
-                    (:d fn-record-schema-octet)
+                    (:d fn-record-schema-octet) (:d fn-record-stampp)
                     fn-record-cbor-octet-list-true-listp
                     fn-record-cbor-octet-listp-of-nthcdr
                     fn-record-cbor-octet-listp-of-take
                     fn-record-len-of-take-within-list))
-
