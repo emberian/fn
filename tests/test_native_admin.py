@@ -18,6 +18,8 @@ from tests.native_process import wait_for_announcement
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
 IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
+DEVELOPER = Path(os.environ.get(
+    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
 CORE = Path(str(IMAGE) + ".core") if IMAGE is not None else None
 IMAGE_SOURCE_SHA = os.environ.get("FN_NATIVE_IMAGE_SOURCE_SHA")
 LAUNCHER_SHA256 = os.environ.get("FN_NATIVE_LAUNCHER_SHA256")
@@ -75,9 +77,9 @@ class NativeAdminTests(unittest.TestCase):
         self.config.write_text('[store]\npath = "{}"\n'.format(self.store),
                                encoding="ascii")
 
-    def native(self, *args, expected=0, env=None, timeout=60):
+    def native(self, *args, expected=0, env=None, timeout=60, image=None):
         result = subprocess.run(
-            [str(IMAGE), "--fn", *map(str, args)], cwd=ROOT,
+            [str(image or IMAGE), "--fn", *map(str, args)], cwd=ROOT,
             env=env or self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             timeout=timeout, check=False)
         self.assertEqual(result.returncode, expected,
@@ -92,9 +94,9 @@ class NativeAdminTests(unittest.TestCase):
     def config_report(self):
         return self.native("store", self.store, "config").stdout.decode("ascii")
 
-    def start_owner(self, env=None):
+    def start_owner(self, env=None, image=None):
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
+            [str(image or IMAGE), "--fn", "operator", str(self.config), "run"],
             cwd=ROOT, env=env or self.env,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         wait_for_announcement(process, b"LISTENING ", timeout=60)
@@ -187,7 +189,7 @@ class NativeAdminTests(unittest.TestCase):
     def test_live_uncertain_publication_fences_and_recovers(self):
         fault_env = dict(self.env)
         fault_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
-        process = self.start_owner(env=fault_env)
+        process = self.start_owner(env=fault_env, image=DEVELOPER)
         uncertain = self.operator("group", "create", "fn.live-recover", expected=3)
         self.assertIn(b"uncertain operator group", uncertain.stderr)
         self.assertEqual(process.wait(timeout=15), 3)
@@ -197,7 +199,7 @@ class NativeAdminTests(unittest.TestCase):
         uncertain_env = dict(self.env)
         uncertain_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
         uncertain = self.operator("group", "create", "fn.recover",
-                                  expected=3, env=uncertain_env)
+                                  expected=3, env=uncertain_env, image=DEVELOPER)
         self.assertIn(b"publication is uncertain", uncertain.stderr)
         self.assertTrue((self.store / "config" / "00000002.cfg").is_file())
 
