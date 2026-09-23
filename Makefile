@@ -270,6 +270,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-fragment-family-tests \
 	books/bp-node-fragment-plan \
 	tests/acl2/bp-node-fragment-plan-tests \
+	books/bp-fnbs-family-codec \
+	tests/acl2/bp-fnbs-family-codec-tests \
 	books/bp-node-receive-boundary \
 	tests/acl2/bp-node-receive-boundary-tests \
 	books/bp-fnbs-codec \

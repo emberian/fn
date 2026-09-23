@@ -2073,6 +2073,15 @@ names the consumed principal/identity/arrival rows, and checks the exact
 post-replacement slot and octet budgets. It is read-only and not yet a
 native caller or durable kind-18 transition. Guard verification and the
 publication/replay step remain open before it can authorize dispatch.
+The first kind-18 byte component, `bp-fnbs-family-codec.lisp`, encodes
+`(epoch, operation-id, anchor-arrival, whole-arrival, exact-whole-wire)`
+under the protected FNBS frame. The anchor is a previously durable kind-5
+arrival, and the whole arrival must be allocated by the node's durable
+arrival frontier. Replay must recompute the active family from earlier
+kind-5 rows and compare the wire byte for byte before applying replacement;
+the record alone is not authority to retire fragments. The codec currently
+has round-trip/corruption witnesses, while frontier, replay, publisher,
+and the actual service step remain open.
 
 - `(:ok bytes)`: propose kind 18 `(fn-bpn-rec-reassembled token family held
   ids)`. Applied atomically: the fragment entries leave the live list (their
