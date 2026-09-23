@@ -16,6 +16,9 @@
               (list :cl (cons 3 1) 2 *bpat-eid*
                     (fn-record-string-octets "peer") 7))))
 (must-fail (assert-event (equal (car *bpcin-result*) :refused)))
+(assert-event
+ (equal (fn-bpnf-ingress-principal (caddr *bpcin-result*))
+        (fn-record-string-octets "peer")))
 
 ; The same valid announced bytes can have custody without Store authority.
 (assert-event
@@ -28,6 +31,13 @@
   (equal (car (fn-bpaj-tcpcl-ingress-result
                *bpat-no-trust* *bpnf-s0* *bpat-channel*
                *bpcin-uri* 1 2)) :admitted)))
+(must-fail
+ (assert-event
+  (equal (fn-bpnf-ingress-principal
+          (caddr (fn-bpaj-tcpcl-ingress-result
+                  *bpat-no-trust* *bpnf-s0* *bpat-channel*
+                  *bpcin-uri* 1 2)))
+         (fn-record-string-octets "peer"))))
 
 ; Announced-EID disagreement preserves the parsed EID and refuses authority.
 (assert-event
@@ -54,6 +64,13 @@
          (append *bpcin-uri* (make-list (+ 5 *fn-bpc-max-text*)
                                        :initial-element 65)) 1 2)
         '(:refused :announced-eid nil)))
+(must-fail
+ (assert-event
+  (equal (caddr (fn-bpaj-tcpcl-ingress-result
+                 *bpat-cfg* *bpnf-s0* *bpat-channel*
+                 (append *bpcin-uri* (make-list (+ 5 *fn-bpc-max-text*)
+                                               :initial-element 65)) 1 2))
+         (caddr *bpcin-result*))))
 (assert-event
  (equal (fn-bpaj-tcpcl-ingress-result
          *bpat-cfg* *bpnf-s0* *bpat-channel* *bpcin-uri* -1 2)

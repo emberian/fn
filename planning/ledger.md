@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 577 |
 | Certification roots in the Makefile | 571 |
 | Books inside the root closure | 576 |
-| `defthm` and `defthmd` events | 8286 |
+| `defthm` and `defthmd` events | 8290 |
 | `defun` events | 6231 |
 | Functions with verified guards | 2021 |
 | Functions declared `:verify-guards nil` and never verified | 369 |
 | Functions left at the default with an explicit guard | 3051 |
 | Functions left at the default with no guard | 790 |
-| `assert-event` checks | 9061 |
-| `must-fail` checks | 452 |
+| `assert-event` checks | 9062 |
+| `must-fail` checks | 454 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 75 |
 | Export-hygiene warnings | 102 |
@@ -114,7 +114,7 @@ that `make certify` requests.
 | `books/bp-authored-wire.lisp` | root | 2 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/bp-bundle-invariants.lisp` | root | 30 | 1 | 0/0/0/1 | 0 | 0 | 2 |
 | `books/bp-bundle.lisp` | root | 41 | 48 | 31/0/17/0 | 0 | 0 | 0 |
-| `books/bp-channel-ingress.lisp` | root | 0 | 2 | 2/0/0/0 | 0 | 0 | 0 |
+| `books/bp-channel-ingress.lisp` | root | 4 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/bp-clock-domain.lisp` | root | 16 | 19 | 4/0/15/0 | 0 | 0 | 0 |
 | `books/bp-contact-service.lisp` | root | 3 | 5 | 5/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-byte-invariants.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -441,7 +441,7 @@ that `make certify` requests.
 | `tests/acl2/bp-app-handoff-time-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 2 | 0 |
 | `tests/acl2/bp-authored-wire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 3 | 0 |
 | `tests/acl2/bp-bundle-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 68 | 0 | 0 |
-| `tests/acl2/bp-channel-ingress-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 2 | 0 |
+| `tests/acl2/bp-channel-ingress-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 4 | 0 |
 | `tests/acl2/bp-clock-domain-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 26 | 3 | 0 |
 | `tests/acl2/bp-contact-service-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 4 | 0 |
 | `tests/acl2/bp-fnbs-byte-counterexamples.lisp` | root | 2 | 5 | 0/0/0/5 | 3 | 2 | 0 |
