@@ -117,3 +117,29 @@ while stamp_review builds the native publication adapter.
 - Certificate compatibility selector now serves incremental certification
   and image acquisition. Measured default 202-book candidate selection on
   `e4f62e7c` took 1.56s, with no recertification or cache writes.
+
+## Findings during the combined qualification
+
+The `536ca577` union finished with three failed proof roots plus their tests;
+[the original failed manifest and diagnosis](evidence/reader-bp-topic-union-2026-09-23.md)
+are preserved. Reader-context repair `80da2a65` landed as `088050ff`;
+`fragment_refinement` is fixing the pinned auth/agent theorem chain and its
+163-second expansion. Root will qualify the repaired full Makefile root set
+incrementally, including the previously omitted ideal/replay invariant roots.
+
+The separate A3 image `5930f4f2` built and passed existing receive/recovery
+suites. Its first actual request test exposed an endpoint record/string
+caller mismatch; `status_codec` repairs it before the next image. Its test
+must still observe actual application acceptance and receipt production.
+
+Mini's next shared-image consumer uses a versioned portable verification
+line with exact source and full principal/Ed25519/ML-DSA-65 key pins. This is
+portable authorship, not Store admission evidence. `stamp_review` will include
+that native verb when root cuts the repaired shared image; no duplicate Mini
+fn image is being built.
+
+`authorship_carrier` now investigates the open no-posters served-fold claim
+while its preservation packet awaits E2. Initial source inspection shows the
+old no-any-submission formulation fails when AUTHINFO grants a transit peer
+role. The meaningful local-POST safety property must allow authorized transit;
+a reachable witness and explicit corrected contract are required.
