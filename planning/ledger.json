@@ -213,6 +213,8 @@
     "books/bp-node-machine-invariants",
     "books/bp-node-machine-authorization",
     "tests/acl2/bp-node-machine-tests",
+    "books/bp-node-foundation",
+    "tests/acl2/bp-node-foundation-tests",
     "books/bp-sequence-fidelity",
     "tests/acl2/bp-sequence-fidelity-tests",
     "books/bp-receive-evidence",
@@ -383,6 +385,8 @@
     "books/crypto-seam",
     "tests/acl2/crypto-seam-tests",
     "tests/acl2/hybrid-signature-tests",
+    "books/hybrid-carrier",
+    "tests/acl2/hybrid-carrier-tests",
     "tests/acl2/hybrid-store-tests",
     "books/crypto-attach",
     "books/auth-secret",
@@ -426,25 +430,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 427,
-    "books_in_root_closure": 426,
-    "roots": 422,
-    "theorems": 7137,
-    "functions": 5440,
-    "assert_events": 7858,
-    "must_fails": 285,
+    "books": 431,
+    "books_in_root_closure": 430,
+    "roots": 426,
+    "theorems": 7155,
+    "functions": 5504,
+    "assert_events": 7938,
+    "must_fails": 293,
     "encapsulates": 26,
     "guards": {
       "verified": 1746,
       "declared-off": 296,
-      "default-guarded": 2726,
+      "default-guarded": 2790,
       "default-unguarded": 672
     },
-    "suspect_theorems": 65,
+    "suspect_theorems": 67,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 27,
-    "teeth_form_warnings": 23,
-    "include_hygiene_warnings": 262,
+    "teeth_form_warnings": 24,
+    "include_hygiene_warnings": 267,
     "host_names_warnings": 660,
     "hand_written_record_warnings": 18
   },
@@ -1276,6 +1280,31 @@
       "suspects": [
         "fn-bpaj-dispatch-intent-absent-retries"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-node-foundation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 39,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 39,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-node-machine"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -3559,6 +3588,37 @@
         "arithmetic/top"
       ],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/hybrid-carrier.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 25,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 25,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article-fields",
+        "hybrid-signature",
+        "injection",
+        "stx-carrier"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-hc-binary-limit-refuses-by-definition",
+        "fn-hc-field-limit-refuses-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -6533,6 +6593,7 @@
       "encapsulates": 0,
       "includes": [
         "defrecord",
+        "hybrid-profile",
         "stx-lace"
       ],
       "system_includes": [],
@@ -7812,6 +7873,34 @@
         "bp-receipt-records-tests"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-node-foundation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 57,
+      "must_fails": 7,
+      "defconsts": 28,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-node-foundation",
+        "../../books/codec-attach"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -9415,6 +9504,34 @@
         "../../books/frame-trailer"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/hybrid-carrier-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 20,
+      "must_fails": 1,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/hybrid-carrier"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -11473,9 +11590,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 13,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -12045,6 +12162,22 @@
       "line": 653,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-hc-binary-limit-refuses-by-definition",
+      "book": "books/hybrid-carrier.lisp",
+      "line": 338,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-hc-decode and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-hc-field-limit-refuses-by-definition",
+      "book": "books/hybrid-carrier.lisp",
+      "line": 357,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-hc-field-decode and the conclusion is that branch's value"
       ]
     },
     {
@@ -13192,6 +13325,12 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
+        "check": "hc-source-without-success",
+        "book": "tests/acl2/hybrid-carrier-tests.lisp",
+        "line": 152,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
         "check": "hsigi-body-without-left-subject",
         "book": "tests/acl2/hybrid-signature-invariants-tests.lisp",
         "line": 95,
@@ -13686,6 +13825,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/hybrid-carrier.lisp",
+        "line": 9,
+        "include": "article-fields",
+        "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/hybrid-signature.lisp",
         "line": 11,
         "include": "hybrid-profile",
@@ -13924,6 +14070,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/stx-evidence-records.lisp",
+        "line": 10,
+        "include": "hybrid-profile",
+        "included": "books/hybrid-profile.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/transfer-assembly-invariants.lisp",
         "line": 9,
         "include": "transfer",
@@ -14089,6 +14242,20 @@
         "line": 4,
         "include": "bp-receipt-records-tests",
         "included": "tests/acl2/bp-receipt-records-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-foundation-tests.lisp",
+        "line": 3,
+        "include": "../../books/bp-node-foundation",
+        "included": "books/bp-node-foundation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-foundation-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -14586,6 +14753,13 @@
         "line": 4,
         "include": "../../books/feed-wire-input",
         "included": "books/feed-wire-input.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/hybrid-carrier-tests.lisp",
+        "line": 3,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -16826,13 +17000,6 @@
       {
         "host": "host/native/bp-obligation.lisp",
         "line": 25,
-        "name": "fnn-owner-action",
-        "source": "host/native/owner.lisp",
-        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/bp-obligation.lisp",
-        "line": 38,
         "name": "fnn-owner-core",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -16848,6 +17015,13 @@
         "host": "host/native/bp-obligation.lisp",
         "line": 38,
         "name": "fnn-owner-retention-commit",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp-obligation.lisp",
+        "line": 38,
+        "name": "fnn-owner-action",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },

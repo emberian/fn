@@ -27,9 +27,11 @@ the node in place, preserving those articles. Its INN exercise passes, and
 its crash campaign now reaches the served owner. It remains a single-node LAN
 experiment, not a v0 release: live configuration adoption, peer and DTN
 delivery, verifiable author signatures, and the complete served-path durability
-argument remain release work. The campaign has not yet run the ACL2 byte-model
-differential. [Current work](planning/now.md) tracks the next steps and their
-evidence.
+argument remain release work. Subsequent isolated tests compare selected served
+posting and recovery cuts with the ACL2 model's visible files and bytes;
+[that correspondence](tests/evidence/2026-09-23-served-crash-observation.md)
+still leaves physical durability and the full recovery argument open.
+[Current work](planning/now.md) tracks the next steps and their evidence.
 
 High assurance is the aim. It means proving properties of the functions the
 server actually calls, stating their assumptions, and testing the boundaries
