@@ -866,6 +866,15 @@
                 bs (fn-bs-durable-entry bs :transactions
                                          (fn-bs-txn-name 0))))
         (equal (fn-bs-durable-records file) (list *bsk5-record*))
+        (equal (fn-bs-durable-records file)
+               (fn-bs-durable-records bs))
+        (equal (car (nth 6 (fn-bs-run
+                             bs ks
+                             (fn-bs-frontier-program
+                              ".allocation-k0-2"
+                              (bsk0-second-frontier-host-frame))
+                             nil *bsk5-groups* *bsk5-capacity*)))
+               file)
         (equal (fn-sf-phase (cdr (nth 6 (fn-bs-run
                                              bs ks
                                              (fn-bs-frontier-program
@@ -907,6 +916,35 @@
          (file (car (bsk0-second-frontier-file-pair))))
     (equal (fn-bs-durable-content file (fn-bs-next-ino bs))
            (fn-bs-durable-content bs (fn-bs-next-ino bs))))))
+
+; fn-bs-statep alone permits a transaction entry to name the unallocated
+; next inode.  Authority-known in the relation excludes this alias.  Without
+; it, allocation changes that old transaction path's raw bytes.
+(defun bsk0-dangling-old-transaction ()
+  (let ((bs (car (bsk5-finished))))
+    (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs)
+                (fn-bs-put-assoc
+                 :transactions
+                 (list (cons (fn-bs-txn-name 0) (fn-bs-next-ino bs)))
+                 (fn-bs-dirs bs))
+                (fn-bs-pending bs) (fn-bs-next-ino bs))))
+(assert-event
+ (and (fn-bs-statep (bsk0-dangling-old-transaction))
+      (not (fn-bs-store-relation
+            (bsk0-dangling-old-transaction) (cdr (bsk5-finished))))))
+(must-fail
+ (assert-event
+  (let* ((bs (bsk0-dangling-old-transaction))
+         (name (fn-bs-txn-name 0))
+         (old (fn-bs-durable-entry bs :transactions name))
+         (file (car (nth 5 (fn-bs-run
+                            bs (cdr (bsk5-finished))
+                            (fn-bs-frontier-program
+                             ".allocation-k0-2"
+                             (bsk0-second-frontier-host-frame))
+                            nil *bsk5-groups* *bsk5-capacity*)))))
+    (equal (fn-bs-durable-content file old)
+           (fn-bs-durable-content bs old)))))
 
 (must-fail
  (assert-event

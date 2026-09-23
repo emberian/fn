@@ -58,3 +58,21 @@ Both selected roots passed on hbox under `run-20260923T232425Z-a748`;
 original requested-root results and exact source/closure/toolchain digests
 are archived in
 `planning/evidence/manifests/certify-20260923T232428Z-471521.json`.
+
+The retained-history step is now proved for the complete durable record
+list. `fn-bs-k0-frontier-file-cut-keeps-durable-records` derives exact
+per-transaction pathname and raw-octet equality under authority-known and
+next-ino separation, inducts `fn-bs-txn-prefix-agreesp`, then applies
+`fn-bs-read-records-under-agreement`. It does not assume the desired scan
+result or the output relation. The prior acknowledged article is present in
+the positive fixture. A well-formed byte state with a dangling old
+transaction entry aimed at the next inode is a negative witness for the
+authority-known relation premise at the raw-content step: the allocator
+changes the old path's bytes in that state. The public kernel observation
+leaves byte pair 6 identical to pair 5.
+
+Both selected roots passed on hbox under `run-20260923T233152Z-215d`;
+original result, source/closure digests and toolchain identity are in
+`planning/evidence/manifests/certify-20260923T233154Z-493643.json`.
+The root rename, successful directory fence and full reserved-pair relation
+are still open.
