@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Opt-in saved-image vertical for the mandatory hybrid author profile."""
+import base64
 import os
 from pathlib import Path
 import socket
@@ -134,6 +135,68 @@ class NativeHybridAuthorTest(unittest.TestCase):
                     self.assertEqual(bytes(returned), article.read_bytes())
         finally:
             self.stop_owner(owner)
+
+    def test_portable_carrier_verifies_exact_source_and_keyset(self):
+        source = self.root / "authored.eml"
+        source.write_bytes(
+            b"From: author@example.invalid\r\n"
+            b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+            b"Newsgroups: fn.test\r\n"
+            b"Subject: portable hybrid\r\n"
+            b"Message-ID: <portable-hybrid@example.invalid>\r\n"
+            b"X-Unknown: authored and signed\r\n\r\nexact source bytes\r\n")
+        carried = self.root / "carried.eml"
+        signed = self.invoke(
+            "hybrid-sign-carrier", str(self.principal), str(self.ed_public),
+            str(self.ed_secret), str(self.ml_public), str(self.ml_private),
+            str(source), str(carried))
+        self.assertEqual(signed.returncode, 0, signed.stderr.decode())
+        received = carried.read_bytes()
+        self.assertTrue(received.endswith(source.read_bytes()))
+        checked = self.invoke("hybrid-verify-carrier", str(carried),
+                              str(self.ml_public))
+        self.assertEqual(checked.returncode, 0, checked.stderr.decode())
+        self.assertIn(self.principal.read_bytes().hex().encode(), checked.stdout)
+
+        relayed = self.root / "relayed.eml"
+        relayed.write_bytes(b"Path: relay.example!fn\r\n"
+                            b"Xref: relay.example fn.test:7\r\n" + received)
+        checked = self.invoke("hybrid-verify-carrier", str(relayed),
+                              str(self.ml_public))
+        self.assertEqual(checked.returncode, 0, checked.stderr.decode())
+
+        altered_source = self.root / "altered-source.eml"
+        altered_source.write_bytes(received.replace(b"exact source bytes",
+                                                    b"Exact source bytes", 1))
+        refused = self.invoke("hybrid-verify-carrier", str(altered_source),
+                              str(self.ml_public))
+        self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+
+        # Change one byte of the Ed25519 public key inside the canonical
+        # carrier while preserving the field's original folding.  This is a
+        # valid carrier grammar with the wrong key set, not a parser negative.
+        prefix, authored = received.split(b"From: ", 1)
+        header_name, folded = prefix.split(b": ", 1)
+        self.assertEqual(header_name, b"FN-Authorship")
+        encoded = b"".join(folded.split())
+        binary = base64.b64decode(encoded, validate=True)
+        ed_public = self.ed_public.read_bytes()
+        self.assertEqual(binary.count(ed_public), 1)
+        wrong_key = bytes([ed_public[0] ^ 1]) + ed_public[1:]
+        mutated = base64.b64encode(binary.replace(ed_public, wrong_key, 1))
+        self.assertEqual(len(mutated), len(encoded))
+        field = bytearray(prefix)
+        start = len(header_name) + 2
+        for octet in mutated:
+            while field[start] in b"\r\n\t ":
+                start += 1
+            field[start] = octet
+            start += 1
+        altered_key = self.root / "altered-key.eml"
+        altered_key.write_bytes(bytes(field) + b"From: " + authored)
+        refused = self.invoke("hybrid-verify-carrier", str(altered_key),
+                              str(self.ml_public))
+        self.assertEqual(refused.returncode, 1, refused.stderr.decode())
 
 
 if __name__ == "__main__":

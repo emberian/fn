@@ -9,16 +9,10 @@
                               label width)))
     (fnn-octet-list octets)))
 
-(defun fnn-command-hybrid-sign (args)
-  "Sign exact source bytes with caller-supplied independent key material.
-Output is two algorithm-tagged lowercase hexadecimal lines."
-  (unless (= (length args) 6)
-    (error 'fnn-usage-error
-           :message
-           "usage: fn hybrid-sign PRINCIPAL ED-PUBLIC ED-SECRET ML-PUBLIC-PEM ML-PRIVATE-PEM SOURCE"))
-  (destructuring-bind
-      (principal-path ed-public-path ed-secret-path ml-public-path
-                      ml-private-path source-path) args
+(defun fnn-hsig-command-sign-material (args)
+  "Return the exact source, ordered public key set and both checked signatures."
+  (destructuring-bind (principal-path ed-public-path ed-secret-path ml-public-path
+                       ml-private-path source-path) args
     (let* ((principal
             (fnn-hsig-command-read-exact principal-path 32 "principal"))
            (ed-public
@@ -46,10 +40,64 @@ Output is two algorithm-tagged lowercase hexadecimal lines."
         (unless (fnn-hsig-authorize-profile principal keys source signatures
                                             ml-public-path)
           (fnn-refuse "supplied keys do not produce the enrolled hybrid profile"))
-        (fnn-out "ed25519 ~a" (fnn-hex ed-signature))
-        (fnn-out "ml-dsa-65 ~a" (fnn-hex ml-signature))
-        0))))
+        (values source principal keys signatures)))))
+
+(defun fnn-command-hybrid-sign (args)
+  "Sign exact source bytes with caller-supplied independent key material.
+Output is two algorithm-tagged lowercase hexadecimal lines."
+  (unless (= (length args) 6)
+    (error 'fnn-usage-error
+           :message
+           "usage: fn hybrid-sign PRINCIPAL ED-PUBLIC ED-SECRET ML-PUBLIC-PEM ML-PRIVATE-PEM SOURCE"))
+  (multiple-value-bind (source principal keys signatures)
+      (fnn-hsig-command-sign-material args)
+    (declare (ignore source principal keys))
+    (fnn-out "ed25519 ~a" (fnn-hex (cdr (first signatures))))
+    (fnn-out "ml-dsa-65 ~a" (fnn-hex (cdr (second signatures))))
+    0))
+
+(defun fnn-command-hybrid-sign-carrier (args)
+  "Write an ACL2-rendered portable FN-Authorship article to a new file."
+  (unless (= (length args) 7)
+    (error 'fnn-usage-error
+           :message
+           "usage: fn hybrid-sign-carrier PRINCIPAL ED-PUBLIC ED-SECRET ML-PUBLIC-PEM ML-PRIVATE-PEM SOURCE OUTPUT"))
+  (multiple-value-bind (source principal keys signatures)
+      (fnn-hsig-command-sign-material (subseq args 0 6))
+    (let* ((rendered (fnn-core 'fn-hsig-host-render-carrier
+                               source principal keys signatures))
+           (output (seventh args)))
+      (unless (and (fnn-octet-list-p rendered) (consp rendered))
+        (fnn-refuse "source is outside the portable FN-Authorship profile"))
+      (unless (eq (first (fnn-hsig-verify-received-carrier rendered
+                                                            (fourth args)))
+                  :verified)
+        (fnn-refuse "rendered FN-Authorship failed independent verification"))
+      (with-open-file (stream output :direction :output
+                              :element-type '(unsigned-byte 8)
+                              :if-exists :error :if-does-not-exist :create)
+        (write-sequence (fnn-octets rendered) stream))
+      0)))
+
+(defun fnn-command-hybrid-verify-carrier (args)
+  "Check a received article's exact-source carrier with both native suites."
+  (unless (= (length args) 2)
+    (error 'fnn-usage-error
+           :message "usage: fn hybrid-verify-carrier ARTICLE ML-PUBLIC-PEM"))
+  (let* ((received (fnn-octet-list
+                    (fnn-read-regular-bounded
+                     (first args) (fnn-core 'fn-hsig-host-max-source-octets))))
+         (result (fnn-hsig-verify-received-carrier received (second args))))
+    (if (eq (first result) :verified)
+        (progn (fnn-out "verified ~a" (fnn-hex (third result))) 0)
+      (progn (fnn-out "unverified ~a" (second result)) 1))))
 
 (fnn-register-verb "hybrid-sign"
                    (lambda (first rest)
                      (fnn-command-hybrid-sign (cons first rest))))
+(fnn-register-verb "hybrid-sign-carrier"
+                   (lambda (first rest)
+                     (fnn-command-hybrid-sign-carrier (cons first rest))))
+(fnn-register-verb "hybrid-verify-carrier"
+                   (lambda (first rest)
+                     (fnn-command-hybrid-verify-carrier (cons first rest))))

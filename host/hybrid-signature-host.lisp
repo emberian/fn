@@ -7,6 +7,10 @@
   (declare (xargs :mode :program))
   (fn-hc-received-plan received))
 
+(defun fn-hsig-host-render-carrier (source principal keys signatures)
+  (declare (xargs :mode :program))
+  (fn-hc-render source principal keys signatures))
+
 (defun fn-hsig-host-preimage (principal keys source)
   (declare (xargs :mode :program))
   (if (fn-hsig-subject-p principal keys source)
