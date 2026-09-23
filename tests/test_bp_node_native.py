@@ -188,14 +188,14 @@ class NativeBpNodeTests(unittest.TestCase):
             3600000, 2, 32, 1048576, 0, 0,
         )
 
-    def dispatch_receiver(self):
+    def dispatch_receiver(self, *, env=None):
         return self.invoke(
             "bp-node", "dispatch", self.receiver_journal,
             self.receiver_store, self.receiver_receipts,
             self.tmp / "receiver-fnwf", "dtn://receiver/",
             "dtn://sender/", "dtn://receiver/", "native-policy",
             "dtn://receiver/", "127.0.0.1", self.relay.port,
-            1, 3600000, 2, 32, 1048576, 0, 0,
+            1, 3600000, 2, 32, 1048576, 0, 0, env=env,
         )
 
     def sender_status(self):
@@ -370,6 +370,30 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(frontier.read_bytes(), before_frontier)
         self.assertEqual(len(tuple(
             (self.receiver_journal / "lifecycle").glob("*.fnb"))), before_records)
+        self.assertEqual(self.receiver_counts()[1], 1)
+
+    def test_ambiguous_outbox_publication_is_uncertain_not_refused(self):
+        self.kill_at_durable_cut(
+            "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_SEVEN",
+            b"BP NODE KIND7 DURABLE",
+        )
+        fault_env = dict(self.env)
+        fault_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
+        ambiguous = self.dispatch_receiver(env=fault_env)
+        self.assertEqual(ambiguous.returncode, 3,
+                         (ambiguous.stdout, ambiguous.stderr))
+        self.assertIn(b"uncertain", ambiguous.stderr.lower())
+        self.assertNotIn(b"BP node receipt queued", ambiguous.stdout)
+
+        # Reopen fences the uncertain publication by reading FNBS and its
+        # sequence frontier.  The earlier Store/FNRJ decision is not replayed
+        # into a second accepted article or a fresh return-job sequence.
+        frontier = self.receiver_journal / "sequence" / "frontier.fnb"
+        after_fault_frontier = frontier.read_bytes()
+        recovered = self.dispatch_receiver()
+        self.assertEqual(recovered.returncode, 0,
+                         (recovered.stdout, recovered.stderr))
+        self.assertEqual(frontier.read_bytes(), after_fault_frontier)
         self.assertEqual(self.receiver_counts()[1], 1)
 
     def test_kind_five_ambiguous_publication_never_delivers_to_store(self):
