@@ -283,3 +283,33 @@ and outcomes, frontier/initialization/recovery programs, adapter-to-model
 syscall correspondence, and physical successful-barrier qualification
 remain open. The theorem does not convert the selected native SIGKILL or
 dm-flakey observations into a power-loss guarantee.
+
+The served article call supplies the P-RECORD frame and final name through
+ACL2 rather than through an independent host codec. Native
+`fnn-owner-publish-prepared` (`host/native/owner.lisp:656-664`) reads
+`fn-owner-pending-octets`; `fnn-publish` (`host/native/io.lisp:1518-1548`)
+calls `fnn-frame` and `fnn-transaction-name`. The former calls
+`fn-store-frame-store-protected` and `fn-frame-trailer`, then concatenates
+their octets; the latter calls `fn-store-txn-name`, whose natural-sequence
+arm is `fn-bs-txn-name`. The new
+`fn-bs-k0-article-host-arguments-are-typed-record-input` proves that
+ACL2's article event encoding and exact frame decoder return the staged
+candidate, with a bounded octet frame and the same logical filename.
+`fn-bs-k0-article-host-arguments-reach-related-attempted-cut` composes
+that input fact with the already proved pair-10 byte relation theorem.
+This composition remains conditional on the physical byte/kernel relation
+at call entry and a fresh staging key; it does not assert that an arbitrary
+live directory image is related.
+
+The test book executes the second served article after an acknowledged
+first article, using the exact ACL2 protected-prefix/trailer construction,
+and has distinct `must-fail` witnesses for a malformed event, wrong phase,
+different staged candidate, and malformed staging name. The previously
+certified relation/freshness counterexamples apply to the composed cut.
+Hbox selected book and test roots passed under `run-20260923T225001Z-22e7`;
+the original ACL2 8.7 result, toolchain/core/source digests and closure are
+in `planning/evidence/manifests/certify-20260923T225004Z-384441.json`.
+Book/test wall times were 6.948 s/2.154 s. This packet proves the article
+codec path only. Retention and identity event-union encode/decode
+round-trip theorems, physical call-entry relation establishment, and the
+remaining model cuts/outcomes remain open.

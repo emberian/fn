@@ -1317,6 +1317,12 @@ part of K0.
 ; This is preservation at one concrete host-called cut, not general K0:
 ; establishing the input relation at every served invocation, all other
 ; intermediate cuts, outcomes, programs and recovery transitions remains open.
+; For served article posts, fn-bs-k0-article-host-arguments-are-typed-record-input
+; derives the P-RECORD frame/name input from ACL2's article encoder,
+; protected prefix, trailer and decoder. The native caller invokes those
+; ACL2 subjects. The physical byte/kernel relation and stage freshness at
+; call entry remain obligations; retention/identity union codec round trips
+; remain separate proof work.
 
 ; K1. The scan never faults on a crash image of a related state.  No torn
 ; unit is ever under an authority name, because links and renames are

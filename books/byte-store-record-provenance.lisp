@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "byte-store-relation")
 (include-book "byte-store-program-invariants")
+(include-book "frame-trailer")
 
 (local (defthm fn-bs-k6-take-all
          (implies (true-listp xs)
@@ -2588,3 +2589,147 @@
                             fn-bs-authority-knownp fn-bs-authority-fencedp
                             fn-sf-statep fn-sf-crash-imagep
                             fn-bs-fencedp fn-bs-pending-shape-okp)))))
+
+; K0 served article call arguments: ACL2 codec, frame, and filename.
+(local (defthm fn-bs-k0-host-frame-decodes-event
+  (implies (and (fn-cbor-octet-listp payload)
+                (fn-cbor-at-mostp payload *fn-frame-max-store-payload*)
+                (equal (fn-store-event-decode-exact payload)
+                       (list :ok event))
+                (fn-store-event-p event))
+           (equal
+            (fn-bs-record-of-octets
+             (append (fn-frame-store-protected payload)
+                     (fn-frame-trailer (fn-frame-store-protected payload))))
+            event))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-frame-at-mostp-bounds-len
+                            (xs payload) (bound *fn-frame-max-store-payload*))
+                 (:instance fn-frame-store-protected-plus-trailer-is-seal
+                            (record payload))
+                 (:instance fn-frame-decode-is-open
+                            (octets (fn-frame-seal *fn-frame-magic-store*
+                                                   *fn-frame-version*
+                                                   *fn-frame-store-kind* payload))
+                            (digest (fn-frame-digest
+                                     (fn-frame-protected-prefix
+                                      (fn-frame-seal *fn-frame-magic-store*
+                                                     *fn-frame-version*
+                                                     *fn-frame-store-kind* payload))))
+                            (max-payload *fn-frame-max-store-payload*))
+                 (:instance fn-frame-open-of-seal
+                            (magic *fn-frame-magic-store*)
+                            (version *fn-frame-version*)
+                            (kind *fn-frame-store-kind*)
+                            (payload payload)
+                            (max-payload *fn-frame-max-store-payload*)))
+           :in-theory (e/d (fn-bs-record-of-octets fn-frame-store-decode
+                            fn-frame-result-okp fn-frame-result-payload
+                            fn-frame-result-magic fn-frame-result-version
+                            fn-frame-result-kind
+                            fn-frame-ok fn-frame-inputp)
+                           (fn-frame-seal fn-frame-protected-prefix
+                            fn-store-event-decode-exact fn-store-event-p))))))
+
+(local (defthm fn-bs-k0-article-event-round-trip
+  (implies (fn-record-p record)
+           (equal (fn-store-event-decode-exact
+                   (fn-store-event-encode record))
+                  (list :ok record)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-record-round-trip))
+           :in-theory (e/d (fn-store-event-encode
+                            fn-store-event-decode-exact
+                            fn-record-result-okp)
+                           (fn-store-retention-event-decode-exact
+                            fn-stxe-decode-exact fn-stxk-decode-exact
+                            fn-stxa-decode-exact))))))
+
+(local (defthm fn-bs-k0-article-encoding-fits-frame
+  (implies (fn-record-p record)
+           (and (fn-cbor-octet-listp (fn-store-event-encode record))
+                (fn-cbor-at-mostp (fn-store-event-encode record)
+                                  *fn-frame-max-store-payload*)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-record-encode-shape)
+                 (:instance fn-record-encode-length)
+                 (:instance fn-cbor-at-mostp-from-length
+                            (xs (fn-record-encode record))
+                            (bound *fn-frame-max-store-payload*)))
+           :in-theory (e/d (fn-store-event-encode)
+                           (fn-record-p fn-cbor-at-mostp))))))
+
+(local (defthm fn-bs-k0-host-frame-is-octets
+  (implies (and (fn-cbor-octet-listp payload)
+                (fn-cbor-at-mostp payload *fn-frame-max-store-payload*))
+           (fn-cbor-octet-listp
+            (append (fn-frame-store-protected payload)
+                    (fn-frame-trailer (fn-frame-store-protected payload)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-frame-store-protected-plus-trailer-is-seal
+                            (record payload))
+                 (:instance fn-frame-at-mostp-bounds-len
+                            (xs payload) (bound *fn-frame-max-store-payload*)))
+           :in-theory (e/d (fn-frame-seal fn-frame-encode
+                            fn-frame-protected fn-frame-header)
+                           (fn-frame-store-protected fn-frame-trailer))))))
+
+(defthm fn-bs-k0-article-host-arguments-are-typed-record-input
+  (implies (and (fn-record-p record)
+                (equal (fn-sf-phase ks) :record-staged)
+                (equal (fn-sf-record-candidate ks) record)
+                (fn-bs-namep stage))
+           (fn-bs-record-inputp
+            ks stage
+            (fn-bs-txn-name (fn-store-event-sequence record))
+            (append
+             (fn-frame-store-protected (fn-store-event-encode record))
+             (fn-frame-trailer
+              (fn-frame-store-protected (fn-store-event-encode record))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-article-encoding-fits-frame)
+                 (:instance fn-bs-k0-article-event-round-trip)
+                 (:instance fn-bs-k0-host-frame-is-octets
+                            (payload (fn-store-event-encode record)))
+                 (:instance fn-bs-k0-host-frame-decodes-event
+                            (payload (fn-store-event-encode record))
+                            (event record)))
+           :in-theory (e/d (fn-bs-record-inputp)
+                           (fn-bs-record-of-octets fn-store-event-encode
+                            fn-store-event-decode-exact fn-record-p
+                            fn-frame-store-protected fn-frame-trailer)))))
+
+(defthm fn-bs-k0-article-host-arguments-reach-related-attempted-cut
+  (implies
+   (and (fn-bs-store-relation bs ks)
+        (fn-record-p record)
+        (equal (fn-sf-phase ks) :record-staged)
+        (equal (fn-sf-record-candidate ks) record)
+        (fn-bs-namep stage)
+        (not (fn-bs-lookup bs :staging stage)))
+   (let ((frame (append
+                 (fn-frame-store-protected (fn-store-event-encode record))
+                 (fn-frame-trailer
+                  (fn-frame-store-protected (fn-store-event-encode record)))))
+         (name (fn-bs-txn-name (fn-store-event-sequence record))))
+     (fn-bs-store-relation
+      (car (nth 10 (fn-bs-run bs ks
+                              (fn-bs-record-program stage name frame)
+                              nil groups capacity)))
+      (cdr (nth 10 (fn-bs-run bs ks
+                              (fn-bs-record-program stage name frame)
+                              nil groups capacity))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-article-host-arguments-are-typed-record-input)
+                 (:instance fn-bs-k0-record-attempted-cut-establishes-relation
+                            (name (fn-bs-txn-name (fn-store-event-sequence record)))
+                            (frame (append
+                                    (fn-frame-store-protected
+                                     (fn-store-event-encode record))
+                                    (fn-frame-trailer
+                                     (fn-frame-store-protected
+                                      (fn-store-event-encode record)))))))
+           :in-theory (theory 'minimal-theory))))
