@@ -1214,7 +1214,7 @@
     {
       "id": "PRF-034",
       "title": "A reopened journal answers for a work what the pre-crash machine would have, and says which works it recovered",
-      "statement": "fn-bp-work-status-of-restart: under fn-bp-statep, the :restart transition a reopen runs changes the boundary answer for one work id by fn-bp-work-status-after-restart and by nothing else -- an attempt that was in flight is marked :restart-observed, while :absent, :outstanding, :receipted, a retryable status and :delivered are fixed points. fn-bp-replay-work-status-is-the-pre-crash-status-restarted lifts that to fn-bp-replay-journal, the predecessor interpreter for the original FNWF kinds: when the replay succeeds, fn-bp-work-status of the installed image is fn-bp-work-status-after-restart of fn-bp-work-status of the trace of the initial state over fn-bp-durable-events, the journal's denotation without that trailing restart. Provenance is separate and also ACL2's: fn-bp-work-origin-at-open-is-recovered-or-absent says that against the id list fn-bp-work-ids records at open, every work the image holds reads :recovered and every other id reads :absent; fn-bp-durable-enqueue-after-open-reads-enqueued says this session's durable enqueue of an id that list does not name reads :enqueued. So a work recovered from a cut and a work enqueued after the reopen, which share the status :outstanding, are distinct at the boundary.",
+      "statement": "fn-bp-work-status-of-restart: under fn-bp-statep, the :restart transition a reopen runs changes the boundary answer for one work id by fn-bp-work-status-after-restart and by nothing else -- an attempt that was in flight is marked :restart-observed, while :absent, :outstanding, :receipted, a retryable status and :delivered are fixed points. fn-bp-replay-work-status-is-the-pre-crash-status-restarted lifts that to fn-bp-replay-journal, the predecessor interpreter for the original FNWF kinds: when the replay succeeds, fn-bp-work-status of the installed image is fn-bp-work-status-after-restart of fn-bp-work-status of the trace of the initial state over fn-bp-durable-events, the journal's denotation without that trailing restart. Provenance is separate and also ACL2's: fn-bp-work-origin-at-open-is-recovered-or-absent says that against the id list fn-bp-work-ids records at open, every work the image holds reads :recovered and every other id reads :absent; fn-bp-durable-enqueue-after-open-reads-enqueued says this session's durable enqueue of an id that list does not name reads :enqueued. So a work recovered from a cut and a work enqueued after the reopen, which share the status :outstanding, are distinct at the boundary. fn-bprl-replay-work-status-is-durable-status-restarted covers the actual host-called fn-bprl-replay-journal over the extended FNWF language: if replay succeeds, the installed work status is the one-restart status of the exact ACL2 release-aware interpreter folded over its durable records.",
       "milestone": "M3",
       "requirements": [
         "STO-005",
@@ -1222,10 +1222,11 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "in-progress",
-      "note": "Lane w11/workflow-replay, book books/bp-workflow-replay-status.lisp, teeth in tests/acl2/bp-workflow-records-tests.lisp. The subject of the first two keystones is what host/workflow-host.lisp:63 (fn-workflow-work-status) calls; of the last two, what host/workflow-host.lisp:73 (fn-workflow-work-origin) calls on the list host/workflow-host.lisp:8 records. Certified on hbox, run-20260921T005523Z-05dc, build/acl2/certify-20260921T005528Z-1361353. The native host now calls fn-bprl-replay-journal, which also interprets :undertake and :release; the old replay theorem remains certified for its original subject, but a host-called replay/status refinement for the extended record language is open. The :enqueue kind hypothesis of fn-bp-durable-enqueue-after-open-reads-enqueued has a constructed rather than a reached tooth, and the test book says so: fn-bp-prepare-attempt only prepares an attempt for a work the image holds, so the composed machine reaches no :attempt pending over an image that holds none.",
+      "status": "certified",
+      "note": "Lane w11/workflow-replay, book books/bp-workflow-replay-status.lisp, teeth in tests/acl2/bp-workflow-records-tests.lisp. The subject of the first two keystones is what host/workflow-host.lisp:63 (fn-workflow-work-status) calls; of the last two, what host/workflow-host.lisp:73 (fn-workflow-work-origin) calls on the list host/workflow-host.lisp:8 records. Certified on hbox, run-20260921T005523Z-05dc, build/acl2/certify-20260921T005528Z-1361353. The native host calls fn-bprl-replay-journal, which also interprets :undertake and :release; fn-bprl-replay-work-status-is-durable-status-restarted certifies the successful host-called path, with an extended reachable journal and a malformed-suffix must-fail tooth in tests/acl2/bp-release-tests.lisp (persvati manifests certify-20260923T173933Z-2312844.json and certify-20260923T174038Z-2322911.json). The earlier fn-bp replay theorem remains scoped to its original record language. The :enqueue kind hypothesis of fn-bp-durable-enqueue-after-open-reads-enqueued has a constructed rather than a reached tooth, and the test book says so: fn-bp-prepare-attempt only prepares an attempt for a work the image holds, so the composed machine reaches no :attempt pending over an image that holds none.",
       "evidence": [
         "books/bp-workflow-replay-status.lisp",
+        "books/bp-release-replay-status.lisp",
         "books/bp-workflow-records.lisp",
         "tests/acl2/bp-workflow-records-tests.lisp",
         "tests/evidence/2026-09-21-four-node-lab.md",
@@ -1235,6 +1236,7 @@
       "events": [
         "fn-bp-work-status-of-restart",
         "fn-bp-replay-work-status-is-the-pre-crash-status-restarted",
+        "fn-bprl-replay-work-status-is-durable-status-restarted",
         "fn-bp-work-origin-at-open-is-recovered-or-absent",
         "fn-bp-durable-enqueue-after-open-reads-enqueued",
         "fn-bp-journal-events-is-durable-events-then-restart",

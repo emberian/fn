@@ -379,6 +379,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-release \
 	books/bp-release-invariants \
 	books/bp-workflow-constructors \
+	books/bp-release-replay-status \
 	tests/acl2/bp-release-tests \
 	books/scheduler \
 	books/scheduler-invariants \

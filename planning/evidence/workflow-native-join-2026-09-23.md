@@ -34,7 +34,19 @@ claimed here; the central `books/frame-journal.lisp` table change affects
 many roots, and the integrated batch owns that run. `make check` on this
 lane fails because the pre-existing T4 evidence note points to two missing
 manifests and the generated ledger is stale; this lane did not hand-edit
-ledger output. PRF-034 was narrowed to in-progress because its prior
-certified replay theorem concerns `fn-bp-replay-journal`, while the host now
-calls `fn-bprl-replay-journal` over the extended record language. A new
-host-called replay/status refinement is separate unfinished proof work.
+ledger output. The original PRF-034 replay theorem concerns
+`fn-bp-replay-journal`; the follow-up host-called refinement is recorded
+below.
+
+The follow-up book `books/bp-release-replay-status.lisp` proves
+`fn-bprl-replay-work-status-is-durable-status-restarted` over the actual
+`fn-bprl-replay-journal` caller. Its successful-replay premise means the
+installed work status is exactly the one-restart status of the precrash fold
+of the extended ACL2 interpreter, including `:undertake` and `:release`.
+`tests/acl2/bp-release-tests.lisp` has a reached history with both new kinds,
+and a malformed-suffix `must-fail` witness for dropping success. ACL2 8.7 on
+`persvati` passed [the replay book](manifests/certify-20260923T173933Z-2312844.json)
+in 2.801 certification wall seconds and [its test book](manifests/certify-20260923T174038Z-2322911.json)
+in 1.504 seconds, using the same two-job toolchain and invocation form above.
+This proof narrows the prior replay assurance gap; a rebuilt native image and
+full dependent-root closure remain the integrated batch's evidence.
