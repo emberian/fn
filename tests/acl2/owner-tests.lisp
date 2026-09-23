@@ -110,6 +110,48 @@
 (defconst *own-c* (fn-own-step *own-posted* '(:open)))
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 2 (fn-own-conns *own-c*))) 1))
 
+; The actual owner-open path pins the matching bucket with each immutable
+; archive.  LISTGROUP enters through fn-own-read, including the socket wire
+; parser and the served dispatcher, rather than invoking a helper directly.
+(assert-event (null (fn-own-conn-group-index
+                     (fn-own-find-conn 0 (fn-own-conns *own-c*)))))
+(assert-event (equal (fn-gidx-range-numbers
+                      (fn-own-conn-group-index
+                       (fn-own-find-conn 2 (fn-own-conns *own-c*)))
+                      "fn.letters" 1 2147483647)
+                     '(1)))
+(defconst *own-listgroup-octets*
+  (append (fn-nntp-string-octets "LISTGROUP fn.letters 1-9") '(13 10)))
+(defconst *own-listgroup-old* (fn-own-read *own-c* 0 *own-listgroup-octets*))
+(defconst *own-listgroup-new* (fn-own-read *own-c* 2 *own-listgroup-octets*))
+(assert-event (not (equal (fn-served-reply-octets (car *own-listgroup-old*))
+                          (fn-served-reply-octets (car *own-listgroup-new*)))))
+(assert-event (equal (fn-served-reply-octets (car *own-listgroup-new*))
+                     (append (fn-nntp-string-octets
+                              "211 1 1 1 fn.letters list follows")
+                             '(13 10 49 13 10 46 13 10))))
+(assert-event (fn-own-relation (cdr *own-listgroup-new*)))
+
+; A forged tagged pin with an empty bucket has the correct Message-ID trie
+; but loses the committed membership.  The correspondence premise in the
+; pinned command theorem therefore has observable force.
+(defconst *own-group-archive*
+  (fn-own-conn-archive (fn-own-find-conn 2 (fn-own-conns *own-c*))))
+(defconst *own-bad-group-pin*
+  (fn-gidx-pin (fn-midx-build (fn-state-articles *own-group-archive*)) nil))
+(assert-event (not (fn-gidx-pin-correspondencep
+                    *own-bad-group-pin* *own-group-archive*)))
+(assert-event
+ (not (equal
+       (fn-nntp-archive-command-pinned
+        (fn-nntp-make-session t nil nil t) *own-group-archive*
+        *own-bad-group-pin* nil nil (fn-nntp-string-octets "LISTGROUP")
+        (list (fn-nntp-string-octets "fn.letters")))
+       (fn-nntp-archive-command
+        (fn-nntp-make-session t nil nil t) *own-group-archive* nil
+        (fn-nntp-string-octets "LISTGROUP")
+        (list (fn-nntp-string-octets "fn.letters"))))))
+
 ; The same read answers differently on the two pins: A sees an empty group,
 ; C sees one article.  This is the two-readers-at-different-versions witness
 ; for the served port (fn-own-read-is-served-step-on-pinned-prefix) and for

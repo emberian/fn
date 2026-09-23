@@ -10,6 +10,9 @@ the current NNTP archive fold through `books/nntp-index.lisp`'s existing
 correspondence. The test has a crosspost, sparse numbers, an empty group and
 an older pinned prefix; `must-fail` attempts remove each theorem hypothesis.
 
+This component checkpoint is superseded for the actual served path by
+[`t17-group-bucket-served-2026-09-23.md`](t17-group-bucket-served-2026-09-23.md).
+
 `fn-gidx-range-work` counts the bucket headers inspected plus selected
 entries visited. `fn-gidx-lookup-work-at-most-bucket-count` proves the first
 term is at most the number of distinct buckets. This is a structural count,
