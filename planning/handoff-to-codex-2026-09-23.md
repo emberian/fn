@@ -70,6 +70,17 @@ command line; the node at `/tank/fn/node` is root's; the matrix stores
 
 ## Packages ready now
 
+### COST. Every book under ten seconds
+
+The standing rule (how we work, last bullet) and the method: the cost
+records under `planning/evidence/*-cost-2026-09-23.md` are the worked
+examples, `planning/evidence/certification-cost-2026-09-23.md` the whole-run
+analysis and its prioritized list. Whatever is still over ten seconds in
+the newest treewide manifest after tonight's lanes land is this package;
+also the lint that makes it a check: a `tools/proof_cost.py` that reads the
+newest manifest and names every book over the threshold, wired into
+`make check` as a warning. 1 to 2 lane-days, any box.
+
 Each is independent of the live lanes' books.
 
 ### C1. Fragment lemmas, the fast reassembler and the limits table
