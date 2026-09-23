@@ -84,6 +84,15 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-own-clock (fn-owner-core state))))
 
+(defun fn-owner-stamp-status (state)
+  ; The native submission boundary asks ACL2 whether this owner's current
+  ; observation can become a schema-1 stamp.  An accepted observation may
+  ; still have no wall or exceed the record's uint32 seconds bound.
+  (declare (xargs :stobjs state :mode :program))
+  (value (if (natp (fn-record-stamp-of-observation
+                    (fn-own-clock (fn-owner-core state))))
+             :usable :clock-unusable)))
+
 (defun fn-owner-config (state)
   ; The one live configuration.  No host global shadows this value: every
   ; caller reads the generation replayed into and published by fn-ocfg.

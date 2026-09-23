@@ -1005,7 +1005,9 @@ refused, not injected under a stale time (D10-a)."
                   (generation
                     (fnn-nat (fnn-owner-core 'fn-owner-config-generation)))
                   (txid (fnn-nat (fnn-owner-core 'fn-owner-next-txid))))
-              (if (eq (fnn-owner-advance-clock) :observed)
+              (if (and (eq (fnn-owner-advance-clock) :observed)
+                       (eq (fnn-owner-action 'fn-owner-stamp-status)
+                           :usable))
                   (fnn-owner-complete-bound-submission
                    service
                    (lambda ()

@@ -7,11 +7,13 @@
 (defvar *actions* nil)
 (defvar *events* nil)
 (defvar *clock-outcome* :observed)
+(defvar *stamp-status* :usable)
 (defun fnn-bpapp-bind-owner-store () nil)
 (defun fnn-owner-action (name &rest args)
   (declare (ignore args))
   (case name (fn-owner-app-plan :ready) (fn-owner-app-submit :accepted)
         (fn-owner-operator-submit :accepted)
+        (fn-owner-stamp-status (push :stamp-status *events*) *stamp-status*)
         (otherwise (error "unexpected owner action ~s" name))))
 (defun fnn-octet-list (x) x)
 (defun fnn-octets (x) x)
@@ -76,15 +78,22 @@
                             :node '(2) :source :destination)))
 
 ;; A refused reading cannot use the owner's previously stored observation.
-(setq *clock-outcome* :refused *actions* '((:submit)) *events* nil)
+(setq *clock-outcome* :refused *stamp-status* :usable
+      *actions* '((:submit)) *events* nil)
 (check (accept) '(:clock-unusable nil))
 (check (reverse *events*) '(:observe))
 
+;; The observation itself may be accepted without a usable wall stamp.
+(setq *clock-outcome* :observed *stamp-status* :clock-unusable
+      *actions* '((:submit)) *events* nil)
+(check (accept) '(:clock-unusable nil))
+(check (reverse *events*) '(:observe :stamp-status))
+
 ;; A fresh reading precedes the actual owner submission.
-(setq *clock-outcome* :observed
+(setq *clock-outcome* :observed *stamp-status* :usable
       *actions* '((:submit) (:return-receipt)) *events* nil)
 (check (accept) '(:accepted :receipt))
-(check (reverse *events*) '(:observe :submit))
+(check (reverse *events*) '(:observe :stamp-status :submit))
 
 ;; Replaying a committed request only returns its receipt, with no clock read.
 (setq *clock-outcome* :refused *actions* '((:return-receipt)) *events* nil)
@@ -94,8 +103,12 @@
 (check (fnn-owner-control-submit-serialized
         :service '(1) '((2)) '(3)) :clock-unusable)
 (check (reverse *events*) '(:observe))
-(setq *clock-outcome* :observed *events* nil)
+(setq *clock-outcome* :observed *stamp-status* :clock-unusable *events* nil)
+(check (fnn-owner-control-submit-serialized
+        :service '(1) '((2)) '(3)) :clock-unusable)
+(check (reverse *events*) '(:observe :stamp-status))
+(setq *stamp-status* :usable *events* nil)
 (check (fnn-owner-control-submit-serialized
         :service '(1) '((2)) '(3)) :accepted)
-(check (reverse *events*) '(:observe :submit))
+(check (reverse *events*) '(:observe :stamp-status :submit))
 (format t "native BP application clock dispatch passed~%")
