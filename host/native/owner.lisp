@@ -975,6 +975,21 @@ client, which can issue POSITION after reconnecting."
                     (values cid (fnn-owner-octets-global 'fn-owner-output)
                             (eq word :uncertain))))))))))))
 
+(defun fnn-owner-bound-commit-word (commit-callback)
+  "Classify a custom Store callback into the ordinary post's outcome words.
+
+A known Store refusal has no ambiguous publication and can resolve the
+in-flight submission.  An uncertain result must retain its unresolved intent;
+core/Store faults and unclassified OS errors propagate to the serialized
+owner's recovery fence."
+  (let ((word (handler-case (funcall commit-callback)
+                (fnn-store-indeterminate () :uncertain)
+                (fnn-store-fault (condition) (error condition))
+                (fnn-store-error () :refused))))
+    (unless (member word '(:durable :duplicate :refused :clock-unusable :uncertain))
+      (fnn-fault "owner bound commit returned ~a" word))
+    word))
+
 (defun fnn-owner-complete-bound-submission
     (service submit-callback msgid payload groups evidence generation txid
      &optional commit-callback)
@@ -1016,7 +1031,7 @@ Every other caller submits exact authored octets and names them."
             (return-from fnn-owner-complete-bound-submission result)))
         (fnn-owner-feed-flush service)
         (let ((word (if commit-callback
-                        (funcall commit-callback)
+                        (fnn-owner-bound-commit-word commit-callback)
                       (fnn-owner-attempt service msgid payload groups evidence))))
           (fnn-owner-action 'fn-owner-submission-resolution
                             word (fnn-octet-list evidence) generation txid)
