@@ -1,6 +1,8 @@
 # E1 portable fn inbox, Q and conflict native evidence (2026-09-23)
 
-Mini source `32ea942e70917248b2c6b936d0802c045b316746` in isolated
+Mini source `32ea942e70917248b2c6b936d0802c045b316746`, with exact
+representation follow-ups `1e66baa5db1b8daea6b91829586622879a9612f2`
+and `dc32b4048ac41790e256445705cca40da44b336d`, in isolated
 `/Users/ember/dev/minidregg-wt/fn-evidence` adds a separate bounded canonical
 portable inbox atom to the same signed content-resource invocation as the
 small operation binding and immutable Q. It preserves the earlier atom IDs
@@ -36,8 +38,8 @@ core SHA-256 `4a49fe97136f8c592464eac64921b02b9f1482d38d90c46b5d219ccebecb17c1`)
 with OpenSSL 3.5.8 at `/tank/fn/toolchains/openssl-3.5.8`. Mini compiled
 incrementally using Lean 4.30.0 on arm64 macOS and the existing 3,090-object
 closure; no second fn image or ACL2 farm run was made. The final measured
-Mini binary was `minidregg-fn-portable-inbox-cached`, SHA-256
-`af36badee9dea58c4c9b58952269986394444ce9598f00efe43fdad9ab3d621b`.
+Mini binary was `minidregg-fn-portable-inbox-context`, SHA-256
+`e9632cd9d8b72afc0669e604cb1e522eb8bc08ea24a0d6e1a19b9bba087aec57`.
 Its changed controller and consumer/proof modules typechecked; the native
 signed calls were confirmed by the ordinary receiver and their exact inboxes
 were read through reopened verified history. SQLite CAS, fsync, OS/process
@@ -55,10 +57,18 @@ shape check that shares its derived write list and has a Lean theorem iff
 for the original `PhysicalShape` proposition further reduced it to 170.95 s
 wall, 161.70 s in Mini replay, 2.95 s in origin replay, 3.89 s in fn
 verification/extraction, 1.09 s in grant/decision, and 865 MB maximum RSS.
-The exact first/relay/conflict calls were generated before those two
-representation changes and successfully re-admitted by the resulting
-binary. Four-event conflict inbox export took 163.64 s wall. A 4-second
-macOS `sample` of the final repeat found its active stacks under
+Reusing the exact derived writes and read guards in both the admitted intent
+and all charge lanes, with `dataIntent_original_exact` proving complete
+intent equality, reduced the same repeat to 104.66 s wall, 97.13 s in Mini
+replay. Sharing one exact `PolicyStepContext` per authorized leg further
+reduced it to 83.15 s wall, 75.10 s in Mini replay, 3.45 s in origin replay,
+1.96 s in fn verification/extraction, 1.11 s in grant/decision, and 775 MB
+maximum RSS. That final process returned the byte-identical historical Q
+and emitted no new intent. The exact first/relay/conflict calls were generated
+before these representation changes and successfully re-admitted by the
+resulting binary. Four-event conflict inbox export, run at the intermediate
+170.95 s version, took 163.64 s wall. A 4-second macOS `sample` of that
+intermediate repeat found its active stacks under
 `NativeHostReplay.derive → DeclaredResourceController.physicalShapeCheck →
 writes → ResourceBirthCodec.physicalRoot → Sp800185Cshake256.absorbPadded`.
 The bounds are 32,768 carrier octets, 36,864 typed inbox octets, 18,432
@@ -69,8 +79,13 @@ consumer. A separate native Lean 4.30.0 cSHAKE benchmark over the exact
 32,020-byte first typed inbox took 180.1, 182.3 and 180.7 ms for three
 hashes. Its 16,010-byte prefix took 92.5, 91.9 and 92.4 ms; a 64,040-byte
 double copy took 375.1, 378.8 and 375.5 ms. A single 30 KB hash therefore
-does not explain the 161.70 s Mini replay, and these three sizes are near
+does not explain the 75.10 s Mini replay, and these three sizes are near
 linear for the hash alone. The sampled replay repeatedly reconstructs
 content-resource physical writes and hashes their canonical post images;
-the exact dynamic call count remains unmeasured. No SQLite time was inferred
-from the replay sample.
+the exact dynamic call count remains unmeasured. The actual Rust SQLite
+byte-store CLI on the same synthetic 461,188-byte image took a median
+4.84 ms for seven `read-to` processes, 4.14 ms for seven exact already-present
+CAS calls, and 12.83 ms for seven installed CAS calls on isolated clones
+with a one-byte-distinct **opaque** proposed value. These are physical
+store timings, not Mini semantic admission of that distinct value; they
+separate the dominant Lean replay work from SQLite on this Mac.
