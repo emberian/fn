@@ -125,6 +125,13 @@ restarting. A driver exit or a lock file does not prove this. Diagnose whether
 the work is waiting for a slot, loading certificates, or searching a theorem
 before changing concurrency or time limits.
 
+The interactive tool now starts its slot wrapper and prover in a private
+process group. A stop or hard timeout terminates that group, reaps the wrapper
+and waits for output EOF; a successful stop reply follows endpoint removal.
+The busy-descendant regression test exercises that cleanup on macOS and Linux.
+This does not make an arbitrary `kill` of a farm driver a safe cancellation
+operation: its descendants still require explicit inspection.
+
 ## Separate discovery from certification
 
 Ordinary certification respects the dependency graph. A failure low in that
