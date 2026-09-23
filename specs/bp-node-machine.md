@@ -1909,17 +1909,19 @@ book-wide; the K6 edit waits for T1's BP-receiver cluster (slice A3's gate).
 
 ### 7.1 Limits that compose (§12, D-9)
 
-`*fn-bpf-max-length*` (`bp-fragment.lisp:50`, 65536) rises to
-`*fn-bpa-max-octets*` (`bp-adu.lisp:24`, 65538) only in the same batch as a
-theorem over constants, `fn-bpn-limits-compose`, in `books/bp-limits.lisp`
-(new, slice C1; it includes `bp-adu`, `bp-fragment`, `frame-octets` and
-`bp-node-machine-codec`), that states every inequality below.
-The raise alone establishes nothing about maximum-size ADUs.
+`*fn-bpf-max-length*` is now 65538, equal to `*fn-bpa-max-octets*`.
+`fn-bpn-limits-compose` in `books/bp-limits.lisp` proves the relationships
+among the limits in the current finite machine: ADU/reassembly equality,
+image capacity, lifecycle-record headroom and aggregate capacity for 64
+maximum-size images. The machine still checks each actual encoded image.
+The planned explicit header cap, stage slots and stage octets are not yet
+machine fields, so their rows below remain obligations for the family-plan
+batch. The limit equality alone does not establish maximum-size ADU service.
 
 | Limit | Value today | Must satisfy |
 | --- | --- | --- |
 | request and receipt ADU | `*fn-bpa-max-octets*` 65538 | ≤ reassembly length |
-| reassembly length | `*fn-bpf-max-length*` 65536 → 65538 | = ADU max |
+| reassembly length | `*fn-bpf-max-length*` 65538 | = ADU max; proved in current constants |
 | bundle image | `*fn-bpn-machine-max-job-octets*` = `*fn-frame-max-blob*` 131072 | ADU max + `*fn-bpn-max-header-octets*` ≤ it |
 | record payload | `*fn-bpn-lifecycle-max-payload*` 134144 | bundle image + held-record overhead ≤ it |
 | fragment count | `*fn-bpf-max-fragments*` 64 | count × (per-fragment image) ≤ stage-octets; count ≤ stage-slots + 1 |

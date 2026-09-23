@@ -44,10 +44,10 @@
 ; -----------------------------------------------------------------------------
 ; Bounds
 ;
-; fn's BP application data unit cap is 32 KiB; 65536 leaves BP framing headroom
-; without claiming a general BPv7 limit.  Both bounds are local policy.
+; These are local policy bounds.  Their relationship to the ADU and frame
+; limits is stated in bp-limits.lisp; a change to one limit needs that book.
 
-(defconst *fn-bpf-max-length* 65536)
+(defconst *fn-bpf-max-length* 65538)
 (defconst *fn-bpf-max-fragments* 64)
 
 ; -----------------------------------------------------------------------------
@@ -392,3 +392,16 @@
   (not (fn-bpp-no-fragmentp (fn-bpp-flags b))))
 
 (verify-guards fn-bpf-fragmentablep)
+
+; A second cut of an existing fragment uses ADU coordinates, not coordinates
+; relative to this fragment's payload.  The caller checks the retained extent
+; against the parent's total before it plans the children.
+(defun fn-bpf-refragment-block (parent local-offset)
+  (declare (xargs :guard (and (fn-bpp-blockp parent)
+                              (fn-bpp-fragmentp (fn-bpp-flags parent))
+                              (natp local-offset))))
+  (fn-bpf-fragment-block
+   parent (+ (fn-bpp-fragment-offset parent) local-offset)
+   (fn-bpp-total-adu-length parent)))
+
+(verify-guards fn-bpf-refragment-block)
