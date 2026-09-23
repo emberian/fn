@@ -1,0 +1,7 @@
+test_missing_bundled_openssl_refuses_startup (tests.test_native_frozen_relocation.FrozenRelocationTest.test_missing_bundled_openssl_refuses_startup) ... ok
+test_relocated_image_uses_bundled_tls_and_ml_dsa (tests.test_native_frozen_relocation.FrozenRelocationTest.test_relocated_image_uses_bundled_tls_and_ml_dsa) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 1.714s
+
+OK
