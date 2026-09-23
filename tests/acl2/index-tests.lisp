@@ -8,19 +8,19 @@
                    '("comp.lang" "fn.test")
                    (list (cons "comp.lang" 1)
                          (cons "fn.test" 7))
-                   t))
+                   t 841000000))
 (defconst *index-article-b*
   (fn-make-article "<b@example.invalid>" '(66)
                    '("comp.lang")
                    (list (cons "comp.lang" 4))
-                   t))
+                   t 841000000))
 ; The same local number 4 is valid in fn.test and comp.lang: group is part
 ; of the index key, so no global number namespace is introduced.
 (defconst *index-article-c*
   (fn-make-article "<c@example.invalid>" '(67)
                    '("fn.test")
                    (list (cons "fn.test" 4))
-                   t))
+                   t 841000000))
 (defconst *index-articles*
   (list *index-article-a* *index-article-b* *index-article-c*))
 (defconst *index-nexts*

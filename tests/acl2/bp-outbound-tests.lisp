@@ -10,7 +10,7 @@
   (fn-node-prepare
    (fn-node-initial-state *bpo-groups* 32)
    4 *bpo-msgid* *bpo-article* *bpo-groups*
-   "archive:out" "subject:out" "release:out" 1))
+   "archive:out" "subject:out" "release:out" 1 841000000))
 (defconst *bpo-node*
   (fn-node-complete *bpo-node-prepared* 0 4 :durable))
 (defconst *bpo-config-record*

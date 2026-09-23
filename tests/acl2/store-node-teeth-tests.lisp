@@ -28,7 +28,7 @@
 (defconst *snt-groups* '("fn.letters" "fn.test"))
 (defconst *snt-record*
   (fn-record-make 0 0 0 "<sn@example>" '(65 66) *snt-groups*
-                  "sn-pin" "sn-content" "sn-release" 2))
+                  "sn-pin" "sn-content" "sn-release" 2 841000000))
 
 (defconst *snt-reserved*
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-initial *snt-groups* 10)
@@ -79,7 +79,7 @@
 ; commit the record it claims.
 (defconst *snt-other-record*
   (fn-record-make 0 0 0 "<sn@example>" '(99) *snt-groups*
-                  "sn-pin" "sn-content" "sn-release" 2))
+                  "sn-pin" "sn-content" "sn-release" 2 841000000))
 (assert-event
  (equal (fn-record-txid *snt-other-record*) (fn-record-txid *snt-record*)))
 (assert-event

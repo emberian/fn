@@ -108,7 +108,7 @@
 (defconst *bst-record*
   (fn-record-make 0 0 0 "<zero@example.invalid>" '(90)
                   '("fn.letters" "fn.test")
-                  "archive-zero" "content-zero" "release-zero" 2))
+                  "archive-zero" "content-zero" "release-zero" 2 841000000))
 
 (defconst *bst-run-frontier*
   (fn-bs-run *bst-store* (fn-sf-initial-state) *fn-bs-p-frontier* nil

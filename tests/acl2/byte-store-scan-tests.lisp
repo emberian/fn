@@ -24,7 +24,7 @@
 ; state.  These are real FNST frames, not already-decoded sibling values.
 (defconst *bsk-event-article*
   (fn-record-make 0 0 0 "<byte-scan@example.invalid>" '(65)
-                  '("fn.letters") "archive" "subject" "evidence" 1))
+                  '("fn.letters") "archive" "subject" "evidence" 1 841000000))
 (defconst *bsk-event-retention*
   (fn-store-retention-event-make :undertake 1 1 1
                                  "obligation-1" "article-0" "local" 1))

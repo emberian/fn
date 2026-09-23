@@ -383,7 +383,7 @@
                   (concatenate 'string "ocfg-pin:" msgid)
                   (concatenate 'string "ocfg-content:" msgid)
                   (concatenate 'string "ocfg-release:" msgid)
-                  2))
+                  2 841000000))
 (defconst *ocfg-l-completing*
   (fn-ocfg-make
    (fn-own-run (fn-own-step (fn-own-step (fn-own-start (fn-sn-initial *ocfg-t-groups* 10) 4)

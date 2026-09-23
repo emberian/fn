@@ -6,7 +6,7 @@
 
 (defconst *fn-ser-article-1*
   (fn-record-make 0 0 0 "<one@example.invalid>" '(1 2 3) '("g")
-                  "archive-1" "subject-1" "post-1" 3))
+                  "archive-1" "subject-1" "post-1" 3 841000000))
 (defconst *fn-ser-undertake*
   (fn-store-retention-event-make :undertake 1 1 1
                                  "forward-1" "subject-1" "forward-proof" 5))
@@ -15,7 +15,7 @@
                                  "forward-1" "subject-1" "forward-proof" 0))
 (defconst *fn-ser-article-2*
   (fn-record-make 3 3 3 "<two@example.invalid>" '(4 5 6) '("g")
-                  "archive-2" "subject-2" "post-2" 4))
+                  "archive-2" "subject-2" "post-2" 4 841000000))
 (defconst *fn-ser-history*
   (list *fn-ser-article-1* *fn-ser-undertake* *fn-ser-release*
         *fn-ser-article-2*))

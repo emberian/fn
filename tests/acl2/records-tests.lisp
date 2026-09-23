@@ -3,7 +3,7 @@
 (include-book "../../books/records-attach")
 
 (defconst *fn-record-test-record*
-  (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4))
+  (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 :legacy))
 
 ; The fixed primitive sequence is independently written out here.
 (defconst *fn-record-test-octets*
@@ -34,7 +34,7 @@
 ; Header/version/count/type/trailing errors each have an explicit vector.
 (assert-event (equal (fn-record-decode-exact '(68 102 110 45 115 0))
                      '(:error :magic)))
-(assert-event (equal (fn-record-decode-exact '(68 102 110 45 114 1))
+(assert-event (equal (fn-record-decode-exact '(68 102 110 45 114 2))
                      '(:error :unknown-version)))
 (assert-event (equal (fn-record-decode-exact
                       '(68 102 110 45 114 0 1 2 3 65 97 64 17))
@@ -53,9 +53,9 @@
 ; Invalid local domain records never receive an encoding.
 (assert-event (equal (fn-record-encode
                       (fn-record-make 1 2 3 "<a>" nil '("g" "g")
-                                      "o" "s" "e" 4))
+                                      "o" "s" "e" 4 :legacy))
                      nil))
 (assert-event (equal (fn-record-encode
                       (fn-record-make 1 2 3 "<a>" nil '("g")
-                                      "" "s" "e" 4))
+                                      "" "s" "e" 4 :legacy))
                      nil))

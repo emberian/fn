@@ -8,7 +8,7 @@
 (defconst *bp-node-empty* (fn-node-initial-state *bp-groups* 16))
 (defconst *bp-node-prepared*
   (fn-node-prepare *bp-node-empty* 9 "<bp@example.invalid>" *bp-payload*
-                   *bp-groups* "archive-bp" "subject-bp" "release-bp" 4))
+                   *bp-groups* "archive-bp" "subject-bp" "release-bp" 4 841000000))
 (defconst *bp-node-committed*
   (fn-node-complete *bp-node-prepared* 0 9 :durable))
 (defconst *bp-config*

@@ -30,17 +30,17 @@
   (fn-make-article "<a@example.invalid>" '(65)
                    '("fn.letters" "fn.test")
                    (list (cons "fn.letters" 1) (cons "fn.test" 7))
-                   t))
+                   t 841000000))
 (defconst *nix-article-b*
   (fn-make-article "<b@example.invalid>" '(66)
                    '("fn.letters")
                    (list (cons "fn.letters" 4))
-                   t))
+                   t 841000000))
 (defconst *nix-article-c*
   (fn-make-article "<c@example.invalid>" '(67)
                    '("fn.test")
                    (list (cons "fn.test" 4))
-                   t))
+                   t 841000000))
 (defconst *nix-articles*
   (list *nix-article-a* *nix-article-b* *nix-article-c*))
 (defconst *nix-nexts* (list (cons "fn.letters" 5) (cons "fn.test" 8)))
@@ -136,7 +136,7 @@
   (fn-make-article "<d@example.invalid>" '(68)
                    '("fn.letters")
                    (list (cons "fn.letters" 5))
-                   t))
+                   t 841000000))
 (defconst *nix-posted-articles* (append *nix-articles* (list *nix-article-d*)))
 (defconst *nix-posted-archive*
   (fn-make-state *nix-groups* (list (cons "fn.letters" 6) (cons "fn.test" 8))
@@ -177,7 +177,7 @@
   (fn-make-article "<dup@example.invalid>" '(68)
                    '("fn.letters" "fn.letters")
                    (list (cons "fn.letters" 1) (cons "fn.letters" 2))
-                   t))
+                   t 841000000))
 (defconst *nix-duplicate-articles* (list *nix-duplicate-article*))
 
 (assert-event (not (fn-article-listp *nix-groups* *nix-duplicate-articles*)))

@@ -21,7 +21,7 @@
   (fn-node-complete
    (fn-node-prepare (fn-node-initial-state *bpw-teeth-groups* 16)
                     9 "<bp@example.invalid>" *bpw-teeth-payload*
-                    *bpw-teeth-groups* "archive-bp" "subject-bp" "release-bp" 4)
+                    *bpw-teeth-groups* "archive-bp" "subject-bp" "release-bp" 4 841000000)
    0 9 :durable))
 (defconst *bpw-teeth-config*
   (fn-bp-make-config "dtn://home/fn" "dtn://peer/fn" "policy-1"

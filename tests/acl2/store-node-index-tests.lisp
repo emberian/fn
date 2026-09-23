@@ -80,7 +80,7 @@
 (make-event (list 'defconst '*sni-record*
                   (list 'quote (fn-record-make 0 0 0 "<sni@example>" *sni-octets*
                                                *sni-groups* "sni-pin"
-                                               "sni-content" "sni-release" 2))))
+                                               "sni-content" "sni-release" 2 841000000))))
 (assert-event (fn-record-p *sni-record*))
 
 ; -----------------------------------------------------------------------------
@@ -328,7 +328,7 @@
                   (list 'quote (fn-record-make 1 1 1 "<sni2@example>"
                                                *sni-octets-2* *sni-groups*
                                                "sni-pin-2" "sni-content-2"
-                                               "sni-release-2" 2))))
+                                               "sni-release-2" 2 841000000))))
 (assert-event (fn-record-p *sni-record-2*))
 
 (make-event (list 'defconst '*sni-forked*
