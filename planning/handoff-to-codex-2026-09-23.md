@@ -25,13 +25,13 @@ disagree, those win and this file is wrong.
   installed in 63 s with no red; exactly three books are over ten seconds
   (`tcpcl-session` 23 s, `owner-invariants` 17 s, `tcpcl-octets` 12 s), in
   the COST package.
-- The matrix on the da5fd8cb image
-  (`evidence/v0-runs/20260923T024725.039819Z-*/`): 218 rows, 164 observed,
-  three disagreements by name: `V0-CFG-LIVE`, where the live `group
-  create` is now accepted by the owner and the group is not served until a
-  restart, which is T8b; and `V0-TRANSIT-IDENTICAL-AB/BA`, whose
-  expectation predates the relay's Path prepend (a harness lane is
-  restating it as identity modulo the prepend). `V0-CFG-LIVE-REFUSE`,
+- The matrix on the da5fd8cb image, run with the INN rows driven
+  (`evidence/v0-runs/20260923T025807.647204Z-cab7e85-0656726f6c7a/`): 218 rows, 176 observed (132 accepted,
+  42 refused, 2 uncertain), 37 not exercised, 5 not built, and exactly
+  one disagreement: `V0-CFG-LIVE`, where the live `group create` is now
+  accepted by the owner and the group is not served until a restart,
+  which is T8b by name. All ten INN rows agree, the transit rows agree
+  under the relay's Path prepend, and `V0-CFG-LIVE-REFUSE`,
   `V0-NODE-PROFILE` and `V0-POST-FROM-MAILBOX` agree, which witnesses the
   live-rows, profile and conformance repairs on an image.
 - The INN lab on this image holds 33 of 33 with no fn-side finding
