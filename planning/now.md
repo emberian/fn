@@ -1,5 +1,17 @@
 # Current work — 2026-09-23
 
+## BP composition checkpoint — 23:33 UTC
+
+The integrated fragment/expiry/transit/deletion-report source `48425e4e`
+failed its first full incremental ACL2 run, [original manifest](evidence/manifests/certify-20260923T232613Z-475686.json).
+It reused 322 books and attempted 263 in 294.161 seconds at four jobs. The
+fragment guard exceeded its 180-second bound; the report guard consequently
+could not include its certificate. The FNBS replay invariant and test also
+failed. These are current-source integration defects to repair, not native
+BP evidence. Focused lanes are repairing the fragment guard cost and replay
+invariant before another source-matched image. The qualifying `1d26e01f`
+consumer/reader/clone campaign continues independently.
+
 ## Current repair qualification — 23:25 UTC
 
 Source `1d26e01f` passes the full incremental ACL2 run with 534 compatible

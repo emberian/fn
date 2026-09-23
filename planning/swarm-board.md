@@ -251,3 +251,23 @@ Current convergence checkpoint (root `b9bf596d`):
 
 The next small repaired poll/clone/Mini-projection image should not wait for
 all later P3 or BP work. Keep each source and test-driver identity explicit.
+
+
+### Root checkpoint — 2026-09-23 23:33 UTC
+
+- `1d26e01f` repair source full ACL2 PASS, 36.027 seconds; shared production
+  and developer images built. Signed poll, lost advancing-ACK reply/reopen,
+  historical live-group reader, clone rollover tests pass in the image lane;
+  original negative driver assertions and corrected test hashes are retained
+  separately. Mini is consuming the exact exported event and cursor.
+- BP source `48425e4e` full run `run-20260923T232555Z-a3c1` FAILED:
+  `bp-node-fragment-guards` timed out; `bp-report-guards` is its dependent;
+  `bp-fnbs-replay-invariants` and its test failed. Acceptance lane repairs the
+  fragment guard from its log, BP foundation repairs replay; status lane
+  maintains report campaign. No new unrelated behavior lands before these
+  batch regressions are repaired.
+- Ready subsequent packets: actual ADVANCE historical-reader relation
+  through `b8a1a02b`; allocator file-fence K0 through `f82213a3` with later
+  record-list proof in progress. Topic and consumer index lanes cooperate
+  on the shared Store configuration updater. Indexed OVER/XOVER closes its
+  affected owner proof set. The protected live service remains untouched.
