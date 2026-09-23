@@ -92,7 +92,7 @@
 (assert-event (equal (fn-cpc-decode-tree '(24 0) 2) '(:error :noncanonical)))
 ; Symbol codes outside the table.
 (assert-event (equal (fn-cpc-decode-tree '(3 0) 2) '(:error :symbol)))
-(assert-event (equal (fn-cpc-decode-tree '(3 4) 2) '(:error :symbol)))
+(assert-event (equal (fn-cpc-decode-tree '(3 5) 2) '(:error :symbol)))
 (assert-event (equal (fn-cpc-decode-tree '(3 2) 2)
                      (fn-record-parse-ok :archive nil)))
 (assert-event (equal (fn-cpc-decode-tree '(3 1) 2) (fn-record-parse-ok t nil)))

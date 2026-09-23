@@ -31,7 +31,7 @@
 ;   fn-own-open-observed-start-relation                (root)
 ;   fn-own-every-fact-is-clock-stamped, fn-own-declare-group-without-clock-
 ;   is-refused, fn-own-declared-group-is-replayed      (facts)
-;   fn-own-outcome-completion-is-one-of-three          (POST outcome; new)
+;   fn-own-outcome-completion-is-one-of-four           (POST outcome; clock refusal)
 ;   fn-own-durable-reply-names-a-durable-record        (POST outcome; new)
 ;   fn-own-read-touches-only-its-connection            (POST isolation; new)
 ;   fn-own-outcome-touches-only-its-connection         (POST isolation; new)
@@ -1790,10 +1790,11 @@
                                       fn-own-outcome-completion
                                       fn-peer-submissionp))))
 
-; The completion the reply renders is one of the three words, whatever the
-; host said.
-(defthm fn-own-outcome-completion-is-one-of-three
-  (member-equal (fn-own-outcome-completion o word) '(:durable :refused :uncertain)))
+; The completion the reply renders is one of the four words, preserving the
+; owner's unusable-clock reason rather than flattening it to article refusal.
+(defthm fn-own-outcome-completion-is-one-of-four
+  (member-equal (fn-own-outcome-completion o word)
+                '(:durable :refused :clock-unusable :uncertain)))
 
 ; Renamed from -is-post-session: the connection's session is the SERVED
 ; session, which is fn-auth-step's.
