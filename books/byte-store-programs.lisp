@@ -175,7 +175,9 @@
 ; after 878 the host raises StoreIndeterminate and observes
 ; (:frontier-replace :error) [880] or (:frontier-dir :error) [893].  The
 ; staging directory is never fenced; the rename's source :del-entry on
-; :staging stays pending for ever and recovery ignores it.
+; :staging stays pending for ever.  Recovery reads nothing in :staging, and
+; its sweep removes the stage a death leaves there, renamed or not
+; (fn-bs-recover-sweep-program below; K-sweep in byte-store-keystones).
 (defconst *fn-bs-frontier-on-known-fail* '((:observe (:frontier-file :known-fail))))
 (defconst *fn-bs-frontier-on-replace-error* '((:observe (:frontier-replace :error))))
 (defconst *fn-bs-frontier-on-dir-error* '((:observe (:frontier-dir :error))))
@@ -249,14 +251,32 @@
 ; was lost may still be pending, and 817/818 are what drain it.
 (defconst *fn-bs-recover-on-barrier-error* '((:observe (:recovery-barrier :uncertain))))
 
-; Recovery removes bounded staging orphans before replay barriers.  The
-; native `recovery-stage-unlinked` death point is after this unlink and before
-; any subsequent process can rely on cleanup.  Staging is not an authority
-; directory, but the physical cut still needs a byte-program transition.
+; Recovery removes bounded staging orphans AFTER fn-bs-recover-program has
+; run to its end: the host sweeps only once the fifth recovery barrier
+; observation has reached :ready (host/native/io.lisp `fnn-recover', whose
+; sweep is the model's, enabled only in that phase), and runs this program
+; once per removed orphan.  The native `recovery-stage-unlinked` death point
+; is after this unlink and before any subsequent process can rely on
+; cleanup; its coordinate is the whole of fn-bs-recover-program followed by
+; this program up to the cut (tests/campaign/native_cuts.py).  Staging is not
+; an authority directory, but the physical cut still needs a byte-program
+; transition.
 (defun fn-bs-recover-stage-cleanup-program (stage)
   (declare (xargs :guard t :verify-guards nil))
   (list (list :unlink :staging stage)
         (list :cut "recovery-stage-unlinked")))
+
+; The whole sweep: one cleanup per name the ACL2 sweep returned, in the order
+; the host unlinks them (host/native/io.lisp, fnn-sweep-staging, one dolist
+; per round of fn-sn-sweep-round).  Rounds are concatenated: between two
+; rounds the host only enumerates, which is a read of the view and no step.
+; Every cut of this program is a recovery-stage-unlinked death point.
+(defun fn-bs-recover-sweep-program (names)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp names)
+      (append (fn-bs-recover-stage-cleanup-program (car names))
+              (fn-bs-recover-sweep-program (cdr names)))
+    nil))
 
 ; P-INIT (Store.initialize and _publish_initial_file, 612-667): mkdir root,
 ; transactions, staging; each of config and frontier is staged, fenced,

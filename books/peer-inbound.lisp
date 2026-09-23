@@ -25,9 +25,18 @@
 ;
 ; A relaying agent MUST NOT alter anything but Path and Xref (RFC 5537
 ; section 3.6), so the injecting-agent step of books/injection.lisp is not
-; called: the received octets are stored exactly (D01) and the Path prepend
-; is rendered on the way out from the (:peer-transit ...) provenance.  What
-; POST and transit share is everything from fn-node-prepare down.
+; called.  What it MUST alter it alters once, at acceptance: the stored
+; payload is `fn-peer-relayed-octets' of the received octets
+; (books/path-update.lisp): this node's <path-identity> and the section 3.2.1
+; diagnostic prepended to Path, every Xref removed, every other octet as
+; received.  fn's relaying agent and its serving agent are one news server
+; over one store, so the stored octets are the served octets and the octets
+; the outbound feed offers (RFC 5537 section 3.2.1, first sentence; the
+; argument against serving-time rewriting is specs/peering.md 2.3).  Until
+; 2026-09-22 the received octets were stored exactly and a reader was served
+; INN's Path without this node in it and INN's Xref
+; (planning/evidence/inn-lab-dabebb84-2026-09-22.md, findings 2 and 3).
+; What POST and transit share is everything from fn-node-prepare down.
 ;
 ; The identity strings (obligation id, subject) are the host's under
 ; A-CRYPTO, as for POST: fn-frame-digest is constrained and unattached, so
@@ -50,6 +59,8 @@
 (include-book "identity")
 (include-book "peer-config")
 (include-book "provenance-codec")
+; fn-pu-relay-article: the Path update and Xref removal of RFC 5537 3.6/3.7.
+(include-book "path-update")
 
 (local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                           fn-nntp-projection-vocabulary
@@ -203,6 +214,32 @@
   (declare (xargs :guard t))
   (fn-record-string-octets (fn-cfg-policy (fn-cfg-value cfg) "path-identity")))
 
+; The expected <path-identity> of the source (RFC 5537 section 3.2.1): the
+; peer record's, which fn-cfg-peer-okp requires to be a <path-identity>.  A
+; record whose identity is not one never reaches here in a checked
+; configuration; it is read as none rather than rendered.
+(defun fn-peer-expected-identity (record)
+  (declare (xargs :guard t))
+  (let ((e (if record
+               (fn-record-string-octets (fn-cfg-peer-path-identity record))
+             nil)))
+    (if (fn-path-identityp e) e nil)))
+
+; What this node stores, serves and feeds on for an article a peer
+; transferred: the received octets with Path updated and Xref removed
+; (books/path-update.lisp `fn-pu-relay-article', whose four keystones are the
+; properties: nothing else changes, a second pass changes nothing, no Xref
+; remains, every Path begins with this node's identity).  host/owner-host.lisp
+; `fn-owner-take' puts these octets where the host reads the payload, and
+; `fn-peer-injection-arguments' stages them.
+(defun fn-peer-relayed-octets (cfg peer octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-pu-relay-article
+   octets
+   (fn-peer-local-identity cfg)
+   (fn-peer-expected-identity
+    (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))))
+
 (defun fn-peer-probe-obligation-id (msgid)
   (declare (xargs :guard t))
   (string-append "peer-probe:" (fn-record-octets-string msgid)))
@@ -298,6 +335,15 @@
           ; live now.
           ((null (fn-peer-scope-groups (fn-peer-check-groups check) record cfg))
            (fn-peer-decision :refuse :out-of-scope))
+          ; RFC 5537 section 3.6 step 7: the Path update is part of
+          ; accepting the article.  If the updated article no longer fits
+          ; the article bounds (books/article.lisp: a header line, the
+          ; header block or the article grew past its limit), the article
+          ; "MUST be rejected rather than modified" (section 3.6, last
+          ; paragraph) -- it is refused, never stored without the update.
+          ((not (fn-article-result-okp
+                 (fn-article-parse (fn-peer-relayed-octets cfg peer octets))))
+           (fn-peer-decision :refuse :oversize))
           ((fn-peer-stagedp (fn-record-octets-string msgid) node)
            (fn-peer-decision :defer :staged))
           ((consp (fn-node-stage node)) (fn-peer-decision :defer :busy))
@@ -305,9 +351,12 @@
            (fn-peer-decision :defer :fenced))
           ; Local policy: capacity at transfer time, the bytes having
           ; arrived, is a refusal (RFC 3977 section 6.3.2.2 lists disc space).
-          ((not (fn-retain-admissiblep (fn-node-retention node) id subject
-                                       :archive (fn-peer-evidence peer cfg)
-                                       (fn-charge-for-payload (len octets))))
+          ; The charge is the stored payload's: the updated article.
+          ((not (fn-retain-admissiblep
+                 (fn-node-retention node) id subject
+                 :archive (fn-peer-evidence peer cfg)
+                 (fn-charge-for-payload
+                  (len (fn-peer-relayed-octets cfg peer octets)))))
            (fn-peer-decision :refuse :capacity))
           (t (fn-peer-decision :want nil)))))
 
@@ -333,11 +382,11 @@
                   nil)))
     (list generation
           (fn-record-octets-string msgid)
-          octets
+          (fn-peer-relayed-octets cfg peer octets)
           (fn-peer-scope-groups (fn-peer-check-groups check) record cfg)
           id subject
           (fn-peer-evidence peer cfg)
-          (fn-charge-for-payload (len octets)))))
+          (fn-charge-for-payload (len (fn-peer-relayed-octets cfg peer octets))))))
 
 ; (mv node2 decision).  On :want it is exactly one fn-node-prepare; it never
 ; calls fn-accept-prepare directly and never touches retention itself.
@@ -1387,6 +1436,7 @@
                                       (:d fn-cfg-peer-inbound-max-inflight)
                                       (:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr)))))
 (verify-guards fn-peer-sessionp)
+(verify-guards fn-peer-relayed-octets)
 ; fn-peer-session-consistentp: OPEN, and not needed.  It calls
 ; fn-post-session-consistentp (books/nntp-post.lisp), which is itself
 ; :verify-guards nil; it is a specification predicate, not on the served
@@ -1404,6 +1454,7 @@
     (:d fn-peer-stagedp) (:d fn-peer-wildmat-matchp) (:d fn-peer-scope-groups)
     (:d fn-peer-transit-provenance) (:d fn-peer-transit-evidence)
     (:d fn-peer-evidence) (:d fn-peer-local-identity)
+    (:d fn-peer-expected-identity) (:d fn-peer-relayed-octets)
     (:d fn-peer-probe-obligation-id) (:d fn-peer-probe-subject)
     (:d fn-peer-decide-offer) (:d fn-peer-check-msgid) (:d fn-peer-check-groups)
     (:d fn-peer-decide-transfer) (:d fn-peer-injection-arguments)

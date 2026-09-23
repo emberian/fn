@@ -17,7 +17,6 @@
 (defconst *fn-ncfg-max-server* 128)
 (defconst *fn-ncfg-default-listener-host* "127.0.0.1")
 (defconst *fn-ncfg-default-listener-port* 1119)
-(defconst *fn-ncfg-default-agent* "fn-operator@localhost")
 (defconst *fn-ncfg-default-max-connections* 32)
 (defconst *fn-ncfg-default-clock-error-ms* 1000)
 
@@ -395,7 +394,7 @@ host resolver's intended deployment behavior.
          (auth-path (fn-ncfg-string-value (fn-ncfg-value pairs "auth" "path")
                                            (fn-ncfg-under-store store "/auth.toml") *fn-ncfg-max-path* nil))
          (enabled (fn-ncfg-bool-value (fn-ncfg-value pairs "posting" "enabled") t))
-         (agent (fn-ncfg-string-value (fn-ncfg-value pairs "posting" "agent") *fn-ncfg-default-agent* *fn-ncfg-max-text* nil))
+         (agent (fn-ncfg-string-value (fn-ncfg-value pairs "posting" "agent") nil *fn-ncfg-max-text* nil))
          (anchor (fn-ncfg-string-value (fn-ncfg-value pairs "anchor" "server") nil *fn-ncfg-max-server* nil))
          (log (fn-ncfg-string-value (fn-ncfg-value pairs "log" "path") nil *fn-ncfg-max-path* nil))
          (control (fn-ncfg-string-value (fn-ncfg-value pairs "control" "path")
@@ -435,19 +434,52 @@ host resolver's intended deployment behavior.
                 (if (equal config :bad) (list :refused :invalid) (list :accepted config)))))))
     (list :refused :bounds-or-encoding)))
 
-(defun fn-native-config-operator-availablep (config)
+;; What the native owner consumes, and the one key it cannot.
+;;
+;; `[log] path' is consumed: the operator opens it append-only before the
+;; store (host/native/operator.lisp) and the owner writes the service log
+;; lines books/owner-log.lisp renders there instead of to stderr.  It must
+;; be absolute, because the service's working directory is not part of the
+;; profile.
+;;
+;; `[posting] agent' is not a slot this node has.  The injecting agent's
+;; <path-identity> is what fn writes into Path and Injection-Info (RFC 5537
+;; section 3.2.1, RFC 5536 section 3.2.8), and fn keeps it in ONE place:
+;; the replayed configuration policy `path-identity', which peer loop
+;; suppression reads too (fn-peer-local-identity) and the owner installs
+;; into every served POST (books/owner-agent.lisp fn-oag-post-config).  A
+;; second value here could only disagree with Path, so the key is refused
+;; by name and the operator sets `policy set path-identity IDENTITY'.
+;;
+;; `[anchor] server' and `[acl2]' have no native consumer.
+(defun fn-native-config-log-pathp (path)
+  (declare (xargs :guard t))
+  (or (null path)
+      (and (stringp path)
+           (< 0 (length path))
+           (equal (char path 0) #\/))))
+
+(defun fn-native-config-unsupported-key (config)
+  "The first key of CONFIG the native owner cannot consume, or nil."
   ; The saved image consumes the paired TLS paths through its OpenSSL boundary.
   ; Protected-only credentials therefore require a configured TLS context;
   ; the parser's paired-path check makes one certificate imply one key.
   (declare (xargs :guard t))
-  (and (or (not (fn-native-config-auth-protected-onlyp config))
-           (fn-native-config-tls-cert config))
-       (booleanp (fn-native-config-posting-enabledp config))
-       (equal (fn-native-config-posting-agent config) *fn-ncfg-default-agent*)
-       (null (fn-native-config-anchor-server config))
-       (null (fn-native-config-log-path config))
-       (null (fn-native-config-acl2-path config))
-       (null (fn-native-config-acl2-slots config))))
+  (cond ((and (fn-native-config-auth-protected-onlyp config)
+              (not (fn-native-config-tls-cert config)))
+         "protected_only")
+        ((not (booleanp (fn-native-config-posting-enabledp config))) "enabled")
+        ((fn-native-config-posting-agent config) "agent")
+        ((fn-native-config-anchor-server config) "anchor")
+        ((not (fn-native-config-log-pathp (fn-native-config-log-path config)))
+         "log")
+        ((fn-native-config-acl2-path config) "acl2")
+        ((fn-native-config-acl2-slots config) "acl2")
+        (t nil)))
+
+(defun fn-native-config-operator-availablep (config)
+  (declare (xargs :guard t))
+  (null (fn-native-config-unsupported-key config)))
 
 (defthm fn-native-config-load-bounded-input-refuses
   (implies (or (not (fn-ncfg-ascii-octetsp octets))

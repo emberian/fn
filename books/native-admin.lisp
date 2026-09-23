@@ -626,6 +626,38 @@ shared immutable publication state before raw Lisp may execute an I/O action."
                 (t (fn-native-admin-publication-result
                     :accepted nil generation name (fn-jpub-initial t)))))))))
 
+;; KEYSTONE.  An administrative configuration record is published only by a
+;; process that observed its own exclusive writer lock, on every arm of the
+;; authorization, not only its first branch.  The host subject is
+;; `fn-store-cfg-native-admin-authorize' (host/store-node-host.lisp), a
+;; program-mode byte wrapper that either refuses `:decode' with no
+;; publication state or returns this function's result with LOCK-OWNED
+;; unchanged; host/native/admin.lisp `fnn-admin-authorize' calls it with
+;; `fnn-admin-lock-observation' (the store is writable and its lock
+;; descriptor is live), for both the offline executor (`fnn-admin-execute')
+;; and the live owner's arm (`fnn-owner-live-admin-serialized').  Raw Lisp
+;; mutates only through `fnn-admin-publish', which hands this result's jpub to
+;; `fnn-immutable-publish-effect'; that executor's first action is gated on
+;; `fn-jpub-host-authorized-initialp' (host/native/immutable-publish.lisp),
+;; which holds only of a non-NIL jpub.  So the stage, link and barrier writes
+;; are reachable only under LOCK-OWNED.  A second process over a live owner's
+;; store is refused earlier still, `store is already locked' at the
+;; nonblocking flock in `fnn-open-lock' (host/native/io.lisp), the word the
+;; query executor reports too; this theorem is what keeps publication
+;; unreachable if that open ever admitted an unlocked store.
+;; Teeth: tests/acl2/native-admin-tests.lisp.
+(defthm fn-native-admin-publication-is-authorized-only-under-the-lock
+  (let ((result (fn-native-admin-publication-authorize
+                 records frontier config-records record lock-owned observed-names)))
+    (and (implies (equal (fn-native-admin-publication-status result) :accepted)
+                  lock-owned)
+         (implies (fn-native-admin-publication-jpub result)
+                  lock-owned)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-publication-authorize)
+                                  (fn-cnode-config-replay fn-native-admin-candidate-openp
+                                   fn-native-admin-config-name fn-cfg-recordp)))))
+
 (defthm fn-native-admin-config-name-of-one
   (equal (fn-native-admin-config-name 1) "00000001.cfg"))
 

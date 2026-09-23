@@ -819,6 +819,86 @@
   (declare (xargs :guard t))
   (and (consp sub) (equal (fn-own-sub-id sub) *fn-own-control-id*)))
 
+; The operator's submission: `fn operator CONFIG post' (host/native/operator.lisp
+; `fnn-operator-execute-post', the local control channel, host/native/owner.lisp
+; `fnn-owner-control-submit-serialized', host/owner-host.lisp
+; `fn-owner-operator-submit', the (:operator-submit ...) event below).
+;
+; Until 2026-09-22 this verb reached `fn-own-control-submit': the supplied
+; octets were stored as they came, with no Path, Injection-Date or
+; Injection-Info, and the outbound feed offered them so; INN answered `437
+; Missing "Path" header field' (planning/evidence/inn-lab-dabebb84-2026-09-22.md,
+; finding 1).  An operator submitting a proto-article is a posting agent and
+; this node its injecting agent (RFC 5537 section 3.5), exactly as for POST:
+; the octets are fn-inj-decide's, under the owner's posting configuration and
+; the owner's current clock reading, and with no clock nothing is injected
+; (D10-a).  The Message-ID and the newsgroups the command line names must be
+; the ones the injection reads from the article; a disagreement is refused
+; (:control-mismatch), never reconciled.
+;
+; A retry of one proto-article after the clock has moved injects different
+; octets (a new Injection-Date), which the store answers as a conflict: an
+; operator whose first outcome was lost would be told `refused' of an article
+; the node holds.  So when the live node already holds that Message-ID as an
+; injection of these very source octets by this agent (fn-inj-reinjectionp),
+; the submission IS the stored article and the store answers its duplicate
+; (fn-own-operator-retry-resubmits-the-stored-injection, books/owner-invariants).
+;
+; The hybrid-signed author path and the BP application path still submit
+; exact authored octets through fn-own-control-submit: a signature binds
+; those octets, and neither path is this verb.
+(defun fn-own-stored-octets (node msgid)
+  (declare (xargs :guard t))
+  (let ((article (fn-find-article (fn-record-octets-string msgid)
+                                  (fn-state-articles (fn-node-acceptance node)))))
+    (if article (fn-article-payload article) :absent)))
+
+(defun fn-own-clock-usablep (clock)
+  (declare (xargs :guard t))
+  (and (fn-clock-observationp clock) (fn-clock-has-wall clock) t))
+
+(defun fn-own-operator-decision (cfg clock node msgid groups octets)
+  (declare (xargs :guard t))
+  (if (not (fn-own-clock-usablep clock))
+      (fn-inj-refuse :clock-unusable)
+    (let ((stored (fn-own-stored-octets node msgid)))
+      (if (and (fn-inj-config-allow cfg)
+               (not (equal stored :absent))
+               (fn-inj-reinjectionp stored octets (fn-inj-config-agent cfg) msgid))
+          (fn-inj-make-decision :injected nil msgid groups stored)
+        (let ((d (fn-inj-decide octets cfg clock)))
+          (cond ((not (fn-inj-injectedp d)) d)
+                ((not (and (equal (fn-inj-decision-msgid d) msgid)
+                           (equal (fn-inj-decision-groups d) groups)))
+                 (fn-inj-refuse :control-mismatch))
+                (t d)))))))
+
+(defun fn-own-operator-decision-of (o msgid groups octets)
+  (declare (xargs :guard t))
+  (fn-own-operator-decision (fn-own-config o) (fn-own-clock o)
+                            (fn-sn-node (fn-own-store o)) msgid groups octets))
+
+(defun fn-own-operator-submit-result (o msgid groups octets)
+  (declare (xargs :guard t))
+  (let ((decision (fn-own-operator-decision-of o msgid groups octets)))
+    (cond ((not (fn-inj-injectedp decision)) :refused)
+          ((or (consp (fn-own-queue o))
+               (fn-own-inflight o)
+               (fn-own-pending o)
+               (not (equal (fn-sf-phase (fn-sn-files (fn-own-store o)))
+                           :ready)))
+           :busy)
+          (t :submitted))))
+
+(defun fn-own-operator-submit (o msgid groups octets)
+  (declare (xargs :guard t))
+  (if (equal (fn-own-operator-submit-result o msgid groups octets) :submitted)
+      (fn-own-enqueue
+       o (fn-own-sub-make *fn-own-control-id*
+                          (fn-own-view-version (fn-own-view o)) nil
+                          (fn-own-operator-decision-of o msgid groups octets)))
+    o))
+
 ; The node a peer connection's OFFER decision reads.
 ;
 ; `fn-peer-decide-offer' (books/peer-inbound.lisp, the IHAVE and CHECK arms
@@ -1725,6 +1805,8 @@
     (:take (fn-own-take-submission o))
     (:control-submit (fn-own-control-submit o (cadr event) (caddr event)
                                             (cadddr event)))
+    (:operator-submit (fn-own-operator-submit o (cadr event) (caddr event)
+                                              (cadddr event)))
     (:outcome (cdr (fn-own-outcome o (cadr event) (caddr event))))
     (:control-outcome (fn-own-control-outcome o (cadr event)))
     (:transit-outcome (cdr (fn-own-transit-outcome o (cadr event) (caddr event)
@@ -1779,6 +1861,9 @@
     fn-own-read fn-own-read-step fn-own-advance fn-own-close fn-own-begin
     fn-own-control-decision fn-own-control-submit-result fn-own-control-submit
     fn-own-control-submissionp fn-own-control-outcome-result
+    fn-own-stored-octets fn-own-clock-usablep fn-own-operator-decision
+    fn-own-operator-decision-of fn-own-operator-submit-result
+    fn-own-operator-submit
     fn-own-control-outcome fn-own-control-outcome-records
     fn-own-store-step fn-own-complete fn-own-reopen
     fn-own-observe-outcome fn-own-observe

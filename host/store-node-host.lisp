@@ -753,12 +753,14 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 ; Native recovery consumes the structured result directly.  Unlike the older
 ; LF-joined adapter for Python, it cannot confuse an observed filename that
-; contains LF with two distinct names.  The policy subject remains exactly
-; fn-sn-sweep-staging.
-(defun fn-store-sn-sweep-staging-list (observed held state)
+; contains LF with two distinct names.  The subject is fn-sn-sweep-round:
+; one bounded observation, whether the directory held more, and the answer
+; (:done|:again|:refused removals) that decides the host's next round
+; (host/native/io.lisp, fnn-sweep-staging).
+(defun fn-store-sn-sweep-round (observed overp held state)
   (declare (xargs :stobjs state :mode :program))
-  (value (car (fn-sn-sweep-staging (f-get-global 'fn-store-sn state)
-                                   observed held))))
+  (value (fn-sn-sweep-round (f-get-global 'fn-store-sn state)
+                            observed overp held)))
 
 (defun fn-store-sn-staging-observation-limit (state)
   (declare (xargs :stobjs state :mode :program))

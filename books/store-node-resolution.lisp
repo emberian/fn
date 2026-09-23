@@ -476,9 +476,20 @@
 ; =============================================================================
 ; Mixed live-store traces including refusal and known prepublication abort
 ; (folded from store-node-resolution-traces.lisp, 2026-09-19 realignment).
+; The two deferred preparations stay closed in this section, as
+; `fn-sn-prepare' is on export from books/store-node (that book's export
+; disable predates them and leaves them enabled).  Open, each unfolds through
+; `fn-replay-apply-retention-event', `fn-replay-apply-record',
+; `fn-replay-identity-step' and the record and stx recognizers, and a goal
+; over `fn-snrt-step' that only dispatches on the event kind split into 21394
+; cases (466 s; planning/evidence/store-node-resolution-cost-2026-09-23.md).
+; What those goals need of an arm is its footprint: it acknowledges nothing
+; (`fn-sn-prepare-retention-cannot-acknowledge' above) and publishes no
+; record (`fn-snt-prepare-retention-keeps-records', books/store-node-traces).
 (local (in-theory (disable fn-snt-step   fn-sf-prefixp
                            fn-node-recover fn-node-initial-state
                             fn-state-next-txid
+                           fn-sn-prepare-retention fn-sn-prepare-identity
                              )))
 
 ; Like the base dispatcher, these are decoded logical events.  The two added
@@ -654,7 +665,9 @@
   :hints (("Goal"
            :use (fn-snt-related-records-true-list
                  (:instance fn-snt-step-records-prefix))
-           :in-theory (e/d (fn-snrt-step)
+           :in-theory (e/d (fn-snrt-step
+                            fn-snt-prepare-retention-keeps-records
+                            fn-snt-prepare-identity-keeps-records)
                            (fn-snt-relation fn-snt-step fn-sn-refuse-reservation
                             fn-sn-known-abort  
                             fn-sf-prefixp fn-snt-step-records-prefix)))))

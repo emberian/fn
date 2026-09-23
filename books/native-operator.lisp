@@ -253,10 +253,14 @@ is installed into the owner for both served and control submission."
                 (let ((parsed (fn-nop-parse-command words config argv-octets)))
                   ; Valid configuration is sufficient for offline store actions.
                   ; Only an accepted RUN plan requires every owner backend.
+                  ; The refusal names the key (fn-native-config-unsupported-key),
+                  ; so the operator is told which line to change.
                   (if (and (equal (fn-native-operator-result-status parsed) :accepted)
                            (equal (fn-native-operator-result-command parsed) "run")
                            (not (fn-native-config-operator-availablep config)))
-                      (fn-nop-usage :unsupported-profile "run" config nil)
+                      (fn-nop-usage (list :unsupported-profile
+                                          (fn-native-config-unsupported-key config))
+                                    "run" config nil)
                     parsed))))))))))
 
 (in-theory (disable fn-native-operator-run))
@@ -352,6 +356,17 @@ is installed into the owner for both served and control submission."
   (and (fn-native-operator-result-run-planp result)
        (fn-native-config-posting-enabledp
         (fn-native-operator-result-config result))))
+
+; The service log the run plan names, or nil for stderr.  Only an admitted
+; profile reaches a run plan, so the path is absolute
+; (fn-native-config-log-pathp).
+(defun fn-native-operator-result-run-log-path-octets (result)
+  (declare (xargs :guard t))
+  (if (and (fn-native-operator-result-run-planp result)
+           (fn-native-config-log-path (fn-native-operator-result-config result)))
+      (fn-record-string-octets
+       (fn-native-config-log-path (fn-native-operator-result-config result)))
+    nil))
 
 (defun fn-native-operator-result-post-planp (result)
   (declare (xargs :guard t))

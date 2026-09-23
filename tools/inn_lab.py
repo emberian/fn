@@ -1425,11 +1425,12 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
                   and found["result"][:3] in ("235", "239"))
         self.check("operator-post-feeds-inn", ok,
                    "`operator post` accepted {} (rc={}) and fn's feed offered it to innd, "
-                   "which answered {}. The octets fed carry {} Path header: `operator "
-                   "post` stores the payload as submitted, with no injection (no Path, "
-                   "no Injection-Info; RFC 5536 3.1.6 makes Path mandatory), and the "
-                   "outbound feed relays it without prepending fn's path identity "
-                   "(RFC 5537 3.6), so INN has no Path to accept it under.".format(
+                   "which answered {}. The octets fed carry {} Path header. `operator "
+                   "post` is a posting agent's submission, so fn is its injecting "
+                   "agent and must add Path, Injection-Date and Injection-Info as "
+                   "for a served POST (RFC 5537 3.5; RFC 5536 3.1.6 makes Path "
+                   "mandatory); books/owner.lisp fn-own-operator-submit is where "
+                   "fn does that.".format(
                        msgid, step.rc, self.reply_summary(found),
                        "a `{}`".format(path_header) if path_header else "NO"),
                    observed=self.reply_summary(found))

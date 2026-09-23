@@ -468,6 +468,32 @@ label; it does not select a policy."
       (fnn-posix (path) (sb-posix:closedir dir)))
     (nreverse names)))
 
+;; The staging sweep's enumeration.  Unlike the bounded listing above, a
+;; directory larger than LIMIT is not a fault here: the sweep is decided in
+;; rounds (books/store-sweep.lisp, fn-sn-sweep-round), so one round retains at
+;; most LIMIT names and reports only that the directory held another.  Which
+;; names are retained is directory order, sorted afterwards; nothing here
+;; classifies a name.
+(defun fnn-list-directory-window (path limit)
+  "Up to LIMIT entry names of PATH, and whether PATH held a further entry."
+  (unless (and (integerp limit) (> limit 0))
+    (fnn-fault "invalid ACL2 directory observation limit"))
+  (let ((dir (fnn-posix (path) (sb-posix:opendir path))) (names nil) (entry-count 0)
+        (more nil))
+    (unwind-protect
+         (loop
+           (let ((entry (fnn-posix (path) (sb-posix:readdir dir))))
+             (when (sb-alien:null-alien entry) (return))
+             (let ((name (sb-posix:dirent-name entry)))
+               (unless (or (string= name ".") (string= name ".."))
+                 (when (>= entry-count limit)
+                   (setq more t)
+                   (return))
+                 (push name names)
+                 (incf entry-count)))))
+      (fnn-posix (path) (sb-posix:closedir dir)))
+    (values (nreverse names) more)))
+
 (defun fnn-link (old new) (fnn-posix (new) (sb-posix:link old new)))
 (defun fnn-replace (old new) (fnn-posix (new) (sb-posix:rename old new)))
 (defun fnn-unlink (path) (fnn-posix (path) (sb-posix:unlink path)))
@@ -729,23 +755,30 @@ binding.  It performs no filename parser, decimal conversion, or gap policy."
       (fnn-fault "ACL2 returned a non-positive staging observation limit"))
     value))
 
-(defun fnn-bridge-sweep-staging (observed)
-  "Ask the recovery model which observed staging names may be unlinked.
+(defun fnn-bridge-sweep-round (observed more)
+  "Ask the recovery model what one bounded staging observation decides.
 
-OBSERVED came from one bounded directory enumeration.  The native adapter
-marshals that observation and verifies the returned representation; it does
-not repeat the staging-prefix, held-name, or phase policy."
-  (let ((value (fnn-core-state 'fn-store-sn-sweep-staging-list
+OBSERVED came from one bounded directory enumeration and MORE says whether the
+directory held a further entry.  The answer is (values ACTION REMOVALS):
+:DONE, :AGAIN or :REFUSED, books/store-sweep.lisp fn-sn-sweep-round.  The
+native adapter marshals the observation and verifies the returned
+representation; it does not repeat the staging-prefix, held-name, phase or
+round policy."
+  (let ((value (fnn-core-state 'fn-store-sn-sweep-round
                                (mapcar (lambda (name)
                                          (fnn-octet-list (fnn-string-octets name)))
                                        observed)
+                               (if more t nil)
                                nil)))
-    (unless (and (listp value) (every #'fnn-octet-list-p value))
-      (fnn-fault "ACL2 returned malformed staging sweep names"))
-    (mapcar (lambda (octets)
-              (handler-case (fnn-octets-string (fnn-octets octets))
-                (error () (fnn-fault "ACL2 returned a non-UTF-8 staging name"))))
-            value)))
+    (unless (and (consp value) (member (first value) '(:done :again :refused))
+                 (consp (rest value)) (null (cddr value))
+                 (listp (second value)) (every #'fnn-octet-list-p (second value)))
+      (fnn-fault "ACL2 returned a malformed staging sweep round"))
+    (values (first value)
+            (mapcar (lambda (octets)
+                      (handler-case (fnn-octets-string (fnn-octets octets))
+                        (error () (fnn-fault "ACL2 returned a non-UTF-8 staging name"))))
+                    (second value)))))
 (defun fnn-bridge-io (operation result)
   (fnn-action (fnn-core-state 'fn-store-sn-io operation result)))
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)
@@ -927,7 +960,8 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defparameter +fnn-default-groups+ (list "fn.letters" "fn.test"))
 
 (defstruct (fnn-store (:constructor %make-fnn-store))
-  root writable lock-fd config frontier fenced (orphans nil) (completion-pending nil)
+  root writable lock-fd config frontier fenced (orphans nil) (orphans-more nil)
+  (completion-pending nil)
   ;; The checkpoint layer runs only after authoritative full replay.  It keeps
   ;; its diagnostic outcome here and never replaces the live store-node state.
   (checkpoint-outcome '(:none))
@@ -956,7 +990,9 @@ resolves the names against `domain' and the host carries that list verbatim."
   (when (eq point (fnn-store-fault-point store))
     (cond ((eq (fnn-store-fault-class store) 'fnn-os-error)
            (fnn-os-fail sb-posix:eio))
-          ;; FN_NATIVE_INIT_FAULT is a developer-test seam.  SIGKILL is
+          ;; Only a developer-image selector arms this class
+          ;; (fnn-post-entry-fault, fnn-recovery-test-fault,
+          ;; fnn-init-test-fault).  SIGKILL is
           ;; deliberate: unlike an exception it cannot run unwind-protect
           ;; cleanup, so the next command tests an actual new process.
           ((eq (fnn-store-fault-class store) :fnn-test-kill)
@@ -1148,43 +1184,66 @@ kernel may have issued the namespace operation even when it reports failure."
             actual-lower)))
 
 (defun fnn-staging-observation (store)
-  "The bounded physical observation supplied to the ACL2 staging policy."
+  "One bounded physical observation for the ACL2 staging policy.
+
+The answer is (values NAMES MORE): at most the ACL2 limit of sorted names, and
+whether the directory held another entry."
   (let ((limit (fnn-bridge-staging-observation-limit)))
     (handler-case
-        (sort (fnn-list-directory-bounded (fnn-staging store) limit
-                                          "staging namespace")
-              #'string<)
+        (multiple-value-bind (names more) (fnn-list-directory-window (fnn-staging store) limit)
+          (values (sort names #'string<) more))
       (fnn-os-error () (fnn-fault "cannot enumerate staging")))))
 
 (defun fnn-staging-orphans (store)
-  "The bounded report after a recovery policy decision or a read-only open."
-  (fnn-staging-observation store))
+  "The bounded report after a recovery policy decision or a read-only open.
+
+A shared-lock reader does not sweep; it reports one observation and says when
+the directory held more than it shows."
+  (multiple-value-bind (names more) (fnn-staging-observation store)
+    (setf (fnn-store-orphans-more store) more)
+    names))
 
 (defun fnn-sweep-staging (store)
-  "Apply the ACL2-owned recovery policy to one bounded staging observation.
+  "Apply the ACL2-owned recovery policy, one bounded observation per round.
 
-The core's result must be an observed name.  That check is representation
-validation at the host boundary, not a second staging policy.  ENOENT means a
-concurrent external removal won the race; any other unlink error is uncertain
-because the name may or may not still be present after the syscall."
-  (let* ((observed (fnn-staging-observation store))
-         (removals (fnn-bridge-sweep-staging observed)))
-    (dolist (name removals)
-      (unless (member name observed :test #'string=)
-        (fnn-fault "ACL2 returned a staging removal outside the observation"))
-      (handler-case
-          (progn
-            (fnn-unlink (fnn-join (fnn-staging store) name))
-            ;; Developer-only source-pinned recovery seam.  It runs after the
-            ;; real unlink, so EIO here is a post-success observation and
-            ;; SIGKILL is process death before the next directory observation.
-            (fnn-at store :recovery-stage-unlinked))
-        (fnn-os-error (e)
-          (if (= (fnn-os-errno e) sb-posix:enoent)
-              nil
-              (fnn-indeterminate "cannot collect staging orphan ~a: ~a" name e)))))
-    (setf (fnn-store-orphans store) (fnn-staging-observation store))
-    removals))
+Each round enumerates at most the ACL2 limit, asks fn-sn-sweep-round, and
+unlinks what it returns.  :AGAIN promises the round removed a name, so the next
+enumeration is of a strictly smaller directory
+(fn-sn-sweep-rounds-collect-every-orphan); :REFUSED is a directory holding more
+names than one observation, none of which the model may remove, and it is a
+refusal, not a fault.  The core's removals must be observed names; that check
+is representation validation at the host boundary, not a second staging
+policy.  ENOENT means a concurrent external removal won the race; any other
+unlink error is uncertain because the name may or may not still be present
+after the syscall."
+  (let ((removed nil))
+    (loop
+      (multiple-value-bind (observed more) (fnn-staging-observation store)
+        (multiple-value-bind (action removals) (fnn-bridge-sweep-round observed more)
+          (dolist (name removals)
+            (unless (member name observed :test #'string=)
+              (fnn-fault "ACL2 returned a staging removal outside the observation"))
+            (handler-case
+                (progn
+                  (fnn-unlink (fnn-join (fnn-staging store) name))
+                  ;; Developer-only source-pinned recovery seam.  It runs after the
+                  ;; real unlink, so EIO here is a post-success observation and
+                  ;; SIGKILL is process death before the next directory observation.
+                  (fnn-at store :recovery-stage-unlinked))
+              (fnn-os-error (e)
+                (if (= (fnn-os-errno e) sb-posix:enoent)
+                    nil
+                    (fnn-indeterminate "cannot collect staging orphan ~a: ~a" name e))))
+            (push name removed))
+          (case action
+            (:again nil)
+            (:done (return))
+            (:refused
+             (fnn-refuse "staging namespace holds more than ~d names recovery may not remove"
+                         (length observed)))
+            (otherwise (fnn-fault "ACL2 returned an invalid staging sweep action"))))))
+    (setf (fnn-store-orphans store) (fnn-staging-orphans store))
+    (nreverse removed)))
 
 (defun fnn-load-config (store)
   (fnn-check-regular (fnn-config-path store))
@@ -1557,8 +1616,8 @@ from the live ACL2 configuration; the native host does not name a provenance."
 (defun fnn-orphan-report (store)
   (if (null (fnn-store-orphans store))
       "staging-orphans=0"
-      (format nil "staging-orphans=~d [~{~a~^ ~}]" (length (fnn-store-orphans store))
-              (fnn-store-orphans store))))
+      (format nil "staging-orphans=~d~:[~;+~] [~{~a~^ ~}]" (length (fnn-store-orphans store))
+              (fnn-store-orphans-more store) (fnn-store-orphans store))))
 
 (defun fnn-checkpoint-report (store)
   (let ((outcome (fnn-store-checkpoint-outcome store)))
@@ -1600,7 +1659,7 @@ from the live ACL2 configuration; the native host does not name a provenance."
 This is intentionally not a command-line option or an operator configuration
 field.  The external native fidelity test uses it to stop one child process at
 a source-pinned post-syscall cut."
-  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_INIT_FAULT")))
+  (let ((raw (fnn-developer-selector "FN_NATIVE_INIT_FAULT")))
     (when raw
       (let ((colon (position #\: raw :from-end t)))
         (unless colon
@@ -1616,16 +1675,24 @@ a source-pinned post-syscall cut."
                       (t (fnn-fault "invalid FN_NATIVE_INIT_FAULT action: ~a" action)))
                 "developer-only native initializer fault"))))))
 
+;; In the order fnn-recover reaches them.  `recover-replayed' and
+;; `recover-barrier' are fn-bs-recover-program's own cuts
+;; (books/byte-store-programs.lisp); `recover-barrier' names five sites and a
+;; store fault fires at the first one reached.  `recovery-stage-unlinked' is
+;; fn-bs-recover-stage-cleanup-program's cut, and that program runs once per
+;; removed orphan AFTER fn-bs-recover-program has completed: fnn-recover
+;; sweeps only once the fifth barrier observation has reached :ready.
 (defparameter +fnn-recovery-model-cuts+
-  '("recovery-stage-unlinked"))
+  '("recover-replayed" "recover-barrier" "recovery-stage-unlinked"))
 
 (defun fnn-recovery-test-fault ()
   "Developer-only FN_NATIVE_RECOVERY_FAULT=MODEL-CUT:eio|kill selector.
 
-This is not an operator option.  It exists solely to make a recovery cleanup
-cut explicit: the selected outcome is raised after the real unlink, and a
-subsequent command is a fresh process rather than an in-process retry."
-  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_RECOVERY_FAULT")))
+This is not an operator option.  It selects one of fnn-recover's `fnn-at'
+cuts: after replay, after a recovery barrier, or after the real unlink of a
+staging orphan.  A subsequent command is a fresh process rather than an
+in-process retry."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_RECOVERY_FAULT")))
     (when raw
       (let ((colon (position #\: raw :from-end t)))
         (unless colon
@@ -1670,10 +1737,8 @@ subsequent command is a fresh process rather than an in-process retry."
 The point is one of fnn-advance-frontier/fnn-publish/fnn-finish's actual
 fnn-at boundaries.  SIGKILL cannot run unwind-protect, so the next command
 observes a genuine new-process image."
-  (let ((raw (sb-ext:posix-getenv "FN_NATIVE_POST_FAULT")))
+  (let ((raw (fnn-developer-selector "FN_NATIVE_POST_FAULT")))
     (when raw
-      (unless (fnn-developer-image-p)
-        (fnn-fault "FN_NATIVE_POST_FAULT requires a developer image"))
       (let ((colon (position #\: raw :from-end t)))
         (unless colon
           (fnn-fault "invalid FN_NATIVE_POST_FAULT (expected MODEL-CUT:eio|kill)"))
@@ -1689,11 +1754,39 @@ observes a genuine new-process image."
                           "invalid FN_NATIVE_POST_FAULT action: ~a" action)))
                 "developer-only native post fault"))))))
 
+(defun fnn-post-entry-fault (inject)
+  "The one store fault a posting entry arms, or NIL.
+
+Both posting entries call this: `store ROOT post' (fnn-command-post) and the
+served owner (fnn-owner-run-normalized, fnn-command-owner in owner.lisp).  So
+both read the same selectors, from the same tables, into the same store slot
+that `fnn-at' tests; the cut sites themselves are in fnn-recover,
+fnn-advance-frontier, fnn-publish and fnn-finish, which both entries call.
+
+INJECT is the positional `store post' FAULT argument (one of
++fnn-cli-faults+).  FN_NATIVE_POST_FAULT selects a post cut and
+FN_NATIVE_RECOVERY_FAULT a recovery cut.  A store has one fault slot, so two
+selections at once are a usage error rather than one silently winning.  On a
+production image the environment selectors read as NIL (the startup gate
+`fnn-developer-selector-gate' has already refused them) and INJECT is a usage
+error for the same reason."
+  (when (and inject (not (fnn-developer-image-p)))
+    (error 'fnn-usage-error
+           :message "the store post FAULT argument requires a developer image"))
+  (let* ((positional
+           (when inject
+             (or (cdr (assoc inject +fnn-cli-faults+ :test #'string=))
+                 (error 'fnn-usage-error :message "unknown fault point"))))
+         (selected (remove nil (list positional (fnn-post-test-fault)
+                                     (fnn-recovery-test-fault)))))
+    (when (cdr selected)
+      (error 'fnn-usage-error
+             :message "select at most one of the FAULT argument, FN_NATIVE_POST_FAULT and FN_NATIVE_RECOVERY_FAULT"))
+    (first selected)))
+
 (defun fnn-command-post (root message-id payload-path charge-text inject groups)
   (let* ((msgid (fnn-octets (fnn-ascii-octet-list message-id)))
-         (fault (or (and inject (cdr (assoc inject +fnn-cli-faults+ :test #'string=)))
-                    (fnn-post-test-fault))))
-    (when (and inject (null fault)) (error 'fnn-usage-error :message "unknown fault point"))
+         (fault (fnn-post-entry-fault inject)))
     (multiple-value-bind (store records) (fnn-open-live-store root t fault)
       (unwind-protect
            (let* ((payload (fnn-read-regular-bounded payload-path
@@ -2299,6 +2392,55 @@ serialized profile when the saved image later starts."
 (defun fnn-developer-image-p ()
   (eq *fnn-image-profile* :developer))
 
+(defun fnn-dash-nil (text) (if (string= text "-") nil text))
+
+;;; Developer selectors: one table, one gate.
+;;;
+;;; Each name below arms a developer-only cut or fault: a process death, an
+;;; injected EIO, a stop, a pause.  A developer image honours them.  A
+;;; production image refuses to START with any of them in its environment, or
+;;; with a `store post' FAULT argument: `fnn-main' calls
+;;; `fnn-developer-selector-gate' before `fnn-dispatch', so the refusal is a
+;;; usage exit (5) naming the variable, and no store, socket or request is
+;;; ever reached.  Readers go through `fnn-developer-selector', which answers
+;;; NIL on a production image, so no reader has a production branch of its own
+;;; and no refusal can arrive in the middle of a request as an outcome it is
+;;; not (review of the dabebb84 campaign, F4 to F6).
+(defparameter +fnn-developer-selectors+
+  '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+    "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
+    "FN_NATIVE_AUTH_ADMIN_FAULT"
+    "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"))
+
+(defun fnn-developer-selector (name)
+  "The value of developer selector NAME on a developer image, else NIL."
+  (unless (member name +fnn-developer-selectors+ :test #'string=)
+    (fnn-fault "~a is not a registered developer selector" name))
+  (and (fnn-developer-image-p) (sb-ext:posix-getenv name)))
+
+(defun fnn-store-post-fault-argument (argv)
+  "The positional FAULT of `store ROOT post MSGID PAYLOAD CHARGE FAULT ...'."
+  (and (>= (length argv) 7)
+       (string= (first argv) "store")
+       (string= (third argv) "post")
+       (fnn-dash-nil (nth 6 argv))))
+
+(defun fnn-developer-selector-refusal (argv)
+  "NIL, or what a production image finds that only a developer image honours."
+  (unless (fnn-developer-image-p)
+    (or (dolist (name +fnn-developer-selectors+)
+          (when (sb-ext:posix-getenv name) (return name)))
+        (and (fnn-store-post-fault-argument argv)
+             "the store post FAULT argument"))))
+
+(defun fnn-developer-selector-gate (argv)
+  "Refuse, before any store is opened, a production start that names a cut."
+  (let ((found (fnn-developer-selector-refusal argv)))
+    (when found
+      (error 'fnn-usage-error
+             :message (format nil "~a is a developer-image selector; this production image does not start with it"
+                              found)))))
+
 (defun fnn-register-developer-verb (verb handler)
   "Register a diagnostic entry only in an explicitly selected developer image."
   (when (fnn-developer-image-p)
@@ -2308,7 +2450,6 @@ serialized profile when the saved image later starts."
 (defun fnn-verb-handler (verb)
   (cdr (assoc verb *fnn-verbs* :test #'string=)))
 
-(defun fnn-dash-nil (text) (if (string= text "-") nil text))
 
 (defun fnn-dispatch (args)
   (flet ((need (n) (when (< (length args) n) (error 'fnn-usage-error :message "missing arguments"))))
@@ -2377,6 +2518,7 @@ serialized profile when the saved image later starts."
          (code
            (handler-case
                (progn
+                 (fnn-developer-selector-gate argv)
                  (unless (eq (fnn-global 'guard-checking-on) t)
                    (fnn-fault "guard-checking-on is not t in the saved image"))
                  (fnn-dispatch argv))

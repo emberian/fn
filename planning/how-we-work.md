@@ -94,3 +94,40 @@ the other arms or say why they are unreachable. Uncertain, refused and
 accepted stay three words all the way out. The pessimistic number is quoted
 with its scope in the same sentence. Counts come from the tools. A branch
 someone else left is an input to a brief, never a thing to "resume".
+
+## Certification cost, learned 2026-09-23
+
+Four lanes each spent over an hour recertifying 60 to 150 books from
+`sha256` upward, one chain of large books at a time, while the agents sat
+in `farm.py wait`. The cache had no usable entry at their digests because
+every merge that day touched a book low in the graph and nobody had
+published a certification of `dev`'s head since. The rules that follow:
+
+- **Root keeps `dev` certified.** After each merge batch root submits one
+  treewide run of `dev`'s head on persvati (`farm.py submit persvati
+  $(python3 tools/proof_artifacts.py roots --profile all) --closure --jobs 8
+  --cache /home/ember/fn-certcache ...`) so the cache carries every
+  unchanged book at its current digest, and a lane's run certifies only
+  what the lane changed and what includes it.
+- **A lane does not merge `dev` mid-flight.** It branches from `dev`, works,
+  certifies its own change against the digests it branched at, and root
+  merges on landing; if root needs the lane on a newer base, root says so
+  and the lane recertifies only what the merge changed.
+- **A lane reports when its run is submitted**, with the run id and the
+  gate, and root harvests the manifest with `farm.py wait` and files it.
+  An agent waiting an hour on a farm run is the most expensive idle there
+  is. If a lane must wait on something (a proof session loading, a short
+  run), it issues ONE command in the background and does other work until
+  the notification arrives; a foreground wait that hits the ten-minute
+  shell cap and is reissued six times is the pattern that cost a night.
+- **A provisional wave runs only when the closure failed behind a
+  cascade**, to name the reds behind it; never beside a closure run, and
+  never to "show the books proved" when the closure passed.
+- **Never submit a lane run with `--closure`.** In this tree `--closure`
+  is the explicit recertification plan: the farm installs from the cache
+  with purge-on-miss and certifies every book of the closure again (the
+  seam lane's final submit: "missing 171, removed 278"). A lane submits
+  `farm.py submit <box> --affected-by <changed book> ...` (or the changed
+  books and test books as plain roots): everything unchanged installs from
+  the cache and only the changed books and their dependents certify. Root
+  uses `--closure` for the freeze and the treewide run, nothing else.

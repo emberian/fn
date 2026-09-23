@@ -1,6 +1,7 @@
 """Public native operator submission through the serialized local owner."""
 import os
 from pathlib import Path
+import re
 import select
 import signal
 import socket
@@ -12,11 +13,24 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
-# The process-death cut after a control submission is selected by an
-# environment variable that only a developer image honours; a production image
-# faults on it (host/native/control.lisp, `fnn-control-stop-cut-armed-p').
+# The stop cut after a control submission, and the owner's SIGTERM and
+# cleanup-pause cuts, are selected by environment variables that only a
+# developer image honours; a production image refuses to start with any of
+# them (host/native/io.lisp, `fnn-developer-selector-gate').
 DEVELOPER = Path(os.environ.get(
     "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+DEVELOPER_REASON = (
+    "build/fn-host-developer (or FN_NATIVE_DEVELOPER_HOST) is required: {} is "
+    "a developer-image selector and a production image refuses to start with it")
+# The registered developer selectors, as host/native/io.lisp declares them.
+SELECTORS = tuple(re.findall(r'"(FN_NATIVE_[A-Z_]+)"', re.search(
+    r"\(defparameter \+fnn-developer-selectors\+\s+'\((.*?)\)\)",
+    (ROOT / "host/native/io.lisp").read_text(encoding="ascii"), re.S).group(1)))
+EXIT_USAGE = 5
+
+
+def executable(path):
+    return path.is_file() and os.access(path, os.X_OK)
 
 
 def environment():
@@ -24,9 +38,8 @@ def environment():
     env["ACL2_CUSTOMIZATION"] = "NONE"
     env.pop("ACL2_SYSTEM_BOOKS", None)
     env.pop("FN_HOST", None)
-    env.pop("FN_NATIVE_CONTROL_TEST_STOP", None)
-    env.pop("FN_NATIVE_OWNER_TEST_SIGTERM", None)
-    env.pop("FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP", None)
+    for name in SELECTORS:
+        env.pop(name, None)
     return env
 
 
@@ -36,36 +49,66 @@ def free_port():
         return probe.getsockname()[1]
 
 
-class NativeControlCutGateTests(unittest.TestCase):
-    """The process-death cut after a control submission is developer-only.
+# What `operator post` stores (books/owner.lisp fn-own-operator-submit): the
+# injecting agent's Path, Injection-Date and Injection-Info lines, then the
+# submitted octets unchanged.  These stores set no `path-identity`, so the
+# agent is the owner's fallback identity (host/owner-host.lisp
+# `*fn-owner-agent*').  The Injection-Date is the owner's clock, so only its
+# RFC 5322 shape is fixed here.
+INJECTION_PREFIX = re.compile(
+    rb"\APath: fn\.example\.invalid!not-for-mail\r\n"
+    rb"Injection-Date: (Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} "
+    rb"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} "
+    rb"\d{2}:\d{2}:\d{2} \+0000\r\n"
+    rb"Injection-Info: fn\.example\.invalid\r\n")
 
-    It said so in a docstring and read FN_NATIVE_CONTROL_TEST_STOP anyway, so
-    a production image honoured a process-death cut chosen by whoever could
-    set the environment.  This is always active: it needs no image, and the
-    gate is the one thing a source check can hold.
+
+class NativeControlCutGateTests(unittest.TestCase):
+    """Every developer selector passes one gate, at process start.
+
+    The stop cut after a control submission was gated where it was read, on a
+    worker thread after the owner had answered, so a production image turned
+    an accepted article into exit 4 (campaign dabebb84, F4); the control fault
+    was gated inside the owner's serialized action and answered 3 with nothing
+    written (F5); four other selectors had no gate (F6).  These need no image.
+    The deployed functions (fnn-main, the readers, the control reply, the
+    stop) are run against stubs by tests/native_developer_selectors_raw.lisp,
+    through tests/test_native_owner.py.
     """
 
-    def test_the_stop_cut_is_gated_on_the_saved_image_profile(self):
-        source = (ROOT / "host/native/control.lisp").read_text(encoding="ascii")
-        self.assertIn('(sb-ext:posix-getenv "FN_NATIVE_CONTROL_TEST_STOP")',
-                      source)
-        gate = source.index("(defun fnn-control-stop-cut-armed-p ()")
-        cut = source.index("(defun fnn-control-test-after-submit", gate)
-        body = source[gate:cut]
-        self.assertIn("(unless (fnn-developer-image-p)", body)
-        self.assertIn("requires a developer image", body)
-        # Every mention of the variable is inside the gate, so the cut asks
-        # the gate rather than the environment and cannot be armed around it.
-        self.assertNotIn("FN_NATIVE_CONTROL_TEST_STOP", source[:gate])
-        self.assertNotIn("FN_NATIVE_CONTROL_TEST_STOP", source[cut:])
+    def test_every_selector_is_read_only_through_the_accessor(self):
+        # A new selector read straight from the environment would bypass the
+        # startup gate; the accessor faults on a name the table lacks.
+        for path in sorted((ROOT / "host/native").glob("*.lisp")):
+            source = path.read_text(encoding="utf-8")
+            direct = re.findall(r'posix-getenv\s+"(FN_NATIVE_[A-Z_]+)"', source)
+            self.assertEqual(
+                sorted(set(direct) - {"FN_NATIVE_PROFILE", "FN_NATIVE_IMAGE"}), [],
+                "{} reads a selector around the gate".format(path.name))
+            for name in re.findall(r'\(fnn-developer-selector\s+"([A-Z_]+)"\)', source):
+                self.assertIn(name, SELECTORS, path.name)
+        self.assertEqual(len(SELECTORS), 8)
 
-    def test_a_refused_variable_reaches_the_caller_as_a_fault(self):
+    def test_the_gate_runs_before_dispatch(self):
+        source = (ROOT / "host/native/io.lisp").read_text(encoding="ascii")
+        main = source[source.index("(defun fnn-main ()"):]
+        self.assertLess(main.index("(fnn-developer-selector-gate argv)"),
+                        main.index("(fnn-dispatch argv)"))
+
+    def test_the_reply_is_the_owners_status(self):
         source = (ROOT / "host/native/control.lisp").read_text(encoding="ascii")
-        start = source.index("(defun fnn-control-handle-client")
-        body = source[start:]
-        self.assertIn("(handler-case (progn (fnn-control-test-after-submit status) status)",
-                      body)
-        self.assertIn("(fnn-store-fault () :fault)", body)
+        body = source[source.index("(defun fnn-control-handle-client"):
+                      source.index("(defun fnn-control-client-done")]
+        self.assertIn("(fnn-control-test-after-submit status)\n"
+                      "    (fnn-control-send-reply socket status)))", body)
+
+    def test_the_stop_is_directed_at_the_calling_thread(self):
+        source = (ROOT / "host/native/control.lisp").read_text(encoding="ascii")
+        body = source[source.index("(defun fnn-control-stop-calling-thread"):
+                      source.index("(defun fnn-control-test-after-submit")]
+        self.assertIn('"pthread_kill"', body)
+        self.assertIn('"pthread_self"', body)
+        self.assertNotIn("sb-posix:getpid", body)
 
 
 @unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
@@ -98,6 +141,12 @@ class NativeControlTests(unittest.TestCase):
                 b"Date: Mon, 21 Sep 2026 09:00:00 +0000\r\n"
                 b"Message-ID: " + message_id.encode("ascii") +
                 b"\r\n\r\nexact payload bytes\r\n")
+
+    def assert_injected(self, stored, payload):
+        """`stored' is `payload' injected by this node: RFC 5537 3.5."""
+        prefix = INJECTION_PREFIX.match(stored)
+        self.assertIsNotNone(prefix, stored[:160])
+        self.assertEqual(stored[prefix.end():], payload)
 
     def start_owner(self, extra_env=None, image=None):
         env = environment()
@@ -185,12 +234,16 @@ class NativeControlTests(unittest.TestCase):
 
         observed = self.inspect(message_id)
         self.assertEqual(observed.returncode, 0, observed.stderr.decode())
-        self.assertEqual(observed.stdout, payload)
+        self.assert_injected(observed.stdout, payload)
         absent = self.inspect_store(second_store, message_id)
         self.assertNotEqual(absent.returncode, 0)
 
     def test_two_clients_sigterm_cleanup_and_restart(self):
-        owner = self.start_owner({"FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP": "1"})
+        if not executable(DEVELOPER):
+            raise unittest.SkipTest(
+                DEVELOPER_REASON.format("FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"))
+        owner = self.start_owner({"FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP": "1"},
+                                 image=DEVELOPER)
         ids = ["<native-control-a@example.invalid>",
                "<native-control-b@example.invalid>"]
         payloads = [self.article(value) for value in ids]
@@ -239,7 +292,7 @@ class NativeControlTests(unittest.TestCase):
         for message_id, payload in zip(ids, payloads):
             observed = self.inspect(message_id)
             self.assertEqual(observed.returncode, 0, observed.stderr.decode())
-            self.assertEqual(observed.stdout, payload)
+            self.assert_injected(observed.stdout, payload)
 
         restarted = self.start_owner()
         try:
@@ -262,10 +315,13 @@ class NativeControlTests(unittest.TestCase):
             restarted.stderr.close()
 
     def test_prelisten_sigterm_skips_modules_and_reopens(self):
+        if not executable(DEVELOPER):
+            raise unittest.SkipTest(
+                DEVELOPER_REASON.format("FN_NATIVE_OWNER_TEST_SIGTERM"))
         env = environment()
         env["FN_NATIVE_OWNER_TEST_SIGTERM"] = "after-install"
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"],
+            [str(DEVELOPER), "--fn", "operator", str(self.config), "run"],
             cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
             stdout, stderr = process.communicate(timeout=60)
@@ -297,12 +353,14 @@ class NativeControlTests(unittest.TestCase):
             restarted.stderr.close()
 
     def test_lost_reply_after_submission_is_uncertain_and_recovers(self):
-        if not (DEVELOPER.is_file() and os.access(DEVELOPER, os.X_OK)):
+        # The stop is directed at the worker thread that holds the reply
+        # (host/native/control.lisp `fnn-control-stop-calling-thread'), so the
+        # reply cannot leave before the stop and the client's exit 3 below is
+        # deterministic.  With a process-directed SIGSTOP it was not: 2 of 5
+        # clients got ACCEPTED on the dabebb84 image (campaign F3).
+        if not executable(DEVELOPER):
             raise unittest.SkipTest(
-                "build/fn-host-developer is required: the cut that stops the "
-                "owner between a durable submission and its reply is a "
-                "developer-image cut, and the production image refuses the "
-                "variable that selects it")
+                DEVELOPER_REASON.format("FN_NATIVE_CONTROL_TEST_STOP"))
         owner = self.start_owner({"FN_NATIVE_CONTROL_TEST_STOP": "after-submit"},
                                  image=DEVELOPER)
         message_id = "<native-control-lost@example.invalid>"
@@ -336,7 +394,7 @@ class NativeControlTests(unittest.TestCase):
 
         observed = self.inspect(message_id)
         self.assertEqual(observed.returncode, 0, observed.stderr.decode())
-        self.assertEqual(observed.stdout, payload)
+        self.assert_injected(observed.stdout, payload)
         restarted = self.start_owner()
         try:
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client_socket:
@@ -353,6 +411,90 @@ class NativeControlTests(unittest.TestCase):
                 restarted.wait(timeout=10)
             restarted.stdout.close()
             restarted.stderr.close()
+
+    def store_digest(self):
+        return sorted((str(path.relative_to(self.store)),
+                       path.read_bytes() if path.is_file() else None)
+                      for path in self.store.rglob("*")
+                      if path.name != "writer.lock")
+
+    def test_the_production_image_refuses_every_selector_at_startup(self):
+        # One gate, before any store is opened: exit 5 naming the variable,
+        # no control socket, no listener, the store's bytes unchanged.  This
+        # replaces the mid-request refusals of campaign dabebb84 F4 to F6.
+        before = self.store_digest()
+        for name in SELECTORS:
+            with self.subTest(selector=name):
+                env = environment()
+                env[name] = "x"
+                started = subprocess.run(
+                    [str(IMAGE), "--fn", "operator", str(self.config), "run"],
+                    cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, timeout=120, check=False)
+                self.assertEqual(started.returncode, EXIT_USAGE,
+                                 started.stderr.decode())
+                self.assertIn(name.encode("ascii"), started.stderr)
+                self.assertEqual(started.stdout, b"")
+                self.assertFalse(self.control.exists())
+                recovered = subprocess.run(
+                    [str(IMAGE), "--fn", "store", str(self.store), "recover"],
+                    cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, timeout=120, check=False)
+                self.assertEqual(recovered.returncode, EXIT_USAGE,
+                                 recovered.stderr.decode())
+                self.assertEqual(recovered.stdout, b"")
+        payload = self.root / "positional.eml"
+        payload.write_bytes(self.article("<native-positional@example.invalid>"))
+        injected = subprocess.run(
+            [str(IMAGE), "--fn", "store", str(self.store), "post",
+             "<native-positional@example.invalid>", str(payload), "-",
+             "postpublish", "fn.test"],
+            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=120, check=False)
+        self.assertEqual(injected.returncode, EXIT_USAGE, injected.stderr.decode())
+        self.assertIn(b"FAULT argument", injected.stderr)
+        self.assertEqual(self.store_digest(), before)
+
+    def test_operator_post_is_injected_and_refuses_what_post_refuses(self):
+        """`operator post` injects as the served POST does (INN lab of
+        2026-09-22, finding 1), and refuses what injection refuses: a From
+        with no address (RFC 5536 3.1.2; the agents run's `From: yue`), a
+        supplied Path, and a Message-ID the article does not carry."""
+        owner = self.start_owner()
+        try:
+            message_id = "<native-control-injected@example.invalid>"
+            payload = self.article(message_id)
+            accepted = self.post(message_id, payload)
+            self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
+
+            yue_id = "<native-control-yue@example.invalid>"
+            yue = self.article(yue_id).replace(b"From: author@example.invalid",
+                                              b"From: yue")
+            refused = self.post(yue_id, yue)
+            self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+
+            path_id = "<native-control-path@example.invalid>"
+            refused_path = self.post(path_id, b"Path: elsewhere!not-for-mail\r\n"
+                                     + self.article(path_id))
+            self.assertEqual(refused_path.returncode, 1, refused_path.stderr.decode())
+
+            other = self.post("<native-control-other@example.invalid>",
+                              self.article("<native-control-named@example.invalid>"))
+            self.assertEqual(other.returncode, 1, other.stderr.decode())
+            owner.send_signal(signal.SIGTERM)
+            self.assertEqual(owner.wait(timeout=30), 0,
+                             owner.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if owner.poll() is None:
+                owner.kill()
+                owner.wait(timeout=10)
+            owner.stdout.close()
+            owner.stderr.close()
+        observed = self.inspect(message_id)
+        self.assertEqual(observed.returncode, 0, observed.stderr.decode())
+        self.assert_injected(observed.stdout, payload)
+        for absent in (yue_id, path_id, "<native-control-other@example.invalid>"):
+            self.assertNotEqual(self.inspect(absent).returncode, 0, absent)
 
     def test_disabled_posting_refuses_cli_and_served_post(self):
         with self.config.open("a", encoding="ascii") as stream:

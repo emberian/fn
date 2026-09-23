@@ -154,6 +154,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-scan \
 	books/byte-store-keystones \
 	tests/acl2/byte-store-scan-tests \
+	tests/acl2/byte-store-sweep-tests \
 	books/byte-store-compaction-correspondence \
 	tests/acl2/byte-store-compaction-correspondence-tests \
 	books/byte-store-programs \
@@ -317,12 +318,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
 	tests/acl2/nntp-teeth-tests \
+	books/mailbox \
 	books/injection \
 	books/injection-invariants \
 	tests/acl2/injection-tests \
 	books/nntp-post \
 	tests/acl2/nntp-post-tests \
 	books/path \
+	books/path-update \
 	books/peer-config \
 	books/peer-inbound \
 	books/peer-inbound-invariants \
@@ -367,7 +370,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-invariants \
 	books/owner-fault \
 	books/owner-prepare-correspondence \
+	books/owner-agent \
+	books/owner-log \
 	tests/acl2/owner-tests \
+	tests/acl2/owner-operator-tests \
+	tests/acl2/owner-agent-tests \
+	tests/acl2/owner-log-tests \
 	tests/acl2/owner-config-tests \
 	tests/acl2/owner-prepare-correspondence-tests \
 	books/relay \
