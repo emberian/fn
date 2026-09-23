@@ -129,7 +129,7 @@
        (fn-cbor-octet-listp frame)
        (equal (fn-bs-record-of-octets frame) (fn-sf-record-candidate ks))
        (equal name (fn-bs-txn-name
-                    (fn-record-sequence (fn-sf-record-candidate ks))))))
+                    (fn-store-event-sequence (fn-sf-record-candidate ks))))))
 
 ; Keystones name the interpreted program, not only its representation.
 (defthm fn-bs-init-program-establishes-relation

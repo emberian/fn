@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 507 |
 | Certification roots in the Makefile | 502 |
 | Books inside the root closure | 506 |
-| `defthm` and `defthmd` events | 7708 |
-| `defun` events | 5872 |
+| `defthm` and `defthmd` events | 7741 |
+| `defun` events | 5885 |
 | Functions with verified guards | 1892 |
-| Functions declared `:verify-guards nil` and never verified | 312 |
+| Functions declared `:verify-guards nil` and never verified | 313 |
 | Functions left at the default with an explicit guard | 2907 |
-| Functions left at the default with no guard | 761 |
-| `assert-event` checks | 8515 |
-| `must-fail` checks | 363 |
+| Functions left at the default with no guard | 773 |
+| `assert-event` checks | 8525 |
+| `must-fail` checks | 372 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 72 |
 | Export-hygiene warnings | 96 |
@@ -185,7 +185,7 @@ that `make certify` requests.
 | `books/byte-store-program-invariants.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/byte-store-programs.lisp` | root | 1 | 31 | 0/31/0/0 | 33 | 0 | 0 |
 | `books/byte-store-record-fence.lisp` | root | 41 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/byte-store-record-provenance.lisp` | root | 26 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/byte-store-record-provenance.lisp` | root | 58 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-relation.lisp` | root | 12 | 8 | 0/5/0/3 | 0 | 0 | 0 |
 | `books/byte-store-scan.lisp` | root | 134 | 35 | 1/29/0/5 | 0 | 0 | 1 |
 | `books/byte-store-stable-prefix.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -453,7 +453,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/byte-store-program-invariants-tests.lisp` | root | 0 | 3 | 0/1/0/2 | 9 | 8 | 0 |
 | `tests/acl2/byte-store-record-fence-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 7 | 5 | 0 |
-| `tests/acl2/byte-store-record-provenance-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 4 | 3 | 0 |
+| `tests/acl2/byte-store-record-provenance-tests.lisp` | root | 1 | 16 | 0/1/0/15 | 14 | 12 | 0 |
 | `tests/acl2/byte-store-relation-tests.lisp` | root | 1 | 5 | 0/0/0/5 | 12 | 12 | 0 |
 | `tests/acl2/byte-store-scan-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 20 | 0 | 0 |
 | `tests/acl2/byte-store-stable-prefix-tests.lisp` | root | 1 | 11 | 0/0/0/11 | 4 | 2 | 0 |
