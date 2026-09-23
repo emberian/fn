@@ -226,6 +226,19 @@ selector, before any store or socket is opened. Store diagnostics and the existi
 verbs remain available in the production image; this split does not claim full
 operator parity for them.
 
+**Selected production entry restriction (2026-09-23; implementation pending).**
+Raw `store ROOT post` is a developer diagnostic. A production image,
+including the production DTN image, must reject that entry with the existing
+unsupported-entry/usage exit 5 before opening the store, reading a payload,
+or performing any publication. The serialized image profile controls this
+restriction; an environment override at invocation cannot enable it.
+Production posting goes through `operator CONFIG post` or the served NNTP
+submission path, with the normal injection and durable outcome contract.
+Store inspection and recovery remain available. SCN-015 must exercise both
+rejection orders (fresh and existing store), developer raw insertion, and
+successful ordinary production submission. This changes the required
+production surface; the da5fd8cb image still exposes raw posting.
+
 Native peering now composes with that same public owner lifecycle in source.
 At accept, raw Lisp supplies only the kernel address family and fixed-width
 address octets. `fn-owner-peer-for-socket-address` owns their numeric IPv4 or

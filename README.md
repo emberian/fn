@@ -22,12 +22,14 @@ The [node record](planning/evidence/node-hbox-dabebb84-2026-09-22.md) identifies
 the tested image, and the [agent exercise](planning/evidence/agents-on-hbox-2026-09-22.md)
 records what actually happened.
 
-That image is a single-node LAN experiment, not a v0 release. Its qualification
-found live-configuration and article-handling defects; its crash campaign did
-not yet reach the served posting path. Peer and DTN delivery, verifiable author
-signatures, and the complete served-path durability argument remain release
-work. Newer source changes are tracked in [current work](planning/now.md);
-they do not change what the recorded image demonstrated.
+A [second image](planning/evidence/node-hbox-da5fd8cb-2026-09-23.md) upgraded
+the node in place, preserving those articles. Its INN exercise passes, and
+its crash campaign now reaches the served owner. It remains a single-node LAN
+experiment, not a v0 release: live configuration adoption, peer and DTN
+delivery, verifiable author signatures, and the complete served-path durability
+argument remain release work. The campaign has not yet run the ACL2 byte-model
+differential. [Current work](planning/now.md) tracks the next steps and their
+evidence.
 
 High assurance is the aim. It means proving properties of the functions the
 server actually calls, stating their assumptions, and testing the boundaries
