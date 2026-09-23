@@ -83,31 +83,45 @@
 (defthm fn-ocri-connp-of-reader-context-copy
   (implies (fn-ocri-connp conn)
            (fn-ocri-connp
-            (fn-own-conn-make-indexed
+            (fn-own-conn-make-group-indexed
              (fn-own-conn-id conn) (fn-own-conn-version conn)
              (fn-own-conn-frontier conn) (fn-own-conn-wire conn)
              session (fn-own-conn-archive conn)
              (fn-own-conn-config conn) (fn-own-conn-observation conn)
-             (fn-own-conn-verdicts conn) (fn-own-conn-index conn))))
+             (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
+             (fn-own-conn-group-index conn))))
   :hints (("Goal" :in-theory (enable fn-ocri-connp))))
 
 (defthm fn-ocri-reader-context-preserves-reader-pins
   (implies (fn-ocri-conns-p (fn-own-conns o))
            (fn-ocri-conns-p
             (fn-own-conns (fn-own-reader-context o id cfg))))
-  :hints (("Goal" :in-theory (e/d (fn-own-reader-context
-                                    fn-own-set-conns)
-                                   (fn-ocri-conns-p fn-ocri-connp)))))
+  :hints (("Goal"
+           :use ((:instance fn-ocri-found-conn-is-carried
+                            (conns (fn-own-conns o)))
+                 (:instance fn-ocri-connp-of-reader-context-copy
+                            (conn (fn-own-find-conn id (fn-own-conns o)))
+                            (session
+                             (fn-auth-with-base
+                              (fn-own-conn-session
+                               (fn-own-find-conn id (fn-own-conns o)))
+                              (fn-peer-open-session
+                               (fn-own-conn-archive
+                                (fn-own-find-conn id (fn-own-conns o)))
+                               nil (fn-sn-node (fn-own-store o)) cfg)))))
+           :in-theory (e/d (fn-own-reader-context fn-own-set-conns)
+                           (fn-ocri-conns-p fn-ocri-connp)))))
 
 (defthm fn-ocri-opened-reader-has-view-pins
   (implies (and (fn-ocri-viewp view)
                 (posp line-limit) (posp body-limit))
            (fn-ocri-connp
-            (fn-own-conn-make-indexed
+            (fn-own-conn-make-group-indexed
              id version frontier
              (fn-wire-initial-state line-limit body-limit)
              session (fn-own-view-archive view) config observation
-             (fn-own-view-verdicts view) (fn-own-view-index view))))
+             (fn-own-view-verdicts view) (fn-own-view-index view)
+             (fn-own-view-group-index view))))
   :hints (("Goal"
            :use ((:instance fn-wire-initial-state-is-state))
            :in-theory (enable fn-ocri-connp fn-ocri-viewp))))
