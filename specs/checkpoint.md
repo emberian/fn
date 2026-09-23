@@ -245,7 +245,10 @@ or reader open at that destination refuses before Store initialization or
 recovery can serve it.  The clone executor alone reopens the destination under
 an exclusive lock, lets ACL2 propose `(:rollover fresh-id)` using the
 recovered dense sequence and allocator coordinates, and publishes it through
-the ordinary Store transaction.  The history ID remains the same; the new
+the ordinary Store transaction.  ACL2 supplies the offline copy ceilings:
+depth 16, at most 1,000,000 directory entries, and at most 2^40 bytes of
+regular-file content; the host streams in 65,536-byte chunks and refuses
+before exceeding those limits.  The history ID remains the same; the new
 incarnation differs from the copied source.  A same-ID, malformed, or
 unbootstrapped proposal is refused.  The fence is removed only after a second
 exact-history reopen confirms the durable rollover and new incarnation; the

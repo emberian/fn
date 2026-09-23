@@ -551,6 +551,7 @@
 ;;; every ordinary Store open checks that marker in fnn-acquire.  The marker is
 ;;; the canonical v1 E2 rollover event itself, not a second projection format.
 (defvar *fnn-clone-copy-count* 0)
+(defvar *fnn-clone-copy-bytes* 0)
 
 #+linux
 (sb-alien:define-alien-routine ("renameat2" fnn-%clone-renameat2)
@@ -573,14 +574,19 @@
   #-linux
   (fnn-refuse "clone publication requires no-replace renameat2"))
 
-(defun fnn-clone-copy-regular (source destination)
+(defun fnn-clone-copy-regular (source destination max-bytes)
   (let ((input nil) (output nil))
     (unwind-protect
          (progn
            (setq input (fnn-open source (logior sb-posix:o-rdonly
                                                 +fnn-o-nofollow+)))
-           (unless (fnn-regular-p (fnn-fstat input))
-             (fnn-fault "clone source is not a regular file: ~a" source))
+           (let ((info (fnn-fstat input)))
+             (unless (fnn-regular-p info)
+               (fnn-fault "clone source is not a regular file: ~a" source))
+             (unless (and (<= 0 (sb-posix:stat-size info))
+                          (<= (sb-posix:stat-size info)
+                              (- max-bytes *fnn-clone-copy-bytes*)))
+               (fnn-refuse "clone exceeds ACL2-owned byte bound")))
            (setq output (fnn-open destination
                                   (logior sb-posix:o-wronly sb-posix:o-creat
                                           sb-posix:o-excl +fnn-o-nofollow+)
@@ -588,12 +594,17 @@
            (let ((buffer (fnn-make-octets 65536)))
              (loop for count = (fnn-read-fd input buffer)
                    until (zerop count)
-                   do (fnn-write-all output (subseq buffer 0 count))))
+                   do (progn
+                        (incf *fnn-clone-copy-bytes* count)
+                        (when (> *fnn-clone-copy-bytes* max-bytes)
+                          (fnn-refuse "clone exceeds ACL2-owned byte bound"))
+                        (fnn-write-all output (subseq buffer 0 count)))))
            (fnn-fsync-file output))
       (when output (fnn-close output))
       (when input (fnn-close input)))))
 
-(defun fnn-clone-copy-tree (source destination depth max-depth max-entries)
+(defun fnn-clone-copy-tree (source destination depth max-depth max-entries
+                            max-bytes)
   (when (> depth max-depth)
     (fnn-refuse "clone exceeds ACL2-owned directory depth bound"))
   (fnn-safe-directory source)
@@ -615,10 +626,10 @@
                                (not (fnn-symlink-p info)))
                           (fnn-mkdir to #o700)
                           (fnn-clone-copy-tree from to (1+ depth)
-                                               max-depth max-entries))
+                                               max-depth max-entries max-bytes))
                          ((and info (fnn-regular-p info)
                                (not (fnn-symlink-p info)))
-                          (fnn-clone-copy-regular from to))
+                          (fnn-clone-copy-regular from to max-bytes))
                          (t (fnn-refuse
                              "clone refuses missing, linked, or special source: ~a"
                              from))))))))
@@ -717,7 +728,9 @@
                     (max-depth
                       (fnn-nat (fnn-core 'fn-store-checkpoint-clone-max-depth)))
                     (max-entries
-                      (fnn-nat (fnn-core 'fn-store-checkpoint-clone-max-entries))))
+                      (fnn-nat (fnn-core 'fn-store-checkpoint-clone-max-entries)))
+                    (max-bytes
+                      (fnn-nat (fnn-core 'fn-store-checkpoint-clone-max-bytes))))
                (unless (fnn-octet-list-p frame)
                  (fnn-fault "ACL2 returned a malformed clone fence"))
                (fnn-mkdir stage #o700)
@@ -727,9 +740,10 @@
                (fnn-fsync-dir stage)
                (fnn-fsync-dir parent)
                (fnn-checkpoint-test-stop "clone-fence-durable")
-               (let ((*fnn-clone-copy-count* 0))
+               (let ((*fnn-clone-copy-count* 0)
+                     (*fnn-clone-copy-bytes* 0))
                  (fnn-clone-copy-tree source-real stage 0
-                                      max-depth max-entries))
+                                      max-depth max-entries max-bytes))
                (fnn-fsync-dir stage)
                (when (fnn-lstat target)
                  (fnn-refuse "clone destination appeared during copy"))

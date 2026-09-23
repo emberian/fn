@@ -16,7 +16,8 @@ under its exclusive writer lock, builds a sibling staging tree, writes and
 barriers the fence before copying source bytes, copies only ordinary files
 and directories through no-follow descriptors, fsyncs the copied tree, and
 publishes it with Linux `renameat2(RENAME_NOREPLACE)`.  ACL2 supplies the
-directory-depth and total-entry limits.  Ordinary Store acquisition and
+offline depth-16, million-entry and 2^40-byte total-copy ceilings; host
+buffers are at most 65,536 bytes.  Ordinary Store acquisition and
 initialization refuse a fenced destination.  The clone executor alone opens
 it under the exclusive owner, publishes the ACL2 event through
 `fnn-owner-consumer-commit`, closes, reopens the full exact history, requires
@@ -31,13 +32,13 @@ ACL2 qualification: `python3 tools/farm.py submit persvati --root
 /Users/ember/dev/fn/build/lanes/preservation-clone --remote-root
 /home/ember/fn-lanes/preservation-clone-e2 --jobs 2
 books/checkpoint-auxiliary tests/acl2/checkpoint-auxiliary-tests`, run
-`run-20260923T200306Z-e792`, archived manifest
-`planning/evidence/manifests/certify-20260923T200311Z-3706431.json`.
+`run-20260923T200913Z-4c66`, archived manifest
+`planning/evidence/manifests/certify-20260923T200916Z-3767319.json`.
 ACL2 8.7 on SBCL 2.6.8, toolchain identity
 `1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286`;
 65 dependency books installed from three cache origins, both changed roots
-certified in 4.535 seconds, status passed.  Book/test source SHA-256:
-`3f03c2f1af3f7312e613a707fc5961f9add065eae399205a8f0e81efcfdf7b6b`,
+certified in 4.468 seconds, status passed.  Book/test source SHA-256:
+`fd5a276e80ab701cbd74bc2bb61c9ccd00c617ab9c9eea1e9fb09a7965c12906`,
 `ed2a436eca23f0c5b25bc841ca81054ffc0dbd9d96755b8383ba010a60305b3b`.
 The ACL2 tests exercise pending/completed/refused marker phases, rollover
 identity refusal, and bootstrap proposal coordinates.  Raw host files read
