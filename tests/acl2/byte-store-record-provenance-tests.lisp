@@ -253,6 +253,9 @@
                                    :transactions) nil)
         (equal (fn-bs-ops-for-name (fn-bs-pending file)
                                     :transactions name) nil)
+        (fn-bs-store-relation
+         (car (nth 10 (bsk5-record-2-run)))
+         (cdr (nth 10 (bsk5-record-2-run))))
         (equal (fn-bs-durable-content
                 (bsk6-kept-link-image)
                 (fn-bs-lookup (bsk6-kept-link-image)
@@ -335,6 +338,9 @@
       (not (equal (fn-record-sequence (bsk6-retention-candidate)) 1))
       (equal (fn-sf-phase (bsk6-retention-prepared)) :record-staged)
       (fn-bs-store-relation (bsk6-start) (bsk6-retention-prepared))
+      (fn-bs-store-relation
+       (car (nth 10 (bsk6-retention-run)))
+       (cdr (nth 10 (bsk6-retention-run))))
       (fn-bs-record-inputp (bsk6-retention-prepared)
                             ".stage-k6-retention" (fn-bs-txn-name 1)
                             (bsk6-retention-frame))))

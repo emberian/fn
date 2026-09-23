@@ -1200,3 +1200,260 @@
                                fn-bs-store-relation fn-bs-record-inputp
                                fn-bs-crash-imagep fn-bs-lookup
                                fn-bs-durable-content fn-bs-record-of))))
+
+; The actual link and callback do not fence a directory.  Therefore the
+; scanner's durable index at pair 10 is still the input's next index.
+(defthm fn-bs-k6-related-attempt-durable-namespace-is-input-namespace
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal (fn-bs-dirs
+                   (car (nth 10 (fn-bs-run bs ks
+                                           (fn-bs-record-program stage name frame)
+                                           nil groups capacity))))
+                  (fn-bs-dirs bs)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                 (:instance fn-bs-k6-file-cut-dirs-are-input-dirs)
+                 (:instance fn-bs-k6-actual-link-cut-is-file-cut-link)
+                 (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state)
+                 (:instance fn-bs-store-relation-unfolds))
+           :in-theory (e/d (fn-bs-record-inputp fn-bs-link)
+                           (fn-bs-run fn-bs-record-program fn-bs-statep
+                            fn-bs-store-relation fn-bs-lookup
+                            fn-bs-k6-lookup-is-entry-after)))))
+
+(defthm fn-bs-k6-related-attempt-name-is-next-scanner-name
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal name
+                  (fn-bs-txn-name
+                   (len (fn-bs-durable-names
+                         (car (nth 10 (fn-bs-run bs ks
+                                                 (fn-bs-record-program stage name frame)
+                                                 nil groups capacity)))
+                         :transactions)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-bs-k6-related-attempt-durable-namespace-is-input-namespace)
+                 (:instance fn-bs-k6-related-staged-durable-name-count-is-record-count)
+                 (:instance fn-bs-store-relation-unfolds))
+           :in-theory (e/d (fn-bs-record-inputp fn-sf-statep
+                            fn-sf-phase-shapep fn-sf-candidatep
+                            fn-bs-durable-names)
+                           (fn-bs-run fn-bs-record-program
+                            fn-bs-store-relation fn-bs-dirs)))))
+
+(defthm fn-bs-k6-present-lookup-is-in-names
+  (implies (fn-bs-lookup s dir name)
+           (member-equal name (fn-bs-names s dir)))
+  :hints (("Goal" :in-theory (enable fn-bs-lookup fn-bs-names))))
+
+(defthm fn-bs-k6-surviving-next-name-extends-scanner-namespace
+  (implies (and (fn-bs-store-relation at ak)
+                (fn-bs-crash-imagep at image)
+                (fn-bs-lookup image :transactions
+                              (fn-bs-txn-name
+                               (len (fn-bs-durable-names at :transactions)))))
+           (equal (fn-bs-names image :transactions)
+                  (fn-bs-txn-names
+                   (1+ (len (fn-bs-durable-names at :transactions))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-bs-crash-image-transaction-names
+                                    (bs at) (ks ak))
+                         (:instance fn-bs-k6-present-lookup-is-in-names
+                                    (s image) (dir :transactions)
+                                    (name (fn-bs-txn-name
+                                           (len (fn-bs-durable-names at :transactions)))))
+                         (:instance fn-bs-txn-name-not-in-txn-names
+                                    (i (len (fn-bs-durable-names at :transactions)))
+                                    (n (len (fn-bs-durable-names at :transactions)))))
+           :in-theory (disable fn-bs-store-relation fn-bs-crash-imagep
+                               fn-bs-names fn-bs-lookup fn-bs-txn-names))))
+
+(local
+ (defthm fn-bs-k6-read-records-at-end
+   (implies (natp n)
+            (equal (fn-bs-read-records image n n) nil))
+   :hints (("Goal" :expand ((fn-bs-read-records image n n))))))
+
+(local
+ (defthm fn-bs-k6-one-scanner-record-is-candidate
+   (implies (and (natp n)
+                 (fn-bs-inop (fn-bs-lookup image :transactions (fn-bs-txn-name n)))
+                 (fn-store-event-p candidate)
+                 (equal (fn-store-event-sequence candidate) n)
+                 (equal (fn-bs-record-of
+                         image (fn-bs-lookup image :transactions
+                                             (fn-bs-txn-name n))) candidate))
+            (equal (fn-bs-read-records image n (1+ n))
+                   (list candidate)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bs-read-records)
+                            (fn-bs-record-of fn-bs-lookup))))))
+
+(local
+ (defthm fn-bs-k6-related-durable-prefix-is-not-fault
+   (implies (fn-bs-store-relation at ak)
+            (not (equal (fn-bs-durable-records at) :fault)))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-bs-store-relation-unfolds
+                                     (bs at) (ks ak)))))))
+
+; This is the namespace/ordered-scan bridge, independent of a particular
+; publisher.  It needs neither a scan-list equality nor a candidate-membership
+; premise: it reads the old prefix and the one exact event at the next name.
+(defthm fn-bs-k6-related-surviving-next-record-is-scanner-tail
+  (implies (and (fn-bs-store-relation at ak)
+                (fn-bs-crash-imagep at image)
+                (let ((n (len (fn-bs-durable-names at :transactions))))
+                  (and (fn-bs-inop
+                        (fn-bs-lookup image :transactions (fn-bs-txn-name n)))
+                       (fn-store-event-p candidate)
+                       (equal (fn-store-event-sequence candidate) n)
+                       (equal (fn-bs-record-of
+                               image (fn-bs-lookup image :transactions
+                                                   (fn-bs-txn-name n)))
+                              candidate))))
+           (equal (fn-bs-scan-records (fn-bs-scan-store image))
+                  (append (fn-bs-durable-records at) (list candidate))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k6-surviving-next-name-extends-scanner-namespace)
+                 (:instance fn-bs-k6-related-durable-prefix-is-not-fault)
+                 (:instance fn-bs-crash-image-reads-the-durable-records
+                            (bs at) (ks ak))
+                 (:instance fn-bs-store-crash-image-scans
+                            (bs at) (ks ak))
+                 (:instance fn-bs-txn-names-length
+                            (n (1+ (len (fn-bs-durable-names at :transactions)))))
+                 (:instance fn-bs-read-records-of-one-more
+                            (s image) (n 0)
+                            (count (len (fn-bs-durable-names at :transactions))))
+                 (:instance fn-bs-k6-one-scanner-record-is-candidate
+                            (n (len (fn-bs-durable-names at :transactions)))))
+           :in-theory (e/d (fn-bs-scan-store fn-bs-scan-records
+                            fn-bs-scan-okp fn-bs-contiguous-namesp)
+                           (fn-bs-store-relation fn-bs-crash-imagep
+                            fn-bs-read-records fn-bs-names
+                            fn-bs-lookup fn-bs-record-of
+                            fn-bs-txn-names)))))
+
+(defthm fn-bs-k6-related-attempt-surviving-name-is-fresh-inode
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage))
+                (fn-bs-crash-imagep
+                 (car (nth 10 (fn-bs-run bs ks
+                                            (fn-bs-record-program stage name frame)
+                                            nil groups capacity))) image)
+                (fn-bs-lookup image :transactions name))
+           (equal (fn-bs-lookup image :transactions name)
+                  (fn-bs-next-ino bs)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                 (:instance fn-bs-k6-related-input-file-cut-has-no-prior-final-op)
+                 (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state)
+                 (:instance fn-bs-k6-actual-linked-crash-surviving-name-has-exact-frame)
+                 (:instance fn-bs-store-relation-unfolds))
+           :in-theory (disable fn-bs-run fn-bs-record-program
+                               fn-bs-store-relation fn-bs-record-inputp
+                               fn-bs-crash-imagep fn-bs-lookup
+                               fn-bs-ops-for-name))))
+
+(defthm fn-bs-k6-related-input-candidate-is-next-typed-event
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (let ((at (car (nth 10 (fn-bs-run bs ks
+                                              (fn-bs-record-program stage name frame)
+                                              nil groups capacity)))))
+             (and (fn-store-event-p (fn-sf-record-candidate ks))
+                  (equal (fn-store-event-sequence (fn-sf-record-candidate ks))
+                         (len (fn-bs-durable-names at :transactions))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-bs-k6-related-attempt-durable-namespace-is-input-namespace)
+                         (:instance fn-bs-k6-related-staged-durable-name-count-is-record-count)
+                         (:instance fn-bs-store-relation-unfolds))
+           :in-theory (e/d (fn-bs-record-inputp fn-sf-statep
+                            fn-sf-phase-shapep fn-sf-candidatep
+                            fn-bs-durable-names)
+                           (fn-bs-run fn-bs-record-program
+                            fn-bs-store-relation fn-bs-dirs)))))
+
+(local
+ (defthm fn-bs-k6-state-next-ino-is-inop
+   (implies (fn-bs-statep bs)
+            (fn-bs-inop (fn-bs-next-ino bs)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-bs-statep fn-bs-inop)))))
+
+(local
+ (defthm fn-bs-k6-related-attempt-surviving-lookup-is-inop
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-record-inputp ks stage name frame)
+                 (not (fn-bs-lookup bs :staging stage))
+                 (fn-bs-crash-imagep
+                  (car (nth 10 (fn-bs-run bs ks
+                                             (fn-bs-record-program stage name frame)
+                                             nil groups capacity))) image)
+                 (fn-bs-lookup image :transactions name))
+            (fn-bs-inop (fn-bs-lookup image :transactions name)))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-bs-k6-related-attempt-surviving-name-is-fresh-inode)
+                          (:instance fn-bs-k6-state-next-ino-is-inop)
+                          (:instance fn-bs-store-relation-unfolds))
+            :in-theory (disable fn-bs-run fn-bs-record-program
+                                fn-bs-lookup fn-bs-store-relation
+                                fn-bs-crash-imagep)))))
+
+; The actual pair-10 interpreter and byte crash now meet the ordered scan.
+; The attempt-state relation is explicit: establishing it for all successful
+; served calls is the remaining K0 program-preservation obligation.
+(defthm fn-bs-k6-related-attempt-surviving-crash-scans-exact-frame-event
+  (implies
+   (and (fn-bs-store-relation bs ks)
+        (fn-bs-record-inputp ks stage name frame)
+        (not (fn-bs-lookup bs :staging stage))
+        (let ((pair (nth 10 (fn-bs-run bs ks
+                                        (fn-bs-record-program stage name frame)
+                                        nil groups capacity))))
+          (fn-bs-store-relation (car pair) (cdr pair)))
+        (fn-bs-crash-imagep
+         (car (nth 10 (fn-bs-run bs ks
+                                    (fn-bs-record-program stage name frame)
+                                    nil groups capacity))) image)
+        (fn-bs-lookup image :transactions name))
+   (let ((at (car (nth 10 (fn-bs-run bs ks
+                                        (fn-bs-record-program stage name frame)
+                                        nil groups capacity)))))
+     (and (equal (fn-bs-durable-content
+                  image (fn-bs-lookup image :transactions name)) frame)
+          (equal (fn-bs-scan-records (fn-bs-scan-store image))
+                 (append (fn-bs-durable-records at)
+                         (list (fn-sf-record-candidate ks)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k6-related-attempted-surviving-scan-source-is-exact-frame)
+                 (:instance fn-bs-k6-related-attempt-surviving-name-is-fresh-inode)
+                 (:instance fn-bs-k6-related-attempt-surviving-lookup-is-inop)
+                 (:instance fn-bs-k6-related-attempt-name-is-next-scanner-name)
+                 (:instance fn-bs-k6-related-input-candidate-is-next-typed-event)
+                 (:instance fn-bs-k6-related-surviving-next-record-is-scanner-tail
+                            (at (car (nth 10 (fn-bs-run bs ks
+                                                           (fn-bs-record-program stage name frame)
+                                                           nil groups capacity))))
+                            (ak (cdr (nth 10 (fn-bs-run bs ks
+                                                           (fn-bs-record-program stage name frame)
+                                                           nil groups capacity))))
+                            (candidate (fn-sf-record-candidate ks))))
+           :in-theory (disable fn-bs-run fn-bs-record-program
+                               fn-bs-store-relation fn-bs-record-inputp
+                               fn-bs-crash-imagep fn-bs-scan-store
+                               fn-bs-scan-records fn-bs-durable-records
+                               fn-bs-durable-content fn-bs-record-of
+                               fn-bs-lookup fn-bs-durable-names))))
