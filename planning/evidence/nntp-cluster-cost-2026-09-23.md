@@ -12,7 +12,7 @@ run named at the end is the certification.
 | log (persvati) | what it is |
 |---|---|
 | `/home/ember/fn-gates/t1-seam/build/acl2/certify-20260923T000250Z-1473169/books--{nntp-effects,policy,feed-connection-invariants,nntp-invariants,nntp-post,nntp-auth}.certify.log` | the 310-book run (manifest `planning/evidence/manifests/certify-20260923T000250Z-1473169.json`) |
-| `/home/ember/fn-gates/dev-head/build/acl2/certify-20260923T003741Z-1790068/books--{nntp-effects,policy,feed-connection-invariants,nntp-invariants}.certify.log` | the stopped treewide run of `dev`'s head; the same events within 10% (nntp-effects 106.1 s, policy 98.6 s, feed-connection-invariants 93.6 s, nntp-invariants 69.7 s) |
+| `/home/ember/fn-gates/dev-head/build/acl2/the treewide run of dev's head that root stopped after 345 books (no manifest was written)/books--{nntp-effects,policy,feed-connection-invariants,nntp-invariants}.certify.log` | the stopped treewide run of `dev`'s head; the same events within 10% (nntp-effects 106.1 s, policy 98.6 s, feed-connection-invariants 93.6 s, nntp-invariants 69.7 s) |
 
 The other books in the brief took under 3 s each in the 310-book run:
 `nntp-newnews` 0.6 s, `nntp-responses` 1.3 s, `served` 2.3 s and
