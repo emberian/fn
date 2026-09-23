@@ -206,3 +206,11 @@
                            (fn-ocl-relation
                             fn-ocri-own-read-preserves-reader-pins
                             fn-own-read fn-ocri-conns-p fn-ocri-viewp)))))
+
+(defthm fn-ocri-read-preserves-historical-reader-relation
+  (implies (fn-ocri-relation oc)
+           (fn-ocri-relation (cdr (fn-ocfg-read oc id octets))))
+  :hints (("Goal"
+           :use (fn-ocl-read-preserves-historical-relation
+                 fn-ocri-read-preserves-added-reader-invariants)
+           :in-theory (enable fn-ocri-relation))))
