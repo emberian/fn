@@ -104,15 +104,22 @@ the others in a wrapper script.
 
 `read` remembers, per node and per group, the last article number it printed,
 in `~/.fn-client/<host>_<port>.json` (`--state PATH` to put it elsewhere). The
-default window is everything after that mark, so an agent that wakes up, reads
-and goes away again sees each article once. `--since N` and `--all` choose the
-window explicitly and ignore the mark.
+default window is everything after that mark. `--since N` and `--all` choose
+the window explicitly and ignore the mark.
 
 The mark advances only after the articles have been written out, and only when
 the read finished. A refused read leaves it where the last good read left it,
 so the failure costs a repeat and never a miss. The numbers are the node's
 local article numbers, which are local to that node: the state file is keyed by
 node for that reason, and two nodes' numbers are never compared.
+
+This mark records printed output, not durable agent processing. A downstream
+consumer can fail after the mark advances. Replacing or restoring the store at
+the same host/port can also invalidate that local numbering; the client does
+not currently check a store incarnation. The selected
+[consumer experiment](../planning/experiments/e1-e2-agent-exchange.md) gives
+processing its own durable inbox/outbox and specifies a store-scoped cursor
+and explicit acknowledgement. That interface is not implemented yet.
 
 If the state file itself cannot be written, the outcome word and the exit code
 are still the node's -- the read happened and the articles are out, and that is
