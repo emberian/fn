@@ -1650,9 +1650,10 @@
         "books/consumer-local-control.lisp",
         "tests/acl2/consumer-local-control-tests.lisp",
         "planning/evidence/manifests/certify-20260923T213301Z-209515.json",
-        "planning/experiments/e1-e2-v1-traces.json"
+        "planning/experiments/e1-e2-v1-traces.json",
+        "planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md"
       ],
-      "note": "Selected v1 experiment, not a v0 gate. The finite cursor/event kernel and Store completed-prefix model are certified. The local mode-0600 owner declaration commands have saved-image qualification on a prior source; a new 16-event bounded poll/source report selector and kind-6 cursor/report codec have scoped ACL2 tests but still need a combined native image and positive advancing-ack test. Remote authenticated poll/ack/rebase, native crash refinement, bounded metadata charge, checkpoint/clone integration, consumer-owned database, and the executed two-store exchange remain open; adversarial E2 traces are specifications awaiting a runner."
+      "note": "Selected v1 experiment, not a v0 gate. The cursor/event kernel and Store completed-prefix model are certified in scope. Native image 1d26e01f passed local-owner signed poll, repeat without ACK mutation, advancing ACK with killed reply and recovered position, selected-pack/fenced-clone recovery and old-incarnation refusal. The current poll walks the preceding history before its bounded 16-event window. General remote authenticated multi-group poll/ack/rebase, native physical crash refinement, the consumer-owned transaction/ACK/reply join and executed two-store exchange remain open; the full adversarial E2 trace set is not qualified."
     }
   ]
 }

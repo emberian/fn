@@ -2207,9 +2207,10 @@
       "evidence": [
         "books/consumer-store-invariants.lisp",
         "tests/acl2/consumer-store-invariants-tests.lisp",
-        "planning/evidence/manifests/certify-20260923T210725Z-145187.json"
+        "planning/evidence/manifests/certify-20260923T210725Z-145187.json",
+        "planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md"
       ],
-      "progress_note": "Scoped hbox certification passed for the invariant and test roots. The actual native owner consumer seam, authenticated command/poll, metadata history charge, and checkpoint/clone replay composition are still open, so this proof is not credited as a served E2 guarantee.",
+      "progress_note": "The logical Store invariant and test roots are certified in scope. Native image 1d26e01f separately witnesses local-owner poll, advancing ACK/reopen, selected packing and fenced clone cursor recovery. Those tests do not prove syscall refinement or the consumer-owned transaction/ACK/reply join; general remote policy and two-store composition remain open.",
       "events": [
         "fn-csi-store-step-preserves-full-relation"
       ]

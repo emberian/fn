@@ -1037,7 +1037,7 @@
         "A linked Store candidate is either absent or replayed once at recovery; no stale live projection is accepted as progress.",
         "Old incarnation, registration epoch and view cursors are refused without mutation; independent stores and consumers keep separate positions."
       ],
-      "note": "The ACL2 Store model portion is witnessed in tests/acl2/consumer-store-invariants-tests.lisp and certified in planning/evidence/manifests/certify-20260923T210725Z-145187.json. The local owner poll selector, cursor and report codec have scoped ACL2 witnesses in tests/acl2/consumer-owner-local-tests.lisp and tests/acl2/consumer-local-control-tests.lisp; native positive fetch/advancing-ack and the consumer database are not yet qualified. The end-to-end E2-01.. trace specifications in planning/experiments/e1-e2-v1-traces.json remain unexecuted."
+      "note": "The ACL2 Store model is witnessed by tests/acl2/consumer-store-invariants-tests.lisp and its scoped manifest. Native image 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with killed reply/reopen and fenced clone cursor recovery, as recorded in planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md. The Mini consumer-owned transaction/ACK/reply join and complete two-store E2-01.. trace set remain unqualified; component passes do not establish the whole scenario."
     },
     {
       "id": "SCN-032",
