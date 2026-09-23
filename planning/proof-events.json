@@ -1815,26 +1815,6 @@
           "name": "fn-olog-connection-line-is-one-line"
         }
       ]
-    },
-    {
-      "id": "PRF-059",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-report-decode-of-encode-when-bounded",
-          "pending_subject": "Unhosted D1a codec; D1b generation/consumption must connect the native caller."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-report-encode-length-bound",
-          "pending_subject": "Unhosted D1a codec; D1b generation/consumption must connect the native caller."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-report-accepted-input-is-canonical",
-          "pending_subject": "Unhosted D1a codec; D1b generation/consumption must connect the native caller."
-        }
-      ]
     }
   ]
 }
