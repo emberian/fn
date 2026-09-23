@@ -133,3 +133,23 @@ receipt trust predicate or prove sender pin release. The image's source was
 `4e7dd362`; the test driver was the tracked source at `7e62af7c` copied to
 `/tmp/test_bp_node_native_a3.py` on hbox, with only its marker assertion
 changed since that image.
+
+The trust-fixed combined developer image from exact source `7ad230b5`,
+SHA-256 `337124282e0b98faa1666f6c3daaae661ba793d19e7e153a7faddb9c34face9b`,
+artifact set `fd95947d1bfb7fae`, passed
+`NativeBpNodeTests.test_request_retry_queues_distinct_receipt_carriers_and_releases_pin`
+on hbox (1/1, 11.406 seconds). Its runtime used the same ACL2 executable and
+OpenSSL library above. The test authored a request ADU, delivered it twice in
+distinct carriers, observed one receiver article and two return-job
+publications, byte-relayed a later contact, and verified a trusted receipt
+released the exact sender forwarding pin while an unrelated pin survived.
+This is native behavior evidence; the separate ACL2 effective handoff-status
+projection over kind-7 owed evidence and the exact durable return job remains
+open.
+
+The same image passed a separate uncertain-FNRJ cut (1/1, 17.826 seconds):
+an injected ambiguous receipt-decision namespace barrier returned exit 3
+without kind-7 handoff, and a cold `bp-node dispatch` recovered the durable
+decision, published the handoff, queued its return carrier, and retained one
+receiver article. This cut is expressed as the journal's existing ambiguous
+publication event; it is not a manufactured application result.

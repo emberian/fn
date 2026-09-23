@@ -359,6 +359,27 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(self.receiver_counts()[1], 0)
         self.assertIn(sent.returncode, (1, 3), sent.stderr)
 
+    def test_ambiguous_fnrj_decision_fences_until_cold_replay(self):
+        receiver, port = self.start_node(
+            True,
+            extra_env={
+                "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE": "1",
+            },
+        )
+        sent = self.send_request(port, "fnrj-uncertain")
+        out, err = receiver.communicate(timeout=120)
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(receiver.returncode, 3, (out, err))
+        self.assertIn(b"BP node application uncertain", out)
+        self.assertNotIn(b"BP application handoff durable", out)
+        self.assertEqual(self.receiver_counts()[1], 1)
+
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertIn(b"BP application handoff durable", restarted.stdout)
+        self.assertIn(b"BP node receipt queued", restarted.stdout)
+        self.assertEqual(self.receiver_counts()[1], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
