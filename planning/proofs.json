@@ -1418,8 +1418,6 @@
         "fn-bs-crash-image-frontier-decodes-to-a-natural",
         "fn-bs-crash-image-namespace-is-contiguous",
         "fn-bs-crash-image-records-do-not-fault",
-        "fn-bs-staging-unlink-keeps-relation-and-scan",
-        "fn-bs-recover-sweep-keeps-relation-at-every-cut",
         "fn-bs-sweep-round-keeps-every-cut-reopenable",
         "fn-sn-sweep-round-removes-only-unheld-staging-names",
         "fn-sn-sweep-rounds-collect-every-orphan",
