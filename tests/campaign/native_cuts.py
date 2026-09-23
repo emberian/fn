@@ -18,6 +18,8 @@ class NativeCut:
     # program is not itself a whole write path.  Its coordinate is then
     # `follows` run to its end, then `program` up to the cut.
     follows: str | None = None
+    model_name: str | None = None
+    occurrence: int = 1
 
 
 POST_CUTS = (
@@ -44,7 +46,8 @@ POST_CUTS = (
 # of fn-bs-recover-program followed by one fn-bs-recover-stage-cleanup-program.
 RECOVERY_CUTS = (
     NativeCut("recover-replayed", "fn-bs-recover-program", "n/a"),
-    NativeCut("recover-barrier", "fn-bs-recover-program", "n/a"),
+    *(NativeCut("recover-barrier-{}".format(i), "fn-bs-recover-program", "n/a",
+                model_name="recover-barrier", occurrence=i) for i in range(1, 6)),
     NativeCut("recovery-stage-unlinked", "fn-bs-recover-stage-cleanup-program", "n/a",
               follows="fn-bs-recover-program"),
 )
@@ -73,7 +76,7 @@ def native_declared_cut_names(parameter: str) -> tuple[str, ...]:
     if not match:
         raise AssertionError("native cut declaration not found: {}".format(parameter))
     keywords = re.findall(r":([a-z-]+)", match.group(1))
-    strings = re.findall(r'"([a-z-]+)"', match.group(1))
+    strings = re.findall(r'"([a-z0-9-]+)"', match.group(1))
     return tuple(keywords or strings)
 
 
@@ -105,8 +108,10 @@ def verify_native_cut_map() -> None:
     if tuple(c.name for c in RECOVERY_CUTS) != recovery:
         raise AssertionError("native/model recovery cuts differ")
     for cut in ALL_CUTS:
-        if cut.name not in model_cut_names(cut.program):
-            raise AssertionError("{} absent from {}".format(cut.name, cut.program))
+        model_names = model_cut_names(cut.program)
+        if model_names.count(cut.model_name or cut.name) < cut.occurrence:
+            raise AssertionError("{} occurrence {} absent from {}".format(
+                cut.name, cut.occurrence, cut.program))
     verify_recovery_order()
 
 
@@ -126,7 +131,7 @@ def verify_recovery_order() -> None:
     source = (ROOT / "host/native/io.lisp").read_text()
     recover = host_function(source, "fnn-recover")
     order = [recover.index("(fnn-at store :recover-replayed)"),
-             recover.index("(fnn-at store :recover-barrier)"),
+             recover.index('(fnn-at store (intern (format nil "RECOVER-BARRIER-~d" ordinal) :keyword))'),
              recover.index("(fnn-sweep-staging store)")]
     if order != sorted(order):
         raise AssertionError("fnn-recover no longer sweeps after its barriers")

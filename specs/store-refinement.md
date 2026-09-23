@@ -425,6 +425,25 @@ an uncertain tail. Its independent targeted result is subsequent to the frozen
 54-root checkpoint. Physical power-loss outcomes, freshness and all possible
 host/namespace interleavings are not established by these finite tests.
 
+The served-owner process-death differential now compares selected actual
+`operator run` kills with an ACL2 byte-program prefix at the named cut.
+`fn-bso-served-image-agree` in `books/byte-store-observation.lisp` compares
+visible names, exact octets and the hard-link alias partition in `:root`,
+`:transactions` and `:staging`. The host importer supplies physical inode
+identities only to preserve alias equality; ACL2 computes the comparison and
+the all-issued-operation SIGKILL image. The six post cuts cover an allocator
+replacement, prepublication stage, link uncertainty, durable directory
+barrier and both finish cuts. The five recovery barriers have distinct host
+selectors and distinct occurrences of `fn-bs-recover-program`'s barrier cut;
+they preserve the prior acknowledged article through reopen. See the
+[runtime record](../tests/evidence/2026-09-23-served-crash-observation.md).
+This is visible-image correspondence for process death. It does not establish
+literal `fn-bs-crash-imagep` equality of a physical inode table, torn or lost
+dirty writes, power loss, or a theorem carrying this projection through every
+decoder/recovery observation. The other served post cuts, replay and staging
+cleanup cuts, uncertain error callbacks, and repeated recovery deaths remain
+runtime differential obligations.
+
 For a rejected or lost durable completion, the adapter must close its mutation
 gate before calling the core and clear it only after the exact matching success.
 The durable file remains recovery authority; further mutation requires recovery.
