@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 425 |
-| Certification roots in the Makefile | 423 |
-| Books inside the root closure | 424 |
-| `defthm` and `defthmd` events | 7126 |
-| `defun` events | 5436 |
+| Books read | 427 |
+| Certification roots in the Makefile | 425 |
+| Books inside the root closure | 426 |
+| `defthm` and `defthmd` events | 7141 |
+| `defun` events | 5445 |
 | Functions with verified guards | 1746 |
-| Functions declared `:verify-guards nil` and never verified | 296 |
+| Functions declared `:verify-guards nil` and never verified | 297 |
 | Functions left at the default with an explicit guard | 2722 |
-| Functions left at the default with no guard | 672 |
-| `assert-event` checks | 7845 |
-| `must-fail` checks | 282 |
+| Functions left at the default with no guard | 680 |
+| `assert-event` checks | 7846 |
+| `must-fail` checks | 285 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 65 |
 | Export-hygiene warnings | 93 |
 | Enabled-projection warnings | 27 |
 | Teeth-form warnings | 23 |
-| Include-hygiene warnings | 261 |
+| Include-hygiene warnings | 266 |
 | Host-names warnings | 654 |
 | Hand-written-record warnings | 18 |
 
@@ -158,6 +158,7 @@ that `make certify` requests.
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
 | `books/byte-store-keystones.lisp` | root | 34 | 3 | 0/3/0/0 | 0 | 0 | 0 |
 | `books/byte-store-native-correspondence.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/byte-store-observation-scan.lisp` | root | 15 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/byte-store-observation.lisp` | root | 0 | 8 | 0/8/0/0 | 0 | 0 | 0 |
 | `books/byte-store-program-invariants.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/byte-store-programs.lisp` | root | 1 | 31 | 0/31/0/0 | 33 | 0 | 0 |
@@ -388,6 +389,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 0 | 0 |
 | `tests/acl2/byte-store-initializer-tests.lisp` | root | 0 | 9 | 0/4/0/5 | 12 | 3 | 0 |
 | `tests/acl2/byte-store-native-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 2 | 0 |
+| `tests/acl2/byte-store-observation-scan-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 1 | 3 | 0 |
 | `tests/acl2/byte-store-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/byte-store-program-invariants-tests.lisp` | root | 0 | 3 | 0/1/0/2 | 9 | 8 | 0 |
 | `tests/acl2/byte-store-relation-tests.lisp` | root | 1 | 5 | 0/0/0/5 | 12 | 12 | 0 |
