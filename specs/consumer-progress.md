@@ -184,9 +184,16 @@ incarnation IDs before any consumer registration. Host-supplied entropy is an
 observation, not an endpoint, wall-clock or configuration-generation
 derivation. A duplicate bootstrap in one Store history is refused. A normal
 crash replay retains both IDs. Writable restore or clone must durably commit
-an explicit new-incarnation transition before consumer service. Until that
-path is integrated, writable restore/clone must refuse a consumer-enabled
-Store rather than make two writable futures under one cursor scope. The
+an explicit new-incarnation transition before consumer service. The native
+source now has a cold `checkpoint clone` and fenced `checkpoint clone-resume`
+path: it copies exact Store bytes under an exclusive source lock, installs a
+durable canonical rollover-event fence before exposing the destination, and
+refuses ordinary opens until owner publication and an independent reopen
+confirm the new incarnation. A same-ID or malformed proposal is refused
+without publication; an occupied destination is untouched; uncertain
+completion leaves the copied target fenced. This
+source path awaits a combined saved-image witness and a served cursor test;
+arbitrary filesystem copying is not a supported writable clone. The
 selected exact-prefix pack retains every original event byte and reconstructs
 the entire dense Store stream before open; its prefix reclaim may preserve
 cursor positions only while this exact expansion remains the recovery path.

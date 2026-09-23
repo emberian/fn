@@ -142,8 +142,14 @@
         "proof",
         "scenario"
       ],
-      "evidence": [],
-      "note": "PRF-017 has no events. Origin identity and incarnation are records the host writes; no theorem relates them to a non-wall-clock order."
+      "evidence": [
+        "books/checkpoint-auxiliary.lisp",
+        "tests/acl2/checkpoint-auxiliary-tests.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_checkpoint.py",
+        "planning/evidence/checkpoint-clone-source-2026-09-23.md"
+      ],
+      "note": "PRF-017 has no events. Origin identity and incarnation are records the host writes; no theorem relates them to a non-wall-clock order. The E2 clone source now requires a fresh caller-supplied incarnation and durably publishes the ACL2 rollover before releasing a fence, but this does not close PRF-017 for arbitrary origin issuance or time-independent fork authority; native qualification remains open."
     },
     {
       "id": "OBJ-007",
@@ -536,9 +542,10 @@
         "tests/evidence/2026-09-23-t2-checkpoint-migration.md",
         "books/checkpoint-auxiliary.lisp",
         "tests/acl2/checkpoint-auxiliary-tests.lisp",
-        "planning/evidence/checkpoint-auxiliary-e2-t10-2026-09-23.md"
+        "planning/evidence/checkpoint-auxiliary-e2-t10-2026-09-23.md",
+        "planning/evidence/checkpoint-clone-source-2026-09-23.md"
       ],
-      "implementation_note": "Logical checkpoint equivalence and concrete codec/publication are implemented. Native capture/select/status validate selected checkpoints after authoritative full journal replay; private restored state is never installed as the live node. ACL2 owns canonical namespace and observation/allocation bounds. Mismatch is always corruption, and uncertain mutation leaves the Store fenced. Schema-0 pre-stamp selected checkpoints migrate five-field ready articles to :legacy in ACL2, then pass the current checkpoint recognizer; schema-1 captures keep the new shape. A pre-T2 physical checkpoint exposed a T2 decode failure before this repair; patched ACL2 decodes its exact frame with :legacy, while an exact-source repaired native image remains to be run. Source-pinned component tests do not establish suffix-only recovery, shared-owner/index integration, full physical correspondence or freshness qualification. Selected-pack exact-history reopen now has a version-one recovery-only ACL2 differential for E2 consumer state, completed dense sequence, historical verdicts and keyring snapshots; the source-pinned ACL2 witness covers a reclaimed E2 prefix and a bound hybrid composite. The native caller is wired but awaits a combined image witness. Cold writable clone activation remains unimplemented and must not be inferred from copying a store directory.",
+      "implementation_note": "Logical checkpoint equivalence and concrete codec/publication are implemented. Native capture/select/status validate selected checkpoints after authoritative full journal replay; private restored state is never installed as the live node. ACL2 owns canonical namespace and observation/allocation bounds. Mismatch is always corruption, and uncertain mutation leaves the Store fenced. Schema-0 pre-stamp selected checkpoints migrate five-field ready articles to :legacy in ACL2, then pass the current checkpoint recognizer; schema-1 captures keep the new shape. A pre-T2 physical checkpoint exposed a T2 decode failure before this repair; patched ACL2 decodes its exact frame with :legacy, while an exact-source repaired native image remains to be run. Source-pinned component tests do not establish suffix-only recovery, shared-owner/index integration, full physical correspondence or freshness qualification. Selected-pack exact-history reopen now has a version-one recovery-only ACL2 differential for E2 consumer state, completed dense sequence, historical verdicts and keyring snapshots; the source-pinned ACL2 witness covers a reclaimed E2 prefix and a bound hybrid composite. The native caller is wired but awaits a combined image witness. Cold writable clone activation remains unimplemented and must not be inferred from copying a store directory. The native source adds fenced cold clone/clone-resume with an ACL2-proposed durable E2 rollover event and no-replace directory publication. Its ACL2 phase tests certify; a combined saved-image crash/reopen run has not yet qualified this physical path.",
       "keystones": [
         "fn-checkpoint-plus-suffix-equals-full-replay",
         "fn-checkpoint-admissible-capture-is-exact",

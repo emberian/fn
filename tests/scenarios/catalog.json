@@ -357,7 +357,14 @@
         "Restore discipline prevents unrecognized identity reuse under A-IDENTITY.",
         "Fork evidence remains; timestamps do not settle authority."
       ],
-      "evidence": []
+      "evidence": [
+        "books/checkpoint-auxiliary.lisp",
+        "tests/acl2/checkpoint-auxiliary-tests.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_checkpoint.py",
+        "planning/evidence/checkpoint-clone-source-2026-09-23.md"
+      ],
+      "execution_scope": "Partial: ACL2 clone proposal/phase tests certify, and native source implements a pre-open fence, no-replace cold copy and durable rollover/reopen. The saved-image fixture and process-death cuts are written but await a combined E2 image; competing origin forks and served cursor rejection remain open."
     },
     {
       "id": "SCN-012",

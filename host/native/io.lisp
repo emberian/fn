@@ -1044,6 +1044,18 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defun fnn-transactions (s) (fnn-join (fnn-store-root s) "transactions"))
 (defun fnn-staging (s) (fnn-join (fnn-store-root s) "staging"))
 (defun fnn-lock-path (s) (fnn-join (fnn-store-root s) "writer.lock"))
+(defvar *fnn-clone-activation* nil)
+
+(defun fnn-clone-fence-path (s)
+  (fnn-join (fnn-store-root s)
+            (fnn-checkpoint-name-result
+             (fnn-core 'fn-store-checkpoint-clone-fence-name)
+             "clone fence name")))
+
+(defun fnn-require-clone-activated (s)
+  (when (and (fnn-lstat (fnn-clone-fence-path s))
+             (not *fnn-clone-activation*))
+    (fnn-refuse "clone is fenced pending durable incarnation rollover")))
 (defun fnn-frontier-path (s) (fnn-join (fnn-store-root s) "allocation-frontier.json"))
 (defun fnn-config-dir (s) (fnn-join (fnn-store-root s) "config"))
 (defun fnn-config-record-name (generation)
@@ -1304,6 +1316,7 @@ after the syscall."
   ;; the core from the operator's group names.
   (fnn-safe-directory (fnn-store-root store) t store
                       "init-root-mkdir" "init-root-parent-fenced")
+  (fnn-require-clone-activated store)
   (let ((lock-fd (fnn-open-lock store t t)))
     (unwind-protect
          (progn
@@ -1359,6 +1372,7 @@ after the syscall."
 
 (defun fnn-acquire (store)
   (fnn-safe-directory (fnn-store-root store))
+  (fnn-require-clone-activated store)
   (fnn-safe-directory (fnn-transactions store))
   (fnn-safe-directory (fnn-staging store))
   (handler-case

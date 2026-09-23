@@ -7,6 +7,14 @@
 (include-book "checkpoint-compaction")
 
 (defconst *fn-cpa-version* 1)
+(defconst *fn-cpa-clone-fence-name*
+  '(99 108 111 110 101 45 112 101 110 100 105 110 103 46 102 110 99 101))
+(defconst *fn-cpa-clone-max-depth* 16)
+(defconst *fn-cpa-clone-max-entries* 1000000)
+
+(defun fn-cpa-clone-fence-read-bound () *fn-cpe-max-octets*)
+(defun fn-cpa-clone-max-depth () *fn-cpa-clone-max-depth*)
+(defun fn-cpa-clone-max-entries () *fn-cpa-clone-max-entries*)
 
 ; The full replay is deliberately confined to recovery, never a served path.
 ; Returning :bad keeps a partial or malformed consumer/identity history from
@@ -57,3 +65,64 @@
            (list :refused :coordinates))
           (t (list :ok (fn-cpe-make sequence txid txid
                                     (list :rollover fresh-id)))))))
+
+; This constructor is used only by the saved-image integration fixture until
+; the consumer interface has a public bootstrap policy.  It still derives all
+; Store coordinates in ACL2 and admits only the first consumer bootstrap.
+(defun fn-cpa-bootstrap-proposal (store history-id incarnation-id)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((sequence (fn-sn-identity-next store))
+        (txid (fn-state-next-txid
+               (fn-node-acceptance (fn-sn-node store)))))
+    (cond ((fn-sn-consumer store) (list :refused :already-bootstrapped))
+          ((or (not (fn-cp-idp history-id))
+               (not (fn-cp-idp incarnation-id)))
+           (list :refused :identity))
+          ((or (not (fn-cp-uintp sequence))
+               (equal sequence *fn-cbor-max-uint*)
+               (not (fn-cp-uintp txid)))
+           (list :refused :coordinates))
+          (t (list :ok (fn-cpe-make
+                        sequence txid txid
+                        (list :bootstrap history-id incarnation-id)))))))
+
+(defun fn-cpa-last-record (records)
+  (declare (xargs :measure (len records)))
+  (if (consp records)
+      (if (consp (cdr records))
+          (fn-cpa-last-record (cdr records))
+        (car records))
+    nil))
+
+; The fence contains the canonical v1 consumer rollover event itself.  It is
+; never an alternative journal: :completed requires that exact event at the
+; end of the authoritative completed history.  The host may remove the fence
+; only after a new observed reopen returns :completed.
+(defun fn-cpa-clone-phase (store marker-event)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((op (fn-cpe-operation marker-event))
+         (fresh-id (fn-cp-nth 1 op))
+         (consumer (fn-sn-consumer store)))
+    (cond ((or (not (fn-cpe-eventp marker-event))
+               (not (equal (fn-cp-nth 0 op) :rollover))
+               (not (fn-cp-statep consumer)))
+           :refused)
+          ((equal (fn-cp-nth 2 consumer) fresh-id)
+           (if (and (equal marker-event
+                           (fn-cpa-last-record
+                            (fn-sf-records (fn-sn-files store))))
+                    (equal (fn-sn-identity-next store)
+                           (1+ (fn-cpe-sequence marker-event))))
+               :completed
+             :refused))
+          ((equal (fn-cpa-rollover-proposal store fresh-id)
+                  (list :ok marker-event))
+           :pending)
+          (t :refused))))
+
+(defun fn-cpa-clone-phase-of-octets (store marker-octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((decoded (fn-cpe-decode-exact marker-octets)))
+    (if (equal (car decoded) :ok)
+        (fn-cpa-clone-phase store (fn-cp-nth 1 decoded))
+      :refused)))
