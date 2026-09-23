@@ -8,10 +8,11 @@ plumbing here; it neither parses fn.toml nor builds configuration records.
 import hashlib
 import os
 from pathlib import Path
-import select
 import subprocess
 import tempfile
 import unittest
+
+from tests.native_process import wait_for_announcement
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -96,12 +97,7 @@ class NativeAdminTests(unittest.TestCase):
             [str(IMAGE), "--fn", "operator", str(self.config), "run"],
             cwd=ROOT, env=env or self.env,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        ready = select.select([process.stdout], [], [], 60)[0]
-        self.assertTrue(ready, "native owner did not announce a port")
-        line = process.stdout.readline()
-        if not line.startswith(b"LISTENING "):
-            self.fail("native owner failed: {} {}".format(
-                line, process.stderr.read().decode("utf-8", "replace")))
+        wait_for_announcement(process, b"LISTENING ", timeout=60)
         self.addCleanup(self.stop_owner, process)
         return process
 
