@@ -37,9 +37,17 @@ disagree, those win and this file is wrong.
 - The INN lab on this image holds 33 of 33 with no fn-side finding
   ([record](evidence/inn-lab-da5fd8cb-2026-09-23.md)): the operator's post
   crosses injected, INN's article is served under fn's Path with no Xref,
-  `From: yue` is refused. The cut campaign on this image is running as this
-  is written; its record lands as `evidence/campaign-da5fd8cb-2026-09-23.md`
-  and this line is amended with what it says.
+  `From: yue` is refused. The cut campaign on this image
+  ([record](evidence/campaign-da5fd8cb-2026-09-23.md), two runs, identical
+  tables) witnesses every finding of the first: the served owner dies at
+  each of sixteen cuts, recovery changes no byte, the control stop answers
+  uncertain ten of ten, the production image refuses all eight selectors at
+  startup. One decision for ember from it: the `store` verb's post, present
+  in every image, still writes an article without the injected headers, so
+  one payload through the two entries becomes two articles under one
+  Message-ID and whichever comes second is refused; make `store post`
+  inject, make it developer-only, or leave it and say so on the node's
+  page.
 - No lane is live on any book. The tooling as of tonight: the certificate
   cache composes across runs; a plain run is incremental; the runner starts
   the longest chain first; `farm.py wait` returns; eight local ACL2 session
