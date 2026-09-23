@@ -135,22 +135,61 @@
                                fn-find-article)))
   :rule-classes nil)
 
+(local
+ (defthm fn-stamp-valid-record-stamp-is-present
+   (implies (fn-record-p record)
+            (not (equal (fn-record-stamp record) nil)))
+   :hints (("Goal" :in-theory (enable fn-record-p fn-record-stampp)))))
+
+(local
+ (defthm fn-stamp-missing-article-has-no-stamp
+   (implies (not (consp article))
+            (equal (fn-article-stamp article) nil))
+   :hints (("Goal" :in-theory (enable fn-article-stamp)))))
+
+(local
+ (defthm fn-stamp-successful-article-step-needs-valid-node
+   (implies (and (fn-replay-article-eventp record)
+                 (consp (fn-replay-apply-record node record)))
+            (fn-node-statep node))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-replay-apply-record
+                             fn-replay-advance-txid
+                             fn-node-prepare fn-node-pending-matchesp)
+                            (fn-record-shape-vocabulary
+                             fn-stxa-p fn-stxe-p fn-stxk-p
+                             fn-store-retention-event-p))))))
+
 (defthm fn-replay-apply-record-installs-the-stamp
   (let ((article (fn-replay-article-record record)))
-    (implies (and (fn-node-statep node)
-                  (fn-store-event-p record)
-                  (fn-replay-article-eventp record)
+    (implies (and (fn-replay-article-eventp record)
                   (consp (fn-replay-apply-record node record)))
-             (equal (fn-article-stamp
-                     (fn-find-article
+             (and
+              (consp (fn-find-article
                       (fn-record-msgid article)
                       (fn-state-articles
                        (fn-node-acceptance
                         (fn-replay-apply-record node record)))))
-                    (fn-record-stamp article))))
+              (equal (fn-article-stamp
+                      (fn-find-article
+                       (fn-record-msgid article)
+                       (fn-state-articles
+                        (fn-node-acceptance
+                         (fn-replay-apply-record node record)))))
+                     (fn-record-stamp article)))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-replay-advance-keeps-idle-stage
                             (txid (fn-store-event-txid record)))
+                 fn-stamp-successful-article-step-needs-valid-node
+                 (:instance fn-stamp-valid-record-stamp-is-present
+                            (record (fn-replay-article-record record)))
+                 (:instance fn-stamp-missing-article-has-no-stamp
+                            (article
+                             (fn-find-article
+                              (fn-record-msgid (fn-replay-article-record record))
+                              (fn-state-articles
+                               (fn-node-acceptance
+                                (fn-replay-apply-record node record))))))
                  (:instance fn-stamp-prepared-completion-installs-stamp
                             (node (fn-replay-advance-txid
                                    node (fn-store-event-txid record)))
@@ -179,6 +218,9 @@
                 (fn-record-shape-vocabulary
                  fn-node-prepare fn-node-complete
                  fn-replay-advance-keeps-idle-stage
+                 fn-stamp-successful-article-step-needs-valid-node
+                 fn-stamp-valid-record-stamp-is-present
+                 fn-stamp-missing-article-has-no-stamp
                  fn-stxe-p fn-stxk-p fn-stxa-p
                  fn-store-retention-event-p))))
   :rule-classes nil)
@@ -218,14 +260,20 @@
 (defthm fn-sn-finish-installs-the-stamp-the-composite-carries
   (implies (and (fn-sn-completion-enabledp s)
                 (fn-stxa-p (fn-sn-completion-record s)))
-           (equal (fn-article-stamp
-                   (fn-find-article
+           (and
+            (consp (fn-find-article
                     (fn-record-msgid
                      (fn-replay-composite-record (fn-sn-completion-record s)))
                     (fn-state-articles
                      (fn-node-acceptance (fn-sn-node (fn-sn-finish s))))))
-                  (fn-record-stamp
-                   (fn-replay-composite-record (fn-sn-completion-record s)))))
+            (equal (fn-article-stamp
+                    (fn-find-article
+                     (fn-record-msgid
+                      (fn-replay-composite-record (fn-sn-completion-record s)))
+                     (fn-state-articles
+                      (fn-node-acceptance (fn-sn-node (fn-sn-finish s))))))
+                   (fn-record-stamp
+                    (fn-replay-composite-record (fn-sn-completion-record s))))))
   :hints (("Goal"
            :use (fn-stamp-composite-enabled-implies-replay-premises
                  (:instance fn-replay-apply-record-installs-the-stamp
