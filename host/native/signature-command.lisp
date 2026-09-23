@@ -92,6 +92,34 @@ Output is two algorithm-tagged lowercase hexadecimal lines."
         (progn (fnn-out "verified ~a" (fnn-hex (third result))) 0)
       (progn (fnn-out "unverified ~a" (second result)) 1))))
 
+(defun fnn-command-hybrid-verify-source (args)
+  "Export only an independently verified carrier's exact authored source.
+The versioned line is a bounded portable-authorship result, never a Store
+acceptance or historical-verdict statement."
+  (unless (= (length args) 2)
+    (error 'fnn-usage-error
+           :message "usage: fn hybrid-verify-source ARTICLE ML-PUBLIC-PEM"))
+  (let* ((received (fnn-octet-list
+                    (fnn-read-regular-bounded
+                     (first args) (fnn-core 'fn-hsig-host-max-received-octets))))
+         (result (fnn-hsig-verify-received-carrier received (second args))))
+    (if (not (eq (first result) :verified))
+        (progn (fnn-out "unverified ~a" (second result)) 1)
+      (let* ((source (second result))
+             (principal (third result))
+             (keys (fourth result))
+             (source-id (fnn-core 'fn-hsig-host-authored-source-id source)))
+        (unless (and (fnn-octet-list-p source)
+                     (fnn-octet-list-p principal) (= (length principal) 32)
+                     (fnn-octet-list-p source-id) (= (length source-id) 48)
+                     (equal (caar keys) :ed25519)
+                     (fnn-octet-list-p (cdar keys)) (= (length (cdar keys)) 32))
+          (fnn-fault "verified carrier has an invalid portable source projection"))
+        (fnn-out "fn-portable-v1 ~a ~a ~a ~a"
+                 (fnn-hex principal) (fnn-hex source-id)
+                 (fnn-hex (cdar keys)) (fnn-hex source))
+        0))))
+
 (defun fnn-command-topic-inspect-carrier (args)
   "Inspect exact authored FN-Topic metadata after checking the carrier.
 A valid carrier does not establish topic anchoring or report admission."
@@ -126,3 +154,6 @@ A valid carrier does not establish topic anchoring or report admission."
 (fnn-register-verb "hybrid-verify-carrier"
                    (lambda (first rest)
                      (fnn-command-hybrid-verify-carrier (cons first rest))))
+(fnn-register-verb "hybrid-verify-source"
+                   (lambda (first rest)
+                     (fnn-command-hybrid-verify-source (cons first rest))))
