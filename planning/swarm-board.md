@@ -106,6 +106,15 @@ Carrier affected closure: persvati run `run-20260923T143127Z-1770`, w25,
 run; T2 will coordinate its broad migration batch when coherent. See the
 individual evidence records for manifests and source digests.
 
+Combining the fragment limits with the carrier exposed two stale include
+closures despite each lane's own passing source. Root run
+`run-20260923T144543Z-d324` in
+`/home/ember/fn-gates/takeover-convergence` reused 70 dependencies and certified
+`books/bp-limits` and its test at the combined bytes (w25, two jobs,
+4.585 s certification wall). The
+[manifest](evidence/manifests/certify-20260923T144550Z-772507.json) records
+the source/closure digests and both passes. No unrelated roots were rebuilt.
+
 Lanes begin with at most two jobs, then negotiate shared wider runs when
 useful. Existing machine slot pools and hbox memory wrapper remain in force.
 Release idle REPLs when peers need their slots. A runner that has not emitted
