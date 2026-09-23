@@ -10,6 +10,9 @@ served recovery correspondence and BP/authorship joins under the
 The [architectural reassessment](ambition-2026-09-23.md) proposes portable
 application-evidence and durable-consumer experiments while retaining the
 selected v0 gate; these are not additional release requirements.
+The proposed [E2 v1 contract](../specs/consumer-progress.md) and
+[adversarial traces](experiments/e1-e2-v1-traces.json) now name the future
+Store/owner caller and crash observations; neither is implemented or a v0 gate.
 [Current work](now.md) identifies the tested image and active/proposed work.
 Release scope and step contracts remain in
 [the trajectory plan](plan-2026-09-22-trajectory.md) §§2–3; the execution
