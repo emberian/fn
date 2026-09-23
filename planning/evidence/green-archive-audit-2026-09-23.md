@@ -53,3 +53,12 @@ closure in the manifest. These are the original runs, not new certifications:
 The `165752` and `170527` aggregate runs failed on other requested books;
 their per-book success markers, certificate digests and exit codes support
 only the passed books named above. Their other failures remain recorded.
+
+`books/checkpoint-codec` has a separate matching original run:
+`certify-20260923T171234Z-3977907` from
+`build/lanes/crash-t2-migration/build/acl2/` (manifest SHA-256
+`f5d3feca19b4160206f6f82a0452129af5a7f0a6d7010be77bd23e54f4044f02`).
+Its book result passed on hbox with the current source and complete include
+closure, success marker, certificate digest, and exit code zero. The same run
+passed its checkpoint codec test, but that test's source changed afterward,
+so this archive does not vouch for the test at its current bytes.
