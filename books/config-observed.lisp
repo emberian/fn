@@ -29,22 +29,26 @@
                    (config (fn-cnode-config cn))
                    (identity (fn-replay-identity events))
                    (consumer (fn-cpe-projection-replay nil events 0))
+                   (topic (fn-th-prefix-project events))
                    (files (fn-sf-make :recovering frontier nil events
                                       nil nil nil 0))
                    (seed (fn-sn-observed-seed
                           (fn-cnode-domain-of config)
                           (fn-cfg-capacity (fn-cfg-value config))
                           frontier events))
-                   (opened (fn-sn-with-consumer
-                            (fn-cpo-install
-                             (fn-sn-update-replayed
-                              seed files advanced
-                              (fn-stx-index-of-store (fn-stx-store advanced) nil)
-                              identity)
-                             (fn-cnode-make advanced config) configs)
-                            (fn-cp-nth 1 consumer))))
+                   (opened (fn-sn-with-topic
+                            (fn-sn-with-consumer
+                             (fn-cpo-install
+                              (fn-sn-update-replayed
+                               seed files advanced
+                               (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                               identity)
+                              (fn-cnode-make advanced config) configs)
+                             (fn-cp-nth 1 consumer))
+                            topic)))
               (if (and (equal (fn-stxk-context-kind identity) :ok)
                        (eq (car consumer) :ok)
+                       (eq (car topic) :ok)
                        (fn-sn-statep opened))
                   (fn-sn-open-ok opened)
                 (fn-sn-open-error :identity)))))))))

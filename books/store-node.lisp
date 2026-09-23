@@ -258,6 +258,46 @@
                          config-history consumer topic event-index))
          files))
 
+; A configuration reopen changes only these four fields.  Updating the
+; existing record retains every other projection, including future appended
+; carried indexes; it does not depend on a versioned constructor's arity.
+(defun fn-sn-with-configuration (s groups capacity node config-history)
+  (declare (xargs :guard (true-listp s)))
+  (update-nth 10 config-history
+   (update-nth 3 node
+    (update-nth 1 capacity
+     (update-nth 0 groups s)))))
+
+(local
+ (defthm fn-sn-store-event-nth-is-nth
+   (implies (natp n)
+            (equal (fn-store-event-nth n x) (nth n x)))
+   :hints (("Goal" :induct (fn-store-event-nth n x)
+            :in-theory (enable fn-store-event-nth nth)))))
+(local
+ (defthm fn-sn-nth-of-update-nth-different
+   (implies (and (natp n) (natp m) (not (equal n m)))
+            (equal (nth n (update-nth m value x)) (nth n x)))
+   :hints (("Goal" :induct (nth n x)
+            :in-theory (enable nth update-nth)))))
+
+(defthm fn-sn-topic-of-fn-sn-with-configuration
+  (equal (fn-sn-topic
+          (fn-sn-with-configuration s groups capacity node config-history))
+         (fn-sn-topic s)))
+(defthm fn-sn-consumer-of-fn-sn-with-configuration
+  (equal (fn-sn-consumer
+          (fn-sn-with-configuration s groups capacity node config-history))
+         (fn-sn-consumer s)))
+(defthm fn-sn-with-configuration-preserves-unselected-slot
+  (implies (and (natp k)
+                (not (member-equal k '(0 1 3 10))))
+           (equal (nth k (fn-sn-with-configuration
+                          s groups capacity node config-history))
+                  (nth k s)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-with-configuration) (nth update-nth)))))
+
 (defthm fn-sn-consumer-of-fn-sn-make-v2
   (equal (fn-sn-consumer
           (fn-sn-make-v2 groups capacity files node keyring index
