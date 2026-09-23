@@ -467,16 +467,16 @@
     "books": 465,
     "books_in_root_closure": 464,
     "roots": 460,
-    "theorems": 7444,
-    "functions": 5677,
-    "assert_events": 8227,
-    "must_fails": 330,
+    "theorems": 7457,
+    "functions": 5678,
+    "assert_events": 8231,
+    "must_fails": 333,
     "encapsulates": 26,
     "guards": {
       "verified": 1850,
       "declared-off": 307,
       "default-guarded": 2778,
-      "default-unguarded": 742
+      "default-unguarded": 743
     },
     "suspect_theorems": 70,
     "export_hygiene_warnings": 93,
@@ -2876,7 +2876,7 @@
       "book": "books/byte-store-record-fence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 29,
+      "theorems": 41,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -9472,17 +9472,17 @@
       "book": "tests/acl2/byte-store-record-fence-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
-      "functions": 3,
+      "theorems": 1,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 3,
-      "must_fails": 2,
+      "assert_events": 7,
+      "must_fails": 5,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
