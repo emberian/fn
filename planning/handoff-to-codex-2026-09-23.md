@@ -81,7 +81,7 @@ itself):
 
 | measure | what it exercises | today (2026-09-23 03:00Z) | target |
 | --- | --- | --- | --- |
-| leaf: edit `books/peer-inbound`, plain run | rsync, cache install, one book and its test books | 8.7 s certify, about a minute with the rsync; the third incremental run of dev's head (2026-09-23 02:17Z, `certify-20260923T021717Z`) certified 54 books against 371 installed in 29 s from submit to status, none over ten seconds | under 1 min |
+| leaf: edit `books/peer-inbound`, plain run | rsync, cache install, one book and its test books | 8.7 s certify, about a minute with the rsync; the third incremental run of dev's head (2026-09-23 02:17Z, `certify-20260923T021717Z`) certified 54 books against 371 installed in 29 s from submit to status, none over ten seconds; the fourth (02:41Z, `certify-20260923T024141Z`) certified 62 against 363 in 63 s with the image closure entirely green | under 1 min |
 | deep: edit `books/records-shape`, plain run | the incremental mode certifying every dependent, the chain | 3 min 19 s at 16 jobs for 362 of 425 books (the second incremental run of dev's head, 2026-09-23 01:53Z, `certify-20260923T015324Z`), down from 27 min; 15 books still over ten seconds in it, most repaired since | under 3 min |
 | freeze: `--closure` over the image roots at 16 jobs | the whole tree from scratch | 31 min at 8 jobs before tonight's repairs | under 3 min, or pcert |
 
