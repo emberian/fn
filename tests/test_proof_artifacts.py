@@ -29,6 +29,9 @@ class ProfileTests(unittest.TestCase):
         # shared logical dependency.
         self.assertIn("books/bp-node", default_roots)
         self.assertIn("books/bp-node", dtn_roots)
+        # The verified guard events must be in each saved image's ACL2 world.
+        self.assertIn("books/bp-node-machine-guards", default_roots)
+        self.assertIn("books/bp-node-machine-guards", dtn_roots)
         # Owner fault isolation is now included by owner-config. Assert it
         # remains in each complete artifact set, not necessarily a direct root.
         self.assertIn("books/owner-fault", certs.required_closure(ROOT, default_roots))

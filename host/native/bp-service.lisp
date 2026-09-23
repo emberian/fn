@@ -108,7 +108,11 @@
 
 (defun fnn-bps-step (service event)
   ;; Assurance subject: this is the host call to fn-bpn-step, with no sibling
-  ;; dispatcher between the native service and the proved transition.
+  ;; dispatcher between the native service and the proved transition.  The
+  ;; initial state is checked once at open.  The step-preservation theorem
+  ;; carries that invariant; check only the bounded event at this boundary.
+  (unless (eq (fnn-core 'fn-bpn-machine-eventp event) t)
+    (fnn-indeterminate "bp-service: malformed machine event"))
   (let ((answer (fnn-core 'fn-bpn-step (fnn-bps-state service) event)))
     (setf (fnn-bps-state service)
           (fnn-core 'fn-bpn-host-answer-state answer))
@@ -273,6 +277,9 @@
                                   config
                                   (fnn-core 'fn-bpn-host-machine-max-jobs)
                                   (fnn-core 'fn-bpn-host-machine-max-octets))))
+          (unless (eq (fnn-core 'fn-bpn-machine-invariantp
+                                (fnn-bps-state service)) t)
+            (fnn-indeterminate "bp-service: invalid initial machine state"))
           (setf *fnn-bps-lifecycle-enumerations* 0)
           (multiple-value-bind (observed-names plan)
               (fnn-bps-namespace-plan service)
