@@ -23,11 +23,13 @@ as `planning/v0-matrix.json`; ordinary lane runs do not replace that dashboard.
 `uncertain` are the three outcomes of D13 and each is a real observation: a
 row whose feature IS a refusal (a duplicate offer, a capacity overflow) and
 which draws its refusal reads `refused`, and that is the feature working.
-`not-exercised` means the row could not run, and `blocker` says exactly why.
+`not-exercised` means no D13 outcome was observed, and `blocker` says exactly why.
 `not-built` means the feature is not on the tree yet, and `owner` names the
 lane building it.  Whether a row did what it was designed to do is the
 separate `agrees` bit: `verdict == expected`.  Nothing here reports a row as
 passing because it was skipped, and nothing reports a refusal as a failure.
+The wildcard-configuration probe expects one exact ACL2 usage reply outside
+those three outcomes. Other usage replies still fail the gate.
 
 **The matrix owns no decision that ACL2 owns.**  It derives no identity,
 computes no group table, no charge, no frame and no bound.  Every row is an
@@ -49,9 +51,9 @@ its requirement and scenario ids and runs nothing.
     steps=<N> failed=<N> not-exercised=<N>
 
 where `not-exercised` is the `not-exercised` and `not-built` rows summed, so
-the fiber table and the matrix cannot disagree.  Exit 0 when every row that
-ran agrees with its expectation, 1 when one does not, 2 when the gate stopped
-early.
+the fiber table and the matrix cannot disagree. Exit 0 when every outcome
+row that ran agrees with its expectation and the declared configuration-usage
+probe matches exactly, 1 when one does not, 2 when the gate stopped early.
 
 Everything below the rows -- shipping the commit, the certificates, the two
 nodes, the peer records, the step accounting, the evidence renderer -- is
@@ -69,7 +71,7 @@ saved image and two preprovisioned native configuration paths.  Its only
 server candidate is ``packaging/fn-native operator CONFIG run``.  It exercises
 the public native status action, NNTP POST, the reader profile on both
 listeners, AUTHINFO with a credential the public operator enrolled, live group
-administration through the running owner, the wildcard-listener refusal and an
+administration through the running owner, the wildcard-listener configuration rejection and an
 independent stdlib-nntplib client.  It never initializes a store through
 Python and never falls back to ``bin/fn``, ``tools/run_owner.py`` or
 ``tools/run_reader.py``.  The two supplied configurations are never rewritten:
@@ -226,10 +228,10 @@ class Spec:
     """
 
     __slots__ = ("key", "feature", "title", "requirements", "scenarios",
-                 "expected", "scope", "limit")
+                 "expected", "scope", "limit", "expected_usage")
 
     def __init__(self, key, feature, title, requirements, scenarios, expected,
-                 scope="single", limit=""):
+                 scope="single", limit="", expected_usage=None):
         self.key = key
         self.feature = feature
         self.title = title
@@ -238,6 +240,7 @@ class Spec:
         self.expected = expected
         self.scope = scope
         self.limit = limit
+        self.expected_usage = expected_usage
 
     def ids(self):
         if self.scope == "node":
@@ -278,8 +281,11 @@ PLAN = (
     S("V0-NODE-STOP", "F-NODE", "the service stops and releases the store",
       ("HST-002",), ("SCN-021",), ACCEPTED, "node"),
     S("V0-NODE-LOOPBACK", "F-NODE",
-      "a non-loopback listener host is refused rather than silently bound",
-      ("HST-003",), ("SCN-021",), REFUSED),
+      "the wildcard listener host is rejected before bind",
+      ("HST-003",), ("SCN-021",), None,
+      limit="operator configuration admission reports usage, not a D13 "
+            "request refusal; named non-loopback IPv4 hosts are admitted",
+      expected_usage="usage operator request (CONFIGURATION INVALID)"),
     S("V0-NODE-PROFILE", "F-NODE",
       "the operator honours `[log] path` (a post's line lands in the file) and "
       "refuses `[posting] agent` by name",
@@ -804,6 +810,7 @@ class Row:
             "scenarios": list(self.spec.scenarios),
             "verdict": self.verdict,
             "expected": self.spec.expected,
+            "expected_usage": self.spec.expected_usage,
             "agrees": self.agrees,
             "client": self.client,
             "independent": self.independent,
@@ -4946,10 +4953,8 @@ FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
                   "(`fn-native-config-listener-hostp`, books/native-config.lisp), not "
                   "at bind: `0.0.0.0` never reaches a listener, and the operator "
                   "reports an inadmissible "
-                  "configuration as a usage error (5) rather than as one of the three "
-                  "outcomes -- so unless the image answers 1 this row is not-exercised "
-                  "with that code named, and the refusal it wanted has still happened "
-                  "at admission. A numeric non-loopback IPv4 address is ADMITTED by "
+                  "configuration as a usage error (5), outside the three request "
+                  "outcomes. A numeric non-loopback IPv4 address is ADMITTED by "
                   "design and would be bound: this row is about the wildcard, not "
                   "about fn declining to serve a network interface. Nothing here tests "
                   "a bind the kernel would refuse for a different reason")
@@ -5867,6 +5872,16 @@ def render_plan() -> str:
     return "\n".join(lines)
 
 
+def expected_usage_matches(row: dict) -> bool:
+    """One declared config probe may observe exact usage without a D13 outcome."""
+    spec = PLAN_BY_KEY.get(row["id"])
+    return bool(spec and spec.expected_usage
+                and row.get("expected_usage") == spec.expected_usage
+                and row["exit_code"] == EXIT_USAGE
+                and row["verdict"] == NOT_EXERCISED
+                and row["observed"] == "rc=5 " + spec.expected_usage)
+
+
 def derive(rows: list) -> dict:
     """Every counted field of a matrix document, from its rows and nothing else.
 
@@ -5880,10 +5895,12 @@ def derive(rows: list) -> dict:
     summary["total"] = len(rows)
     summary["disagreed"] = sum(1 for r in rows if r["agrees"] is False)
     # A host fault (4) or usage error (5) is not an outcome: its row is
-    # not-exercised with the code as blocker, and it is counted here so
-    # the run's exit code cannot be 0 over a command that crashed.
+    # not-exercised with the code as blocker. The single planned configuration
+    # usage probe may expect its exact ACL2 reply; other non-outcome exits
+    # still fail the run rather than becoming request refusals.
     summary["faulted"] = sum(1 for r in rows if r["exit_code"] not in (
-        None, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN))
+        None, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN) and not
+        expected_usage_matches(r))
     summary["independent"] = sum(1 for r in rows if r["independent"] is True)
     summary["fn-observed"] = sum(1 for r in rows if r["independent"] is False)
     clients = {}
@@ -6006,6 +6023,9 @@ def validate(doc) -> list:
         problems.append("planned rows missing from the file: {}".format(absent))
     for row in rows:
         rid = row.get("id")
+        if row.get("expected_usage") not in (
+                None, getattr(PLAN_BY_KEY.get(rid), "expected_usage", None)):
+            problems.append("{}: expected_usage is not declared by PLAN".format(rid))
         if row.get("verdict") not in VERDICTS:
             problems.append("{}: verdict {!r} is not one of {}".format(
                 rid, row.get("verdict"), list(VERDICTS)))
@@ -6058,6 +6078,11 @@ def validate(doc) -> list:
             summary.get("total"), len(rows)))
     if summary.get("disagreed") != sum(1 for r in rows if r.get("agrees") is False):
         problems.append("summary[disagreed] does not match the rows")
+    faulted = sum(1 for row in rows if row.get("exit_code") not in (
+        None, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN) and not
+        expected_usage_matches(row))
+    if summary.get("faulted") != faulted:
+        problems.append("summary[faulted] does not match the rows")
     for key, want in (("independent", True), ("fn-observed", False)):
         counted = sum(1 for r in rows if r.get("independent") is want)
         if summary.get(key) != counted:
