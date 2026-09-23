@@ -1140,6 +1140,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-archive-command-pinned)
                 (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
+                 fn-nntp-over-range-indexed
                  fn-gidx-listgroup-command
                  fn-nntp-verdict-hdr-response fn-nntp-result-session
                  fn-nntp-session-consistentp))

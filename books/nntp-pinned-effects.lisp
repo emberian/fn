@@ -18,6 +18,31 @@
                                fn-nntp-msgid-retrieval
                                fn-nntp-effects-msgid-retrieval))))
 
+(defthm fn-nov-indexed-lines-are-clean
+  (fn-nov-clean-line-listp
+   (fn-nov-lines-for-numbers-indexed group numbers entries trie))
+  :hints (("Goal" :induct (fn-nov-lines-for-numbers-indexed
+                            group numbers entries trie)
+           :in-theory (e/d (fn-nov-lines-for-numbers-indexed)
+                           (fn-nov-overview fn-nov-line)))))
+
+(defthm fn-nntp-indexed-over-block-is-block-text
+  (fn-nntp-block-textp
+   (fn-nov-lines-for-numbers-indexed group numbers entries trie))
+  :hints (("Goal" :use ((:instance fn-nov-indexed-lines-are-clean
+                            (entries entries)))
+           :in-theory (disable fn-nov-indexed-lines-are-clean
+                               fn-nov-lines-for-numbers-indexed))))
+
+(defthm fn-nntp-effects-over-range-indexed
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-over-range-indexed session buckets trie token legacyp)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-indexed)
+                                  (fn-nov-lines-for-numbers-indexed
+                                   fn-nntp-index-group-range-numbers
+                                   fn-nntp-parse-range fn-nntp-single)))))
+
 (defthm fn-nntp-archive-command-pinned-effects-well-formed
   (implies (and (fn-nntp-projectionp archive)
                 (fn-midx-correspondencep (fn-gidx-pin-trie index)
@@ -30,11 +55,17 @@
   :hints (("Goal"
            :use ((:instance fn-nntp-archive-command-effects-well-formed)
                  (:instance fn-gidx-listgroup-command-of-build)
+                 (:instance fn-nntp-effects-over-range-indexed
+                            (buckets (fn-gidx-pin-buckets index))
+                            (trie (fn-gidx-pin-trie index))
+                            (token (car args))
+                            (legacyp (fn-nntp-keywordp keyword "XOVER")))
                  (:instance fn-nntp-verdict-hdr-response-effects))
            :in-theory
            (e/d (fn-nntp-archive-command-pinned)
                 (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
                  fn-gidx-listgroup-command fn-gidx-build
+                 fn-nntp-over-range-indexed
                  fn-nntp-verdict-hdr-response fn-nntp-effectsp
                  fn-nntp-result-effects fn-nntp-projectionp fn-nntp-keywordp
                  fn-midx-correspondencep
