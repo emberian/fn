@@ -192,6 +192,17 @@ class NativeReaderIndexTest(unittest.TestCase):
             reader[1].close()
             reader[0].close()
         self.stop_owner(owner)
+        reopened = self.start_owner()
+        recovered = self.reader()
+        for msgid in (first, second):
+            status = self.command(recovered, "STAT " + msgid)[0]
+            self.assertTrue(status.startswith(b"223 "), status)
+            self.assertIn(msgid.encode(), status)
+        self.assertEqual(self.command(recovered, "STAT " + absent)[0],
+                         b"430 no article with that message-id\r\n")
+        recovered[1].close()
+        recovered[0].close()
+        self.stop_owner(reopened)
 
 
 if __name__ == "__main__":
