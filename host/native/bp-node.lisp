@@ -2,6 +2,20 @@
 ;;; markers; the owner Store/FNRJ and FNWF own application commitments.
 (in-package "ACL2")
 
+(defun fnn-bpnode-observed-channel (socket)
+  "Preserve the kernel-observed local listener and remote source address."
+  (multiple-value-bind (local-address local-port)
+      (sb-bsd-sockets:socket-name socket)
+    (multiple-value-bind (remote-address remote-port)
+        (sb-bsd-sockets:socket-peername socket)
+      (declare (ignore remote-port))
+      (if (and (vectorp local-address) (= (length local-address) 4)
+               (vectorp remote-address) (= (length remote-address) 4)
+               (integerp local-port) (<= 1 local-port 65535))
+          (list :tcp4 (coerce local-address 'list) local-port
+                (coerce remote-address 'list))
+        (list :unsupported-channel)))))
+
 (defun fnn-bpnode-pause-at-durable-cut (selector marker)
   ;; Developer-image process-death witness only.  Each caller places this
   ;; after the modeled durable transition and before its next operation.
@@ -12,6 +26,9 @@
 
 (defun fnn-bpnode-request-result
     (owner receipt-root destination policy issuer view node-id)
+  (unless (eq (fnn-owner-core 'fn-owner-bp-request-trustedp view) t)
+    (return-from fnn-bpnode-request-result
+      (values :request-refused '(0))))
   (let ((journal nil))
     (unwind-protect
          (progn
@@ -50,7 +67,8 @@
 
 (defun fnn-bpnode-receipt-result
     (owner workflow-root view configured-peer)
-  (unless (eq (fnn-core 'fn-bpah-receipt-trustedp view configured-peer) t)
+  (declare (ignore configured-peer))
+  (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-trustedp view) t)
     (return-from fnn-bpnode-receipt-result
       (values :receipt-refused '(0))))
   (fnn-owner-serialized
@@ -264,10 +282,13 @@
               (lambda (socket)
                 (let* ((session-counter
                          (incf (fnn-bps-next-session bp)))
+                       (observed-channel
+                         (fnn-bpnode-observed-channel socket))
                        (*fnn-tcl-deliver*
                          (lambda (conn xfer-id octets)
                            (fnn-bp-deliver-node
-                            bp conn session-counter xfer-id octets peer-id))))
+                            bp conn session-counter xfer-id octets owner
+                            observed-channel))))
                   (unwind-protect
                        (let ((conn
                                (fnn-tcl-session

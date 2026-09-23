@@ -409,17 +409,31 @@ observed channel -> configured peer -> allowed-EID check -> admitted principal
 ```
 
 never `announced EID -> peer lookup`. The decision is ACL2's,
-`fn-bpaj-session-principal cfg channel announced-eid` (new, in
-`books/bp-native-app.lisp`, slice A3), which the host calls once when a
-TCPCL session reaches the established state; `channel` is what the host
+`fn-bpaj-session-principal cfg channel announced-eid` (in
+`books/bp-session-admission.lisp`), which the finite host calls at each
+completed inbound transfer after TCPCL negotiation; `channel` is what the host
 observed (listener, network namespace, peer address), never what the peer
-said. Its answers: `(:admitted peer-name generation)`, `(:refused
-:no-configured-peer)` (no peer row's boundary matches the channel),
-`(:refused :no-trust-profile)` (the matched peer has no BP trust row),
+said. The intended answers are `(:admitted peer-name generation)`,
+`(:refused :no-configured-peer)` (no peer row's boundary matches the channel),
+`(:refused :no-trust-profile)` (the matched peer has no BP trust row), and
 `(:refused :eid-mismatch)` (the announced node ID is not one of that
-peer's `(:bp eid)` rows). A refused session carries principal nil; it may
+peer's `(:bp eid)` rows). The finite loopback selector currently also reports
+`:channel` and `:ambiguous-peer`, and combines missing boundary and trust as
+`:no-trust-profile`. A refused session carries principal nil; it may
 still hand the node transit bundles if the operator's policy allows
 unauthenticated transit, but nothing it delivers is admitted by K6.
+
+The finite native slice observes IPv4 local listener and remote address from
+the accepted socket. A durable `bp-boundary add` peer row declares loopback,
+no translation, and `all-co-resident`; the selector first requires one peer
+for that channel and only then checks its configured BP EID. The host stamps
+the selected peer name and configuration generation on ingress. Application
+request and receipt handoff require that name, generation, and configured EID
+still agree with the live owner configuration; a nil principal refuses the
+application handoff while retaining BP custody. This is a loopback boundary
+profile, not an origin-authentication claim. The general A-BP-PATH assumption,
+network and private-tunnel profiles, and the full K6 transit-policy join
+remain open.
 
 The trust row names its boundary. `"bp-trust" "network"` alone is not a
 valid row; the row is `"bp-trust" "network"` together with

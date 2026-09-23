@@ -47,18 +47,46 @@
 (defconst *bpah-receipt-view*
   (list :delivery '("principal" "bundle") :receipt *bpah-receipt-adu*
         (list :cl (cons 2 1) 1 *bpah-local*
-              (fn-record-string-octets "dtn://receiver/") 0)
+              (fn-record-string-octets "receiver-peer") 7)
         nil "dtn://receiver/" "dtn://sender/"))
+(defconst *bpah-receipt-cfg*
+  (fn-cfg-make 7
+    (fn-cfg-value-make nil 0 nil nil nil
+      (list (fn-cfg-row-make "receiver-peer" "bp-trust" "network" 0)
+            (fn-cfg-row-make "receiver-peer" "transport-bp"
+                             "dtn://receiver/" 0)) nil)))
+(defconst *bpah-request-view*
+  (update-nth 4
+    (list :cl (cons 1 1) 1 *bpah-peer*
+          (fn-record-string-octets "sender-peer") 7)
+    (fn-bpah-pending-view *bpah-state* *bpah-local*)))
+(defconst *bpah-request-cfg*
+  (fn-cfg-make 7
+    (fn-cfg-value-make nil 0 nil nil nil
+      (list (fn-cfg-row-make "sender-peer" "bp-trust" "network" 0)
+            (fn-cfg-row-make "sender-peer" "transport-bp"
+                             "dtn://sender/" 0)) nil)))
 (assert-event
- (fn-bpah-receipt-trustedp *bpah-receipt-view* "dtn://receiver/"))
+ (fn-bpah-request-trustedp *bpah-request-view* *bpah-request-cfg*))
+(assert-event
+ (not (fn-bpah-request-trustedp
+       (update-nth 4 (list :cl (cons 1 1) 1 *bpah-peer* nil 0)
+                   *bpah-request-view*)
+       *bpah-request-cfg*)))
+(assert-event
+ (not (fn-bpah-request-trustedp
+       *bpah-request-view* (fn-cfg-make 8 (fn-cfg-value *bpah-request-cfg*)))))
+(assert-event
+ (fn-bpah-receipt-trustedp *bpah-receipt-view* *bpah-receipt-cfg*))
 (must-fail
  (assert-event
-  (fn-bpah-receipt-trustedp *bpah-receipt-view* "dtn://sender/")))
+  (fn-bpah-receipt-trustedp
+    *bpah-receipt-view* (fn-cfg-make 8 (fn-cfg-value *bpah-receipt-cfg*)))))
 (must-fail
  (assert-event
   (fn-bpah-receipt-trustedp
    (update-nth 6 "dtn://other/" *bpah-receipt-view*)
-   "dtn://receiver/")))
+   *bpah-receipt-cfg*)))
 
 ; A fragment whose own payload is a well-formed request is still only a
 ; fragment carrier.  The host-called pending selector must never dispatch it.

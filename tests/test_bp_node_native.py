@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import select
 import shutil
+import socket
 import subprocess
 import tempfile
 import time
@@ -135,18 +136,30 @@ class NativeBpNodeTests(unittest.TestCase):
             result = self.invoke(*args)
             self.assertEqual(result.returncode, 0, result.stderr)
 
-    def start_node(self, receiver, *, once=True, extra_env=None):
+    def start_node(self, receiver, *, once=True, extra_env=None, trust=True):
         node = "dtn://receiver/" if receiver else "dtn://sender/"
         peer = "dtn://sender/" if receiver else "dtn://receiver/"
         journal = self.receiver_journal if receiver else self.sender_journal
         store = self.receiver_store if receiver else self.sender_store
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            listen_port = reservation.getsockname()[1]
+        config = self.tmp / ("receiver-fn.toml" if receiver else "sender-fn.toml")
+        config.write_text(f'[store]\npath = "{store}"\n', encoding="ascii")
+        admitted_name = "sender-boundary" if receiver else "receiver-boundary"
+        if trust:
+            installed = self.invoke(
+                "operator", config, "bp-boundary", "add", admitted_name,
+                "bp.gate.invalid", peer, listen_port,
+            )
+            self.assertEqual(installed.returncode, 0, installed.stderr)
         receipts = self.receiver_receipts if receiver else self.tmp / "sender-fnrj"
         workflow = self.tmp / "receiver-fnwf" if receiver else self.sender_workflow
         env = dict(self.env)
         if extra_env:
             env.update(extra_env)
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "bp-node", "serve", "0",
+            [str(IMAGE), "--fn", "bp-node", "serve", str(listen_port),
              str(journal), str(store), str(receipts), str(workflow),
              node, peer, node, "native-policy", node,
              "127.0.0.1", str(self.relay.port),
@@ -260,6 +273,31 @@ class NativeBpNodeTests(unittest.TestCase):
         unrelated = self.unrelated_status()
         self.assertEqual(unrelated.returncode, 0, unrelated.stderr)
         self.assertIn(b"pinned=yes", unrelated.stdout)
+
+    def test_absent_bp_trust_keeps_custody_but_refuses_request_application(self):
+        receiver, port = self.start_node(True, trust=False)
+        sent = self.send_request(port, "untrusted-request")
+        out, err = receiver.communicate(timeout=120)
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(receiver.returncode, 0, err)
+        self.assertIn(b"BP node delivery request-refused", out)
+        self.assertEqual(self.receiver_counts()[1], 0)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+
+    def test_absent_bp_trust_refuses_receipt_release(self):
+        receiver, port = self.start_node(True)
+        sent = self.send_request(port, "untrusted-return")
+        out, err = receiver.communicate(timeout=120)
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.assertEqual(receiver.returncode, 0, err)
+        self.assertIn(b"BP node receipt queued", out)
+        sender, port = self.start_node(False, once=False, trust=False)
+        self.relay.route(port)
+        delivered = self.tick_receiver()
+        self.assertEqual(delivered.returncode, 0, delivered.stderr)
+        self.wait_for_output(sender, b"BP node delivery receipt-refused", timeout=120)
+        self.stop_process(sender)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
 
     @staticmethod
     def wait_for_output(process, marker, timeout=45):

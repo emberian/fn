@@ -5,6 +5,7 @@
 (include-book "bp-node-foundation")
 (include-book "bp-adu")
 (include-book "bp-native-app")
+(include-book "bp-session-admission")
 (verify-guards fn-bpaj-eid-text)
 
 (defun fn-bpah-local-pendingp (held node)
@@ -100,24 +101,39 @@
   (declare (xargs :guard t))
   (fn-bpn-nth 2 view))
 
-(defun fn-bpah-receipt-trustedp (view configured-peer)
+(defun fn-bpah-request-trustedp (view cfg)
+  (declare (xargs :guard t))
+  (and (consp view)
+       (equal (car view) :delivery)
+       (equal (fn-bpah-view-class view) :request)
+       (let ((ingress (fn-bpn-nth 4 view)))
+         (and (fn-bpnf-cl-ingressp ingress)
+              (stringp (fn-bpn-nth 6 view))
+              (fn-bpaj-current-peer-eidp
+               cfg (fn-bpnf-ingress-principal ingress)
+               (fn-bpn-nth 5 ingress) (fn-bpn-nth 6 view))))))
+
+(defun fn-bpah-receipt-trustedp (view cfg)
   (declare (xargs :guard t))
   (and (consp view)
        (equal (car view) :delivery)
        (equal (fn-bpah-view-class view) :receipt)
-       (stringp configured-peer)
-       (equal (fn-bpnf-ingress-principal (fn-bpn-nth 4 view))
-              (fn-record-string-octets configured-peer))
-       (equal (fn-bpn-nth 6 view) configured-peer)
+       (let* ((ingress (fn-bpn-nth 4 view))
+              (peer-eid (fn-bpn-nth 6 view)))
+         (and (fn-bpnf-cl-ingressp ingress)
+              (stringp peer-eid)
+              (fn-bpaj-current-peer-eidp
+               cfg (fn-bpnf-ingress-principal ingress)
+               (fn-bpn-nth 5 ingress) peer-eid)))
        (let ((decoded (fn-bpa-decode-exact (fn-bpn-nth 3 view))))
          (and (fn-bpa-result-okp decoded)
               (fn-bpa-receiptp (fn-bpa-result-message decoded))
               (equal (fn-bpa-receipt-issuer
                       (fn-bpa-result-message decoded))
-                     configured-peer)
+                     (fn-bpn-nth 6 view))
               (equal (fn-bpa-receipt-peer-eid
                       (fn-bpa-result-message decoded))
-                     configured-peer)))))
+                     (fn-bpn-nth 6 view))))))
 
 ; The owed handoff is an application obligation, not TCPCL custody evidence.
 ; Bind it back to the exact delivered held request before the host asks FNRJ
@@ -211,7 +227,15 @@
          nil))
 
 (defthm fn-bpah-untrusted-ingress-never-authorizes-receipt
-  (implies (not (equal (fn-bpnf-ingress-principal (fn-bpn-nth 4 view))
-                       (fn-record-string-octets configured-peer)))
-           (not (fn-bpah-receipt-trustedp view configured-peer)))
+  (implies (not (fn-bpaj-current-peer-eidp
+                 cfg (fn-bpnf-ingress-principal (fn-bpn-nth 4 view))
+                 (fn-bpn-nth 5 (fn-bpn-nth 4 view)) (fn-bpn-nth 6 view)))
+           (not (fn-bpah-receipt-trustedp view cfg)))
   :hints (("Goal" :in-theory (enable fn-bpah-receipt-trustedp))))
+
+(defthm fn-bpah-untrusted-ingress-never-authorizes-request
+  (implies (not (fn-bpaj-current-peer-eidp
+                 cfg (fn-bpnf-ingress-principal (fn-bpn-nth 4 view))
+                 (fn-bpn-nth 5 (fn-bpn-nth 4 view)) (fn-bpn-nth 6 view)))
+           (not (fn-bpah-request-trustedp view cfg)))
+  :hints (("Goal" :in-theory (enable fn-bpah-request-trustedp))))
