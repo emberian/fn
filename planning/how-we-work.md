@@ -107,10 +107,12 @@ published a certification of `dev`'s head since. The rules that follow:
 
 - **Root keeps `dev` certified.** After each merge batch root submits one
   treewide run of `dev`'s head on persvati (`farm.py submit persvati
-  $(python3 tools/proof_artifacts.py roots --profile all) --closure --jobs 8
+  $(python3 tools/proof_artifacts.py roots --profile default; python3 tools/proof_artifacts.py roots --profile dtn; ls tests/acl2/*.lisp | sed 's/\.lisp$//') --jobs 8
   --cache /home/ember/fn-certcache ...`) so the cache carries every
   unchanged book at its current digest, and a lane's run certifies only
-  what the lane changed and what includes it.
+  what the lane changed and what includes it. Since 2026-09-23 that run is
+  a plain-roots run, not `--closure`: whatever is cached at the current
+  digests installs from any snapshot origin, and only the rest certifies.
 - **A lane does not merge `dev` mid-flight.** It branches from `dev`, works,
   certifies its own change against the digests it branched at, and root
   merges on landing; if root needs the lane on a newer base, root says so
