@@ -36,10 +36,16 @@ P2 fixture only transported exact carrier and public PEM bytes and forwarded
 the fn process result. Mini used Lean 4.30.0 on arm64 macOS and the existing
 3,090-object native response closure, recompiling `Kernel.FnConsumerOperation`
 and `Host.Main` only with one Lean compiler thread and one C compiler job.
-The final executable was
+The runtime-tested executable was
 `/Users/ember/dev/minidregg-wt/fn-evidence/.lake/build/bin/minidregg-fn-portable-consumer-v5`,
 SHA-256
 `f76227abcfb6c59aaa979a7fdd47afaf839a52ffe9e13c9123674d92a92353b1`.
+The later Mini commit `6b2f7420` changed only the module header comment;
+a relink from its exact committed source produced
+`minidregg-fn-portable-consumer-final`, SHA-256
+`fbd78712606e4f220b7dda10da4cf0c2fc5e4e0837c722940866edc6ba1a0c3d`.
+The native acceptance/reopen outcomes below belong to the v5 runtime-tested
+binary; the final relink was not separately put through that native journey.
 `lake env lean` passed for those modules and
 `Kernel/FnConsumerOperationProofs.lean`; that is typechecking, not new
 certification of physical CAS or cryptographic primitives.
