@@ -112,7 +112,7 @@
           (list :ok (list '(4 5) (list '(1 2 3) keys signatures))))
     (fnn-hsig-check
      (equal (fnn-hsig-verify-received-carrier '(7 8) public)
-            '(:verified (4 5) (1 2 3)))
+            (list :verified '(4 5) '(1 2 3) keys))
      "received carrier uses real dual verification")
     (setq *fnn-hsig-test-carrier-plan*
           (list :ok

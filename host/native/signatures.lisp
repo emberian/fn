@@ -303,7 +303,7 @@ authorization check binds its observed key bytes to the carrier's key set."
              (signatures (third carrier)))
         (if (fnn-hsig-authorize-profile principal keys source signatures
                                         ml-public-key-path)
-            (list :verified source principal)
+            (list :verified source principal keys)
           (list :unverified :signature received))))))
 
 (defun fnn-hsig-authorized-article-event

@@ -26,6 +26,10 @@
   (declare (xargs :mode :program))
   *fn-article-max-octets*)
 
+(defun fn-hsig-host-authored-source-id (source)
+  (declare (xargs :mode :program))
+  (fn-hsig-authored-source-id source))
+
 (defun fn-hsig-host-authorize
     (principal keys source signatures observed-ml-key ed ml)
   (declare (xargs :mode :program))
