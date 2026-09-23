@@ -89,6 +89,7 @@
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-report-author")
 (include-book "books/bp-report-observe")
+(include-book "books/bp-report-guards")
 (include-book "books/bp-handoff-status")
 (include-book "books/anchor-wire")
 (include-book "books/anchor-servers")

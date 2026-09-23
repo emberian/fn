@@ -292,6 +292,7 @@
     "tests/acl2/bp-report-author-tests",
     "books/bp-report-observe",
     "tests/acl2/bp-report-observe-tests",
+    "books/bp-report-guards",
     "books/bp-fnbs-deletion-publication",
     "tests/acl2/bp-fnbs-deletion-publication-tests",
     "books/bp-fnbs-family-publication",
@@ -575,10 +576,10 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 577,
-    "books_in_root_closure": 576,
-    "roots": 571,
-    "theorems": 8292,
+    "books": 578,
+    "books_in_root_closure": 577,
+    "roots": 572,
+    "theorems": 8293,
     "functions": 6231,
     "assert_events": 9066,
     "must_fails": 456,
@@ -593,7 +594,7 @@
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 35,
-    "include_hygiene_warnings": 489,
+    "include_hygiene_warnings": 491,
     "host_names_warnings": 786,
     "hand_written_record_warnings": 18
   },
@@ -3070,6 +3071,32 @@
       "includes": [
         "bp-app-handoff-time",
         "bp-status-report"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-report-guards.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 18,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-node-fragment-guards",
+        "bp-report-observe"
       ],
       "system_includes": [],
       "suspects": [],
@@ -16142,7 +16169,7 @@
     {
       "theorem": "fn-bpn-report-author-step-delegates-ordinary-events",
       "book": "books/bp-report-author.lisp",
-      "line": 120,
+      "line": 130,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-bpn-report-author-step and the conclusion is that branch's value"
       ]
@@ -18408,6 +18435,20 @@
         "line": 6,
         "include": "bp-status-report",
         "included": "books/bp-status-report.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-report-guards.lisp",
+        "line": 4,
+        "include": "bp-node-fragment-guards",
+        "included": "books/bp-node-fragment-guards.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-report-guards.lisp",
+        "line": 5,
+        "include": "bp-report-observe",
+        "included": "books/bp-report-observe.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -11,7 +11,8 @@
   (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :delete))
 
 (defun fn-bpn-report-delete-propose-step (st observation enabled)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
   (let ((held (and (fn-clock-observationp observation)
                    (fn-bpn-report-find-expired-held
                     (fn-bpnf-held-list st) observation))))
@@ -50,9 +51,12 @@
             (fn-bpnf-base st) (fn-bpnf-held-list st)
             (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
             (fn-bpnf-correlation st)
-            (fn-bpnf-operation
+             (fn-bpnf-operation
              (fn-bpnf-epoch st) (fn-bpnf-next-op st) :delete
-             (list record observation (if enabled t nil)) :pending)
+             (list record observation (if enabled t nil)
+                   (fn-bpp-report-to
+                    (fn-bpb-bundle-primary
+                     (fn-bpnf-held-bundle held)))) :pending)
             (fn-bpnf-waits st) (fn-bpnf-epoch st)
             (1+ (fn-bpnf-next-op st)) (fn-bpnf-next-arrival st))
            (list (list :persist-delete
@@ -60,7 +64,8 @@
                        record))))))))
 
 (defun fn-bpn-report-delete-persist-step (st epoch op result)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
   (let* ((issued (fn-bpnf-issued st))
          (detail (fn-bpn-nth 4 issued))
          (record (fn-bpn-nth 0 detail)))
@@ -83,9 +88,6 @@
                      (fn-bpnf-handoffs st) (fn-bpnf-correlation st)
                      nil (fn-bpnf-waits st) (fn-bpnf-epoch st)
                      (fn-bpnf-next-op st) (fn-bpnf-next-arrival st)))
-                   (tombstone
-                    (fn-bpnf-find-arrival
-                     (fn-bpn-nth 3 record) updated))
                    (payload (fn-bpn-nth 6 record)))
               (fn-bpnf-answer
                settled
@@ -93,9 +95,7 @@
                    (list (list :delete-ready
                                (fn-bpn-nth 3 record))
                          (list :report-due
-                               (fn-bpp-report-to
-                                (fn-bpb-bundle-primary
-                                 (fn-bpnf-held-bundle tombstone)))
+                               (fn-bpn-nth 3 detail)
                                payload))
                  (list (list :delete-ready
                              (fn-bpn-nth 3 record)))))))))
@@ -109,7 +109,15 @@
          (list (list :delete-answer :uncertain))))))))
 
 (defun fn-bpn-report-step (st event)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard
+                  (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                       (or (not (equal (fn-cbor-ag-car event) :base))
+                           (fn-bpn-machine-eventp (fn-bpn-nth 1 event)))
+                       (or (not (equal (fn-cbor-ag-car event) :recover-fnbs))
+                           (and (true-listp (fn-bpn-nth 2 event))
+                                (<= (len (fn-bpn-nth 2 event))
+                                    *fn-bpn-machine-max-records*))))
+                  :verify-guards nil))
   (cond
    ((equal (fn-cbor-ag-car event) :recover-fnbs)
     (fn-bpnf-fragment-step st event))
