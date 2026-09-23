@@ -79,7 +79,13 @@ analysis and its prioritized list. Whatever is still over ten seconds in
 the newest treewide manifest after tonight's lanes land is this package;
 also the lint that makes it a check: a `tools/proof_cost.py` that reads the
 newest manifest and names every book over the threshold, wired into
-`make check` as a warning. 1 to 2 lane-days, any box.
+`make check` as a warning. 1 to 2 lane-days, any box. Below the threshold
+there is little to win: the 374 books at or under ten seconds take 9.5
+CPU-minutes together (median 1.15 s), about half of it the fixed cost of
+starting ACL2 and loading the included certificates (0.8 s a book); the
+one runner change that touches that is certifying several leaf books per
+ACL2 process (`:ubt!` back to the portcullis between them), worth a few
+CPU-minutes and seconds of wall, so it is last on this list.
 
 Each is independent of the live lanes' books.
 
