@@ -70,6 +70,19 @@
 (defun fn-bpnf-held-bundle (h) (declare (xargs :guard t)) (fn-bpn-nth 7 h))
 (defun fn-bpnf-held-wire (h) (declare (xargs :guard t)) (fn-bpn-nth 8 h))
 
+; A nil anchor denotes an old kind-5 row whose arrival observation was not
+; persisted.  New receptions always record one of these tagged decisions.
+(defun fn-bpnf-received-anchor (bundle observation)
+  (declare (xargs :guard t))
+  (if (and (fn-bpb-bundlep bundle) (fn-clock-observationp observation))
+      (let ((age (fn-bpb-bundle-age bundle)))
+        (if (natp age)
+            (list :observed-age age (fn-clock-monotonic observation))
+          '(:wall)))
+    nil))
+
+(verify-guards fn-bpnf-received-anchor)
+
 (defun fn-bpnf-heldp (h)
   (declare (xargs :guard t))
   (and (true-listp h) (equal (len h) 16)
@@ -564,9 +577,16 @@
         (let* ((bundle (fn-bpn-nth 1 event))
                (wire (fn-bpn-nth 2 event))
                (ingress (fn-bpn-nth 3 event))
+               ; Four-field receive events remain a logical legacy arm for
+               ; old proof fixtures; fn-bpnf-host-eventp never admits them.
+               ; They are unreachable in native composition.
+               (legacy-event (equal (len event) 4))
+               (observation (fn-bpn-nth 4 event))
                (decision (and (fn-bpnf-cl-ingressp ingress)
                               (fn-bpb-bundlep bundle)
                               (fn-cbor-octet-listp wire)
+                              (or legacy-event
+                                  (fn-clock-observationp observation))
                               (equal wire (fn-bpb-encode bundle))
                               (fn-bpnf-receive-decision
                                (fn-bpnf-held-list st) ingress bundle))))
@@ -595,7 +615,8 @@
                      (principal (fn-bpnf-ingress-principal ingress))
                      (arrival (len (fn-bpnf-held-list st)))
                      (h (fn-bpnf-held principal id arrival ingress nil nil bundle wire
-                                      nil nil nil '(:dispatch-pending) nil nil arrival)))
+                                      (fn-bpnf-received-anchor bundle observation)
+                                      nil nil '(:dispatch-pending) nil nil arrival)))
                 (fn-bpnf-answer
                  (fn-bpnf-state (fn-bpnf-base st)
                                 (fn-bpnf-held-list st)

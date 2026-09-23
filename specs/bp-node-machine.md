@@ -982,6 +982,18 @@ the decision.
 
 ### 4.2 The progress boundary: `fn-bpn-progress-step st obs` (`:clock`)
 
+**Current A3 native subset.** The shared `bp-node` service does not yet run
+this full progress scheduler for received held rows. Its application caller
+uses `fn-bpah-pending-decision-at` before Store: a current observation must
+decide the exact persisted held carrier `:live`; `:expired` is skipped and
+`:uncertain` fences. New kind-5 rows persist the receive-time Bundle Age
+anchor (or an explicit wall-clock tag); older canonical kind-5 rows have no
+anchor and remain uncertain rather than acquiring an invented arrival time.
+This narrows A3 delivery eligibility beyond the target's `not :expired`
+condition until the full progress transition and reclamation records land.
+Already committed application and return-carrier obligations are independent
+of that held-carrier eligibility.
+
 One action per event. This is the only place delivery and dispatch are
 started, so expiry is decided before either (F-L). Selection is among
 **enabled** candidates (review-2 §2.2): an older blocked entry never

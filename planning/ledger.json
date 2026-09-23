@@ -246,6 +246,8 @@
     "tests/acl2/bp-contact-service-tests",
     "books/bp-app-handoff",
     "tests/acl2/bp-app-handoff-tests",
+    "books/bp-app-handoff-time",
+    "tests/acl2/bp-app-handoff-time-tests",
     "books/bp-handoff-status",
     "tests/acl2/bp-handoff-status-tests",
     "books/bp-session-admission",
@@ -548,26 +550,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 550,
-    "books_in_root_closure": 549,
-    "roots": 544,
-    "theorems": 8254,
-    "functions": 6117,
-    "assert_events": 8936,
-    "must_fails": 433,
+    "books": 552,
+    "books_in_root_closure": 551,
+    "roots": 546,
+    "theorems": 8256,
+    "functions": 6123,
+    "assert_events": 8945,
+    "must_fails": 435,
     "encapsulates": 26,
     "guards": {
-      "verified": 2002,
+      "verified": 2006,
       "declared-off": 328,
-      "default-guarded": 3000,
+      "default-guarded": 3002,
       "default-unguarded": 787
     },
     "suspect_theorems": 74,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 35,
-    "include_hygiene_warnings": 427,
-    "host_names_warnings": 793,
+    "include_hygiene_warnings": 431,
+    "host_names_warnings": 795,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -1204,6 +1206,31 @@
       "read_error": null
     },
     {
+      "book": "books/bp-app-handoff-time.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 3,
+      "guards": {
+        "verified": 3,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-app-handoff"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bp-app-handoff.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -1452,17 +1479,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 12,
+      "functions": 14,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 11,
+        "default-guarded": 13,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -1928,14 +1955,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 17,
-      "functions": 57,
+      "functions": 58,
       "guards": {
-        "verified": 54,
+        "verified": 55,
         "declared-off": 0,
         "default-guarded": 3,
         "default-unguarded": 0
       },
-      "verify_guards_events": 54,
+      "verify_guards_events": 55,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 1,
@@ -9584,6 +9611,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-app-handoff-time-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 2,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-app-handoff-time",
+        "../../books/codec-attach",
+        "bp-app-handoff-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-authored-wire-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -9760,9 +9816,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 12,
+      "assert_events": 17,
       "must_fails": 1,
-      "defconsts": 15,
+      "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -10416,7 +10472,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 19,
+      "assert_events": 20,
       "must_fails": 1,
       "defconsts": 1,
       "defmacros": 0,
@@ -17102,6 +17158,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-app-handoff-time.lisp",
+        "line": 5,
+        "include": "bp-app-handoff",
+        "included": "books/bp-app-handoff.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-app-handoff.lisp",
         "line": 5,
         "include": "bp-node-foundation",
@@ -18303,6 +18366,27 @@
         "line": 101,
         "include": "../../books/bp-fragment",
         "included": "books/bp-fragment.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-app-handoff-time-tests.lisp",
+        "line": 2,
+        "include": "../../books/bp-app-handoff-time",
+        "included": "books/bp-app-handoff-time.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-app-handoff-time-tests.lisp",
+        "line": 3,
+        "include": "bp-app-handoff-tests",
+        "included": "tests/acl2/bp-app-handoff-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-app-handoff-time-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -21894,6 +21978,34 @@
       {
         "host": "host/native/bp-node.lisp",
         "line": 124,
+        "name": "fnn-bps-tally",
+        "source": "host/native/bp-service.lisp",
+        "reason": "defined in host/native/bp-service.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp-node.lisp",
+        "line": 124,
+        "name": "fnn-bp-observation",
+        "source": "host/native/bp.lisp",
+        "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp-node.lisp",
+        "line": 124,
+        "name": "fnn-bp-tally-wall",
+        "source": "host/native/bp.lisp",
+        "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp-node.lisp",
+        "line": 124,
+        "name": "fnn-bp-tally-wall-error",
+        "source": "host/native/bp.lisp",
+        "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp-node.lisp",
+        "line": 124,
         "name": "fnn-bps-state",
         "source": "host/native/bp-service.lisp",
         "reason": "defined in host/native/bp-service.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -21942,196 +22054,182 @@
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 174,
+        "line": 183,
         "name": "fnn-refuse",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 174,
+        "line": 183,
         "name": "fnn-bps-base",
         "source": "host/native/bp-service.lisp",
         "reason": "defined in host/native/bp-service.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 174,
+        "line": 183,
         "name": "fnn-receipt-adu",
         "source": "host/native/workflow.lisp",
         "reason": "defined in host/native/workflow.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 174,
+        "line": 183,
         "name": "fnn-bp-reserve-sequence",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 174,
-        "name": "fnn-bps-tally",
-        "source": "host/native/bp-service.lisp",
-        "reason": "defined in host/native/bp-service.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/bp-node.lisp",
-        "line": 174,
-        "name": "fnn-bp-observation",
-        "source": "host/native/bp.lisp",
-        "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/bp-node.lisp",
-        "line": 174,
+        "line": 183,
         "name": "fnn-bps-step",
         "source": "host/native/bp-service.lisp",
         "reason": "defined in host/native/bp-service.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-bp-config",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-bps-open",
         "source": "host/native/bp-service.lisp",
         "reason": "defined in host/native/bp-service.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-owner-install",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-bpc-advance-clock",
         "source": "host/native/bp-contact.lisp",
         "reason": "defined in host/native/bp-contact.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-tcl-listen",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-accept-loop",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-bps-next-session",
         "source": "host/native/bp-service.lisp",
         "reason": "defined in host/native/bp-service.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-bp-deliver-node",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-tcl-session",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-socket-fd",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-tcl-params",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-bps-root",
         "source": "host/native/bp-service.lisp",
         "reason": "defined in host/native/bp-service.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-tcl-summary",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-bp-exit-code",
         "source": "host/native/bp.lisp",
         "reason": "defined in host/native/bp.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-socket-shut",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-owner-action",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-owner-feed-close-all",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-store-close",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 262,
+        "line": 271,
         "name": "fnn-bps-release",
         "source": "host/native/bp-service.lisp",
         "reason": "defined in host/native/bp-service.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 338,
+        "line": 350,
         "name": "write-to-string",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/bp-node.lisp",
-        "line": 362,
+        "line": 374,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"

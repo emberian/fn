@@ -10,6 +10,9 @@
 (defconst *fn-bpnf-stored-code* 5)
 (defconst *fn-bpnf-stored-fields*
   '(:nat :nat :nat :nat :nat :nat :blob :nat :blob :nat :blob))
+(defconst *fn-bpnf-stored-fields-v1*
+  '(:nat :nat :nat :nat :nat :nat :blob :nat :blob :nat :blob
+    :nat :nat :nat :nat))
 
 (defun fn-bpnf-stored-frame-limit ()
   (declare (xargs :guard t))
@@ -20,11 +23,23 @@
   (declare (xargs :guard t))
   (fn-bpnf-cl-ingressp ingress))
 
-(defun fn-bpnf-frame-held (ingress arrival bundle wire)
+(defun fn-bpnf-frame-held-with-anchor (ingress arrival bundle wire anchor)
   (declare (xargs :guard t))
   (fn-bpnf-held (fn-bpnf-ingress-principal ingress)
                  (fn-bpb-bundle-id bundle) arrival ingress nil nil
-                 bundle wire nil nil nil '(:dispatch-pending) nil nil arrival))
+                 bundle wire anchor nil nil '(:dispatch-pending) nil nil arrival))
+
+(defun fn-bpnf-frame-held (ingress arrival bundle wire)
+  (declare (xargs :guard t))
+  (fn-bpnf-frame-held-with-anchor ingress arrival bundle wire nil))
+
+(defun fn-bpnf-stored-anchorp (anchor)
+  (declare (xargs :guard t))
+  (or (equal anchor '(:wall))
+      (and (true-listp anchor) (equal (len anchor) 3)
+           (equal (car anchor) :observed-age)
+           (fn-frame-natp (cadr anchor))
+           (fn-frame-natp (caddr anchor)))))
 
 (defun fn-bpnf-stored-record (epoch operation-id held)
   (declare (xargs :guard t))
@@ -44,30 +59,48 @@
               (fn-bpnf-heldp held)
               (fn-frame-natp (nth 3 held))
               (<= (len wire) *fn-bpnf-max-held-image*)
-              (equal held (fn-bpnf-frame-held ingress (nth 3 held)
-                                                bundle wire))))))
+              (or (equal held (fn-bpnf-frame-held ingress (nth 3 held)
+                                                   bundle wire))
+                  (and (fn-bpnf-stored-anchorp (nth 9 held))
+                       (equal held
+                              (fn-bpnf-frame-held-with-anchor
+                               ingress (nth 3 held) bundle wire
+                               (nth 9 held)))))))))
 
 (defun fn-bpnf-stored-record-values (record)
   (declare (xargs :guard t))
   (let* ((held (nth 3 record))
          (ingress (nth 4 held))
          (session (fn-bpn-nth 1 ingress)))
-    (list (nth 1 record) (nth 2 record) (nth 3 held)
-          (car session) (cdr session) (fn-bpn-nth 2 ingress)
-          (fn-bpn-peer-octets (fn-bpn-nth 3 ingress))
-          (if (fn-bpn-nth 4 ingress) 1 0)
-          (if (fn-bpn-nth 4 ingress) (fn-bpn-nth 4 ingress) '(0))
-          (fn-bpn-nth 5 ingress)
-          (fn-bpnf-held-wire held))))
+    (let ((base
+            (list (nth 1 record) (nth 2 record) (nth 3 held)
+                  (car session) (cdr session) (fn-bpn-nth 2 ingress)
+                  (fn-bpn-peer-octets (fn-bpn-nth 3 ingress))
+                  (if (fn-bpn-nth 4 ingress) 1 0)
+                  (if (fn-bpn-nth 4 ingress) (fn-bpn-nth 4 ingress) '(0))
+                  (fn-bpn-nth 5 ingress)
+                  (fn-bpnf-held-wire held)))
+          (anchor (nth 9 held)))
+      (if (equal anchor '(:wall))
+          (append base '(1 0 0 0))
+        (if (and (consp anchor) (equal (car anchor) :observed-age))
+            (append base (list 1 1 (cadr anchor) (caddr anchor)))
+          base)))))
 
 (defun fn-bpnf-stored-record-protected (record)
   (declare (xargs :guard t))
   (if (not (fn-bpnf-stored-recordp record))
       :bad
     (let ((values (fn-bpnf-stored-record-values record)))
-      (if (not (fn-frame-values-okp *fn-bpnf-stored-fields* values))
+      (if (not (fn-frame-values-okp
+                (if (equal (len values) 11)
+                    *fn-bpnf-stored-fields* *fn-bpnf-stored-fields-v1*)
+                values))
           :bad
-        (let ((payload (fn-frame-fields-octets *fn-bpnf-stored-fields* values)))
+        (let ((payload (fn-frame-fields-octets
+                        (if (equal (len values) 11)
+                            *fn-bpnf-stored-fields* *fn-bpnf-stored-fields-v1*)
+                        values)))
           (if (fn-cbor-at-mostp payload *fn-bpn-lifecycle-max-payload*)
               (fn-frame-protected *fn-frame-magic-bundle-store*
                                   *fn-frame-version*
@@ -99,9 +132,24 @@
                         (nth 5 values) peer
                         (if (equal (nth 7 values) 0) nil (nth 8 values))
                         (nth 9 values)))
-         (held (fn-bpnf-frame-held ingress (nth 2 values) bundle wire))
+         (anchor
+           (cond ((equal (len values) 11) nil)
+                 ((and (equal (len values) 15)
+                       (equal (nth 11 values) 1)
+                       (equal (nth 12 values) 0)
+                       (equal (nth 13 values) 0)
+                       (equal (nth 14 values) 0))
+                  '(:wall))
+                 ((and (equal (len values) 15)
+                       (equal (nth 11 values) 1)
+                       (equal (nth 12 values) 1))
+                  (list :observed-age (nth 13 values) (nth 14 values)))
+                 (t :bad)))
+         (held (fn-bpnf-frame-held-with-anchor
+                ingress (nth 2 values) bundle wire anchor))
          (record (fn-bpnf-stored-record (nth 0 values) (nth 1 values) held)))
-    (if (and principal-ok (fn-bpnf-stored-recordp record)) record nil)))
+    (if (and principal-ok (not (equal anchor :bad))
+             (fn-bpnf-stored-recordp record)) record nil)))
 
 (defun fn-bpnf-stored-record-unframe (octets)
   (declare (xargs :guard t))
@@ -116,12 +164,20 @@
                     (equal (fn-frame-result-version answer) *fn-frame-version*)
                     (equal (fn-frame-result-kind answer) *fn-bpnf-stored-code*)))
           nil
-        (let ((parsed (fn-frame-fields-parse
-                       *fn-bpnf-stored-fields*
-                       (fn-frame-result-payload answer))))
-          (if (fn-frame-parse-okp parsed)
-              (fn-bpnf-stored-from-values (fn-frame-parse-value parsed))
-            nil))))))
+        (let* ((payload (fn-frame-result-payload answer))
+               (new (fn-frame-fields-parse
+                     *fn-bpnf-stored-fields-v1* payload))
+               (old (if (fn-frame-parse-okp new)
+                        nil
+                      (fn-frame-fields-parse
+                       *fn-bpnf-stored-fields* payload)))
+               (parsed (if (fn-frame-parse-okp new) new old))
+               (record (if (fn-frame-parse-okp parsed)
+                           (fn-bpnf-stored-from-values
+                            (fn-frame-parse-value parsed))
+                         nil)))
+          (if (equal (fn-bpnf-stored-record-frame record) octets)
+              record nil))))))
 
 (defun fn-bpnf-stored-record-name-chars (epoch operation-id)
   (declare (xargs :guard t))
