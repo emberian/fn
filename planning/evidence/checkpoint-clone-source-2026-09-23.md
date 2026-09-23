@@ -13,8 +13,9 @@ second rollover after completion.
 
 `checkpoint clone SOURCE DESTINATION FRESH-INCARNATION-ID` opens the source
 under its exclusive writer lock, builds a sibling staging tree, writes and
-barriers the fence before copying source bytes, copies only ordinary files
-and directories through no-follow descriptors, fsyncs the copied tree, and
+barriers the fence before copying source bytes, screens entries as ordinary
+files or directories and opens regular files with `O_NOFOLLOW`, fsyncs the
+copied tree, and
 publishes it with Linux `renameat2(RENAME_NOREPLACE)`.  ACL2 supplies the
 offline depth-16, million-entry and 2^40-byte total-copy ceilings; host
 buffers are at most 65,536 bytes.  Ordinary Store acquisition and
@@ -50,7 +51,8 @@ source yet.  It is gated by `FN_RUN_NATIVE_CLONE=1` and must run against a
 combined developer image.  In particular, this packet cannot yet claim a
 physical process-death, no-replace syscall, or served old-cursor witness.
 The trust boundary includes Linux `renameat2` no-replace semantics, fsync
-ordering, and the existing Store publisher's OS assumptions; ACL2 does not
+ordering, exclusive writer ownership of the source tree during the path-based
+copy, and the existing Store publisher's OS assumptions; ACL2 does not
 prove a syscall or persistence hardware.  The source-only event-phase facts
 do not by themselves prove byte-copy correspondence or every crash cut.
 
