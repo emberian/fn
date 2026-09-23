@@ -581,7 +581,7 @@
     "books": 580,
     "books_in_root_closure": 579,
     "roots": 574,
-    "theorems": 8307,
+    "theorems": 8312,
     "functions": 6239,
     "assert_events": 9085,
     "must_fails": 465,
@@ -592,7 +592,7 @@
       "default-guarded": 3053,
       "default-unguarded": 795
     },
-    "suspect_theorems": 75,
+    "suspect_theorems": 76,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 35,
@@ -2164,7 +2164,7 @@
       "book": "books/bp-node-fragment-guards.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
+      "theorems": 10,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -2183,7 +2183,9 @@
         "bp-node-machine-guards"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-bpnfg-car-is-car"
+      ],
       "read_error": null
     },
     {
@@ -3082,7 +3084,7 @@
       "book": "books/bp-report-guards.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
+      "theorems": 2,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -16275,6 +16277,15 @@
       ]
     },
     {
+      "theorem": "fn-bpnfg-car-is-car",
+      "book": "books/bp-node-fragment-guards.lisp",
+      "line": 138,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-cbor-ag-car",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "fn-bpr-context-from-request-is-constructor",
       "book": "books/bp-receiver-state-invariants.lisp",
       "line": 94,
@@ -17584,6 +17595,7 @@
         "line": 98,
         "stated_in": [
           "books/bp-node-foundation.lisp",
+          "books/bp-node-fragment-guards.lisp",
           "books/bp-node-fragment-step.lisp",
           "books/bp-node-machine-authorization.lisp",
           "books/bp-node-machine-invariants.lisp",
@@ -17592,7 +17604,7 @@
           "books/bp-report-author.lisp",
           "books/hybrid-signature.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-cbor-ag-cdr",
