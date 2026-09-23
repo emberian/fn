@@ -6,15 +6,11 @@
 (include-book "store-observed")
 
 (defun fn-cpo-install (st cn configs)
-  (declare (xargs :guard t))
-  (fn-sn-make-v4
-   (fn-cnode-domain-of (fn-cnode-config cn))
+  (declare (xargs :guard (true-listp st)))
+  (fn-sn-with-configuration
+   st (fn-cnode-domain-of (fn-cnode-config cn))
    (fn-cfg-capacity (fn-cfg-value (fn-cnode-config cn)))
-   (fn-sn-files st) (fn-cnode-node cn)
-   (fn-sn-keyring st) (fn-sn-index st)
-   (fn-sn-keyring-generation st) (fn-sn-verdicts st)
-   (fn-sn-keyring-snapshots st) (fn-sn-identity-next st)
-   configs (fn-sn-consumer st)))
+   (fn-cnode-node cn) configs))
 
 (defun fn-cpo-open-observed (configs frontier events)
   (declare (xargs :guard t :verify-guards nil))
