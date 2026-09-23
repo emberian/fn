@@ -32,28 +32,34 @@ if IMAGE_AVAILABLE:
                     " (run (fn-bs-run before (fn-sf-initial-state)"
                     " (fn-bs-recover-program) nil nil nil))"
                     " (cut-bs (car (nth {} run)))"
-                    " (model-image (fn-bs-crash cut-bs nil)))"
+                    " (model-image (fn-bs-crash cut-bs nil))"
+                    " (model-scan (fn-bs-scan-store model-image))"
+                    " (physical-scan (fn-bs-scan-store physical))"
+                    " (model-opened (fn-sn-open-observed '(\"fn.letters\" \"fn.test\")"
+                    " 10000000 (fn-bs-scan-frontier model-scan)"
+                    " (fn-bs-scan-records model-scan)))"
+                    " (physical-opened (fn-sn-open-observed '(\"fn.letters\" \"fn.test\")"
+                    " 10000000 (fn-bs-scan-frontier physical-scan)"
+                    " (fn-bs-scan-records physical-scan))))"
                     " (list (equal (fn-bs-pending cut-bs) nil)"
                     "       (fn-bso-served-image-agree model-image physical)"
                     "       (equal (fn-bs-names model-image :transactions)"
                     "              (fn-bs-names physical :transactions))"
-                    "       (fn-bs-scan-okp (fn-bs-scan-store model-image))"
-                    "       (equal (fn-bs-scan-store model-image)"
-                    "              (fn-bs-scan-store physical))))".format(
+                    "       (fn-bs-scan-okp model-scan)"
+                    "       (equal model-scan physical-scan)"
+                    "       (equal model-opened physical-opened)))".format(
                         before, model_images.import_image(store), index))
-                self.assertRegex(observed, r"\(T\s+T\s+T\s+T\s+T\)\s*$",
+                self.assertRegex(observed, r"\(T\s+T\s+T\s+T\s+T\s+T\)\s*$",
                                  "{} occurrence {}: {}".format(
                                      cut.name, cut.occurrence, observed))
             finally:
                 bridge.close()
 
         def test_served_prepare_publish_finish_cuts(self):
-            # One cut on each side of publication and each durable completion
-            # boundary.  The lower-level post test covers the intervening
-            # syscall cuts; this test drives the served owner itself.
-            names = ("frontier-replaced", "record-staged-durable",
-                     "record-linked", "record-durable", "finish-consumed",
-                     "finish-durable")
+            # Every native post cut is driven through the served owner.  A
+            # named selector is evidence only if its byte-program coordinate
+            # and physical image agree at the exact selected cut.
+            names = tuple(cut.name for cut in native_cuts.POST_CUTS)
             selected = os.environ.get("FN_NATIVE_SERVED_CUT")
             if selected:
                 names = (selected,)
