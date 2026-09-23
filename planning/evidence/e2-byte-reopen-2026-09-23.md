@@ -25,20 +25,27 @@ Certification on hbox used ACL2 toolchain identity
 `books/byte-store-keystones` and `tests/acl2/byte-store-scan-tests` requested.
 The book passed in
 [`certify-20260923T215107Z-249478.json`](manifests/certify-20260923T215107Z-249478.json);
-the final test bytes passed in
-[`certify-20260923T215342Z-257308.json`](manifests/certify-20260923T215342Z-257308.json).
+the final expanded test bytes passed in
+[`certify-20260923T220256Z-276657.json`](manifests/certify-20260923T220256Z-276657.json).
 The test's initial attempt failed because the old sample store contains
 placeholder config/frontier octets, not the concrete framed metadata. The
 test now constructs the real initializer image and checks its related state,
-modeled crash, consumer replay and host reopen. Three earlier failed test
-attempts are retained in the manifests. `make check` passed after ledger
+modeled crash, consumer replay and host reopen. Earlier failed test attempts
+are retained in the manifests. `make check` passed after ledger
 regeneration.
 
-The consumer lemma's test book supplies a structurally valid
-registration-before-bootstrap negative record history and current/rollback
-positive histories. The byte test added here has an initial concrete image;
-it does not yet give a nonempty E2 consumer-event byte image or an independent
-byte-level tooth isolating `fn-csi-full-relationp`. That is test evidence
-still owed for the expanded K4 hypothesis. The ACL2 theorem is certified at
-the stated hypothesis, not a claim that all served physical traces satisfy
-it.
+The follow-up byte test runs the actual frontier, P-RECORD and finish
+programs with the same bootstrap event as the actual `fn-snrt-run` trace.
+The nonempty physical crash scan reads the exact bootstrap event and reopens
+with a consumer projection. It also frames and publishes a structurally
+valid registration before bootstrap through the file program: the byte
+relation and modeled crash premise still hold, while `fn-csi-full-relationp`
+and consumer replay fail. Pairing that physical image with a valid bootstrap
+node separates the byte/kernel-relation premise; presenting it as an image
+of the good byte state separates the modeled-crash premise. The three
+`must-fail` assertions are in `byte-store-scan-tests.lisp` and passed in
+[`certify-20260923T220256Z-276657.json`](manifests/certify-20260923T220256Z-276657.json).
+The invalid registration is deliberately unreachable through the checked
+Store-node prepare transition; it is a counterexample to dropping the
+maintained relation, not a claimed served trace. General K0 still has to
+establish the byte/kernel relation for all served physical traces.

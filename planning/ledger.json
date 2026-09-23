@@ -527,22 +527,22 @@
     "books": 525,
     "books_in_root_closure": 524,
     "roots": 520,
-    "theorems": 7973,
-    "functions": 5988,
-    "assert_events": 8698,
-    "must_fails": 396,
+    "theorems": 7974,
+    "functions": 5998,
+    "assert_events": 8706,
+    "must_fails": 400,
     "encapsulates": 26,
     "guards": {
       "verified": 1961,
       "declared-off": 321,
       "default-guarded": 2948,
-      "default-unguarded": 758
+      "default-unguarded": 768
     },
     "suspect_theorems": 72,
     "export_hygiene_warnings": 101,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 28,
-    "include_hygiene_warnings": 391,
+    "include_hygiene_warnings": 392,
     "host_names_warnings": 750,
     "hand_written_record_warnings": 18
   },
@@ -10795,17 +10795,17 @@
       "book": "tests/acl2/byte-store-scan-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
-      "functions": 8,
+      "theorems": 2,
+      "functions": 18,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 8
+        "default-unguarded": 18
       },
       "verify_guards_events": 0,
-      "assert_events": 24,
-      "must_fails": 0,
+      "assert_events": 32,
+      "must_fails": 4,
       "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
@@ -10815,9 +10815,12 @@
         "../../books/byte-store-programs",
         "../../books/byte-store-relation",
         "../../books/byte-store-txn-name",
-        "../../books/codec-attach"
+        "../../books/codec-attach",
+        "consumer-store-invariants-tests"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -18114,6 +18117,13 @@
         "line": 22,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-scan-tests.lisp",
+        "line": 23,
+        "include": "consumer-store-invariants-tests",
+        "included": "tests/acl2/consumer-store-invariants-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
