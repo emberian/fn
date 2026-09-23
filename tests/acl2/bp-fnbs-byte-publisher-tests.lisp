@@ -1,6 +1,6 @@
 ; Actual FNBS kind-5 frame through byte-store publication and crash cuts.
 (in-package "ACL2")
-(include-book "../../books/bp-fnbs-byte-publisher")
+(include-book "../../books/bp-fnbs-byte-invariants")
 (include-book "bp-fnbs-codec-tests")
 (include-book "std/testing/must-fail" :dir :system)
 
