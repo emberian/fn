@@ -67,6 +67,7 @@
 (include-book "books/bp-node-records")
 (include-book "books/bp-authored-wire")
 (include-book "books/bp-node-machine")
+(include-book "books/bp-contact-service")
 (include-book "books/bp-node-machine-codec")
 ; Guard events for the exact fn-bpnf-step called by bp-service and its
 ; outbound fn-bpn-step base.  Certification alone does not put guard events
@@ -189,6 +190,7 @@
         ; Store or convergence interpreter.
         (load "host/native/bp-app.lisp")
         (load "host/native/bp-service.lisp")
+        (load "host/native/bp-contact.lisp")
         ; Native anchor acquisition and its real primitive facility.  The
         ; anchor command calls fnn-crypto-startup in the restarted image, so
         ; it never trusts the serialized FFI readiness state.

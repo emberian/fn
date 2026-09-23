@@ -2257,6 +2257,18 @@ session in arrival order **among eligible candidates** until it is sent,
 expires or is deleted (RFC 9171 §5.4). The FIFO theorem, restated
 (review-2 §2.2), over the immutable `arrival` field (F-M):
 
+The native FNBS contact runner uses `fn-bpsc-contact-event` in
+`books/bp-contact-service.lisp` for a single peer/window tick. It advances
+the machine's clock before consulting ready peers, opens a contact only when
+that peer is ready and the observed monotonic time is inside the inclusive
+window, and closes the contact after a bounded send batch. Its host caller is
+`fnn-command-bp-contact-tick` in `host/native/bp-contact.lisp`; effects go
+through the same `fnn-bps-step` and durable publisher as the normal BP
+service. The older FNWF `fn-sched-tick-step` cannot be called on the FNBS
+machine: its modeled `:durable` completion does not represent an observed
+FNBS publication outcome. This finite runner does not itself establish the
+multi-class fairness or return-receipt progress claims below.
+
 ```lisp
 (defthm fn-bpn-start-one-selects-the-least-arrival-among-eligible
   (implies (and (fn-bpn-lifecycle-invariantp st)
