@@ -25,31 +25,43 @@ revision and theorem hypotheses when sharing a proof so its scope is clear.
 
 ## Second convergence and resumed goal
 
-The user activated the v0/v1 and sleeping-agent exchange goal after the first
-convergence. Root is integrating T2a `6afec132`, scanner relation `2e2a82fe`,
-and fragment results `63fd3187`/`deb2e393`; the combined image is not built yet.
+The v0/v1 and sleeping-agent exchange goal is active. Frozen `daa6c15e`
+passed its [scoped native gates](evidence/t2-native-daa6c15e-2026-09-23.md).
+Do not rebuild it per lane or change the live `da5fd8cb` node.
 
-- `acceptance_stamp`: repair actual caller findings from `stamp_review`,
-  classify old Store corruption fixtures, then brief T2b. Coordinate exact
-  migration assertions with root's image build. No independent image build.
-- `stamp_review`: bounded independent caller/schema/gate review. Found the
-  BP application's stale owner clock and lost control clock-refusal reason;
-  these are concrete repairs, not grounds for another whole-project review.
-- `crash_differential`: complete the seven outstanding served post cuts;
-  reuse frozen f0 for compatible tests and the next shared image for stamps.
-- `fragment_refinement`: C2 active-set principal/coherence work from integrated
-  C1, coordinating the foundation held-record representation directly.
-- `bp_foundation`: guards and actual native replacement interface. Keep one
-  owner (`fn-bpnf-step`) rather than introducing a third lifecycle machine;
-  FNBS A2 publication/recovery precedes the receive/ACK host switch.
-- `status_codec`: remove or separately prove the round-trip length premise,
-  finish D1a integration metadata; D1b generation/consumption remains open.
-- `consumer_contract`: specify the selected durable cursor/ack and inbox/outbox
-  exchange with adversarial scenarios; no inference of processing from output.
+- `acceptance_stamp`: T2b stamped NEWNEWS and real matrix content assertions;
+  coordinates legacy migration assertions with `crash_differential`.
+- `crash_differential`: selected pre-T2 checkpoint migration. Journal-only and
+  selected pack/reclaimed-prefix migration passed; selected checkpoint fails
+  with `:INVALID`. Preserve original-byte identity and selector binding while
+  migrating legacy logical articles to `:legacy` stamps.
+- `store_invariants`: phase-aware identity sequence packet landed; finish the
+  actual accepted-statement `indexedp` arm and composite payload binding.
+- `bp_foundation`: guard packet landed through outbound/contact transitions;
+  replay/restart/step closure next. Coordinate inherited versus replacement
+  machine work with `feed_replay`; avoid a third semantic owner.
+- `feed_replay`: A2 kind-5 FNBS codec and byte publication/recovery. Preserve
+  typed ingress, no ACK before durable receive, second-crash and callback
+  fencing. These precede the native receive switch.
+- `authorship_carrier`: native portable-carrier emit/verify caller and source/key
+  mutation witnesses. Do not substitute rendered payload identity for authored
+  source identity; durable carrier/verdict Store binding is a subsequent join.
+- `consumer_contract`: selected E2 contract and adversarial trace specifications
+  landed; now implement finite cursor/scope/ack decisions and coordinate Store
+  identity/event integration. No served API or executed trace claim yet.
+- `stamp_review`: reconcile missing legitimate manifest archives/source origins;
+  avoid rerunning already certified books merely for missing archived evidence.
 
-Root owns the combined ledger, certification, image freeze and migration gate.
-Existing machine pools remain unchanged. Completed first-wave trees may have
-been removed; create a fresh tree from the announced base for new packets.
+D1a status codec and C2 fragment-family query are integrated components without
+native caller completion. Root corrected the C2 fixture to use the typed
+session pair required by A1; its focused certification passed.
+
+Root owns combined ledgers, incremental convergence and the next image freeze.
+The treewide second run `run-20260923T165956Z-5d97` on persvati reused matching
+cache entries and exposed that one fixture failure. The focused repair is
+`run-20260923T170326Z-2d45`; manifests and exact scope are in the image evidence.
+No independent farm slot pools or duplicate image builds are authorized by
+agent count. Preserve the pre-T2 `f0b8b166` image for migration tests.
 
 ## First-wave roster (historical)
 

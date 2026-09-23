@@ -139,6 +139,8 @@
     "books/store-prepare-correspondence",
     "tests/acl2/store-prepare-correspondence-tests",
     "books/store-node-resolution",
+    "books/store-identity-sequence-invariants",
+    "tests/acl2/store-identity-sequence-invariants-tests",
     "tests/acl2/store-node-resolution-tests",
     "tests/acl2/store-node-resolution-traces-tests",
     "tests/acl2/store-identity-traces-tests",
@@ -446,25 +448,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 447,
-    "books_in_root_closure": 446,
-    "roots": 442,
-    "theorems": 7327,
-    "functions": 5584,
-    "assert_events": 8104,
-    "must_fails": 316,
+    "books": 449,
+    "books_in_root_closure": 448,
+    "roots": 444,
+    "theorems": 7358,
+    "functions": 5585,
+    "assert_events": 8123,
+    "must_fails": 317,
     "encapsulates": 26,
     "guards": {
-      "verified": 1831,
+      "verified": 1848,
       "declared-off": 300,
-      "default-guarded": 2770,
+      "default-guarded": 2754,
       "default-unguarded": 683
     },
     "suspect_theorems": 69,
     "export_hygiene_warnings": 93,
-    "enabled_projection_warnings": 33,
+    "enabled_projection_warnings": 35,
     "teeth_form_warnings": 24,
-    "include_hygiene_warnings": 292,
+    "include_hygiene_warnings": 293,
     "host_names_warnings": 664,
     "hand_written_record_warnings": 18
   },
@@ -1487,7 +1489,7 @@
       "book": "books/bp-node-machine-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 90,
+      "theorems": 83,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -1515,15 +1517,15 @@
       "book": "books/bp-node-machine.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 56,
+      "theorems": 70,
       "functions": 93,
       "guards": {
-        "verified": 31,
+        "verified": 47,
         "declared-off": 2,
-        "default-guarded": 60,
+        "default-guarded": 44,
         "default-unguarded": 0
       },
-      "verify_guards_events": 31,
+      "verify_guards_events": 47,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 4,
@@ -6469,6 +6471,31 @@
       "includes": [
         "records-seam",
         "replay"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-identity-sequence-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 24,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-node-resolution"
       ],
       "system_includes": [],
       "suspects": [],
@@ -11656,6 +11683,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-identity-sequence-invariants-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 19,
+      "must_fails": 1,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-identity-sequence-invariants",
+        "store-identity-traces-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-identity-traces-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -12483,7 +12538,7 @@
     {
       "theorem": "fn-bpn-apply-inapplicable-record-is-noop",
       "book": "books/bp-node-machine-invariants.lisp",
-      "line": 850,
+      "line": 749,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpn-apply-record and the conclusion is that branch's value"
       ]
@@ -12491,7 +12546,7 @@
     {
       "theorem": "fn-bpn-machine-invariant-components",
       "book": "books/bp-node-machine-invariants.lisp",
-      "line": 684,
+      "line": 583,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bpn-machine-invariantp"
       ]
@@ -12525,7 +12580,7 @@
     {
       "theorem": "fn-bpn-step-emits-no-release",
       "book": "books/bp-node-machine.lisp",
-      "line": 714,
+      "line": 964,
       "reasons": [
         "instance-corollary: the statement is fn-bpn-effect-listp-excludes-release instantiated, discharging nothing"
       ]
@@ -13063,13 +13118,13 @@
       {
         "theorem": "fn-bpn-next-token-of-applicable-record",
         "book": "books/bp-node-machine-invariants.lisp",
-        "line": 832,
+        "line": 731,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bpn-effect-listp-of-singleton",
         "book": "books/bp-node-machine-invariants.lisp",
-        "line": 983,
+        "line": 882,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -13711,9 +13766,10 @@
         "book": "books/bp-primary.lisp",
         "line": 401,
         "stated_in": [
-          "books/bp-fragment-invariants.lisp"
+          "books/bp-fragment-invariants.lisp",
+          "books/bp-node-machine.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-bpp-fragment-offset",
@@ -13753,6 +13809,24 @@
         "line": 102,
         "stated_in": [
           "books/hybrid-signature.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-stxk-context-kind",
+        "book": "books/stx-keyring-records.lisp",
+        "line": 124,
+        "stated_in": [
+          "books/store-identity-sequence-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-stxk-context-next",
+        "book": "books/stx-keyring-records.lisp",
+        "line": 128,
+        "stated_in": [
+          "books/store-identity-sequence-invariants.lisp"
         ],
         "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
       },
@@ -15815,6 +15889,13 @@
         "line": 5,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-identity-sequence-invariants-tests.lisp",
+        "line": 4,
+        "include": "store-identity-traces-tests",
+        "included": "tests/acl2/store-identity-traces-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

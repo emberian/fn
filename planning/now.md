@@ -35,16 +35,33 @@ exchange. Continue coordinated Sol implementation with root convergence,
 source-pinned evidence and bounded incremental proof work. This goal does not
 authorize replacing or exposing the live node.
 
-The second convergence is integrating T2a acceptance stamps with the stronger
-visible-image-to-scan theorem and fragmentation inverse/consumed-byte proofs.
-T2a's own affected closure certified; the combined source and carried-over
-Store migration still need their qualification. Independent caller review
-found that native BP application submission can use an old owner clock;
-that repair belongs to this batch before its image freezes. D1a's status-report
-codec has a bounded round-trip proof; its remaining bound premise is being
-examined before integration. Next lanes advance served crash cuts, BP guarded
-foundation/native joins, principal-partitioned fragment sets and the consumer
-contract. None of these source results changes the deployed image.
+The second convergence has a frozen stamped image at `daa6c15e`. Its
+[source-pinned evidence](evidence/t2-native-daa6c15e-2026-09-23.md) records
+checkpoint/admin/BP-obligation/protected-peering tests, all served POST and
+recovery-barrier cuts, and exact legacy/new-stamp journal migration. These are
+isolated hbox tests; the deployed image remains `da5fd8cb`. The stronger
+upgrade probe found a real defect: a selected checkpoint written by the
+pre-stamp image is rejected by the new decoder. Journal-only migration and
+selected pack/reclaimed-prefix recovery passed; selected checkpoint migration
+remains open and is being repaired with an ACL2 versioned decoder.
+
+Source work since that freeze removes the host duplicate-match decision in
+favor of `fn-sn-existing-action`, adds guarded BP transition helpers and a
+principal-partitioned fragment-family query, and proves the phase-aware Store
+journal cursor relation across every finish arm. These do not yet constitute
+native qualification of the newer source. The BP status-report codec has
+component certification but no served caller; its requirement remains open.
+The integrated proof run exposed a typed-ingress fixture mismatch, now repaired
+and recertified. Missing source-matched manifest archives are being reconciled
+without treating repeated certification as a substitute for provenance.
+
+Active work closes stamped NEWNEWS, selected checkpoint migration, the
+accepted-statement index preservation arm, BP FNBS byte publication and replay,
+and native carrier emission/independent verification. Carrier work keeps exact
+authored-source identity distinct from the NNTP projection; durable verdict
+binding and reader integration remain separate obligations. The consumer
+contract is moving into bounded executable ACL2 scope/ack decisions, while its
+durable Store and served owner join remain unimplemented.
 
 Next: qualification of images/upgrades and served crash correspondence,
 alongside independent feed-replay, BP-foundation and authorship-carrier work.
