@@ -1,0 +1,62 @@
+; The derived sequence index tracks the *actual* Store event list.  No served
+; command checks this full correspondence: it is carried by Store transitions
+; and rebuilt during observed recovery.
+(in-package "ACL2")
+(include-book "store-node")
+(include-book "store-files-traces")
+
+(defun fn-ceis-relatedp (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (member-eq (fn-sf-phase (fn-sn-files s))
+                 '(:replaying :fault))
+      t
+    (fn-cei-correspondencep
+     (fn-sn-event-index s) (fn-sf-records (fn-sn-files s)))))
+
+(defthm fn-ceis-initial-related
+  (fn-ceis-relatedp (fn-sn-initial groups capacity))
+  :hints (("Goal" :in-theory (enable fn-ceis-relatedp fn-sn-initial
+                                    fn-sn-make-v2 fn-sn-files
+                                    fn-sf-phase fn-sf-records
+                                    fn-sn-event-index fn-store-event-nth
+                                    fn-cei-correspondencep fn-cei-build))))
+
+; The file kernel appends only at the durable directory observation.  The
+; Store candidate predicate supplies the dense sequence == old list length,
+; which makes the radix extension exact rather than merely sequence-shaped.
+(defthm fn-ceis-record-directory-extension
+  (implies (and (fn-sf-statep files)
+                (equal (fn-sf-phase files) :record-attempted)
+                (fn-cei-correspondencep index (fn-sf-records files)))
+           (fn-cei-correspondencep
+            (fn-cei-put
+             (fn-store-event-sequence (fn-sf-record-candidate files))
+             (fn-sf-record-candidate files) index)
+            (fn-sf-records (fn-sf-record-dir-result files :ok))))
+  :hints (("Goal" :use ((:instance fn-cei-extend-preserves-correspondence
+                                 (events (fn-sf-records files))
+                                 (event (fn-sf-record-candidate files))))
+           :in-theory
+           (e/d (fn-sf-record-dir-result fn-sf-statep
+                  fn-sf-phase-shapep fn-sf-candidatep)
+                (fn-store-event-p fn-cei-correspondencep fn-cei-build
+                 fn-cei-put fn-cei-put-digits fn-cei-branch-put)))))
+
+(defthm fn-ceis-recovery-rebuilds-index-by-definition
+  (implies (and (fn-sn-statep s)
+                (equal (fn-sf-phase (fn-sn-files s)) :replaying)
+                (equal (fn-sf-phase
+                        (fn-sn-files (fn-sn-recover s)))
+                       :recovering))
+           (fn-cei-correspondencep
+            (fn-sn-event-index (fn-sn-recover s))
+            (fn-sf-records (fn-sn-files (fn-sn-recover s)))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-recover fn-cei-correspondencep
+                  fn-sn-with-topic fn-sn-with-event-index
+                  fn-sn-with-consumer fn-sn-update-replayed)
+                (fn-sn-statep fn-sn-make-v6 fn-sn-event-index fn-sn-files
+                 fn-sf-recover
+                 fn-sf-replay-node fn-replay-identity
+                 fn-cpe-projection-replay fn-th-prefix-project
+                 fn-cei-build fn-cei-build-aux)))))

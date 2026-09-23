@@ -44,28 +44,27 @@
     (fn-cei-branch-get *fn-cei-value-key* trie)))
 
 (defun fn-cei-put (sequence event index)
-  (declare (xargs :guard (fn-cp-uintp sequence)))
-  (fn-cei-put-digits (fn-cbor-u32-bytes sequence) event index))
+  (declare (xargs :guard t))
+  (if (fn-cp-uintp sequence)
+      (fn-cei-put-digits (fn-cbor-u32-bytes sequence) event index)
+    index))
 
 (defun fn-cei-get (sequence index)
-  (declare (xargs :guard (fn-cp-uintp sequence)))
-  (fn-cei-get-digits (fn-cbor-u32-bytes sequence) index))
+  (declare (xargs :guard t))
+  (if (fn-cp-uintp sequence)
+      (fn-cei-get-digits (fn-cbor-u32-bytes sequence) index)
+    nil))
 
 ; Executed only during observed open/recovery, not during a served poll.
 (defun fn-cei-build-aux (events sequence index)
-  (declare (xargs :guard (and (true-listp events) (natp sequence)
-                              (<= (+ sequence (len events))
-                                  (1+ *fn-cbor-max-uint*)))
-                  :verify-guards nil))
+  (declare (xargs :guard (natp sequence)))
   (if (consp events)
       (fn-cei-build-aux (cdr events) (1+ sequence)
                         (fn-cei-put sequence (car events) index))
     index))
 
 (defun fn-cei-build (events)
-  (declare (xargs :guard (and (true-listp events)
-                              (<= (len events) (1+ *fn-cbor-max-uint*)))
-                  :verify-guards nil))
+  (declare (xargs :guard t))
   (fn-cei-build-aux events 0 nil))
 
 (defun fn-cei-correspondencep (index events)
