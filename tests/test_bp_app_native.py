@@ -213,6 +213,26 @@ class NativeBpApplicationTests(unittest.TestCase):
         self.assertIn(b"status=receipted", recovered.stdout)
         self.assertIn(b"pinned=no", recovered.stdout)
 
+    def test_unsupported_receipt_profile_refuses_before_file_read(self):
+        sender_store, workflow = self.prepare_sender_obligation()
+        missing_receipt = self.temp / "missing-untrusted-receipt.adu"
+        before = {p.name: p.read_bytes()
+                  for p in (workflow / "records").glob("*.wf")}
+        refused = self.invoke(
+            "bp-obligation", "receipt", sender_store, workflow,
+            missing_receipt, "2", "0", "unsigned-lab",
+        )
+        self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+        self.assertIn(b"authentication profile is unsupported", refused.stderr)
+        self.assertEqual(before, {p.name: p.read_bytes()
+                                  for p in (workflow / "records").glob("*.wf")})
+        status = self.invoke(
+            "bp-obligation", "status", sender_store, workflow,
+            "work-native-bp",
+        )
+        self.assertEqual(status.returncode, 0, status.stderr.decode())
+        self.assertIn(b"pinned=yes", status.stdout)
+
     def test_lost_receipt_restart_replays_without_second_acceptance(self):
         receiver, port = self.start_receiver(pause=True)
         sender = self.start_sender(port)

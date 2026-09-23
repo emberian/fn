@@ -186,6 +186,35 @@
 ; -----------------------------------------------------------------------------
 ; Journal records: byte-exact conformance with the Python encoders replaced
 
+; FNWF codes 1 through 7 retain their vectors below.  The two appended
+; forwarding-obligation kinds use codes 8 and 9.
+(assert-event
+ (equal (fn-frame-workflow-protected :undertake
+                                      (list '(119 111 114 107 45 97) 3))
+        '(70 78 87 70 1 8 0 0 0 16 0 6 119 111 114 107 45 97
+          0 0 0 0 0 0 0 3)))
+(assert-event
+ (equal (fn-frame-workflow-protected
+         :release
+         (list '(114 45 49) '(119 45 49) '(115 45 49)
+               '(105 45 49) '(112 45 49) '(116 45 49) '(110 45 49)))
+        '(70 78 87 70 1 9 0 0 0 35
+          0 3 114 45 49 0 3 119 45 49 0 3 115 45 49
+          0 3 105 45 49 0 3 112 45 49 0 3 116 45 49
+          0 3 110 45 49)))
+(assert-event
+ (equal (fn-frame-workflow-decode
+         (fn-frame-workflow-encode
+          :release
+          (list '(114 45 49) '(119 45 49) '(115 45 49)
+                '(105 45 49) '(112 45 49) '(116 45 49) '(110 45 49))
+          *fn-frame-test-digest*)
+         *fn-frame-test-digest*)
+        (fn-frame-ok *fn-frame-magic-workflow* 1 :release
+                     (list '(114 45 49) '(119 45 49) '(115 45 49)
+                           '(105 45 49) '(112 45 49) '(116 45 49)
+                           '(110 45 49)))))
+
 ; Generated from the pre-migration Python encoders; see HANDOFF.md.
 (assert-event (equal (fn-frame-workflow-encode :config (list '(100 116 110 58 47 47 97) '(100 116 110 58 47 47 98) '(112 48) '(100 116 110 58 47 47 99) 3600 '(105 110 99 45 49) '(99 116 120 45 49)) '(133 191 156 215 153 147 95 216 73 187 36 137 24 28 97 242 237 217 202 211 138 131 12 15 207 33 190 244 83 185 103 173))
                      '(70 78 87 70 1 1 0 0 0 53 0 7 100 116 110 58 47 47 97 0 7 100 116 110 58 47 47 98 0 2 112 48 0 7 100 116 110 58 47 47 99 0 0 0 0 0 0 14 16 0 5 105 110 99 45 49 0 5 99 116 120 45 49 133 191 156 215 153 147 95 216 73 187 36 137 24 28 97 242 237 217 202 211 138 131 12 15 207 33 190 244 83 185 103 173)))

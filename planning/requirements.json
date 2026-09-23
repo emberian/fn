@@ -798,7 +798,7 @@
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Exact supplied evidence gates abstract ledger release and preserves unrelated pins. BP sender discharge requires a matching locally authorized committed receipt decision; receiver replayed receipts are grounded in exact ready Store records and matching journal decisions. Real D01/D09 authority, host refinement and durable node-level archive release remain open; completing onward work does not release either node's archive pin.",
+      "implementation_note": "Exact supplied evidence gates abstract ledger release and preserves unrelated pins. BP sender discharge requires a matching locally authorized committed receipt decision; receiver replayed receipts are grounded in exact ready Store records and matching journal decisions. The native FNWF caller now uses ACL2 constructors and the release-aware interpreter for canonical receipt intent, undertaking and exact matching release; a shared saved-image run and replay/status refinement for the extended kinds remain pending. Real D01/D09 authority, complete host refinement and durable node-level archive release remain open; completing onward work does not release either node's archive pin.",
       "note": "Release records its evidence (fn-retain-exact-release-records-its-evidence) and preserves independent pins, but 'authorized' is not proved: the evidence check is a single admit-string equality, not an issuer, nonce, incarnation or authorization check, and PRF-013 has no events."
     },
     {

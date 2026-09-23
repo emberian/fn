@@ -1,6 +1,6 @@
 ; Program-mode bridge: decoded bounded local records enter the executable model.
 (in-package "ACL2")
-(include-book "../books/bp-workflow-records")
+(include-book "../books/bp-workflow-constructors")
 ; `fn-sn-node' is books/store-node's; include it rather than depend on a
 ; store session having been opened in this ACL2 first.
 (include-book "../books/store-node")
@@ -9,7 +9,7 @@
  (declare (xargs :stobjs state :mode :program))
  (let* ((sn (f-get-global 'fn-store-sn state))
         (node (and sn (fn-sn-node sn)))
-        (answer (fn-bp-replay-journal node records)))
+        (answer (fn-bprl-replay-journal node records)))
   (if (car answer)
       (let ((state (f-put-global 'fn-workflow-state (fn-bp-journal-nth 1 answer) state)))
        ; Effects reconstructed from old durable records are audit history, not
@@ -63,9 +63,29 @@
                      forward-obligation-id peer-eid policy-id terms-id))))
     (value (if (and record (fn-bp-journal-recordp record)) record nil))))
 
+; Constructors return nil on refusal; raw Lisp only publishes returned exact
+; records.  The receipt authorization boolean names the selected local
+; trusted-peer observation profile, not a cryptographic verification claim.
+(defun fn-workflow-undertake-record (work-id charge state)
+ (declare (xargs :stobjs state :mode :program))
+ (value (fn-bprl-undertake-record
+         (f-get-global 'fn-workflow-state state) work-id charge)))
+
+(defun fn-workflow-receipt-record
+  (octets txid generation authorizedp state)
+ (declare (xargs :stobjs state :mode :program))
+ (value (fn-bprl-receipt-intent-record
+         (f-get-global 'fn-workflow-state state)
+         octets txid generation authorizedp)))
+
+(defun fn-workflow-release-record (receipt-id state)
+ (declare (xargs :stobjs state :mode :program))
+ (value (fn-bprl-release-record-for-journal
+         (f-get-global 'fn-workflow-state state) receipt-id)))
+
 (defun fn-workflow-preflight-record (record state)
  (declare (xargs :stobjs state :mode :program))
- (let ((answer (fn-bp-apply-journal-record
+ (let ((answer (fn-bprl-apply-journal-record
                 (f-get-global 'fn-workflow-state state) record)))
   (value (if (car answer) :ready :fault))))
 
@@ -73,12 +93,12 @@
  (declare (xargs :stobjs state :mode :program))
  (let* ((sn (f-get-global 'fn-store-sn state))
         (node (and sn (fn-sn-node sn)))
-        (answer (fn-bp-replay-journal node records)))
+        (answer (fn-bprl-replay-journal node records)))
   (value (if (car answer) :ready :fault))))
 
 (defun fn-workflow-apply-record (record state)
  (declare (xargs :stobjs state :mode :program))
- (let ((answer (fn-bp-apply-journal-record
+ (let ((answer (fn-bprl-apply-journal-record
                 (f-get-global 'fn-workflow-state state) record)))
   (if (not (car answer)) (value :fault)
    (let ((state (f-put-global 'fn-workflow-state

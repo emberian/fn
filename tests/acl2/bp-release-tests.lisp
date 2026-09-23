@@ -8,6 +8,7 @@
 ; ordinary fn-bp record.
 (in-package "ACL2")
 (include-book "../../books/bp-release-invariants")
+(include-book "../../books/bp-workflow-constructors")
 (include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
@@ -255,6 +256,59 @@
 (assert-event (fn-bp-journal-recordp *rl-transport-record*))
 (assert-event (equal (fn-bprl-apply-journal-record *rl-undertaken* *rl-transport-record*)
                      (fn-bp-apply-journal-record *rl-undertaken* *rl-transport-record*)))
+
+; These are the native workflow-host constructor subjects.  The frame and
+; journal preflight never receive a record the ACL2 interpreter refused.
+(assert-event (equal (fn-bprl-undertake-record *rl-enqueued* "work-1" 3)
+                     '(:undertake "work-1" 3)))
+(assert-event (null (fn-bprl-undertake-record *rl-enqueued* "work-1" 100)))
+(assert-event (null (fn-bprl-undertake-record *rl-undertaken* "work-1" 3)))
+(defconst *rl-receipt-adu*
+  (fn-bpa-make-receipt "receipt-1" "work-1" "subject-rl"
+                       "receipt-authority" "dtn://peer/fn" "policy-1"
+                       "home-incarnation-1" "authorization-context-1"
+                       "terms-1"))
+(defconst *rl-receipt-octets* (fn-bpa-encode *rl-receipt-adu*))
+(assert-event (fn-bpa-receiptp *rl-receipt-adu*))
+(assert-event (equal (fn-bprl-receipt-intent-record
+                      *rl-delivered* *rl-receipt-octets* 12 0 t)
+                     '(:receipt-intent 12 0 "receipt-1" "work-1" "subject-rl"
+                       "receipt-authority" "dtn://peer/fn" "policy-1"
+                       "home-incarnation-1" "authorization-context-1"
+                       "terms-1")))
+(assert-event (null (fn-bprl-receipt-intent-record
+                     *rl-delivered* *rl-receipt-octets* 12 0 nil)))
+(assert-event (null (fn-bprl-receipt-intent-record
+                     *rl-delivered* '(0 1 2) 12 0 t)))
+; Wrong work and authority are decoded successfully, then refused by the
+; stateful receipt decision. A duplicate after durable completion is refused.
+(assert-event
+ (null (fn-bprl-receipt-intent-record
+        *rl-delivered*
+        (fn-bpa-encode
+         (fn-bpa-make-receipt "receipt-1" "work-2" "subject-rl"
+                              "receipt-authority" "dtn://peer/fn" "policy-1"
+                              "home-incarnation-1" "authorization-context-1"
+                              "terms-1"))
+        12 0 t)))
+(assert-event
+ (null (fn-bprl-receipt-intent-record
+        *rl-delivered*
+        (fn-bpa-encode
+         (fn-bpa-make-receipt "receipt-1" "work-1" "subject-rl"
+                              "other-authority" "dtn://peer/fn" "policy-1"
+                              "home-incarnation-1" "authorization-context-1"
+                              "terms-1"))
+        12 0 t)))
+(assert-event (null (fn-bprl-receipt-intent-record
+                     *rl-receipted* *rl-receipt-octets* 13 0 t)))
+(assert-event (equal (fn-bprl-release-record-for-journal
+                      *rl-receipted* "receipt-1")
+                     *rl-release-record*))
+(assert-event (null (fn-bprl-release-record-for-journal
+                     *rl-released* "receipt-1")))
+(assert-event (null (fn-bprl-release-record-for-journal
+                     *rl-receipted* "receipt-other")))
 
 ; -----------------------------------------------------------------------------
 ; must-fail siblings

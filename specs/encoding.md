@@ -169,7 +169,9 @@ book's RFC 3629 decoder; there is no second table.
 
 FNWF and FNRJ frames are byte-identical to the Python frames they replace, and
 `tests/acl2/frame-tests.lisp` asserts that against vectors generated from the
-Python encoders. FNST gains the record kind octet it lacked, so a store written
+Python encoders. FNWF extends the deployed seven-kind table append-only with
+codes 8 (`:undertake`) and 9 (`:release`); the old seven code values and
+their captured octets are unchanged. FNST gains the record kind octet it lacked, so a store written
 under the old framing is refused by its configuration format
 (`fn-store-experiment-5`) rather than misread. FNBI moves its BID length into a
 payload text field; because an inbound bundle can reach four mebibytes and

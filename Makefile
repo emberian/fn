@@ -378,6 +378,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-newnews-tests \
 	books/bp-release \
 	books/bp-release-invariants \
+	books/bp-workflow-constructors \
 	tests/acl2/bp-release-tests \
 	books/scheduler \
 	books/scheduler-invariants \
