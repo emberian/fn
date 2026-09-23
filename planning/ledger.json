@@ -235,6 +235,7 @@
     "books/bp-fnbs-codec-invariants",
     "tests/acl2/bp-fnbs-codec-tests",
     "books/bp-fnbs-byte-publisher",
+    "books/bp-fnbs-byte-invariants",
     "tests/acl2/bp-fnbs-byte-publisher-tests",
     "tests/acl2/bp-fnbs-byte-counterexamples",
     "books/bp-sequence-fidelity",
@@ -456,26 +457,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 457,
-    "books_in_root_closure": 456,
-    "roots": 452,
-    "theorems": 7376,
-    "functions": 5656,
-    "assert_events": 8182,
+    "books": 458,
+    "books_in_root_closure": 457,
+    "roots": 453,
+    "theorems": 7382,
+    "functions": 5657,
+    "assert_events": 8183,
     "must_fails": 324,
     "encapsulates": 26,
     "guards": {
       "verified": 1850,
       "declared-off": 302,
-      "default-guarded": 2777,
+      "default-guarded": 2778,
       "default-unguarded": 727
     },
     "suspect_theorems": 69,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 24,
-    "include_hygiene_warnings": 302,
-    "host_names_warnings": 664,
+    "include_hygiene_warnings": 304,
+    "host_names_warnings": 667,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -1194,6 +1195,32 @@
       "read_error": null
     },
     {
+      "book": "books/bp-fnbs-byte-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-fnbs-byte-publisher",
+        "bp-fnbs-codec-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bp-fnbs-byte-publisher.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -1224,7 +1251,7 @@
       "book": "books/bp-fnbs-codec-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
+      "theorems": 8,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -1241,7 +1268,8 @@
       "includes": [
         "bp-bundle-invariants",
         "bp-fnbs-codec",
-        "bp-primary-invariants"
+        "bp-primary-invariants",
+        "frame-trailer"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3909,12 +3937,12 @@
       "book": "books/hybrid-carrier.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
-      "functions": 25,
+      "theorems": 9,
+      "functions": 26,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 25,
+        "default-guarded": 26,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -8216,7 +8244,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-fnbs-byte-publisher",
+        "../../books/bp-fnbs-byte-invariants",
         "bp-fnbs-codec-tests"
       ],
       "system_includes": [
@@ -10192,7 +10220,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 20,
+      "assert_events": 21,
       "must_fails": 1,
       "defconsts": 12,
       "defmacros": 0,
@@ -12905,7 +12933,7 @@
     {
       "theorem": "fn-hc-binary-limit-refuses-by-definition",
       "book": "books/hybrid-carrier.lisp",
-      "line": 338,
+      "line": 358,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-hc-decode and the conclusion is that branch's value"
       ]
@@ -12913,7 +12941,7 @@
     {
       "theorem": "fn-hc-field-limit-refuses-by-definition",
       "book": "books/hybrid-carrier.lisp",
-      "line": 357,
+      "line": 377,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-hc-field-decode and the conclusion is that branch's value"
       ]
@@ -14150,7 +14178,7 @@
       {
         "check": "hc-source-without-success",
         "book": "tests/acl2/hybrid-carrier-tests.lisp",
-        "line": 152,
+        "line": 163,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -14337,6 +14365,20 @@
         "line": 10,
         "include": "byte-store-txn-name",
         "included": "books/byte-store-txn-name.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-fnbs-byte-invariants.lisp",
+        "line": 6,
+        "include": "bp-fnbs-byte-publisher",
+        "included": "books/bp-fnbs-byte-publisher.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-fnbs-byte-invariants.lisp",
+        "line": 7,
+        "include": "bp-fnbs-codec-invariants",
+        "included": "books/bp-fnbs-codec-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -15154,8 +15196,8 @@
       {
         "book": "tests/acl2/bp-fnbs-byte-publisher-tests.lisp",
         "line": 3,
-        "include": "../../books/bp-fnbs-byte-publisher",
-        "included": "books/bp-fnbs-byte-publisher.lisp",
+        "include": "../../books/bp-fnbs-byte-invariants",
+        "included": "books/bp-fnbs-byte-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -20643,21 +20685,42 @@
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 12,
+        "line": 45,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 12,
+        "line": 45,
         "name": "fnn-hex",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/signature-command.lisp",
-        "line": 53,
+        "line": 59,
+        "name": "fnn-octet-list-p",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/signature-command.lisp",
+        "line": 59,
+        "name": "fnn-hsig-verify-received-carrier",
+        "source": "host/native/signatures.lisp",
+        "reason": "defined in host/native/signatures.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/signature-command.lisp",
+        "line": 59,
+        "name": "unsigned-byte",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/signature-command.lisp",
+        "line": 95,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
