@@ -1,0 +1,63 @@
+{
+  "schema": "fn-native-qualification-v1",
+  "image_source": "daa6c15ef9d5c900b6e31ec9c9b51b9aaa708789",
+  "harness_source": "daa6c15e except migration d510d4bb",
+  "runtime_results": [
+    {
+      "module": "tests.test_native_checkpoint",
+      "exit": 0,
+      "seconds": 30.152,
+      "log": "/tank/fn/gates/takeover-t2-image-daa6c15e/build/freeze/test_native_checkpoint.log",
+      "log_sha256": "325812f290a4127ccfb0e29a9bf740a84bbc55aa37919d7beb8d1028aafee88b"
+    },
+    {
+      "module": "tests.test_native_admin",
+      "exit": 0,
+      "seconds": 3.073,
+      "log": "/tank/fn/gates/takeover-t2-image-daa6c15e/build/freeze/test_native_admin.log",
+      "log_sha256": "9e623e7b5546c8d74fc65858acca2e80fc959b09b7e2b29029b0eb4bc0fc4989"
+    },
+    {
+      "module": "tests.test_bp_obligation_native",
+      "exit": 0,
+      "seconds": 1.018,
+      "log": "/tank/fn/gates/takeover-t2-image-daa6c15e/build/freeze/test_bp_obligation_native.log",
+      "log_sha256": "834453edc3e442ea07405f5f9703e71aa04a200426d8b0b0828d6860fd38a10a"
+    },
+    {
+      "module": "tests.test_native_protected_peering",
+      "exit": 0,
+      "seconds": 25.892,
+      "log": "/tank/fn/gates/takeover-t2-image-daa6c15e/build/freeze/test_native_protected_peering.log",
+      "log_sha256": "3b296b8993d2cdda71e78c71f02692039e3755145b4b6d1ef72c4fb1617fc413"
+    },
+    {
+      "module": "tests.test_native_served_crash_model",
+      "exit": 0,
+      "seconds": 54.059,
+      "log": "/tank/fn/gates/takeover-t2-image-daa6c15e/build/freeze/test_native_served_crash_model.log",
+      "log_sha256": "fab7e0a8bd86637fc8b434c281e8ed23b78bd71a626d9148fcf0450938810bf9"
+    },
+    {
+      "module": "tests.test_native_crash_model",
+      "exit": 0,
+      "seconds": 38.627,
+      "log": "/tank/fn/gates/takeover-t2-image-daa6c15e/build/freeze/test_native_crash_model.log",
+      "log_sha256": "7944d1596d8bfa938767e1e05750634c4beee50a376e3c9c96b88781bbf8e2f0"
+    },
+    {
+      "module": "tests.test_native_stamp_migration",
+      "exit": 0,
+      "seconds": 3.975,
+      "log": "/tank/fn/gates/takeover-t2-image-daa6c15e/build/freeze/test_native_stamp_migration.log",
+      "log_sha256": "9babeb8e41708a786746f20b807a41f2b2742d355c5242adb90a60021e1e1d50"
+    }
+  ],
+  "migration_harness_sha256": "721794a6822ac98a754bfb51e38a7c29ddb82685d3334c14ef029472f4d2e620",
+  "limitations": [
+    "isolated hbox processes, no live node upgrade",
+    "process death, not power loss",
+    "BP application receipt constructors and native authorship join not qualified",
+    "T3 and later BP changes are newer than image"
+  ]
+}

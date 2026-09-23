@@ -1,0 +1,6 @@
+test_old_record_reopens_byte_exact_and_new_acceptance_uses_schema_one (migration_repaired.NativeStampMigrationTests.test_old_record_reopens_byte_exact_and_new_acceptance_uses_schema_one) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 3.886s
+
+OK

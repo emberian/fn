@@ -1,0 +1,9 @@
+test_pinned_predicate_uses_value_caller (tests.test_bp_obligation_native.NativeBpObligationBoundaryTests.test_pinned_predicate_uses_value_caller) ... ok
+test_shared_owner_admits_and_recovers_forward_pin (tests.test_bp_obligation_native.NativeBpObligationTests.test_shared_owner_admits_and_recovers_forward_pin) ... ok
+test_shared_owner_capacity_refusal_publishes_nothing (tests.test_bp_obligation_native.NativeBpObligationTests.test_shared_owner_capacity_refusal_publishes_nothing) ... ok
+test_shared_owner_refuses_unsigned_receipt_profile (tests.test_bp_obligation_native.NativeBpObligationTests.test_shared_owner_refuses_unsigned_receipt_profile) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.949s
+
+OK

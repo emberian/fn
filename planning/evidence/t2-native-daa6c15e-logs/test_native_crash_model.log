@@ -1,0 +1,11 @@
+test_every_native_cut_has_a_byte_program_coordinate (tests.test_native_crash_model.NativeCrashFaultSurfaceTests.test_every_native_cut_has_a_byte_program_coordinate) ... ok
+test_missing_image_is_not_reported_as_a_skipped_campaign (tests.test_native_crash_model.NativeCrashFaultSurfaceTests.test_missing_image_is_not_reported_as_a_skipped_campaign) ... ok
+test_post_fault_environment_is_developer_image_only (tests.test_native_crash_model.NativeCrashFaultSurfaceTests.test_post_fault_environment_is_developer_image_only) ... ok
+test_all_native_post_process_death_cuts (tests.test_native_crash_model.NativeCrashModelTests.test_all_native_post_process_death_cuts) ... ok
+test_injected_outcomes_stay_refused_or_uncertain_and_recover (tests.test_native_crash_model.NativeCrashModelTests.test_injected_outcomes_stay_refused_or_uncertain_and_recover) ... ok
+test_recovery_stage_unlink_process_death_scans_and_reopens (tests.test_native_crash_model.NativeCrashModelTests.test_recovery_stage_unlink_process_death_scans_and_reopens) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 38.530s
+
+OK
