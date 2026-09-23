@@ -55,3 +55,7 @@ successful native test copies the exact authored source, returned fn-e parent,
 returned fncu continuation, principal, and public verification keys there
 after its assertions. It refuses an existing directory so two runs cannot
 silently mix fixtures.
+`FN_CONSUMER_POLL_SOURCE_FILE` may name an absolute, preexisting public source
+article for the same signed-post/poll path; no field is extracted or rewritten
+by Python. This lets the Mini E1 public source fixture exercise the exact
+consumer event boundary with a separately identified test-driver digest.
