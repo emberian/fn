@@ -1,8 +1,10 @@
-Current selected-v1 join: consumer projection and native publication integrated
-at `98996532` / `944916e6`; combined certification exposed five source joins
-under repair (optimized preparation, owner constructors, stamp event kinds,
-BP replay event disjointness and physical consumer recovery). CNS-001,
-PRF-064 and SCN-033 track this work; end-to-end fetch/ack remains open.
+Current selected-v1 join: the E2 consumer Store source repairs are integrated;
+full certification at `22418c27` passed all implementation/invariant books,
+with one stale owner counterexample repaired and separately certified at
+`8e4b9e77`. The OS-authenticated local register/ack/position/unregister route
+is integrated in source; its combined saved-image and process-death tests
+remain open. CNS-001, PRF-064 and SCN-033 track this work. Bounded poll/fetch
+and the consumer inbox/outbox join remain active implementation work.
 
 Current task (2026-09-23): concurrent v0/v1 development grounded in the actual
 Mini/Bread OS interfaces. [Current work](now.md) names integrated source,

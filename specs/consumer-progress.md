@@ -1,7 +1,8 @@
 # Experimental consumer position, version 1
 
 Status: **selected experiment contract; ACL2 decision kernel and phase-aware
-Store model certified in scope, no served consumer interface**, 2026-09-23. This
+Store model certified in scope, local owner command source pending native image
+qualification, no article fetch/poll**, 2026-09-23. This
 specifies E2 of [the sleeping-agent exchange](../planning/experiments/e1-e2-agent-exchange.md).
 It is an fn design guarantee, not an NNTP or BP requirement and not a v0 release
 gate. The selected E1 payload remains opaque to fn. The executable traces to
@@ -150,7 +151,7 @@ deduplication/conflict choice atomic.
 
 ## Executable seam and obligations
 
-This is not served by today's owner. The native read at
+The full E2 poll/fetch interface is not served by today's owner. The native read at
 `host/native/owner.lisp:1041` calls `fn-owner-chunk` at
 `host/owner-host.lisp:1051`, whose owner read enters `fn-served-step` at
 `books/owner.lisp:971`, then `fn-auth-step`/`fn-nntp-step` over a pinned
@@ -226,13 +227,31 @@ The native
 publication path must exercise refusal and ambiguity around its
 `record-linked`, `record-attempted`, `record-durable`, `record-completing`,
 `record-staging-cleaned`, `finish-consumed` and `finish-durable` process-death
-cuts, plus recovery cuts. The first proposed integration caller is an
-ACL2-backed `fn-owner-consumer-*` wrapper beside `fn-owner-chunk` in
-`host/owner-host.lisp`; `host/native/owner.lisp` must route its bounded bytes
-through that wrapper and the existing `fnn-owner-publish-prepared` completion
-gate. The host-called wrapper must be the theorem subject, or have a named
-equivalence to the kernel. None of those native caller or checkpoint joins
-exists yet. No seal/open primitive is required by this first public-group profile.
+cuts, plus recovery cuts. The first local owner command source now runs through
+`fn-owner-consumer-local-{register,ack,position,unregister}` in
+`host/owner-host.lisp`, which calls `fn-col-*` over the live owner. The
+`FNCT` kind-4/5 codec and CLI plan in `books/consumer-local-control.lisp`
+carry bounded request/reply bytes over the existing mode-0600 Unix control
+socket. The Darwin handler also observes the connected peer's effective UID
+with `getpeereid`, refuses on observation failure or an owner-UID mismatch,
+then pins the ACL2 local principal. A non-Darwin port refuses this profile
+until it supplies an equivalent peer-credential observation. The native
+handler serializes each command with the owner, publishes
+the exact ACL2 event through `fnn-owner-consumer-commit` and the shared
+`fnn-owner-publish-prepared` gate, and returns a cursor only after durable
+completion. A lost post-submission reply is uncertain and `position` recovers
+the recorded declaration. This source route still needs a combined saved
+image and process-death test before it can be claimed served.
+
+That **local-owner profile** pins one OS owner principal inside ACL2; its
+query is exact historical membership in one group that is configured at
+registration, with fixed query version 1 and view version 0. The same local
+owner can inspect its historical membership even if the active group table
+later changes. This does not grant remote peers read authority and does not
+implement the selected public-group poll. A remote profile must pin its
+authenticated principal and effective visibility version from the current
+ACL2 policy, and prove its fetched article window matches the committed Store
+prefix. No seal/open primitive is required by this first trusted local profile.
 The consumer library owns its own crash-safe transaction and dregg verifier.
 The trace file names the required two-database observations; passing article
 arrival or a printed watermark cannot satisfy them.
@@ -245,5 +264,6 @@ without asserting it. Crash/reopen must reconstruct the same position, while
 an incarnation or view change fences the old cursor. The consumer must atomically
 bind source-inclusive inbox evidence, a separate unique application operation
 index, and a reply outbox before acknowledging. The logical Store model and
-cursor decision kernel are implemented; the authenticated native operations,
-consumer database and two-store trace remain to be executed.
+cursor decision kernel are implemented; local owner command source awaits a
+qualified saved image, and poll/fetch, consumer database and the two-store
+trace remain to be executed.
