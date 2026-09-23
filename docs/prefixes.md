@@ -61,6 +61,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-csi-` | `consumer-store-invariants` | Completed Store prefix versus carried consumer projection, with explicit completing-window and recovery obligations |
 | `fn-col-` | `consumer-owner-local` | ACL2 local-owner command proposals and position query under a fixed local principal and immutable historical group-membership query |
 | `fn-ncl-` | `consumer-local-control` | Bounded local-control consumer command/reply codec and CLI grammar; the native adapter transports these bytes to the owner |
+| `fn-cpj-` | `consumer-poll-projection`, `tests/acl2/consumer-poll-projection-tests` | Read-only bounded projection of exact E2 cursor and schema-1 accepted article bytes; local Store provenance still requires the authenticated consumer poll caller |
 | `fn-bp-` | `bp-workflow`, `bp-workflow-invariants`, `bp-workflow-transport-invariants`, `bp-workflow-binding-core`, `bp-workflow-binding-invariants`, `bp-workflow-records`, `bp-workflow-replay-status` | Sender workflow: work, attempts, intents, transport observations, journal replay, and the reopened image's read model (status across a restart, and whether a work was recovered or enqueued this session) |
 | `fn-bpa-` | `bp-adu` | Canonical CBOR application data units: request and receipt |
 | `fn-bpi-` | `bp-ingress` | Legacy article ADU ingress, routing and composed-store admission |

@@ -167,3 +167,30 @@ A valid carrier does not establish topic anchoring or report admission."
 (fnn-register-verb "hybrid-verify-source"
                    (lambda (first rest)
                      (fnn-command-hybrid-verify-source (cons first rest))))
+
+(defun fnn-command-consumer-project (args)
+  "Project exact poll output with ACL2. Supplied files alone do not prove Store provenance."
+  (unless (= (length args) 2)
+    (error 'fnn-usage-error
+           :message "usage: fn consumer-project CURSOR.fncu ACCEPTED.fn-e"))
+  (let* ((cursor (fnn-octet-list (fnn-read-regular-bounded (first args) 346)))
+         (event (fnn-octet-list
+                 (fnn-read-regular-bounded (second args) 196608)))
+         (projected (fnn-core 'fn-cpj-project cursor event)))
+    (unless (eq (first projected) :ok)
+      (fnn-out "fn-consumer-project-refused-v1 ~(~a~)" (second projected))
+      (return-from fnn-command-consumer-project 1))
+    (destructuring-bind (tag scope sequence txid source-id msgid source
+                         received verdict-principal verdict) projected
+      (declare (ignore tag))
+      (fnn-out "fn-consumer-project-v1 ~{~a~^ ~} ~d ~d ~a ~a ~a ~a ~a ~a"
+               (append (mapcar #'fnn-hex (subseq scope 0 5))
+                       (mapcar #'identity (subseq scope 5)))
+               sequence txid (fnn-hex source-id) (fnn-hex msgid)
+               (fnn-hex source) (fnn-hex received)
+               (fnn-hex verdict-principal) (fnn-hex verdict))
+      0)))
+
+(fnn-register-verb "consumer-project"
+                   (lambda (first rest)
+                     (fnn-command-consumer-project (cons first rest))))
