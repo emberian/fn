@@ -2251,7 +2251,10 @@
         "books/served.lisp",
         "tests/acl2/group-bucket-index-tests.lisp",
         "tests/acl2/owner-tests.lisp",
-        "planning/evidence/t17-group-bucket-served-2026-09-23.md"
+        "planning/evidence/t17-group-bucket-served-2026-09-23.md",
+        "planning/evidence/t17-group-bucket-e2-integration-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T221217Z-297353.json",
+        "planning/evidence/manifests/certify-20260923T221548Z-309869.json"
       ],
       "events": [
         "fn-gidx-bucket-of-build",
