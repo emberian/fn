@@ -104,6 +104,12 @@
   :hints (("Goal" :in-theory
            (disable fn-bpn-machine-statep fn-bpn-machine-recordp))))
 
+(verify-guards fn-bpnf-recovery-heldp)
+
+(verify-guards fn-bpnf-recover-fnbs-step
+  :hints (("Goal" :in-theory
+           (disable fn-bpn-machine-statep fn-bpn-machine-recordp))))
+
 (verify-guards fn-bpnf-step
   :hints (("Goal" :in-theory
            (disable fn-bpn-machine-statep fn-bpn-machine-recordp))))

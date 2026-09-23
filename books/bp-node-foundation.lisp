@@ -222,7 +222,9 @@
 ; the composition book binds the event argument to that exact call.
 (defun fn-bpnf-recovery-heldp (held max-held max-octets)
   (declare (xargs :guard t))
-  (and (true-listp held)
+  (and (natp max-held)
+       (natp max-octets)
+       (true-listp held)
        (<= (len held) max-held)
        (<= (fn-bpnf-held-octets held) max-octets)
        (if (atom held) t
