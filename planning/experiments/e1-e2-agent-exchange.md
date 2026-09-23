@@ -92,7 +92,11 @@ The selected E2 direction now has a concrete proposed v1 operation, identity,
 limit and recovery contract in [consumer progress](../../specs/consumer-progress.md).
 Its [adversarial trace set](e1-e2-v1-traces.json) identifies the fn and
 consumer database observations and the process-death cuts each implementation
-must execute. They are specified traces, not passing tests or a served API.
+must execute. They remain specified end-to-end traces. The ACL2 Store model
+now certifies a maintained completed-prefix relation through its actual
+decoded mixed dispatcher, including crash/recover and linked-candidate
+witnesses (`PRF-064`); it is not a served consumer API or a native crash-cut
+refinement. `CNS-001` tracks the selected v1 experiment outside the v0 gate.
 
 Proposed cursor meaning is `(store-history/incarnation, consumer-id,
 durable registration epoch, authenticated principal, query-definition/version,
@@ -154,14 +158,20 @@ from an unregistered consumer ID is refused after that ID is registered again,
 because the durable registration epoch changed.
 
 Poll bounds cover scanned records, returned records, returned octets, token
-size and parse work independently. A server-side ack table, if used, has a
-configured maximum consumers and bytes, charges metadata before accepting a
-new consumer, and refuses at capacity. Ack storage alone creates **no**
-unlimited unread backlog or retention pin. Explicit unregister/administration
-and crash-safe recovery of ack metadata are needed before claiming a durable
-server position; the consumer's inbox/outbox remains the source of processing
-truth. The exact ack persistence location and expiry/unregister policy are
-still choices for E2 implementation, not selected by this proposal.
+size and parse work independently. The finite Store model persists register,
+ack, rebase, unregister, bootstrap and rollover as versioned events in the
+ordinary Store journal. Its registration table is bounded separately from
+the journal. Repeated acknowledgements cannot grow that journal without
+limit on the native publication path: the ACL2-owned persisted Store profile
+limits committed transaction count and its conservative per-record ceiling
+against an aggregate byte budget (`fn-bs-publication-admissiblep`), and the
+consumer event ceiling is `*fn-cpe-max-octets*`. The proposed native owner
+publisher checks that ACL2 profile before reservation and checks actual
+bytes at publication. Count reconstruction across selected pack/reopen and
+the served caller remain qualification obligations. Ack storage creates no
+unlimited unread backlog or retention pin; the consumer's inbox/outbox remains
+the source of processing truth. Unregister is explicit; v1 has no automatic
+expiry.
 
 The decisive E2 negative traces are: two consumers of R must advance
 independently; an old endpoint cursor after store replacement must be refused;

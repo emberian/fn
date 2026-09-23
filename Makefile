@@ -79,6 +79,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-events-tests \
 	books/consumer-position \
 	tests/acl2/consumer-position-tests \
+	books/consumer-store-events \
+	tests/acl2/consumer-store-events-tests \
+	books/consumer-store-projection \
+	tests/acl2/consumer-store-projection-tests \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
 	books/provenance-codec \
@@ -138,6 +142,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/acceptance-stamp-invariants \
 	tests/acl2/acceptance-stamp-tests \
 	tests/acl2/store-node-tests \
+	tests/acl2/consumer-store-node-tests \
 	tests/acl2/store-node-existing-tests \
 	books/store-node-traces \
 	tests/acl2/store-node-traces-tests \
@@ -146,6 +151,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-node-resolution \
 	books/store-identity-sequence-invariants \
 	tests/acl2/store-identity-sequence-invariants-tests \
+	books/consumer-store-invariants \
+	tests/acl2/consumer-store-invariants-tests \
 	tests/acl2/store-node-resolution-tests \
 	tests/acl2/store-node-resolution-traces-tests \
 	tests/acl2/store-identity-traces-tests \

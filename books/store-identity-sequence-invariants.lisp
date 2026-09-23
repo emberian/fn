@@ -98,6 +98,18 @@
                             fn-stxk-p fn-record-shape-vocabulary
                             fn-record-record-vocabulary)))))
 
+(defthm fn-sn-prepare-consumer-preserves-identity-sequence
+  (implies (fn-sn-identity-sequencep s)
+           (fn-sn-identity-sequencep (fn-sn-prepare-consumer s event)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sn-identity-sequencep
+                            fn-sn-prepare-consumer fn-sn-update
+                            fn-sf-prepare-record fn-sf-completion-phasep)
+                           (fn-replay-apply-record
+                            fn-cpe-projection-step fn-cpe-eventp
+                            fn-record-shape-vocabulary
+                            fn-record-record-vocabulary)))))
+
 ; The actual host-called observation transition accounts for the only
 ; off-by-one window: :record-directory/:ok appends the record and enters
 ; :completing while the cursor still names that record.
@@ -348,6 +360,13 @@
                   fn-stxe-p fn-stxk-p fn-stxa-p fn-sf-core-completion
                   fn-sf-emit-success fn-record-shape-vocabulary
                   fn-record-record-vocabulary))))))
+
+(defthm fn-sn-finish-enabled-advances-identity-next
+  (implies (fn-sn-completion-enabledp s)
+           (equal (fn-sn-identity-next (fn-sn-finish s))
+                  (1+ (fn-sn-identity-next s))))
+  :hints (("Goal" :use fn-sis-finish-enabled-next
+           :in-theory (disable fn-sn-finish fn-sn-completion-enabledp))))
 
 (local
  (defthm fn-sis-finish-enabled-files

@@ -1,0 +1,157 @@
+{
+  "acl2_compatibility": null,
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/consumer-position": 0,
+    "tests/acl2/consumer-position-tests": 0
+  },
+  "acl2_slots": 8,
+  "acl2_toolchain": {
+    "launcher": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+    "launcher_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+    "launcher_size": 142,
+    "reason": "shell expansion is outside the recognized launcher subset at /opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2:6",
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "unqualified"
+  },
+  "acl2_toolchain_identity": null,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/consumer-kernel/build/acl2/certify-20260923T180230Z-2685",
+  "book_failures": {},
+  "book_results": {
+    "books/consumer-position": "passed",
+    "tests/acl2/consumer-position-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/consumer-position": 2.547,
+    "tests/acl2/consumer-position-tests": 0.994
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 600,
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [
+      "books/consumer-position: no qualified ACL2 launcher/core/runtime fingerprint",
+      "tests/acl2/consumer-position-tests: no qualified ACL2 launcher/core/runtime fingerprint"
+    ],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/consumer-position",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/consumer-position: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/consumer-position-tests",
+        "published": false,
+        "verdict": "passed",
+        "why": "tests/acl2/consumer-position-tests: no qualified ACL2 launcher/core/runtime fingerprint"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/consumer-position": "11fd57e67ac7bc5dd6d581079721d2d1b0a0c43e4cd51e7a6c04eb02edf043e3",
+    "tests/acl2/consumer-position-tests": "7132cec7ccb4ed390c22138358695a4f0d170e6ff7ccb9bf1aa8e0ca1372949b"
+  },
+  "certify_wall_seconds": 3.55,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/consumer-position": "6212b2a5d132b13f80c15210c885c74d6e070b37aa18a40eb4d5065be804b38a",
+    "tests/acl2/consumer-position-tests": "0a3bde6213d6b67bc70b5343cd0b096f4cc0e78a935531670d0917cf317b7d52"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS a1b04b0595a1cb6ea08f936d183126bb 2ef33275e00f",
+    "FN_CERTIFY_SUCCESS a1b04b0595a1cb6ea08f936d183126bb 2ff24c95e24f"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T18:02:34+00:00",
+  "git_branch": "implement/consumer-kernel",
+  "git_dirty": true,
+  "git_revision": "4f0fca0c80d544fe3d950c5ddb0f31f6977339ec",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "incremental": false,
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS a1b04b0595a1cb6ea08f936d183126bb 2ef33275e00f",
+    "FN_CERTIFY_SUCCESS a1b04b0595a1cb6ea08f936d183126bb 2ff24c95e24f"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/consumer-position",
+    "tests/acl2/consumer-position-tests"
+  ],
+  "requested_books": [
+    "books/consumer-position",
+    "tests/acl2/consumer-position-tests"
+  ],
+  "roots": [
+    "books/consumer-position",
+    "tests/acl2/consumer-position-tests"
+  ],
+  "run_id": "certify-20260923T180230Z-2685",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "books/consumer-position": 0.0,
+    "tests/acl2/consumer-position-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/consumer-position.lisp": "88f2d835200c913a203446e720236b5ffe69d36de5c743f005c881f266129858",
+    "tests/acl2/consumer-position-tests.lisp": "a5b59a70a5102ce942022c0aa89b61430d9b24c00898ce383b668023a704cffc"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/consumer-position.lisp": "88f2d835200c913a203446e720236b5ffe69d36de5c743f005c881f266129858",
+    "tests/acl2/consumer-position-tests.lisp": "a5b59a70a5102ce942022c0aa89b61430d9b24c00898ce383b668023a704cffc"
+  },
+  "start_order": [
+    "books/consumer-position",
+    "tests/acl2/consumer-position-tests"
+  ],
+  "started_utc": "2026-09-23T18:02:30+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/consumer-kernel"
+}

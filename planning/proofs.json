@@ -2174,6 +2174,27 @@
         "fn-th-constructor-roundtrip",
         "fn-th-field-lines-fit-85"
       ]
+    },
+    {
+      "id": "PRF-064",
+      "title": "Consumer projection equals the completed Store prefix through publication and crash replay",
+      "statement": "Under fn-csi-full-relationp, the actual decoded Store dispatcher fn-snrt-step preserves the phase-aware relation for every event (fn-csi-store-step-preserves-full-relation). The relation equates the carried consumer projection with strict replay of the completed dense Store prefix, checks a linked unfinished candidate before finish, erases the process projection on crash, and reconstructs it from physical records on recovery. Induction over fn-snrt-run yields arbitrary finite mixed traces; a corrupted carried projection refutes the premise in the test book. This component covers logical Store transitions and admissible crash images, not a host-observed syscall refinement or served consumer call.",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/consumer-store-invariants.lisp",
+        "tests/acl2/consumer-store-invariants-tests.lisp",
+        "planning/evidence/manifests/certify-20260923T210725Z-145187.json"
+      ],
+      "progress_note": "Scoped hbox certification passed for the invariant and test roots. The actual native owner consumer seam, authenticated command/poll, metadata history charge, and checkpoint/clone replay composition are still open, so this proof is not credited as a served E2 guarantee.",
+      "events": [
+        "fn-csi-store-step-preserves-full-relation"
+      ]
     }
   ]
 }

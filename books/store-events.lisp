@@ -8,6 +8,7 @@
 (in-package "ACL2")
 (include-book "records-seam")
 (include-book "stx-accept-records")
+(include-book "consumer-store-events")
 
 (defconst *fn-store-event-magic* '(102 110 45 101)) ; fn-e
 (defconst *fn-store-event-version* 0)
@@ -26,6 +27,7 @@
         ((equal kind :statement-verdict) *fn-stxe-max-octets*)
         ((equal kind :keyring-snapshot) *fn-stxk-max-octets*)
         ((equal kind :accepted-statement) *fn-stxa-max-octets*)
+        ((equal kind :consumer) *fn-cpe-max-octets*)
         (t 0)))
 
 ; Retention event:
@@ -59,7 +61,21 @@
 (defun fn-store-event-p (x)
   (declare (xargs :guard t :verify-guards nil))
   (or (fn-record-p x) (fn-store-retention-event-p x)
-      (fn-stxe-p x) (fn-stxk-p x) (fn-stxa-p x)))
+      (fn-stxe-p x) (fn-stxk-p x) (fn-stxa-p x) (fn-cpe-eventp x)))
+
+; The new five-field envelope cannot be mistaken for an older event.  These
+; shape facts let replay/Store proofs dispatch without opening every codec.
+(defthm fn-cpe-is-disjoint-from-old-event-kinds-by-shape
+  (implies (fn-cpe-eventp x)
+           (and (not (fn-record-p x))
+                (not (fn-store-retention-event-p x))
+                (not (fn-stxe-p x))
+                (not (fn-stxk-p x))
+                (not (fn-stxa-p x))))
+  :hints (("Goal" :in-theory
+           (enable fn-cpe-eventp fn-record-p fn-record-shapep
+                   fn-store-retention-event-p
+                   fn-stxe-shapep fn-stxk-shapep fn-stxa-shapep))))
 
 (defun fn-store-event-kind (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -68,6 +84,7 @@
         ((fn-stxe-p x) :statement-verdict)
         ((fn-stxk-p x) :keyring-snapshot)
         ((fn-stxa-p x) :accepted-statement)
+        ((fn-cpe-eventp x) :consumer)
         (t nil)))
 (defun fn-store-event-sequence (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -76,6 +93,7 @@
         ((fn-stxe-p x) (fn-stxe-sequence x))
         ((fn-stxk-p x) (fn-stxk-sequence x))
         ((fn-stxa-p x) (fn-stxa-sequence x))
+        ((fn-cpe-eventp x) (fn-cpe-sequence x))
         (t nil)))
 (defun fn-store-event-txid (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -84,6 +102,7 @@
         ((fn-stxe-p x) (fn-stxe-txid x))
         ((fn-stxk-p x) (fn-stxk-txid x))
         ((fn-stxa-p x) (fn-stxa-txid x))
+        ((fn-cpe-eventp x) (fn-cpe-txid x))
         (t nil)))
 (defun fn-store-event-generation (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -92,6 +111,7 @@
         ((fn-stxe-p x) (fn-stxe-generation x))
         ((fn-stxk-p x) (fn-stxk-generation x))
         ((fn-stxa-p x) (fn-stxa-generation x))
+        ((fn-cpe-eventp x) (fn-cpe-generation x))
         (t nil)))
 (defun fn-store-event-obligation-id (x) (declare (xargs :guard t :verify-guards nil)) (fn-store-event-nth 5 x))
 (defun fn-store-event-subject (x) (declare (xargs :guard t :verify-guards nil)) (fn-store-event-nth 6 x))
@@ -137,6 +157,7 @@
         ((fn-stxe-p event) (fn-stxe-encode event))
         ((fn-stxk-p event) (fn-stxk-encode event))
         ((fn-stxa-p event) (fn-stxa-encode event))
+        ((fn-cpe-eventp event) (fn-cpe-encode event))
         (t nil)))
 
 (defthm fn-store-event-article-encoding-is-legacy-record-encoding
@@ -220,7 +241,9 @@
             (if (fn-stmt-okp verdict) verdict
               (let ((snapshot (fn-stxk-decode-exact octets)))
                 (if (fn-stmt-okp snapshot) snapshot
-                  (fn-stxa-decode-exact octets))))))))))
+                  (let ((accepted (fn-stxa-decode-exact octets)))
+                    (if (fn-stmt-okp accepted) accepted
+                      (fn-cpe-decode-exact octets))))))))))))
 
 ; Export withdrawal.  Every book above reasons about an event through this
 ; recognizer, never by opening it: `fn-store-event-p' unfolds into five kind
