@@ -164,7 +164,9 @@ on those, including `store-prepare-correspondence`,
 ## Open
 
 - The image measurement: `NativeRecoveryFidelityTests` on a developer
-  image built from this tree.
+  image built from this tree. Six of its tests (every one but the ACL2
+  bridge fixture's) passed on the `da5fd8cb` developer image on 2026-09-23;
+  see [the second campaign](campaign-da5fd8cb-2026-09-23.md).
 - A byte-level tooth for the identity hypothesis of
   `fn-bs-crash-image-reopens`. The kernel-level tooth is store-observed's.
 - `fn-sn-sweep-rounds` observes `(take limit dir)` in list order. The host

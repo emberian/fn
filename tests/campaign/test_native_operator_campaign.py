@@ -54,6 +54,55 @@ class NativeCutTableTests(unittest.TestCase):
             "FN_NATIVE_OWNER_TEST_SIGTERM", "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"})
 
 
+class InjectedFormTests(unittest.TestCase):
+    """The reread judgement for an article the owner injected (a0b6d41f)."""
+
+    payload = native_operator_campaign.article(
+        native_operator_campaign.CANDIDATE_ID, "candidate", "candidate content")
+    # The shape the da5fd8cb image stored for `operator CFG post` of `payload`.
+    injection = (b"Path: fn.example.invalid!not-for-mail\r\n"
+                 b"Injection-Date: Wed, 23 Sep 2026 02:47:48 +0000\r\n"
+                 b"Injection-Info: fn.example.invalid\r\n"
+                 b"Date: Wed, 23 Sep 2026 02:47:48 +0000\r\n")
+
+    def judge(self, stored):
+        return native_operator_campaign.injected_from(stored, self.payload)
+
+    def test_the_injected_article_is_the_payload_injected(self):
+        self.assertTrue(self.judge(self.injection + self.payload))
+        self.assertTrue(native_operator_campaign.matches(
+            self.injection + self.payload, self.payload, injected=True))
+        self.assertFalse(native_operator_campaign.matches(
+            self.injection + self.payload, self.payload, injected=False))
+
+    def test_a_changed_body_is_not(self):
+        self.assertFalse(self.judge(self.injection + self.payload.replace(
+            b"candidate content", b"candidate contenT")))
+
+    def test_an_added_field_outside_the_injection_is_not(self):
+        self.assertFalse(self.judge(
+            self.injection + b"Xref: fn.example.invalid fn.letters:1\r\n" + self.payload))
+
+    def test_a_dropped_or_reordered_payload_field_is_not(self):
+        head, _, body = self.payload.partition(b"\r\n\r\n")
+        lines = head.split(b"\r\n")
+        dropped = b"\r\n".join(lines[1:]) + b"\r\n\r\n" + body
+        swapped = b"\r\n".join([lines[1], lines[0]] + lines[2:]) + b"\r\n\r\n" + body
+        self.assertFalse(self.judge(self.injection + dropped))
+        self.assertFalse(self.judge(self.injection + swapped))
+
+    def test_a_field_injected_twice_or_over_the_payloads_own_is_not(self):
+        path = b"Path: fn.example.invalid!not-for-mail\r\n"
+        self.assertFalse(self.judge(path + self.injection + self.payload))
+        dated = self.payload.replace(b"Subject:", b"Date: Tue, 22 Sep 2026 00:00:00 +0000\r\nSubject:")
+        self.assertFalse(native_operator_campaign.injected_from(
+            self.injection + dated, dated))
+
+    def test_a_headless_octet_string_is_not(self):
+        self.assertFalse(self.judge(b"no header separator"))
+        self.assertFalse(self.judge(b""))
+
+
 class NativeOperatorCampaignTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -92,6 +141,28 @@ class NativeOperatorCampaignTests(unittest.TestCase):
             self.assertTrue(stop["owner_stopped_itself"])
             self.assertIsNone(stop["client_exited_before_kill"])
             self.assertEqual(stop["post"]["rc"], EXIT_UNCERTAIN, stop["post"])
+        # The owner's injected candidate reads back as the injected payload,
+        # and a retry through the same entry is its duplicate.
+        self.assertTrue(post["nntp_candidate"]["identical"])
+        self.assertTrue(post["nntp_candidate"]["same_as_inspect"])
+        self.assertIn("DUPLICATE", post["resubmit"]["stderr"])
+        cut = cuts["record-attempted"]["cut_run"]
+        self.assertTrue(cut["inspect_candidate"]["identical"])
+        self.assertEqual((cut["resubmit"]["rc"], cut["resubmit"]["stdout"]), (0, "duplicate\n"))
+        self.assertEqual(cut["after_resubmit"]["transactions"], cut["recovered"]["transactions"])
+        # Campaign dabebb84 F2: after the deaths the store opens and the
+        # orphans are gone.
+        orphans = faults["dev-allocation-orphans-recover"]
+        self.assertEqual(set(orphans["deaths"]), {KILLED})
+        self.assertEqual(orphans["recover"]["rc"], 0, orphans["recover"])
+        self.assertEqual(orphans["opened"]["staging"], {})
+        self.assertIn("ACCEPTED", orphans["post"]["stderr"])
+        # One payload through the two entries is a conflict either way round.
+        for order in ("store-then-operator", "operator-then-store"):
+            retry = faults["cross-entry-retry-" + order]
+            self.assertEqual(retry["first"]["rc"], 0, retry["first"])
+            self.assertEqual(retry["second"]["rc"], 1, retry["second"])
+            self.assertEqual(retry["after_second"], retry["after_first"])
         refused = faults["prod-selectors-refused-at-start"]
         self.assertTrue(refused["unchanged"])
         self.assertEqual(len(refused["starts"]), len(native_cuts.developer_selectors()))

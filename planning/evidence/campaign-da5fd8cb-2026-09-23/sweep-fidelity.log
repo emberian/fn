@@ -1,0 +1,12 @@
+test_sixty_five_allocation_orphans_are_swept_in_rounds (tests.test_native_recovery.NativeRecoveryFidelityTests.test_sixty_five_allocation_orphans_are_swept_in_rounds)
+Finding F2 of planning/evidence/campaign-dabebb84-2026-09-22.md. ... ok
+test_every_host_staging_prefix_is_swept (tests.test_native_recovery.NativeRecoveryFidelityTests.test_every_host_staging_prefix_is_swept) ... ok
+test_over_limit_unrecognized_names_refuse_without_removing_them (tests.test_native_recovery.NativeRecoveryFidelityTests.test_over_limit_unrecognized_names_refuse_without_removing_them) ... ok
+test_orphans_beyond_one_observation_go_with_foreign_names_kept (tests.test_native_recovery.NativeRecoveryFidelityTests.test_orphans_beyond_one_observation_go_with_foreign_names_kept) ... ok
+test_sigkill_after_one_unlink_restarts_and_reconciles_remaining_stage (tests.test_native_recovery.NativeRecoveryFidelityTests.test_sigkill_after_one_unlink_restarts_and_reconciles_remaining_stage) ... ok
+test_post_unlink_eio_is_uncertain_then_a_new_process_recovers (tests.test_native_recovery.NativeRecoveryFidelityTests.test_post_unlink_eio_is_uncertain_then_a_new_process_recovers) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.867s
+
+OK
