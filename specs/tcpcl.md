@@ -7,7 +7,9 @@ durability callback result. The callback returns exactly
 `(:accepted path-or-nil)`, `(:refused reason)`, or `(:uncertain reason)`.
 An accepted result releases the matching END XFER_ACK; a definitive refusal
 preserves earlier partial ACKs and replaces the END ACK with the RFC 9174
-§5.2.4 XFER_REFUSE selected by ACL2; uncertainty emits no held ACK and
+§5.2.4 XFER_REFUSE selected by ACL2; earlier control outputs and partial
+ACKs for other transfers in the same read batch remain in order. Uncertainty
+emits no held ACK and
 fails the session. A malformed callback result or a held queue without the
 matching END ACK is a fault, never an acceptance. `:busy`, `:capacity`, and
 `:persistence` map to Table 6 No Resources; other definitive refusals map
