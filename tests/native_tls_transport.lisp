@@ -143,10 +143,23 @@
             (let ((channel (fnn-tls-accept context fd 5)))
               (unwind-protect
                   (progn
-                    (fnn-tls-test-check
-                     (equalp (fnn-tls-read channel 5)
-                             #(67 65 80 65 66 73 76 73 84 73 69 83 13 10))
-                     "continued NNTP bytes after handshake")
+                    ;; The feed pump calls this same zero-time TLS poll.
+                    ;; Publish readiness before the peer sends app data, so
+                    ;; SSL_pending cannot mask a skipped fd poll.
+                    (format t "TLS-READY~%")
+                    (finish-output)
+                    (let ((deadline (+ (fnn-now)
+                                       (* 5 internal-time-units-per-second))))
+                      (loop for incoming = (fnn-tls-read channel 0)
+                            when (not (eq incoming :timeout)) do
+                              (fnn-tls-test-check
+                               (equalp incoming
+                                       #(67 65 80 65 66 73 76 73 84 73 69 83 13 10))
+                               "zero-time TLS poll returns protected NNTP bytes")
+                              (return)
+                            do (fnn-tls-test-check (< (fnn-now) deadline)
+                                                   "zero-time TLS poll made progress")
+                               (sleep 0.005)))
                     (fnn-tls-send-all channel #(50 48 48 32 111 107 13 10) 5))
                 (fnn-tls-close-channel channel)))
             (sb-bsd-sockets:socket-close socket)

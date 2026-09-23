@@ -437,12 +437,14 @@ configured server context and never a protected client session."
 
 (defun fnn-tls-read (channel seconds &optional (limit +fnn-max-read+))
   "Read decrypted bytes.  SSL_pending is checked before fd readiness so
-plaintext already buffered inside OpenSSL cannot be stranded."
+plaintext already buffered inside OpenSSL cannot be stranded.  A zero-second
+call still performs one nonblocking readiness poll, as FNN-RECV does."
   (let* ((ssl (fnn-tls-channel-pointer channel))
          (fd (fnn-tls-channel-fd channel))
          (deadline (fnn-tls-deadline seconds))
          (buffer (fnn-make-octets limit))
-         (initialp t))
+         (initialp t)
+         (zero-poll-p (zerop seconds)))
     ;; SSL_read retries keep the identical pinned pointer/count for the whole
     ;; operation, including WANT_READ changing to WANT_WRITE.
     (sb-sys:with-pinned-objects (buffer)
@@ -452,9 +454,11 @@ plaintext already buffered inside OpenSSL cannot be stranded."
           ;; begun: an idle deadline is not a connection failure.  Once
           ;; SSL_read has returned WANT_*, its retry stays inside this call.
           (let ((remaining (fnn-seconds-to-deadline deadline)))
-            (when (or (<= remaining 0)
-                      (not (funcall *fnn-fd-waiter* fd :input remaining)))
-              (return :timeout))))
+            (when (and (<= remaining 0) (not zero-poll-p))
+              (return :timeout))
+            (unless (funcall *fnn-fd-waiter* fd :input remaining)
+              (return :timeout))
+            (setq zero-poll-p nil)))
         (setq initialp nil)
         (fnn-%err-clear-error)
         (let ((result
