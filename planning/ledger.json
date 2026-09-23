@@ -493,9 +493,9 @@
     "books": 491,
     "books_in_root_closure": 490,
     "roots": 486,
-    "theorems": 7574,
+    "theorems": 7584,
     "functions": 5784,
-    "assert_events": 8428,
+    "assert_events": 8429,
     "must_fails": 349,
     "encapsulates": 26,
     "guards": {
@@ -3105,7 +3105,7 @@
       "book": "books/byte-store-record-provenance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
+      "theorems": 26,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -10058,7 +10058,7 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 3,
+      "assert_events": 4,
       "must_fails": 3,
       "defconsts": 0,
       "defmacros": 0,

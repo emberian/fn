@@ -1480,7 +1480,7 @@ The first raw-byte step of K6b is certified in
 `fn-bs-run` P-RECORD pair after successful `create`, `write-all`, and
 `fsync-file` (index 5) and proves that the fresh inode's durable content is
 the exact `frame` argument, including its length. Its hypotheses are a
-well-formed byte state, fresh staging name, and true-list frame. The test
+well-formed byte state, fresh staging key, and true-list frame. The test
 book shows a second actual P-RECORD after an older durable record and
 counterexamples when each premise is removed. This does not yet identify
 the inode through the final immutable link at index 10 or prove that a
