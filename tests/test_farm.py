@@ -261,6 +261,13 @@ INSTALLED = ("install-set: 220 books, cache /home/ember/fn-certcache\n"
              "missing 0, removed 0\n")
 
 
+COMPOSED = ("install-set: 220 books, cache /home/ember/fn-certcache\n"
+            "  artifact-set set-c origin composed source source-c toolchain "
+            "toolchain-c; installed 200, kept 3, missing 0, removed 0; "
+            "origins /home/ember/fn-gates/dev-head=150,"
+            "/home/ember/fn-gates/w31-treewide=53\n")
+
+
 class CacheTests(unittest.TestCase):
     """The box's cache is what a run should start from, and add to.
 
@@ -282,7 +289,10 @@ class CacheTests(unittest.TestCase):
             runner = next(i for i, s in enumerate(scripts) if "nohup sh -c" in s)
             self.assertLess(install, runner)  # certify only what is not cached
             self.assertIn('--cache "$HOME"/fn-certcache', scripts[install])
-            self.assertIn("--require-origin /home/ember/fn-lanes/w5", scripts[install])
+            # A plain-roots run takes its dependencies from any snapshot
+            # origin, composed when no one origin has them all: ACL2 does not
+            # compare sub-books by full-book-name (certificate-cache-2026-09-23).
+            self.assertNotIn("--require-origin", scripts[install])
             self.assertIn("--dependencies-only", scripts[install])
             self.assertIn("install-set $roots", scripts[install])
             self.assertIn("tools/acl2_toolchain.py identity \"$acl2\"", scripts[install])
@@ -299,6 +309,27 @@ class CacheTests(unittest.TestCase):
                               "toolchain_identity": "toolchain-123",
                               "installed": 31, "kept": 2,
                               "missing": 0, "removed": 0})
+
+    def test_a_composed_set_is_recorded_with_the_origins_it_drew_from(self):
+        fake = Fake([], certs=COMPOSED)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("persvati", root, ["books/alpha"], jobs=4,
+                                         timeout_seconds=60, affected_by=[],
+                                         remote=Path("/home/ember/fn-gates/lane"))
+            self.assertIn("nohup sh -c", fake.runner_script())
+            record = json.loads(farm.record_path(root, identifier).read_text())
+            self.assertEqual(record["cache_install"]["origin"], "composed")
+            self.assertEqual(record["cache_install"]["origins"],
+                             {"/home/ember/fn-gates/dev-head": 150,
+                              "/home/ember/fn-gates/w31-treewide": 53})
+            self.assertEqual(farm.cache_summary(record), "200+3/2")
+
+    def test_the_older_identity_line_still_parses(self):
+        parsed = farm.parse_installed(INSTALLED)
+        self.assertNotIn("origins", parsed)
+        self.assertEqual(parsed["installed"], 31)
 
     def test_acl2_override_is_quoted_for_preflight_and_runner_and_recorded(self):
         fake = Fake([], certs=INSTALLED)
@@ -351,6 +382,8 @@ class CacheTests(unittest.TestCase):
                                          remote=Path("/tank/fn/tree"), closure=True)
             install = next(s for s in fake.scripts() if "tools/certs.py" in s)
             self.assertIn("--purge-on-miss", install)
+            # Root's recertification plan keeps the single-origin rule.
+            self.assertIn("--require-origin /tank/fn/tree", install)
             self.assertIn("--closure", install)
             self.assertIn("--closure", fake.runner_script())
             record = json.loads(farm.record_path(root, identifier).read_text())

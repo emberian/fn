@@ -34,25 +34,36 @@ the sorted ``<path>:<sha256>`` listing of the book and its whole local include
 closure, which also keeps two same-byte books apart, since each listing names
 its own path.
 
-**And a certification dependency closure is installed as one set.**  An
-ACL2 certificate's post-alist names every sub-book by *absolute* path, so a
-parent from worktree X and a child from worktree Y conflict even when both
-source closures are byte-identical.  Each entry records the ``origin_root``
-and toolchain it was produced with; ``install-set`` chooses one complete
-origin/toolchain group for the requested roots or refuses before ACL2 starts.
-An incremental certification also requires that origin to be the absolute
-tree it will extend.  ``install`` remains the legacy per-book inspection and
-recovery command; certification and native builds must use ``install-set``.
+**A closure may be composed from several snapshot origins.**  An ACL2
+certificate's post-alist names every sub-book by the absolute path it was
+certified at, which is why this module once installed a closure only from one
+origin.  Measured on persvati on 2026-09-23 with ACL2 8.7 and checksum
+book-hashes (``planning/evidence/certificate-cache-2026-09-23.md``), ACL2 does
+not use those names to decide anything: ``include-book-alist-subsetp``
+compares each entry's familiar name, certificate annotations and book-hash
+and ignores the full-book-name, and include-book opens only the files beside
+the including book.  A parent from origin A over children from origin B
+includes without a warning, with A and B on disk, removed, or edited; a new
+parent certified over a closure from three origins includes cleanly with all
+three removed; editing an event in the target's own child is still refused.
+So ``install-set`` takes one complete origin when there is one, and otherwise
+composes the closure book by book from every usable entry with the same
+toolchain, the newest first, and names the origins it drew from.  A live
+worktree that still exists on this machine is still not drawn from.  The
+measurement found nothing that requires this exclusion; it stays because no
+run needs a live tree's pairs when the farm publishes every certified book
+from a snapshot.  ``--require-origin`` keeps the single-origin rule for
+a caller that asks for it.  ``install`` remains the legacy per-book
+inspection and recovery command; certification and native builds use
+``install-set``.
 
-**Unless that origin is not a worktree.**  A gate directory and a farm run
-root are snapshots: each is made from one commit by one run, and nothing edits
-or certifies into them afterwards.  On a box where every gate directory is
-still on disk, the rule above would refuse the box's own cache to every lane,
-which is what made a lane re-certify a whole dependency closure.  So
-``publish --origin-kind gate`` (or ``run``) records what the origin tree is,
-and ``install`` accepts such an entry wherever it finds it.  A snapshot later
-overwritten with different books costs a loud refusal from ACL2 at include
-time -- the sub-book content no longer matches -- never a silent wrong result.
+**A snapshot is an origin that is not a worktree.**  A gate directory and a
+farm run root are each made from one commit by one run, and nothing edits or
+certifies into them afterwards.  So ``publish --origin-kind gate`` (or
+``run``) records what the origin tree is, and ``install`` and ``install-set``
+accept such an entry wherever they find it.  A snapshot later overwritten
+with different books costs nothing either: ACL2 never opens the origin's
+files, and the closure key already names the bytes the target holds.
 
 What this still does not establish: nothing here proves a book certifies.
 ``tools/certify_books.py`` does that, with a fresh success marker per book; the
@@ -154,6 +165,14 @@ class Report:
     source_identity: str | None = None
     toolchain_identity: str | None = None
     rejected_sets: list[str] = field(default_factory=list)
+    # Where the installed (or, for `status`, the usable) pairs came from:
+    # origin root -> number of books.  More than one is a composed set.
+    origins: dict[str, int] = field(default_factory=dict)
+
+    def origin_words(self) -> str:
+        """``/a=3,/b=5``: one token, so the identity line stays parseable."""
+        return ",".join(f"{origin}={count}" for origin, count
+                        in sorted(self.origins.items()))
 
     def lines(self) -> list[str]:
         out = [f"{self.action}: {self.books} books, cache {self.cache}"]
@@ -174,13 +193,17 @@ class Report:
                     self.artifact_set or "NONE", self.artifact_origin or "NONE",
                     self.source_identity or "NONE", self.toolchain_identity or "NONE",
                     self.installed, self.kept, len(self.uncached),
-                    self.removed_foreign))
+                    self.removed_foreign)
+                + (f"; origins {self.origin_words()}" if self.origins else ""))
         else:
             out.append(f"  certified here {self.certified_locally}, "
                        f"usable from the cache "
                        f"{self.books - len(self.uncached) - len(self.foreign_local)}, "
                        f"foreign-local {len(self.foreign_local)}, "
                        f"not in the cache {len(self.uncached)}")
+            if self.origins:
+                out.append(f"  usable pairs come from {len(self.origins)} "
+                           f"origin(s): {self.origin_words()}")
         for book in self.unverified:
             out.append(f"  unverified: {book}")
         for book in self.foreign_local:
@@ -392,19 +415,20 @@ def choose_entry(entries: list[tuple[Path, dict]],
     own = [entry for entry in entries if entry[1].get("origin_root") == target]
     if own:
         return own[0]
-    relocatable = [entry for entry in entries
-                   if entry[1].get("origin_root")
-                   and not Path(entry[1]["origin_root"]).exists()]
-    if relocatable:
-        return relocatable[0]
-    # A gate directory or a farm run root: a tree built from one commit by one
-    # run, never certified into again, so nothing here can be followed into a
-    # tree that is about to change under it.  An entry with no recorded kind
-    # predates this rule and counts as a live worktree.
-    snapshot = [entry for entry in entries
-                if entry[1].get("origin_root")
-                and entry[1].get("origin_kind", LIVE_ORIGIN) != LIVE_ORIGIN]
-    return snapshot[0] if snapshot else None
+    # An origin not on this machine, or a snapshot (a gate directory or a
+    # farm run root: one commit, one run, never certified into again).  An
+    # entry with no recorded kind predates the rule and counts as a live
+    # worktree.  The newest publication wins, as it does in `install-set`.
+    usable = [entry for entry in entries if usable_origin(entry[1], target)]
+    return newest(usable)
+
+
+def newest(entries: list[tuple[Path, dict]]) -> tuple[Path, dict] | None:
+    """The most recently published entry; the directory name breaks ties."""
+    if not entries:
+        return None
+    return max(entries, key=lambda entry: (str(entry[1].get("published_at", "")),
+                                           str(entry[0])))
 
 
 @dataclass
@@ -414,7 +438,9 @@ class ArtifactSet:
     The old installer chose one entry per book.  That can make a parent from
     origin A load a child from origin B, even when every source hash matches.
     An ArtifactSet is the indivisible choice: every selected pair has the same
-    absolute origin and toolchain identity.
+    toolchain identity, and either one absolute origin or -- a *composed* set,
+    ``origin_root == COMPOSED`` -- the newest usable entry for each book from
+    any snapshot origin.  ACL2 accepts the composed form (module docstring).
     """
 
     identity: str
@@ -433,6 +459,22 @@ class ArtifactSet:
     @property
     def complete(self) -> bool:
         return not self.missing
+
+    @property
+    def origins(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for _, meta in self.entries.values():
+            origin = str(meta.get("origin_root", ""))
+            counts[origin] = counts.get(origin, 0) + 1
+        return counts
+
+    @property
+    def composed(self) -> bool:
+        return self.origin_root == COMPOSED
+
+
+# The `origin_root` of a set drawn from more than one origin.
+COMPOSED = "composed"
 
 
 def required_closure(root: Path, roots: Iterable[str],
@@ -484,6 +526,8 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     source_id = source_set_identity(needed)
     target = str(root.resolve())
     grouped: dict[tuple[str, str], ArtifactSet] = {}
+    # toolchain identity -> book -> every usable entry, for the composed set.
+    pooled: dict[str, tuple[dict, dict[str, list[tuple[Path, dict]]]]] = {}
     for name in required:
         key, _ = closure_key(root, name)
         for directory, meta in cached_entries(cache, key):
@@ -495,6 +539,8 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
                 continue
             origin = str(meta.get("origin_root", ""))
             toolchain_id = stable_identity(toolchain)
+            pooled.setdefault(toolchain_id, (toolchain, {}))[1].setdefault(
+                name, []).append((directory, meta))
             group_key = (origin, toolchain_id)
             if group_key not in grouped:
                 identity = stable_identity({
@@ -512,15 +558,43 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
                     source_identity=source_id)
             grouped[group_key].entries.setdefault(name, (directory, meta))
 
-    def order(candidate: ArtifactSet) -> tuple[int, int, int, str]:
+    candidates = list(grouped.values())
+    for toolchain_id, (toolchain, by_book) in pooled.items():
+        chosen = {name: newest(entries) for name, entries in by_book.items()}
+        origins = {str(meta.get("origin_root", "")) for _, meta in chosen.values()}
+        if len(origins) < 2:
+            # One origin covers everything it can: that origin's own group
+            # already is this set.
+            continue
+        composed = ArtifactSet(
+            identity=stable_identity({
+                "composed": sorted(
+                    (name, str(meta.get("origin_root", "")),
+                     str(meta.get("cert_sha256", "")))
+                    for name, (_, meta) in chosen.items()),
+                "toolchain": toolchain,
+                "source_identity": source_id,
+            }),
+            origin_root=COMPOSED,
+            origin_kind=COMPOSED,
+            origin_host="",
+            toolchain=toolchain,
+            entries=chosen,
+            required=required,
+            source_identity=source_id)
+        candidates.append(composed)
+
+    def order(candidate: ArtifactSet) -> tuple[int, int, int, int, str]:
         # Complete first, then the set that covers most of the requested
-        # closure.  Ties prefer this tree, then an immutable snapshot.
+        # closure; a single origin before a composed one of the same
+        # coverage, and among single origins this tree, then a snapshot.
         own = candidate.origin_root == target
         snapshot = candidate.origin_kind != LIVE_ORIGIN
         return (int(candidate.complete), len(candidate.entries),
+                int(not candidate.composed),
                 int(own) * 2 + int(snapshot), candidate.identity)
 
-    return sorted(grouped.values(), key=order, reverse=True)
+    return sorted(candidates, key=order, reverse=True)
 
 
 def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
@@ -529,7 +603,13 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                          require_origin: str | None = None,
                          purge_on_miss: bool = False,
                          dependencies_only: bool = False) -> Report:
-    """Install one complete origin/toolchain set, never a per-book mixture."""
+    """Install one complete set: one origin when one suffices, else composed.
+
+    A composed set draws each book's pair from the newest usable entry with
+    the same toolchain (never a live worktree still on this machine), which
+    ACL2 accepts (module docstring).  ``require_origin`` restores the
+    single-origin rule for a caller that needs it.
+    """
     rejected = set(reject)
     report = Report(action="install-set", cache=str(cache))
     roots = tuple(roots)
@@ -572,10 +652,11 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
     report.source_identity = chosen.source_identity
     report.toolchain_identity = stable_identity(chosen.toolchain)
     report.rejected_sets = sorted(rejected)
+    report.origins = chosen.origins
 
     # Once a set is chosen, every local pair in its closure comes from that
-    # set.  Leaving a pair from a previous attempt is exactly how the
-    # mixed-absolute-origin failure is reproduced.
+    # set.  A pair left from a previous attempt may certify different bytes:
+    # that, not its origin, is what ACL2 refuses.
     for name in chosen.required:
         source = root / f"{name}.lisp"
         directory, _ = chosen.entries[name]
@@ -904,10 +985,14 @@ def status(root: Path, cache: Path) -> Report:
             report.uncached.append(name)
             continue
         entries = cached_entries(cache, key)
+        chosen = choose_entry(entries, str(root.resolve())) if entries else None
         if not entries:
             report.uncached.append(name)
-        elif choose_entry(entries, str(root.resolve())) is None:
+        elif chosen is None:
             report.foreign_local.append(name)
+        else:
+            origin = str(chosen[1].get("origin_root", ""))
+            report.origins[origin] = report.origins.get(origin, 0) + 1
     return report
 
 
@@ -955,8 +1040,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="for install-set, require this qualified ACL2 "
                              "launcher/core/runtime compatibility identity")
     parser.add_argument("--require-origin", default=None,
-                        help="for install-set, require this exact certificate "
-                             "origin (needed when this run will extend the set)")
+                        help="for install-set, require one complete set from this "
+                             "exact certificate origin instead of composing one")
     parser.add_argument("--purge-on-miss", action="store_true",
                         help="for install-set, remove every local .cert/.port in "
                              "the requested closure when no complete set exists")

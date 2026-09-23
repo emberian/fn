@@ -67,8 +67,10 @@ those lanes one after another in one slot of the schedule.
 `swarm-build` around every build on hbox; `tools/acl2` for every ACL2 you
 start by hand (it takes a slot); never a bare `&` in a lane shell; `free` lies
 on hbox (read `arcstats` and summed RSS); a farm run's `--remote-root` is
-absolute; certificates are not relocatable across worktrees on one machine
-(`tools/certs.py` refuses `foreign-local` for you). The local lane's pool is
+absolute; a farm run installs its dependencies from the box's cache, composed
+from several snapshot origins when no one origin holds them all, and never
+from a live worktree on the same machine (`tools/certs.py` refuses
+`foreign-local` for you; `planning/evidence/certificate-cache-2026-09-23.md`). The local lane's pool is
 four slots; a local lane whose closure outgrows it submits to its step's box.
 The full trap list is [the freeze recipe](evidence/native-freeze-c28ffc30-2026-09-22.md)
 and the runbooks' headers.
