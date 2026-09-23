@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 459 |
-| Certification roots in the Makefile | 454 |
-| Books inside the root closure | 458 |
-| `defthm` and `defthmd` events | 7385 |
-| `defun` events | 5661 |
+| Books read | 461 |
+| Certification roots in the Makefile | 456 |
+| Books inside the root closure | 460 |
+| `defthm` and `defthmd` events | 7411 |
+| `defun` events | 5663 |
 | Functions with verified guards | 1850 |
-| Functions declared `:verify-guards nil` and never verified | 306 |
+| Functions declared `:verify-guards nil` and never verified | 307 |
 | Functions left at the default with an explicit guard | 2778 |
-| Functions left at the default with no guard | 727 |
-| `assert-event` checks | 8199 |
-| `must-fail` checks | 324 |
+| Functions left at the default with no guard | 728 |
+| `assert-event` checks | 8220 |
+| `must-fail` checks | 326 |
 | `encapsulate` events | 26 |
-| Theorems flagged SUSPECT by shape | 69 |
+| Theorems flagged SUSPECT by shape | 70 |
 | Export-hygiene warnings | 93 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 24 |
-| Include-hygiene warnings | 306 |
+| Include-hygiene warnings | 307 |
 | Host-names warnings | 667 |
 | Hand-written-record warnings | 18 |
 
@@ -149,6 +149,7 @@ that `make certify` requests.
 | `books/bp-receiver-store-invariants.lisp` | root | 12 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/bp-receiver-trace-invariants.lisp` | root | 6 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-release-invariants.lisp` | root | 46 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-release-replay-status.lisp` | root | 12 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-release.lisp` | root | 0 | 37 | 0/16/21/0 | 0 | 0 | 0 |
 | `books/bp-sequence-fidelity.lisp` | root | 24 | 31 | 2/0/29/0 | 0 | 0 | 3 |
 | `books/bp-sequence-persistence.lisp` | root | 10 | 20 | 1/0/19/0 | 0 | 0 | 0 |
@@ -318,7 +319,7 @@ that `make certify` requests.
 | `books/store-files.lisp` | root | 30 | 57 | 54/0/3/0 | 0 | 0 | 0 |
 | `books/store-identity-sequence-invariants.lisp` | root | 24 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/store-node-existing-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/store-node-invariants.lisp` | root | 116 | 2 | 0/1/0/1 | 0 | 0 | 1 |
+| `books/store-node-invariants.lisp` | root | 130 | 2 | 0/1/0/1 | 0 | 0 | 2 |
 | `books/store-node-resolution.lisp` | root | 36 | 8 | 6/0/0/2 | 0 | 0 | 2 |
 | `books/store-node-traces.lisp` | root | 71 | 7 | 4/0/1/2 | 0 | 0 | 1 |
 | `books/store-node.lisp` | root | 31 | 50 | 32/2/16/0 | 0 | 0 | 1 |
@@ -402,7 +403,7 @@ that `make certify` requests.
 | `tests/acl2/bp-receiver-evolving-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 78 | 13 | 0 |
 | `tests/acl2/bp-receiver-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-receiver-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
-| `tests/acl2/bp-release-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 78 | 4 | 0 |
+| `tests/acl2/bp-release-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 83 | 5 | 0 |
 | `tests/acl2/bp-sequence-fidelity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 1 | 0 |
 | `tests/acl2/bp-sequence-persistence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
 | `tests/acl2/bp-status-report-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 1 | 0 |
@@ -518,6 +519,7 @@ that `make certify` requests.
 | `tests/acl2/store-identity-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/store-identity-sequence-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 1 | 0 |
 | `tests/acl2/store-identity-traces-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 51 | 0 | 0 |
+| `tests/acl2/store-node-composite-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 1 | 0 |
 | `tests/acl2/store-node-existing-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/store-node-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 116 | 0 | 0 |
 | `tests/acl2/store-node-index-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 80 | 0 | 0 |
@@ -612,6 +614,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sf-frontier-rollback-visiblep-unfolds` | `books/store-files-invariants.lisp` | 411 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep |
 | `fn-sf-stable-records-outside-the-window` | `books/store-files-invariants.lisp` | 91 | branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value |
 | `fn-sn-article-record-without-a-usable-clock-is-refused` | `books/store-node.lisp` | 372 | branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value |
+| `fn-sn-composite-delta-of-typed-article` | `books/store-node-invariants.lisp` | 1205 | branch-of-definition: the hypothesis is a branch test of fn-sn-composite-delta and the conclusion is that branch's value |
 | `fn-sn-finish-disabled-is-no-op` | `books/store-node-invariants.lisp` | 436 | branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value |
 | `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 152 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
 | `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 472 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
