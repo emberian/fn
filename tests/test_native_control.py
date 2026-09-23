@@ -103,8 +103,11 @@ class NativeControlCutGateTests(unittest.TestCase):
         source = (ROOT / "host/native/control.lisp").read_text(encoding="ascii")
         body = source[source.index("(defun fnn-control-handle-client"):
                       source.index("(defun fnn-control-client-done")]
-        self.assertIn("(fnn-control-test-after-submit status)\n"
-                      "    (fnn-control-send-reply socket status)))", body)
+        self.assertIn("(member (first status) '(:consumer-reply :consumer-poll-reply))", body)
+        self.assertIn("(second status) status))", body)
+        self.assertIn("(fnn-control-send-reply socket status)", body)
+        self.assertLess(body.index("(fnn-control-test-after-submit"),
+                        body.index("(fnn-control-send-reply socket status)"))
 
     def test_the_stop_is_directed_at_the_calling_thread(self):
         source = (ROOT / "host/native/control.lisp").read_text(encoding="ascii")
