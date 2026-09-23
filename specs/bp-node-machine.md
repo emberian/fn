@@ -92,6 +92,20 @@ dispatch has no routing table, there is no bundle list with retention
 constraints, T1 to T6 are unproved, nothing calls `fn-retain-release` from
 the BP path.
 
+The finite `fn-bpnf-step` foundation receives a parsed bundle and its exact
+wire only with typed `(:cl session xfer peer-eid principal generation)`
+provenance. `session` is a pair of unsigned 64-bit counters, `xfer` and
+`generation` are unsigned 64-bit, `peer-eid` is a BP EID, and `principal` is
+nil or bounded canonical text octets. This checks replayable provenance shape;
+the host must still establish that the principal was admitted by the current
+session configuration. The foundation delegates outbound events to
+`fn-bpn-step` and is not the native service caller yet. Its helper guards are
+verified, but the top-level step inherits open guards from `fn-bpn-step`.
+If the FNBS kind-5 encoder refuses a proposed record as non-frameable, the
+native effect driver must return the matching `:persist-result` with
+`:refused`; it cannot issue a stored receive answer or leave a pending
+operation waiting for a callback that will never arrive.
+
 ### 0.3 The absences this design closes
 
 1. One held-bundle list with RFC 9171 §5 retention constraints for every
