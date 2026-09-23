@@ -71,6 +71,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-shape \
 	books/records \
 	books/records-invariants \
+	books/records-stamp \
 	books/records-canonicality \
 	books/records-seam \
 	books/records-attach \
@@ -131,6 +132,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-files-teeth-tests \
 	books/store-node \
 	books/store-node-invariants \
+	books/acceptance-stamp-invariants \
+	tests/acl2/acceptance-stamp-tests \
 	tests/acl2/store-node-tests \
 	books/store-node-traces \
 	tests/acl2/store-node-traces-tests \
