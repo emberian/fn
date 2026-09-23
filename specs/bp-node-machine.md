@@ -2400,7 +2400,9 @@ repair.
   Acceptable`; `(:uncertain ...)` drops it and fails the session. The host
   executes the plan's exact message list; it does not select the protocol
   code. The planner validates that the held list ends in the matching END
-  ACK and that any preceding ACKs are partial ACKs for the same transfer.
+  ACK. It preserves earlier machine outputs in the same read batch, including
+  non-ACK controls and partial ACKs for an earlier transfer, while refusing
+  any earlier END ACK.
   Its keystone, restated (review-2 §10): **no successful final
   END acknowledgement for a late-refused transfer.** Partial XFER_ACKs for
   earlier segments (RFC 9174 §5.2.3) may already have been sent and are

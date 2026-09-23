@@ -3,7 +3,8 @@
 `host/native/tcpcl.lisp:fnn-tcl-act` now calls the ACL2
 `fn-tcl-delivery-plan` after the durability callback returns. The native
 buffer holds ACL2 message objects, not pre-encoded bytes. The plan requires
-the matching END XFER_ACK after zero or more partial ACKs for that transfer.
+the matching END XFER_ACK after earlier control outputs and partial ACKs,
+including partial ACKs for a different transfer, in the same read batch.
 An accepted result releases those messages; a definitive refusal preserves
 the partial ACKs and replaces the END ACK with XFER_REFUSE; uncertainty and
 malformed callback results release no final ACK. The `bp` and `bp-app`
@@ -13,10 +14,13 @@ shared FNBS service callback is a separate integration join.
 The keystone `fn-tcl-late-refusal-gets-no-final-ack` concerns that exact
 host-called planner under `fn-tcl-held-final-ackp`: its result is a refusal
 with an ACL2-selected RFC 9174 Table 6 reason and no final END ACK for the
-transfer. `fn-tcl-uncertain-delivery-withholds-final-ack` gives the ambiguous
+transfer. The held-prefix premise also rejects any earlier END ACK, so
+preserving the prefix cannot accidentally release a completed transfer.
+`fn-tcl-uncertain-delivery-withholds-final-ack` gives the ambiguous
 publication case. `fn-tcl-complete-produces-held-final-ack` connects the
 planner precondition to the actual completion event. The test book uses an
-established two-node session with coalesced partial and END ACKs, plus a
+established two-node session with coalesced partial and END ACKs, a separate
+coalesced prior-transfer partial ACK/refusal before the next transfer, plus a
 missing-held negative tooth. It does not yet prove every native I/O cut or
 the new FNBS callback's composition.
 

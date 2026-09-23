@@ -14,13 +14,14 @@
                                      fn-tcl-send-event
                                      fn-tcl-held-final-ackp))))
 
-(defthm fn-tcl-held-partial-acks-have-no-final
+(defthm fn-tcl-held-prior-messages-have-no-final
   (implies (fn-tcl-held-final-ackp messages xfer-id)
            (not (fn-tcl-output-has-final-ackp
-                 (fn-tcl-held-partial-acks messages) xfer-id)))
+                 (fn-tcl-held-prior-messages messages) xfer-id)))
   :hints (("Goal" :induct (fn-tcl-held-final-ackp messages xfer-id)
                    :in-theory (enable fn-tcl-held-final-ackp
-                                      fn-tcl-held-partial-acks
+                                      fn-tcl-held-prior-messagep
+                                      fn-tcl-held-prior-messages
                                       fn-tcl-output-has-final-ackp))))
 
 (defthm fn-tcl-output-has-final-ackp-append
@@ -37,7 +38,7 @@
              (and (equal (fn-tcl-delivery-plan-status plan) :refused)
                   (equal (fn-tcl-delivery-plan-messages plan)
                          (append
-                          (fn-tcl-held-partial-acks messages)
+                          (fn-tcl-held-prior-messages messages)
                           (list (fn-tcl-make-xfer-refuse
                                  (fn-tcl-delivery-refuse-reason reason)
                                  xfer-id))))
