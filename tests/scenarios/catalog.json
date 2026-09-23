@@ -723,18 +723,21 @@
         "Derive a principal from a seed and record an AUTHINFO credential for it on each node.",
         "Connect unauthenticated and read the advertised capabilities; attempt a gated command.",
         "Authenticate with AUTHINFO USER and PASS, read the capabilities again, and post.",
-        "Authenticate with a wrong password on a fresh connection."
+        "Authenticate with a wrong password on a fresh connection.",
+        "Run one complete served read with a nonempty no-posting credential list: AUTHINFO USER/PASS then local POST, and separately AUTHINFO USER/PASS then configured-peer TAKETHIS with an article body."
       ],
       "expected": [
         "AUTHINFO USER is advertised exactly while the connection is unauthenticated, and is withdrawn once it is not.",
         "A gated command before the login is refused and not performed.",
         "The posting allowance is the authenticated principal's, not the connection's.",
-        "A wrong password is refused and grants nothing; the refusal is distinct from a fault."
+        "A wrong password is refused and grants nothing; the refusal is distinct from a fault.",
+        "The no-posters served-read invariant excludes every local injected submission, but the independently authorized principal-bound transit path may emit a typed peer submission; removing the no-posters premise allows a complete accepted local POST."
       ],
       "evidence": [
-        "planning/evidence/native-auth-runtime-2026-09-21/README.md"
+        "planning/evidence/native-auth-runtime-2026-09-21/README.md",
+        "tests/acl2/nntp-auth-fold-tests.lisp"
       ],
-      "execution_scope": "Partial native evidence: startup loads bounded credential verifiers, required unauthenticated command returns 480, wrong password returns 481, correct password returns 281 and subsequent GROUP succeeds; authenticated reader IHAVE remains 502. Protected-only startup and legacy cleartext credential files refuse. Login transport is unprotected loopback, so no confidentiality claim follows. Native credential enrollment, TLS, reload and full cross-node scenario remain separate."
+      "execution_scope": "Partial native evidence: startup loads bounded credential verifiers, required unauthenticated command returns 480, wrong password returns 481, correct password returns 281 and subsequent GROUP succeeds; authenticated reader IHAVE remains 502. Protected-only startup and legacy cleartext credential files refuse. Login transport is unprotected loopback, so no confidentiality claim follows. Native credential enrollment, TLS, reload and full cross-node scenario remain separate. The served-fold distinction between local POST and authorized transit is ACL2-certified with reachable complete-read witnesses; no new native transcript is claimed by that component evidence."
     },
     {
       "id": "SCN-023",
