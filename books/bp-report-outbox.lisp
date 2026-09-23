@@ -28,20 +28,30 @@
               (fn-record-string-octets "status") 0)
       nil)))
 
-(defun fn-bpn-report-outbox-next-aux (held-list after)
+(defun fn-bpn-report-outbox-next-aux (held-list after selected)
   (declare (xargs :guard t :measure (acl2-count held-list)))
   (if (atom held-list)
-      nil
-    (let ((h (car held-list)))
-      (if (and (or (null after)
-                   (and (natp after) (< after (fn-bpn-nth 3 h))))
-               (fn-bpn-report-outbox-view h))
-          (fn-bpn-report-outbox-view h)
-        (fn-bpn-report-outbox-next-aux (cdr held-list) after)))))
+      selected
+    (let* ((h (car held-list))
+           (view (and (or (null after)
+                          (and (natp after) (< after (fn-bpn-nth 3 h))))
+                      (fn-bpn-report-outbox-view h))))
+      (fn-bpn-report-outbox-next-aux
+       (cdr held-list) after
+       (if (and view
+                (or (null selected)
+                    (< (fn-bpn-nth 1 view) (fn-bpn-nth 1 selected))))
+           view selected)))))
 
 (defun fn-bpn-report-outbox-next (st after)
   (declare (xargs :guard t))
-  (fn-bpn-report-outbox-next-aux (fn-bpnf-held-list st) after))
+  (fn-bpn-report-outbox-next-aux (fn-bpnf-held-list st) after nil))
+
+(defun fn-bpn-report-outbox-peer-matchp (view peer)
+  (declare (xargs :guard t))
+  (and (equal (fn-bpn-nth 0 view) :report-outbox)
+       (fn-bpp-eidp peer)
+       (equal (fn-bpn-nth 2 view) peer)))
 
 (defthm fn-bpn-report-outbox-view-requires-tombstone
   (implies (fn-bpn-report-outbox-view held)

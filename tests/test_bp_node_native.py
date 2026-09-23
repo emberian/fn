@@ -211,14 +211,59 @@ class NativeBpNodeTests(unittest.TestCase):
             3600000, 2, 32, 1048576, 0, 0,
         )
 
-    def dispatch_receiver(self, *, env=None):
-        return self.invoke(
-            "bp-node", "dispatch", self.receiver_journal,
-            self.receiver_store, self.receiver_receipts,
-            self.tmp / "receiver-fnwf", "dtn://receiver/",
+    def dispatch_receiver_args(self, *, reports=False):
+        return [
+            str(IMAGE), "--fn",
+            "bp-node", "dispatch", str(self.receiver_journal),
+            str(self.receiver_store), str(self.receiver_receipts),
+            str(self.tmp / "receiver-fnwf"), "dtn://receiver/",
             "dtn://sender/", "dtn://receiver/", "native-policy",
-            "dtn://receiver/", "127.0.0.1", self.relay.port,
-            1, 3600000, 2, 32, 1048576, 0, 0, env=env,
+            "dtn://receiver/", "127.0.0.1", str(self.relay.port),
+            "1", "3600000", "2", "32", "1048576", "0", "0",
+            "1" if reports else "0",
+        ]
+
+    def dispatch_receiver(self, *, reports=False, env=None, extra_env=None):
+        env = dict(self.env if env is None else env)
+        if extra_env:
+            env.update(extra_env)
+        return subprocess.run(
+            self.dispatch_receiver_args(reports=reports),
+            cwd=ROOT, env=env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=120, check=False,
+        )
+
+    def deletion_request_bundle(self):
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-node")')
+            bridge.call('(include-book "books/codec-attach")')
+            adu = bridge.literal(self.request_path.read_bytes())
+            sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
+            receiver = "(cons :dtn '(47 47 114 101 99 101 105 118 101 114 47))"
+            form = (
+                "(let* ((bundle (fn-bpn-send-bundle "
+                f"(fn-bpn-config {sender} 1500 2 32 1048576) "
+                f"{receiver} '{adu} 44 "
+                "(fn-clock-observation 1000 0 0 nil))) "
+                "(primary (fn-bpb-bundle-primary bundle)) "
+                "(requested (fn-bpb-make-bundle "
+                "(update-nth 1 *fn-bpp-flag-report-deletion* primary) "
+                "(fn-bpb-bundle-blocks bundle) "
+                "(fn-bpb-bundle-payload bundle)))) "
+                "(fn-bpb-encode requested))"
+            )
+            path = self.tmp / "deletion-request.bundle"
+            path.write_bytes(run_store.acl2_octets(bridge.call(form)))
+            return path
+        finally:
+            bridge.close()
+
+    def send_deletion_request(self, port):
+        return self.invoke(
+            "tcpcl", "send", "127.0.0.1", port,
+            self.deletion_request_bundle(), self.tmp / "deletion-sender-spool",
+            "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
         )
 
     def sender_status(self):
@@ -513,6 +558,50 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertNotIn(b"BP application handoff durable", restarted.stdout)
         self.assertNotIn(b"BP node receipt queued", restarted.stdout)
         self.assertEqual(self.receiver_counts()[1], 0)
+
+    def test_deletion_report_intent_recovers_and_observation_does_not_release(self):
+        receiver, port = self.start_node(
+            True, extra_env={"FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE": "1"},
+        )
+        sent = self.send_deletion_request(port)
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.wait_for_output(receiver, b"BP NODE KIND5 DURABLE", timeout=120)
+        receiver.kill()
+        receiver.wait(timeout=15)
+        time.sleep(1.8)
+
+        # The kind-10 record is durable before the outbound sequence/job cut.
+        env = dict(self.env)
+        env["FN_BP_NODE_TEST_PAUSE_AFTER_KIND_TEN"] = "1"
+        candidate = subprocess.Popen(
+            self.dispatch_receiver_args(reports=True), cwd=ROOT, env=env,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
+        )
+        self.addCleanup(self.stop_process, candidate)
+        self.wait_for_output(candidate, b"BP NODE KIND10 DURABLE", timeout=120)
+        candidate.kill()
+        candidate.wait(timeout=15)
+        self.assertEqual(self.receiver_counts()[1], 0)
+
+        restarted = self.dispatch_receiver(reports=True)
+        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertIn(b"BP queue accepted", restarted.stdout)
+        self.assertEqual(self.receiver_counts()[1], 0)
+        frontier = self.receiver_journal / "sequence" / "frontier.fnb"
+        frontier_bytes = frontier.read_bytes()
+        repeated = self.dispatch_receiver(reports=True)
+        self.assertEqual(repeated.returncode, 0, repeated.stderr)
+        self.assertEqual(frontier.read_bytes(), frontier_bytes)
+
+        sender, port = self.start_node(False, once=False)
+        self.relay.route(port)
+        delivered = self.tick_receiver()
+        self.assertEqual(delivered.returncode, 0, delivered.stderr)
+        self.wait_for_output(sender, b"BP status report observed", timeout=120)
+        self.stop_process(sender)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+        self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
+
 
 
 if __name__ == "__main__":

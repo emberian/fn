@@ -2340,9 +2340,14 @@ the one-octet suppression sentinel; replay retains the full record in the
 held tombstone. No report effect is issued before the deletion publication
 callback is durable, and an uncertain callback fences the issued operation.
 The recovery outbox selector can find that same intent after a process death.
-These are component contracts: administrative outbound authoring, native
-caller progression and read-only received-report consumption remain open,
-so there is no served D1b generation or consumption claim yet.
+The `fn-bpn-report-author-step` extension of the same service owner now
+proposes an administrative outbound bundle/job from a recovered intent, using
+a stable epoch/op work key. The native `bp-node` caller asks ACL2 to age held
+carriers before Store dispatch, then queues owed reports through the base
+lifecycle journal; received administrative reports are parsed and correlated
+read-only by `fn-bpn-report-observe-next`. This source join still needs a
+source-matched native image, the death-after-kind-10 test, and broader policy
+qualification before a served D1b claim.
 
 Minimal generation and consumption before slice B's gate (§11): the
 deletion assertion at §4.2's `:expire` and §4.3's deletions, and §4.1
