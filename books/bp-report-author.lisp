@@ -6,7 +6,8 @@
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpn-report-bundle (config peer payload sequence observation)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (fn-bpn-configp config)
+                              (fn-bpb-datap payload))))
   (fn-bpb-make-bundle
    (fn-bpp-make-block
     *fn-bpp-flag-administrative* (fn-bpn-config-crc-type config)
@@ -40,7 +41,8 @@
                 (equal (fn-bpp-report-to primary) '(:dtn-none)))))))
 
 (defun fn-bpn-report-queue-step (st arrival sequence route observation)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
   (let* ((base (fn-bpnf-base st))
          (held (fn-bpnf-find-arrival arrival (fn-bpnf-held-list st)))
          (view (fn-bpn-report-outbox-view held))
@@ -110,7 +112,15 @@
              (fn-bpn-answer-effects ans)))))))))))
 
 (defun fn-bpn-report-author-step (st event)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard
+                  (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                       (or (not (equal (fn-cbor-ag-car event) :base))
+                           (fn-bpn-machine-eventp (fn-bpn-nth 1 event)))
+                       (or (not (equal (fn-cbor-ag-car event) :recover-fnbs))
+                           (and (true-listp (fn-bpn-nth 2 event))
+                                (<= (len (fn-bpn-nth 2 event))
+                                    *fn-bpn-machine-max-records*))))
+                  :verify-guards nil))
   (if (equal (fn-cbor-ag-car event) :queue-report)
       (fn-bpn-report-queue-step
        st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)

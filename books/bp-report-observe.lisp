@@ -50,15 +50,19 @@
   (if (atom held-list)
       selected
     (let* ((held (car held-list))
-           (answer (and (or (null after)
+           (answer (and (natp (fn-bpn-nth 3 held))
+                        (or (null after)
                             (and (natp after)
                                  (< after (fn-bpn-nth 3 held))))
                         (fn-bpn-report-observe-held st held node))))
       (fn-bpn-report-observe-next-aux
        st (cdr held-list) node after
        (if (and answer
+                (natp (fn-bpn-nth 1 answer))
                 (or (null selected)
-                    (< (fn-bpn-nth 1 answer) (fn-bpn-nth 1 selected))))
+                    (and (natp (fn-bpn-nth 1 selected))
+                         (< (fn-bpn-nth 1 answer)
+                            (fn-bpn-nth 1 selected)))))
            answer selected)))))
 
 (defun fn-bpn-report-observe-next (st node after)
