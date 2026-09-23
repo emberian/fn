@@ -69,6 +69,73 @@
 (assert-event (equal (fn-sn-keyring-snapshots *cpa-reopened*)
                      (list *cpa-snapshot*)))
 (assert-event (equal (fn-sn-verdicts *cpa-reopened*) nil))
+
+; A selected exact-prefix pack also retains an acknowledged E2 cursor.  The
+; writable clone rollover fences that cursor by changing incarnation, while
+; the original registration and progress remain in the recovered history.
+(defconst *cpa-progress-boot* (fn-cpe-make 0 0 0 '(:bootstrap (1) (2))))
+(defconst *cpa-progress-register*
+  (fn-cpe-make 1 1 1 '(:register (3) (4) (5) 1 1 1)))
+(defconst *cpa-progress-cursor*
+  (fn-cp-cursor '(1) '(2) '(3) '(4) '(5) 1 1 1 2))
+(defconst *cpa-progress-ack*
+  (fn-cpe-make 2 2 2 (list :ack *cpa-progress-cursor*)))
+(defconst *cpa-progress-rollover*
+  (fn-cpe-make 3 3 3 '(:rollover (6))))
+(make-event `(defconst *cpa-progress-raw-boot*
+               ',(fn-store-event-encode *cpa-progress-boot*)))
+(make-event `(defconst *cpa-progress-raw-register*
+               ',(fn-store-event-encode *cpa-progress-register*)))
+(make-event `(defconst *cpa-progress-raw-ack*
+               ',(fn-store-event-encode *cpa-progress-ack*)))
+(make-event `(defconst *cpa-progress-raw-rollover*
+               ',(fn-store-event-encode *cpa-progress-rollover*)))
+(defconst *cpa-progress-pack*
+  (fn-cc-make 3 3 (list *cpa-progress-raw-boot*
+                        *cpa-progress-raw-register*
+                        *cpa-progress-raw-ack*)))
+(assert-event
+ (equal (fn-cc-recover-observation
+         *cpa-progress-pack*
+         (list (list 3 *cpa-progress-raw-rollover*)) 4)
+        (list :ok (list *cpa-progress-raw-boot*
+                        *cpa-progress-raw-register*
+                        *cpa-progress-raw-ack*
+                        *cpa-progress-raw-rollover*) 4)))
+(make-event
+ `(defconst *cpa-progress-before-rollover*
+    ',(fn-sn-open-observed
+       '("g") 32 3
+       (list *cpa-progress-boot* *cpa-progress-register*
+             *cpa-progress-ack*))))
+(assert-event (fn-sn-open-okp *cpa-progress-before-rollover*))
+(assert-event
+ (equal (nth 7
+             (fn-cp-find '(3)
+                         (nth 5 (fn-sn-consumer
+                                 (fn-sn-open-state
+                                  *cpa-progress-before-rollover*)))))
+        2))
+(make-event
+ `(defconst *cpa-progress-after-rollover*
+    ',(fn-sn-open-observed
+       '("g") 32 4
+       (list *cpa-progress-boot* *cpa-progress-register*
+             *cpa-progress-ack* *cpa-progress-rollover*))))
+(assert-event (fn-sn-open-okp *cpa-progress-after-rollover*))
+(assert-event
+ (equal (fn-cpa-clone-phase
+         (fn-sn-open-state *cpa-progress-after-rollover*)
+         *cpa-progress-rollover*)
+        :completed))
+(assert-event
+ (equal (nth 5 (fn-sn-consumer
+                (fn-sn-open-state *cpa-progress-after-rollover*)))
+        nil))
+(assert-event
+ (equal (fn-cpa-store-auxiliary-agrees
+         (fn-sn-open-state *cpa-progress-after-rollover*))
+        '(:ok 1)))
 (make-event
  `(defconst *cpa-before-rollover*
     ',(fn-sn-open-observed '("fn.letters") 32 4
