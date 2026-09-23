@@ -148,6 +148,7 @@
     "books/byte-store-scan",
     "books/byte-store-keystones",
     "tests/acl2/byte-store-scan-tests",
+    "tests/acl2/byte-store-sweep-tests",
     "books/byte-store-compaction-correspondence",
     "tests/acl2/byte-store-compaction-correspondence-tests",
     "books/byte-store-programs",
@@ -408,25 +409,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 406,
-    "books_in_root_closure": 405,
-    "roots": 404,
-    "theorems": 6786,
-    "functions": 5282,
-    "assert_events": 7618,
+    "books": 407,
+    "books_in_root_closure": 406,
+    "roots": 405,
+    "theorems": 6839,
+    "functions": 5300,
+    "assert_events": 7643,
     "must_fails": 253,
-    "encapsulates": 21,
+    "encapsulates": 22,
     "guards": {
       "verified": 1737,
-      "declared-off": 284,
-      "default-guarded": 2627,
-      "default-unguarded": 634
+      "declared-off": 288,
+      "default-guarded": 2633,
+      "default-unguarded": 642
     },
     "suspect_theorems": 63,
     "export_hygiene_warnings": 90,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 13,
-    "include_hygiene_warnings": 151,
+    "include_hygiene_warnings": 154,
     "host_names_warnings": 645,
     "hand_written_record_warnings": 18
   },
@@ -2319,11 +2320,11 @@
       "book": "books/byte-store-keystones.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
-      "functions": 0,
+      "theorems": 29,
+      "functions": 3,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 3,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -2334,8 +2335,10 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "byte-store-programs",
         "byte-store-scan",
-        "store-observed"
+        "store-observed",
+        "store-sweep"
       ],
       "system_includes": [],
       "suspects": [],
@@ -2397,10 +2400,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 30,
+      "functions": 31,
       "guards": {
         "verified": 0,
-        "declared-off": 30,
+        "declared-off": 31,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -5985,20 +5988,20 @@
       "book": "books/store-sweep.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
-      "functions": 9,
+      "theorems": 36,
+      "functions": 16,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 9,
-        "default-unguarded": 0
+        "default-guarded": 15,
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
         "store-node-traces"
       ],
@@ -8200,6 +8203,33 @@
         "../../books/byte-store-keystones",
         "../../books/byte-store-programs",
         "../../books/byte-store-txn-name"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/byte-store-sweep-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-frame",
+        "../../books/byte-store-keystones",
+        "../../books/byte-store-relation"
       ],
       "system_includes": [],
       "suspects": [],
@@ -10738,17 +10768,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 16,
+      "assert_events": 33,
       "must_fails": 0,
-      "defconsts": 8,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -13348,6 +13378,27 @@
         "line": 19,
         "include": "../../books/byte-store-txn-name",
         "included": "books/byte-store-txn-name.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-sweep-tests.lisp",
+        "line": 12,
+        "include": "../../books/byte-store-keystones",
+        "included": "books/byte-store-keystones.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-sweep-tests.lisp",
+        "line": 13,
+        "include": "../../books/byte-store-relation",
+        "included": "books/byte-store-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-sweep-tests.lisp",
+        "line": 14,
+        "include": "../../books/byte-store-frame",
+        "included": "books/byte-store-frame.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

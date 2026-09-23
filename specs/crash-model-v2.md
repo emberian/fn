@@ -831,7 +831,13 @@ new frontier's octets; `STAGE` is `.allocation-<pid>-<hex>`.
 ; after 878, the host raises StoreIndeterminate and observes
 ; (:frontier-replace :error) [880] or (:frontier-directory :error) [893].
 ; Note: the staging directory is never fenced; the source entry of the
-; rename is a pending :del-entry on :staging for ever.  Recovery ignores it.
+; rename is a pending :del-entry on :staging for ever.  Recovery does not
+; read it, and the sweep removes whatever :staging name a crash leaves --
+; the unrenamed stage (death at frontier-staged-durable) or the second name
+; of a renamed one -- because an unlink in :staging keeps the relation and
+; the scan (K-sweep, section 3.3).  Before 2026-09-22 the sweep listed only
+; `.stage-' and `.allocation-' orphans accumulated until the 65th made
+; the store unopenable (planning/evidence/campaign-dabebb84-2026-09-22.md, F2).
 ```
 
 **P-RECORD** (`Store.publish`, run_store.py:914-989). `NAME` is
@@ -1473,6 +1479,33 @@ part of K0.
                   (append (fn-sf-records ks) (list (fn-sf-record-candidate ks))))))
 ```
 
+**K-sweep: the recovery sweep is a stutter of the relation**
+(`books/byte-store-keystones.lisp`, added 2026-09-22 for finding F2 of
+`planning/evidence/campaign-dabebb84-2026-09-22.md`). Neither
+`fn-bs-store-relation` nor `fn-bs-scan-store` reads `:staging`.
+`fn-bs-staging-unlink-keeps-relation-and-scan`: an unlink in `:staging`, at
+any name and with any outcome, leaves the byte state related to the *same*
+kernel state and leaves the scan unchanged.
+`fn-bs-recover-sweep-keeps-relation-at-every-cut`: every pair of
+`fn-bs-recover-sweep-program`'s run (one unlink and one
+`recovery-stage-unlinked` cut per name) is that kernel state with a related
+byte state and the original scan. `fn-bs-sweep-round-keeps-every-cut-reopenable`
+states it over the subject the host calls: for the names
+`fn-sn-sweep-round` returns (`host/native/io.lisp` `fnn-sweep-staging`, through
+`fn-store-sn-sweep-round`), every crash image at every cut of the sweep
+reopens through `fn-sn-open-observed`, and the kernel state, hence the
+recoverable history and frontier, is the one before the sweep. So K1 to K4
+cover the sweep; the sweep's name policy (`books/store-sweep.lisp`, every
+prefix a host program stages under) is a choice about foreign files, not a
+recoverability argument. The observation bound of 64 names bounds one
+*round* of the sweep, not the directory: `fn-sn-sweep-rounds-collect-every-orphan`
+says a directory of N orphans, for every N, ends empty; a directory holding
+more than one observation of names the model does not recognize is refused
+(exit 1), never a fault. Teeth: `tests/acl2/byte-store-sweep-tests.lisp` (the
+`frontier-staged-durable` cut of the real allocator program, and the
+separating unlink of the frontier's own name in `:root`) and
+`tests/acl2/store-sweep-tests.lisp`.
+
 The v1 "old-or-new" theorems and the constructor now sit *under* K2 and K3
 as lemmas about the kernel, and the platform fact is no longer "the
 namespace is old-or-new" but "the platform's crash image is one
@@ -1764,7 +1797,8 @@ Two classes, distinguished by admissibility:
 
 - **admissible** (inside the model): drop every pending entry operation of
   one directory (the "fsync(dir) never happened" image); remove or keep
-  staging orphans. Must recover normally.
+  staging orphans, any number of them. Must recover normally, and recovery
+  removes every orphan under a host staging prefix (K-sweep, §3.3).
 - **inadmissible** (outside the model, FLR-003): remove a durable
   `transactions/` entry, the config or frontier entry, or the whole
   `transactions/` directory. ACL2 must report `(not (fn-bs-image-admissiblep ...))`,
