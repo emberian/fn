@@ -1504,6 +1504,34 @@
                   fn-sf-emit-success fn-record-shape-vocabulary)
             :use (fn-snx-topic-completion-node-idle-by-definition
                   fn-snx-topic-completion-replay-non-nil-by-definition))))))
+
+; Topic installation, anchor and report admission are real durable Store
+; completions.  They advance the exact Store pair and the carried topic
+; projection while leaving article acceptance and its index unchanged.
+(defthm fn-sn-finish-topic-completion
+  (implies (and (fn-sn-completion-enabledp s)
+                (fn-th-topic-eventp (fn-sn-completion-record s)))
+           (and (equal (fn-sf-successes (fn-sn-files (fn-sn-finish s)))
+                       (append (fn-sf-successes (fn-sn-files s))
+                               (list (cons
+                                      (fn-store-event-sequence
+                                       (fn-sn-completion-record s))
+                                      (fn-store-event-txid
+                                       (fn-sn-completion-record s))))))
+                (equal (fn-sn-topic (fn-sn-finish s))
+                       (fn-th-prefix-step (fn-sn-topic s)
+                                          (fn-sn-completion-record s)))
+                (equal (fn-sn-index (fn-sn-finish s)) (fn-sn-index s))
+                (equal (fn-stx-store (fn-sn-node (fn-sn-finish s)))
+                       (fn-stx-store (fn-sn-node s)))))
+  :hints (("Goal" :use (fn-sn-finish-acknowledges-exact-pair
+                         fn-sn-finish-topic-arm-keeps-the-store-and-index)
+           :in-theory (e/d (fn-sn-finish fn-sn-completion-enabledp)
+                           (fn-th-topic-eventp fn-sn-completion-record
+                            fn-replay-apply-record fn-sn-finish-acknowledges-exact-pair
+                            fn-sn-finish-topic-arm-keeps-the-store-and-index
+                            fn-sf-core-completion fn-sf-emit-success
+                            fn-record-shape-vocabulary)))))
 (local
  (defthmd fn-sn-finish-acceptance-arm-fields
    (implies (and (fn-sn-completion-enabledp s)
