@@ -59,3 +59,28 @@
          rows
          (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))
          (fn-bpn-machine-state-max-octets (fn-bpnf-base st)))))
+
+; Select the fresh process epoch from the same exact byte replay supplied to
+; the recovery event.  A terminal 64-bit epoch makes the step fault rather
+; than wrapping or letting the host choose a reused epoch.
+(defun fn-bpnf-recover-auto-event (st base-records sequence-ready rows)
+  (declare (xargs :guard t))
+  (let* ((replay
+          (fn-bpnf-replay-rows
+           rows
+           (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))
+           (fn-bpn-machine-state-max-octets (fn-bpnf-base st))))
+         (prior (nth 2 replay))
+         (new-epoch
+          (1+ (max (nfix (fn-bpnf-epoch st))
+                   (nfix (and (consp prior) (car prior)))))))
+    (list :recover-fnbs new-epoch base-records sequence-ready replay)))
+
+(defthm fn-bpnf-recover-auto-event-epoch-exceeds-current
+  (implies (natp (fn-bpnf-epoch st))
+           (< (fn-bpnf-epoch st)
+              (nth 1 (fn-bpnf-recover-auto-event
+                      st base-records sequence-ready rows))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-bpnf-recover-auto-event)
+                (fn-bpnf-replay-rows fn-bpnf-replay-rows-aux)))))

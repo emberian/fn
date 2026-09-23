@@ -722,9 +722,11 @@ atomically requires successful inherited base restart and ready FNBS replay,
 installs both projections, clears volatile issued work, and advances to a
 fresh epoch with operation ID zero. A fault leaves the uncertain state
 fenced. This does not yet establish the byte-store publisher's whole-history
-crash relation or a native caller; an epoch distinct from the old process is
-a recovery input, and process-death callbacks cannot survive to the new
-process.
+crash relation or a native caller. `fn-bpnf-recover-auto-event` selects the
+fresh epoch as one above both the current state epoch and the replayed last
+epoch; at the 64-bit terminal epoch, the step faults rather than wrapping.
+Process-death callbacks cannot survive to the new process remains a host
+assumption.
 `books/bp-fnbs-namespace.lisp` partitions one bounded physical FNBS
 directory into legacy lifecycle finals, kind-5 received finals, and hidden
 stages. The old contiguous namespace planner validates the legacy subset;

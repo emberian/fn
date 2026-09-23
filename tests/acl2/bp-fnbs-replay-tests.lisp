@@ -61,6 +61,30 @@
 (assert-event (equal (nth 5 (fn-bpnf-issued (bpnfr-uncertain-state)))
                      :uncertain))
 (assert-event
+ (equal (nth 1 (fn-bpnf-recover-auto-event
+                (bpnfr-uncertain-state) nil :ready (bpnfr-rows)))
+        10))
+(assert-event
+ (equal (nth 1 (fn-bpnf-recover-auto-event
+                (bpnfr-uncertain-state) nil :ready nil))
+        10))
+(assert-event
+ (equal (fn-bpnf-answer-state
+         (fn-bpnf-step (bpnfr-uncertain-state)
+                       (fn-bpnf-recover-auto-event
+                        (bpnfr-uncertain-state) nil :ready (bpnfr-rows))))
+        (fn-bpnf-answer-state
+         (bpnfr-recover (bpnfr-uncertain-state) 10 (bpnfr-rows)))))
+(defconst *bpnfr-terminal-epoch*
+  (fn-bpnf-state *bpnfc-base* nil nil nil nil nil nil
+                 *fn-frame-max-nat* 0))
+(assert-event
+ (equal (fn-bpnf-answer-state
+         (fn-bpnf-step *bpnfr-terminal-epoch*
+                       (fn-bpnf-recover-auto-event
+                        *bpnfr-terminal-epoch* nil :ready nil)))
+        *bpnfr-terminal-epoch*))
+(assert-event
  (equal (fn-bpnf-held-list
          (fn-bpnf-answer-state (bpnfr-recover (bpnfr-uncertain-state)
                                              10 (bpnfr-rows))))

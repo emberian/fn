@@ -41,3 +41,16 @@ the integrated root to regenerate. These are ACL2 book and source checks,
 not native image or receive-loop evidence. The native publisher/recovery join,
 admitted-principal boundary, and physical callback lifetime assumption remain
 open.
+
+Follow-on recovery epoch construction is also ACL2-owned:
+`fn-bpnf-recover-auto-event` replays the exact observed rows once and chooses
+one above the greater of the prior state epoch and the last replayed epoch.
+It leaves a terminal 64-bit epoch to fault in `fn-bpnf-step`. The initial
+theorem attempt opened the whole replay decoder and was interrupted after
+254.58 seconds; a local hint kept the replay call opaque for this arithmetic
+fact. Run `run-20260923T182620Z-a9ff`, manifest
+`planning/evidence/manifests/certify-20260923T182623Z-4076925.json`, then
+`run-20260923T182645Z-9c97`, manifest
+`planning/evidence/manifests/certify-20260923T182649Z-4077654.json`,
+certified the replay book, invariant book, and reachable tests at the final
+source bytes. The strict changed/dependent check again found zero ungreen.
