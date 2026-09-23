@@ -144,6 +144,17 @@
            (fn-ocl-conns-historyp oc (cdr conns)))
     (null conns)))
 
+; Proof-only identity invariant.  The owner allocates fresh IDs, and a read,
+; close or advance can only replace/remove an existing entry.  In particular,
+; a single configuration pin must never describe two distinct open records.
+(defun fn-ocl-unique-conn-idsp (conns)
+  (declare (xargs :guard t))
+  (if (consp conns)
+      (and (not (fn-own-find-conn (fn-own-conn-id (car conns))
+                                  (cdr conns)))
+           (fn-ocl-unique-conn-idsp (cdr conns)))
+    (null conns)))
+
 (defthm fn-ocl-take-before-appended-config
   (implies (and (natp n) (<= n (len xs)))
            (equal (fn-own-take n (append xs (list record)))
@@ -311,6 +322,7 @@
                 (len (fn-sn-config-history st)))
          (fn-ocl-view-historyp o)
          (fn-ocl-conns-historyp oc conns)
+         (fn-ocl-unique-conn-idsp conns)
          (fn-ocfg-pins-okp (fn-ocfg-pins oc))
          (fn-ocfg-conns-pinnedp conns (fn-ocfg-pins oc))
          (fn-ocfg-pins-pin-conns-only (fn-ocfg-pins oc) conns)
@@ -1186,6 +1198,21 @@
                               fn-ocfg-pins-pin-conns-only
                               fn-own-find-conn-of-remove-conn-other))))
 
+(defthm fn-ocl-remove-cannot-create-found-id
+  (implies (not (fn-own-find-conn selected conns))
+           (not (fn-own-find-conn selected
+                                  (fn-own-remove-conn id conns))))
+  :hints (("Goal" :induct (fn-own-remove-conn id conns)
+           :in-theory (enable fn-own-remove-conn fn-own-find-conn))))
+
+(defthm fn-ocl-unique-ids-of-remove
+  (implies (fn-ocl-unique-conn-idsp conns)
+           (fn-ocl-unique-conn-idsp
+            (fn-own-remove-conn id conns)))
+  :hints (("Goal" :induct (fn-own-remove-conn id conns)
+           :in-theory (enable fn-own-remove-conn
+                              fn-ocl-unique-conn-idsp))))
+
 (defthm fn-ocl-close-preserves-historical-relation
   (implies (fn-ocl-relation oc)
            (fn-ocl-relation (fn-ocfg-close oc id)))
@@ -1566,6 +1593,22 @@
                                              (fn-ocfg-owner oc) id octets)))))))
            :in-theory (theory 'minimal-theory))))
 
+(defthm fn-ocl-replace-cannot-create-other-found-id
+  (implies (and (not (equal selected (fn-own-conn-id next)))
+                (not (fn-own-find-conn selected conns)))
+           (not (fn-own-find-conn selected
+                                  (fn-own-replace-conn next conns))))
+  :hints (("Goal" :induct (fn-own-replace-conn next conns)
+           :in-theory (enable fn-own-replace-conn fn-own-find-conn))))
+
+(defthm fn-ocl-unique-ids-of-replace
+  (implies (fn-ocl-unique-conn-idsp conns)
+           (fn-ocl-unique-conn-idsp
+            (fn-own-replace-conn next conns)))
+  :hints (("Goal" :induct (fn-own-replace-conn next conns)
+           :in-theory (enable fn-own-replace-conn
+                              fn-ocl-unique-conn-idsp))))
+
 ; Reassemble the historical relation from its changed connection and pin
 ; clauses.  The Store, refreshed view, configuration and owner control fields
 ; are unchanged by a reader command, so no physical replay is redone here.
@@ -1592,6 +1635,7 @@
                (fn-own-facts (fn-ocfg-owner oc)))
         (fn-ocl-conns-historyp next
                                (fn-own-conns (fn-ocfg-owner next)))
+        (fn-ocl-unique-conn-idsp (fn-own-conns (fn-ocfg-owner next)))
         (fn-ocfg-pins-okp (fn-ocfg-pins next))
         (fn-ocfg-conns-pinnedp (fn-own-conns (fn-ocfg-owner next))
                                (fn-ocfg-pins next))
@@ -1616,6 +1660,7 @@
      (and (fn-ocfg-shapep oc)
           (fn-own-shapep o)
           (fn-ocl-conns-historyp oc conns)
+          (fn-ocl-unique-conn-idsp conns)
           (fn-ocfg-pins-okp pins)
           (fn-ocfg-conns-pinnedp conns pins)
           (fn-ocfg-pins-pin-conns-only pins conns)
