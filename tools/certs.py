@@ -48,11 +48,11 @@ the including book.  A parent from origin A over children from origin B
 includes without a warning, with A and B on disk, removed, or edited; a new
 parent certified over a closure from three origins includes cleanly with all
 three removed; editing an event in the target's own child is still refused.
-``install-set`` takes one complete origin when there is one, and otherwise
-composes the closure book by book from every usable entry with the same
-toolchain, the newest first, and names the origins it drew from.  Its legacy
-mixed fallback does not perform the exact post-alist selection used by the
-incremental runner; it is not the E2 qualification path.  A live
+``install-set`` takes one complete origin when there is a compatible one,
+and otherwise composes the closure book by book from usable entries with the
+same toolchain. It uses the same exact ACL2 post-alist selector as the
+incremental runner, and ``proof_artifacts.py acquire`` validates the loaded
+roots afterward. A live
 worktree that still exists on this machine is still not drawn from.  The
 measurement found nothing that requires this exclusion; it stays because no
 run needs a live tree's pairs when the farm publishes every certified book
@@ -95,7 +95,7 @@ cache only moves its result to another worktree, where ACL2 checks it again.
 
     python3 tools/certs.py publish [--manifest PATH] [--remote hbox]
     python3 tools/certs.py publish --origin-kind gate    # from a gate directory
-    python3 tools/certs.py install-set books/served # coherent dependency set
+    python3 tools/certs.py --acl2 PATH install-set books/served
     python3 tools/certs.py --acl2 PATH install-partial --toolchain-identity ID books/served
     python3 tools/certs.py status
 """
@@ -539,8 +539,7 @@ class ArtifactSet:
     origin A load a child from origin B, even when every source hash matches.
     An ArtifactSet is the indivisible choice: every selected pair has the same
     toolchain identity, and either one absolute origin or -- a *composed* set,
-    ``origin_root == COMPOSED`` -- the newest usable entry for each book from
-    any snapshot origin.  ACL2 accepts the composed form (module docstring).
+    ``origin_root == COMPOSED`` -- compatible entries from snapshot origins.
     """
 
     identity: str
@@ -613,13 +612,15 @@ def usable_origin(meta: dict, target: str) -> bool:
 
 def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
                   toolchain_identity: str | None = None,
-                  dependencies_only: bool = False) -> list[ArtifactSet]:
+                  dependencies_only: bool = False,
+                  acl2: Path | None = None,
+                  pair_checker=None) -> list[ArtifactSet]:
     """Candidate whole sets for ``roots``, ordered by usable coverage.
 
-    Grouping is by origin *and* toolchain.  Closure keys already bind every
-    entry to the target source bytes.  Missing toolchain metadata is kept
-    visible as a candidate only when no toolchain was requested; deployment
-    passes the hash of the ACL2 executable it is about to run.
+    Grouping is by origin *and* toolchain. Closure keys bind entries to target
+    source bytes; when ``acl2`` is provided, the shared selector also checks
+    actual certificate post-alists. Missing toolchain metadata remains visible
+    only when no toolchain was requested; deployment supplies its identity.
     """
     needed = required_closure(root, roots, dependencies_only)
     required = tuple(sorted(needed))
@@ -659,10 +660,25 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
             grouped[group_key].entries.setdefault(name, (directory, meta))
 
     candidates = list(grouped.values())
+    if acl2 is not None:
+        if pair_checker is None:
+            pair_checker = cert_alists.acl2_certificate_pairs
+        for candidate in candidates:
+            if candidate.complete:
+                candidate.entries = compatible_partial_choices(
+                    root, {name: [entry] for name, entry in candidate.entries.items()},
+                    acl2, pair_checker)
     for toolchain_id, (toolchain, by_book) in pooled.items():
-        chosen = {name: newest(entries) for name, entries in by_book.items()}
+        ordered = {name: sorted(entries, key=lambda entry: (
+            str(entry[1].get("published_at", "")), str(entry[0])), reverse=True)
+                   for name, entries in by_book.items()}
+        chosen = (compatible_partial_choices(root, ordered, acl2, pair_checker)
+                  if acl2 is not None else
+                  {name: newest(entries) for name, entries in by_book.items()})
         origins = {str(meta.get("origin_root", "")) for _, meta in chosen.values()}
-        if len(origins) < 2:
+        if len(origins) < 2 and (acl2 is None or any(
+                candidate.complete and candidate.entries == chosen
+                for candidate in candidates)):
             # One origin covers everything it can: that origin's own group
             # already is this set.
             continue
@@ -675,7 +691,7 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
                 "toolchain": toolchain,
                 "source_identity": source_id,
             }),
-            origin_root=COMPOSED,
+            origin_root=next(iter(origins)) if len(origins) == 1 else COMPOSED,
             origin_kind=COMPOSED,
             origin_host="",
             toolchain=toolchain,
@@ -703,15 +719,19 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                          require_origin: str | None = None,
                          purge_on_miss: bool = False,
                          dependencies_only: bool = False,
+                         acl2: Path | None = None,
+                         pair_checker=None,
                          _attempt: int = 0) -> Report:
     """Install one complete set: one origin when one suffices, else composed.
 
-    A composed set draws each book's pair from the newest usable entry with
-    the same toolchain (never a live worktree still on this machine), which
-    ACL2 accepts (module docstring).  ``require_origin`` restores the
-    single-origin rule for a caller that needs it.
+    The selected set's actual ACL2 certificate alists must agree, including
+    when all pairs came from one origin. ``require_origin`` constrains the
+    origin but does not bypass this compatibility check.
     """
     rejected = set(reject)
+    if acl2 is None:
+        raise ValueError("install-set needs an ACL2 executable for exact "
+                         "certificate-alist compatibility")
     report = Report(action="install-set", cache=str(cache))
     roots = tuple(roots)
     required = required_closure(root, roots, dependencies_only)
@@ -724,7 +744,8 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
             "empty": True, "toolchain_identity": toolchain_identity})
         return report
     candidates = [one for one in artifact_sets(
-                      root, cache, roots, toolchain_identity, dependencies_only)
+                      root, cache, roots, toolchain_identity,
+                      dependencies_only, acl2, pair_checker)
                   if one.identity not in rejected
                   and (require_origin is None
                        or one.origin_root == require_origin)]
@@ -773,7 +794,8 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
             raise
         return install_artifact_set(root, cache, roots, toolchain_identity,
                                     reject, require_origin, purge_on_miss,
-                                    dependencies_only, _attempt + 1)
+                                    dependencies_only, acl2, pair_checker,
+                                    _attempt + 1)
     return report
 
 
@@ -1336,7 +1358,7 @@ def main(argv: list[str] | None = None) -> int:
                              "launcher/core/runtime compatibility identity")
     parser.add_argument("--acl2", default=os.environ.get("FN_ACL2"),
                         help="ACL2 executable used to compare certificate "
-                             "alists for install-partial")
+                             "alists for install-set and install-partial")
     parser.add_argument("--require-origin", default=None,
                         help="for install-set, require one complete set from this "
                              "exact certificate origin instead of composing one")
@@ -1362,11 +1384,14 @@ def main(argv: list[str] | None = None) -> int:
     elif arguments.action == "install-set":
         if not names:
             parser.error("install-set needs one or more root books")
+        if not arguments.acl2:
+            parser.error("install-set needs --acl2 to check certificate alists")
         report = install_artifact_set(
             root, cache, names, toolchain_identity=arguments.toolchain_identity,
             require_origin=arguments.require_origin,
             purge_on_miss=arguments.purge_on_miss,
-            dependencies_only=arguments.dependencies_only)
+            dependencies_only=arguments.dependencies_only,
+            acl2=Path(arguments.acl2).resolve())
     elif arguments.action == "install-partial":
         if not names:
             parser.error("install-partial needs one or more root books")

@@ -290,8 +290,31 @@ include printed a compiled-file warning because the scratch copy omitted
 certified in this reproduction.
 
 The original measurement above remains evidence for its tested compositions,
-not a universal same-source hash guarantee. Its `install-set` mixed fallback
-does not use the new incremental selector.
+not a universal same-source hash guarantee. A follow-up applied the same
+selector to `install-set` and `proof_artifacts.py acquire`, including
+single-origin candidates; their final ACL2 load validation remains required.
+On the failed-snapshot scratch source, the revised `install-set
+books/hybrid-store` selected a complete 43-book composed set from four
+origins, and ACL2 `(include-book "books/hybrid-store")` returned normally.
+The scratch omitted compiled files, producing only the expected compiled-file
+warning. This is an actual-certificate regression for the image acquisition
+path's selector, not a native image build.
+
+For a read-only cost measurement, hbox received a git archive of exact source
+`e4f62e7c41f0150cf2a0cdc0dc7ba009db0c0886` under isolated
+`/tank/fn/gates/cache-compose-e4f62e7c-measure`. Against its existing cache
+and w28 ACL2 toolchain, the default image declared 79 roots and a 202-book
+closure: 149 books had 311 cached candidates, producing 10,240 transitive
+candidate comparisons. The selector took 1.562 seconds. The DTN image had
+61 roots, a 188-book closure, 143 cached books, 303 candidates, and 9,723
+comparisons; selection took 1.294 seconds. Both profiles together took 13.42
+seconds wall and peaked at 278,516 KB RSS, including the first cold source
+closure scan at 9.246 seconds. A separate `artifact_sets` call on the default
+profile took 2.87 seconds and 278,696 KB peak; it found 22 candidate sets,
+none complete because this source revision still lacked cached certificates
+for 53 books. These probes installed no certificates, did no certification,
+and did not modify the shared cache. The measured selector cost did not
+justify a new optimization or a weakened compatibility rule.
 
 - The experiment covers one three-book chain and one diamond (case 5) on one
   host and toolchain. It does not include `.pcert` handling (`--pcert` mode),

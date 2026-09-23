@@ -288,7 +288,7 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
         mode = (f"--require-origin {remote_quote(require_origin)} "
                 "--dependencies-only install-set")
     else:
-        mode = '--acl2 "$acl2" install-partial'
+        mode = 'install-partial'
     return (
         f"cd {remote_quote(remote)} || exit 9; "
         f"roots=$({select}) || exit 13; "
@@ -299,7 +299,7 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
         "toolchain=$(python3 tools/acl2_toolchain.py identity \"$acl2\") "
         "|| exit 14; "
         f"python3 tools/certs.py --cache {remote_quote(settings['cache'])} "
-        f"--toolchain-identity \"$toolchain\" "
+        f"--toolchain-identity \"$toolchain\" --acl2 \"$acl2\" "
         f"{mode} $roots")
 
 

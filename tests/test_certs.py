@@ -610,6 +610,14 @@ class ArtifactSetTests(unittest.TestCase):
 
     TOOLCHAIN = certs.stable_identity(TEST_COMPATIBILITY)
 
+    @staticmethod
+    def install(*args, **kwargs):
+        # These fixtures are intentionally not real ACL2 certificates.
+        return certs.install_artifact_set(
+            *args, **kwargs, acl2=Path("/fixture/acl2"),
+            pair_checker=lambda paths, pairs, acl2, root:
+                {pair: (True, True) for pair in pairs})
+
     def publish(self, source: Path, cache: Path, books: list[str], origin: str):
         manifest = manifest_for(source, books, write=False)
         certs.publish(source, cache, [manifest], books, origin=origin,
@@ -639,7 +647,7 @@ class ArtifactSetTests(unittest.TestCase):
             self.publish(first, cache, ["books/base"], "/farm/run-a")
             self.publish(second, cache, ["books/mid"], "/farm/run-b")
             target = worktree(destination + "/target")
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertIsNotNone(report.artifact_set)
             self.assertEqual(report.artifact_origin, certs.COMPOSED)
@@ -652,6 +660,44 @@ class ArtifactSetTests(unittest.TestCase):
             line = report.lines()[1]
             self.assertIn("origin composed", line)
             self.assertIn("; origins /farm/run-a=1,/farm/run-b=1", line)
+
+    def test_install_set_chooses_acl2_matching_child_over_newer_same_source(self):
+        """The source closure key alone admitted the failed hbox mixture."""
+        with tempfile.TemporaryDirectory() as one, \
+                tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as three, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            older = worktree(one, certified=["books/base"])
+            newer = worktree(two, certified=["books/base"])
+            parent = worktree(three, certified=["books/mid"])
+            self.publish(older, cache, ["books/base"], "/farm/older")
+            self.publish(newer, cache, ["books/base"], "/farm/newer")
+            self.publish(parent, cache, ["books/mid"], "/farm/parent")
+            self.age(cache, older, "/farm/older", "2026-01-01T00:00:00+00:00")
+            target = worktree(destination + "/target")
+
+            def acl2_pairs(paths, pairs, acl2, root):
+                return {pair: (True, paths[pair[1]].parent ==
+                               entry(cache, target, "books/base", Path("/farm/older")))
+                        for pair in pairs}
+
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN,
+                acl2=Path("/fixture/acl2"), pair_checker=acl2_pairs)
+            self.assertIsNotNone(report.artifact_set)
+            self.assertEqual(report.origins,
+                             {"/farm/older": 1, "/farm/parent": 1})
+            self.assertEqual((target / "books/base.cert").read_bytes(),
+                             (older / "books/base.cert").read_bytes())
+            refused_target = worktree(destination + "/refused")
+            refused = certs.install_artifact_set(
+                refused_target, cache, ["books/mid"], self.TOOLCHAIN,
+                acl2=Path("/fixture/acl2"),
+                pair_checker=lambda paths, pairs, acl2, root:
+                    {pair: (True, False) for pair in pairs})
+            self.assertIsNone(refused.artifact_set)
+            self.assertFalse((refused_target / "books/mid.cert").exists())
 
     def test_each_pair_keeps_the_bytes_its_own_origin_wrote(self):
         """The case the single-origin rule was written for, now composed.
@@ -676,7 +722,7 @@ class ArtifactSetTests(unittest.TestCase):
             self.publish(first, cache, ["books/base"], "/farm/run-a")
             self.publish(second, cache, ["books/mid"], "/farm/run-b")
             target = worktree(destination + "/target")
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertEqual(report.artifact_origin, certs.COMPOSED)
             self.assertIn(b"/farm/run-a/books/base.lisp",
@@ -695,7 +741,7 @@ class ArtifactSetTests(unittest.TestCase):
             self.publish(newer, cache, ["books/base"], "/farm/newer")
             self.age(cache, whole, "/farm/whole", "2026-01-01T00:00:00+00:00")
             target = worktree(destination + "/target")
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertEqual(report.artifact_origin, "/farm/whole")
             self.assertEqual(report.origins, {"/farm/whole": 2})
@@ -716,7 +762,7 @@ class ArtifactSetTests(unittest.TestCase):
             self.age(cache, old, "/farm/old", "2026-01-01T00:00:00+00:00")
             self.age(cache, new, "/farm/new", "2026-09-01T00:00:00+00:00")
             target = worktree(destination + "/target")
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertEqual(report.origins, {"/farm/new": 1, "/farm/mid": 1})
             self.assertIn(b"new base", (target / "books/base.cert").read_bytes())
@@ -731,7 +777,7 @@ class ArtifactSetTests(unittest.TestCase):
             snapshot = worktree(two, certified=["books/mid"])
             self.publish(snapshot, cache, ["books/mid"], "/farm/run-b")
             target = worktree(destination + "/target")
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertIsNone(report.artifact_set)
             self.assertEqual(report.uncached, ["books/base"])
@@ -751,7 +797,7 @@ class ArtifactSetTests(unittest.TestCase):
             self.publish(snapshot, cache, ["books/mid"], "/farm/run-b")
             shutil.rmtree(gone)
             target = worktree(destination + "/target")
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertEqual(report.origins, {str(gate): 1, "/farm/run-b": 1})
             self.assertTrue((target / "books/base.cert").is_file())
@@ -765,7 +811,7 @@ class ArtifactSetTests(unittest.TestCase):
             self.publish(first, cache, ["books/base"], "/farm/run-a")
             self.publish(second, cache, ["books/mid"], "/farm/run-b")
             target = worktree(destination + "/target")
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], self.TOOLCHAIN,
                 require_origin="/farm/run-b")
             self.assertIsNone(report.artifact_set)
@@ -783,7 +829,7 @@ class ArtifactSetTests(unittest.TestCase):
             second = worktree(two, certified=["books/mid"])
             self.publish(second, cache, ["books/mid"], "/farm/run-b")
             target = worktree(destination + "/target")
-            report = certs.install_artifact_set(target, cache, ["books/mid"])
+            report = self.install(target, cache, ["books/mid"])
             self.assertIsNone(report.artifact_set)
 
     def test_one_complete_origin_is_installed_as_a_unit(self):
@@ -793,7 +839,7 @@ class ArtifactSetTests(unittest.TestCase):
             self.publish(source, cache, ["books/base", "books/mid"],
                          "/farm/coherent")
             target = worktree(two)
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertIsNotNone(report.artifact_set)
             self.assertEqual(report.artifact_origin, "/farm/coherent")
@@ -808,7 +854,7 @@ class ArtifactSetTests(unittest.TestCase):
             self.publish(source, cache, ["books/base", "books/mid"],
                          "/farm/coherent")
             target = worktree(two)
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], "b" * 64)
             self.assertIsNone(report.artifact_set)
             self.assertCountEqual(report.uncached, ["books/base", "books/mid"])
@@ -824,7 +870,7 @@ class ArtifactSetTests(unittest.TestCase):
                 certs.publish(source, cache, [manifest], [name],
                               origin="/farm/coherent", origin_kind="run")
             target = worktree(destination + "/target")
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], self.TOOLCHAIN)
             self.assertEqual(report.artifact_origin, "/farm/coherent")
             self.assertEqual(report.installed, 2)
@@ -846,7 +892,7 @@ class ArtifactSetTests(unittest.TestCase):
             self.publish(first, cache, ["books/base", "books/mid"], "/farm/run-a")
             self.publish(second, cache, ["books/base", "books/mid"], "/farm/run-b")
             target = worktree(destination + "/target")
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], self.TOOLCHAIN,
                 require_origin="/farm/run-a")
             self.assertEqual(report.artifact_origin, "/farm/run-a")
@@ -861,7 +907,7 @@ class ArtifactSetTests(unittest.TestCase):
             source = worktree(one, certified=["books/base"])
             self.publish(source, cache, ["books/base"], "/farm/canonical")
             target = worktree(destination + "/target")
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, cache, ["books/mid"], self.TOOLCHAIN,
                 require_origin="/farm/canonical", dependencies_only=True)
             self.assertEqual(report.artifact_origin, "/farm/canonical")
@@ -872,7 +918,7 @@ class ArtifactSetTests(unittest.TestCase):
     def test_closure_recertification_purges_every_stale_pair_on_miss(self):
         with tempfile.TemporaryDirectory() as directory:
             target = worktree(directory, certified=["books/base", "books/mid"])
-            report = certs.install_artifact_set(
+            report = self.install(
                 target, target / "empty-cache", ["books/mid"], self.TOOLCHAIN,
                 require_origin=str(target), purge_on_miss=True)
             self.assertIsNone(report.artifact_set)
@@ -945,7 +991,7 @@ class PartialInstallTests(unittest.TestCase):
             self.publish(first, cache, ["books/base"], "/farm/run-a")
             self.publish(second, cache, ["books/mid"], "/farm/run-b")
             target = worktree(destination + "/target")
-            refused = certs.install_artifact_set(
+            refused = ArtifactSetTests.install(
                 target, cache, ["tests/acl2/mid-tests"], self.TOOLCHAIN)
             self.assertIsNone(refused.artifact_set)
             report = self.install(
