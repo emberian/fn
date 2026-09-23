@@ -1,0 +1,7 @@
+# Fragment carriers cannot enter Store as whole requests
+
+The full native A3 caller asks `fn-bpah-pending-view` in `host/native/bp-node.lisp:97-101` before issuing `:deliver` and entering Store/FNRJ. `fn-bpah-local-pendingp` now excludes bundles with the BP fragment flag before it considers the application ADU class. `fn-bpah-select-oldest-retains-pending` carries that property through selection, and `fn-bpah-host-pending-view-excludes-fragment` states it over the exact called selector. The theorem assumes no whole-state recognizer at the host: the selector examines held rows and never revalidates the complete machine.
+
+`tests/acl2/bp-app-handoff-tests.lisp` constructs a valid partial fragment whose payload is itself an entire canonical request ADU. It still yields no pending Store view, and a must-fail witness rejects the old behavior. The unchanged whole-bundle request witness still yields a delivery view. The fragment remains durably held for the C2 family query; this packet does not produce a reassembled whole bundle or retire its inputs.
+
+ACL2 8.7/SBCL on hbox, exact affected roots `books/bp-app-handoff`, its test, dependent `books/bp-handoff-status`, `books/bp-fnbs-delivery-replay`, and the handoff-status test all passed in `run-20260923T212036Z-ac8a`, manifest `certify-20260923T212044Z-180470.json`. Native interrupted-contact and kind-18 atomic replacement evidence remain open.
