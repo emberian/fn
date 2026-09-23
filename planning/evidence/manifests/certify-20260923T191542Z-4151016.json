@@ -1,0 +1,339 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+    "launcher_chain_sha256": [
+      "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g",
+  "acl2_executable_sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+  "acl2_exit_codes": {
+    "books/bp-node-receive-boundary": 0,
+    "tests/acl2/bp-node-receive-boundary-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "launcher_chain_sha256": [
+        "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+      "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "size": 233686912
+    },
+    "launchers": [
+      {
+        "path": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        "sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+        "size": 279
+      }
+    ],
+    "runtime": {
+      "path": "/tank/fn/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/tank/fn/gates/bp-native-qualify-8cfaeb9f/build/acl2/certify-20260923T191542Z-4151016",
+  "book_failures": {},
+  "book_provenance": {
+    "books/bp-bundle": "installed",
+    "books/bp-bundle-invariants": "installed",
+    "books/bp-node": "installed",
+    "books/bp-node-foundation": "installed",
+    "books/bp-node-machine": "installed",
+    "books/bp-node-machine-guards": "installed",
+    "books/bp-node-machine-invariants": "installed",
+    "books/bp-node-receive-boundary": "certified",
+    "books/bp-primary": "installed",
+    "books/bp-primary-cbor": "installed",
+    "books/bp-primary-invariants": "installed",
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/clock": "installed",
+    "books/codec-attach": "installed",
+    "books/crypto-seam": "installed",
+    "books/defrecord": "installed",
+    "books/frame-fields": "installed",
+    "books/frame-octets": "installed",
+    "books/records": "installed",
+    "books/records-attach": "installed",
+    "books/records-canonicality": "installed",
+    "books/records-invariants": "installed",
+    "books/records-seam": "installed",
+    "books/records-shape": "installed",
+    "books/statement-attach": "installed",
+    "books/statement-codec": "installed",
+    "books/statement-items": "installed",
+    "books/statement-seam": "installed",
+    "books/wildmat": "installed",
+    "tests/acl2/bp-node-foundation-tests": "installed",
+    "tests/acl2/bp-node-receive-boundary-tests": "certified"
+  },
+  "book_results": {
+    "books/bp-node-receive-boundary": "passed",
+    "tests/acl2/bp-node-receive-boundary-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/bp-node-receive-boundary": 3.795,
+    "tests/acl2/bp-node-receive-boundary-tests": 1.752
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 120,
+  "cache_install": {
+    "directory": "/tank/fn/certcache",
+    "installed": 0,
+    "kept": 30,
+    "origins": {
+      "/tank/fn/gates/integrate-bp-a2-2009-current": 1,
+      "/tank/fn/gates/takeover-bp-a2-guards": 2,
+      "/tank/fn/gates/takeover-bp-machine-guards": 2,
+      "/tank/fn/gates/takeover-v0-image-329a51a2": 25
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0"
+  },
+  "cert_cache": {
+    "already_cached": 2,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/bp-node-receive-boundary",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/bp-node-receive-boundary-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 2,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/bp-node-receive-boundary": "e3e00355804b525fbbf04ca231e1f523b29256eae681707cc963b97260410f42",
+    "tests/acl2/bp-node-receive-boundary-tests": "47580d02491f139465b1ba4fbd80738d370feeab453a2760de27ac99fe2f3565"
+  },
+  "certify_wall_seconds": 5.556,
+  "closure": false,
+  "command": [
+    "/tank/fn/toolchains/w28/acl2-literal-4g"
+  ],
+  "driver_digests_sha256": {
+    "books/bp-node-receive-boundary": "fb7c7eaeb2b3d6b57742b43c87f43ff6d50877035fe37aa0a89a39b082c0a7b7",
+    "tests/acl2/bp-node-receive-boundary-tests": "4ad3079a141cffaff7534a715f1c86730e5c9aaaf3057bbd657bab925ccf9f2c"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 7b66412c3f728b2844e12974124a74c5 26fbce6d732b",
+    "FN_CERTIFY_SUCCESS 7b66412c3f728b2844e12974124a74c5 8432a1fb1546"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T19:15:49+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "incremental": true,
+  "installed_books": {
+    "books/bp-bundle": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/bp-bundle-invariants": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/bp-node": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/bp-node-foundation": "/tank/fn/gates/takeover-bp-a2-guards",
+    "books/bp-node-machine": "/tank/fn/gates/takeover-bp-machine-guards",
+    "books/bp-node-machine-guards": "/tank/fn/gates/takeover-bp-a2-guards",
+    "books/bp-node-machine-invariants": "/tank/fn/gates/takeover-bp-machine-guards",
+    "books/bp-primary": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/bp-primary-cbor": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/bp-primary-invariants": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/cbor": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/cbor-invariants": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/clock": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/codec-attach": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/crypto-seam": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/defrecord": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/frame-fields": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/frame-octets": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/records": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/records-attach": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/records-canonicality": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/records-invariants": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/records-seam": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/records-shape": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/statement-attach": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/statement-codec": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/statement-items": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/statement-seam": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/wildmat": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "tests/acl2/bp-node-foundation-tests": "/tank/fn/gates/integrate-bp-a2-2009-current"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 7b66412c3f728b2844e12974124a74c5 26fbce6d732b",
+    "FN_CERTIFY_SUCCESS 7b66412c3f728b2844e12974124a74c5 8432a1fb1546"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/bp-node-receive-boundary",
+    "tests/acl2/bp-node-receive-boundary-tests"
+  ],
+  "requested_books": [
+    "books/bp-node-receive-boundary",
+    "tests/acl2/bp-node-receive-boundary-tests"
+  ],
+  "roots": [
+    "books/bp-node-receive-boundary",
+    "tests/acl2/bp-node-receive-boundary-tests"
+  ],
+  "run_id": "certify-20260923T191542Z-4151016",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "books_with_archived_wall": 2,
+    "policy": "critical-path-first",
+    "predicted_critical_path_seconds": 4.671
+  },
+  "slot_wait_seconds": {
+    "books/bp-node-receive-boundary": 0.0,
+    "tests/acl2/bp-node-receive-boundary-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/bp-bundle-invariants.lisp": "b0a67117f56e674bc95675019ebb3de17b30473f1b01e3a50cd874d6ccef3352",
+    "books/bp-bundle.lisp": "b209f5b465ea008d313deb02ac3a056d5f2716af86a3e4151a6111f4854f4505",
+    "books/bp-node-foundation.lisp": "3ce62f59c22003af9f4586391aa42151e71e14577a487c025399ed11fc213c1e",
+    "books/bp-node-machine-guards.lisp": "95289206a954ea971d50701cfb23b81a56f923597a31bb2a9724810e924534a1",
+    "books/bp-node-machine-invariants.lisp": "b707c880c4974f32930d5320e36f11768d49e654bf83919e186c12731b815a1e",
+    "books/bp-node-machine.lisp": "0a5421c905a7114db07fc39855cdf93307c05db2d278cb3428d67aac10d8370b",
+    "books/bp-node-receive-boundary.lisp": "d30041390008308d003372e6afc527ae0712b4a79c77aaa95c26cb6871546df0",
+    "books/bp-node.lisp": "bfadba9ee9100787fd16a533d4386b1190b5e273bcb097a33b74dbc6a6c4ca95",
+    "books/bp-primary-cbor.lisp": "6391e304623c67447b21b998228d0ec55d1e0b652ba2d3f32cedfdca6f888095",
+    "books/bp-primary-invariants.lisp": "2480d733e28328f76c6d406c46b0cb55aff09450973143a7c2d8a702eb90d141",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/codec-attach.lisp": "d26dacf4a14e32216acc4779ad007734120389815fba89585966761875fca252",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/records-attach.lisp": "dfd7681d95190fa9704a936e0e6b34d929b1bc69b8bb4d2e303a7ecbb29abbe1",
+    "books/records-canonicality.lisp": "a95f481f206918f63fb677ea06735fded68e47c0b8f42166041776d028f63cc9",
+    "books/records-invariants.lisp": "9f0afa3017215a9c574b7c6aca20b28798e8038244f03d3388f7187fd002ae5a",
+    "books/records-seam.lisp": "e1e62329922c67475b5d29318e63f9ae25817557340c3b6bb23095aa443de570",
+    "books/records-shape.lisp": "56696b8e7f89971ffbe80ea26477a0808d9b19b37e41c1aedfffebf787b5ff86",
+    "books/records.lisp": "76c4c69d2595d45fc3b140170b7efe54a309fbfc98021070c29dcb38c2f2739b",
+    "books/statement-attach.lisp": "0ca7a4dd3a18036585791cc5eec9171f34b7bb12cccb25b472699a0095b4489e",
+    "books/statement-codec.lisp": "1d74adc060854fcca78b634d86d8256aa2662df0bb0f50f7ba83cc90997030b2",
+    "books/statement-items.lisp": "d276c25e727687d2a0d81511dac307fca0ce21dcd138088449256edb089dea6e",
+    "books/statement-seam.lisp": "632414aa7641096c9a571804d0c45b225315119600051a9c251dae00c908874c",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-node-foundation-tests.lisp": "91d16b03f0298845af4b9cafe18c02d259e7f04714686666307d013e08d65331",
+    "tests/acl2/bp-node-receive-boundary-tests.lisp": "e7c9d9af3cfa2fb125f2a00baea4949c99e838fcced4962f4c2263b78dfce39c"
+  },
+  "source_digests_sha256_after": {
+    "books/bp-bundle-invariants.lisp": "b0a67117f56e674bc95675019ebb3de17b30473f1b01e3a50cd874d6ccef3352",
+    "books/bp-bundle.lisp": "b209f5b465ea008d313deb02ac3a056d5f2716af86a3e4151a6111f4854f4505",
+    "books/bp-node-foundation.lisp": "3ce62f59c22003af9f4586391aa42151e71e14577a487c025399ed11fc213c1e",
+    "books/bp-node-machine-guards.lisp": "95289206a954ea971d50701cfb23b81a56f923597a31bb2a9724810e924534a1",
+    "books/bp-node-machine-invariants.lisp": "b707c880c4974f32930d5320e36f11768d49e654bf83919e186c12731b815a1e",
+    "books/bp-node-machine.lisp": "0a5421c905a7114db07fc39855cdf93307c05db2d278cb3428d67aac10d8370b",
+    "books/bp-node-receive-boundary.lisp": "d30041390008308d003372e6afc527ae0712b4a79c77aaa95c26cb6871546df0",
+    "books/bp-node.lisp": "bfadba9ee9100787fd16a533d4386b1190b5e273bcb097a33b74dbc6a6c4ca95",
+    "books/bp-primary-cbor.lisp": "6391e304623c67447b21b998228d0ec55d1e0b652ba2d3f32cedfdca6f888095",
+    "books/bp-primary-invariants.lisp": "2480d733e28328f76c6d406c46b0cb55aff09450973143a7c2d8a702eb90d141",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/codec-attach.lisp": "d26dacf4a14e32216acc4779ad007734120389815fba89585966761875fca252",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/records-attach.lisp": "dfd7681d95190fa9704a936e0e6b34d929b1bc69b8bb4d2e303a7ecbb29abbe1",
+    "books/records-canonicality.lisp": "a95f481f206918f63fb677ea06735fded68e47c0b8f42166041776d028f63cc9",
+    "books/records-invariants.lisp": "9f0afa3017215a9c574b7c6aca20b28798e8038244f03d3388f7187fd002ae5a",
+    "books/records-seam.lisp": "e1e62329922c67475b5d29318e63f9ae25817557340c3b6bb23095aa443de570",
+    "books/records-shape.lisp": "56696b8e7f89971ffbe80ea26477a0808d9b19b37e41c1aedfffebf787b5ff86",
+    "books/records.lisp": "76c4c69d2595d45fc3b140170b7efe54a309fbfc98021070c29dcb38c2f2739b",
+    "books/statement-attach.lisp": "0ca7a4dd3a18036585791cc5eec9171f34b7bb12cccb25b472699a0095b4489e",
+    "books/statement-codec.lisp": "1d74adc060854fcca78b634d86d8256aa2662df0bb0f50f7ba83cc90997030b2",
+    "books/statement-items.lisp": "d276c25e727687d2a0d81511dac307fca0ce21dcd138088449256edb089dea6e",
+    "books/statement-seam.lisp": "632414aa7641096c9a571804d0c45b225315119600051a9c251dae00c908874c",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-node-foundation-tests.lisp": "91d16b03f0298845af4b9cafe18c02d259e7f04714686666307d013e08d65331",
+    "tests/acl2/bp-node-receive-boundary-tests.lisp": "e7c9d9af3cfa2fb125f2a00baea4949c99e838fcced4962f4c2263b78dfce39c"
+  },
+  "start_order": [
+    "books/bp-node-receive-boundary",
+    "tests/acl2/bp-node-receive-boundary-tests"
+  ],
+  "started_utc": "2026-09-23T19:15:42+00:00",
+  "status": "passed",
+  "timeout_seconds": 120,
+  "tree": "/tank/fn/gates/bp-native-qualify-8cfaeb9f"
+}
