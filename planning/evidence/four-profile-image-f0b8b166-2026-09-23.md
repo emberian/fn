@@ -89,9 +89,10 @@ revision is `771171ce` (after `e2775c6f`); its tracked
 `7746ad2478f885d76e436d8a26f3a95d13fadabb4de957d09eb7e256e62f1ead`.
 The harness `tests/test_native_protected_peering.py` has SHA-256
 `b18a74c73c9f1c98b6eea342aa740ab6779800c3499f47e9ce7cb093389b71bd`;
-the matrix tool and FNFD inspector digests recorded by that lane are
-`a13db24d839259195b399db382344e7987dce1487d1a9fc76f47e3023c9aca55`
-and `0b9bb4702e20fe4009ef49af8dd0193d4e89ed55f8b14e172fa2b98413403d92`.
+the FNFD inspector digest recorded by that lane is
+`0b9bb4702e20fe4009ef49af8dd0193d4e89ed55f8b14e172fa2b98413403d92`.
+The r3 command was `python3 -m unittest -v tests.test_native_protected_peering`
+through `run-protected-f0b8b166.sh`; it did not invoke the separate matrix tool.
 The test checkout/harness revision is separate from this image's `f0b8b166`
 core source.
 
