@@ -159,6 +159,8 @@
     "tests/acl2/byte-store-stable-prefix-tests",
     "books/byte-store-record-fence",
     "tests/acl2/byte-store-record-fence-tests",
+    "books/byte-store-record-provenance",
+    "tests/acl2/byte-store-record-provenance-tests",
     "books/byte-store-keystones",
     "books/byte-store-observation",
     "tests/acl2/byte-store-observation-tests",
@@ -488,25 +490,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 489,
-    "books_in_root_closure": 488,
-    "roots": 484,
-    "theorems": 7558,
-    "functions": 5781,
-    "assert_events": 8425,
-    "must_fails": 346,
+    "books": 491,
+    "books_in_root_closure": 490,
+    "roots": 486,
+    "theorems": 7574,
+    "functions": 5784,
+    "assert_events": 8428,
+    "must_fails": 349,
     "encapsulates": 26,
     "guards": {
       "verified": 1876,
       "declared-off": 311,
       "default-guarded": 2840,
-      "default-unguarded": 754
+      "default-unguarded": 757
     },
     "suspect_theorems": 70,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 26,
-    "include_hygiene_warnings": 338,
+    "include_hygiene_warnings": 341,
     "host_names_warnings": 691,
     "hand_written_record_warnings": 18
   },
@@ -3094,6 +3096,31 @@
       "encapsulates": 0,
       "includes": [
         "byte-store-stable-prefix"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-record-provenance.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-relation"
       ],
       "system_includes": [],
       "suspects": [],
@@ -10019,6 +10046,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/byte-store-record-provenance-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 3,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-record-provenance",
+        "byte-store-stable-prefix-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/byte-store-relation-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -15634,6 +15689,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/byte-store-record-provenance.lisp",
+        "line": 4,
+        "include": "byte-store-relation",
+        "included": "books/byte-store-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/byte-store-txn-name.lisp",
         "line": 2,
         "include": "byte-store-frame",
@@ -16671,6 +16733,20 @@
       },
       {
         "book": "tests/acl2/byte-store-record-fence-tests.lisp",
+        "line": 5,
+        "include": "byte-store-stable-prefix-tests",
+        "included": "tests/acl2/byte-store-stable-prefix-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-record-provenance-tests.lisp",
+        "line": 4,
+        "include": "../../books/byte-store-record-provenance",
+        "included": "books/byte-store-record-provenance.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-record-provenance-tests.lisp",
         "line": 5,
         "include": "byte-store-stable-prefix-tests",
         "included": "tests/acl2/byte-store-stable-prefix-tests.lisp",
