@@ -183,3 +183,19 @@
     (and (fn-feed-journalp (fn-feed-live-records f (car events)))
          (fn-feed-live-serializablep (fn-feed-live-next f (car events))
                                     (cdr events)))))
+
+; Export theory.  The dispatchers over an event and the port check leave
+; closed.  Each opens every event kind, every reply code and the FNFD encoder
+; (fn-feed-record-portp calls the real encoder), and a book above that states
+; a bridge over fn-feed-live-port-step opened them unless it closed them in
+; its own hint: 34 to 47 definitions and 35 s between feed-totality and
+; owner-feed-port before their hints closed them
+; (planning/evidence/feed-wire-cost-2026-09-23.md).  A proof about one
+; dispatcher enables it by name, as feed-correspondence and feed-totality
+; already do.  The per-kind record emitters stay enabled: owner-feed builds
+; its own record functions on them.
+(deftheory fn-feed-events-vocabulary
+  '((:d fn-feed-live-next) (:d fn-feed-live-records) (:d fn-feed-live-effects)
+    (:d fn-feed-records-portp) (:d fn-feed-record-portp)))
+
+(in-theory (disable fn-feed-events-vocabulary))
