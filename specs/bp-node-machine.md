@@ -2331,6 +2331,13 @@ logging and correlating a report is bounded work per report and is served
 in the loop's diagnostic share (§9.1), so report traffic cannot consume the
 service accepted work needs.
 
+The D1b kind-10 prerequisite currently has a pure, certified held-row
+selector/tombstone kernel only (`books/bp-report-deletion.lisp`). It requires
+definite expiry and exact arrival/primary identity, and cannot issue a report
+until a single ordered FNBS replay and durable publication path accepts the
+deletion. The current native caller has no status-report generation or
+consumption claim.
+
 Minimal generation and consumption before slice B's gate (§11): the
 deletion assertion at §4.2's `:expire` and §4.3's deletions, and §4.1
 step 5's consumption, land as D1b; the other three generation points and

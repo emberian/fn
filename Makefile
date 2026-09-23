@@ -251,6 +251,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-app-handoff-tests \
 	books/bp-app-handoff-time \
 	tests/acl2/bp-app-handoff-time-tests \
+	books/bp-report-deletion \
+	tests/acl2/bp-report-deletion-tests \
 	books/bp-handoff-status \
 	tests/acl2/bp-handoff-status-tests \
 	books/bp-session-admission \
