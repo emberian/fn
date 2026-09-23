@@ -1660,31 +1660,13 @@
 ; newsgroups whose names match the wildmat, since the specified date and
 ; time."  Three decisions are taken here and none of them is taken by a host.
 ;
-; WHICH INSTANT.  fn's committed article record (books/acceptance.lisp) is
-; (message-id payload groups memberships pin): the store keeps no arrival
-; stamp beside an article, so there is no acceptance time to read.  The
-; instant fn has is the one inside the retained octets -- Injection-Date, and
-; where that is absent Date -- which is the field and the fallback order RFC
-; 5537 sections 3.6 and 3.7 fix for staleness and which books/path.lisp
-; already reads.  For an article this node injected that stamp was written by
-; books/injection.lisp from the node's own clock; for an article a peer fed,
-; it is the injecting agent's claim and nothing stronger.  specs/nntp.md says
-; so; this comment is not a claim that NEWNEWS reports a locally witnessed
-; arrival.  An article whose stamp fn cannot read exactly is not reported:
-; section 7.4.2 makes the list a set the client may see more than once and
-; permits it to be empty, so omission stays inside the response, and it is
-; recorded as a limitation rather than hidden.
+; WHICH INSTANT.  The durable article stamp is the owner's whole wall second
+; at prepare, independent of Injection-Date and Date in the payload.  Legacy
+; records use the nearest later accepted stamp, else the reader's pinned
+; wall second, else remain visible at every threshold.
 ;
-; HOW MUCH WORK.  A command must not be able to buy an unbounded parse.  The
-; scan below walks the committed article list once, tests membership of a
-; matching group from the article's own membership list (no parse, the same
-; test GROUP, LISTGROUP and OVER pay), and parses ONLY the articles that pass
-; that test, at most *fn-nntp-newnews-parse-budget* of them.  A request with
-; more matching articles than the budget is refused with RFC 3977 section
-; 3.2.1's 503 -- the code that section assigns to a server that "only handles
-; a subset of legitimate cases" -- and parses nothing at all, because the
-; refusal is decided on the way down the list and every parse happens on the
-; way back up.  The bound and its scope are stated in specs/nntp.md.
+; HOW MUCH WORK.  One pass walks the committed list and its memberships.  No
+; article payload is parsed, and the answer has at most one line per candidate.
 ;
 ; WHICH IDENTIFIER.  The rendered line is the stored identifier, octet for
 ; octet, exactly as STAT and NEXT render it.  An article that is not
@@ -1692,18 +1674,8 @@
 ; outside RFC 3977 section 6, or an identifier this profile cannot render --
 ; is not a candidate, so no unrenderable identifier can reach a line.
 
-(defconst *fn-nntp-injection-date-name*
-  ; "injection-date".  fn-article-parse stores field names downcased, so the
-  ; lookup key is lower case; *fn-nov-date-name* above is the Date key.
-  '(105 110 106 101 99 116 105 111 110 45 100 97 116 101))
-
-; How many committed articles one NEWNEWS may parse.  A request that matches
-; more than this is refused rather than served more slowly: see the 503 arm of
-; fn-nntp-newnews-response and the bound sentence in specs/nntp.md.
-(defconst *fn-nntp-newnews-parse-budget* 256)
-
 ; -----------------------------------------------------------------------------
-; The RFC 5322 section 3.3 date-time carried by Injection-Date and Date
+; The RFC 5322 section 3.3 date-time decoder (kept for date grammar clients)
 ;
 ; RFC 5536 section 2.2 restricts what a Netnews agent may generate; section
 ; 3.1.1 requires an agent to ACCEPT the deprecated "GMT" zone and points at
@@ -1926,7 +1898,7 @@
         (fn-ng-less-equal threshold (* 1000 instant)))))
 
 (defun fn-nntp-newnews-reader-horizon (env)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (let ((obs (fn-nntp-env-observation env)))
     (if (and (fn-clock-observationp obs) (fn-clock-has-wall obs))
         (floor (fn-clock-wall obs) 1000)
@@ -2128,7 +2100,9 @@
 (verify-guards fn-nntp-dt-time)
 (verify-guards fn-nntp-dt-parse)
 (verify-guards fn-nntp-newnews-newp)
-(verify-guards fn-nntp-newnews-reader-horizon)
+(verify-guards fn-nntp-newnews-reader-horizon
+  :hints (("Goal" :in-theory (enable fn-clock-observationp
+                                     fn-clock-timep))))
 (verify-guards fn-nntp-newnews-candidatep)
 (verify-guards fn-nntp-newnews-scan)
 (verify-guards fn-nntp-newnews-response)

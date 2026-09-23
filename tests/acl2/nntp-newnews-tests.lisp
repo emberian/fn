@@ -136,12 +136,6 @@
     97 108 108 32 99 108 111 99 107 32 114 101 97 100
     105 110 103 13 10))
 
-(defconst *nn-expected-503-budget*
-  '(53 48 51 32 109 111 114 101 32 109 97 116 99 104
-    105 110 103 32 97 114 116 105 99 108 101 115 32 116
-    104 97 110 32 116 104 105 115 32 99 111 109 109 97
-    110 100 32 109 97 121 32 114 101 97 100 13 10))
-
 (defconst *nn-line-letters* '(78 69 87 78 69 87 83 32 102 110 46 108 101 116 116 101 114 115
     32 50 48 50 54 48 57 49 57 32 48 48 48 48 48 48 32 71
     77 84))
@@ -228,9 +222,9 @@
 (defconst *nn-groups* '("fn.letters" "fn.notes"))
 
 ; `st`, not `state`: ACL2 reserves that symbol for the live state.
-(defun nn-accept (st msgid payload groups)
+(defun nn-accept (st msgid payload groups stamp)
   (fn-accept-complete
-   (fn-accept-prepare st 1 msgid payload groups 841000000)
+   (fn-accept-prepare st 1 msgid payload groups stamp)
    (fn-state-next-txid st) 1 :durable))
 
 (defconst *nn-archive*
@@ -239,11 +233,11 @@
     (nn-accept
      (nn-accept
       (nn-accept (fn-initial-state *nn-groups*)
-                 "<a1@fn.invalid>" *nn-a1-payload* '("fn.letters"))
-      "<a2@fn.invalid>" *nn-a2-payload* '("fn.letters"))
-     "<a3@fn.invalid>" *nn-a3-payload* '("fn.notes"))
-    "<a4@fn.invalid>" *nn-a4-payload* '("fn.letters"))
-   "<a5@fn.invalid>" *nn-a5-payload* '("fn.letters")))
+                 "<a1@fn.invalid>" *nn-a1-payload* '("fn.letters") 843134400)
+      "<a2@fn.invalid>" *nn-a2-payload* '("fn.letters") 820540800)
+     "<a3@fn.invalid>" *nn-a3-payload* '("fn.notes") 843134400)
+    "<a4@fn.invalid>" *nn-a4-payload* '("fn.letters") 843141600)
+   "<a5@fn.invalid>" *nn-a5-payload* '("fn.letters") 820540800)))
 
 (assert-event (equal (len (fn-state-articles *nn-archive*)) 5))
 (assert-event (fn-nntp-projectionp *nn-archive*))
@@ -264,173 +258,114 @@
 (defconst *nn-a4-id* (fn-nntp-string-octets "<a4@fn.invalid>"))
 
 ; -----------------------------------------------------------------------------
-; The stamp each article carries
-;
-; This is the witness that the scan is reading the article and not a store
-; field that does not exist: each stored payload decodes to the instant its
-; own header body names, and the two that carry none are named errors.
+; The durable stamp, independent of payload Date and Injection-Date.
+(assert-event (equal (fn-article-stamp
+                      (fn-find-article "<a1@fn.invalid>" *nn-articles*))
+                     843134400))
+(assert-event (equal (fn-article-stamp
+                      (fn-find-article "<a5@fn.invalid>" *nn-articles*))
+                     820540800))
 
-(defun nn-stamp (msgid)
-  (fn-nntp-newnews-stamp (fn-find-article msgid *nn-articles*)))
+(defun nn-ids (groups threshold horizon)
+  (fn-nntp-newnews-scan groups threshold *nn-articles* horizon))
 
-(assert-event (equal (nn-stamp "<a1@fn.invalid>") (list :ok *nn-noon*)))
-(assert-event (equal (nn-stamp "<a2@fn.invalid>") (list :ok *nn-january*)))
-(assert-event (equal (nn-stamp "<a3@fn.invalid>") (list :ok *nn-noon*)))
-; RFC 5537 section 3.6's fallback: no Injection-Date, so Date decides, and
-; the -0100 offset is applied rather than ignored.
-(assert-event (equal (nn-stamp "<a4@fn.invalid>") (list :ok *nn-afternoon*)))
-(assert-event (equal (nn-stamp "<a5@fn.invalid>") (list :error :no-date)))
+(defconst *nn-a1-article* (fn-find-article "<a1@fn.invalid>" *nn-articles*))
+(defconst *nn-a3-article* (fn-find-article "<a3@fn.invalid>" *nn-articles*))
+(defconst *nn-a5-article* (fn-find-article "<a5@fn.invalid>" *nn-articles*))
+(defconst *nn-a5-id* (fn-nntp-string-octets "<a5@fn.invalid>"))
 
-; -----------------------------------------------------------------------------
-; Witnesses for the keystones of books/nntp-newnews.lisp
-
-(defun nn-ids (groups threshold fuel)
-  (fn-nntp-parse-1
-   (fn-nntp-newnews-scan groups threshold *nn-articles* fuel)))
-
-; fn-nntp-newnews-lines-are-clean and
-; fn-nntp-newnews-scan-reports-only-witnessed-lines are not vacuous here: the
-; scan returns two lines, in committed order, and both are real identifiers.
-(assert-event (equal (nn-ids '("fn.letters") *nn-midnight* 256)
+; At the owner's stamped second the article qualifies; one second later it
+; does not.  a5 has no Date header, but its accepted stamp still decides.
+(assert-event (equal (nn-ids '("fn.letters") *nn-midnight* :none)
                      (list *nn-a4-id* *nn-a1-id*)))
-(assert-event (fn-nov-clean-line-listp (nn-ids '("fn.letters") *nn-midnight* 256)))
-(assert-event (equal (nn-ids *nn-groups* *nn-midnight* 256)
+(assert-event (equal (nn-ids *nn-groups* *nn-midnight* :none)
                      (list *nn-a4-id* *nn-a3-id* *nn-a1-id*)))
-; The date filter has teeth: an instant after both readings empties the list,
-; and an instant before every reading returns the four readable articles.
-(assert-event (equal (nn-ids '("fn.letters") *nn-afternoon* 256)
+(assert-event (equal (fn-nntp-newnews-scan
+                      '("fn.letters") *nn-january*
+                      (list *nn-a5-article*) :none)
+                     (list *nn-a5-id*)))
+(assert-event (equal (fn-nntp-newnews-scan
+                      '("fn.letters") (+ *nn-january* 1000)
+                      (list *nn-a5-article*) :none)
+                     nil))
+(assert-event (equal (nn-ids '("fn.letters") *nn-afternoon* :none)
                      (list *nn-a4-id*)))
 (assert-event (equal (nn-ids '("fn.letters")
-                             (fn-nntp-civil-dtn-ms 2026 9 20 0 0 0) 256)
+                             (fn-nntp-civil-dtn-ms 2026 9 20 0 0 0) :none)
                      nil))
-(assert-event (equal (len (nn-ids *nn-groups* 0 256)) 4))
+(assert-event (fn-nov-clean-line-listp
+               (nn-ids '("fn.letters") *nn-midnight* :none)))
 
-; The wildmat scoping, as a separating witness rather than as a shape: a1 is
-; reported for fn.letters and is NOT witnessed for fn.notes, so the group
-; argument of fn-nntp-newnews-witnessedp is load bearing.
-(assert-event
- (and (member-equal *nn-a1-id* (nn-ids '("fn.letters") *nn-midnight* 256))
-      (fn-nntp-newnews-witnessedp *nn-a1-id* '("fn.letters")
-                                  *nn-midnight* *nn-articles*)
-      (not (fn-nntp-newnews-witnessedp *nn-a1-id* '("fn.notes")
-                                       *nn-midnight* *nn-articles*))))
-; ... and the threshold argument is too.
-(assert-event
- (not (fn-nntp-newnews-witnessedp *nn-a1-id* '("fn.letters")
-                                  (fn-nntp-civil-dtn-ms 2026 9 20 0 0 0)
-                                  *nn-articles*)))
-; An article whose stamp fn cannot read is never witnessed, whatever the
-; instant: the stated limitation, as a fact rather than as prose.
-(assert-event
- (not (fn-nntp-newnews-witnessedp
-       (fn-nntp-string-octets "<a5@fn.invalid>") *nn-groups* 0 *nn-articles*)))
+(defun nn-with-stamp (a stamp)
+  (fn-make-article (fn-article-msgid a) (fn-article-payload a)
+                   (fn-article-groups a) (fn-article-memberships a)
+                   (fn-article-pin a) stamp))
+(defconst *nn-legacy* (nn-with-stamp *nn-a5-article* :legacy))
+; The newest stamped article is outside the matched group but still supplies
+; the nearest later-acceptance horizon for this older legacy article.
+(defconst *nn-mixed* (list *nn-a3-article* *nn-legacy*))
+(assert-event (equal (fn-nntp-newnews-scan
+                      '("fn.letters") *nn-noon* *nn-mixed* :none)
+                     (list *nn-a5-id*)))
+(assert-event (equal (fn-nntp-newnews-scan
+                      '("fn.letters") (+ *nn-noon* 1000) *nn-mixed* :none)
+                     nil))
+; A lone legacy article uses the reader's pinned wall, or stays visible
+; without any wall.  The served path does not guess from its payload.
+(assert-event (equal (fn-nntp-newnews-reader-horizon *nn-env*) 843136496))
+(assert-event (equal (fn-nntp-newnews-reader-horizon *nn-blind-env*) :none))
+(assert-event (equal (fn-nntp-newnews-scan
+                      '("fn.letters") 843136496000
+                      (list *nn-legacy*)
+                      (fn-nntp-newnews-reader-horizon *nn-env*))
+                     (list *nn-a5-id*)))
+(assert-event (equal (fn-nntp-newnews-scan
+                      '("fn.letters") 843136497000
+                      (list *nn-legacy*)
+                      (fn-nntp-newnews-reader-horizon *nn-env*))
+                     nil))
+(assert-event (equal (fn-nntp-newnews-scan
+                      '("fn.letters") 999999999999
+                      (list *nn-legacy*)
+                      (fn-nntp-newnews-reader-horizon *nn-blind-env*))
+                     (list *nn-a5-id*)))
 
-; The budget keystone, on both sides of its boundary.  Four articles of
-; fn.letters are candidates, so fuel 4 answers and fuel 3 refuses; the
-; independent count agrees with the scan at each.
-(assert-event (equal (fn-nntp-newnews-candidate-count '("fn.letters")
-                                                      *nn-articles*)
-                     4))
-(assert-event (equal (fn-nntp-newnews-candidate-count *nn-groups* *nn-articles*)
-                     5))
-(assert-event (fn-nntp-parse-okp
-               (fn-nntp-newnews-scan '("fn.letters") *nn-midnight*
-                                     *nn-articles* 4)))
-(assert-event (equal (fn-nntp-newnews-scan '("fn.letters") *nn-midnight*
-                                           *nn-articles* 3)
-                     (list :over-budget)))
-; The refusal is total: it carries no partial list a caller could mistake for
-; an answer.
-(assert-event (equal (nn-ids '("fn.letters") *nn-midnight* 3) nil))
+; Both sides of the independent filter equation make real decisions.
+(assert-event (equal (fn-nntp-newnews-accepted-since
+                      '("fn.letters") *nn-midnight* *nn-articles* nil :none)
+                     (nn-ids '("fn.letters") *nn-midnight* :none)))
+(assert-event (equal (fn-nntp-newnews-accepted-since
+                      '("fn.letters") (+ *nn-noon* 1000)
+                      *nn-articles* nil :none)
+                     (list *nn-a4-id*)))
+(local
+ (must-fail
+  (defthm nn-teeth-every-article-is-a-candidate
+    (fn-nntp-newnews-candidatep '("fn.letters") *nn-a3-article*))))
+(local
+ (must-fail
+  (defthm nn-teeth-every-stamp-is-new
+    (equal (nn-ids '("fn.letters") (+ *nn-noon* 1000) :none)
+           (nn-ids '("fn.letters") *nn-midnight* :none)))))
+(local
+ (must-fail
+  (defthm nn-teeth-payload-decides-the-answer
+    (not (equal
+          (fn-nntp-newnews-scan
+           '("fn.letters") *nn-midnight*
+           (fn-nntp-newnews-without-payload *nn-articles*) :none)
+          (nn-ids '("fn.letters") *nn-midnight* :none))))))
+(assert-event (equal (fn-nntp-newnews-candidate-count
+                      '("fn.letters") *nn-articles*) 4))
+(assert-event (equal (len (nn-ids '("fn.letters") *nn-midnight* :none)) 2))
+(local
+ (must-fail
+  (defthm nn-teeth-lines-exceed-candidates
+    (< (fn-nntp-newnews-candidate-count
+        '("fn.letters") *nn-articles*)
+       (len (nn-ids '("fn.letters") *nn-midnight* :none))))))
 
 ; -----------------------------------------------------------------------------
-; The teeth
-;
-; One `must-fail` per hypothesis of each keystone, and for a keystone whose
-; statement has none, a pair showing that neither side of it is constant.
-; Every case is grounded in a constant -- the archive above, the article
-; below, or a concrete session and command line -- so each one says WHICH
-; case separates the two sides rather than only that the general claim is
-; unproved.  Three of the dispatcher's hypotheses have no case, and the
-; comment there says which three and why.
-
-; A committed article whose stored identifier this profile cannot render.
-; The acceptance machine takes any string, so this is a reachable store and
-; not an invented value; it is what makes the projectability tooth concrete.
-(defconst *nn-odd-archive*
-  (nn-accept (fn-initial-state '("fn.letters"))
-             "no-angle-brackets" *nn-a1-payload* '("fn.letters")))
-(defconst *nn-odd-article* (car (fn-state-articles *nn-odd-archive*)))
-(defconst *nn-a1-article* (fn-find-article "<a1@fn.invalid>" *nn-articles*))
-; Both sides of each predicate, so neither is satisfied by a definition that
-; is constantly false.
-(assert-event (fn-nntp-article-idp *nn-a1-article*))
-(assert-event (not (fn-nntp-article-idp *nn-odd-article*)))
-(assert-event (fn-nntp-newnews-candidatep '("fn.letters") *nn-a1-article*))
-(assert-event (not (fn-nntp-newnews-candidatep '("fn.letters") *nn-odd-article*)))
-; ... and the article of the other group is not a candidate for this one.
-(assert-event (not (fn-nntp-newnews-candidatep
-                    '("fn.letters")
-                    (fn-find-article "<a3@fn.invalid>" *nn-articles*))))
-; So it can never reach a line, whatever the instant or the fuel, even though
-; its payload carries a perfectly readable Injection-Date.
-(assert-event (equal (fn-nntp-newnews-stamp *nn-odd-article*)
-                     (list :ok *nn-noon*)))
-(assert-event (equal (fn-nntp-newnews-scan '("fn.letters") 0
-                                           (fn-state-articles *nn-odd-archive*)
-                                           256)
-                     (list :ok nil)))
-
-; fn-nntp-newnews-candidate-is-projectable: drop the candidate hypothesis,
-; over the article that separates the two.
-(local
- (must-fail
-  (defthm nn-teeth-every-article-is-projectable
-    (fn-nntp-article-idp *nn-odd-article*))))
-
-; fn-nntp-newnews-scan-reports-only-witnessed-lines: drop the membership
-; hypothesis, over the identifier of the article in the OTHER group, and then
-; separately change the groups the witness is asked for.
-(local
- (must-fail
-  (defthm nn-teeth-every-line-is-witnessed
-    (fn-nntp-newnews-witnessedp *nn-a3-id* '("fn.letters")
-                                *nn-midnight* *nn-articles*))))
-
-(local
- (must-fail
-  (defthm nn-teeth-witnessed-by-any-groups
-    (implies (member-equal
-              line
-              (fn-nntp-parse-1
-               (fn-nntp-newnews-scan '("fn.letters") *nn-midnight*
-                                     *nn-articles* 256)))
-             (fn-nntp-newnews-witnessedp line '("fn.notes")
-                                         *nn-midnight* *nn-articles*)))))
-
-; fn-nntp-newnews-scan-answers-exactly-within-the-budget has no hypothesis,
-; so the teeth are that neither side is constant: the same archive refuses at
-; one fuel and answers at the next.
-(local
- (must-fail
-  (defthm nn-teeth-scan-always-answers
-    (fn-nntp-parse-okp
-     (fn-nntp-newnews-scan '("fn.letters") *nn-midnight* *nn-articles* 3)))))
-
-(local
- (must-fail
-  (defthm nn-teeth-scan-never-answers
-    (not (fn-nntp-parse-okp
-          (fn-nntp-newnews-scan '("fn.letters") *nn-midnight*
-                                *nn-articles* 4))))))
-
-; fn-nntp-newnews-scan-reports-at-most-the-budget: the bound is the fuel and
-; not some smaller constant -- this archive answers four lines.
-(local
- (must-fail
-  (defthm nn-teeth-scan-reports-at-most-one
-    (<= (len (nn-ids *nn-groups* 0 256)) 1))))
-
 ; fn-nntp-step-dispatches-newnews-to-the-newnews-response: one ground case
 ; per hypothesis that changes the answer.  Each is a concrete session, line
 ; or archive, not a free-variable claim: an open dispatcher over free
@@ -578,56 +513,17 @@
                      *nn-session*))
 
 ; -----------------------------------------------------------------------------
-; The 503 budget refusal is reachable
-;
-; *fn-nntp-newnews-parse-budget* articles is the boundary, so the branch is
-; exercised by an archive that crosses it.  The refusal costs no parse: the
-; payload below is never a readable stamp, and the command answers 503
-; without ever asking for one.
-
-(defun nn-bulk-id (n)
-  (coerce (append '(#\< #\n)
-                  (explode-nonnegative-integer (nfix n) 10 nil)
-                  '(#\@ #\f #\n #\. #\i #\n #\v #\a #\l #\i #\d #\>))
-          'string))
-
-(defun nn-bulk (st n)
+ ; A candidate-free list of 300 articles has a complete empty answer.  No
+; parser, size budget or partial-response 503 remains on this command.
+(defun nn-repeat-other (article n)
   (declare (xargs :measure (nfix n)))
-  (if (not (posp n))
-      st
-    (nn-bulk (nn-accept st (nn-bulk-id n) *nn-a5-payload* '("fn.letters"))
-             (- n 1))))
-
-(defconst *nn-bulk-articles* (+ *fn-nntp-newnews-parse-budget* 1))
-
-(defconst *nn-bulk-archive*
-  (nn-bulk (fn-initial-state '("fn.letters")) *nn-bulk-articles*))
-
-(assert-event (equal (len (fn-state-articles *nn-bulk-archive*))
-                     *nn-bulk-articles*))
-(assert-event (fn-nntp-projectionp *nn-bulk-archive*))
+  (if (posp n)
+      (cons article (nn-repeat-other article (- n 1)))
+    nil))
+(defconst *nn-bulk-other* (nn-repeat-other *nn-a3-article* 300))
+(assert-event (equal (len *nn-bulk-other*) 300))
 (assert-event (equal (fn-nntp-newnews-candidate-count
-                      '("fn.letters") (fn-state-articles *nn-bulk-archive*))
-                     *nn-bulk-articles*))
-
-(defconst *nn-bulk-session* (fn-nntp-open-session *nn-bulk-archive*))
-(assert-event (fn-nntp-session-projected *nn-bulk-session*))
-
-(assert-event
- (equal (nn-only-reply
-         (fn-nntp-result-effects
-          (fn-nntp-step *nn-bulk-session* *nn-bulk-archive* *nn-env*
-                        (list :command *nn-line-letters*))))
-        *nn-expected-503-budget*))
-; The control: one more unit of fuel and the same archive answers, so the
-; 503 above is the budget and not some other refusal on the way.
-(assert-event
- (fn-nntp-parse-okp
-  (fn-nntp-newnews-scan '("fn.letters") *nn-midnight*
-                        (fn-state-articles *nn-bulk-archive*)
-                        *nn-bulk-articles*)))
-(assert-event
- (equal (fn-nntp-newnews-scan '("fn.letters") *nn-midnight*
-                              (fn-state-articles *nn-bulk-archive*)
-                              *fn-nntp-newnews-parse-budget*)
-        (list :over-budget)))
+                      '("fn.letters") *nn-bulk-other*) 0))
+(assert-event (equal (fn-nntp-newnews-scan
+                      '("fn.letters") *nn-midnight* *nn-bulk-other* :none)
+                     nil))
