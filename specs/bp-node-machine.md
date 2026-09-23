@@ -2434,29 +2434,34 @@ repair.
 - `*fnn-tcl-deliver*` is bound to a callback that submits
   `(:bundle-received octets ingress obs)` to the loop and **returns the
   disposition** from the matching `(:receive-answer ingress disposition)`.
-- `fnn-tcl-act`'s `:bundle-received` arm (`tcpcl.lisp:251-267`) maps the
-  disposition, not the fact of a normal return: `:stored`, `:duplicate`
-  and `:observed` flush the held final XFER_ACK; `(:refused :capacity)` and
-  `(:refused :busy)` replace it with XFER_REFUSE `No Resources`
-  (`*fn-tcl-refuse-no-resources*`), any other refusal with `Not
-  Acceptable`; `(:uncertain ...)` drops it (`fnn-tcl-drop`) and the session
-  fails, as today. The replacement is a TCPCL session-machine transition
-  `fn-tcl-refuse-held-final` (new, in `books/tcpcl-session.lisp`, RFC 9174
-  §5.2.4). Its keystone, restated (review-2 §10): **no successful final
+- `fnn-tcl-act`'s `:bundle-received` arm calls the ACL2
+  `fn-tcl-delivery-plan` with the held TCPCL messages, transfer ID, and the
+  callback result. `(:accepted path-or-nil)` releases the held final
+  XFER_ACK (nil path is an exact already-durable duplicate);
+  `(:refused :capacity)`, `(:refused :busy)`, and
+  `(:refused :persistence)` replace it with XFER_REFUSE `No Resources`
+  (`*fn-tcl-refuse-no-resources*`), any other definitive refusal with `Not
+  Acceptable`; `(:uncertain ...)` drops it and fails the session. The host
+  executes the plan's exact message list; it does not select the protocol
+  code. The planner validates that the held list ends in the matching END
+  ACK. It preserves earlier machine outputs in the same read batch, including
+  non-ACK controls and partial ACKs for an earlier transfer, while refusing
+  any earlier END ACK.
+  Its keystone, restated (review-2 §10): **no successful final
   END acknowledgement for a late-refused transfer.** Partial XFER_ACKs for
   earlier segments (RFC 9174 §5.2.3) may already have been sent and are
-  permitted; what is excluded is an XFER_ACK with the END flag
-  acknowledging the whole transfer, from this path or any later step of
-  the session:
+  permitted and are preserved when still held. What is excluded is an
+  XFER_ACK with the END flag acknowledging the whole transfer from the
+  refusal or uncertainty path:
 
   ```lisp
-  (defthm fn-tcl-late-refused-transfer-gets-no-final-ack
-    (implies (and (fn-tcl-session-statep s)
-                  (fn-tcl-held-final-ack-p s xfer))
-             (let ((s2 (fn-tcl-refuse-held-final s xfer reason)))
-               (and (fn-tcl-output-refuses-p s2 xfer reason)
-                    (not (fn-tcl-output-final-ack-p s2 xfer))
-                    (not (fn-tcl-held-final-ack-p s2 xfer))))))
+  (defthm fn-tcl-late-refusal-gets-no-final-ack
+    (implies (fn-tcl-held-final-ackp messages xfer)
+             (let ((plan (fn-tcl-delivery-plan
+                          messages xfer (list :refused reason))))
+               (and (equal (fn-tcl-delivery-plan-status plan) :refused)
+                    (not (fn-tcl-output-has-final-ackp
+                          (fn-tcl-delivery-plan-messages plan) xfer)))))
   ```
 
   and its sender-side companion,

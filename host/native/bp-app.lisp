@@ -184,7 +184,7 @@ The caller holds SERVICE's mutex for this whole function."
          (unless (member app-result '(:accepted :duplicate))
            (incf (fnn-bp-tally-refused tally))
            (fnn-out "BP application ~(~a~) xfer=~d" app-result xfer-id)
-           (return-from fnn-bpapp-deliver path))
+           (return-from fnn-bpapp-deliver (list :refused app-result)))
          (fnn-bpapp-pause-after-decision)
          (let* ((peer (fnn-bp-eid source))
                 (sequence (fnn-bp-reserve-sequence tally))
@@ -204,18 +204,19 @@ The caller holds SERVICE's mutex for this whole function."
            (setf (fnn-bp-tally-last-adu tally) adu)
            (fnn-out "BP application ~(~a~) xfer=~d receipt=~d"
                     app-result xfer-id (length receipt))
-           path)))
+           (list :accepted path))))
       (:refused
        (incf (fnn-bp-tally-refused tally))
        (fnn-bp-evidence-publish
         tally :refused wire
-        (fnn-octet-list (fnn-string-octets (format nil "~(~a~)~%" reason)))))
+        (fnn-octet-list (fnn-string-octets (format nil "~(~a~)~%" reason))))
+       (list :refused reason))
       (otherwise
        (incf (fnn-bp-tally-uncertain tally))
        (fnn-bp-evidence-publish
         tally :uncertain wire
         (fnn-octet-list (fnn-string-octets (format nil "~(~a~)~%" reason))))
-       (fnn-indeterminate "BP application bundle lifetime is uncertain")))))
+       (list :uncertain reason)))))
 
 (defun fnn-bpapp-open-journal (service receipt-root destination policy issuer)
   (fnn-owner-serialized
