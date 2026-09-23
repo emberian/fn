@@ -9,6 +9,7 @@
   (fn-bpnf-receive-wire-event
    *bpnf-config* *bpnf-wire* *bpnf-obs* *bpnf-ingress-p*))
 (assert-event (fn-bpnf-receive-wire-readyp *bpnrb-ready*))
+(assert-event (equal (fn-bpnf-base-job-count *bpnf-s0*) 0))
 (assert-event
  (equal (fn-bpnf-tcpcl-ingress *bpnf-s0* 1 1 *bpnf-peer* '(112) 0)
         (list :cl (cons 3 1) 1 *bpnf-peer* '(112) 0)))

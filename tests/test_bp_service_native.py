@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parent.parent
 class NativeBpServiceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.image = ROOT / "build" / "fn-host-dtn"
+        cls.image = Path(os.environ.get(
+            "FN_NATIVE_BP_HOST", ROOT / "build" / "fn-host-dtn"))
         if not os.access(cls.image, os.X_OK):
             raise unittest.SkipTest(
                 f"DTN native image missing: {cls.image} "
@@ -67,10 +68,12 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertEqual(len(self.records()), 3)  # queued, attempting, requeued
 
         frontier = (self.journal / "sequence" / "frontier.fnb").read_bytes()
+        domain = (self.journal / "clock-domain.fnb").read_bytes()
         resumed = self.resume()
         self.assertEqual(resumed.returncode, 3, resumed.stderr)
         self.assertIn("BP queue recovered jobs=1", resumed.stdout)
         self.assertEqual(len(self.records()), 5)
+        self.assertEqual((self.journal / "clock-domain.fnb").read_bytes(), domain)
 
         duplicate = self.run_outage()
         self.assertEqual(duplicate.returncode, 3, duplicate.stderr)
@@ -86,25 +89,95 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertEqual(conflict.returncode, 3, conflict.stderr)
         self.assertIn("BP queue refused reason=enqueue-conflict", conflict.stdout)
 
-    def test_expiry_after_interrupted_contact_retains_work_without_release(self):
+    def test_wall_jump_after_interrupted_contact_retains_anchored_work(self):
         first = self.invoke(
             "run", "127.0.0.1", "1", self.adu, self.journal,
             "dtn://fn-a/", "dtn://fn-b/", "work-expiry", "attempt-expiry",
-            "0", "1", "2", "32", "1048576", "0", "0",
+            "0", "3600000", "2", "32", "1048576", "0", "0",
         )
         self.assertEqual(first.returncode, 3, first.stderr)
         self.assertIn("BP queue accepted", first.stdout)
         before = tuple((p.name, p.read_bytes()) for p in self.records())
 
-        expired = self.invoke(
-            "resume", self.journal, "dtn://fn-a/", "1", "2", "32",
-            "1048576", "100", "0",
+        resumed = self.invoke(
+            "resume", self.journal, "dtn://fn-a/", "3600000", "2", "32",
+            "1048576", "3600001", "0",
         )
-        self.assertEqual(expired.returncode, 3, expired.stderr)
-        self.assertIn("BP queue recovered jobs=1", expired.stdout)
-        self.assertNotIn("release", expired.stdout.lower())
+        self.assertEqual(resumed.returncode, 3, resumed.stderr)
+        self.assertIn("BP queue recovered jobs=1", resumed.stdout)
+        self.assertNotIn("release", resumed.stdout.lower())
+        self.assertNotIn("status=expired", resumed.stdout)
         after = tuple((p.name, p.read_bytes()) for p in self.records())
         self.assertGreater(len(after), len(before))
+
+    def test_monotonic_age_expires_interrupted_work(self):
+        first = self.invoke(
+            "run", "127.0.0.1", "1", self.adu, self.journal,
+            "dtn://fn-a/", "dtn://fn-b/", "work-aged", "attempt-aged",
+            "0", "1500", "2", "32", "1048576", "0", "0",
+        )
+        self.assertEqual(first.returncode, 3, first.stderr)
+        self.assertIn("BP queue accepted", first.stdout)
+        before = tuple((p.name, p.read_bytes()) for p in self.records())
+        time.sleep(1.7)
+
+        resumed = self.invoke(
+            "resume", self.journal, "dtn://fn-a/", "1500", "2", "32",
+            "1048576", "0", "0",
+        )
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("BP queue recovered jobs=1", resumed.stdout)
+        self.assertIn("status=expired", resumed.stdout)
+        self.assertNotIn("release", resumed.stdout.lower())
+        after = tuple((p.name, p.read_bytes()) for p in self.records())
+        self.assertGreater(len(after), len(before))
+        self.assertEqual(after[:len(before)], before)
+
+    def test_corrupt_clock_domain_fences_before_replay(self):
+        first = self.run_outage()
+        self.assertEqual(first.returncode, 3, first.stderr)
+        domain = self.journal / "clock-domain.fnb"
+        saved = domain.read_bytes()
+        self.assertGreater(len(saved), 36)
+        before = tuple((p.name, p.read_bytes()) for p in self.records())
+        replacement = saved[:-1] + bytes([saved[-1] ^ 1])
+        domain.write_bytes(replacement)
+
+        resumed = self.resume()
+        self.assertEqual(resumed.returncode, 3, resumed.stderr)
+        self.assertIn("clock domain", resumed.stderr.lower())
+        self.assertEqual(
+            tuple((p.name, p.read_bytes()) for p in self.records()), before,
+            "a boot-domain mismatch must fence before replay or clock effects",
+        )
+
+    def test_legacy_durable_records_without_clock_domain_fence(self):
+        first = self.run_outage()
+        self.assertEqual(first.returncode, 3, first.stderr)
+        (self.journal / "clock-domain.fnb").unlink()
+        before = tuple((p.name, p.read_bytes()) for p in self.records())
+
+        resumed = self.resume()
+        self.assertEqual(resumed.returncode, 3, resumed.stderr)
+        self.assertIn("clock domain", resumed.stderr.lower())
+        self.assertEqual(tuple((p.name, p.read_bytes()) for p in self.records()), before)
+
+    def test_visible_clock_domain_after_barrier_error_recovers_without_work(self):
+        injected = dict(self.env)
+        injected["FN_BP_CLOCK_DOMAIN_TEST_FAIL"] = "namespace"
+        cut = self.run_outage(env=injected)
+        self.assertEqual(cut.returncode, 3, cut.stderr)
+        self.assertIn("clock domain", cut.stderr.lower())
+        domain = self.journal / "clock-domain.fnb"
+        visible = domain.read_bytes()
+        self.assertGreater(len(visible), 36)
+        self.assertEqual(self.records(), [])
+
+        recovered = self.resume()
+        self.assertEqual(recovered.returncode, 0, recovered.stderr)
+        self.assertIn("BP queue recovered jobs=0", recovered.stdout)
+        self.assertEqual(domain.read_bytes(), visible)
+        self.assertEqual(self.records(), [])
 
     def test_shared_spool_owner_precedes_lifecycle_mutation(self):
         owner = subprocess.Popen(
@@ -228,7 +301,8 @@ class NativeBpServiceTests(unittest.TestCase):
     def test_namespace_bound_is_applied_during_directory_enumeration(self):
         lifecycle = self.journal / "lifecycle"
         lifecycle.mkdir(parents=True)
-        for number in range(4096 + 16 + 1):
+        # Mixed FNBS admits a legacy and a received record budget.
+        for number in range(2 * 4096 + 16 + 1):
             (lifecycle / f".stage-{number:04d}").touch()
 
         resumed = self.resume()

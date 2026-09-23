@@ -2049,6 +2049,32 @@
         "fn-tcl-drive-delivery-events",
         "fn-tcl-delivery-events-imply-held-final"
       ]
+    },
+    {
+      "id": "PRF-061",
+      "title": "BP persisted age anchors are compared only within a durable boot domain",
+      "statement": "The host-called fn-bpnf-clock-domain-plan returns :same only when a valid saved FNBS kind-6 frame decodes to the exact canonical current Linux boot ID; a different boot fences regardless of the numeric monotonic reading, and a missing marker with legacy obligations fences rather than renewing or expiring them. The 82-byte marker roundtrip and served guards are certified. The host's boot-ID observation, physical barriers, and combined-image caller still require native evidence, and cross-boot reanchoring remains open.",
+      "milestone": "M4",
+      "requirements": [
+        "FLR-004",
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/bp-clock-domain.lisp",
+        "tests/acl2/bp-clock-domain-tests.lisp",
+        "planning/evidence/bp-clock-domain-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T194345Z-4180941.json",
+        "planning/evidence/manifests/certify-20260923T194606Z-4188122.json",
+        "planning/evidence/manifests/certify-20260923T194910Z-4190492.json"
+      ],
+      "progress_note": "The exact startup planner and canonical kind-6 marker are ACL2-owned, guard verified, and focused-book certified. Concrete witnesses include same-boot restart, both directions of incomparable new-boot uptime, legacy outbound and received rows, malformed marker, invalid observed ID, and a crash in the publisher link window. Native combined-image and physical clock/barrier evidence remain pending. A mismatched or legacy domain is an explicit lifecycle fence, not completed reboot recovery.",
+      "events": [
+        "fn-bpcd-unframe-of-frame",
+        "fn-bpnf-clock-domain-same-binds-durable-id"
+      ]
     }
   ]
 }

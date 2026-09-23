@@ -21,10 +21,10 @@ Scenarios, each printing one JSON object and each independent of the others:
              The bundle it acknowledged before the kill is still in the spool,
              byte for byte; the one that was in flight is not there at all.
 `adu`        the BP node, not the convergence layer: A authors a whole BPv7
-             bundle with `bp send' and B decodes it with `bp receive'.  The
-             ADU B journals must be A's ADU byte for byte, and B's reply
-             bundle must arrive at A the same way.  Nothing in this scenario
-             hands either side octets it did not author.
+             bundle with `bp send' and B retains it with `bp receive'.  The
+             image's ACL2 kind-5 inspector projects B's exact ADU byte for
+             byte and rejects a same-length damaged frame.  B's reply bundle
+             must arrive at A the same way.
 `replay`     the trace the listener wrote, folded back through `fn-tcl-drive'
              by the image's own `tcpcl replay' verb.  The two event streams
              must be equal: the socket loop decided nothing the fold did not.
@@ -215,7 +215,8 @@ class Lab:
         facts = dict(sender_rc=sender.returncode,
                      segments=self.kinds(active, ":XFER-SEGMENT"),
                      outcomes=outcomes,
-                     staged=sorted(p.name for p in (root / "passive-spool").glob("*")))
+                     staged=sorted(p.name for p in (root / "passive-spool").glob("*")
+                                   if p.name != ".spool.lock"))
         ok = (facts["sender_rc"] == EXIT_REFUSED and facts["segments"] == 0
               and any(kind == "refused" and "exceeds-transfer-mtu" in text
                       for kind, text in outcomes)
@@ -426,14 +427,15 @@ class Lab:
         self.record("profile", ok, **facts)
 
     def scenario_adu(self):
-        """A fn-authored BPv7 bundle each way, and the ADU out equals the ADU in.
+        """A fn-authored BPv7 bundle each way, with exact durable ADU custody.
 
         The distinction the scenario exists to hold: neither side is given a
         file of bundle octets.  Each is given an ADU, and the image builds the
         bundle around it by calling `fn-bpn-send'; each decodes what arrives by
         calling `fn-bpn-receive', which is the only thing that recovers an ADU.
         A `bp send' that wrapped `tcpcl send' would fail here at the first
-        assertion, because there would be no ADU in either journal.
+        assertion.  The receiver stores the exact bundle in kind-5 FNBS; the
+        image's ACL2 inspector projects its ADU for bytewise comparison.
         """
         root = self.fresh("adu")
         b_journal, a_journal = root / "b-journal", root / "a-journal"
@@ -461,8 +463,33 @@ class Lab:
 
         recv_text = (root / "receive.log").read_text(errors="replace")
         send_text = send_log.read_text(errors="replace")
-        b_got = b_journal / "passive-0.adu"
-        a_got = a_journal / "active-0.adu"
+        b_fnbs = sorted((b_journal / "lifecycle").glob("*-*.fnb"))
+        a_received = next((BP_ACCEPTED.match(line)
+                           for line in send_text.splitlines()
+                           if BP_ACCEPTED.match(line)), None)
+        a_got = Path(a_received.group(3)) if a_received else None
+        b_got = root / "b-inspected.adu"
+        b_bad_got = root / "b-corrupt.adu"
+        b_inspect_ok = False
+        b_same_length_corruption_refused = False
+        if len(b_fnbs) == 1:
+            inspected = subprocess.run(
+                [self.image, "--fn", "bp-service", "inspect-received",
+                 str(b_fnbs[0]), str(b_got)],
+                capture_output=True, timeout=30)
+            b_inspect_ok = inspected.returncode == EXIT_OK
+            frame = b_fnbs[0].read_bytes()
+            if frame:
+                damaged = root / "damaged-kind5.fnb"
+                damaged.write_bytes(frame[:-1] + bytes([frame[-1] ^ 1]))
+                corrupt = subprocess.run(
+                    [self.image, "--fn", "bp-service", "inspect-received",
+                     str(damaged), str(b_bad_got)],
+                    capture_output=True, timeout=30)
+                b_same_length_corruption_refused = (
+                    corrupt.returncode == EXIT_REFUSED
+                    and damaged.stat().st_size == b_fnbs[0].stat().st_size
+                    and not b_bad_got.exists())
         authored = [BP_AUTHORED.match(l) for l in send_text.splitlines()]
         authored = [m for m in authored if m]
         facts = dict(
@@ -474,8 +501,15 @@ class Lab:
                             if BP_ACCEPTED.match(l)]),
             a_accepted=len([l for l in send_text.splitlines()
                             if BP_ACCEPTED.match(l)]),
-            b_adu_is_a_adu=b_got.exists() and b_got.read_bytes() == adu_a.read_bytes(),
-            a_adu_is_b_adu=a_got.exists() and a_got.read_bytes() == adu_b.read_bytes(),
+            a_clock_domain=(a_journal / "clock-domain.fnb").is_file(),
+            b_clock_domain=(b_journal / "clock-domain.fnb").is_file(),
+            b_retained_kind5=len(b_fnbs) == 1,
+            b_adu_is_a_adu=(b_inspect_ok and b_got.exists()
+                            and b_got.read_bytes() == adu_a.read_bytes()),
+            b_same_length_corruption_refused=b_same_length_corruption_refused,
+            a_adu_is_b_adu=(a_got is not None and a_got.exists()
+                            and a_got.resolve().is_relative_to(a_journal.resolve())
+                            and a_got.read_bytes() == adu_b.read_bytes()),
             refusals=len([l for l in (recv_text + send_text).splitlines()
                           if l.startswith("BP refused")]),
             uncertain=len([l for l in (recv_text + send_text).splitlines()
@@ -487,7 +521,10 @@ class Lab:
         ok = (facts["listener_rc"] == EXIT_OK and facts["sender_rc"] == EXIT_OK
               and facts["a_authored"] and facts["bundle_wraps_adu"]
               and facts["b_accepted"] == 1 and facts["a_accepted"] == 1
-              and facts["b_adu_is_a_adu"] and facts["a_adu_is_b_adu"]
+              and facts["a_clock_domain"] and facts["b_clock_domain"]
+              and facts["b_retained_kind5"] and facts["b_adu_is_a_adu"]
+              and facts["b_same_length_corruption_refused"]
+              and facts["a_adu_is_b_adu"]
               and facts["refusals"] == 0 and facts["uncertain"] == 0)
         self.record("adu", ok, **facts)
 

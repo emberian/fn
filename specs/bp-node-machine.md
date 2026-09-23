@@ -2292,6 +2292,25 @@ machine: its modeled `:durable` completion does not represent an observed
 FNBS publication outcome. This finite runner does not itself establish the
 multi-class fairness or return-receipt progress claims below.
 
+The native BP observation for durable Bundle Age anchors uses Linux
+`CLOCK_BOOTTIME` milliseconds, whose origin is shared by processes in one
+boot and whose elapsed time includes suspend. Before replay or an expiry
+step, the service checks a bounded Linux boot-ID observation against a
+durable FNBS clock-domain record. ACL2 validates the canonical boot ID,
+classifies legacy namespace evidence, and decides whether the exact domain
+record may be initialized, whether the saved domain matches, or whether
+startup must fence. An absent domain alongside durable lifecycle or sequence
+evidence, a malformed record, and a changed boot ID all fence before any
+persisted age anchor is compared. Initialization uses the immutable publisher's
+file and directory barriers under the shared journal owner. This is a
+same-boot restart contract; cross-boot recovery and reanchoring remain open.
+The standalone `bp send` command opens the same service owner before reserving
+its sequence frontier, so newly authored wire cannot create unmarked durable
+BP state. Existing legacy spools without a domain record remain fenced rather
+than silently migrated.
+Contact window offsets above are still per-invocation and do not become
+persistent absolute timestamps.
+
 ```lisp
 (defthm fn-bpn-start-one-selects-the-least-arrival-among-eligible
   (implies (and (fn-bpn-lifecycle-invariantp st)
@@ -2955,7 +2974,7 @@ The second review's traces (their labels; not requirement IDs):
 | N04 | old infeasible-MRU entry plus newer fitting entry: the fitting one is attempted; the old is not discarded | A1 |
 | N05 | repeated failed forwarding results near the reserve: every admitted cleanup keeps its credit | A1 (theorem, teeth), E (measured) |
 | N06 | publish a canonical file, deliver the uncertainty callback, then kill and recover: the visible record is admitted by the cut model with no fabricated confirmation | A2 |
-| N07 | durable attempt, restart with a different monotonic origin: the one-epoch replay and the recovery theorem each apply to their own domain | A2 |
+| N07 | durable attempt, restart with a different boot-domain monotonic origin: the domain gate fences before comparing retained Bundle Age anchors; autonomous cross-boot reanchoring remains open | A2 |
 | N08 | unanchored entry with an attempt in flight, restart: attempt cleared | A1 |
 | N09 | fragment an already-fragmented parent: offsets compose; the whole-parent theorem does not apply | C1, C2 |
 | N10 | nonzero-offset fragment arrives before the offset-zero one: primary and blocks come from the offset-zero fragment | C2 |
@@ -3286,6 +3305,9 @@ completion or exact duplicate yields `(:accepted path-or-nil)` for TCPCL;
 refusal and uncertainty remain distinct. An uncertain operation remains
 fenced until recovery. The separate operator evidence namespace remains
 secondary to FNBS custody.
+The read-only `bp-service inspect-received FRAME ADU-OUT` command uses ACL2's
+kind-5 frame decoder and ADU projection; a damaged frame yields a refusal
+without an output file. It is an evidence tool, not another reception path.
 
 This slice retains complete bundles and does not yet bind application
 dispatch, durable receipt handoff, or returned receipt release. Those are A3

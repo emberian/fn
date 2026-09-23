@@ -23,7 +23,7 @@ The host supplies one value per decision:
 
 | Field | Meaning | Host obligation |
 | --- | --- | --- |
-| `monotonic` | a local counter in milliseconds with no epoch meaning | never decreases across the life of one process; may reset across a restart, in which case the age anchor must be re-established |
+| `monotonic` | a local counter in milliseconds whose epoch is outside this observation record | nondecreasing within the selected clock domain; an anchor from another domain must never be compared to it |
 | `wall` | this node's estimate of DTN time, milliseconds since 2000-01-01T00:00:00Z (RFC 9171 §4.2.6) | meaningful only when `has-wall` is true |
 | `wall-error-bound` | the half-width of the interval the host certifies contains the true DTN time | an honest bound; the model's safety result is conditional on it |
 | `has-wall` | whether the host claims any wall reading | false is a legitimate, permanent answer for a node without a clock |
@@ -40,6 +40,19 @@ transmission up to its most recent forwarding; the local node adds its own
 residence, measured monotonically. The current estimate is therefore
 `age + (monotonic - monotonic-at-anchor)`, which is the only shape that stays
 monotone in local elapsed time without a wall clock.
+
+The BP native recovery path uses a separate durable domain gate before that
+legacy anchor reaches `fn-clock-expiry-decision`. The host observes Linux
+`CLOCK_BOOTTIME` milliseconds and the kernel boot ID from
+`/proc/sys/kernel/random/boot_id`; ACL2 validates the exact boot-ID octets and
+compares them to an immutable FNBS kind-6 `clock-domain.fnb` marker. A valid
+same-boot marker permits reuse of the counter across process restarts. A
+different boot, malformed marker, or missing marker beside legacy obligations
+fences BP lifecycle before replay or expiry. This first recovery slice preserves
+the known lower-bound age and obligations; it does not reanchor after a reboot.
+The host observation that the boot ID identifies one stable boot and that
+`CLOCK_BOOTTIME` advances during suspend is a Linux boundary assumption, not a
+theorem of the ACL2 clock model.
 
 An anchor is a **lower bound** on the bundle's true age, never an upper bound:
 intervals unknown to every forwarder are omitted from it. The theorem that uses
@@ -134,15 +147,19 @@ of "safety never depends on two nodes agreeing on wall time".
   pretending to be an assumption artifact, which the assurance rules forbid.
 - **The Bundle Age lower-bound property is likewise a hypothesis**, discharged
   by the caller, not by this book.
-- **Monotonic-counter resets across a restart** are not modeled. An age anchor
-  established before a restart is meaningless afterwards; the host must
-  re-establish it from durable state, and no theorem here says it does.
+- **Cross-boot age recovery** remains open. The BP startup gate detects an
+  incompatible or legacy clock domain and fences it, even if the new boot's
+  numeric uptime is higher. No migration, reanchor, or reboot liveness theorem
+  follows from that refusal. The generic `fn-clock-expiry-decision` still takes
+  a bare pair and relies on its caller to establish domain compatibility.
 - **NNTP injection time** is untouched. This lane models bundle expiry only.
 - **Lifetime overrides** (RFC 9171 §4.3.1, a BPA imposing a shorter effective
   lifetime) are representable only by passing the override as `lifetime`;
   the requirement that an override not replace the asserted lifetime is not
   modeled.
-- **No host calls this yet.** Under the assurance rule that the theorem subject
-  must be the function the host calls, this lane's theorems are about a function
-  with no caller. Wiring it into `tools/run_bp_receive.py` and the BPA adapter
-  is the next step, and until then no expiry claim may cite a host line.
+- **Actual-caller scope.** `host/bp-ingress-host.lisp` already calls
+  `fn-clock-expiry-decision` for ingress. The native BP startup join selects
+  `fn-bpnf-clock-domain-plan` before it exposes persisted anchors. The
+  clock-domain certification proves that planner's byte and decision contract;
+  source-matched native restart and physical observation evidence are tracked
+  separately under PRF-061 and SCN-029.

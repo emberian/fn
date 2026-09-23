@@ -923,6 +923,30 @@
         "books/tcpcl-host-drive.lisp"
       ],
       "execution_scope": "ACL2 host-drive event ordering, two coalesced completions, held-prefix projection, and no-final-ACK planner proof are certified. The native partial-refusal regression is prepared but awaits a source-matched combined image and the A2 FNBS callback join; ambiguity and durable duplicate require that joined image."
+    },
+    {
+      "id": "SCN-029",
+      "title": "Persisted BP clock domain gates same-boot restart and incomparable boot counters",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": ["FLR-004", "REP-006"],
+      "steps": [
+        "Persist a received bundle with a short lifetime and an FNBS clock-domain marker, stop the BP process, wait beyond the lifetime, and reopen during the same Linux boot.",
+        "Restart with a valid marker for a different boot ID while supplying both a lower and a higher monotonic counter than the saved age anchor.",
+        "Reopen a legacy FNBS directory without a clock-domain marker, and inject a process death after the marker link but before its directory barrier."
+      ],
+      "expected": [
+        "The same-boot process restart reads the exact 82-byte marker and uses CLOCK_BOOTTIME elapsed time, so the short-lifetime bundle is expired.",
+        "Both different-boot readings fence BP lifecycle before replay or expiry; no incomparable counter silently renews a TTL or fabricates expiry.",
+        "Missing legacy marker and ambiguous marker publication remain fenced, preserving obligations until an explicit recovery or migration policy resolves them."
+      ],
+      "evidence": [
+        "books/bp-clock-domain.lisp",
+        "tests/acl2/bp-clock-domain-tests.lisp",
+        "tests/test_bp_service_native.py",
+        "planning/evidence/bp-clock-domain-2026-09-23.md"
+      ],
+      "execution_scope": "ACL2 marker codec, startup plan, and valid changed-boot counterexamples are certified. A source-matched full developer image passed same-boot expiry, corrupt and absent-legacy marker fences, and visible-marker directory-barrier recovery; the production image passed exact ADU transfer with markers at both ends. No physical alternate-boot run or cross-boot reanchor is claimed; changed-boot startup fences."
     }
   ]
 }

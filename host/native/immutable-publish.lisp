@@ -5,11 +5,14 @@
 ;;; visible final name after an error is never inspected to infer durability.
 (in-package "ACL2")
 
-(defun fnn-immutable-test-fault (point path)
+(defun fnn-immutable-test-fault (point path operation-label)
   ; Test injection is reached through the production action loop.  The older
   ; FN_APP spelling remains while the workflow test packet lands.
-  (let ((chosen (or (fnn-developer-selector "FN_IMMUTABLE_PUBLISH_TEST_FAIL")
-                    (fnn-developer-selector "FN_APP_JOURNAL_TEST_FAIL") "")))
+  (let ((chosen
+          (if (eq operation-label :clock-domain)
+              (or (fnn-developer-selector "FN_BP_CLOCK_DOMAIN_TEST_FAIL") "")
+            (or (fnn-developer-selector "FN_IMMUTABLE_PUBLISH_TEST_FAIL")
+                (fnn-developer-selector "FN_APP_JOURNAL_TEST_FAIL") ""))))
     (when (string= chosen point) (fnn-os-fail sb-posix:eio path))))
 
 (defun fnn-immutable-publish-effect
@@ -40,13 +43,16 @@ executor does not assert the premise itself and returns fn-jpub's classification
                (when fault-observer
                  (funcall fault-observer operation-label point publication
                           path))
+               ;; Clock-domain initialization has its own developer cut; an
+               ;; older record-publication selector must still reach its
+               ;; original operation after this startup prerequisite.
                (fnn-immutable-test-fault
                 (case point
                   (:file-barrier "file-barrier")
                   (:begin-link "link")
                   (:directory-barrier "namespace")
                   (otherwise "stage"))
-                path))
+                path operation-label))
              (observe (ok-event error-event point thunk)
                (let ((ok
                        (handler-case (progn (funcall thunk) t)
@@ -111,6 +117,7 @@ executor does not assert the premise itself and returns fn-jpub's classification
             ; consumers do not turn a durable final-name barrier into an
             ; uncertain publication merely because stage removal was not
             ; durably observed.
-            (fnn-immutable-test-fault "cleanup" cleanup-directory)
+            (fnn-immutable-test-fault "cleanup" cleanup-directory
+                                      operation-label)
             (fnn-fsync-dir cleanup-directory)))))
     (fnn-core 'fn-jpub-host-outcome publication)))

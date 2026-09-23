@@ -1845,6 +1845,21 @@
           "note": "Keystone relating the event grammar to the native ordered :send collection and the exact fn-tcl-held-final-ackp planner premise. fn-tcl-delivery-eventsp-after-first-bundle preserves the grammar for each later completed transfer in the same batch."
         }
       ]
+    },
+    {
+      "id": "PRF-061",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpcd-unframe-of-frame",
+          "note": "A canonical 36-octet lowercase UUID with four fixed hyphens survives the actual FNBS kind-6 82-byte sealed frame and bounded decoder. This is a codec property; the host's observation of boot_id and physical publication barriers remain boundary obligations."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-clock-domain-same-binds-durable-id",
+          "note": "Subject is the exact ACL2 startup planner called by host/native/bp-service.lisp. A :same result implies a present valid saved frame and equality of its decoded canonical boot ID to the current validated observation; it does not compare process-relative or new-boot tick values."
+        }
+      ]
     }
   ]
 }

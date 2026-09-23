@@ -14,7 +14,8 @@ ROOT = Path(__file__).resolve().parent.parent
 class NativeBpContactTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.image = ROOT / "build" / "fn-host-dtn"
+        cls.image = Path(os.environ.get(
+            "FN_NATIVE_BP_HOST", ROOT / "build" / "fn-host-dtn"))
         if not os.access(cls.image, os.X_OK):
             raise unittest.SkipTest(f"DTN native image missing: {cls.image}")
 
@@ -46,7 +47,7 @@ class NativeBpContactTests(unittest.TestCase):
             "dtn://fn-b/", start, end, *rest,
         )
 
-    def test_closed_window_interruption_and_expiry(self):
+    def test_closed_window_interruption_and_anchored_wall_jump(self):
         queued = self.invoke(
             "bp-service", "run", "127.0.0.1", 1, self.adu, self.journal,
             "dtn://fn-a/", "dtn://fn-b/", "contact-work", "contact-attempt", 0,
@@ -67,11 +68,11 @@ class NativeBpContactTests(unittest.TestCase):
         self.assertGreater(len(self.records()), before)
         after_interruption = len(self.records())
 
-        expired = self.tick(1, 1, 3600000, 2, 32, 1048576, 3600001, 0)
-        self.assertEqual(expired.returncode, 0, expired.stderr)
-        self.assertIn("BP contact closed", expired.stdout)
-        self.assertNotIn("release", expired.stdout.lower())
-        self.assertGreater(len(self.records()), after_interruption)
+        later = self.tick(1, 1, 3600000, 2, 32, 1048576, 3600001, 0)
+        self.assertEqual(later.returncode, 0, later.stderr)
+        self.assertIn("BP contact closed", later.stdout)
+        self.assertNotIn("release", later.stdout.lower())
+        self.assertEqual(len(self.records()), after_interruption)
 
     def test_bad_window_and_decimal_bound(self):
         malformed = self.tick(10, 9)
