@@ -16,6 +16,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from contextlib import nullcontext
 from types import SimpleNamespace
@@ -152,11 +153,83 @@ class ProcessLifetimeTests(unittest.TestCase):
                     # Stop is idempotent after the owned process group is gone.
                     session.kill()
                 finally:
-                    try:
-                        os.killpg(session.process.pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-                    session.process.wait(timeout=5)
+                    if not session._terminated:
+                        session.kill()
+
+    def test_duplicate_start_cannot_detach_an_older_server(self):
+        # The first start holds the name while its fake ACL2 is still loading.
+        # A retry must not replace its socket and leave its child behind.
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = base / "slow-acl2"
+            heartbeat = base / "heartbeat"
+            child = (
+                "import os,time; from pathlib import Path; "
+                "p=Path(os.environ['FN_REPL_TEST_HEARTBEAT']); "
+                "\nwhile True:\n"
+                " with p.open('a') as stream: stream.write('x')\n"
+                " time.sleep(.05)\n"
+            )
+            fake.write_text(
+                "#!" + sys.executable + "\nimport subprocess,sys,time\n"
+                + "subprocess.Popen([sys.executable, '-c', " + repr(child) + "])\n"
+                + "time.sleep(1)\n"
+                + "for line in sys.stdin:\n"
+                + " if '(good-bye)' in line: break\n"
+                + " if 'FN-REPL-DONE ' in line:\n"
+                + "  print('FN-REPL-DONE ' + line.split('FN-REPL-DONE ')[1].split('~%')[0], flush=True)\n"
+            )
+            fake.chmod(0o755)
+            scratch = ROOT / "build" / ("proof-repl-lock-test-" + str(os.getpid()))
+            scratch.mkdir(parents=True, exist_ok=True)
+            (scratch / "tiny.lisp").write_text('(in-package "ACL2")\n')
+            name = "lock-test-" + str(os.getpid())
+            env = {**os.environ, "FN_ACL2": str(fake),
+                   "FN_ACL2_SLOT_DIR": str(base / "slots"),
+                   "FN_ACL2_SLOTS": "1",
+                   "FN_REPL_TEST_HEARTBEAT": str(heartbeat)}
+            command = [sys.executable, str(ROOT / "tools" / "proof_repl.py")]
+            first = subprocess.Popen(
+                command + ["start", name, str((scratch / "tiny").relative_to(ROOT)),
+                           "--load-timeout", "10"],
+                cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, text=True,
+            )
+            try:
+                lock = proof_repl.session_lock_path(name)
+                deadline = time.monotonic() + 5
+                while not lock.exists() and time.monotonic() < deadline:
+                    time.sleep(.01)
+                self.assertTrue(lock.exists())
+                second = subprocess.run(
+                    command + ["start", name,
+                               str((scratch / "tiny").relative_to(ROOT)),
+                               "--load-timeout", "10"],
+                    cwd=ROOT, env=env, capture_output=True, text=True, timeout=5,
+                )
+                self.assertEqual(second.returncode, 2, second.stdout + second.stderr)
+                self.assertIn("starting or live", second.stdout)
+                out, err = first.communicate(timeout=15)
+                self.assertEqual(first.returncode, 0, out + err)
+                self.assertTrue(heartbeat.exists())
+                stopped = subprocess.run(command + ["stop", name], cwd=ROOT,
+                                         env=env, capture_output=True, text=True,
+                                         timeout=15)
+                self.assertEqual(stopped.returncode, 0,
+                                 stopped.stdout + stopped.stderr)
+                count = len(heartbeat.read_text())
+                time.sleep(.2)
+                self.assertEqual(len(heartbeat.read_text()), count)
+                self.assertFalse((proof_repl.session_dir(name) / "sock").exists())
+            finally:
+                if first.poll() is None:
+                    first.terminate()
+                    first.wait(timeout=5)
+                if (proof_repl.session_dir(name) / "sock").exists():
+                    subprocess.run(command + ["stop", name], cwd=ROOT, env=env,
+                                   capture_output=True, timeout=15)
+                shutil.rmtree(proof_repl.session_dir(name), ignore_errors=True)
+                shutil.rmtree(scratch, ignore_errors=True)
 
 
 class SessionTests(unittest.TestCase):
