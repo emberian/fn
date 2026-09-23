@@ -368,6 +368,17 @@ storage must have made no post, and a crash after it must reuse the same source.
 The fn identity algorithm remains ACL2-owned; the Mini adapter can retain fn's
 returned identity but must not implement an alternative identity derivation.
 
+There is already a concrete fn producer seam:
+[`fnn-command-hybrid-sign-carrier`](../host/native/signature-command.lisp)
+calls the ACL2 preimage/render functions, verifies both signatures, and writes
+the rendered portable article to a new output file. Its current source-read
+limit is 32768 octets, a relevant early bound for P0 in addition to the BP
+limits. The output writer closes the file but does not itself establish the
+consumer database's crash-safe outbox commit. P2 must import/sync that exact
+artifact through its durable outbox publication before sending it; command
+exit success alone is not the outbox durability witness. T10's durable received
+carrier/verdict join remains the active authorship lane's separate obligation.
+
 ### 3. Distinct receipts at each boundary
 
 | Evidence | What its successful verification means | Allowed consumer action |
