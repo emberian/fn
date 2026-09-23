@@ -28,6 +28,8 @@ service unit -- see the [operator guide](operator.md); its packaging templates a
 [`packaging/`](../packaging/fn.toml.example). To read and post on a node that is
 already running, from a laptop or from an agent, see
 [agents on an fn node](agents.md).
+The experimental [local human reader](human-web-client.md) uses the same NNTP
+client path in a separate loopback web process.
 
 For concrete representation discussions, see the proposed
 [article-byte examples](article-byte-examples.md). For the current local adapter,
