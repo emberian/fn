@@ -11,12 +11,17 @@
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
                 (not (fn-stxa-p (fn-sn-completion-record s))))
-           (equal (fn-article-stamp
-                   (fn-find-article
+           (and
+            (consp (fn-find-article
                     (fn-record-msgid (fn-sn-completion-record s))
                     (fn-state-articles
                      (fn-node-acceptance (fn-sn-node (fn-sn-finish s))))))
-                  (fn-record-stamp (fn-sn-completion-record s))))
+            (equal (fn-article-stamp
+                    (fn-find-article
+                     (fn-record-msgid (fn-sn-completion-record s))
+                     (fn-state-articles
+                      (fn-node-acceptance (fn-sn-node (fn-sn-finish s))))))
+                   (fn-record-stamp (fn-sn-completion-record s)))))
   :hints (("Goal" :use (fn-sn-finish-installs-exact-article-and-archive-pin)
            :in-theory (e/d (fn-sn-committed-recordp)
                            (fn-sn-finish-installs-exact-article-and-archive-pin
