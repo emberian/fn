@@ -24,3 +24,16 @@ passed `books/bp-report-guards` in 119.599 seconds with ACL2 8.7 w28, two
 jobs and a 180-second per-book bound, alongside the fragment guard and
 requested report/fragment test roots. This is current-source guard evidence;
 native source-matched report behavior remains separately open.
+
+The subsequent proof-only cost repair keeps every guard statement and
+executable function unchanged. In the proposal guard, the exact held-shape
+facts and a minimal theory prove the numeric next-op and primary-list
+obligations without expanding record constructors. The outbox guard uses a
+local deleted-match-to-held fact and the existing primary-list theorem, with
+the decoder closed. On the integrated BP replay source, the two guard events
+fell from 100.22 and 11.24 seconds to under 0.01 seconds each. The
+[current-source selected manifest](manifests/certify-20260923T235533Z-547391.json)
+passed `books/bp-report-guards` in 8.665 seconds and three requested report
+test roots, with six changed dependent books also recertified, on hbox ACL2
+8.7 w28 at two jobs under the unchanged 180-second per-book bound. Native
+source-matched report behavior remains separately open.
