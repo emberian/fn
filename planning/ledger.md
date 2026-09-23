@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 580 |
 | Certification roots in the Makefile | 574 |
 | Books inside the root closure | 579 |
-| `defthm` and `defthmd` events | 8307 |
+| `defthm` and `defthmd` events | 8312 |
 | `defun` events | 6239 |
 | Functions with verified guards | 2022 |
 | Functions declared `:verify-guards nil` and never verified | 369 |
@@ -22,7 +22,7 @@ stale. Counts describe artifacts, not coverage; see
 | `assert-event` checks | 9085 |
 | `must-fail` checks | 465 |
 | `encapsulate` events | 26 |
-| Theorems flagged SUSPECT by shape | 75 |
+| Theorems flagged SUSPECT by shape | 76 |
 | Export-hygiene warnings | 102 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 35 |
@@ -144,7 +144,7 @@ that `make certify` requests.
 | `books/bp-native-app.lisp` | root | 6 | 43 | 0/0/43/0 | 0 | 0 | 0 |
 | `books/bp-node-foundation.lisp` | root | 17 | 62 | 59/0/3/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-family.lisp` | root | 9 | 9 | 0/3/6/0 | 0 | 0 | 0 |
-| `books/bp-node-fragment-guards.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-node-fragment-guards.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/bp-node-fragment-plan.lisp` | root | 1 | 3 | 0/2/1/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-replacement.lisp` | root | 1 | 4 | 0/1/3/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-step.lisp` | root | 2 | 6 | 0/5/1/0 | 0 | 0 | 0 |
@@ -179,7 +179,7 @@ that `make certify` requests.
 | `books/bp-release.lisp` | root | 0 | 37 | 0/16/21/0 | 0 | 0 | 0 |
 | `books/bp-report-author.lisp` | root | 1 | 4 | 0/2/2/0 | 0 | 0 | 1 |
 | `books/bp-report-deletion.lisp` | root | 5 | 11 | 9/0/2/0 | 0 | 0 | 0 |
-| `books/bp-report-guards.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-report-guards.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-report-observe.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-report-outbox.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 1 |
 | `books/bp-sequence-fidelity.lisp` | root | 24 | 31 | 2/0/29/0 | 0 | 0 | 3 |
@@ -696,6 +696,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpn-sf-host-recover-is-core-recover` | `books/bp-sequence-fidelity.lisp` | 299 | definition-restated: the conclusion is the body of fn-bpn-sf-host-recover; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-sf-host-reserve-is-core-reserve` | `books/bp-sequence-fidelity.lisp` | 278 | definition-restated: the conclusion is the body of fn-bpn-sf-host-reserve; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-step-emits-no-release` | `books/bp-node-machine.lisp` | 997 | instance-corollary: the statement is fn-bpn-effect-listp-excludes-release instantiated, discharging nothing |
+| `fn-bpnfg-car-is-car` | `books/bp-node-fragment-guards.lisp` | 138 | definition-restated: the conclusion is the body of fn-cbor-ag-car; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpr-context-from-request-is-constructor` | `books/bp-receiver-state-invariants.lisp` | 94 | definition-restated: the conclusion is the body of fn-bpr-context-from-request |
 | `fn-bs-names-outcomes-of-no-ops` | `books/byte-store-scan.lisp` | 310 | branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value |
 | `fn-bs-pack-reclaim-plan-is-selected-covered-names` | `books/byte-store-compaction-correspondence.lisp` | 47 | branch-of-definition: the hypothesis negates a branch test of fn-bs-pack-reclaim-plan and the conclusion is that branch's value |
