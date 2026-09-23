@@ -37,6 +37,14 @@
 (assert-event (fn-bpf-covers-all *bpf-cut* 8))
 (assert-event (equal (fn-bpf-reassemble *bpf-cut* 8)
                      (list :ok *bpf-payload*)))
+; The full inverse antecedent is reachable.  A malformed terminal cut has no
+; successful fragmentation and cannot reconstruct the payload.
+(assert-event (equal (car (fn-bpf-fragment *bpf-payload* '(3 5))) :ok))
+(assert-event
+ (not (implies t
+               (equal (fn-bpf-reassemble
+                       (cadr (fn-bpf-fragment *bpf-payload* '(8))) 8)
+                      (list :ok *bpf-payload*)))))
 
 ; Any order works, because the reassembled array is specified index-wise.
 (assert-event
@@ -303,9 +311,16 @@
                                   (len '(10 20 30 . 7)))
                (list :ok '(10 20 30 . 7)))))))
 
-; fn-bpf-reassemble-ok-agrees-with-every-fragment is OPEN: it is commented
-; out at books/bp-fragment-invariants.lisp:245 (the event at :248) with
-; its reason, so what follows is a witness for a theorem NOT proved.
+; The successful overlap witnesses the consumed-fragment agreement theorem.
+(assert-event
+ (and (equal (fn-bpf-result-tag (fn-bpf-reassemble *bpf-overlap* 8)) :ok)
+      (member-equal (nth 1 *bpf-overlap*) *bpf-overlap*)
+      (< 1 (len (fn-bpf-bytes (nth 1 *bpf-overlap*))))
+      (equal (nth 1 (fn-bpf-bytes (nth 1 *bpf-overlap*)))
+             (nth (+ (fn-bpf-offset (nth 1 *bpf-overlap*)) 1)
+                  (fn-bpf-result-bytes
+                   (fn-bpf-reassemble *bpf-overlap* 8))))))
+
 ;   without `member-equal`: a fragment that was not consumed says nothing.
 ;   Stated generally over free `fs` and `total`, the negated goal drives the
 ;   rewriter past its call-depth limit inside `fn-bpf-reassemble`, so the tooth
@@ -344,6 +359,30 @@
                (nth (+ (fn-bpf-offset '(:fn-bp-fragment 0 (10 20 30) 8)) 0)
                     (fn-bpf-result-bytes
                      (fn-bpf-reassemble *bpf-gap* 8))))))))
+
+;   without `natp k`: a negative index is coerced to zero by `nth`, but its
+;   offset is still applied to the output position.
+(assert-event
+ (with-guard-checking :none
+  (not (implies (and (equal (fn-bpf-result-tag
+                            (fn-bpf-reassemble *bpf-cut* 8)) :ok)
+                    (member-equal (nth 1 *bpf-cut*) *bpf-cut*)
+                    (< -1 (len (fn-bpf-bytes (nth 1 *bpf-cut*)))))
+               (equal (nth -1 (fn-bpf-bytes (nth 1 *bpf-cut*)))
+                      (nth (+ (fn-bpf-offset (nth 1 *bpf-cut*)) -1)
+                           (fn-bpf-result-bytes
+                            (fn-bpf-reassemble *bpf-cut* 8))))))))
+
+;   without `k < len`: the next output byte belongs to another fragment.
+(assert-event
+ (not (implies (and (equal (fn-bpf-result-tag
+                            (fn-bpf-reassemble *bpf-cut* 8)) :ok)
+                    (member-equal (nth 0 *bpf-cut*) *bpf-cut*)
+                    (natp 3))
+               (equal (nth 3 (fn-bpf-bytes (nth 0 *bpf-cut*)))
+                      (nth (+ (fn-bpf-offset (nth 0 *bpf-cut*)) 3)
+                           (fn-bpf-result-bytes
+                            (fn-bpf-reassemble *bpf-cut* 8)))))))
 
 ; fn-bpf-disagreeing-fragments-yield-conflict
 ;   without the disagreement hypothesis: identical overlap is not a conflict.

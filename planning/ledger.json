@@ -429,9 +429,9 @@
     "books": 427,
     "books_in_root_closure": 426,
     "roots": 422,
-    "theorems": 7150,
+    "theorems": 7162,
     "functions": 5441,
-    "assert_events": 7870,
+    "assert_events": 7875,
     "must_fails": 282,
     "encapsulates": 26,
     "guards": {
@@ -442,7 +442,7 @@
     },
     "suspect_theorems": 66,
     "export_hygiene_warnings": 93,
-    "enabled_projection_warnings": 31,
+    "enabled_projection_warnings": 33,
     "teeth_form_warnings": 23,
     "include_hygiene_warnings": 265,
     "host_names_warnings": 654,
@@ -1166,7 +1166,7 @@
       "book": "books/bp-fragment-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 48,
+      "theorems": 60,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -7723,7 +7723,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 80,
+      "assert_events": 85,
       "must_fails": 0,
       "defconsts": 12,
       "defmacros": 0,
@@ -11900,7 +11900,7 @@
     {
       "theorem": "fn-bpf-out-of-bounds-input-allocates-nothing",
       "book": "books/bp-fragment-invariants.lisp",
-      "line": 390,
+      "line": 435,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpf-reassemble and the conclusion is that branch's value"
       ]
@@ -11908,7 +11908,7 @@
     {
       "theorem": "fn-bpf-whole-parent-fragments-restore-parent",
       "book": "books/bp-fragment-invariants.lisp",
-      "line": 554,
+      "line": 671,
       "reasons": [
         "instance-corollary: the statement is fn-bpf-whole-fragment-primaries-restore-parent instantiated, discharging nothing"
       ]
@@ -13032,9 +13032,27 @@
         "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
+        "function": "fn-bpf-offset",
+        "book": "books/bp-fragment.lisp",
+        "line": 65,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
         "function": "fn-bpf-bytes",
         "book": "books/bp-fragment.lisp",
         "line": 66,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpf-total",
+        "book": "books/bp-fragment.lisp",
+        "line": 67,
         "stated_in": [
           "books/bp-fragment-invariants.lisp"
         ],
