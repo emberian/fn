@@ -66,6 +66,9 @@
 (include-book "books/bp-fnbs-namespace")
 (include-book "books/bp-fnbs-publication")
 (include-book "books/bp-clock-domain")
+(include-book "books/bp-fnbs-delivery-replay")
+(include-book "books/bp-fnbs-delivery-publication")
+(include-book "books/bp-app-handoff")
 (include-book "books/bp-receive-evidence")
 
 (ld "host/store-host.lisp" :ld-error-action :error)

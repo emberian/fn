@@ -47,6 +47,30 @@
               work-id charge)
      +fnn-exit-ok+)))
 
+(defun fnn-bpo-canonical-release (service release)
+  (let ((event (fnn-owner-core 'fn-owner-workflow-store-release release)))
+    (unless event
+      (fnn-fault "committed receipt has no canonical Store release"))
+    ;; The owner path releases through Store, so the developer namespace cut
+    ;; belongs to that canonical publication, not an FNWF :release record.
+    (let* ((cut-fired nil)
+           (release-cut
+             (string= (or (fnn-developer-selector
+                           "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE") "") "1"))
+           (*fnn-record-directory-fault-observer*
+             (and release-cut
+                  (lambda (path)
+                    (setq cut-fired t)
+                    (fnn-os-fail sb-posix:eio path)))))
+      (handler-case
+          (fnn-owner-retention-commit service event)
+        (fnn-store-indeterminate (e)
+          (if cut-fired
+              (fnn-indeterminate
+               "application release publication is uncertain")
+            (error e)))))
+    (fnn-owner-action 'fn-owner-workflow-sync-store-node)))
+
 (defun fnn-command-bpo-owner-receipt
     (store journal receipt txid generation profile)
   (fnn-bpo-call-with-owner-journal
@@ -56,31 +80,7 @@
             (fnn-workflow-accept-receipt
              opened receipt txid generation profile
              (lambda (release)
-               (let ((event (fnn-owner-core
-                             'fn-owner-workflow-store-release release)))
-                 (unless event
-                   (fnn-fault "committed receipt has no canonical Store release"))
-                 ; The owner path releases through Store, so the developer
-                 ; namespace cut belongs to that canonical publication, not
-                 ; an FNWF :release record this path does not publish.
-                 (let* ((cut-fired nil)
-                        (release-cut
-                         (string= (or (fnn-developer-selector
-                                       "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE")
-                                      "") "1"))
-                        (*fnn-record-directory-fault-observer*
-                         (and release-cut
-                              (lambda (path)
-                                (setq cut-fired t)
-                                (fnn-os-fail sb-posix:eio path)))))
-                   (handler-case
-                       (fnn-owner-retention-commit service event)
-                     (fnn-store-indeterminate (e)
-                       (if cut-fired
-                           (fnn-indeterminate
-                            "application release publication is uncertain")
-                         (error e)))))
-                 (fnn-owner-action 'fn-owner-workflow-sync-store-node))))))
+               (fnn-bpo-canonical-release service release)))))
        (fnn-out "BP obligation owner durable release receipt=~a profile=~a"
                 receipt-id profile)
        +fnn-exit-ok+))))

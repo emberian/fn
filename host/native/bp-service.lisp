@@ -120,7 +120,9 @@
           (fnn-indeterminate "bp-service: lifecycle record ~a is damaged" name))
         (push record records)))))
 
-(defun fnn-bps-read-kind-five-rows (service names)
+(defun fnn-bps-read-received-rows (service names)
+  ;; Kind 5 and kind 7 share the exact epoch-operation filename and the
+  ;; generic FNBS frame payload cap.  ACL2 decodes and orders the row kinds.
   (let ((limit (fnn-core 'fn-bpnf-stored-frame-limit))
         (rows nil))
     (dolist (name names (nreverse rows))
@@ -244,6 +246,33 @@
                publisher stage final dir frame :cleanup-directory dir)))
         (values outcome (and (eq outcome :durable) final))))))
 
+(defun fnn-bps-persist-kind-seven (service epoch operation-id record)
+  (let* ((dir (fnn-bps-lifecycle service))
+         (name (fnn-core 'fn-bpnf-stored-record-name epoch operation-id))
+         (final (fnn-join dir name))
+         (final-absent (if (fnn-lstat final) nil t))
+         (operation
+           (fnn-core 'fn-bpah-publication-authorize
+                     (fnn-bps-state service) epoch operation-id record
+                     (if (fnn-bps-lock-fd service) t nil) final-absent)))
+    (when (equal operation '(:fault :delivery-codec))
+      (return-from fnn-bps-persist-kind-seven :refused))
+    (unless (eq (fnn-core 'fn-bpah-publication-operationp operation) t)
+      (fnn-indeterminate
+       "bp-service: kind-7 publication authority refused pending echo"))
+    (let* ((authorized-name
+             (fnn-core 'fn-bpah-publication-name operation))
+           (stage (fnn-join dir (format nil ".record-~d-~a"
+                                         (sb-posix:getpid) (fnn-random-hex 12))))
+           (frame (fnn-octets
+                   (fnn-core 'fn-bpah-publication-frame operation)))
+           (publisher
+             (fnn-core 'fn-bpah-publication-publisher operation)))
+      (unless (equal authorized-name name)
+        (fnn-fault "bp-service: ACL2 kind-7 name changed after authorization"))
+      (fnn-immutable-publish-effect
+       publisher stage final dir frame :cleanup-directory dir))))
+
 (defun fnn-bps-route-host (route) (fnn-octets-string (fnn-octets (second route))))
 (defun fnn-bps-route-port (route) (third route))
 (defun fnn-bps-route-node (route) (fnn-octets-string (fnn-octets (fourth route))))
@@ -291,6 +320,32 @@
 (defun fnn-bps-drive-effects (service effects)
   (dolist (effect effects)
     (case (first effect)
+      (:persist-delivery
+       (unless (= (length effect) 4)
+         (fnn-indeterminate "bp-service: malformed kind-7 publication effect"))
+       (let* ((epoch (second effect))
+              (operation-id (third effect))
+              (record (fourth effect))
+              (outcome
+                (fnn-bps-persist-kind-seven
+                 service epoch operation-id record)))
+         (when (eq outcome :uncertain)
+           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-drive-effects
+          service (fnn-bps-foundation-step
+                   service (list :persist-result epoch operation-id outcome)))))
+      (:deliver
+       (fnn-fault "bp-service: application delivery requires the owner caller"))
+      (:delivery-answer
+       (case (second effect)
+         (:durable (fnn-out "BP application handoff durable"))
+         (:refused
+          (unless (eq (fnn-bps-outcome service) :uncertain)
+            (setf (fnn-bps-outcome service) :refused))
+          (fnn-out "BP application handoff refused"))
+         (otherwise
+          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-indeterminate "bp-service: application handoff uncertain"))))
       (:persist
        (let* ((token (second effect))
               (record (third effect))
@@ -442,9 +497,9 @@
                  "bp-service: lifecycle names do not bind decoded record tokens"))
               (let* ((records
                        (fnn-core 'fn-bpn-host-lifecycle-recovery-records recovery))
-                     (rows (fnn-bps-read-kind-five-rows service received-names))
+                     (rows (fnn-bps-read-received-rows service received-names))
                      (sequence (fnn-bps-sequence-ready service (and records t)))
-                     (event (fnn-core 'fn-bpnf-recover-auto-event
+                     (event (fnn-core 'fn-bpah-recover-auto-event
                                       (fnn-bps-state service) records sequence rows)))
                 (setf (fnn-bps-stages service)
                       (fnn-core 'fn-bpn-host-lifecycle-recovery-stages recovery))

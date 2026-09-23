@@ -10,7 +10,7 @@
         (fn-bpn-lifecycle-record-name 1)
         (fn-bpnf-stored-record-name 9 1)))
 
-(assert-event (equal (fn-bpnf-namespace-max-entries) 8208))
+(assert-event (equal (fn-bpnf-namespace-max-entries) 12304))
 (assert-event (fn-bpnf-legacy-name-candidatep
                (fn-bpn-lifecycle-record-name 0)))
 (assert-event (fn-bpnf-kind-five-name-candidatep

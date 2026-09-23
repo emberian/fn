@@ -79,6 +79,9 @@
 (include-book "books/bp-fnbs-namespace")
 (include-book "books/bp-fnbs-publication")
 (include-book "books/bp-clock-domain")
+(include-book "books/bp-fnbs-delivery-replay")
+(include-book "books/bp-fnbs-delivery-publication")
+(include-book "books/bp-app-handoff")
 (include-book "books/bp-receive-evidence")
 (include-book "books/anchor-wire")
 (include-book "books/anchor-servers")
@@ -197,6 +200,7 @@
         (load "host/native/bp-app.lisp")
         (load "host/native/bp-service.lisp")
         (load "host/native/bp-contact.lisp")
+        (load "host/native/bp-node.lisp")
         ; Native anchor acquisition and its real primitive facility.  The
         ; anchor command calls fnn-crypto-startup in the restarted image, so
         ; it never trusts the serialized FFI readiness state.

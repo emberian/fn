@@ -234,6 +234,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-machine \
 	books/bp-contact-service \
 	tests/acl2/bp-contact-service-tests \
+	books/bp-app-handoff \
+	tests/acl2/bp-app-handoff-tests \
+	books/bp-fnbs-delivery-codec \
+	tests/acl2/bp-fnbs-delivery-codec-tests \
+	books/bp-fnbs-delivery-replay \
+	tests/acl2/bp-fnbs-delivery-replay-tests \
+	books/bp-fnbs-delivery-publication \
+	tests/acl2/bp-fnbs-delivery-publication-tests \
 	books/bp-node-machine-codec \
 	books/bp-node-machine-invariants \
 	books/bp-node-machine-guards \

@@ -301,8 +301,8 @@ class NativeBpServiceTests(unittest.TestCase):
     def test_namespace_bound_is_applied_during_directory_enumeration(self):
         lifecycle = self.journal / "lifecycle"
         lifecycle.mkdir(parents=True)
-        # Mixed FNBS admits a legacy and a received record budget.
-        for number in range(2 * 4096 + 16 + 1):
+        # Mixed FNBS admits legacy, received, and delivery-result budgets.
+        for number in range(3 * 4096 + 16 + 1):
             (lifecycle / f".stage-{number:04d}").touch()
 
         resumed = self.resume()
