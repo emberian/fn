@@ -661,7 +661,8 @@
           (let* ((d (fn-peer-decide-transfer node cfg peer msgid octets
                                              (fn-own-clock owner) id subject))
                  (args (fn-peer-injection-arguments node cfg peer msgid octets
-                                                    0 id subject))
+                                                    0 id subject
+                                                    (fn-own-clock owner)))
                  (state (f-put-global 'fn-owner-transit-kind
                                       (fn-peer-decision-kind d) state))
                  (state (f-put-global 'fn-owner-transit-reason

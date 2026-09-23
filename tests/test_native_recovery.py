@@ -37,7 +37,7 @@ def missing_enrollment_fixture():
         " (source '(70 114 111 109 58 32 97 64 98 13 10 78 101 119 115 103 114 111 117 112 115 58 32 102 110 46 116 101 115 116 13 10 83 117 98 106 101 99 116 58 32 120 13 10 77 101 115 115 97 103 101 45 73 68 58 32 60 109 105 115 115 105 110 103 45 107 101 121 114 105 110 103 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 13 10 120 13 10))"
         " (profile *fn-hsig-profile-tag*) (subject \"fixture-subject\")"
         " (record (fn-record-make 0 0 0 msgid source '(\"fn.test\")"
-        "                         \"fixture-obligation\" subject \"fixture-release\" 2))"
+        "                         \"fixture-obligation\" subject \"fixture-release\" 2 :legacy))"
         " (verdict (fn-stxe-make 0 0 0 msgid :verified '(1) 7 profile))"
         " (event (fn-stxa-make 0 0 0 7 profile"
         "                       (fn-record-string-octets subject)"
