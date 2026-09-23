@@ -1656,6 +1656,15 @@
       ]
     },
     {
+      "id": "PRF-050",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-preserves-identity-sequence"
+        }
+      ]
+    },
+    {
       "id": "PRF-051",
       "events": [
         {
