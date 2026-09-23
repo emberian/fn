@@ -70,6 +70,32 @@ command line; the node at `/tank/fn/node` is root's; the matrix stores
 
 ## Packages ready now
 
+### ITER. Iteration time under three minutes
+
+ember's target, 2026-09-23: from a book edit to a certified verdict in
+under three minutes, measured, not felt. Three numbers, each its own row
+in a small benchmark (`tools/iteration_bench.py`, new: it edits a comment
+in a named book on a scratch branch, submits the plain run, and reports the
+wall from submit to manifest; it never publishes and cleans up after
+itself):
+
+| measure | what it exercises | today (2026-09-23 03:00Z) | target |
+| --- | --- | --- | --- |
+| leaf: edit `books/peer-inbound`, plain run | rsync, cache install, one book and its test books | 8.7 s certify, about a minute with the rsync | under 1 min |
+| deep: edit `books/records-shape`, plain run | the incremental mode certifying every dependent, the chain | refused (no incremental mode yet); the chain was 27 min | under 3 min |
+| freeze: `--closure` over the image roots at 16 jobs | the whole tree from scratch | 31 min at 8 jobs before tonight's repairs | under 3 min, or pcert |
+
+What gets there, in order: every book under ten seconds (the COST package
+below, six lanes landed or in flight tonight), the incremental mode
+(landing), critical-path scheduling (landed), 16 jobs on persvati (a
+recipe change), the local certificate cache kept in step with the farm's
+so a proof session starts in seconds rather than loading sixty uncertified
+books (`certs.py sync` after each run; a small tooling package), and, if
+the chain still will not go under three minutes, provisional certification
+for lane runs with from-scratch kept for the freeze. The benchmark runs
+after each and its three rows go into the evidence record. 1 to 2
+lane-days for the benchmark and the sync; the rest is the packages named.
+
 ### COST. Every book under ten seconds
 
 The standing rule (how we work, last bullet) and the method: the cost

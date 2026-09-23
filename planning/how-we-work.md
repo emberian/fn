@@ -144,3 +144,7 @@ published a certification of `dev`'s head since. The rules that follow:
   instrumented session run (`accumulated-persistence`) at most; never
   rerun the slow form to "see". A lane that lands a book over ten seconds
   says why in its report.
+- **Iteration time is a number.** The target from 2026-09-23 is under
+  three minutes from a book edit to a certified verdict, measured by the
+  three rows of `tools/iteration_bench.py` (leaf edit, deep edit, freeze)
+  and recorded with each change that claims to help.
