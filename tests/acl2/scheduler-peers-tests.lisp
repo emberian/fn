@@ -19,12 +19,12 @@
   (fn-node-complete
    (fn-node-prepare *tp-node-0* 9 "<small@fn.invalid>" *tp-payload-small*
                     *tp-groups* "archive-small" "subject-small"
-                    "release-small" 4)
+                    "release-small" 4 841000000)
    0 9 :durable))
 (defconst *tp-node*
   (fn-node-complete
    (fn-node-prepare *tp-node-1* 10 "<big@fn.invalid>" *tp-payload-big*
-                    *tp-groups* "archive-big" "subject-big" "release-big" 4)
+                    *tp-groups* "archive-big" "subject-big" "release-big" 4 841000000)
    1 10 :durable))
 
 (defconst *tp-config*

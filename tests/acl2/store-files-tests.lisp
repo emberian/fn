@@ -13,7 +13,7 @@
 (defconst *sf-record-0*
   (fn-record-make 0 0 0 "<zero@example.invalid>" '(90)
                   '("fn.letters" "fn.test")
-                  "archive-zero" "content-zero" "release-zero" 2))
+                  "archive-zero" "content-zero" "release-zero" 2 841000000))
 
 (defconst *sf-s0* (fn-sf-initial-state))
 (assert-event (fn-sf-statep *sf-s0*))
@@ -188,7 +188,7 @@
 (defconst *sf-record-1*
   (fn-record-make 0 1 1 "<one@example.invalid>" '(79)
                   '("fn.letters")
-                  "archive-one" "content-one" "release-one" 1))
+                  "archive-one" "content-one" "release-one" 1 841000000))
 (defconst *sf-next-a0* (fn-sf-start-frontier *sf-aborted*))
 (defconst *sf-next-a1* (fn-sf-frontier-file-result *sf-next-a0* :ok))
 (defconst *sf-next-a2* (fn-sf-frontier-replace-result *sf-next-a1* :ok))

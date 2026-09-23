@@ -246,7 +246,7 @@
 (assert-event (equal (fn-node-stage-evidence (fn-node-stage (nth 0 *pt-t1*))) "peer-transit:innA"))
 (assert-event (equal (nth 0 *pt-t1*)
                      (fn-node-prepare *pt-node0* 1 "<a1@example.invalid>" *pt-a1-stored* '("fn.letters")
-                                      "ob-a1" "subject-a1" "peer-transit:innA" (fn-charge-for-payload (len *pt-a1-stored*)))))
+                                      "ob-a1" "subject-a1" "peer-transit:innA" (fn-charge-for-payload (len *pt-a1-stored*)) 841000000)))
 ; Nothing is published by the prepare: the archive is unchanged until the
 ; store's :durable completion.
 (assert-event (equal (fn-state-articles (fn-node-acceptance (nth 0 *pt-t1*))) nil))

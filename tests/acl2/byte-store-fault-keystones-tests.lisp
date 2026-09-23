@@ -8,7 +8,7 @@
 (defconst *fn-bsfk-capacity* 10)
 (defconst *fn-bsfk-record*
   (fn-record-make 0 0 0 "<k7@example.invalid>" '(90)
-                  *fn-bsfk-groups* "archive" "subject" "evidence" 2))
+                  *fn-bsfk-groups* "archive" "subject" "evidence" 2 841000000))
 (defconst *fn-bsfk-frontier-run*
   (fn-bs-run *fn-bs-initialized-store* (fn-sf-initial-state)
              *fn-bs-p-frontier* nil *fn-bsfk-groups* *fn-bsfk-capacity*))

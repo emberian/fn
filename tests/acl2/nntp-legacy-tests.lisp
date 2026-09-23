@@ -27,7 +27,7 @@
 (defconst *lg-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *lg-groups*) 1 *lg-id* *lg-payload*
-                      '("fn.letters"))
+                      '("fn.letters") 841000000)
    0 1 :durable))
 (assert-event (fn-nntp-projectionp *lg-archive*))
 ; The two metadata items the overview line and HDR :bytes/:lines both report.
@@ -357,7 +357,7 @@
 (defconst *lg-phrase-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *lg-groups*) 1 *lg-phrase-id*
-                      *lg-phrase-payload* '("fn.letters"))
+                      *lg-phrase-payload* '("fn.letters") 841000000)
    0 1 :durable))
 (assert-event (fn-nntp-projectionp *lg-phrase-archive*))
 (defconst *lg-phrase-session*

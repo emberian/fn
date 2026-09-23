@@ -8,7 +8,7 @@
 (defconst *bpb-node-prepared*
   (fn-node-prepare *bpb-node-empty* 17 "<bound@example.invalid>"
                    '(98 111 117 110 100 13 10) *bpb-groups*
-                   "archive-bound" "subject-bound" "release-bound" 8))
+                   "archive-bound" "subject-bound" "release-bound" 8 841000000))
 (defconst *bpb-node*
   (fn-node-complete *bpb-node-prepared* 0 17 :durable))
 (defconst *bpb-config*

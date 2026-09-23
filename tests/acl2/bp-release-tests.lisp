@@ -18,7 +18,7 @@
 (defconst *rl-node-empty* (fn-node-initial-state *rl-groups* 16))
 (defconst *rl-node-prepared*
   (fn-node-prepare *rl-node-empty* 9 "<rl@example.invalid>" *rl-payload*
-                   *rl-groups* "archive-rl" "subject-rl" "operator-release" 4))
+                   *rl-groups* "archive-rl" "subject-rl" "operator-release" 4 841000000))
 (defconst *rl-node-committed* (fn-node-complete *rl-node-prepared* 0 9 :durable))
 (defconst *rl-config*
   (fn-bp-make-config "dtn://home/fn" "dtn://peer/fn" "policy-1"
@@ -215,7 +215,7 @@
    *rl-enqueued*
    (fn-node-prepare (fn-bp-state-node *rl-enqueued*) 10 "<rl2@example.invalid>"
                     *rl-payload* *rl-groups* "archive-rl2" "subject-rl2"
-                    "operator-release" 4)))
+                    "operator-release" 4 841000000)))
 (assert-event (fn-bp-binding-statep *rl-staged*))
 (assert-event (consp (fn-node-stage (fn-bp-state-node *rl-staged*))))
 (assert-event (equal (fn-bprl-undertake *rl-staged* "work-1" 3) *rl-staged*))

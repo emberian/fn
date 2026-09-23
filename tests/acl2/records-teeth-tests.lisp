@@ -1,4 +1,4 @@
-; Teeth for the schema-0 record codec keystones.
+; Teeth for the record codec keystones, including schema 1.
 ;
 ; Both directions of the record codec are keystones with one hypothesis each,
 ; stated twice: once of the seam's constrained `fn-record-encode' and
@@ -28,7 +28,7 @@
 (defconst *rec-teeth-record*
   (fn-record-make 1 2 3 "<a@example.invalid>" '(72 105 13 10)
                   '("fn.letters" "fn.test") "archive-a" "content-a"
-                  "release-a" 4))
+                  "release-a" 4 841000000))
 
 (assert-event (fn-record-p *rec-teeth-record*))
 (assert-event
@@ -75,7 +75,7 @@
 ; octet out of range.  Shape validity alone is not the hypothesis.
 (defconst *rec-teeth-bad-payload*
   (fn-record-make 1 2 3 "<a@example.invalid>" '(256)
-                  '("fn.letters") "archive-a" "content-a" "release-a" 4))
+                  '("fn.letters") "archive-a" "content-a" "release-a" 4 841000000))
 (assert-event (not (fn-record-p *rec-teeth-bad-payload*)))
 
 (local

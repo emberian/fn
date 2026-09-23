@@ -17,7 +17,7 @@
 (make-event `(defconst *fn-sir-snapshot* ',(fn-hsig-keyring-event 0 0 0 0 *fn-sir-principal* *fn-sir-keys*)))
 (defconst *fn-sir-record*
   (fn-record-make 1 1 1 "<signed@example.invalid>" '(65 13 10) '("g")
-                  "archive-signed" "subject-signed" "post-signed" 3))
+                  "archive-signed" "subject-signed" "post-signed" 3 841000000))
 (make-event `(defconst *fn-sir-accept* ',(fn-hsig-authorized-article-event
    1 1 1 0 (fn-stxk-snapshot *fn-sir-snapshot*)
    "<signed@example.invalid>" (fn-record-string-octets "subject-signed")
@@ -28,7 +28,7 @@
                                  "forward-signed" "subject-signed" "custody" 5))
 (defconst *fn-sir-legacy*
   (fn-record-make 3 3 3 "<later@example.invalid>" '(66 13 10) '("g")
-                  "archive-later" "subject-later" "post-later" 3))
+                  "archive-later" "subject-later" "post-later" 3 841000000))
 (defconst *fn-sir-history*
   (list *fn-sir-snapshot* *fn-sir-accept* *fn-sir-retention* *fn-sir-legacy*))
 (make-event `(defconst *fn-sir-identity* ',(fn-replay-identity *fn-sir-history*)))

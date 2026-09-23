@@ -61,7 +61,7 @@
 ; The signed composite binds its embedded legacy record byte-for-byte.  The
 ; two :verified observations below stand for the native primitive results.
 (make-event `(defconst *sit-signed-record* ',(fn-record-make 1 1 1 "<signed@example.invalid>" *sit-source* *sit-groups*
-                  "signed-obligation" "signed-subject" "signed-release" 3)))
+                  "signed-obligation" "signed-subject" "signed-release" 3 841000000)))
 (make-event `(defconst *sit-composite* ',(fn-hsig-authorized-article-event
    1 1 1 1 *sit-snapshot* "<signed@example.invalid>"
    (fn-record-string-octets "signed-subject")
@@ -104,7 +104,7 @@
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-refused*)) nil))
 
 (make-event `(defconst *sit-legacy* ',(fn-record-make 2 3 3 "<legacy@example.invalid>" '(76 13 10) *sit-groups*
-                  "legacy-obligation" "legacy-subject" "legacy-release" 2)))
+                  "legacy-obligation" "legacy-subject" "legacy-release" 2 :legacy)))
 (make-event `(defconst *sit-after-legacy* ',(fn-sit-commit-legacy *sit-refused* *sit-legacy*)))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-after-legacy*))
                      '((2 . 3))))
@@ -160,7 +160,7 @@
 ; replay correctly rejects its missing historical snapshot. The composed
 ; recovery must report a fault, never open an empty node successfully.
 (make-event `(defconst *sit-orphan-record* ',(fn-record-make 0 0 0 "<orphan@example.invalid>" *sit-source* *sit-groups*
-                  "orphan-obligation" "orphan-subject" "orphan-release" 3)))
+                  "orphan-obligation" "orphan-subject" "orphan-release" 3 841000000)))
 (make-event `(defconst *sit-orphan-composite* ',(fn-hsig-authorized-article-event
    0 0 0 1 *sit-snapshot* "<orphan@example.invalid>"
    (fn-record-string-octets "orphan-subject")

@@ -13,7 +13,7 @@
 (defconst *hst-source* '(65 13 10))
 (defconst *hst-record*
   (fn-record-make 2 3 4 "<hybrid@example.invalid>" *hst-source* '("example")
-                  "obligation" "subject" "release" 3))
+                  "obligation" "subject" "release" 3 841000000))
 (defconst *hst-record-octets* (fn-record-encode-impl *hst-record*))
 (make-event `(defconst *hst-snapshot* ',(fn-hsig-keyring-snapshot *hst-principal* *hst-keys*)))
 

@@ -36,7 +36,7 @@
     72 101 108 108 111 13 10 46 100 111 116 13 10))
 (defconst *fn-nntp-empty-archive* (fn-initial-state *fn-nntp-groups*))
 (defconst *fn-nntp-prepared*
-  (fn-accept-prepare *fn-nntp-empty-archive* 1 *fn-nntp-id* *fn-nntp-payload* '("fn.letters")))
+  (fn-accept-prepare *fn-nntp-empty-archive* 1 *fn-nntp-id* *fn-nntp-payload* '("fn.letters") 841000000))
 (defconst *fn-nntp-archive* (fn-accept-complete *fn-nntp-prepared* 0 1 :durable))
 (defconst *fn-nntp-session0* (fn-nntp-open-session *fn-nntp-archive*))
 (assert-event (fn-statep *fn-nntp-archive*))
@@ -228,10 +228,10 @@
 (defconst *fn-nntp-broken-payload* '(111 112 97 113 117 101 32 98 121 116 101 115))
 (defconst *fn-nntp-mixed-good*
   (fn-make-article "<good@mixed.invalid>" *fn-nntp-payload* '("fn.letters")
-                   '(("fn.letters" . 1)) t))
+                   '(("fn.letters" . 1)) t 841000000))
 (defconst *fn-nntp-mixed-broken*
   (fn-make-article "<broken@mixed.invalid>" *fn-nntp-broken-payload* '("fn.letters")
-                   '(("fn.letters" . 2)) t))
+                   '(("fn.letters" . 2)) t 841000000))
 (defconst *fn-nntp-mixed-archive*
   (fn-make-state '("fn.letters") '(("fn.letters" . 3))
                  (list *fn-nntp-mixed-broken* *fn-nntp-mixed-good*) 0 nil nil))
@@ -300,7 +300,7 @@
                 (code-char 13) (code-char 10)) 'string))
 (defconst *fn-nntp-bad-id-article*
   (fn-make-article *fn-nntp-bad-id* *fn-nntp-payload* '("fn.letters")
-                   '(("fn.letters" . 2)) t))
+                   '(("fn.letters" . 2)) t 841000000))
 (defconst *fn-nntp-bad-id-archive*
   (fn-make-state '("fn.letters") '(("fn.letters" . 3))
                  (list *fn-nntp-bad-id-article* *fn-nntp-mixed-good*) 0 nil nil))
@@ -511,12 +511,12 @@
           'string))
 (defconst *fn-nntp-unsafe-id-prepared*
   (fn-accept-prepare *fn-nntp-empty-archive* 2 *fn-nntp-unsafe-id*
-                     *fn-nntp-payload* '("fn.letters")))
+                     *fn-nntp-payload* '("fn.letters") 841000000))
 (defconst *fn-nntp-unsafe-id-archive*
   (fn-accept-complete *fn-nntp-unsafe-id-prepared* 0 2 :durable))
 (defconst *fn-nntp-unsafe-payload-prepared*
   (fn-accept-prepare *fn-nntp-empty-archive* 3 "<payload@invalid>"
-                     '(72 101 97 100 58 32 120 13 10 13 10 66) '("fn.letters")))
+                     '(72 101 97 100 58 32 120 13 10 13 10 66) '("fn.letters") 841000000))
 (defconst *fn-nntp-unsafe-payload-archive*
   (fn-accept-complete *fn-nntp-unsafe-payload-prepared* 0 3 :durable))
 (assert-event (fn-statep *fn-nntp-unsafe-id-archive*))
@@ -548,7 +548,7 @@
 (assert-event
  (not (fn-nntp-article-framedp
        (fn-make-article "<nul@invalid>" '(72 58 32 120 13 10 13 10 0 13 10)
-                        '("fn.letters") '(("fn.letters" . 1)) t))))
+                        '("fn.letters") '(("fn.letters" . 1)) t 841000000))))
 
 ; -----------------------------------------------------------------------------
 ; RFC 3977 sections 4 and 7.6: LIST defaults to ACTIVE; its two locally
@@ -733,10 +733,10 @@
 (defconst *fn-nntp-sparse-groups* '("fn.sparse"))
 (defconst *fn-nntp-sparse-a1*
   (fn-make-article "<one@sparse.invalid>" *fn-nntp-payload* '("fn.sparse")
-                   '(("fn.sparse" . 1)) t))
+                   '(("fn.sparse" . 1)) t 841000000))
 (defconst *fn-nntp-sparse-a3*
   (fn-make-article "<three@sparse.invalid>" *fn-nntp-payload* '("fn.sparse")
-                   '(("fn.sparse" . 3)) t))
+                   '(("fn.sparse" . 3)) t 841000000))
 (defconst *fn-nntp-sparse-archive*
   (fn-make-state *fn-nntp-sparse-groups* '(("fn.sparse" . 4))
                  (list *fn-nntp-sparse-a3* *fn-nntp-sparse-a1*) 0 nil nil))

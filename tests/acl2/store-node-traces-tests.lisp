@@ -6,10 +6,10 @@
 (defconst *snt-groups* '("fn.letters" "fn.test"))
 (defconst *snt-first*
   (fn-record-make 0 1 1 "<trace-one@example>" '(65) *snt-groups*
-                  "trace-pin-one" "trace-content-one" "trace-release-one" 2))
+                  "trace-pin-one" "trace-content-one" "trace-release-one" 2 841000000))
 (defconst *snt-second*
   (fn-record-make 1 2 2 "<trace-two@example>" '(66) '("fn.test")
-                  "trace-pin-two" "trace-content-two" "trace-release-two" 1))
+                  "trace-pin-two" "trace-content-two" "trace-release-two" 1 841000000))
 (defconst *snt-barriers*
   '((:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
     (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)

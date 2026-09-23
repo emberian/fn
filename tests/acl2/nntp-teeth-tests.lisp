@@ -47,7 +47,7 @@
 (defconst *nnt-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *nnt-groups*) 1 *nnt-id* *nnt-payload*
-                      '("fn.letters"))
+                      '("fn.letters") 841000000)
    0 1 :durable))
 
 (assert-event (fn-statep *nnt-archive*))

@@ -19,11 +19,11 @@
 (defconst *opc-first*
   (fn-record-make 0 0 0 "<opc-first@example.invalid>" '(65 66)
                   *opc-groups* "opc-pin-1" "opc-subject-1"
-                  "opc-release-1" 2))
+                  "opc-release-1" 2 841000000))
 (defconst *opc-second*
   (fn-record-make 1 1 1 "<opc-second@example.invalid>" '(67 68)
                   '("fn.test") "opc-pin-2" "opc-subject-2"
-                  "opc-release-2" 1))
+                  "opc-release-2" 1 841000000))
 
 (defun opc-run (oc events)
   (declare (xargs :guard (fn-sn-statep
@@ -109,7 +109,7 @@
 (defconst *opc-wrong-sequence*
   (fn-record-make 9 1 1 "<opc-second@example.invalid>" '(67 68)
                   '("fn.test") "opc-pin-2" "opc-subject-2"
-                  "opc-release-2" 1))
+                  "opc-release-2" 1 841000000))
 (assert-event
  (equal (fn-opc-prepare *opc-second-reserved* *opc-wrong-sequence*)
         *opc-second-reserved*))
@@ -124,7 +124,7 @@
 (defconst *opc-conflict*
   (fn-record-make 1 1 1 "<opc-first@example.invalid>" '(67 68)
                   '("fn.test") "opc-pin-2" "opc-subject-2"
-                  "opc-release-2" 1))
+                  "opc-release-2" 1 841000000))
 (assert-event
  (fn-sf-candidatep
   *opc-conflict*

@@ -401,7 +401,7 @@
                                        "ob-d" "subject" "ev" 1)
                      *cn-t-cn2*))
 (assert-event (not (equal (fn-node-prepare (fn-cnode-node *cn-t-cn2*) 1 "<d@t>" *cn-t-payload*
-                                           '("fn.test") "ob-d" "subject" "ev" 1)
+                                           '("fn.test") "ob-d" "subject" "ev" 1 841000000)
                           (fn-cnode-node *cn-t-cn2*))))
 ; Revival at generation 3 resumes the numbering: the next article in fn.test
 ; takes local number 3, not 1.
@@ -437,7 +437,7 @@
   (declare (xargs :mode :program))
   (fn-jrec-make :article seq
                 (fn-record-make seq txid 1 msgid *cn-t-payload* '("fn.test")
-                                (concatenate 'string "ob-" msgid) "subject" "ev" 1)))
+                                (concatenate 'string "ob-" msgid) "subject" "ev" 1 841000000)))
 (defconst *cn-t-js*
   (list (fn-jrec-make :config 0 *fn-cfg-default-record*)
         (cn-t-article 1 0 "<a@t>")

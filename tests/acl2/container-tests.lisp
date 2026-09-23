@@ -175,7 +175,7 @@
               (fn-node-prepare *ct-node* 1 "<t@example.invalid>" '(72 105 33)
                                *ct-groups* (fn-ct-obligation-string *ct-obligation-1*)
                                (fn-ct-subject-string *ct-t*) "release"
-                               (fn-ct-charge *ct-t*))
+                               (fn-ct-charge *ct-t*) 841000000)
               0 1 :durable)
              *ct-node*)))
 (assert-event (equal (fn-ct-result-state *ct-t-result*) *ct-node*))

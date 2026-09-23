@@ -9,16 +9,16 @@
     (:io :frontier-replace :ok) (:io :frontier-directory :ok)))
 (defconst *snrt-staged*
   (fn-record-make 0 1 1 "<staged@example>" '(65) *snrt-groups*
-                  "staged-pin" "staged-content" "staged-release" 1))
+                  "staged-pin" "staged-content" "staged-release" 1 841000000))
 (defconst *snrt-written*
   (fn-record-make 0 2 2 "<written@example>" '(66) *snrt-groups*
-                  "written-pin" "written-content" "written-release" 1))
+                  "written-pin" "written-content" "written-release" 1 841000000))
 (defconst *snrt-committed*
   (fn-record-make 0 3 3 "<committed@example>" '(67) *snrt-groups*
-                  "committed-pin" "committed-content" "committed-release" 1))
+                  "committed-pin" "committed-content" "committed-release" 1 841000000))
 (defconst *snrt-later-abort*
   (fn-record-make 1 5 5 "<later-abort@example>" '(68) *snrt-groups*
-                  "later-pin" "later-content" "later-release" 1))
+                  "later-pin" "later-content" "later-release" 1 841000000))
 
 ; Refuse txid 0, abort staged txid 1, abort written-but-unpublished txid 2.
 ; Every next operation uses the unchanged history sequence and advanced txid.

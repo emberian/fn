@@ -31,14 +31,14 @@
 ; A resource refusal changes neither the acceptance nor retention component.
 (assert-event
  (equal (fn-node-prepare *node-empty* 9 "<a@example.invalid>" *node-payload*
-                         *node-groups* "archive-a" "content-a" "release-a" 9)
+                         *node-groups* "archive-a" "content-a" "release-a" 9 841000000)
         *node-empty*))
 
 ; The successful preparation stages both sides but publishes neither groups nor
 ; a committed archive pin.  The archive subject is not the Message-ID.
 (defconst *node-prepared*
   (fn-node-prepare *node-empty* 9 "<a@example.invalid>" *node-payload*
-                   *node-groups* "archive-a" "content-a" "release-a" 5))
+                   *node-groups* "archive-a" "content-a" "release-a" 5 841000000))
 (assert-event (fn-node-statep *node-prepared*))
 (assert-event (equal (fn-state-articles
                       (fn-node-acceptance *node-prepared*)) nil))
@@ -53,7 +53,7 @@
 ; The reservation blocks competing work before durable completion.
 (assert-event
  (equal (fn-node-prepare *node-prepared* 9 "<b@example.invalid>" *node-payload*
-                         '("fn.letters") "archive-b" "content-b" "release-b" 4)
+                         '("fn.letters") "archive-b" "content-b" "release-b" 4 841000000)
         *node-prepared*))
 
 ; Wrong transaction/generation cannot publish either component.
@@ -97,13 +97,13 @@
 (assert-event
  (equal (fn-node-prepare *node-committed* 9 "<a@example.invalid>" *node-payload*
                          *node-groups* "archive-retry" "other-subject"
-                         "other-release" 1)
+                         "other-release" 1 841000000)
         *node-committed*))
 
 ; A known abort releases the staged capacity and consumes the acceptance txid.
 (defconst *node-abort-prepared*
   (fn-node-prepare *node-committed* 9 "<b@example.invalid>" *node-payload*
-                   '("fn.letters") "archive-b" "content-b" "release-b" 2))
+                   '("fn.letters") "archive-b" "content-b" "release-b" 2 841000000))
 (defconst *node-aborted* (fn-node-complete *node-abort-prepared* 1 9 :aborted))
 (assert-event (equal (fn-retain-reserved (fn-node-retention *node-aborted*)) 5))
 (assert-event (equal (fn-state-next-txid (fn-node-acceptance *node-aborted*)) 2))
@@ -113,14 +113,14 @@
 ; recovery alone chooses whether to promote or discard the staged archive pin.
 (defconst *node-uncertain-prepared*
   (fn-node-prepare *node-aborted* 9 "<b@example.invalid>" *node-payload*
-                   '("fn.letters") "archive-b" "content-b" "release-b" 2))
+                   '("fn.letters") "archive-b" "content-b" "release-b" 2 841000000))
 (defconst *node-uncertain*
   (fn-node-complete *node-uncertain-prepared* 2 9 :indeterminate))
 (assert-event (equal (fn-state-fenced (fn-node-acceptance *node-uncertain*)) t))
 (assert-event (consp (fn-node-stage *node-uncertain*)))
 (assert-event
  (equal (fn-node-prepare *node-uncertain* 9 "<c@example.invalid>" *node-payload*
-                         '("fn.test") "archive-c" "content-c" "release-c" 1)
+                         '("fn.test") "archive-c" "content-c" "release-c" 1 841000000)
         *node-uncertain*))
 (defconst *node-recovered-absent*
   (fn-node-recover *node-uncertain* 2 9 :absent))
@@ -204,13 +204,13 @@
 
 (defconst *node-teeth-prepared*
   (fn-node-prepare *node-teeth-empty* 9 "<a@example.invalid>" *node-teeth-payload*
-                   *node-teeth-groups* "archive-a" "content-a" "release-a" 5))
+                   *node-teeth-groups* "archive-a" "content-a" "release-a" 5 841000000))
 (defconst *node-teeth-committed*
   (fn-node-complete *node-teeth-prepared* 0 9 :durable))
 (defconst *node-teeth-staged-again*
   (fn-node-prepare *node-teeth-committed* 9 "<b@example.invalid>"
                    '(66 121 101 13 10) '("fn.letters")
-                   "archive-b" "content-b" "release-b" 4))
+                   "archive-b" "content-b" "release-b" 4 841000000))
 
 (assert-event (fn-node-statep *node-teeth-empty*))
 (assert-event (fn-node-statep *node-teeth-prepared*))

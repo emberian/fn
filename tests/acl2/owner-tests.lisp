@@ -63,7 +63,7 @@
                   (concatenate 'string "own-pin:" msgid)
                   (concatenate 'string "own-content:" msgid)
                   (concatenate 'string "own-release:" msgid)
-                  2))
+                  2 841000000))
 
 (defun own-post-events (record)
   (list '(:store (:io :start-frontier nil))

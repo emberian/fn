@@ -12,11 +12,11 @@
 (defconst *spc-first*
   (fn-record-make 0 0 0 "<spc-first@example.invalid>" '(65 66)
                   *spc-groups* "spc-pin-1" "spc-subject-1"
-                  "spc-release-1" 2))
+                  "spc-release-1" 2 841000000))
 (defconst *spc-second*
   (fn-record-make 1 1 1 "<spc-second@example.invalid>" '(67 68)
                   '("fn.test") "spc-pin-2" "spc-subject-2"
-                  "spc-release-2" 1))
+                  "spc-release-2" 1 841000000))
 
 (defun spc-reserve (s)
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
@@ -50,7 +50,7 @@
 (defconst *spc-wrong-sequence*
   (fn-record-make 9 1 1 "<spc-second@example.invalid>" '(67 68)
                   '("fn.test") "spc-pin-2" "spc-subject-2"
-                  "spc-release-2" 1))
+                  "spc-release-2" 1 841000000))
 (assert-event
  (equal (fn-spc-prepare *spc-second-reserved* *spc-wrong-sequence*)
         *spc-second-reserved*))
@@ -64,7 +64,7 @@
 (defconst *spc-duplicate*
   (fn-record-make 1 1 1 "<spc-first@example.invalid>" '(67 68)
                   '("fn.test") "spc-pin-2" "spc-subject-2"
-                  "spc-release-2" 1))
+                  "spc-release-2" 1 841000000))
 (assert-event
  (fn-sf-candidatep *spc-duplicate*
                    (fn-sf-records (fn-sn-files *spc-second-reserved*))
