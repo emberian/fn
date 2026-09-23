@@ -156,14 +156,17 @@
  (defthm fn-opc-reader-context-conn-okp
    (implies (fn-own-conn-okp conn groups capacity records)
             (fn-own-conn-okp
-             (fn-own-conn-make (fn-own-conn-id conn) (fn-own-conn-version conn)
+             (fn-own-conn-make-indexed
+                               (fn-own-conn-id conn) (fn-own-conn-version conn)
                                (fn-own-conn-frontier conn) (fn-own-conn-wire conn)
                                (fn-auth-with-base
                                 (fn-own-conn-session conn)
                                 (fn-peer-open-session (fn-own-conn-archive conn)
                                                       nil node cfg))
                                (fn-own-conn-archive conn) (fn-own-conn-config conn)
-                               (fn-own-conn-observation conn))
+                               (fn-own-conn-observation conn)
+                               (fn-own-conn-verdicts conn)
+                               (fn-own-conn-index conn))
              groups capacity records))
    :hints (("Goal" :in-theory (e/d (fn-own-conn-okp (:d fn-own-conn-boundedp))
                                    (fn-auth-with-base fn-peer-open-session
