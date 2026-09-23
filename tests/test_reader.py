@@ -384,16 +384,15 @@ class ReaderSocketTests(unittest.TestCase):
     def test_newnews_transcript_over_a_real_socket(self):
         """RFC 3977 section 7.4 framing, argument forms and refusals.
 
-        The seeded article carries neither Injection-Date nor Date, so fn can
-        read no injection instant for it and does not report it: section
-        7.4.2's empty block is the correct answer here, and it is also the
-        answer for a wildmat that matches no group.  A reported identifier is
-        the subject of the store-backed test below.  Expected replies are
-        written from sections 7.4.2, 7.3.2 and 3.2.1.
+        The seeded article is legacy.  Its reader-pinned wall second supplies
+        the conservative horizon, so the old threshold reports it despite its
+        undated payload.  Expected replies follow sections 7.4.2 and 7.3.2.
         """
         sock = self.reader.connect()
         self.addCleanup(sock.close)
         empty = b"230 list of new articles by message-id follows\r\n.\r\n"
+        seed = (b"230 list of new articles by message-id follows\r\n"
+                b"<reader@example.invalid>\r\n.\r\n")
         # The three-argument form, the optional GMT token, the two-digit year
         # of section 7.3.2 (the served connection has a wall clock), and a
         # wildmat that matches nothing.
@@ -401,8 +400,9 @@ class ReaderSocketTests(unittest.TestCase):
                      b"NEWNEWS fn.* 19700101 000000\r\n"
                      b"NEWNEWS fn.letters 700101 000000 GMT\r\n"
                      b"NEWNEWS no.such.* 19700101 000000 GMT\r\n")
-        for _ in range(4):
-            self.reader.assert_bytes(sock, empty)
+        for _ in range(3):
+            self.reader.assert_bytes(sock, seed)
+        self.reader.assert_bytes(sock, empty)
         # Section 3.2.1's 501: too few arguments, a fourth token that is not
         # GMT, a malformed wildmat, an out-of-range time, and a date that is
         # neither the six- nor the eight-digit form.
@@ -417,7 +417,7 @@ class ReaderSocketTests(unittest.TestCase):
         # so the selected group and cursor survive it.
         sock.sendall(b"GROUP fn.letters\r\nNEWNEWS fn.* 19700101 000000\r\nSTAT\r\n")
         self.reader.assert_bytes(sock, b"211 1 1 1 fn.letters\r\n")
-        self.reader.assert_bytes(sock, empty)
+        self.reader.assert_bytes(sock, seed)
         self.reader.assert_bytes(
             sock, b"223 1 <reader@example.invalid> retrieved\r\n")
 
@@ -522,13 +522,10 @@ class StoreReaderSocketTests(unittest.TestCase):
         self.store_command("post", *args)
 
     def test_newnews_reports_only_articles_newer_than_the_requested_instant(self):
-        """RFC 3977 section 7.4 over a store, with real injection instants.
+        """RFC 3977 section 7.4 over a store, using acceptance stamps.
 
-        Three durable articles: one dated 2026, one dated 2020, and one with
-        no date field at all.  The instant fn compares against is the
-        article's own Injection-Date, falling back to Date (RFC 5537 sections
-        3.6 and 3.7), because the store records no arrival stamp beside an
-        article.  Expected replies are written from section 7.4.2.
+        Three durable articles carry divergent payload dates: 2026, 2020,
+        and none.  Their acceptance stamps decide every reply.
         """
         self.post("<new@example.invalid>",
                   b"Message-ID: <new@example.invalid>\r\n"
@@ -543,18 +540,20 @@ class StoreReaderSocketTests(unittest.TestCase):
                   b"\r\nno date\r\n", ("fn.letters",))
         with ReaderProcess(self.store) as reader:
             client = reader.connect()
-            # Since 1970: both dated articles, newest-committed first; the
-            # undated one is not reported, which is the stated limitation.
+            # All three were accepted by this node in 2026, regardless of
+            # their payload dates, newest committed first.
             client.sendall(b"NEWNEWS fn.* 19700101 000000 GMT\r\n")
             reader.assert_bytes(
                 client,
                 b"230 list of new articles by message-id follows\r\n"
-                b"<old@example.invalid>\r\n<new@example.invalid>\r\n.\r\n")
-            # Since 2021: only the 2026 article.
+                b"<undated@example.invalid>\r\n<old@example.invalid>\r\n"
+                b"<new@example.invalid>\r\n.\r\n")
+            # Since 2021: the same three acceptance stamps qualify.
             client.sendall(b"NEWNEWS fn.* 20210101 000000 GMT\r\n")
             reader.assert_bytes(
                 client,
                 b"230 list of new articles by message-id follows\r\n"
+                b"<undated@example.invalid>\r\n<old@example.invalid>\r\n"
                 b"<new@example.invalid>\r\n.\r\n")
             # Since 2027: none, and the block is still well formed.
             client.sendall(b"NEWNEWS fn.* 20270101 000000 GMT\r\n")

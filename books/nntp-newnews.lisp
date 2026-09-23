@@ -59,11 +59,13 @@
           (append newer (list article)) horizon)
          (let ((stamp (fn-article-stamp article)))
            (if (natp stamp) stamp
-             (fn-nntp-newnews-prefix-horizon newer horizon)))))
+             (fn-nntp-newnews-prefix-horizon newer horizon))))
+  :hints (("Goal" :induct (fn-nntp-newnews-prefix-horizon newer horizon))))
 
 (defun fn-nntp-newnews-accepted-since
     (groups threshold articles newer horizon)
-  (declare (xargs :guard t :measure (acl2-count articles)))
+  (declare (xargs :guard (true-listp newer)
+                  :measure (acl2-count articles)))
   (if (consp articles)
       (let* ((article (car articles))
              (current (fn-nntp-newnews-prefix-horizon newer horizon))

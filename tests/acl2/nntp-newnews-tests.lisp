@@ -513,17 +513,58 @@
                      *nn-session*))
 
 ; -----------------------------------------------------------------------------
- ; A candidate-free list of 300 articles has a complete empty answer.  No
+; A 32 KiB unparseable payload is still reported at its acceptance stamp.
+(defun nn-zero-octets (n)
+  (declare (xargs :measure (nfix n)))
+  (if (posp n) (cons 0 (nn-zero-octets (- n 1))) nil))
+(defconst *nn-large-article*
+  (fn-make-article (fn-article-msgid *nn-a1-article*)
+                   (nn-zero-octets 32768)
+                   (fn-article-groups *nn-a1-article*)
+                   (fn-article-memberships *nn-a1-article*)
+                   (fn-article-pin *nn-a1-article*)
+                   (fn-article-stamp *nn-a1-article*)))
+(assert-event (equal (len (fn-article-payload *nn-large-article*)) 32768))
+(assert-event (equal (fn-nntp-newnews-scan
+                      '("fn.letters") *nn-noon*
+                      (list *nn-large-article*) :none)
+                     (list *nn-a1-id*)))
+(assert-event (equal (fn-nntp-newnews-scan
+                      '("fn.letters") *nn-noon*
+                      (fn-nntp-newnews-without-payload
+                       (list *nn-large-article*)) :none)
+                     (list *nn-a1-id*)))
+
+; A candidate-free archive of 300 articles has a complete empty answer.  No
 ; parser, size budget or partial-response 503 remains on this command.
-(defun nn-repeat-other (article n)
+(defun nn-bulk-id (n)
+  (coerce (append '(#\< #\n)
+                  (explode-nonnegative-integer (nfix n) 10 nil)
+                  '(#\@ #\f #\n #\. #\i #\n #\v #\a #\l #\i #\d #\>))
+          'string))
+(defun nn-bulk-other (st n)
   (declare (xargs :measure (nfix n)))
   (if (posp n)
-      (cons article (nn-repeat-other article (- n 1)))
-    nil))
-(defconst *nn-bulk-other* (nn-repeat-other *nn-a3-article* 300))
-(assert-event (equal (len *nn-bulk-other*) 300))
+      (nn-bulk-other
+       (nn-accept st (nn-bulk-id n) *nn-a3-payload* '("fn.notes")
+                  843134400)
+       (- n 1))
+    st))
+(defconst *nn-bulk-archive*
+  (nn-bulk-other (fn-initial-state *nn-groups*) 300))
+(assert-event (equal (len (fn-state-articles *nn-bulk-archive*)) 300))
+(assert-event (fn-nntp-projectionp *nn-bulk-archive*))
 (assert-event (equal (fn-nntp-newnews-candidate-count
-                      '("fn.letters") *nn-bulk-other*) 0))
+                      '("fn.letters")
+                      (fn-state-articles *nn-bulk-archive*)) 0))
 (assert-event (equal (fn-nntp-newnews-scan
-                      '("fn.letters") *nn-midnight* *nn-bulk-other* :none)
+                      '("fn.letters") *nn-midnight*
+                      (fn-state-articles *nn-bulk-archive*) :none)
                      nil))
+(defconst *nn-bulk-session* (fn-nntp-open-session *nn-bulk-archive*))
+(assert-event
+ (equal (nn-only-reply
+         (fn-nntp-result-effects
+          (fn-nntp-step *nn-bulk-session* *nn-bulk-archive* *nn-env*
+                        (list :command *nn-line-letters*))))
+        *nn-expected-empty-reply*))
