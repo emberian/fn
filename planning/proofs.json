@@ -1664,11 +1664,15 @@
         "books/bp-node-machine-authorization.lisp",
         "tests/acl2/bp-node-machine-authorization-tests.lisp",
         "planning/evidence/bp-lifecycle-assurance-w18-2026-09-21.md",
-        "planning/evidence/manifests/certify-20260921T112003Z-2095559.json"
+        "planning/evidence/manifests/certify-20260921T112003Z-2095559.json",
+        "books/bp-handoff-status.lisp",
+        "tests/acl2/bp-handoff-status-tests.lisp",
+        "planning/evidence/bp-effective-handoff-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T210917Z-151607.json"
       ],
       "pending_subject": "The native host directly calls fn-bpn-step. The maintained lifecycle invariant and durable send/queue authorization now have source-pinned certified keystones; physical publication observations, full application/Store trace composition and all reachable crash cuts remain open.",
       "progress_note": "The actual fn-bpn-step preserves fn-bpn-lifecycle-invariantp under that input invariant and fn-bpn-machine-eventp, and under the lifecycle invariant its send and queue-accept effects require the exact durable authorization or an exact retained duplicate. The hbox source-pinned closure and reachable authorization counterexamples are archived in bp-lifecycle-assurance-w18-2026-09-21.md; the duplicate persvati dependency timeout remains negative evidence. These logical results assume the reported persistence outcomes and do not establish physical durability or a current combined native image. Native lifecycle append consumes the shared immutable publisher; authority-barrier failure remains uncertain.",
-      "application_join_scope": "Native application/Store join and receipt-decision recovery have scoped runtime witnesses. Main now adopts maintained-state fast application and configuration projections, with explicit checked/fast correspondence obligations; the latest changed test/config projection has not yet passed the integrated certification batch. General joined trace preservation, authoritative obligation release and all publication/recovery cuts remain open. Transport completion or expiry does not establish application acceptance or release authority.",
+      "application_join_scope": "Native application/Store join and receipt-decision recovery have scoped runtime witnesses. The A3 effective-handoff projection now has a certified exact-job/peer/payload/FNRJ-premise theorem plus byte replay, restart and distinct-trigger tests; its native caller switch and combined-image test are pending, so it is not yet a host-reached event in this registry. General joined trace preservation, observed-channel admission, expired-held delivery eligibility and physical publication cuts remain open. Transport completion or expiry does not establish application acceptance or release authority.",
       "events": [
         "fn-bpn-step-preserves-lifecycle-invariant",
         "fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record",

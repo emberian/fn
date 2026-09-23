@@ -233,6 +233,8 @@
     "tests/acl2/bp-contact-service-tests",
     "books/bp-app-handoff",
     "tests/acl2/bp-app-handoff-tests",
+    "books/bp-handoff-status",
+    "tests/acl2/bp-handoff-status-tests",
     "books/bp-fnbs-delivery-codec",
     "tests/acl2/bp-fnbs-delivery-codec-tests",
     "books/bp-fnbs-delivery-replay",
@@ -515,25 +517,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 516,
-    "books_in_root_closure": 515,
-    "roots": 511,
-    "theorems": 7802,
-    "functions": 5941,
-    "assert_events": 8574,
-    "must_fails": 382,
+    "books": 518,
+    "books_in_root_closure": 517,
+    "roots": 513,
+    "theorems": 7808,
+    "functions": 5950,
+    "assert_events": 8596,
+    "must_fails": 385,
     "encapsulates": 26,
     "guards": {
-      "verified": 1907,
-      "declared-off": 314,
-      "default-guarded": 2943,
-      "default-unguarded": 777
+      "verified": 1913,
+      "declared-off": 315,
+      "default-guarded": 2944,
+      "default-unguarded": 778
     },
     "suspect_theorems": 72,
     "export_hygiene_warnings": 99,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 26,
-    "include_hygiene_warnings": 381,
+    "include_hygiene_warnings": 385,
     "host_names_warnings": 750,
     "hand_written_record_warnings": 18
   },
@@ -1723,6 +1725,31 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-handoff-status.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 6,
+      "guards": {
+        "verified": 6,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 6,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-app-handoff"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -8949,9 +8976,9 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 22,
+      "assert_events": 26,
       "must_fails": 0,
-      "defconsts": 3,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -9500,6 +9527,35 @@
       "encapsulates": 0,
       "includes": [
         "../../books/bp-fragment-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-handoff-status-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 1,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 18,
+      "must_fails": 3,
+      "defconsts": 29,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-fnbs-delivery-replay",
+        "../../books/bp-handoff-status",
+        "bp-receipt-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -16206,6 +16262,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-handoff-status.lisp",
+        "line": 6,
+        "include": "bp-app-handoff",
+        "included": "books/bp-app-handoff.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-ingress.lisp",
         "line": 9,
         "include": "article-fields",
@@ -17281,6 +17344,27 @@
         "line": 10,
         "include": "../../books/bp-fragment-invariants",
         "included": "books/bp-fragment-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-handoff-status-tests.lisp",
+        "line": 2,
+        "include": "../../books/bp-handoff-status",
+        "included": "books/bp-handoff-status.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-handoff-status-tests.lisp",
+        "line": 3,
+        "include": "bp-receipt-tests",
+        "included": "tests/acl2/bp-receipt-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-handoff-status-tests.lisp",
+        "line": 4,
+        "include": "../../books/bp-fnbs-delivery-replay",
+        "included": "books/bp-fnbs-delivery-replay.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
