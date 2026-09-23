@@ -131,3 +131,12 @@ published a certification of `dev`'s head since. The rules that follow:
   books and test books as plain roots): everything unchanged installs from
   the cache and only the changed books and their dependents certify. Root
   uses `--closure` for the freeze and the treewide run, nothing else.
+- **A book over ten seconds is a defect.** On 2026-09-23 every book over
+  a minute turned out to be a recognizer, codec or table left enabled
+  where one proof needed a shape fact, and each was repaired with hints,
+  disables and local lemmas, no statement touched: 805 s to 3.7,
+  656 to 10.7, 307 to 2.3 (the cost records under `planning/evidence/`).
+  Read the certify log's per-event times and `Rules:` first; one
+  instrumented session run (`accumulated-persistence`) at most; never
+  rerun the slow form to "see". A lane that lands a book over ten seconds
+  says why in its report.
