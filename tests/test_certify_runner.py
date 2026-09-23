@@ -520,6 +520,31 @@ class MakefileRootsTests(unittest.TestCase):
             self.assertEqual(repository.dry_run(stale, ["books/base"])[1], stale,
                              "a named subset still bounds the search")
 
+    def test_project_roots_are_certifiable_and_store_dependents_remain_selected(self):
+        roots = runner.default_books()
+        self.assertTrue(roots)
+        self.assertTrue(all(runner.BOOK_NAME.fullmatch(book) for book in roots))
+        selected = runner.affected_roots(roots, ["books/store-node-resolution.lisp"])
+        for book in (
+            "books/store-node-resolution",
+            "tests/acl2/store-node-resolution-tests",
+            "tests/acl2/store-node-resolution-traces-tests",
+            "books/owner-invariants",
+            "tests/acl2/owner-tests",
+            "tests/acl2/native-operator-host-tests",
+        ):
+            self.assertIn(book, selected)
+        # Program-mode wrappers are dependencies of certifiable test books;
+        # they are also loaded by host_check, not certification roots.
+        for wrapper, test in (
+            ("host/native-auth-host", "tests/acl2/native-auth-host-tests"),
+            ("host/native-auth-admin-host", "tests/acl2/native-auth-admin-host-tests"),
+            ("host/native-operator-host", "tests/acl2/native-operator-host-tests"),
+        ):
+            self.assertNotIn(wrapper, roots)
+            self.assertIn(test, roots)
+            self.assertIn(wrapper, runner.local_closure([test]))
+
 
 class ClosureTests(unittest.TestCase):
     """`--closure`: a run that assumes the box holds no certificate at all."""

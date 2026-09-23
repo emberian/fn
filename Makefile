@@ -93,11 +93,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-config \
 	tests/acl2/native-config-tests \
 	books/native-auth-profile \
-	host/native-auth-host \
 	tests/acl2/native-auth-profile-tests \
 	tests/acl2/native-auth-host-tests \
 	books/native-auth-admin \
-	host/native-auth-admin-host \
 	tests/acl2/native-auth-admin-tests \
 	tests/acl2/native-auth-admin-host-tests \
 	books/journal-publish \
@@ -106,7 +104,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-config-observation \
 	tests/acl2/native-config-observation-tests \
 	books/native-operator \
-	host/native-operator-host \
 	tests/acl2/native-operator-tests \
 	tests/acl2/native-operator-host-tests \
 	books/native-control \
