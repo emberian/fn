@@ -82,6 +82,8 @@
     "tests/acl2/consumer-store-projection-tests",
     "books/consumer-local-control",
     "tests/acl2/consumer-local-control-tests",
+    "books/consumer-poll-projection",
+    "tests/acl2/consumer-poll-projection-tests",
     "tests/acl2/records-tests",
     "tests/acl2/records-teeth-tests",
     "books/provenance-codec",
@@ -542,17 +544,17 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 544,
-    "books_in_root_closure": 543,
-    "roots": 538,
+    "books": 546,
+    "books_in_root_closure": 545,
+    "roots": 540,
     "theorems": 8263,
-    "functions": 6109,
-    "assert_events": 8921,
+    "functions": 6110,
+    "assert_events": 8927,
     "must_fails": 439,
     "encapsulates": 26,
     "guards": {
       "verified": 2002,
-      "declared-off": 325,
+      "declared-off": 326,
       "default-guarded": 2990,
       "default-unguarded": 792
     },
@@ -560,7 +562,7 @@
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 35,
-    "include_hygiene_warnings": 417,
+    "include_hygiene_warnings": 419,
     "host_names_warnings": 793,
     "hand_written_record_warnings": 18
   },
@@ -4077,6 +4079,32 @@
       "includes": [
         "consumer-store-projection",
         "owner",
+        "replay"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/consumer-poll-projection.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-position",
         "replay"
       ],
       "system_includes": [],
@@ -11762,6 +11790,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/consumer-poll-projection-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/consumer-poll-projection",
+        "../../books/crypto-attach",
+        "hybrid-store-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/consumer-position-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19035,6 +19091,20 @@
         "line": 3,
         "include": "../../books/consumer-owner-local",
         "included": "books/consumer-owner-local.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-poll-projection-tests.lisp",
+        "line": 4,
+        "include": "hybrid-store-tests",
+        "included": "tests/acl2/hybrid-store-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/consumer-poll-projection-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

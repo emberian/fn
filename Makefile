@@ -85,6 +85,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-store-projection-tests \
 	books/consumer-local-control \
 	tests/acl2/consumer-local-control-tests \
+	books/consumer-poll-projection \
+	tests/acl2/consumer-poll-projection-tests \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
 	books/provenance-codec \
