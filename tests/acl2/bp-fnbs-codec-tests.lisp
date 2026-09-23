@@ -37,6 +37,38 @@
                 (fn-bpnf-stored-record-frame *bpnfc-record*)))
         (nth 4 (fn-bpnf-issued (fn-bpnf-answer-state *bpnfc-proposal*)))))
 
+; A new receive event retains its observation in a versioned kind-5 row.
+; The older four-field logical event above remains the old canonical frame.
+(defconst *bpnfc-anchored-proposal*
+  (fn-bpnf-step *bpnfc-s0*
+                 (list :receive-bundle *bpnfc-bundle* *bpnfc-wire*
+                       *bpnfc-ingress* *bpnfc-obs*)))
+(defconst *bpnfc-anchored-effect*
+  (car (fn-bpnf-answer-effects *bpnfc-anchored-proposal*)))
+(defconst *bpnfc-anchored-record*
+  (fn-bpnf-stored-record
+   (nth 1 *bpnfc-anchored-effect*)
+   (nth 2 *bpnfc-anchored-effect*)
+   (nth 3 *bpnfc-anchored-effect*)))
+(assert-event (fn-bpnf-stored-recordp *bpnfc-anchored-record*))
+(assert-event
+ (equal (nth 9 (nth 3 *bpnfc-anchored-record*))
+        (fn-bpnf-received-anchor *bpnfc-bundle* *bpnfc-obs*)))
+(assert-event
+ (equal (fn-bpnf-stored-record-unframe
+         (fn-bpnf-stored-record-frame *bpnfc-anchored-record*))
+        *bpnfc-anchored-record*))
+(assert-event
+ (not (equal (fn-bpnf-stored-record-frame *bpnfc-anchored-record*)
+             (fn-bpnf-stored-record-frame *bpnfc-record*))))
+(assert-event
+ (equal (fn-bpnf-stored-record-frame
+         (fn-bpnf-stored-record 9 2
+          (fn-bpnf-frame-held-with-anchor
+           *bpnfc-ingress* 0 *bpnfc-bundle* *bpnfc-wire*
+           '(:observed-age -1 1))))
+        :bad))
+
 ; Nil is the unauthenticated partition.  A present text principal with
 ; different bytes cannot collapse into it during decode.
 (defconst *bpnfc-anon-ingress*

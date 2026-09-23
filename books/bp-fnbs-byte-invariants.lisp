@@ -221,6 +221,7 @@
         (fn-bpnf-stored-recordp record)
         (equal (nth 1 record) epoch)
         (equal (nth 2 record) operation-id)
+        (equal (len (fn-bpnf-stored-record-values record)) 11)
         (fn-frame-values-okp *fn-bpnf-stored-fields*
                              (fn-bpnf-stored-record-values record))
         (fn-frame-inputp

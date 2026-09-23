@@ -251,10 +251,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-contact-service-tests \
 	books/bp-app-handoff \
 	tests/acl2/bp-app-handoff-tests \
+	books/bp-app-handoff-time \
+	tests/acl2/bp-app-handoff-time-tests \
+	books/bp-report-deletion \
+	tests/acl2/bp-report-deletion-tests \
 	books/bp-handoff-status \
 	tests/acl2/bp-handoff-status-tests \
 	books/bp-session-admission \
 	tests/acl2/bp-session-admission-tests \
+	books/bp-channel-ingress \
+	tests/acl2/bp-channel-ingress-tests \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
@@ -270,6 +276,32 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-foundation-tests \
 	books/bp-node-fragment-family \
 	tests/acl2/bp-node-fragment-family-tests \
+	books/bp-node-fragment-plan \
+	tests/acl2/bp-node-fragment-plan-tests \
+	books/bp-fnbs-family-codec \
+	tests/acl2/bp-fnbs-family-codec-tests \
+	books/bp-fnbs-deletion-codec \
+	tests/acl2/bp-fnbs-deletion-codec-tests \
+	books/bp-node-fragment-replacement \
+	tests/acl2/bp-node-fragment-replacement-tests \
+	books/bp-fnbs-family-replay \
+	tests/acl2/bp-fnbs-family-replay-tests \
+	books/bp-node-fragment-step \
+	tests/acl2/bp-node-fragment-step-tests \
+	books/bp-node-fragment-guards \
+	books/bp-node-report-step \
+	tests/acl2/bp-node-report-step-tests \
+	books/bp-report-outbox \
+	tests/acl2/bp-report-outbox-tests \
+	books/bp-report-author \
+	tests/acl2/bp-report-author-tests \
+	books/bp-report-observe \
+	tests/acl2/bp-report-observe-tests \
+	books/bp-report-guards \
+	books/bp-fnbs-deletion-publication \
+	tests/acl2/bp-fnbs-deletion-publication-tests \
+	books/bp-fnbs-family-publication \
+	tests/acl2/bp-fnbs-family-publication-tests \
 	books/bp-node-receive-boundary \
 	tests/acl2/bp-node-receive-boundary-tests \
 	books/bp-fnbs-codec \
@@ -351,6 +383,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-native-app-tests \
 	books/bp-native-app-fast \
 	tests/acl2/bp-native-app-fast-tests \
+	books/bp-transit-join \
+	tests/acl2/bp-transit-join-tests \
 	books/bp-receiver-store-invariants \
 	books/bp-receiver-context-invariants \
 	books/bp-receiver-journal-invariants \

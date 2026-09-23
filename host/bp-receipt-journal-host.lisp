@@ -115,6 +115,26 @@
                      generation txid record-generation t application-result)))
   (value (if (fn-bpaj-context-v2p record) record nil))))
 
+(defun fn-bprj-request-transit-intent-record (record state)
+ (declare (xargs :stobjs state :mode :program))
+ (value (if (fn-bpaj-transit-intentp record) record nil)))
+
+(defun fn-bprj-request-transit-context-record
+ (inbound-id request-octets store-record generation txid record-generation
+             application-result state)
+ (declare (xargs :stobjs state :mode :program))
+ (let ((record (list :request-transit-context inbound-id request-octets
+                     store-record generation txid record-generation
+                     application-result)))
+  (value (if (fn-bpaj-transit-contextp record) record nil))))
+
+(defun fn-bprj-request-transitp (request-octets state)
+ (declare (xargs :stobjs state :mode :program))
+ (value (equal (fn-bpaj-nth 0
+                (fn-bpaj-request-intent
+                 (f-get-global 'fn-bpaj-state state) request-octets))
+               :request-transit-intent)))
+
 (defun fn-bprj-pending-receipt-resolution (state)
  (declare (xargs :stobjs state :mode :program))
  (value (fn-bpaj-pending-receipt-resolution-fast

@@ -200,7 +200,42 @@
            :in-theory
            (union-theories
             (theory 'minimal-theory)
-            '(fn-bpr-accept-request fn-bpa-nth fn-bpa-car fn-bpa-cdr
+            '(fn-bpr-accept-request fn-bpr-bind-request-context
+              fn-bpa-nth fn-bpa-car fn-bpa-cdr
+              fn-bpr-context-listp fn-bpr-statep-of-constructor
+              fn-bpr-result-state fn-bpr-context-list-cons)))))
+
+(defthm fn-bpr-projected-acceptable-contextp
+  (implies
+   (fn-bpr-projected-request-acceptablep
+    store config record request stored-octets policy-authorizedp)
+   (fn-bpr-contextp
+    config (fn-bpr-context-from-request record request)))
+  :hints (("Goal"
+           :use ((:instance fn-bpr-context-from-typed-inputs))
+           :in-theory
+           (e/d (fn-bpr-projected-request-acceptablep)
+                (fn-bpr-store-record-acceptedp
+                 fn-bpr-contextp fn-bpr-context-from-request
+                 fn-bpr-configp fn-record-p fn-bpa-requestp)))))
+
+(defthm fn-bpr-accept-projected-request-preserves-statep
+  (implies
+   (fn-bpr-statep st)
+   (fn-bpr-statep
+    (fn-bpa-nth
+     1 (fn-bpr-accept-projected-request
+        st store record request stored-octets policy-authorizedp))))
+  :hints (("Goal"
+           :use ((:instance fn-bpr-statep-components)
+                 (:instance fn-bpr-projected-acceptable-contextp
+                            (config (fn-bpr-state-config st))))
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpr-accept-projected-request
+              fn-bpr-bind-request-context
+              fn-bpa-nth fn-bpa-car fn-bpa-cdr
               fn-bpr-context-listp fn-bpr-statep-of-constructor
               fn-bpr-result-state fn-bpr-context-list-cons)))))
 
