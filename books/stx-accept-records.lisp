@@ -13,12 +13,14 @@
 
 (defconst *fn-stxa-magic* '(102 110 45 101)) ; "fn-e"
 (defconst *fn-stxa-version* 0)
+(defconst *fn-stxa-carried-version* 1)
 (defconst *fn-stxa-kind* 4)
 (defconst *fn-stxa-max-octets* 196608)
 
 (fn-defrecord fn-stxa
-  :constructor (fn-stxa-make sequence txid generation keyring-generation
-                             profile content-subject article-record verdict-event)
+  :constructor (fn-stxa-make-full sequence txid generation keyring-generation
+                                  profile content-subject article-record
+                                  verdict-event authored-source authored-id)
   :fields ((fn-stxa-sequence fn-record-uint32p)
            (fn-stxa-txid fn-record-uint32p)
            (fn-stxa-generation fn-record-uint32p)
@@ -34,13 +36,45 @@
                                      *fn-record-max-octets*))
            (fn-stxa-verdict-event
             (fn-stxe-bounded-octetsp (fn-stxa-verdict-event x)
-                                     *fn-stxe-max-octets*)))
+                                     *fn-stxe-max-octets*))
+           (fn-stxa-authored-source
+            (or (equal (fn-stxa-authored-source x) :legacy)
+                (and (fn-cbor-octet-listp (fn-stxa-authored-source x))
+                     (consp (fn-stxa-authored-source x))
+                     (<= (len (fn-stxa-authored-source x))
+                         *fn-article-max-octets*))))
+           (fn-stxa-authored-id
+            (if (equal (fn-stxa-authored-source x) :legacy)
+                (null (fn-stxa-authored-id x))
+              (fn-stxe-bounded-octetsp (fn-stxa-authored-id x)
+                                       *fn-record-max-metadata*))))
   :recognizer fn-stxa-p)
+
+; Existing kind-4 version-0 constructors and bytes remain unchanged.
+(defun fn-stxa-make (sequence txid generation keyring-generation profile
+                              content-subject article-record verdict-event)
+  (declare (xargs :guard t))
+  (fn-stxa-make-full sequence txid generation keyring-generation profile
+                     content-subject article-record verdict-event :legacy nil))
+
+(defun fn-stxa-make-carried
+    (sequence txid generation keyring-generation profile content-subject
+              article-record verdict-event authored-source authored-id)
+  (declare (xargs :guard t))
+  (fn-stxa-make-full sequence txid generation keyring-generation profile
+                     content-subject article-record verdict-event
+                     authored-source authored-id))
+
+(defun fn-stxa-schema (e)
+  (declare (xargs :guard t))
+  (if (equal (fn-stxa-authored-source e) :legacy)
+      *fn-stxa-version* *fn-stxa-carried-version*))
 
 (defun fn-stxa-items (e)
   (declare (xargs :guard (fn-stxa-p e)))
-  (list (cons :bytes *fn-stxa-magic*)
-        (cons :uint *fn-stxa-version*)
+  (append
+   (list (cons :bytes *fn-stxa-magic*)
+        (cons :uint (fn-stxa-schema e))
         (cons :uint *fn-stxa-kind*)
         (cons :uint (fn-stxa-sequence e))
         (cons :uint (fn-stxa-txid e))
@@ -49,21 +83,31 @@
         (cons :bytes (fn-stxa-profile e))
         (cons :bytes (fn-stxa-content-subject e))
         (cons :bytes (fn-stxa-article-record e))
-        (cons :bytes (fn-stxa-verdict-event e))))
+         (cons :bytes (fn-stxa-verdict-event e)))
+   (if (equal (fn-stxa-authored-source e) :legacy) nil
+     (list (cons :bytes (fn-stxa-authored-source e))
+           (cons :bytes (fn-stxa-authored-id e))))))
 
 (defun fn-stxa-encode (e)
   (declare (xargs :guard t))
   (if (fn-stxa-p e)
-      (fn-stxe-encode-items-bounded (fn-stxa-items e) *fn-stxe-max-octets*)
+      (fn-stxe-encode-items-bounded
+       (fn-stxa-items e)
+       (if (equal (fn-stxa-schema e) *fn-stxa-version*)
+           *fn-stxe-max-octets* *fn-stxa-max-octets*))
     nil))
 
 (defun fn-stxa-items-p (items)
   (declare (xargs :guard t))
-  (and (true-listp items) (equal (len items) 11)
+  (and (true-listp items)
+       (or (and (equal (len items) 11)
+                (equal (fn-cbor-ag-cdr (nth 1 items)) *fn-stxa-version*))
+           (and (equal (len items) 13)
+                (equal (fn-cbor-ag-cdr (nth 1 items))
+                       *fn-stxa-carried-version*)))
        (fn-stmt-bytes-item-p (nth 0 items))
        (equal (fn-cbor-ag-cdr (nth 0 items)) *fn-stxa-magic*)
        (fn-stmt-uint-item-p (nth 1 items))
-       (equal (fn-cbor-ag-cdr (nth 1 items)) *fn-stxa-version*)
        (fn-stmt-uint-item-p (nth 2 items))
        (equal (fn-cbor-ag-cdr (nth 2 items)) *fn-stxa-kind*)
        (fn-stmt-uint-item-p (nth 3 items))
@@ -81,28 +125,40 @@
                                 *fn-record-max-octets*)
        (fn-stmt-bytes-item-p (nth 10 items))
        (fn-stxe-bounded-octetsp (fn-cbor-ag-cdr (nth 10 items))
-                                *fn-stxe-max-octets*)))
+                                *fn-stxe-max-octets*)
+       (or (equal (len items) 11)
+           (and (fn-stmt-bytes-item-p (nth 11 items))
+                (fn-stxe-bounded-octetsp (fn-cbor-ag-cdr (nth 11 items))
+                                         *fn-article-max-octets*)
+                (consp (fn-cbor-ag-cdr (nth 11 items)))
+                (fn-stmt-bytes-item-p (nth 12 items))
+                (fn-stxe-bounded-octetsp (fn-cbor-ag-cdr (nth 12 items))
+                                         *fn-record-max-metadata*)))))
 
 (defun fn-stxa-of-items (items)
   (declare (xargs :guard t))
   (if (not (fn-stxa-items-p items))
       (fn-stmt-error :accepted-article)
     (fn-stmt-ok
-     (fn-stxa-make (fn-cbor-ag-cdr (nth 3 items))
+     (fn-stxa-make-full (fn-cbor-ag-cdr (nth 3 items))
                    (fn-cbor-ag-cdr (nth 4 items))
                    (fn-cbor-ag-cdr (nth 5 items))
                    (fn-cbor-ag-cdr (nth 6 items))
                    (fn-cbor-ag-cdr (nth 7 items))
                    (fn-cbor-ag-cdr (nth 8 items))
                    (fn-cbor-ag-cdr (nth 9 items))
-                   (fn-cbor-ag-cdr (nth 10 items))))))
+                   (fn-cbor-ag-cdr (nth 10 items))
+                   (if (equal (len items) 11) :legacy
+                     (fn-cbor-ag-cdr (nth 11 items)))
+                   (if (equal (len items) 11) nil
+                     (fn-cbor-ag-cdr (nth 12 items)))))))
 
 (defun fn-stxa-decode-exact (octets)
   (declare (xargs :guard t))
   (if (not (fn-cbor-at-mostp octets *fn-stxa-max-octets*))
       (fn-stmt-error :limit)
     (let ((decoded (fn-stmt-decode-items-bounded
-                    11 octets *fn-stxa-max-octets* *fn-stxe-max-octets*)))
+                    13 octets *fn-stxa-max-octets* *fn-stxe-max-octets*)))
       (if (not (fn-stmt-okp decoded))
           decoded
         (fn-stxa-of-items (fn-stmt-value decoded))))))

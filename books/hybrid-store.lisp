@@ -6,6 +6,7 @@
 (include-book "injection")
 (include-book "identity")
 (include-book "records-stamp")
+(include-book "hybrid-carrier")
 
 (defun fn-hsig-octet-fields-to-strings (fields)
   (declare (xargs :guard t))
@@ -193,13 +194,103 @@
          ed25519-observation ml-dsa-65-observation)
       nil)))
 
+(defun fn-hsig-authored-source-id (source)
+  (declare (xargs :guard t))
+  (if (and (fn-cbor-octet-listp source)
+           (<= (len source) *fn-cbor-max-uint*))
+      (fn-id-subject-of-payload source)
+    nil))
+
+; Replay must not let a structurally valid record relabel a signed article
+; with another Message-ID, group set, or received-content identity.  These
+; are the same ACL2 derivations the native metadata bridge calls before
+; publication; the source identity above remains separate from this received
+; article identity.
+(defun fn-hsig-carried-record-metadatap (source received record)
+  (declare (xargs :guard t
+                  :guard-hints
+                  (("Goal" :in-theory
+                    (disable fn-hsig-authored-source-fields
+                             fn-id-subject-of-payload
+                             fn-id-obligation-of)))))
+  (if (not (and (fn-record-p record)
+                (fn-cbor-octet-listp received)
+                (<= (len received) *fn-cbor-max-uint*)))
+      nil
+    (let* ((fields (fn-hsig-authored-source-fields source))
+           (subject (fn-id-subject-of-payload received))
+           (msgid (fn-record-msgid record))
+           (msgid-octets (fn-record-string-octets msgid))
+           (obligation (if (and (fn-cbor-octet-listp msgid-octets)
+                                (<= (len msgid-octets) *fn-cbor-max-uint*)
+                                (fn-cbor-octet-listp subject)
+                                (<= (len subject) *fn-cbor-max-uint*))
+                           (fn-id-obligation-of msgid-octets subject)
+                         nil)))
+      (and fields
+           (fn-cbor-octet-listp subject)
+           (fn-cbor-octet-listp obligation)
+           (equal msgid (car fields))
+           (equal (fn-record-groups record) (cadr fields))
+           (equal (fn-record-payload record) received)
+           (equal (fn-record-charge record)
+                  (fn-charge-for-payload (len received)))
+           (equal (fn-record-content-subject record)
+                  (fn-record-octets-string (fn-id-text subject)))
+           (equal (fn-record-obligation-id record)
+                  (fn-record-octets-string
+                   (fn-id-text obligation)))))))
+
+; Native construction stores the received carrier article as the transport
+; payload, while the version-1 parent separately retains the exact signed
+; source and its ACL2-derived identity.  The Store content subject and charge
+; supplied by the caller are over RECEIVED and are rederived here.
+(defun fn-hsig-authorized-carried-submission-event
+    (sequence txid generation keyring-generation enrolled-snapshot
+              msgid source received groups obligation-id content-subject
+              release-evidence charge principal keys signatures observed-ml-key
+              ed25519-observation ml-dsa-65-observation observation)
+  (declare (xargs :guard t))
+  (let* ((fields (fn-hsig-authored-source-fields source))
+         (stamp (fn-record-stamp-of-observation observation))
+         (record (fn-record-make sequence txid generation msgid received groups
+                                 obligation-id content-subject release-evidence
+                                 charge stamp))
+         (source-id (fn-hsig-authored-source-id source)))
+    (if (and (natp stamp) fields source-id
+             (equal received
+                    (fn-hc-render-at-most *fn-article-max-octets*
+                                          source principal keys signatures))
+             (equal msgid (car fields))
+             (equal groups (cadr fields))
+             (equal charge (fn-charge-for-payload (len received)))
+             (fn-hsig-carried-record-metadatap source received record)
+             (equal enrolled-snapshot
+                    (fn-hsig-keyring-snapshot principal keys))
+             (fn-hsig-authorize principal keys source signatures
+                                observed-ml-key ed25519-observation
+                                ml-dsa-65-observation))
+        (let* ((verdict (fn-stxe-make sequence txid generation msgid :verified
+                                      principal keyring-generation
+                                      *fn-hsig-profile-tag*))
+               (event
+                (fn-stxa-make-carried sequence txid generation
+                                      keyring-generation *fn-hsig-profile-tag*
+                                      (fn-record-string-octets content-subject)
+                                      (fn-record-encode record)
+                                      (fn-stxe-encode verdict)
+                                      source source-id)))
+          (if (fn-stxa-bindsp event) event nil))
+      nil)))
+
 ; Publication and recovery use the exact durable snapshot, not merely its
 ; generation number.  The construction-time authorization above also requires
 ; this same canonical snapshot, closing a valid-signature/wrong-enrollment
 ; substitution.
-(defun fn-hsig-article-event-snapshot-bindsp (event snapshot)
+(defun fn-hsig-article-event-snapshot-bindsp-v0 (event snapshot)
   (declare (xargs :guard t))
   (and (fn-stxa-p event)
+       (equal (fn-stxa-authored-source event) :legacy)
        (fn-stxk-p snapshot)
        (equal (fn-stxa-keyring-generation event)
               (fn-stxk-keyring-generation snapshot))
@@ -249,6 +340,52 @@
                              (cdr (nth 8 details))
                              *fn-hsig-ml-dsa-65-signature-octets*)))))))))
 
+(defun fn-hsig-article-event-snapshot-bindsp-v1 (event snapshot)
+  (declare (xargs :guard t))
+  (if (not (and (fn-stxa-p event)
+                (fn-stxk-p snapshot)
+                (equal (fn-stxa-schema event) *fn-stxa-carried-version*)
+                (equal (fn-stxa-keyring-generation event)
+                       (fn-stxk-keyring-generation snapshot))
+                (equal (fn-stxa-profile event) *fn-hsig-profile-tag*)
+                (equal (fn-stxk-profile snapshot) *fn-hsig-profile-tag*)))
+      nil
+    (let* ((enrolled (fn-hsig-keyring-snapshot-value snapshot))
+           (article (fn-record-decode-exact (fn-stxa-article-record event)))
+           (verdict (fn-stxe-decode-exact (fn-stxa-verdict-event event)))
+           (received (and (fn-record-result-okp article)
+                          (fn-record-payload (fn-record-result-record article))))
+           (plan (fn-hc-received-plan received)))
+      (and (fn-stxa-bindsp event)
+           (fn-record-result-okp article)
+           (fn-hsig-carried-record-metadatap
+            (fn-stxa-authored-source event) received
+            (fn-record-result-record article))
+           (true-listp enrolled) (equal (len enrolled) 2)
+           (fn-hc-okp plan)
+           (true-listp (fn-hc-value plan))
+           (equal (len (fn-hc-value plan)) 2)
+           (let ((carrier (cadr (fn-hc-value plan))))
+             (and (true-listp carrier) (equal (len carrier) 3)
+                  (equal (car (fn-hc-value plan))
+                         (fn-stxa-authored-source event))
+                  (equal (fn-stxa-authored-id event)
+                         (fn-hsig-authored-source-id
+                          (fn-stxa-authored-source event)))
+                  (equal (first carrier) (first enrolled))
+                  (equal (second carrier) (second enrolled))
+                  (fn-hsig-signatures-p (third carrier))
+                  (fn-stmt-okp verdict)
+                  (equal (fn-stxe-token (fn-stmt-value verdict)) :verified)
+                  (equal (fn-stxe-detail (fn-stmt-value verdict))
+                         (first enrolled))))))))
+
+(defun fn-hsig-article-event-snapshot-bindsp (event snapshot)
+  (declare (xargs :guard t))
+  (if (equal (fn-stxa-schema event) *fn-stxa-carried-version*)
+      (fn-hsig-article-event-snapshot-bindsp-v1 event snapshot)
+    (fn-hsig-article-event-snapshot-bindsp-v0 event snapshot)))
+
 (in-theory (disable (:d fn-hsig-keyring-snapshot)
                     (:d fn-hsig-octet-fields-to-strings)
                     (:d fn-hsig-authored-source-fields)
@@ -257,4 +394,9 @@
                     (:d fn-hsig-verdict-detail)
                     (:d fn-hsig-authorized-article-event)
                     (:d fn-hsig-authorized-submission-event)
+                    (:d fn-hsig-authored-source-id)
+                    (:d fn-hsig-carried-record-metadatap)
+                    (:d fn-hsig-authorized-carried-submission-event)
+                    (:d fn-hsig-article-event-snapshot-bindsp-v0)
+                    (:d fn-hsig-article-event-snapshot-bindsp-v1)
                     (:d fn-hsig-article-event-snapshot-bindsp)))
