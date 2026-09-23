@@ -147,11 +147,11 @@
 ; rejects it, so the actual old and new owner call subjects differ.
 (defconst *opc-related-owner* (fn-ocfg-owner *opc-second-reserved*))
 (defconst *opc-stale-store*
-  (fn-sn-make
-   *opc-groups* 10
+  (fn-sn-update-indexed
+   (fn-own-store *opc-related-owner*)
    (fn-sn-files (fn-own-store *opc-related-owner*))
    (fn-node-initial-state *opc-groups* 10)
-   nil (fn-stx-index-empty)))
+   (fn-stx-index-empty)))
 (defconst *opc-stale-owner*
   (fn-own-make
    *opc-stale-store* (fn-own-view *opc-related-owner*)
