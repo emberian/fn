@@ -140,6 +140,9 @@
 (defconst *bpre-frontier* (fn-sf-frontier (fn-sn-files *bpre-final-store*)))
 (defconst *bpre-records* (fn-sf-records (fn-sn-files *bpre-final-store*)))
 (assert-event (fn-sf-crash-imagep (fn-sn-files *bpre-final-store*) *bpre-frontier* *bpre-records*))
+; The reopen theorems' identity hypothesis (commit 4857c648) holds of this
+; image, so the restart below is a live instance of all three.
+(assert-event (fn-sn-observed-identity-okp *bpre-records*))
 (make-event `(defconst *bpre-opened* ',(fn-sn-open-observed (fn-sn-groups *bpre-final-store*) (fn-sn-capacity *bpre-final-store*)
                        *bpre-frontier* *bpre-records*)))
 (assert-event (fn-sn-open-okp *bpre-opened*))
@@ -221,6 +224,7 @@
  (must-fail
   (defthm bpre-teeth-committed-without-idle-phase
     (implies (and (fn-snt-relation (car *bpre-completing*))
+                  (fn-record-p *bpre-record2*)
                   (member-equal *bpre-record2* (fn-bprv-history (car *bpre-completing*))))
              (fn-bpi-node-record-committedp (fn-sn-node (car *bpre-completing*)) *bpre-record2*)))))
 ; Without the live-history relation: the ready files with an empty node.
@@ -236,15 +240,51 @@
   (defthm bpre-teeth-committed-without-relation
     (implies (and (member-equal (fn-bprv-phase *bpre-forged-store*)
                                 '(:ready :recovering :fenced-recovery))
+                  (fn-record-p *bpr-record*)
                   (member-equal *bpr-record* (fn-bprv-history *bpre-forged-store*)))
              (fn-bpi-node-record-committedp (fn-sn-node *bpre-forged-store*) *bpr-record*)))))
 ; Without membership: the second record before its ingress.
 (assert-event (not (member-equal *bpre-record2* (fn-bprv-history *bpr-store*))))
+; Without the article hypothesis (`fn-record-p', restated 2026-09-23): a
+; retention undertake committed through the public Store transitions on the
+; final Store.  The Store is :ready and related, the event is in its history,
+; and it installs no article under its own name, so the node does not hold it
+; committed.  This is the reachable Store that refutes the statement without
+; the hypothesis, not only its proof.
+(make-event `(defconst *bpre-retention* ',(fn-store-retention-event-make :undertake 2 2 2
+                                 "retained-obligation" "retained-subject"
+                                 "retained-evidence" 1)))
+(make-event `(defconst *bpre-retained-store*
+  ',(fn-sn-finish (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-prepare-retention (bpr-reserve *bpre-final-store*)
+                                                                          *bpre-retention*)
+                                                :record-file :ok)
+                                      :record-link :ok)
+                            :record-directory :ok))))
+(assert-event (equal (fn-bprv-phase *bpre-retained-store*) :ready))
+(assert-event (fn-snt-relation *bpre-retained-store*))
+(assert-event (member-equal *bpre-retention* (fn-bprv-history *bpre-retained-store*)))
+(assert-event (fn-store-event-p *bpre-retention*))
+(assert-event (not (fn-record-p *bpre-retention*)))
+(local
+ (must-fail
+  (defthm bpre-teeth-committed-without-article-record
+    (implies (and (fn-snt-relation *bpre-retained-store*)
+                  (member-equal (fn-bprv-phase *bpre-retained-store*)
+                                '(:ready :recovering :fenced-recovery))
+                  (member-equal *bpre-retention* (fn-bprv-history *bpre-retained-store*)))
+             (fn-bpi-node-record-committedp (fn-sn-node *bpre-retained-store*)
+                                            *bpre-retention*)))))
+; The article records of the same Store stay committed across the retention
+; event: the non-degenerate instance of the restated theorem.
+(assert-event (fn-bpi-node-record-committedp (fn-sn-node *bpre-retained-store*) *bpre-record2*))
+(assert-event (fn-bpi-node-record-committedp (fn-sn-node *bpre-retained-store*) *bpr-record*))
+
 (local
  (must-fail
   (defthm bpre-teeth-committed-without-membership
     (implies (and (fn-snt-relation *bpr-store*)
-                  (member-equal (fn-bprv-phase *bpr-store*) '(:ready :recovering :fenced-recovery)))
+                  (member-equal (fn-bprv-phase *bpr-store*) '(:ready :recovering :fenced-recovery))
+                  (fn-record-p *bpre-record2*))
              (fn-bpi-node-record-committedp (fn-sn-node *bpr-store*) *bpre-record2*)))))
 
 ; fn-bprv-evolving-output-is-node-grounded-when-idle: the phase tolerance the
@@ -354,7 +394,8 @@
 (local
  (must-fail
   (defthm bpre-teeth-reopen-without-admissible-image
-    (implies (fn-bprv-system-invariantp *bpre-final-store* *bpre-final-state* *bpre-journal*)
+    (implies (and (fn-bprv-system-invariantp *bpre-final-store* *bpre-final-state* *bpre-journal*)
+                  (fn-sn-observed-identity-okp nil))
              (let ((opened (fn-sn-open-observed (fn-sn-groups *bpre-final-store*)
                                                 (fn-sn-capacity *bpre-final-store*)
                                                 *bpre-frontier* nil)))

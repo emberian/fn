@@ -3,6 +3,12 @@
 ; every later ready Store.  Replay applies each record through the actual
 ; fn-node-prepare/fn-node-complete pair (books/replay.lisp); nothing here
 ; changes a transition.
+;
+; Restated 2026-09-23 (PRF-007): the history lemmas quantify over article
+; records, `(fn-record-p record)'.  Since 6ab2c783 and 346a8f99 a Store history
+; also carries retention and statement events, which install no article under
+; their own name; tests/acl2/bp-receiver-evolving-tests commits a retention
+; undertake on a related :ready Store where the unrestated conclusion is false.
 (in-package "ACL2")
 (include-book "bp-receiver-evolving-history-invariants")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
@@ -452,6 +458,7 @@
                  fn-replay-apply-record-non-nil-is-node-state)
            :in-theory (union-theories
                        '(car-cons cdr-cons fn-replay-apply-record fn-node-pending-matchesp
+                         fn-snt-an-article-record-is-no-other-store-event fn-store-event-p fn-store-event-txid
                          fn-bpi-node-record-committedp
                          fn-bprv-node-make-state-fields fn-bprv-make-pending-fields
                          fn-bprv-make-binding-fields
@@ -535,6 +542,7 @@
                             (generation (fn-record-generation record2))
                             (completion-status :durable)))
            :in-theory (union-theories '(car-cons cdr-cons fn-replay-apply-record fn-bpi-node-record-committedp
+                         fn-snt-an-article-record-is-no-other-store-event fn-store-event-p fn-store-event-txid
                          fn-bprv-node-prepare-keeps-existing-article
                          fn-bprv-node-complete-keeps-existing-article
                          fn-node-prepare-preserves-bindings
@@ -542,6 +550,127 @@
                          fn-replay-advance-keeps-committed-bindings
                          fn-bprv-find-binding-implies-member-msgids
                          fn-bprv-committed-implies-node-statep)
+                       (theory 'minimal-theory)))))
+
+;
+; A Store history carries every Store event, not only article records: since
+; 6ab2c783 (2026-09-21) `fn-replay-apply-record' dispatches a retention
+; undertake/release to `fn-replay-apply-retention-event', and since 346a8f99
+; a statement verdict or keyring snapshot to `fn-replay-apply-identity-neutral'
+; and an accepted statement (`fn-stxa-p') to the article arm on its decoded
+; composite record.  The loop lemmas below therefore need committedness and
+; idleness across every arm.  Retention and identity events leave the
+; published articles and archive bindings as they were; the article arm is
+; the durable completion, for whatever record the arm installs.
+(defthm fn-bprv-committed-carries-to-same-articles-and-bindings
+  (implies (and (fn-bpi-node-record-committedp node record)
+                (fn-node-statep node2)
+                (equal (fn-state-articles (fn-node-acceptance node2))
+                       (fn-state-articles (fn-node-acceptance node)))
+                (equal (fn-node-bindings node2) (fn-node-bindings node)))
+           (fn-bpi-node-record-committedp node2 record))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-bpi-node-record-committedp)
+                                             (theory 'minimal-theory)))))
+(defthm fn-bprv-retention-event-keeps-articles-and-bindings
+  (implies (consp (fn-replay-apply-retention-event node event))
+           (and (equal (fn-state-articles
+                        (fn-node-acceptance (fn-replay-apply-retention-event node event)))
+                       (fn-state-articles (fn-node-acceptance node)))
+                (equal (fn-node-bindings (fn-replay-apply-retention-event node event))
+                       (fn-node-bindings node))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-replay-apply-retention-event fn-replay-complete-retention
+                                fn-replay-node-with-retention fn-bprv-node-make-state-fields
+                                fn-replay-advance-keeps-committed-articles
+                                fn-replay-advance-keeps-committed-bindings)
+                              (theory 'minimal-theory)))))
+(defthm fn-bprv-identity-neutral-keeps-articles-and-bindings
+  (implies (consp (fn-replay-apply-identity-neutral node event))
+           (and (equal (fn-state-articles
+                        (fn-node-acceptance (fn-replay-apply-identity-neutral node event)))
+                       (fn-state-articles (fn-node-acceptance node)))
+                (equal (fn-node-bindings (fn-replay-apply-identity-neutral node event))
+                       (fn-node-bindings node))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-replay-apply-identity-neutral
+                                fn-replay-advance-keeps-committed-articles
+                                fn-replay-advance-keeps-committed-bindings)
+                              (theory 'minimal-theory)))))
+(defthm fn-bprv-article-arm-keeps-committed
+  (let ((prepared (fn-node-prepare (fn-replay-advance-txid node txid)
+                                   (fn-record-generation article) (fn-record-msgid article)
+                                   (fn-record-payload article) (fn-record-groups article)
+                                   (fn-record-obligation-id article)
+                                   (fn-record-content-subject article)
+                                   (fn-record-release-evidence article)
+                                   (fn-record-charge article))))
+    (implies (and (fn-bpi-node-record-committedp node record)
+                  (fn-node-statep (fn-node-complete prepared (fn-record-txid article)
+                                                    (fn-record-generation article) :durable)))
+             (fn-bpi-node-record-committedp
+              (fn-node-complete prepared (fn-record-txid article)
+                                (fn-record-generation article) :durable)
+              record)))
+  :hints (("Goal"
+           :use ((:instance fn-replay-advance-preserves-node-statep (recorded-txid txid))
+                 (:instance fn-node-prepare-preserves-state
+                            (s (fn-replay-advance-txid node txid))
+                            (generation (fn-record-generation article))
+                            (msgid (fn-record-msgid article))
+                            (payload (fn-record-payload article))
+                            (groups (fn-record-groups article))
+                            (obligation-id (fn-record-obligation-id article))
+                            (subject (fn-record-content-subject article))
+                            (evidence (fn-record-release-evidence article))
+                            (charge (fn-record-charge article)))
+                 (:instance fn-node-complete-preserves-existing-binding
+                            (s (fn-node-prepare
+                                (fn-replay-advance-txid node txid)
+                                (fn-record-generation article) (fn-record-msgid article)
+                                (fn-record-payload article) (fn-record-groups article)
+                                (fn-record-obligation-id article)
+                                (fn-record-content-subject article)
+                                (fn-record-release-evidence article)
+                                (fn-record-charge article)))
+                            (msgid (fn-record-msgid record))
+                            (txid (fn-record-txid article))
+                            (generation (fn-record-generation article))
+                            (completion-status :durable)))
+           :in-theory (union-theories '(car-cons cdr-cons fn-bpi-node-record-committedp
+                         fn-bprv-node-prepare-keeps-existing-article
+                         fn-bprv-node-complete-keeps-existing-article
+                         fn-node-prepare-preserves-bindings
+                         fn-replay-advance-keeps-committed-articles
+                         fn-replay-advance-keeps-committed-bindings
+                         fn-bprv-find-binding-implies-member-msgids
+                         fn-bprv-committed-implies-node-statep)
+                       (theory 'minimal-theory)))))
+(defthm fn-bprv-apply-store-event-keeps-committed
+  (implies (and (fn-bpi-node-record-committedp node record)
+                (fn-store-event-p event)
+                (consp (fn-replay-apply-record node event)))
+           (fn-bpi-node-record-committedp (fn-replay-apply-record node event) record))
+  :hints (("Goal"
+           :use ((:instance fn-replay-apply-record-non-nil-is-node-state (record event))
+                 (:instance fn-bprv-committed-carries-to-same-articles-and-bindings
+                            (node2 (fn-replay-apply-record node event))))
+           :in-theory (union-theories '(fn-replay-apply-record
+                         fn-bprv-committed-implies-node-statep
+                         fn-bprv-retention-event-keeps-articles-and-bindings
+                         fn-bprv-identity-neutral-keeps-articles-and-bindings
+                         fn-bprv-article-arm-keeps-committed)
+                       (theory 'minimal-theory)))))
+(defthm fn-bprv-apply-store-event-keeps-idle
+  (implies (and (fn-bprv-node-idlep node)
+                (consp (fn-replay-apply-record node event)))
+           (fn-bprv-node-idlep (fn-replay-apply-record node event)))
+  :hints (("Goal"
+           :in-theory (union-theories '(fn-replay-apply-record
+                         fn-replay-apply-retention-event fn-replay-complete-retention
+                         fn-replay-node-with-retention fn-replay-apply-identity-neutral
+                         fn-bprv-advance-keeps-idle fn-bprv-node-make-state-fields
+                         fn-bprv-durable-complete-unfolds)
                        (theory 'minimal-theory)))))
 
 ; The replay loop: an installed record stays committed, and every record of a
@@ -561,18 +690,24 @@
             (fn-replay-result-node (fn-replay-loop node records sequence)) record))
   :hints (("Goal" :induct (fn-replay-loop node records sequence)
            :in-theory (union-theories '(car-cons cdr-cons fn-replay-loop fn-bprv-replay-fault-is-not-ok fn-bprv-replay-ok-node
-                         fn-bprv-apply-record-keeps-committed fn-bprv-node-statep-consp
+                         fn-bprv-apply-store-event-keeps-committed fn-bprv-node-statep-consp
                          fn-bprv-committed-implies-node-statep)
                        (theory 'minimal-theory)))))
+; `record' is an article record (`fn-record-p').  The history also carries
+; retention and statement events, which install no article under their own
+; name, so the conclusion is false of them: the hypothesis restates what the
+; theorem always meant, and it is registered with PRF-007 (planning/proofs.json).
 (defthm fn-bprv-replay-loop-installs-every-record
   (implies (and (fn-bprv-node-idlep node)
                 (fn-replay-okp (fn-replay-loop node records sequence))
+                (fn-record-p record)
                 (member-equal record records))
            (fn-bpi-node-record-committedp
             (fn-replay-result-node (fn-replay-loop node records sequence)) record))
   :hints (("Goal" :induct (fn-replay-loop node records sequence)
            :in-theory (union-theories '(car-cons cdr-cons fn-replay-loop member-equal fn-bprv-replay-fault-is-not-ok
                          fn-bprv-replay-ok-node fn-bprv-apply-record-installs-record
+                         fn-bprv-apply-store-event-keeps-idle
                          fn-bprv-replay-loop-keeps-committed fn-bprv-node-statep-consp
                          fn-bprv-committed-implies-node-statep)
                        (theory 'minimal-theory)))))
@@ -593,6 +728,7 @@
                               (theory 'minimal-theory)))))
 (defthm fn-bprv-replay-node-commits-history-record
   (implies (and (consp (fn-sf-replay-node groups capacity history frontier))
+                (fn-record-p record)
                 (member-equal record history))
            (fn-bpi-node-record-committedp
             (fn-sf-replay-node groups capacity history frontier) record))
@@ -611,6 +747,7 @@
 (defthm fn-bprv-history-record-is-node-committed-when-idle
   (implies (and (fn-snt-relation store)
                 (member-equal (fn-bprv-phase store) '(:ready :recovering :fenced-recovery))
+                (fn-record-p record)
                 (member-equal record (fn-bprv-history store)))
            (fn-bpi-node-record-committedp (fn-sn-node store) record))
   :hints (("Goal"
