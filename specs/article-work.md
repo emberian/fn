@@ -76,29 +76,31 @@ B(k, n, s) = 1 + 32*k*(n+s+1) + 32*(n+2)*k*(k-1).
 `fn-article-parse-work-input-bound` proves **without hypotheses**:
 
 ```
-work(fn-aw-parse octets) <= 3 + 2*N + B(129, N, 0).
+work(fn-aw-parse octets) <= 3 + 2*N + B(257, N, 0).
 ```
 
 `fn-article-parse-work-profile-bound` proves the corresponding fixed-profile
-bound, also without hypotheses: **17,450,479,652 work units**. This is a
-conservative envelope, not a tight estimate. It follows the actual 129-step
+bound, also without hypotheses: **69,261,680,676 work units**. This is a
+conservative envelope, not a tight estimate. It follows the actual 257-step
 header fuel, including the separator step, and the actual 32768-cell preflight.
 No successful-parse premise, cost recognizer, prevalidated-input premise, or
 post-hoc output filter is assumed.
 
 ## How far the envelope is from the cost it bounds
 
-In one sentence: the envelope is degree one in `N` — substituting `k = 129` and
-`s = 0` into the closed form gives `3 + 2N + B(129, N, 0) = 532514*N + 1060900`,
+In one sentence: the envelope is degree one in `N` — substituting `k = 257` and
+`s = 0` into the closed form gives `3 + 2N + B(257, N, 0) = 2113570*N + 4218916`,
 whose quadratic factor is the header fuel `k`, not the input length — and at the
-520-octet maximally folded regression article it allows 277,968,180 units.
+520-octet, 128-header-line regression article it allows 1,103,275,316 units.
 Measured on that same article by the executable cost model in
 `books/article-public-bound`, `fn-aw-parse` charges **30,195 work units**, so
-the envelope is **about 9,206 times** the cost it bounds
-(277,968,180 / 30,195); both numbers are asserted as executable witnesses in
-`tests/acl2/article-work-tests.lisp`.
+the envelope is **about 36,538 times** the cost it bounds
+(1,103,275,316 / 30,195); both numbers are asserted as executable witnesses in
+`tests/acl2/article-work-tests.lisp`. That sample is retained across profile
+changes for comparison; a separate 1,032-octet vector exercises the current
+256-header-line boundary, and a 257-header-line vector is rejected.
 The envelope is structurally loose whatever that measurement turns out to be:
-it charges each of the 129 header steps the whole remaining input plus the
+it charges each of the 257 header steps the whole remaining input plus the
 accumulated state, while the parser scans each octet a fixed number of times.
 Closing the gap is a separate, unattempted piece of work; nothing in this
 specification claims the bound is tight.

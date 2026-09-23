@@ -40,23 +40,38 @@
 (assert-event (fn-article-result-okp (fn-aw-v (fn-aw-parse *fn-aw-test-max-line*))))
 (assert-event (equal (fn-aw-v (fn-aw-parse
   (append '(65 58 32) (fn-aw-test-repeat 996 120) '(13 10 13 10)))) '(:error :limit)))
-(defconst *fn-aw-test-max-folds*
+(defconst *fn-aw-test-fold-sample*
   (append '(65 58 32 120 13 10) (fn-aw-test-folds 127) '(13 10 0 255 13 10)))
+(assert-event (fn-article-result-okp (fn-aw-v (fn-aw-parse *fn-aw-test-fold-sample*))))
+; Retain the 128-line sample for comparable work measurements; exercise the
+; current profile's exact 256-line acceptance boundary separately.
+(defconst *fn-aw-test-max-folds*
+  (append '(65 58 32 120 13 10) (fn-aw-test-folds 255) '(13 10 0 255 13 10)))
+(assert-event (equal (len *fn-aw-test-max-folds*) 1032))
 (assert-event (fn-article-result-okp (fn-aw-v (fn-aw-parse *fn-aw-test-max-folds*))))
+(assert-event (equal (fn-aw-v (fn-aw-parse *fn-aw-test-max-folds*))
+                     (fn-article-parse *fn-aw-test-max-folds*)))
 (assert-event (equal (fn-aw-v (fn-aw-parse
-  (append '(65 58 32 120 13 10) (fn-aw-test-folds 128) '(13 10)))) '(:error :limit)))
+  (append '(65 58 32 120 13 10) (fn-aw-test-folds 256) '(13 10)))) '(:error :limit)))
 (assert-event (fn-article-result-okp (fn-aw-v (fn-aw-parse
   (append (fn-aw-test-fields 64) '(13 10))))))
 (assert-event (equal (fn-aw-v (fn-aw-parse
   (append (fn-aw-test-fields 65) '(13 10)))) '(:error :limit)))
 
 ; The measured charge and the envelope quoted in specs/article-work.md.
-(assert-event (equal (len *fn-aw-test-max-folds*) 520))
-(assert-event (equal (fn-aw-c (fn-aw-parse *fn-aw-test-max-folds*)) 30195))
+(assert-event (equal (len *fn-aw-test-fold-sample*) 520))
+(assert-event (equal (fn-aw-c (fn-aw-parse *fn-aw-test-fold-sample*)) 30195))
 (assert-event
- (equal (fn-article-parse-work-budget *fn-aw-test-max-folds*) 277968180))
+ (equal (fn-article-parse-work-budget *fn-aw-test-fold-sample*) 1103275316))
 (assert-event
- (<= (fn-aw-c (fn-aw-parse *fn-aw-test-max-folds*))
-     (fn-article-parse-work-budget *fn-aw-test-max-folds*)))
-(assert-event (equal (fn-aw-v (fn-aw-parse *fn-aw-test-max-folds*))
-                     (fn-article-parse *fn-aw-test-max-folds*)))
+ (<= (fn-aw-c (fn-aw-parse *fn-aw-test-fold-sample*))
+     (fn-article-parse-work-budget *fn-aw-test-fold-sample*)))
+(assert-event (equal (fn-aw-v (fn-aw-parse *fn-aw-test-fold-sample*))
+                     (fn-article-parse *fn-aw-test-fold-sample*)))
+
+; Numeric documentation witness for the selected 256-header-line profile.
+(assert-event
+ (equal (+ 3 (* 2 *fn-article-max-octets*)
+           (fn-aw-budget (1+ *fn-article-max-header-lines*)
+                         *fn-article-max-octets* 0))
+        69261680676))
