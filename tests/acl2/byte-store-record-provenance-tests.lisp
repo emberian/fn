@@ -18,6 +18,22 @@
       (equal (fn-bs-durable-records (bsk6-file-cut))
              (list *bsk5-record*))))
 
+; Name grammar is deliberately absent from the raw-byte theorem.  The
+; executable byte interpreter can stage under NIL; the host input guard
+; rejects that key before any syscall.  It is a positive separation witness
+; for the stronger theorem, not a fabricated failure of a redundant premise.
+(assert-event
+ (let* ((bs (bsk6-start))
+        (cut (car (nth 5 (fn-bs-run
+                          bs (cdr (bsk5-frontier-2))
+                          (fn-bs-record-program nil (fn-bs-txn-name 1)
+                                                (bsk5-frame-2))
+                          nil *bsk5-groups* *bsk5-capacity*)))))
+   (and (not (fn-bs-namep nil))
+        (not (fn-bs-lookup bs :staging nil))
+        (equal (fn-bs-durable-content cut (fn-bs-next-ino bs))
+               (bsk5-frame-2)))))
+
 ; An already occupied staging name stops at O_EXCL, before any write/fence.
 (assert-event
  (fn-bs-lookup (car (bsk5-linked-2)) :staging ".stage-k5-2"))
