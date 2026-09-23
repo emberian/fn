@@ -33,10 +33,16 @@ production entropy-observed bootstrap with topic authorship binding and durable
 BP observed-channel admission. Its full incremental hbox run is
 `run-20260923T221336Z-48f3`, gate
 `/tank/fn/gates/consumer-topic-bp-20260923`, four jobs using the shared cache.
-No passing result or native-image result is yet claimed for this source cut.
+The run passed: 281 compatible cached books and 257 newly certified books,
+340.165 seconds at four jobs with no measured slot wait. The original
+[manifest](evidence/manifests/certify-20260923T221404Z-303098.json) is retained.
+The BP evolving-Store proof took 130.938 seconds and is a concrete performance
+repair, not an excuse to increase the timeout. Native qualification is next.
 The BP profile is explicit IPv4 loopback trust in all co-resident originators,
-not cryptographic peer authentication. A configuration-check/owner-lock seam
-is being repaired before a wider BP assurance claim. Topic inspection still
+not cryptographic peer authentication. The configuration-check/owner-lock race is repaired at `4f66e6b0`, with a
+shipped-function regression that revokes trust before lock acquisition and
+confirms zero publication. Its ACL2 sources match `0143f87e`; the image
+qualification uses exact source `4f66e6b0`. Topic inspection still
 reports a candidate, not durable admission.
 
 The local consumer source route supplies bootstrap, register, zero/nonzero
