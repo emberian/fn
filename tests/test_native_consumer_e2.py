@@ -341,6 +341,9 @@ class NativeConsumerE2Tests(unittest.TestCase):
             self.assertTrue(export.is_absolute())
             export.mkdir(parents=True, exist_ok=False)
             (export / "authored.source").write_bytes(source)
+            # This token arrived from REGISTER before the article and poll.
+            # It is an independent temporal scope pin for a downstream test.
+            (export / "registered.fncu").write_bytes(before)
             (export / "accepted.fn-e").write_bytes(report)
             (export / "continuation.fncu").write_bytes(continuation)
             (export / "principal.bin").write_bytes(principal.read_bytes())
