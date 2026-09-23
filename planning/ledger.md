@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 580 |
 | Certification roots in the Makefile | 574 |
 | Books inside the root closure | 579 |
-| `defthm` and `defthmd` events | 8306 |
+| `defthm` and `defthmd` events | 8307 |
 | `defun` events | 6239 |
 | Functions with verified guards | 2022 |
 | Functions declared `:verify-guards nil` and never verified | 369 |
 | Functions left at the default with an explicit guard | 3053 |
 | Functions left at the default with no guard | 795 |
-| `assert-event` checks | 9081 |
+| `assert-event` checks | 9085 |
 | `must-fail` checks | 465 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 75 |
@@ -132,7 +132,7 @@ that `make certify` requests.
 | `books/bp-fnbs-inspect.lisp` | root | 0 | 3 | 2/0/1/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-namespace.lisp` | root | 0 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-publication.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
-| `books/bp-fnbs-replay-invariants.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-replay-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-fnbs-replay.lisp` | root | 1 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/bp-fragment-fast.lisp` | root | 15 | 8 | 6/0/0/2 | 0 | 0 | 0 |
 | `books/bp-fragment-invariants.lisp` | root | 62 | 3 | 0/0/0/3 | 0 | 0 | 3 |
@@ -460,7 +460,7 @@ that `make certify` requests.
 | `tests/acl2/bp-fnbs-inspect-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 3 | 1 | 0 |
 | `tests/acl2/bp-fnbs-namespace-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 12 | 1 | 0 |
 | `tests/acl2/bp-fnbs-publication-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 10 | 1 | 0 |
-| `tests/acl2/bp-fnbs-replay-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 20 | 1 | 0 |
+| `tests/acl2/bp-fnbs-replay-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 24 | 1 | 0 |
 | `tests/acl2/bp-fragment-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 88 | 0 | 0 |
 | `tests/acl2/bp-handoff-status-tests.lisp` | root | 0 | 3 | 0/1/1/1 | 18 | 3 | 0 |

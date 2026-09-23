@@ -3,6 +3,15 @@
 (in-package "ACL2")
 (include-book "bp-fnbs-replay")
 
+(defthm fn-bpnf-replay-ready-frontier-bounded
+  (implies (equal (car (fn-bpnf-replay-rows rows max-held max-octets))
+                  :ready)
+           (<= (fn-bpnf-held-arrival-frontier
+                (cadr (fn-bpnf-replay-rows rows max-held max-octets)))
+               (1+ *fn-frame-max-nat*)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-bpnf-replay-rows))))
+
 (defthm fn-bpnf-recover-fault-bytes-keep-state
   (implies
    (not (equal
@@ -68,6 +77,13 @@
           (null (fn-bpnf-issued recovered)))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnf-replay-ready-frontier-bounded
+                            (max-held
+                             (fn-bpn-machine-state-max-jobs
+                              (fn-bpnf-base st)))
+                            (max-octets
+                             (fn-bpn-machine-state-max-octets
+                              (fn-bpnf-base st)))))
            :in-theory (e/d (fn-bpnf-recover-event fn-bpnf-step
                             fn-bpnf-recover-fnbs-step)
                            (fn-bpnf-replay-rows fn-bpn-restart-step
