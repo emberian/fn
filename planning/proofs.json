@@ -2132,7 +2132,7 @@
     {
       "id": "PRF-062",
       "title": "Exact-source topic metadata candidate is bounded and canonical",
-      "statement": "The native topic-inspect-carrier command passes only the exact source returned after hybrid-carrier verification to fn-th-host-inspect-source. A successful fn-th-project-source result comes from exactly one field in that source; the bounded decoder accepts only canonical bytes and re-encoding that result returns the same bytes. This establishes no topic anchor or admission.",
+      "statement": "The native topic-inspect-carrier command passes only the exact source returned after hybrid-carrier verification to fn-th-host-inspect-source. Successful inspection binds to exactly one FN-Topic field in that parsed source. For every valid root, control, or report constructor, encoding stays within 1,531 binary octets and 39 items and decoding the encoding recovers the constructor. Accepted decoder bytes are canonical. This establishes no topic anchor or admission.",
       "milestone": "M3",
       "requirements": [
         "TOP-001",
@@ -2151,9 +2151,16 @@
         "host/native/signature-command.lisp",
         "planning/evidence/topic-history-metadata-p3-2026-09-23.md",
         "planning/evidence/manifests/certify-20260923T200634Z-19239.json",
-        "planning/evidence/manifests/certify-20260923T200855Z-21687.json"
+        "planning/evidence/manifests/certify-20260923T200855Z-21687.json",
+        "books/topic-history-metadata-invariants.lisp",
+        "planning/evidence/manifests/certify-20260923T203140Z-48694.json"
       ],
-      "progress_note": "ACL2 8.7 certified the bounded codec and its test book at exact source digests. The current canonicality and oversize theorems concern the inner decoder; the host-called exact-source binding theorem, general constructor upper-bound proof, and source-matched native image execution remain open. No topic admission claim is made."
+      "progress_note": "ACL2 8.7 certified the changed codec, general constructor bound and roundtrip, exact host-called source-field binding, and separating tests at exact source digests on hbox. Native saved-image verification remains pending in the combined gate; no topic admission claim is made.",
+      "events": [
+        "fn-th-host-inspect-source-binds-authored-field",
+        "fn-th-constructor-encoding-bound",
+        "fn-th-constructor-roundtrip"
+      ]
     }
   ]
 }

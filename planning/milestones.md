@@ -17,10 +17,13 @@ provenance and E2 cursor/ack join remain open. The conditional K5 prefix
 and corrected K8 issued-link crash-scan theorems have landed; K0/K6 and
 physical qualification retain their documented open scope. The `295bbe35` native
 image passed historical live configuration and T10a author/reopen tests;
-the wider reader/index, authored-injection, BP and topic union is now the
-`536ca577` qualification subject.
-The first P3 exact-source topic metadata codec and its ACL2 tests are certified;
-source-matched native inspection and durable topic events remain open.
+the wider `884e4816` image passed indexed-reader, historical HDR, signed
+peering/restart, topic inspection, INN interoperability and live configuration.
+The P3 codec now has general constructor bounds/inverse and host-called
+authored-field binding proofs. Full-size signed topic envelopes and durable
+topic admission remain open. K6 now carries exact typed Store-event frames
+through the modeled surviving-link crash; general K0 and whole scanner-list
+composition remain open.
 Release gates remain the [trajectory](plan-2026-09-22-trajectory.md), and
 image qualification proceeds alongside implementation under
 [how we work](how-we-work.md).

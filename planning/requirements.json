@@ -196,7 +196,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -1253,7 +1253,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1272,7 +1272,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -1588,10 +1588,12 @@
         "host/native/signature-command.lisp",
         "planning/evidence/topic-history-metadata-p3-2026-09-23.md",
         "planning/evidence/manifests/certify-20260923T200634Z-19239.json",
-        "planning/evidence/manifests/certify-20260923T200855Z-21687.json"
+        "planning/evidence/manifests/certify-20260923T200855Z-21687.json",
+        "books/topic-history-metadata-invariants.lisp",
+        "planning/evidence/manifests/certify-20260923T203140Z-48694.json"
       ],
       "implementation_note": "The experimental root/control/report field codec and offline native carrier inspection are implemented. No durable topic admission, current policy, or governance authority follows from projection.",
-      "note": "The codec/test books certified at exact source digests, but the host-called source-binding theorem, general constructor bound and native image execution remain pending. The fixed-controller profile remains experimental."
+      "note": "The codec, host-called authored-field binding, general constructor bound, inverse, and separating ACL2 tests are certified at exact source digests. Native saved-image execution remains pending in the combined gate. The fixed-controller profile remains experimental."
     }
   ]
 }

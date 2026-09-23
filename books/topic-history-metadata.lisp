@@ -119,13 +119,13 @@
   :hints (("Goal" :induct (fn-th-parents-p parents previous)
            :in-theory (enable fn-stmt-item-listp fn-cbor-valuep
                               fn-cbor-valuep-bounded)))))
-(local (defthm fn-th-items-when-value-p
+(defthm fn-th-items-when-value-p
   (implies (fn-th-value-p x) (fn-stmt-item-listp (fn-th-items x)))
   :hints (("Goal" :in-theory
            (e/d (fn-th-items fn-th-value-p fn-stmt-item-listp
                             fn-cbor-valuep fn-cbor-valuep-bounded)
                 (fn-th-author-items fn-th-parent-items
-                 fn-th-authors-p fn-th-parents-p))))))
+                 fn-th-authors-p fn-th-parents-p)))))
 (defun fn-th-encode (x)
   (declare (xargs :guard t
                   :guard-hints (("Goal" :in-theory (disable fn-th-items)))))
@@ -195,9 +195,7 @@
   (declare (xargs :guard t))
   (if (not (fn-cbor-at-mostp octets *fn-th-max-binary*))
       (fn-stmt-error :binary-limit)
-    (let ((decoded (fn-stmt-decode-items-bounded
-                    *fn-th-max-items* octets *fn-th-max-binary*
-                    *fn-th-max-binary*)))
+    (let ((decoded (fn-stmt-decode-items *fn-th-max-items* octets)))
       (if (not (fn-stmt-okp decoded)) (fn-stmt-error :codec)
         (let ((parsed (fn-th-items-value (fn-stmt-value decoded))))
           (if (and (fn-stmt-okp parsed)
@@ -239,6 +237,10 @@
       (let ((article (fn-article-result-article parsed)))
         (if (not (fn-article-syntax-p article)) (fn-stmt-error :article)
           (fn-th-project-fields (fn-article-fields article)))))))
+
+(defun fn-th-host-inspect-source (source)
+  (declare (xargs :guard t))
+  (fn-th-project-source source))
 
 (defthm fn-th-encode-emits-bounded-by-definition
   (implies (fn-th-encode x)
