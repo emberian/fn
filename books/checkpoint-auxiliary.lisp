@@ -11,10 +11,12 @@
   '(99 108 111 110 101 45 112 101 110 100 105 110 103 46 102 110 99 101))
 (defconst *fn-cpa-clone-max-depth* 16)
 (defconst *fn-cpa-clone-max-entries* 1000000)
+(defconst *fn-cpa-clone-max-bytes* 1099511627776)
 
 (defun fn-cpa-clone-fence-read-bound () *fn-cpe-max-octets*)
 (defun fn-cpa-clone-max-depth () *fn-cpa-clone-max-depth*)
 (defun fn-cpa-clone-max-entries () *fn-cpa-clone-max-entries*)
+(defun fn-cpa-clone-max-bytes () *fn-cpa-clone-max-bytes*)
 
 ; The full replay is deliberately confined to recovery, never a served path.
 ; Returning :bad keeps a partial or malformed consumer/identity history from
