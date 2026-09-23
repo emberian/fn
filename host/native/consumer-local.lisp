@@ -28,7 +28,8 @@
                  first))
              (reply
                (fnn-control-consumer-local
-                (fnn-octets control) operation input second))
+                (fnn-octets control) operation input
+                (if (eq operation :poll) nil second)))
              (status (and (consp reply) (second reply)))
              (cursor (and (consp reply) (third reply))))
         (unless (and (eq (first reply)
