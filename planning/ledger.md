@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 489 |
 | Certification roots in the Makefile | 484 |
 | Books inside the root closure | 488 |
-| `defthm` and `defthmd` events | 7548 |
-| `defun` events | 5780 |
+| `defthm` and `defthmd` events | 7558 |
+| `defun` events | 5781 |
 | Functions with verified guards | 1876 |
 | Functions declared `:verify-guards nil` and never verified | 311 |
-| Functions left at the default with an explicit guard | 2839 |
+| Functions left at the default with an explicit guard | 2840 |
 | Functions left at the default with no guard | 754 |
-| `assert-event` checks | 8416 |
+| `assert-event` checks | 8425 |
 | `must-fail` checks | 346 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 70 |
@@ -199,8 +199,8 @@ that `make certify` requests.
 | `books/codec-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-invariants.lisp` | root | 34 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/config-observed.lisp` | root | 5 | 4 | 3/0/1/0 | 0 | 0 | 0 |
-| `books/config-owner-live.lisp` | root | 22 | 8 | 0/0/8/0 | 0 | 0 | 0 |
-| `books/config-physical-replay.lisp` | root | 3 | 5 | 3/0/2/0 | 0 | 0 | 0 |
+| `books/config-owner-live.lisp` | root | 29 | 9 | 0/0/9/0 | 0 | 0 | 0 |
+| `books/config-physical-replay.lisp` | root | 6 | 5 | 3/0/2/0 | 0 | 0 | 0 |
 | `books/config-records.lisp` | root | 15 | 15 | 2/0/13/0 | 0 | 0 | 0 |
 | `books/config-store-traces.lisp` | root | 2 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
@@ -457,8 +457,8 @@ that `make certify` requests.
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/codec-seam-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 15 | 0 | 0 |
 | `tests/acl2/config-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 0 | 0 |
-| `tests/acl2/config-owner-live-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 26 | 0 | 0 |
-| `tests/acl2/config-physical-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
+| `tests/acl2/config-owner-live-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
+| `tests/acl2/config-physical-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/config-store-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/config-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 0 | 0 |
 | `tests/acl2/config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 95 | 0 | 0 |
