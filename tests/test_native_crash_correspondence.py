@@ -75,12 +75,18 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
             self.assertIn(reader, entry)
 
     def test_recovery_cuts_run_in_program_order_and_sweep_after_the_barriers(self):
-        from tests.campaign import native_cuts
+        from tests.campaign import model_images, native_cuts
         native_cuts.verify_recovery_order()
+        indices = [model_images.cut_index(cut.program, cut.model_name,
+                                          cut.occurrence)
+                   for cut in native_cuts.RECOVERY_CUTS
+                   if cut.model_name == "recover-barrier"]
+        self.assertEqual(len(indices), 5)
+        self.assertEqual(indices, sorted(set(indices)))
         self.assert_ordered(function_body(self.io, "fnn-recover"), [
             "(fnn-at store :recover-replayed)",
             "(fnn-observe store :recovery-barrier :ok)",
-            "(fnn-at store :recover-barrier)",
+            '(fnn-at store (intern (format nil "RECOVER-BARRIER-~d" ordinal) :keyword))',
             "(unless (eq phase :ready)",
             "(fnn-sweep-staging store)",
         ])
@@ -132,7 +138,8 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
         self.assertIn("(fnn-recover store)", body)
         recover = function_body(self.io, "fnn-recover")
         self.assertEqual(len(re.findall(r"fnn-observe store :recovery-barrier :ok", recover)), 1)
-        self.assertIn("(dolist (barrier", recover)
+        self.assertIn("(loop for barrier", recover)
+        self.assertIn("for ordinal from 1", recover)
 
 
 if __name__ == "__main__":

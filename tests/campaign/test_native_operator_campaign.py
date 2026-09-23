@@ -173,6 +173,10 @@ class NativeOperatorCampaignTests(unittest.TestCase):
                     self.assertEqual(start[entry]["rc"], EXIT_USAGE, start[entry])
                     self.assertIn(start["variable"], start[entry]["stderr"])
         self.assertEqual(refused["store_post_fault_argument"]["rc"], EXIT_USAGE)
+        raw = faults["prod-raw-store-post-guard"]
+        self.assertEqual(raw["plain_post"]["rc"], EXIT_USAGE)
+        self.assertFalse(raw["store_created"])
+        self.assertFalse(raw["payload_created"])
         self.assertEqual(faults["prod-init-fault"]["init"]["rc"], EXIT_USAGE)
         self.assertFalse(faults["prod-init-fault"]["store_created"])
 

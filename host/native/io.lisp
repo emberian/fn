@@ -1396,11 +1396,12 @@ after the syscall."
     (fnn-at store :recover-replayed)
     (handler-case
         (let ((phase nil))
-          (dolist (barrier (list (lambda () (fnn-fsync-regular (fnn-config-path store)))
+          (loop for barrier in (list (lambda () (fnn-fsync-regular (fnn-config-path store)))
                                  (lambda () (fnn-fsync-regular (fnn-frontier-path store)))
                                  (lambda () (fnn-fsync-dir (fnn-transactions store)))
                                  (lambda () (fnn-fsync-dir (fnn-store-root store)))
-                                 (lambda () (fnn-fsync-dir (fnn-parent (fnn-store-root store))))))
+                                 (lambda () (fnn-fsync-dir (fnn-parent (fnn-store-root store)))))
+                for ordinal from 1 do
             (handler-case (funcall barrier)
               (fnn-os-error (e)
                 (fnn-observe store :recovery-barrier :uncertain)
@@ -1408,7 +1409,7 @@ after the syscall."
             (setq phase (fnn-observe store :recovery-barrier :ok))
             (unless (member phase '(:recovering :ready))
               (fnn-fault "ACL2 rejected recovered barrier ordering"))
-            (fnn-at store :recover-barrier))
+            (fnn-at store (intern (format nil "RECOVER-BARRIER-~d" ordinal) :keyword)))
           (unless (eq phase :ready)
             (fnn-fault "ACL2 did not complete all recovery barriers")))
       (fnn-os-error ()
@@ -1677,13 +1678,15 @@ a source-pinned post-syscall cut."
 
 ;; In the order fnn-recover reaches them.  `recover-replayed' and
 ;; `recover-barrier' are fn-bs-recover-program's own cuts
-;; (books/byte-store-programs.lisp); `recover-barrier' names five sites and a
-;; store fault fires at the first one reached.  `recovery-stage-unlinked' is
+;; (books/byte-store-programs.lisp); `recover-barrier-N' selects each of the
+;; five model cuts.  `recovery-stage-unlinked' is
 ;; fn-bs-recover-stage-cleanup-program's cut, and that program runs once per
 ;; removed orphan AFTER fn-bs-recover-program has completed: fnn-recover
 ;; sweeps only once the fifth barrier observation has reached :ready.
 (defparameter +fnn-recovery-model-cuts+
-  '("recover-replayed" "recover-barrier" "recovery-stage-unlinked"))
+  '("recover-replayed" "recover-barrier-1" "recover-barrier-2"
+    "recover-barrier-3" "recover-barrier-4" "recover-barrier-5"
+    "recovery-stage-unlinked"))
 
 (defun fnn-recovery-test-fault ()
   "Developer-only FN_NATIVE_RECOVERY_FAULT=MODEL-CUT:eio|kill selector.
