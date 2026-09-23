@@ -452,15 +452,15 @@
     "books_in_root_closure": 448,
     "roots": 444,
     "theorems": 7359,
-    "functions": 5588,
-    "assert_events": 8118,
-    "must_fails": 315,
+    "functions": 5594,
+    "assert_events": 8120,
+    "must_fails": 316,
     "encapsulates": 26,
     "guards": {
       "verified": 1850,
-      "declared-off": 300,
-      "default-guarded": 2754,
-      "default-unguarded": 684
+      "declared-off": 301,
+      "default-guarded": 2757,
+      "default-unguarded": 686
     },
     "suspect_theorems": 69,
     "export_hygiene_warnings": 93,
@@ -2863,17 +2863,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 110,
-      "functions": 32,
+      "functions": 36,
       "guards": {
         "verified": 13,
-        "declared-off": 0,
-        "default-guarded": 18,
+        "declared-off": 1,
+        "default-guarded": 21,
         "default-unguarded": 1
       },
       "verify_guards_events": 13,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 16,
+      "defconsts": 17,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -9325,24 +9325,26 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 78,
-      "must_fails": 0,
-      "defconsts": 15,
+      "assert_events": 80,
+      "must_fails": 1,
+      "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/checkpoint-codec",
         "../../books/codec-attach"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -12629,7 +12631,7 @@
     {
       "theorem": "fn-cpc-uint32p-bridge",
       "book": "books/checkpoint-codec.lisp",
-      "line": 1250,
+      "line": 1305,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p"
       ]

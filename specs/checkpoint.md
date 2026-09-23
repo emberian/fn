@@ -38,7 +38,7 @@ frontier and below the observed final frontier.
 ## 2. Canonical bytes (`books/checkpoint-codec.lisp`)
 
 Layout, a concatenation of the records book's CBOR primitives: bytes
-`"fn-c"`, uint schema 0, uint sequence, uint frontier, uint capacity, uint
+`"fn-c"`, uint schema 1 for new captures, uint sequence, uint frontier, uint capacity, uint
 group count, one bytes item per group, then `TREE(node)`. `TREE` is a tagged
 encoding of the node's value universe (`fn-cpc-treep`: nil, naturals below
 2^32, octet-domain strings, the symbols `t`, `:archive`, `:forward`,
@@ -49,14 +49,29 @@ non-minimal CBOR head, an unknown tag or symbol code, and a cons deeper than
 its depth fuel (the octets it has). The item reader has no per-item
 whole-stream preflight: the frame bounds the payload once (4 MiB).
 
+The decoder also accepts schema 0 selected checkpoints written before the
+acceptance stamp. A ready pre-stamp node has five-field articles and no pending
+transaction; ACL2 appends `:legacy` to each article, leaves every other field
+unchanged, then requires the complete current `fn-checkpointp` before restore.
+Version 1 never migrates an old shape. The short-lived T2 image that wrote a
+six-field node under schema 0 is accepted unchanged when it already passes
+`fn-checkpointp`. The generation frame and selection marker remain protected
+and are checked before migration; the saved bytes are not rewritten. Restore
+still compares the private checkpoint-plus-suffix result with authoritative
+full journal replay, so migration cannot replace a mismatched live state.
+
 - `fn-cpc-decode-of-encode` (value direction): for an encodable checkpoint
   whose encoding fits the payload cap, decoding at its own groups and
   capacity and at any observed frontier and record-count bounds at or beyond
   its own yields `(:ok checkpoint)`. Hypotheses: `fn-cpc-encodablep` (a
   `fn-checkpointp` value with octet-domain group names, at most 16 groups,
   32-bit capacity and sequence, node in the universe), the two bounds.
-- `fn-cpc-accepted-input-is-canonical` (byte direction): any accepted input
-  is exactly the encoding of the value returned. Only hypothesis: acceptance.
+- `fn-cpc-accepted-input-is-canonical` (byte direction): an accepted **schema
+  1** input is exactly the encoding of the value returned. Hypotheses:
+  acceptance and the current-version header. A schema 0 pre-stamp checkpoint
+  migrates its logical article shape and therefore cannot re-encode to the
+  identical bytes using the schema 1 encoder; the canonical raw-tree decoder
+  still rejects alternate byte spellings before that migration.
   The decoder itself establishes the octet domain, cap, magic, version,
   bounds, configuration equality, absence of trailing octets and
   `fn-checkpointp` of the assembled value.

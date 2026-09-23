@@ -112,8 +112,12 @@ reasons, each sufficient:
 2. **The checkpoint codec's value universe is naturals below 2^32**
    (`books/checkpoint-codec.lisp`, TREE). The checkpoint stores the exact node,
    so an article stamp in milliseconds would make every node with a stamped
-   article unencodable as a checkpoint. In seconds it is inside the universe;
-   the only checkpoint change is admitting the symbol `:legacy`.
+   article unencodable as a checkpoint. In seconds it is inside the universe.
+   The pre-stamp migration also needs a schema-0 selected-checkpoint decoder:
+   old ready nodes store five-field articles, which gain a trailing `:legacy`
+   only after their protected bytes are read and before current-state
+   validation. New captures use checkpoint schema 1; see
+   [the checkpoint codec](checkpoint.md#2-canonical-bytes-bookscheckpoint-codeclisp).
 3. **Nothing reads a finer instant.** NEWNEWS and NEWGROUPS thresholds are
    whole seconds (`fn-nntp-civil-dtn-ms` returns `1000 * secs`), and DATE
    renders seconds. For a threshold `1000k`,
@@ -804,7 +808,7 @@ relies on it:
    `stx-accept-records` (comment only: the child may be schema 1),
    `hybrid-store` (observation argument), `store-events` (dispatch on the
    magic), `checkpoint` and `checkpoint-codec` (`:legacy` in
-   `*fn-cpc-symbols*`).
+   `*fn-cpc-symbols*`, plus schema-0 selected-checkpoint migration).
 4. The store: `store-node` (`fn-sn-article-record`, the prepare conjuncts,
    `fn-sn-pending-record` with the stamp), `store-node-invariants`
    (`fn-sn-committed-recordp`, §2.3, §2.4), `store-node-traces`,

@@ -8,6 +8,7 @@
 (in-package "ACL2")
 (include-book "../../books/checkpoint-codec")
 (include-book "../../books/codec-attach")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *cpc-groups* '("fn.letters" "fn.test"))
 (defconst *cpc-r0*
@@ -29,6 +30,57 @@
 (assert-event (fn-cpc-encodablep *cpc-value*))
 (defconst *cpc-octets* (fn-cpc-encode *cpc-value*))
 (assert-event (and (consp *cpc-octets*) (fn-cbor-octet-listp *cpc-octets*)))
+
+; Pre-stamp schema 0 stored five-field articles in an otherwise unchanged
+; ready node.  Version 0 also covers the short-lived T2 image that wrote a
+; six-field node before the header version was raised; both are accepted.
+(defun cpc-prestamp-node (node)
+  (let ((s (fn-node-acceptance node)))
+    (fn-node-make-state
+     (fn-make-state (fn-state-groups s) (fn-state-nexts s)
+                    (list (take 5 (car (fn-state-articles s))))
+                    (fn-state-next-txid s) nil (fn-state-fenced s))
+     (fn-node-retention node) (fn-node-stage node) (fn-node-bindings node))))
+(defun cpc-versioned-octets (version node)
+  (append (fn-cbor-encode (cons :bytes *fn-cpc-magic*))
+          (fn-cpc-encode-uints (list version 1 3 10 (len *cpc-groups*)))
+          (fn-cpc-encode-strings *cpc-groups*)
+          (fn-cpc-encode-tree node)))
+(defconst *cpc-prestamp-octets*
+  (cpc-versioned-octets 0 (cpc-prestamp-node (fn-checkpoint-node *cpc-value*))))
+(defconst *cpc-intermediate-octets*
+  (cpc-versioned-octets 0 (fn-checkpoint-node *cpc-value*)))
+(defconst *cpc-prestamp-expected*
+  (fn-checkpoint-capture-value
+   (fn-checkpoint-capture *cpc-groups* 10
+                          (list (fn-record-with-stamp *cpc-r0* :legacy)) 3)))
+(assert-event
+ (and (equal (fn-cpc-decode *cpc-prestamp-octets* *cpc-groups* 10 3 1)
+             (list :ok *cpc-prestamp-expected*))
+      (equal (fn-cpc-decode *cpc-intermediate-octets* *cpc-groups* 10 3 1)
+             (list :ok *cpc-value*))
+      (equal (fn-article-stamp
+              (car (fn-state-articles
+                    (fn-node-acceptance
+                     (fn-checkpoint-node *cpc-prestamp-expected*)))))
+             :legacy)))
+; The version-1 decoder refuses an old article shape rather than coercing it.
+(assert-event
+ (equal (fn-cpc-decode
+         (cpc-versioned-octets 1 (cpc-prestamp-node
+                                  (fn-checkpoint-node *cpc-value*)))
+         *cpc-groups* 10 3 1)
+        '(:error :invalid)))
+; Migration changes the logical value.  Hence the canonical re-encode
+; keystone explicitly requires the current header; dropping it is false.
+(must-fail
+ (assert-event
+  (implies (fn-cpc-result-okp
+            (fn-cpc-decode *cpc-prestamp-octets* *cpc-groups* 10 3 1))
+           (equal (fn-cpc-encode
+                   (fn-cpc-result-value
+                    (fn-cpc-decode *cpc-prestamp-octets* *cpc-groups* 10 3 1)))
+                  *cpc-prestamp-octets*))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-cpc-decode-of-encode: value direction, at the capture's own
