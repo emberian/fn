@@ -90,3 +90,30 @@ and restart/legacy compatibility decisions before claiming reboot support.
 E2 completion now needs an explicit carried projection/replay invariant,
 not merely an extra assumed recovery predicate; its lane is proving that
 while stamp_review builds the native publication adapter.
+
+## Current union and next cooperating packets
+
+- Root qualification: `536ca577`, hbox `run-20260923T201700Z-0e13`,
+  gate `/tank/fn/gates/integrate-reader-bp-topic-20260923`, four jobs,
+  existing w28/cache/pools, default+DTN+ACL2 test roots.
+  `stamp_review` owns the next developer image and native reader, entire
+  hybrid-author suite (including peering/restart), and topic inspection.
+- `store_invariants` and `acceptance_stamp` compose historical wire/index/
+  verdict preservation. Indexed-open cost packet `84ddec61` is separate
+  from the already integrated TLS-prefix pin repair.
+- `bp_foundation` and `status_codec` compose A3 same-owner app delivery and
+  receipt outbox; exact handoff-trigger and payload/peer binding are required.
+- `consumer_contract` repairs the completed-prefix/pending-event invariant
+  before native E2 qualification. `authorship_carrier` has a qualified
+  component preservation/fenced-clone packet at `0a56254c`; its native
+  clone fault campaign awaits that E2 image.
+- `crash_differential` has a modeled final-link/decoder crash packet at
+  `52bf0ad7`; whole scanner membership and K0 still need composition.
+- Mini P1 fixture `026e18da` landed. `mini_evidence_bridge` now joins actual
+  portable authored-source verification without inventing Store admission
+  evidence or an unimplemented E2 endpoint.
+- Topic metadata packet is in the frozen union; `topic_metadata` continues
+  general codec/source-binding assurance. Governance choices remain proposals.
+- Certificate compatibility selector now serves incremental certification
+  and image acquisition. Measured default 202-book candidate selection on
+  `e4f62e7c` took 1.56s, with no recertification or cache writes.

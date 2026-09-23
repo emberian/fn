@@ -8,8 +8,11 @@ integration in those repositories' actual execution, persistence and authority
 models. Mini P0 now exports and independently verifies a bounded public native
 receipt/prefix package. The exact hybrid carrier is 29,918 bytes;
 [the measured fixture](evidence/dregg-e1-payload-budget.md) is committed.
-The Mini lane proceeds to native durable operation binding and reply outbox
-transactions in its isolated worktree. The [swarm board](swarm-board.md) names the
+The [P1 native experiment](evidence/dregg-e1-consumer-p1.md) now records one
+durable operation/reply, refusal of a stale competing signed submission, and
+exact reply recovery after reopen. Its trusted synthetic provenance adapter
+is being replaced with a real portable authorship boundary; E2 fetch/ack and
+reply publication remain open. The [swarm board](swarm-board.md) names the
 active implementation lanes and coordination boundaries. Image cuts identify
 reproducible experiments and do not stop project-wide development.
 
@@ -65,8 +68,10 @@ remain open.
 An isolated ext4 device-EIO campaign observed actual directory-fsync failure,
 native uncertainty and successful recovery; this does not qualify physical
 power loss or production ZFS. The BP native campaign also exposed process-
-relative persisted age timestamps. A clock-domain/boot recovery contract and
-actual monotonic expiry tests are in progress. Release scope still follows
+relative persisted age timestamps. The integrated boot-domain marker and CLOCK_BOOTTIME join passed same-boot
+expiry, absent/corrupt-marker fencing and native TCPCL exchange on isolated
+source-matched images. Different-boot markers fence; cross-boot reanchoring
+remains open. Release scope still follows
 [the trajectory](plan-2026-09-22-trajectory.md) and
 [takeover contracts](takeover-2026-09-23.md), with wider concurrent execution
 under [how we work](how-we-work.md). Independently governed topic histories
@@ -74,3 +79,20 @@ are part of the revised goal. The [P3 design proposal](topic-history-p3-2026-09-
 grounds their identity, policy histories and application boundary in Mini/Bread.
 A bounded metadata codec and native inspection slice proceeds while portable
 succession and legitimate governance-fork policy remain proposals.
+
+## Current combined qualification
+
+Source `536ca577` combines the pinned Message-ID index and historical verdict
+projection, actual TLS-prefix reader pin repair, native authored injection,
+BP clock-domain recovery and bounded P3 topic metadata inspection. Hbox run
+`run-20260923T201700Z-0e13` at
+`/tank/fn/gates/integrate-reader-bp-topic-20260923` reuses compatible cache
+artifacts and certifies changed closure members at four jobs. Its result and
+subsequent native saved-image reader/HDR, authored peering/restart and topic
+inspection tests are pending. This is a test subject, not a live deployment.
+
+The TLS-prefix correspondence still requires a well-formed selected wire;
+carrying that premise through the historical owner relation is separate work.
+A3 application handoff is being composed with the same FNBS owner. Receipt
+queue identity must bind each handoff trigger and the exact receipt ADU/peer;
+a colliding queued-job name alone cannot establish handoff completion.
