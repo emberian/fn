@@ -103,18 +103,104 @@ class NativeReaderIndexTest(unittest.TestCase):
         return status, rows
 
     def post(self, msgid, ordinal, group="fn.test"):
+        groups = (group,) if isinstance(group, str) else tuple(group)
         source = (
             b"From: reader@example.invalid\r\n"
             b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
-            b"Newsgroups: " + group.encode("ascii") + b"\r\n"
+            b"Newsgroups: " + ",".join(groups).encode("ascii") + b"\r\n"
             b"Subject: pinned reader " + str(ordinal).encode("ascii") + b"\r\n"
             b"Message-ID: " + msgid.encode("ascii") +
             b"\r\n\r\nexact reader source\r\n")
         path = self.root / ("post-{}.eml".format(ordinal))
         path.write_bytes(source)
-        self.run_native("operator", self.config, "post", "--message-id", msgid,
-                        "--payload", path, "--group", group)
+        words = ["operator", self.config, "post", "--message-id", msgid,
+                 "--payload", path]
+        for name in groups:
+            words.extend(("--group", name))
+        self.run_native(*words)
         return source
+
+    def overview(self, reader, spelling, number_range):
+        self.assertIn(spelling, ("OVER", "XOVER"))
+        return self.command(reader, spelling + " " + number_range, True)
+
+    def test_over_xover_crosspost_sparse_range_historical_pin_and_restart(self):
+        self.run_native("operator", self.config, "group", "create", "fn.alt")
+        owner = self.start_owner()
+        old = self.reader()
+        self.assertTrue(self.command(old, "GROUP fn.test")[0].startswith(b"211 "))
+        self.assertEqual(self.overview(old, "OVER", "1-100"),
+                         (b"423 no articles in that range\r\n", []))
+        self.assertEqual(self.overview(old, "XOVER", "1-100"),
+                         (b"420 no article(s) selected\r\n", []))
+
+        cross = "<reader-over-cross@example.invalid>"
+        alt = "<reader-over-alt@example.invalid>"
+        second = "<reader-over-second@example.invalid>"
+        self.post(cross, 301, ("fn.test", "fn.alt"))
+        self.post(alt, 302, "fn.alt")
+        middle = self.reader()
+        self.assertTrue(self.command(middle, "GROUP fn.test")[0].startswith(b"211 "))
+        self.assertEqual(self.overview(old, "OVER", "1-100")[1], [])
+        first_status, first_rows = self.overview(middle, "OVER", "1-100")
+        self.assertEqual(first_status, b"224 overview information follows\r\n")
+        self.assertEqual(len(first_rows), 1)
+        self.assertTrue(first_rows[0].startswith(b"1\t"), first_rows)
+        self.assertIn(cross.encode(), first_rows[0])
+        self.assertEqual(self.overview(middle, "XOVER", "1-100")[1], first_rows)
+
+        self.post(second, 303, "fn.test")
+        fresh = self.reader()
+        self.assertTrue(self.command(fresh, "GROUP fn.test")[0].startswith(b"211 "))
+        status, rows = self.overview(fresh, "OVER", "1-100")
+        self.assertEqual(status, b"224 overview information follows\r\n")
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0], first_rows[0])
+        self.assertTrue(rows[1].startswith(b"2\t"), rows)
+        self.assertIn(second.encode(), rows[1])
+        self.assertEqual(self.overview(fresh, "XOVER", "2-2")[1], [rows[1]])
+        self.assertEqual(self.overview(middle, "OVER", "2-2"),
+                         (b"423 no articles in that range\r\n", []))
+        self.assertEqual(self.overview(fresh, "OVER", "3-100"),
+                         (b"423 no articles in that range\r\n", []))
+        # Public posting allocates contiguous local numbers.  A genuinely
+        # internal hole is covered by the ACL2 sparse-index witness; this
+        # socket case checks a sparse bounded selection beyond the watermark.
+        self.assertTrue(self.command(fresh, "GROUP fn.alt")[0].startswith(b"211 "))
+        alt_status, alt_rows = self.overview(fresh, "OVER", "1-2")
+        self.assertEqual(alt_status, b"224 overview information follows\r\n")
+        self.assertEqual(len(alt_rows), 2)
+        self.assertIn(cross.encode(), alt_rows[0])
+        self.assertIn(alt.encode(), alt_rows[1])
+
+        def read_pair(_):
+            reader = self.reader()
+            try:
+                self.assertTrue(self.command(reader, "GROUP fn.test")[0]
+                                .startswith(b"211 "))
+                return self.overview(reader, "OVER", "1-100"), self.overview(
+                    reader, "XOVER", "2-2")
+            finally:
+                reader[1].close()
+                reader[0].close()
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            for pair in pool.map(read_pair, range(4)):
+                self.assertEqual(pair[0], (status, rows))
+                self.assertEqual(pair[1][1], [rows[1]])
+        for reader in (old, middle, fresh):
+            reader[1].close()
+            reader[0].close()
+        self.stop_owner(owner)
+        restarted = self.start_owner()
+        recovered = self.reader()
+        self.assertTrue(self.command(recovered, "GROUP fn.test")[0]
+                        .startswith(b"211 "))
+        self.assertEqual(self.overview(recovered, "OVER", "1-100"),
+                         (status, rows))
+        recovered[1].close()
+        recovered[0].close()
+        self.stop_owner(restarted)
 
     def listgroup(self, reader, group, number_range=None):
         command = "LISTGROUP " + group

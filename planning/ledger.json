@@ -590,10 +590,10 @@
     "books": 589,
     "books_in_root_closure": 588,
     "roots": 583,
-    "theorems": 8367,
+    "theorems": 8371,
     "functions": 6247,
-    "assert_events": 9116,
-    "must_fails": 469,
+    "assert_events": 9121,
+    "must_fails": 472,
     "encapsulates": 26,
     "guards": {
       "verified": 2022,
@@ -604,7 +604,7 @@
     "suspect_theorems": 76,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
-    "teeth_form_warnings": 37,
+    "teeth_form_warnings": 39,
     "include_hygiene_warnings": 504,
     "host_names_warnings": 788,
     "hand_written_record_warnings": 18
@@ -6643,7 +6643,7 @@
       "book": "books/nntp-range-indexed-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
+      "theorems": 10,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -14446,9 +14446,9 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 8,
-      "must_fails": 2,
-      "defconsts": 16,
+      "assert_events": 13,
+      "must_fails": 5,
+      "defconsts": 19,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -18119,6 +18119,18 @@
         "check": "aut-k1-without-the-post-command-event",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
         "line": 1239,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-xri-without-valid-archive",
+        "book": "tests/acl2/nntp-range-indexed-tests.lisp",
+        "line": 191,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-xri-carried-without-over-keyword-scope",
+        "book": "tests/acl2/nntp-range-indexed-tests.lisp",
+        "line": 221,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {

@@ -14,12 +14,15 @@ group bucket and Message-ID trie resolve a local number to the same first
 article as `fn-nntp-available-article`. The proof carries the RFC local-number
 and renderable Message-ID gates, and uses accepted article-list uniqueness for
 the trie step. `fn-nntp-over-range-indexed-equals-fold` equates the complete
-response under a valid accepted state, typed session, and parsed natural range
-bounds. `fn-nntp-parse-range-ok-has-natural-bounds` discharges the parser
-premise. The called-subject theorem
-`fn-nntp-carried-over-range-equals-archive-command` adds the actual maintained
-bucket and trie correspondence for a tagged pin and proves the pinned archive
-dispatcher equals the original archive command for valid OVER/XOVER ranges.
+response under a valid accepted state and a parsed valid range. The called
+theorem `fn-nntp-carried-over-range-equals-archive-command` requires a valid
+accepted state, bucket and trie correspondence, and an OVER or XOVER keyword.
+It equates the actual pinned dispatcher with the original archive command for
+every one-argument token: malformed ranges fall through to the historical
+dispatcher, and an untagged index also falls through. Neither a tagged-index,
+valid-range, natural-bound nor session-recognizer premise remains. A non-text
+selected group in a malformed session selects nothing from a valid archive on
+both paths; served connections still carry well-formed sessions.
 XOVER's empty range remains 420; OVER's remains 423. The command does not
 evaluate either whole-archive correspondence predicate at serve time.
 
@@ -44,3 +47,22 @@ archive-command effect proof then passed, and the affected `nntp-auth`,
 `certify-20260923T233149Z-493160.json`. The combined root/image and native
 socket workload remain to be qualified after integration. HDR/XHDR, GROUP,
 NEXT, LAST, and NEWNEWS retain their archive folds.
+
+The premise-teeth follow-up passed focused hbox ACL2 8.7 manifests
+`certify-20260923T234557Z-523120.json` (strengthened theorem) and
+`certify-20260923T234734Z-527933.json` (test book). It has an explicit malformed
+duplicate-ID archive in which the built bucket selects number 100 but the
+trie resolves the earlier duplicate; the example fails `fn-statep` and is a
+proof counterexample, not a reachable runtime path. The test has matching
+`must-fail` cases for dropping accepted-archive validity, bucket
+correspondence, trie correspondence, and the OVER/XOVER keyword scope. For
+the latter, pinned `HDR :FN-VERIFIED` reads historical verdict metadata
+while ordinary HDR reads an article field. The source-matched native driver
+in `tests/test_native_reader_index.py` is prepared for the next shared image;
+it has not been run on an image containing this change. Public posting
+allocates contiguous per-group numbers, so its high-range empty selection is
+the socket-level sparse case; the internal gap at 2 and 100 is ACL2 evidence.
+The selected dependent reader roots passed or installed at matching source
+bytes in `certify-20260923T234909Z-532439.json`: `nntp-auth-invariants`
+and `peer-inbound-invariants` were certified, while the unchanged owner,
+served, pinned-effect and NNTP invariant roots installed from the cache.

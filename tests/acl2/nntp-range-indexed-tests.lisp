@@ -48,6 +48,25 @@
 
 (assert-event (and (fn-statep *xri-old*) (fn-statep *xri-new*)
                    (fn-nntp-sessionp *xri-session*)))
+; Invalid ranges and an untagged index use the archive fallback in the
+; called dispatcher.  Neither is a premise of the carried theorem.
+(assert-event
+ (and (equal (fn-nntp-archive-command-pinned
+              *xri-session* *xri-new* *xri-new-pin* nil *xri-env*
+              (fn-nntp-string-octets "OVER")
+              (list (fn-nntp-string-octets "broken")))
+             (fn-nntp-archive-command
+              *xri-session* *xri-new* *xri-env*
+              (fn-nntp-string-octets "OVER")
+              (list (fn-nntp-string-octets "broken"))))
+      (equal (fn-nntp-archive-command-pinned
+              *xri-session* *xri-new* (fn-gidx-pin-trie *xri-new-pin*)
+              nil *xri-env* (fn-nntp-string-octets "OVER")
+              (list (fn-nntp-string-octets "1-100")))
+             (fn-nntp-archive-command
+              *xri-session* *xri-new* *xri-env*
+              (fn-nntp-string-octets "OVER")
+              (list (fn-nntp-string-octets "1-100"))))))
 (assert-event (equal (fn-gidx-range-numbers
                       (fn-gidx-pin-buckets *xri-new-pin*) "fn.one" 1 100)
                      '(2 100)))
@@ -111,11 +130,9 @@
               (list (fn-nntp-string-octets "1-100"))))))
 (must-fail
  (defthm fn-xri-without-bucket-correspondence
-   (implies (and (fn-statep archive) (fn-nntp-sessionp session)
-                 (fn-gidx-pinp index)
+   (implies (and (fn-statep archive)
                  (fn-midx-correspondencep
                   (fn-gidx-pin-trie index) (fn-state-articles archive))
-                 (fn-nntp-range-okp (fn-nntp-parse-range token))
                  (fn-nntp-keywordp keyword "OVER"))
             (equal (fn-nntp-archive-command-pinned
                     session archive index nil nil keyword (list token))
@@ -124,13 +141,91 @@
    :hints (("Goal" :do-not-induct t))))
 (must-fail
  (defthm fn-xri-without-trie-correspondence
-   (implies (and (fn-statep archive) (fn-nntp-sessionp session)
-                 (fn-gidx-pinp index)
+   (implies (and (fn-statep archive)
                  (fn-gidx-pin-correspondencep index archive)
-                 (fn-nntp-range-okp (fn-nntp-parse-range token))
                  (fn-nntp-keywordp keyword "OVER"))
             (equal (fn-nntp-archive-command-pinned
                     session archive index nil nil keyword (list token))
                    (fn-nntp-archive-command
                     session archive nil keyword (list token))))
+   :hints (("Goal" :do-not-induct t))))
+
+; Duplicate accepted IDs cannot occur in fn-statep, but show why the
+; archive-validity premise of the bucket/trie-to-archive theorem matters.
+; This is a malformed-state proof counterexample, never runtime evidence.
+(defconst *xri-duplicate-articles*
+  (list *xri-a*
+        (fn-make-article "<xri-a@example.invalid>"
+                         (fn-xri-payload "<xri-a@example.invalid>" "DUP")
+                         '("fn.one") (list (cons "fn.one" 100))
+                         t 841000000)))
+(assert-event (not (fn-article-listp *xri-groups* *xri-duplicate-articles*)))
+(assert-event
+ (not (equal (fn-gidx-number-article
+              "fn.one" 100 (fn-gidx-build *xri-duplicate-articles*)
+              (fn-midx-build *xri-duplicate-articles*))
+             (fn-nntp-available-article
+              "fn.one" 100 *xri-duplicate-articles*))))
+(defconst *xri-duplicate-state*
+  (fn-make-state *xri-groups* *xri-nexts-new*
+                 *xri-duplicate-articles* 3 nil nil))
+(defconst *xri-duplicate-pin*
+  (fn-gidx-pin (fn-midx-build *xri-duplicate-articles*)
+               (fn-gidx-build *xri-duplicate-articles*)))
+(assert-event
+ (and (not (fn-statep *xri-duplicate-state*))
+      (fn-gidx-pin-correspondencep *xri-duplicate-pin*
+                                    *xri-duplicate-state*)
+      (fn-midx-correspondencep
+       (fn-gidx-pin-trie *xri-duplicate-pin*)
+       (fn-state-articles *xri-duplicate-state*))
+      (not (equal
+            (fn-nntp-archive-command-pinned
+             *xri-session* *xri-duplicate-state* *xri-duplicate-pin*
+             nil *xri-env* (fn-nntp-string-octets "OVER")
+             (list (fn-nntp-string-octets "100-100")))
+            (fn-nntp-archive-command
+             *xri-session* *xri-duplicate-state* *xri-env*
+             (fn-nntp-string-octets "OVER")
+             (list (fn-nntp-string-octets "100-100")))))))
+(must-fail
+ (defthm fn-xri-without-valid-archive
+   (equal (fn-gidx-number-article
+           group number (fn-gidx-build articles) (fn-midx-build articles))
+          (fn-nntp-available-article group number articles))
+   :hints (("Goal" :do-not-induct t))))
+(must-fail
+ (defthm fn-xri-carried-without-valid-archive
+   (implies (and (fn-gidx-pin-correspondencep index archive)
+                 (fn-midx-correspondencep
+                  (fn-gidx-pin-trie index) (fn-state-articles archive))
+                 (fn-nntp-keywordp keyword "OVER"))
+            (equal (fn-nntp-archive-command-pinned
+                    session archive index nil nil keyword (list token))
+                   (fn-nntp-archive-command
+                    session archive nil keyword (list token))))
+   :hints (("Goal" :do-not-induct t))))
+
+; The keyword scope is substantive: a pinned :FN-VERIFIED HDR reads the
+; historical verdict projection, while ordinary HDR reads an article field.
+(assert-event
+ (not (equal
+       (fn-nntp-archive-command-pinned
+        *xri-session* *xri-new* *xri-new-pin* nil *xri-env*
+        (fn-nntp-string-octets "HDR")
+        (list (fn-nntp-string-octets ":FN-VERIFIED")))
+       (fn-nntp-archive-command
+        *xri-session* *xri-new* *xri-env*
+        (fn-nntp-string-octets "HDR")
+        (list (fn-nntp-string-octets ":FN-VERIFIED"))))))
+(must-fail
+ (defthm fn-xri-carried-without-over-keyword-scope
+   (implies (and (fn-statep archive)
+                 (fn-gidx-pin-correspondencep index archive)
+                 (fn-midx-correspondencep
+                  (fn-gidx-pin-trie index) (fn-state-articles archive)))
+            (equal (fn-nntp-archive-command-pinned
+                    session archive index verdicts env keyword (list token))
+                   (fn-nntp-archive-command
+                    session archive env keyword (list token))))
    :hints (("Goal" :do-not-induct t))))
