@@ -300,6 +300,31 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP application handoff durable", out)
         self.assertEqual(self.receiver_counts()[1], 1)
 
+    def test_exact_receipt_with_wrong_carrier_peer_fences(self):
+        self.kill_at_durable_cut(
+            "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_SEVEN",
+            b"BP NODE KIND7 DURABLE",
+        )
+        replay = self.invoke(
+            "app-journal", "receipt-replay", self.receiver_store,
+            self.receiver_receipts, self.request_path,
+        )
+        self.assertEqual(replay.returncode, 0, replay.stderr)
+        receipt = self.tmp / "exact-receipt-wrong-peer.adu"
+        receipt.write_bytes(bytes.fromhex(
+            replay.stdout.split(b"hex=", 1)[1].strip().decode("ascii")))
+        planted = self.invoke(
+            "bp-service", "run", "127.0.0.1", 1, receipt,
+            self.receiver_journal, "dtn://receiver/", "dtn://other/",
+            "bp-receipt:receipt:work-bp-node:0", "return", 0,
+            3600000, 2, 32, 1048576, 0, 0,
+        )
+        self.assertIn(b"BP queue accepted", planted.stdout)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, 3, restarted.stderr)
+        self.assertIn(b"conflicting durable bytes", restarted.stderr)
+        self.assertEqual(self.receiver_counts()[1], 1)
+
     def kill_at_durable_cut(self, selector, marker):
         receiver, port = self.start_node(True, extra_env={selector: "1"})
         sent = self.send_request(port, "cut-request")

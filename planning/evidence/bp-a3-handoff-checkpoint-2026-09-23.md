@@ -153,3 +153,9 @@ without kind-7 handoff, and a cold `bp-node dispatch` recovered the durable
 decision, published the handoff, queued its return carrier, and retained one
 receiver article. This cut is expressed as the journal's existing ambiguous
 publication event; it is not a manufactured application result.
+
+An exact FNRJ replay receipt ADU was then queued under the owed job key with
+the wrong BP carrier peer. Cold `bp-node dispatch` fenced with exit 3 before
+claiming handoff; the receiver still held one article. This additional
+native test passed on the same `7ad230b5` image (1/1, 17.626 seconds). It
+separates peer binding from the earlier wrong-ADU collision witness.
