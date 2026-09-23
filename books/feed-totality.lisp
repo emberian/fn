@@ -90,6 +90,10 @@
 ; These are definition bridges for the approved port-step tuple.  They name
 ; the exact existing transition/effect subjects an owner adapter must equate
 ; to its host-facing calls; no host adoption is claimed by this proof book.
+; Both are about the port step's two-arm `if', so the emitter, the next-state
+; driver, the effects and the port predicate stay closed in their hints:
+; `feed-events' leaves those definitions enabled, and opened they split each
+; bridge over every event kind and reply code (8 to 9 s each).
 (defthm fn-feed-live-port-step-accepted-unfolds
   (implies (and (fn-feedp f)
                 (fn-feed-records-portp (fn-feed-live-records f event)))
@@ -101,11 +105,14 @@
                        (fn-feed-live-records f event))
                 (equal (fn-feed-port-step-effects (fn-feed-live-port-step f event))
                        (fn-feed-live-effects f event))))
-  :hints (("Goal" :in-theory (enable fn-feed-live-port-step
-                                      fn-feed-port-step-status
-                                      fn-feed-port-step-feed
-                                      fn-feed-port-step-records
-                                      fn-feed-port-step-effects))))
+  :hints (("Goal" :in-theory (e/d (fn-feed-live-port-step
+                                    fn-feed-port-step-status
+                                    fn-feed-port-step-feed
+                                    fn-feed-port-step-records
+                                    fn-feed-port-step-effects)
+                                   (fn-feed-live-records fn-feed-live-next
+                                    fn-feed-live-effects fn-feed-records-portp
+                                    fn-feedp)))))
 
 (defthm fn-feed-live-port-step-refusal-preserves-work
   (implies (not (and (fn-feedp f)
@@ -115,10 +122,13 @@
                 (equal (fn-feed-port-step-feed (fn-feed-live-port-step f event)) f)
                 (equal (fn-feed-port-step-records (fn-feed-live-port-step f event)) nil)
                 (equal (fn-feed-port-step-effects (fn-feed-live-port-step f event)) nil)))
-  :hints (("Goal" :in-theory (enable fn-feed-live-port-step
-                                      fn-feed-port-step-status
-                                      fn-feed-port-step-feed
-                                      fn-feed-port-step-records
-                                      fn-feed-port-step-effects))))
+  :hints (("Goal" :in-theory (e/d (fn-feed-live-port-step
+                                    fn-feed-port-step-status
+                                    fn-feed-port-step-feed
+                                    fn-feed-port-step-records
+                                    fn-feed-port-step-effects)
+                                   (fn-feed-live-records fn-feed-live-next
+                                    fn-feed-live-effects fn-feed-records-portp
+                                    fn-feedp)))))
 
 (in-theory (disable fn-feed-observe-records-are-driven))

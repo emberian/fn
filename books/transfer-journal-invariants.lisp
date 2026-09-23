@@ -18,15 +18,16 @@
 (include-book "frame-invariants")
 (local (include-book "arithmetic/top" :dir :system))
 
-; This book opens the frame codec and this cluster's own definitions one layer
-; at a time; both are withdrawn at their export theories (BOARD, 2026-09-19
-; codecs; the export theory of `books/transfer-journal.lisp`).  Every enable
-; here is local: no includer inherits a frame or `fn-tj-` definition rune.
-; The full frame vocabulary is opened here and nowhere else: this book has no
-; `defun` but `fn-tj-induct`, so the `len`-backchaining cascade cannot reach
-; an admission the way it did in `books/transfer-journal.lisp`.
+; This book opens this cluster's own definitions one layer at a time; they
+; are withdrawn at the export theory of `books/transfer-journal.lisp`.  Every
+; enable here is local: no includer inherits a frame or `fn-tj-` definition
+; rune.
+; The frame codec and record vocabularies (definitions) are NOT opened at
+; the top: opened book-wide, every lemma that unfolded `fn-tj-record-okp'
+; also unfolded `fn-frame-values-okp' down to the UTF-8 text check and paid
+; about 0.7 s of useless backchaining for it (review of 2026-09-22, F3).  No
+; proof here needs them; the octet and fields vocabularies are lemma sets.
 (local (in-theory (enable fn-frame-octet-vocabulary fn-frame-fields-vocabulary
-                          fn-frame-record-vocabulary fn-frame-codec-vocabulary
                           fn-frame-invariants-vocabulary fn-tj-vocabulary)))
 
 ; The kernel transitions and the record accessors stay closed unless a proof
@@ -118,9 +119,17 @@
             ; fn-transfer-add-chunk-result-state-normal-form is
             ; :rule-classes nil since dep/nntp (7e788c7): it names no rune,
             ; so it must not appear in a theory expression.
+            ; The three no-overwrite rewrites of transfer-invariants
+            ; backchain from the add-chunk result into the label and chunk
+            ; recognizers and the `len' rules (2.0 s, 760 k steps, every
+            ; application useless); the two keystones cited above are the
+            ; whole proof.
             :in-theory (e/d (fn-tj-transition)
                             (fn-transfer-reserve-preserves-statep
-                             fn-transfer-add-chunk-preserves-statep))))))
+                             fn-transfer-add-chunk-preserves-statep
+                             fn-transfer-add-chunk-nonadmissible-no-overwrite
+                             fn-transfer-exact-duplicate-no-overwrite
+                             fn-transfer-invalid-chunk-no-overwrite))))))
 
 ; The fold never leaves the kernel's own states: whatever a replay reaches
 ; is a state the two public transitions built.
@@ -415,7 +424,15 @@
   (implies (fn-tj-candidate st label)
            (equal (car (fn-tj-candidate st label)) :unverified))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-tj-candidate))))
+  ; The tag is the constructor's first element whatever the entry holds; the
+  ; entry lookup, completeness and reassembly stay closed (1.9 s open).
+  :hints (("Goal" :in-theory (e/d (fn-tj-candidate)
+                                  (fn-transfer-statep fn-transfer-find-entry
+                                   fn-transfer-entry-completep
+                                   fn-transfer-assemble-from
+                                   fn-transfer-entry-length
+                                   fn-transfer-entry-chunks
+                                   fn-transfer-state-entries)))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md §2).  The keystones leave this book

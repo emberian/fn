@@ -53,12 +53,14 @@
   (implies (not (fn-feed-state-inflightp (fn-feed-state-of other xs)))
            (equal (fn-feed-state-of other
                                     (fn-feed-queue-requeue-inflight xs tick))
-                  (fn-feed-state-of other xs))))
+                  (fn-feed-state-of other xs)))
+  :hints (("Goal" :in-theory (disable fn-feed-state-inflightp))))
 
 (defthm fn-feed-state-of-of-settle-when-not-inflight
   (implies (not (fn-feed-state-inflightp (fn-feed-state-of other xs)))
            (equal (fn-feed-state-of other (fn-feed-queue-settle xs))
-                  (fn-feed-state-of other xs))))
+                  (fn-feed-state-of other xs)))
+  :hints (("Goal" :in-theory (disable fn-feed-state-inflightp))))
 
 ; The companions of the four rules above: what those queue operations do to
 ; the entry they DO touch.  `fn-feed-state-of' reads the FIRST entry with the
@@ -88,12 +90,14 @@
   (implies (fn-feed-state-inflightp (fn-feed-state-of msgid xs))
            (equal (fn-feed-state-of msgid
                                     (fn-feed-queue-requeue-inflight xs tick))
-                  :queued)))
+                  :queued))
+  :hints (("Goal" :in-theory (disable fn-feed-state-inflightp))))
 
 (defthm fn-feed-state-of-of-settle-when-inflight
   (implies (fn-feed-state-inflightp (fn-feed-state-of msgid xs))
            (equal (fn-feed-state-of msgid (fn-feed-queue-settle xs))
-                  :queued)))
+                  :queued))
+  :hints (("Goal" :in-theory (disable fn-feed-state-inflightp))))
 
 ; Every entry of an `fn-feed-entry-listp' is a cons (`fn-feed-entry-shapep'
 ; forward-chains to it), so "find returned a non-cons" IS "no entry matches"
@@ -200,7 +204,8 @@
                 (<= (fn-feed-inflight-count xs) 1))
            (<= (fn-feed-inflight-count (fn-feed-queue-set-state xs msgid s))
                1))
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-feed-state-inflightp))))
 
 (defthm fn-feed-inflight-count-of-requeue
   (implies (<= (fn-feed-inflight-count xs) 1)
@@ -246,36 +251,47 @@
 ; is the point of stating them this way: the dispatcher's arms then need no
 ; case split on whether the record names this entry, which is what the
 ; `Subgoal 142.104.78''' of the previous lane's measurement was.
+; Each is proved with `fn-feed-droppedp' CLOSED: the statements use it only
+; as a predicate, and opened (a member test over the drop reasons and a
+; length) it turned each induction step into a 60 to 75-way split, 7.7 s
+; for the set-state lemma and 6.2 s for the append lemma.  The in-flight
+; lemmas below keep `fn-feed-state-inflightp' closed for the same reason.
 (defthm fn-feed-droppedp-of-state-of-set-state
   (implies (and (not (fn-feed-droppedp st))
                 (not (fn-feed-droppedp (fn-feed-state-of msgid xs))))
            (not (fn-feed-droppedp
                  (fn-feed-state-of msgid
-                                   (fn-feed-queue-set-state xs other st))))))
+                                   (fn-feed-queue-set-state xs other st)))))
+  :hints (("Goal" :in-theory (disable fn-feed-droppedp))))
 
 (defthm fn-feed-droppedp-of-state-of-requeue
   (implies (not (fn-feed-droppedp (fn-feed-state-of msgid xs)))
            (not (fn-feed-droppedp
                  (fn-feed-state-of msgid
-                                   (fn-feed-queue-requeue xs other tick))))))
+                                   (fn-feed-queue-requeue xs other tick)))))
+  :hints (("Goal" :in-theory (disable fn-feed-droppedp))))
 
 (defthm fn-feed-droppedp-of-state-of-requeue-inflight
   (implies (not (fn-feed-droppedp (fn-feed-state-of msgid xs)))
            (not (fn-feed-droppedp
                  (fn-feed-state-of
-                  msgid (fn-feed-queue-requeue-inflight xs tick))))))
+                  msgid (fn-feed-queue-requeue-inflight xs tick)))))
+  :hints (("Goal" :in-theory (disable fn-feed-droppedp
+                                      fn-feed-state-inflightp))))
 
 (defthm fn-feed-droppedp-of-state-of-settle
   (implies (not (fn-feed-droppedp (fn-feed-state-of msgid xs)))
            (not (fn-feed-droppedp
-                 (fn-feed-state-of msgid (fn-feed-queue-settle xs))))))
+                 (fn-feed-state-of msgid (fn-feed-queue-settle xs)))))
+  :hints (("Goal" :in-theory (disable fn-feed-droppedp))))
 
 (defthm fn-feed-droppedp-of-state-of-append-one
   (implies (and (fn-feed-entry-listp xs)
                 (not (fn-feed-droppedp (fn-feed-state-of msgid xs)))
                 (not (fn-feed-droppedp (fn-feed-entry-state e))))
            (not (fn-feed-droppedp
-                 (fn-feed-state-of msgid (append xs (list e)))))))
+                 (fn-feed-state-of msgid (append xs (list e))))))
+  :hints (("Goal" :in-theory (disable fn-feed-droppedp))))
 
 ; Predicate-and-accessor-of-constructor facts for the offer states, and the
 ; consp shape facts forward reasoning needs once the state predicates are
@@ -339,7 +355,8 @@
                   (+ (fn-feed-inflight-count xs)
                      (if (fn-feed-state-inflightp s) 1 0)
                      (- (if (fn-feed-state-inflightp (fn-feed-state-of msgid xs))
-                            1 0))))))
+                            1 0)))))
+  :hints (("Goal" :in-theory (disable fn-feed-state-inflightp))))
 
 ; The form the arms actually need: the old state is `:queued', which is not in
 ; flight, so the subtraction term of the exact count vanishes.  Proved from
@@ -422,11 +439,24 @@
   :rule-classes :linear
   :hints (("Goal" :induct (fn-feed-backoff-delay base n))))
 
+; The one field of `fn-feedp' the deadline theorem reads, so that it can keep
+; the recognizer closed.
+(local
+ (defthm fn-feed-feedp-forward-backoff-until
+   (implies (fn-feedp f) (natp (fn-feed-backoff-until f)))
+   :rule-classes :forward-chaining))
+
 (defthm fn-feed-back-off-does-not-lower-the-deadline
   (implies (fn-feedp f)
            (<= (fn-feed-backoff-until f)
                (fn-feed-backoff-until (fn-feed-back-off f msgid obs))))
-  :rule-classes :linear)
+  :rule-classes :linear
+  ; The deadline is `fn-feed-with-backoff''s maximum; the entry lookup, the
+  ; requeue, the delay and the recognizer are not read by it.
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-state-inflightp
+                                      fn-feed-backoff-delay
+                                      fn-feed-queue-requeue fn-feed-find
+                                      fn-feed-state-of))))
 
 ; -----------------------------------------------------------------------------
 ; Preservation: every transition keeps `fn-feedp'
@@ -459,7 +489,8 @@
    (implies (and (fn-feed-attempts-belowp xs n)
                  (fn-feed-state-inflightp (fn-feed-state-of msgid xs)))
             (< (fn-feed-state-attempt (fn-feed-state-of msgid xs)) (nfix n)))
-   :rule-classes :linear))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (disable fn-feed-state-inflightp)))))
 
 (local
  (defthm fn-feed-attempts-belowp-after-a-transfer
@@ -516,6 +547,76 @@
    :hints (("Goal"
             :use ((:instance fn-feed-inflight-attempt-is-below-the-bound))))))
 
+;; The fields of `fn-feedp' each transition reads, and what rebuilding the
+;; record with one field replaced asks of the new field.  With these the
+;; preservation theorems below keep the recognizer, the record updates and the
+;; offer-state vocabulary closed: opened, each of them re-derived all twelve
+;; conjuncts on both sides under every arm of the transition (the back-off
+;; theorem split 104 ways and took 3.5 s, the record dispatcher 2.8 s).
+(local
+ (defthm fn-feed-feedp-forward-queue
+   (implies (fn-feedp f)
+            (and (fn-feed-distinctp (fn-feed-queue f))
+                 (<= (len (fn-feed-queue f))
+                     (fn-feed-max-queue (fn-feed-limits-of f)))
+                 (<= (fn-feed-inflight-count (fn-feed-queue f)) 1)
+                 (fn-feed-attempts-belowp (fn-feed-queue f)
+                                          (fn-feed-next-attempt f))
+                 (posp (fn-feed-next-attempt f))))
+   :rule-classes :forward-chaining))
+
+(local
+ (defthm fn-feed-feedp-of-with-queue
+   (implies (fn-feedp f)
+            (equal (fn-feedp (fn-feed-with-queue f queue))
+                   (and (fn-feed-entry-listp queue)
+                        (fn-feed-distinctp queue)
+                        (<= (len queue)
+                            (fn-feed-max-queue (fn-feed-limits-of f)))
+                        (<= (fn-feed-inflight-count queue) 1)
+                        (fn-feed-attempts-belowp queue
+                                                 (fn-feed-next-attempt f)))))
+   :hints (("Goal" :in-theory (enable fn-feedp fn-feed-with-queue)))))
+
+; The record dispatcher's offer arm rebuilds the record with `fn-feed-make'
+; rather than through a field update: a new queue and a new attempt bound.
+(local
+ (defthm fn-feed-feedp-of-make-with-queue-and-attempt
+   (implies (and (fn-feedp f) (equal peer (fn-feed-peer f)))
+            (equal (fn-feedp (fn-feed-make peer (fn-feed-limits-of f)
+                                           queue (fn-feed-contact f)
+                                           (fn-feed-backoff-until f)
+                                           (fn-feed-conn f) next))
+                   (and (fn-feed-entry-listp queue)
+                        (fn-feed-distinctp queue)
+                        (<= (len queue)
+                            (fn-feed-max-queue (fn-feed-limits-of f)))
+                        (<= (fn-feed-inflight-count queue) 1)
+                        (fn-feed-attempts-belowp queue next)
+                        (posp next))))
+   :hints (("Goal" :in-theory (enable fn-feedp)))))
+
+;; The queue under the field updates, for the proofs that keep them closed.
+(local
+ (defthm fn-feed-queue-of-with-fields
+   (and (equal (fn-feed-queue (fn-feed-with-queue f queue)) queue)
+        (equal (fn-feed-queue (fn-feed-with-backoff f until))
+               (fn-feed-queue f))
+        (equal (fn-feed-queue (fn-feed-with-conn f conn)) (fn-feed-queue f)))
+   :hints (("Goal" :in-theory (enable fn-feed-with-queue fn-feed-with-backoff
+                                      fn-feed-with-conn)))))
+
+(local
+ (defthm fn-feed-feedp-of-with-backoff
+   (implies (fn-feedp f) (fn-feedp (fn-feed-with-backoff f until)))
+   :hints (("Goal" :in-theory (enable fn-feedp fn-feed-with-backoff)))))
+
+(local
+ (defthm fn-feed-feedp-of-with-conn
+   (implies (and (fn-feedp f) (or (null conn) (natp conn)))
+            (fn-feedp (fn-feed-with-conn f conn)))
+   :hints (("Goal" :in-theory (enable fn-feedp fn-feed-with-conn)))))
+
 (defthm fn-feed-offer-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (mv-nth 0 (fn-feed-offer f msgid))))
   :hints (("Goal"
@@ -535,19 +636,39 @@
                             (n (fn-feed-next-attempt f))
                             (a (fn-feed-state-attempt
                                 (fn-feed-state-of
-                                 msgid (fn-feed-queue f)))))))))
+                                 msgid (fn-feed-queue f))))))
+           :in-theory (disable fn-feedp fn-feed-with-queue fn-feed-state-of
+                               fn-feed-find))))
 
 (defthm fn-feed-done-preserves-feedp
-  (implies (fn-feedp f) (fn-feedp (fn-feed-done f msgid))))
+  (implies (fn-feedp f) (fn-feedp (fn-feed-done f msgid)))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-with-queue fn-feed-with-backoff
+                                      fn-feed-with-conn fn-feed-backoff-delay
+                                      fn-feed-state-inflightp fn-feed-state-of
+                                      fn-feed-find))))
 
 (defthm fn-feed-back-off-preserves-feedp
-  (implies (fn-feedp f) (fn-feedp (fn-feed-back-off f msgid obs))))
+  (implies (fn-feedp f) (fn-feedp (fn-feed-back-off f msgid obs)))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-with-queue fn-feed-with-backoff
+                                      fn-feed-with-conn fn-feed-backoff-delay
+                                      fn-feed-state-inflightp fn-feed-state-of
+                                      fn-feed-find))))
 
 (defthm fn-feed-lost-preserves-feedp
-  (implies (fn-feedp f) (fn-feedp (fn-feed-lost f obs))))
+  (implies (fn-feedp f) (fn-feedp (fn-feed-lost f obs)))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-with-queue fn-feed-with-backoff
+                                      fn-feed-with-conn fn-feed-backoff-delay
+                                      fn-feed-state-inflightp fn-feed-state-of
+                                      fn-feed-find
+                                      fn-feed-queue-requeue-inflight))))
 
 (defthm fn-feed-give-up-preserves-feedp
-  (implies (fn-feedp f) (fn-feedp (fn-feed-give-up f msgid reason))))
+  (implies (fn-feedp f) (fn-feedp (fn-feed-give-up f msgid reason)))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-with-queue fn-feed-with-backoff
+                                      fn-feed-with-conn fn-feed-backoff-delay
+                                      fn-feed-state-inflightp fn-feed-state-of
+                                      fn-feed-find
+                                      fn-feed-droppedp fn-feed-dropped))))
 
 (defthm fn-feed-restart-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-restart f))))
@@ -581,11 +702,13 @@
                             ; preservation rewrite no longer matches.
                             mv-nth))))
 
-; `fn-feedp' stays OPEN here, unlike the three above: the `:feed-offer' and
-; `:feed-outcome' arms rebuild the record with `fn-feed-make' instead of
-; calling a transition, so the recognizer has to open on both sides -- closed,
-; the prover could not even see that `(fn-feedp f)' contradicts
-; `(not (fn-feed-attempts-belowp (fn-feed-queue f) (fn-feed-next-attempt f)))'.
+; The `:feed-offer' and `:feed-outcome' arms rebuild the record with
+; `fn-feed-make' instead of calling a transition.  `fn-feedp' used to stay
+; open here for that reason, and it cost 3.1 s re-deriving the recognizer's
+; twelve conjuncts on both sides of every arm.  It is closed now: the fields
+; the arms read come from `fn-feed-feedp-forward-queue', and the rebuilt
+; record is answered by `fn-feed-feedp-of-make-with-queue-and-attempt' and
+; `fn-feed-feedp-of-with-queue'.
 (defthm fn-feed-apply-record-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-apply-record f kind values)))
   :hints (("Goal"
@@ -595,9 +718,11 @@
            ; `consp'/`car'/`true-listp'/`len' of the found entry's state and
            ; neither `fn-feed-inflight-count-of-set-state-exact' nor
            ; `fn-feed-find-is-consp-when-the-state-is-a-state' can match.
-           ; Closing them is docs/proof-style.md sec. 1, not an opening of
-           ; `fn-feedp' -- which stays open, for the reason above.
-           :in-theory (disable (:d fn-feed-offer) (:d fn-feed-send) (:d fn-feed-done)
+           ; Closing them is docs/proof-style.md sec. 1.
+           :in-theory (disable (:d fn-feedp) fn-feed-with-queue
+                               fn-feed-with-backoff fn-feed-with-conn
+                               fn-feed-backoff-delay fn-feed-find
+                               (:d fn-feed-offer) (:d fn-feed-send) (:d fn-feed-done)
                             (:d fn-feed-back-off) (:d fn-feed-lost)
                             (:d fn-feed-give-up) (:d fn-feed-enqueue)
                             (:d fn-feed-restart)
@@ -685,9 +810,21 @@
 (defthm fn-feed-done-preserves-peer
   (equal (fn-feed-peer (fn-feed-done f msgid)) (fn-feed-peer f)))
 (defthm fn-feed-back-off-preserves-peer
-  (equal (fn-feed-peer (fn-feed-back-off f msgid obs)) (fn-feed-peer f)))
+  (equal (fn-feed-peer (fn-feed-back-off f msgid obs)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-with-queue
+                                      fn-feed-with-backoff fn-feed-with-conn
+                                      fn-feed-state-inflightp fn-feed-state-of
+                                      fn-feed-find fn-feed-backoff-delay
+                                      fn-feed-queue-requeue
+                                      fn-feed-queue-requeue-inflight))))
 (defthm fn-feed-lost-preserves-peer
-  (equal (fn-feed-peer (fn-feed-lost f obs)) (fn-feed-peer f)))
+  (equal (fn-feed-peer (fn-feed-lost f obs)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-with-queue
+                                      fn-feed-with-backoff fn-feed-with-conn
+                                      fn-feed-state-inflightp fn-feed-state-of
+                                      fn-feed-find fn-feed-backoff-delay
+                                      fn-feed-queue-requeue
+                                      fn-feed-queue-requeue-inflight))))
 (defthm fn-feed-give-up-preserves-peer
   (equal (fn-feed-peer (fn-feed-give-up f msgid reason)) (fn-feed-peer f)))
 (defthm fn-feed-restart-preserves-peer
@@ -883,7 +1020,10 @@
            ; `:done' -- joining those two is a case split, not a rewrite.
            ; Split once here and every arm closes from the queue lemmas.
            :cases ((equal msgid (fn-feed-record-msgid values)))
-           :in-theory (disable (:d fn-feed-state-of) (:d fn-feed-offeredp)
+           :in-theory (disable (:d fn-feedp) fn-feed-with-queue
+                               fn-feed-with-backoff fn-feed-with-conn
+                               fn-feed-backoff-delay fn-feed-find
+                               (:d fn-feed-state-of) (:d fn-feed-offeredp)
                                (:d fn-feed-sentp) (:d fn-feed-droppedp)
                                (:d fn-feed-state-inflightp)
                                (:d fn-feed-offered) (:d fn-feed-sent)
@@ -902,7 +1042,10 @@
                 (fn-feed-record-drivenp f (fn-feed-journal-kind e)
                                         (fn-feed-journal-values e)))
            (not (fn-feed-accepted-outcomep (fn-feed-peer f) msgid e)))
-  :hints (("Goal" :in-theory (disable (:d fn-feed-state-of) (:d fn-feed-offeredp)
+  :hints (("Goal" :in-theory (disable (:d fn-feedp) fn-feed-with-queue
+                               fn-feed-with-backoff fn-feed-with-conn
+                               fn-feed-backoff-delay fn-feed-find
+                               (:d fn-feed-state-of) (:d fn-feed-offeredp)
                                (:d fn-feed-sentp) (:d fn-feed-droppedp)
                                (:d fn-feed-state-inflightp)
                                (:d fn-feed-offered) (:d fn-feed-sent)
@@ -941,7 +1084,10 @@
                     (fn-feed-apply-record f (fn-feed-journal-kind e)
                                           (fn-feed-journal-values e))))
                   :done))
-  :hints (("Goal" :in-theory (disable (:d fn-feed-state-of) (:d fn-feed-offeredp)
+  :hints (("Goal" :in-theory (disable (:d fn-feedp) fn-feed-with-queue
+                               fn-feed-with-backoff fn-feed-with-conn
+                               fn-feed-backoff-delay fn-feed-find
+                               (:d fn-feed-state-of) (:d fn-feed-offeredp)
                                (:d fn-feed-sentp) (:d fn-feed-droppedp)
                                (:d fn-feed-state-inflightp)
                                (:d fn-feed-offered) (:d fn-feed-sent)
@@ -978,6 +1124,11 @@
                              (es (cdr es))))
             :in-theory (disable fn-feed-accepted-outcome-makes-it-done
                                 fn-feed-done-means-no-more-accepted-outcomes
+                                (:d fn-feed-apply-record)
+                                (:d fn-feed-record-drivenp)
+                                (:d fn-feedp) fn-feed-with-queue
+                                fn-feed-with-backoff fn-feed-with-conn
+                                fn-feed-backoff-delay fn-feed-find
                                 (:d fn-feed-state-of) (:d fn-feed-offeredp)
                                (:d fn-feed-sentp) (:d fn-feed-droppedp)
                                (:d fn-feed-state-inflightp)
@@ -1011,7 +1162,10 @@
                  (fn-feed-state-of
                   msgid
                   (fn-feed-queue (fn-feed-apply-record f kind values))))))
-  :hints (("Goal" :in-theory (disable (:d fn-feed-state-of) (:d fn-feed-offeredp)
+  :hints (("Goal" :in-theory (disable (:d fn-feedp) fn-feed-with-queue
+                               fn-feed-with-backoff fn-feed-with-conn
+                               fn-feed-backoff-delay fn-feed-find
+                               (:d fn-feed-state-of) (:d fn-feed-offeredp)
                                (:d fn-feed-sentp) (:d fn-feed-droppedp)
                                (:d fn-feed-state-inflightp)
                                (:d fn-feed-offered) (:d fn-feed-sent)
