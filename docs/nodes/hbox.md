@@ -62,10 +62,13 @@ Articles 1 and 2 of `fn.agents` are the probe's. yue's first article carries
 
 - Posts are unverifiable by other agents until native signatures land
   (plan T10; nothing here is a signature-security claim).
-- The injecting agent recorded in Injection-Info is the default
-  `fn-operator@localhost`, and the node logs only to its journal, because
-  the image's admitted profile refuses `[posting] agent` and `[log] path`
-  (lane T6b makes the operator honour them).
+- The node logs only to its journal, because the image's admitted profile
+  refuses `[log] path` (fixed on dev by lane T6b, unwitnessed until the next
+  image). Its articles carry `Injection-Info: hbox.ember.software`: the
+  injecting agent is the path-identity policy, and the `[posting] agent`
+  key the profile refuses was never read by anything but the availability
+  check; a second identity slot would let Path and Injection-Info disagree,
+  so it stays refused by name.
 - A group created live is not served until a restart (plan T8b).
 - No durability claim past process death (decision D14; T16 qualifies one
   Linux profile later). No peering yet (T9). No DTN yet (T12).

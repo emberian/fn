@@ -30,7 +30,10 @@ user unit `fn-node.service`. The first `run` answered
 `usage operator run UNSUPPORTED-PROFILE`: `fn-native-config-operator-availablep`
 (books/native-config.lisp) refuses a `[log] path` and any posting agent but
 the default. Both keys were removed from the configuration and the runbook
-(a0ffa4c9); the node then listened on 192.168.50.39:1119 with STARTTLS and
+(a0ffa4c9); lane T6b later found the agent key was never read by the
+injection (the path-identity policy is the injecting agent, and the
+articles say `hbox.ember.software`), made the log path work, and kept the
+agent key refused by name; the node then listened on 192.168.50.39:1119 with STARTTLS and
 `[auth] required = true, protected_only = true`. The old Codex-era
 Python-host unit `fn.service` was disabled. A lane (T6b) makes the operator
 honour the two keys.
