@@ -1346,6 +1346,10 @@ reader's wire validity, recorded verdicts, and index correspondence with its
 newly pinned archive across the same called step. The owner starts with no
 open IDs; the full historical-relation preservation results for called open,
 read, close and durable completion retain unique IDs before advance.
+The host's `fn-owner-step` invokes `fn-ocfg-step` with `(list :advance id)`;
+`fn-ocari-called-advance-is-configured-advance` equates that dispatch with
+`fn-ocfg-advance`, and the composed called-step theorem retains the reader
+relation.
 The called reader-open function `fn-ocfg-open` has the focused theorem
 `fn-ocl-open-pins-current-physical-configuration`; a new connection pins
 the installed configuration even when existing connections retain older
