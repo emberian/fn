@@ -60,7 +60,16 @@ an explicit oversize refusal test certify with the codec and test book in
 on persvati using jobs 2 and the same toolchain identity. Exact source digests
 are `cfae4af194b8eef8ce84c7080b527d46da56e9da7a46918a9c8ba7ffbc2897ff`
 for the book and `657f67ee87880b526a284adce23173ab947541671541fc5261d82a8da38ee570`
-for its test. The codec has no Store union caller yet.
+for its test. The subsequent Store union recognizes the codec's two event
+kinds and dispatches encode/decode and exact coordinates through the common
+Store event functions. The focused [Store union book](manifests/certify-20260923T220254Z-735116.json),
+[union test](manifests/certify-20260923T220325Z-741278.json), and
+[replay/Store reverse roots](manifests/certify-20260923T220410Z-748161.json)
+passed on persvati at jobs 2 with explicit roots and no closure flag, using
+the same ACL2 toolchain identity. This is a syntax and envelope join only. No topic event can be
+published by a native caller, and replay must not apply one until it can
+re-resolve prior T10 source context and the historically installed local
+administrator.
 
 This packet has no same-journal publication,
 replay/index relation, retention dependency pin, historical administrator

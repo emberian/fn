@@ -477,8 +477,13 @@
     "books/topic-history-metadata",
     "books/topic-history-metadata-invariants",
     "books/topic-history-authorship",
+    "books/topic-history-admission",
+    "books/topic-history-store-events",
     "tests/acl2/topic-history-metadata-tests",
     "tests/acl2/topic-history-authorship-tests",
+    "tests/acl2/topic-history-admission-tests",
+    "tests/acl2/topic-history-store-events-tests",
+    "tests/acl2/topic-history-store-union-tests",
     "tests/acl2/hybrid-store-tests",
     "books/crypto-attach",
     "books/auth-secret",
@@ -528,25 +533,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 529,
-    "books_in_root_closure": 528,
-    "roots": 524,
-    "theorems": 7976,
-    "functions": 6003,
-    "assert_events": 8714,
-    "must_fails": 399,
+    "books": 534,
+    "books_in_root_closure": 533,
+    "roots": 529,
+    "theorems": 7983,
+    "functions": 6030,
+    "assert_events": 8763,
+    "must_fails": 405,
     "encapsulates": 26,
     "guards": {
       "verified": 1966,
-      "declared-off": 321,
-      "default-guarded": 2961,
+      "declared-off": 322,
+      "default-guarded": 2987,
       "default-unguarded": 755
     },
-    "suspect_theorems": 73,
-    "export_hygiene_warnings": 101,
+    "suspect_theorems": 74,
+    "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 28,
-    "include_hygiene_warnings": 393,
+    "include_hygiene_warnings": 401,
     "host_names_warnings": 756,
     "hand_written_record_warnings": 18
   },
@@ -7405,7 +7410,8 @@
       "includes": [
         "consumer-store-events",
         "records-seam",
-        "stx-accept-records"
+        "stx-accept-records",
+        "topic-history-store-events"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8300,6 +8306,31 @@
       "read_error": null
     },
     {
+      "book": "books/topic-history-admission.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 17,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 17,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "topic-history-authorship"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/topic-history-authorship.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8379,6 +8410,33 @@
       "system_includes": [],
       "suspects": [
         "fn-th-decode-refuses-oversize-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/topic-history-store-events.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "topic-history-admission"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-th-topic-decode-refuses-oversize"
       ],
       "read_error": null
     },
@@ -14417,6 +14475,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/topic-history-admission-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 24,
+      "must_fails": 5,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/topic-history-admission",
+        "topic-history-authorship-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/topic-history-authorship-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -14470,6 +14556,60 @@
       "system_includes": [
         "std/testing/must-fail"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/topic-history-store-events-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 12,
+      "must_fails": 1,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/topic-history-store-events",
+        "topic-history-admission-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/topic-history-store-union-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 13,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-events",
+        "topic-history-store-events-tests"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -15245,6 +15385,14 @@
       ]
     },
     {
+      "theorem": "fn-th-topic-decode-refuses-oversize",
+      "book": "books/topic-history-store-events.lisp",
+      "line": 153,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-th-topic-event-decode-exact and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-wire-feed-closed-noop",
       "book": "books/wire.lisp",
       "line": 1071,
@@ -15642,7 +15790,7 @@
       {
         "theorem": "fn-store-event-article-encoding-is-legacy-record-encoding",
         "book": "books/store-events.lisp",
-        "line": 163,
+        "line": 172,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -15733,6 +15881,12 @@
         "theorem": "fn-th-decode-refuses-oversize-by-definition",
         "book": "books/topic-history-metadata.lisp",
         "line": 292,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-th-topic-decode-refuses-oversize",
+        "book": "books/topic-history-store-events.lisp",
+        "line": 153,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -17261,6 +17415,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/store-events.lisp",
+        "line": 12,
+        "include": "topic-history-store-events",
+        "included": "books/topic-history-store-events.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/store-files-invariants.lisp",
         "line": 9,
         "include": "records-seam",
@@ -17366,6 +17527,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/topic-history-admission.lisp",
+        "line": 5,
+        "include": "topic-history-authorship",
+        "included": "books/topic-history-authorship.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/topic-history-authorship.lisp",
         "line": 4,
         "include": "topic-history-metadata",
@@ -17377,6 +17545,13 @@
         "line": 3,
         "include": "topic-history-metadata",
         "included": "books/topic-history-metadata.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/topic-history-store-events.lisp",
+        "line": 4,
+        "include": "topic-history-admission",
+        "included": "books/topic-history-admission.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -19074,6 +19249,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/topic-history-admission-tests.lisp",
+        "line": 2,
+        "include": "../../books/topic-history-admission",
+        "included": "books/topic-history-admission.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-admission-tests.lisp",
+        "line": 3,
+        "include": "topic-history-authorship-tests",
+        "included": "tests/acl2/topic-history-authorship-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/topic-history-authorship-tests.lisp",
         "line": 2,
         "include": "../../books/topic-history-authorship",
@@ -19099,6 +19288,27 @@
         "line": 3,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-store-events-tests.lisp",
+        "line": 2,
+        "include": "../../books/topic-history-store-events",
+        "included": "books/topic-history-store-events.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-store-events-tests.lisp",
+        "line": 3,
+        "include": "topic-history-admission-tests",
+        "included": "tests/acl2/topic-history-admission-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-store-union-tests.lisp",
+        "line": 3,
+        "include": "topic-history-store-events-tests",
+        "included": "tests/acl2/topic-history-store-events-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
