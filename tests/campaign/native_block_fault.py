@@ -129,6 +129,22 @@ class PrivateExt4:
             raise RuntimeError("private mapper mode did not switch: " + observed)
         return observed
 
+    def reopen(self):
+        """Close and reopen only this owned mount after device error is removed."""
+        self.verify_map()
+        observed = single_mount(self.mount)
+        if not observed or not observed.startswith("/dev/mapper/{} ext4 ".format(self.mapping)):
+            raise RuntimeError("owned ext4 mount was not observed: " + str(observed))
+        root("umount", str(self.mount), timeout=30)
+        self.mounted = False
+        root("mount", "-t", "ext4", "-o", "nodev,nosuid,noexec",
+             "/dev/mapper/" + self.mapping, str(self.mount))
+        reopened = single_mount(self.mount)
+        if not reopened or not reopened.startswith("/dev/mapper/{} ext4 ".format(self.mapping)):
+            raise RuntimeError("owned ext4 remount was not observed: " + str(reopened))
+        self.mounted = True
+        return reopened
+
     def close(self):
         problems = []
         if self.created_map and self.mode == "error-writes":
@@ -172,26 +188,35 @@ class PrivateExt4:
             raise RuntimeError("; ".join(problems) + "; retained " + str(self.base))
 
 
-def proc_children(pid):
-    path = Path("/proc") / str(pid) / "task" / str(pid) / "children"
-    try:
-        return [int(word) for word in path.read_text().split()]
-    except FileNotFoundError:
-        return []
+def stopped_core_processes(core):
+    """Find only stopped SBCL processes using this campaign's unique core path.
+
+    strace can make the tracee its own child rather than a child visible in
+    /proc/<tracer>/task/<tracer>/children, so inspect the exact core argument.
+    """
+    matches = []
+    for proc in Path("/proc").iterdir():
+        if not proc.name.isdigit():
+            continue
+        try:
+            args = (proc / "cmdline").read_bytes().split(b"\0")
+            status = (proc / "status").read_text()
+        except (FileNotFoundError, ProcessLookupError, PermissionError):
+            continue
+        if (b"--core" in args and str(core).encode() in args
+                and re.search(r"^State:\s+[Tt]", status, re.M)):
+            matches.append(int(proc.name))
+    return matches
 
 
 def stopped_tracee(tracer, core, seconds=30):
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
-        for pid in proc_children(tracer.pid):
-            try:
-                cmdline = (Path("/proc") / str(pid) / "cmdline").read_bytes()
-                status = (Path("/proc") / str(pid) / "status").read_text()
-            except FileNotFoundError:
-                continue
-            if (str(core).encode() in cmdline
-                    and re.search(r"^State:\s+T", status, re.M)):
-                return pid
+        matches = stopped_core_processes(core)
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise RuntimeError("multiple stopped processes use this core: " + str(matches))
         if tracer.poll() is not None:
             break
         time.sleep(.05)
@@ -239,9 +264,10 @@ def campaign(image, out):
         tracer = subprocess.Popen(["strace", "-f", "-ff", "-yy", "-e",
                                    "trace=fsync,fdatasync,link,linkat", "-o", str(prefix),
                                    str(image), "--fn", "store", str(store), "post",
-                                   "<block-candidate@campaign.invalid>", str(candidate_path),
-                                   "-", "-", "fn.letters"],
-                                  env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                  "<block-candidate@campaign.invalid>", str(candidate_path),
+                                  "-", "-", "fn.letters"],
+                                  env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  start_new_session=True)
         tracee_pid = stopped_tracee(tracer, str(image) + ".core")
         linked = transaction_files(store)
         new_names = set(linked) - set(prior)
@@ -256,40 +282,70 @@ def campaign(image, out):
         report["post_exit"] = tracer.returncode
         report["post_stdout"] = stdout.decode("utf-8", "replace")[-1000:]
         report["post_stderr"] = stderr.decode("utf-8", "replace")[-1000:]
+        if report["post_exit"] != 3 or "indeterminate" not in report["post_stderr"]:
+            raise RuntimeError("native post did not report uncertain publication")
         tracer = None
         traces = "\n".join(p.read_text(errors="replace") for p in device.base.glob("strace.*"))
         (out / "strace.txt").write_text(traces)
         report["strace_sha256"] = sha(out / "strace.txt")
+        final_name = next(iter(new_names))
+        report["link_syscall_success"] = bool(re.search(
+            r"link\([^\n]*?/transactions/{}\"\)\s+=\s+0".format(
+                re.escape(final_name)), traces))
+        if not report["link_syscall_success"]:
+            raise RuntimeError("no observed successful final transaction link")
         report["transaction_fsync_eio"] = bool(re.search(
             r"fsync\([^\n]*?/transactions[^\n]*?\)\s+=\s+-1 EIO", traces))
         if not report["transaction_fsync_eio"]:
             raise RuntimeError("no observed EIO return from transactions directory fsync")
         report["linear_table"] = device.switch("linear")
-        report["post_transactions"] = transaction_files(store)
+        report["post_transactions_same_mount"] = transaction_files(store)
+        report["reopened_mount"] = device.reopen()
+        report["post_transactions_reopened"] = transaction_files(store)
+        reopened = report["post_transactions_reopened"]
+        if any(reopened.get(name) != digest for name, digest in prior.items()):
+            raise RuntimeError("reopen changed an older durable transaction")
+        if set(reopened) == set(prior):
+            report["reopened_outcome"] = "older-prefix"
+        elif reopened == linked:
+            report["reopened_outcome"] = "exact-candidate"
+        else:
+            raise RuntimeError("reopened transactions are neither older prefix nor exact candidate")
         result = run([image, "--fn", "store", store, "recover"],
                      check=False, timeout=90)
         report["recover"] = {
             "stdout": result.stdout.decode("utf-8", "replace")[-1000:],
             "stderr": result.stderr.decode("utf-8", "replace")[-1000:]}
         report["recover_exit"] = result.returncode
+        if result.returncode != 0:
+            raise RuntimeError("native recovery failed after owned filesystem reopen")
         report["result"] = "observed-eio"
     finally:
-        if tracee_pid is not None:
-            try:
-                os.kill(tracee_pid, signal.SIGCONT)
-                os.kill(tracee_pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+        cleanup_problems = []
         if tracer is not None:
             try:
-                tracer.communicate(timeout=3)
-            except subprocess.TimeoutExpired:
-                tracer.kill()
+                # This campaign created the process group. Resume stopped
+                # members before killing it so no tracee is left orphaned.
+                group_active = tracer.poll() is None
+                if group_active:
+                    os.killpg(tracer.pid, signal.SIGCONT)
+                    os.killpg(tracer.pid, signal.SIGKILL)
+                else:
+                    matches = stopped_core_processes(str(image) + ".core")
+                    if tracee_pid is None and len(matches) == 1:
+                        tracee_pid = matches[0]
+                if not group_active and tracee_pid is not None:
+                    os.kill(tracee_pid, signal.SIGCONT)
+                    os.kill(tracee_pid, signal.SIGKILL)
                 tracer.communicate(timeout=5)
+            except (ProcessLookupError, subprocess.TimeoutExpired) as error:
+                cleanup_problems.append("tracee cleanup: " + str(error))
         try:
             device.close()
         except Exception as error:
-            report["cleanup_error"] = str(error)
+            cleanup_problems.append("private device cleanup: " + str(error))
+        if cleanup_problems:
+            report["cleanup_error"] = "; ".join(cleanup_problems)
         (out / "result.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     if report.get("cleanup_error"):
         raise RuntimeError(report["cleanup_error"])

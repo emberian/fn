@@ -1,0 +1,42 @@
+{
+  "backing": "/tmp/fn-t16-block-28f6cn1z/backing.img",
+  "core_sha256": "eb7a5978291742e06be117e9d9ff491aa382c0cfbabe318f7b85df7224f49fe7",
+  "driver_sha256": "f1f235554624a8ce835cb5b54fdd08159d705d82162179e1ec287f7bb5721c91",
+  "error_table": "0 262144 flakey 7:12 0 0 600 1 error_writes",
+  "image": "/tank/fn/gates/t16-core-80fc3b00/build/fn-host-developer",
+  "launcher_sha256": "bcf4f8719098380855891f701d4fb158627bf1c45983589b547c578835e9f931",
+  "linear_table": "0 262144 linear 7:12 0",
+  "link_syscall_success": true,
+  "linked_transaction": {
+    "00000000000000000001.txn": "4a1b744c9d7c6a32f02da85da7994be7c2302862af58056d28adbf8802ebdff3"
+  },
+  "loop": "/dev/loop12",
+  "mapping": "fn-t16-4ecf22269514",
+  "mount": "/dev/mapper/fn-t16-4ecf22269514 ext4 rw,nosuid,nodev,noexec,relatime",
+  "post_exit": 3,
+  "post_stderr": "store: transaction publication outcome is indeterminate\n",
+  "post_stdout": "",
+  "post_transactions_reopened": {
+    "00000000000000000000.txn": "e33ddf29f84616e319abbc9ce0f1d69a046ee95be42c03d6607b8db92d1a1301"
+  },
+  "post_transactions_same_mount": {
+    "00000000000000000000.txn": "e33ddf29f84616e319abbc9ce0f1d69a046ee95be42c03d6607b8db92d1a1301",
+    "00000000000000000001.txn": "4a1b744c9d7c6a32f02da85da7994be7c2302862af58056d28adbf8802ebdff3"
+  },
+  "prior_transactions": {
+    "00000000000000000000.txn": "e33ddf29f84616e319abbc9ce0f1d69a046ee95be42c03d6607b8db92d1a1301"
+  },
+  "recover": {
+    "stderr": "",
+    "stdout": "recovered transactions=1 articles=1 staging-orphans=0 anchor=none checkpoint=none\n"
+  },
+  "recover_exit": 0,
+  "reopened_mount": "/dev/mapper/fn-t16-4ecf22269514 ext4 rw,nosuid,nodev,noexec,relatime",
+  "reopened_outcome": "older-prefix",
+  "result": "observed-eio",
+  "schema": "fn-t16-private-block-error-v1",
+  "sectors": 262144,
+  "stopped_pid": 4159680,
+  "strace_sha256": "0740cb6325a0b09685550bb3e2d55ec10824ad6255e486a42b373bc6274a2ed7",
+  "transaction_fsync_eio": true
+}

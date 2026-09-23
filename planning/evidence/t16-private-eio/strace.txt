@@ -1,0 +1,17 @@
+--- stopped by SIGSTOP ---
+--- SIGCONT {si_signo=SIGCONT, si_code=SI_USER, si_pid=4159631, si_uid=1000} ---
++++ exited with 3 +++
+
+fsync(4</tmp/fn-t16-block-28f6cn1z/mnt/store/config.json>) = 0
+fsync(4</tmp/fn-t16-block-28f6cn1z/mnt/store/allocation-frontier.json>) = 0
+fsync(4</tmp/fn-t16-block-28f6cn1z/mnt/store/transactions>) = 0
+fsync(4</tmp/fn-t16-block-28f6cn1z/mnt/store>) = 0
+fsync(4</tmp/fn-t16-block-28f6cn1z/mnt>) = 0
+fsync(4</tmp/fn-t16-block-28f6cn1z/mnt/store/staging/.allocation-4159680-a078448239b97e816c221203>) = 0
+fsync(4</tmp/fn-t16-block-28f6cn1z/mnt/store>) = 0
+fsync(4</tmp/fn-t16-block-28f6cn1z/mnt/store/staging/.stage-4159680-7e3a3f74d296f55b9ae7d39c>) = 0
+link("/tmp/fn-t16-block-28f6cn1z/mnt/store/staging/.stage-4159680-7e3a3f74d296f55b9ae7d39c", "/tmp/fn-t16-block-28f6cn1z/mnt/store/transactions/00000000000000000001.txn") = 0
+--- SIGSTOP {si_signo=SIGSTOP, si_code=SI_USER, si_pid=4159680, si_uid=1000} ---
+--- stopped by SIGSTOP ---
+fsync(4</tmp/fn-t16-block-28f6cn1z/mnt/store/transactions>) = -1 EIO (Input/output error)
++++ exited with 3 +++
