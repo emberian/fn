@@ -365,12 +365,59 @@
     "books/owner-prepare-correspondence",
     "books/owner-agent",
     "books/owner-log",
-    "tests/acl2/owner-tests"
+    "tests/acl2/owner-tests",
+    "tests/acl2/owner-operator-tests",
+    "tests/acl2/owner-agent-tests",
+    "tests/acl2/owner-log-tests",
+    "tests/acl2/owner-config-tests",
+    "tests/acl2/owner-prepare-correspondence-tests",
+    "books/relay",
+    "books/relay-invariants",
+    "books/relay-crash-invariants",
+    "tests/acl2/relay-tests",
+    "books/crypto-seam",
+    "tests/acl2/crypto-seam-tests",
+    "tests/acl2/hybrid-signature-tests",
+    "tests/acl2/hybrid-store-tests",
+    "books/crypto-attach",
+    "books/auth-secret",
+    "tests/acl2/auth-secret-tests",
+    "books/statement",
+    "books/statement-invariants",
+    "tests/acl2/statement-tests",
+    "books/principal",
+    "books/principal-invariants",
+    "tests/acl2/principal-tests",
+    "books/lace",
+    "books/lace-invariants",
+    "tests/acl2/lace-tests",
+    "books/policy",
+    "books/policy-invariants",
+    "tests/acl2/policy-tests",
+    "books/stx-carrier",
+    "books/stx-verify",
+    "books/stx-invariants",
+    "books/stx-lace",
+    "books/stx-index",
+    "books/stx-policy",
+    "books/stx-epochs",
+    "books/stx-authority",
+    "books/stx-evidence-records",
+    "books/stx-keyring-records",
+    "books/stx-accept-records",
+    "tests/acl2/stx-tests",
+    "tests/acl2/stx-transit-tests",
+    "tests/acl2/stx-evidence-records-tests",
+    "tests/acl2/stx-keyring-records-tests",
+    "tests/acl2/stx-accept-records-tests",
+    "tests/acl2/store-node-index-tests",
+    "books/scheduler-peers",
+    "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
     "books": 413,
-    "books_in_root_closure": 380,
-    "roots": 364,
+    "books_in_root_closure": 412,
+    "roots": 411,
     "theorems": 6940,
     "functions": 5386,
     "assert_events": 7779,
@@ -950,7 +997,7 @@
     {
       "book": "books/auth-secret.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 18,
       "functions": 11,
       "guards": {
@@ -2864,7 +2911,7 @@
     {
       "book": "books/crypto-attach.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 6,
       "functions": 0,
       "guards": {
@@ -2891,7 +2938,7 @@
     {
       "book": "books/crypto-seam.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 19,
       "functions": 14,
       "guards": {
@@ -3741,7 +3788,7 @@
     {
       "book": "books/lace-invariants.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 65,
       "functions": 1,
       "guards": {
@@ -3769,7 +3816,7 @@
     {
       "book": "books/lace.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 5,
       "functions": 20,
       "guards": {
@@ -5089,8 +5136,8 @@
     },
     {
       "book": "books/policy-invariants.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 32,
       "functions": 1,
       "guards": {
@@ -5116,8 +5163,8 @@
     },
     {
       "book": "books/policy.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 13,
       "functions": 29,
       "guards": {
@@ -5143,8 +5190,8 @@
     },
     {
       "book": "books/principal-invariants.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 19,
       "functions": 0,
       "guards": {
@@ -5172,7 +5219,7 @@
     {
       "book": "books/principal.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 6,
       "functions": 27,
       "guards": {
@@ -5335,8 +5382,8 @@
     },
     {
       "book": "books/relay-crash-invariants.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 7,
       "functions": 0,
       "guards": {
@@ -5360,8 +5407,8 @@
     },
     {
       "book": "books/relay-invariants.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 52,
       "functions": 0,
       "guards": {
@@ -5385,8 +5432,8 @@
     },
     {
       "book": "books/relay.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 32,
       "guards": {
@@ -5547,8 +5594,8 @@
     },
     {
       "book": "books/scheduler-peers.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 18,
       "functions": 9,
       "guards": {
@@ -5679,7 +5726,7 @@
     {
       "book": "books/statement-invariants.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 69,
       "functions": 1,
       "guards": {
@@ -5704,7 +5751,7 @@
     {
       "book": "books/statement.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 34,
       "functions": 69,
       "guards": {
@@ -6076,7 +6123,7 @@
     {
       "book": "books/stx-accept-records.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 14,
       "functions": 17,
       "guards": {
@@ -6100,8 +6147,8 @@
     },
     {
       "book": "books/stx-authority.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 3,
       "functions": 3,
       "guards": {
@@ -6127,7 +6174,7 @@
     {
       "book": "books/stx-carrier.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 49,
       "functions": 26,
       "guards": {
@@ -6154,8 +6201,8 @@
     },
     {
       "book": "books/stx-epochs.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 17,
       "functions": 13,
       "guards": {
@@ -6181,7 +6228,7 @@
     {
       "book": "books/stx-evidence-records.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 14,
       "functions": 26,
       "guards": {
@@ -6207,7 +6254,7 @@
     {
       "book": "books/stx-index.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 57,
       "functions": 26,
       "guards": {
@@ -6234,8 +6281,8 @@
     },
     {
       "book": "books/stx-invariants.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 24,
       "functions": 0,
       "guards": {
@@ -6260,7 +6307,7 @@
     {
       "book": "books/stx-keyring-records.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 13,
       "functions": 28,
       "guards": {
@@ -6285,7 +6332,7 @@
     {
       "book": "books/stx-lace.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 22,
       "functions": 9,
       "guards": {
@@ -6311,8 +6358,8 @@
     },
     {
       "book": "books/stx-policy.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 16,
       "functions": 3,
       "guards": {
@@ -6340,7 +6387,7 @@
     {
       "book": "books/stx-verify.lisp",
       "in_root_closure": true,
-      "is_root": false,
+      "is_root": true,
       "theorems": 15,
       "functions": 15,
       "guards": {
@@ -7246,8 +7293,8 @@
     },
     {
       "book": "tests/acl2/auth-secret-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -8583,8 +8630,8 @@
     },
     {
       "book": "tests/acl2/crypto-seam-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 11,
       "functions": 7,
       "guards": {
@@ -8975,8 +9022,8 @@
     },
     {
       "book": "tests/acl2/hybrid-signature-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -9002,8 +9049,8 @@
     },
     {
       "book": "tests/acl2/hybrid-store-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 1,
       "guards": {
@@ -9159,8 +9206,8 @@
     },
     {
       "book": "tests/acl2/lace-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 9,
       "guards": {
@@ -9806,8 +9853,8 @@
     },
     {
       "book": "tests/acl2/owner-agent-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 1,
       "guards": {
@@ -9833,8 +9880,8 @@
     },
     {
       "book": "tests/acl2/owner-config-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 3,
       "guards": {
@@ -9912,8 +9959,8 @@
     },
     {
       "book": "tests/acl2/owner-log-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 2,
       "guards": {
@@ -9939,8 +9986,8 @@
     },
     {
       "book": "tests/acl2/owner-operator-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 3,
       "guards": {
@@ -9967,8 +10014,8 @@
     },
     {
       "book": "tests/acl2/owner-prepare-correspondence-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 1,
       "guards": {
@@ -10073,8 +10120,8 @@
     },
     {
       "book": "tests/acl2/policy-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 27,
       "guards": {
@@ -10099,8 +10146,8 @@
     },
     {
       "book": "tests/acl2/principal-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 12,
       "guards": {
@@ -10202,8 +10249,8 @@
     },
     {
       "book": "tests/acl2/relay-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 1,
       "guards": {
@@ -10279,8 +10326,8 @@
     },
     {
       "book": "tests/acl2/scheduler-peers-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -10406,8 +10453,8 @@
     },
     {
       "book": "tests/acl2/statement-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 4,
       "guards": {
@@ -10662,8 +10709,8 @@
     },
     {
       "book": "tests/acl2/store-node-index-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 5,
       "guards": {
@@ -10915,8 +10962,8 @@
     },
     {
       "book": "tests/acl2/stx-accept-records-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -10940,8 +10987,8 @@
     },
     {
       "book": "tests/acl2/stx-evidence-records-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -10965,8 +11012,8 @@
     },
     {
       "book": "tests/acl2/stx-keyring-records-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -10990,8 +11037,8 @@
     },
     {
       "book": "tests/acl2/stx-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 3,
       "guards": {
@@ -11016,8 +11063,8 @@
     },
     {
       "book": "tests/acl2/stx-transit-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 7,
       "guards": {

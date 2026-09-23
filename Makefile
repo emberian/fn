@@ -369,12 +369,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-agent \
 	books/owner-log \
 	tests/acl2/owner-tests \
-<<<<<<< HEAD
 	tests/acl2/owner-operator-tests \
-=======
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
->>>>>>> t6b/profile
 	tests/acl2/owner-config-tests \
 	tests/acl2/owner-prepare-correspondence-tests \
 	books/relay \
