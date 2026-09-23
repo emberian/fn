@@ -108,6 +108,23 @@ obstruction—an exposed recognizer, a missing induction fact, a counterexample,
 or an unresolved dependency—instead of silently spending repeated full-farm
 runs on the same timeout.
 
+## Observe the job before replacing it
+
+A wait timeout means the observer stopped waiting. Poll the same farm handle;
+do not submit another run. A missing ACL2 command name is also insufficient:
+the pinned launcher becomes an `sbcl` process. Inspect process IDs, parent IDs,
+state and working directory, plus the actual proof log or slot-wait message.
+Avoid dumping full command lines or environments that can contain credentials.
+
+In the September 23 topic lane, a search for the launcher name missed the
+running SBCL child. Killing the Python driver orphaned that child; launching
+on the other host then duplicated the same proof search. Root identified the
+orphan by its exact working directory and the lane stopped that specific
+process. After cancellation, verify that owned descendants are gone before
+restarting. A driver exit or a lock file does not prove this. Diagnose whether
+the work is waiting for a slot, loading certificates, or searching a theorem
+before changing concurrency or time limits.
+
 ## Separate discovery from certification
 
 Ordinary certification respects the dependency graph. A failure low in that

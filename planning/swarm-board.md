@@ -30,21 +30,23 @@ The user replaced the goal with concurrent v0/v1 development grounded in
 identify reproducible experiments; they are not a project-wide implementation
 freeze. Preserve the live `da5fd8cb` node and existing shared compute pools.
 
+Current coordination snapshot after the `86323c89` native qualification and
+E2 Store integration. The later dated notes retain earlier evidence.
+
 | Agent | Current substantive result and coordination |
 | --- | --- |
-| `acceptance_stamp` | Historical configuration replay, phase-aware Store/owner relation and actual live adoption; coordinate Store shape with consumer and authored records, reader pins with reader lanes. |
-| `authorship_carrier` | T10a and native295 qualification landed; now preservation/restore, selected-pack and consumer incarnation contracts with consumer/reader lanes. |
-| `stamp_review` | Historical recorded-verdict pin threaded through served NNTP and HDR; coordinate carried reader shape with index lane. |
-| `store_invariants` | Actual served Message-ID index and maintained correspondence; share reader view shape with verdict lane rather than waiting for all reader work. |
-| `consumer_contract` | Durable consumer bootstrap/events/Store projection, registration/ack/recovery and restore fencing; coordinate shared Store constructors with historical config and authored records. |
-| `bp_foundation` | One native FNBS service authority, typed receive/publish/recovery and actual caller switch; native A2/contact/TCPCL packet integrated at `66bf9e55`; qualify one coherent saved image. |
-| `feed_replay` | TCPCL drive and clock-domain codec/gate certified; foundation qualifies native clock join. Now repairs missing authored NNTP injection projection found by actual carrier peering. |
-| `status_codec` | Native contact planning, interruption/expiry/backpressure and receipt progression through that same service; do not import the old scheduler's assumed durable completion. |
-| `crash_differential` | Corrected K8 model crash-scan theorem landed; K6 actual framed-write trace provenance and K0 establishment next. |
-| `fragment_refinement` | Device-EIO campaign landed. Now fixes cache composition using actual ACL2 certificate hash compatibility: same source/toolchain can carry different portcullis/expansion hashes. |
-| `store_semantics` | Reader/composer and exact retry handling integrated; browser and native POST/readback passed; bounded in-memory submission registry, no durable client spool. |
-| `mini_evidence_bridge` | P0 native export/verify and signed fixture complete; P1 durable operation binding, provenance/conflict evidence and immutable reply transaction in Mini. |
-| `topic_metadata` | P3 bounded canonical metadata codec, exact-authored-source field projection and native inspection; coordinate T10 binding without claiming topic admission or Mini action authority. |
+| `acceptance_stamp` | Composes historical reader survivor relation with actual owner read; shares archive-bound and immutable-field lemmas with `store_invariants`. |
+| `store_invariants` | Repairs the E2 Store constructor projections in owner proofs, then completes the historical reader helper packet with `acceptance_stamp`. |
+| `consumer_contract` | Store consumer projection and publisher integrated; repairs stamp/BP recovery composition; local control commands checkpointed, Linux peer credentials and real poll/fetch remain next. |
+| `crash_differential` | Certified K0 issued-link and old-prefix clauses; joins maintained consumer relation to physical crash reopen before resuming full K0 composition. |
+| `authorship_carrier` | Proves composed authentication/POST behavior and prepares preservation/restore packet against the integrated consumer Store. |
+| `feed_replay` | Carries actual group-bucket index through served reader and owner views; historical view invariants shared with reader lanes. |
+| `bp_foundation` | Certified fragment exclusion, bounded family plan and kind-18 codec; implements atomic reassembly/replay with a persistent arrival frontier. |
+| `status_codec` | Persists held-bundle receive-time age anchors; repairs codec invariants and qualifies expiry decisions before application dispatch. |
+| `fragment_refinement` | Durable channel admission packet certified; joins shared NNTP transit policy to raw-request/projected-Store FNRJ intent and context. |
+| `stamp_review` | Frozen native image qualified; combined topic-authorship/BP-admission packet certified; prepares actual native consumer control and crash tests with consumer lane. |
+| `mini_evidence_bridge` | Real signed fn report produces durable Mini reply/conflict evidence; adds exact-carrier inbox in the same signed atomic transaction. |
+| `topic_metadata` | Verified-source topic candidate binding certified; implements experimental fixed-controller root anchoring and report admission through the shared Store. |
 
 Root integrates finite source commits, regenerates ledgers, checks concrete
 proof/runtime regressions and maintains evidence. No lane is a permanent file
@@ -52,7 +54,7 @@ owner. Announce interface changes and coordinate combined patches directly.
 The specialized Astra OS study is complete in
 [dregg-os-integration-2026-09-23.md](dregg-os-integration-2026-09-23.md).
 It grounds P0/P1/P2 in Mini's real resource receiver and distinguishes Bread's destructive mailbox and ambient owner authority from the selected E2 contract.
-The P0 implementation now occupies that free parallel slot.
+The Mini evidence implementation continues in its isolated integration worktree.
 
 ## Qualification underway alongside implementation
 
