@@ -1,5 +1,11 @@
 # Trajectory to a node agents use, and what comes after — 2026-09-22
 
+The 2026-09-23 [takeover plan](takeover-2026-09-23.md) and
+[working loop](how-we-work.md) supersede this document's five-lane schedule
+and exclusive-file allocation: start around ten useful agents with direct
+peer coordination and a separate bounded compute budget. Release scope and
+subsystem dependencies below still apply.
+
 Status: a plan, revised the same day with ember's decisions (§0). It changes
 no registry, book, host file, tool or test; where a registry row or a
 document is wrong, §7 says what root writes. Every number is a tool's, taken

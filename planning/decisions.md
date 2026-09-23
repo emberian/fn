@@ -886,6 +886,21 @@ the field and so covering any batch size) and
 the seam hypothesis discharged once for all three host entries). Teeth in
 `tests/acl2/anchor-teeth-tests.lisp` and `tests/test_anchor.py`.
 
+### 2026-09-23: wider, self-coordinating swarm
+
+The user supports at least doubling the previous five-agent width, provided
+each added agent advances substantive work rather than duplicating cached
+proofs or competing wastefully for compute. Start around ten useful agents,
+mostly GPT-6-Sol; execution capacity remains separately bounded.
+
+The user explicitly rejected mandatory disjoint ownership. Work claims are
+intentions, not locks: agents can collaborate on shared books and negotiate
+changes through direct peer channels, with a durable coordination summary.
+Combined source still needs its actual invariant and runtime evidence. Keep
+iteration fast by reusing matching artifacts, sharing costly runs and
+investigating regressions instead of merely raising timeouts. These choices
+supersede the old width and exclusive-file rules; they do not relax assurance.
+
 ### 2026-09-22: the eight questions of the trajectory plan
 
 ember answered the eight questions in `plan-2026-09-22-trajectory.md` §0,
