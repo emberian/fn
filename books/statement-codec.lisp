@@ -399,7 +399,10 @@
 (defthm fn-stmt-impl-encode-items-of-cons
   (equal (fn-stmt-encode-items-impl (cons item items))
          (append (fn-cbor-encode item) (fn-stmt-encode-items-impl items)))
-  :rule-classes nil)
+  :rule-classes nil
+  ; One unfolding of the list encoder; the item encoder stays closed.  Open,
+  ; it split on the item's kind and argument width (2.0 million steps, 9 s).
+  :hints (("Goal" :in-theory (disable fn-cbor-encode))))
 
 (defthm fn-stmt-impl-decode-items-bounded-of-encode
   (implies (and (fn-stmt-item-listp items)

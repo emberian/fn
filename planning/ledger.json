@@ -428,8 +428,8 @@
     "books": 423,
     "books_in_root_closure": 422,
     "roots": 421,
-    "theorems": 7054,
-    "functions": 5421,
+    "theorems": 7067,
+    "functions": 5426,
     "assert_events": 7828,
     "must_fails": 282,
     "encapsulates": 24,
@@ -437,7 +437,7 @@
       "verified": 1746,
       "declared-off": 288,
       "default-guarded": 2721,
-      "default-unguarded": 666
+      "default-unguarded": 671
     },
     "suspect_theorems": 65,
     "export_hygiene_warnings": 93,
@@ -3374,7 +3374,7 @@
       "book": "books/frame-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 80,
+      "theorems": 81,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3403,7 +3403,7 @@
       "book": "books/frame-journal.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
+      "theorems": 8,
       "functions": 14,
       "guards": {
         "verified": 11,
@@ -5042,13 +5042,13 @@
       "book": "books/peer-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 29,
-      "functions": 30,
+      "theorems": 36,
+      "functions": 35,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 30,
-        "default-unguarded": 0
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -12091,7 +12091,7 @@
     {
       "theorem": "fn-record-impl-encode-domain",
       "book": "books/records-canonicality.lisp",
-      "line": 772,
+      "line": 790,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value"
       ]
@@ -12099,7 +12099,7 @@
     {
       "theorem": "fn-record-result-okp-is-parse-okp",
       "book": "books/records-canonicality.lisp",
-      "line": 600,
+      "line": 618,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
@@ -12579,19 +12579,19 @@
       {
         "theorem": "fn-stmt-header-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 255,
+        "line": 263,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stmt-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 350,
+        "line": 358,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stmt-receipt-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 469,
+        "line": 477,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

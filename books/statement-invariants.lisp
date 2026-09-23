@@ -126,6 +126,14 @@
            (fn-cbor-octet-listp octets))
   :hints (("Goal" :in-theory (enable fn-cbor-decode))))
 
+; Exported (the vocabulary below), closed here.  Its conclusion is the octet
+; recognizer, so on with the decoder open every `fn-cbor-octet-listp' the
+; prover met backchained into a CBOR decode of that term: in
+; `fn-stmt-header-reconstruct' 6 820 useless tries, 538 544 frames, 3.6 s of
+; a proof that never reads octets; `fn-stmt-header-encoding-bound' 11.6 s.
+; No proof in this book uses it.
+(local (in-theory (disable fn-stmt-decode-ok-implies-octets)))
+
 ; The item-sequence codec's own facts -- the streaming round trip, its
 ; canonicality, the item-list shape of what it decodes -- are the constraints
 ; of books/statement-seam.lisp now, proved of the implementation in

@@ -171,7 +171,14 @@
         (fn-frame-protected *fn-frame-magic-workflow* *fn-frame-version* code
                             payload)))))
 
-(verify-guards fn-frame-workflow-protected)
+(verify-guards fn-frame-workflow-protected
+  ; The table lookup, the per-field recognizer and the encoder stay closed:
+  ; the guard needs only that the record's specification is a spec list its
+  ; values satisfy (`fn-frame-spec-for-workflow-is-spec-list' and the
+  ; recognizer's own conjuncts) and `fn-frame-fields-octets-are-octets'.
+  ; Opened, they unrolled every kind's field list (17.7 million steps, 84 s).
+  :hints (("Goal" :in-theory (disable fn-frame-spec-for fn-frame-values-okp
+                                      fn-frame-fields-octets))))
 
 (defun fn-frame-receipt-protected (kind values)
   (declare (xargs :guard t :verify-guards nil))
@@ -186,7 +193,9 @@
         (fn-frame-protected *fn-frame-magic-receipt* *fn-frame-version* code
                             payload)))))
 
-(verify-guards fn-frame-receipt-protected)
+(verify-guards fn-frame-receipt-protected
+  :hints (("Goal" :in-theory (disable fn-frame-spec-for fn-frame-values-okp
+                                      fn-frame-fields-octets))))
 
 ; -----------------------------------------------------------------------------
 ; The field names a host uses to label a decoded record
