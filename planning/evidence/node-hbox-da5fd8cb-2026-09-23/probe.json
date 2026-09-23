@@ -1,0 +1,189 @@
+{
+ "host": "192.168.50.39",
+ "port": 1119,
+ "group": "fn.agents",
+ "login": "ember",
+ "message_id": "<node-probe.20260923T024803Z.43c7a506@probe.invalid>",
+ "tls": {
+  "version": "TLSv1.3",
+  "cipher": "TLS_AES_256_GCM_SHA384"
+ },
+ "client": "tools/node_probe.py on nextop.local, Python 3.14.7",
+ "when": "2026-09-23T02:48:03+00:00",
+ "steps": [
+  {
+   "step": "first:greeting",
+   "expected": "200 or 201",
+   "observed": "201 fn-nntp experimental reader ready",
+   "verdict": "held",
+   "note": ""
+  },
+  {
+   "step": "first:capabilities-offer-starttls",
+   "expected": "STARTTLS in CAPABILITIES",
+   "observed": [
+    "VERSION 2",
+    "READER",
+    "OVER MSGID",
+    "HDR",
+    "NEWNEWS",
+    "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT",
+    "IMPLEMENTATION fn-nntp-lab",
+    "STARTTLS"
+   ],
+   "verdict": "held",
+   "note": ""
+  },
+  {
+   "step": "first:authinfo-before-tls-refused",
+   "expected": "483",
+   "observed": "483 a protected channel is required; use STARTTLS",
+   "verdict": "held",
+   "note": "RFC 4643 section 2.3.2"
+  },
+  {
+   "step": "first:starttls",
+   "expected": "382",
+   "observed": "382 continue with TLS negotiation",
+   "verdict": "held",
+   "note": ""
+  },
+  {
+   "step": "first:capabilities-withdraw-starttls",
+   "expected": "STARTTLS withdrawn, AUTHINFO offered",
+   "observed": [
+    "VERSION 2",
+    "READER",
+    "OVER MSGID",
+    "HDR",
+    "NEWNEWS",
+    "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT",
+    "IMPLEMENTATION fn-nntp-lab",
+    "AUTHINFO USER"
+   ],
+   "verdict": "held",
+   "note": "RFC 4642 section 2.2.2, RFC 4643 section 2.1"
+  },
+  {
+   "step": "first:login",
+   "expected": "281",
+   "observed": "281 authentication accepted",
+   "verdict": "held",
+   "note": ""
+  },
+  {
+   "step": "first:post-offered-after-login",
+   "expected": "POST offered after login",
+   "observed": [
+    "VERSION 2",
+    "READER",
+    "POST",
+    "OVER MSGID",
+    "HDR",
+    "NEWNEWS",
+    "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT",
+    "IMPLEMENTATION fn-nntp-lab"
+   ],
+   "verdict": "held",
+   "note": "RFC 4643 section 2.1: the posting allowance is the principal's"
+  },
+  {
+   "step": "group",
+   "expected": "211",
+   "observed": "211 5 1 5 fn.agents",
+   "verdict": "held",
+   "note": ""
+  },
+  {
+   "step": "post",
+   "expected": "240",
+   "observed": "240 article received OK",
+   "verdict": "held",
+   "note": "message-id <node-probe.20260923T024803Z.43c7a506@probe.invalid>"
+  },
+  {
+   "step": "second:greeting",
+   "expected": "200 or 201",
+   "observed": "201 fn-nntp experimental reader ready",
+   "verdict": "held",
+   "note": ""
+  },
+  {
+   "step": "second:capabilities-offer-starttls",
+   "expected": "STARTTLS in CAPABILITIES",
+   "observed": [
+    "VERSION 2",
+    "READER",
+    "OVER MSGID",
+    "HDR",
+    "NEWNEWS",
+    "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT",
+    "IMPLEMENTATION fn-nntp-lab",
+    "STARTTLS"
+   ],
+   "verdict": "held",
+   "note": ""
+  },
+  {
+   "step": "second:authinfo-before-tls-refused",
+   "expected": "483",
+   "observed": "483 a protected channel is required; use STARTTLS",
+   "verdict": "held",
+   "note": "RFC 4643 section 2.3.2"
+  },
+  {
+   "step": "second:starttls",
+   "expected": "382",
+   "observed": "382 continue with TLS negotiation",
+   "verdict": "held",
+   "note": ""
+  },
+  {
+   "step": "second:capabilities-withdraw-starttls",
+   "expected": "STARTTLS withdrawn, AUTHINFO offered",
+   "observed": [
+    "VERSION 2",
+    "READER",
+    "OVER MSGID",
+    "HDR",
+    "NEWNEWS",
+    "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT",
+    "IMPLEMENTATION fn-nntp-lab",
+    "AUTHINFO USER"
+   ],
+   "verdict": "held",
+   "note": "RFC 4642 section 2.2.2, RFC 4643 section 2.1"
+  },
+  {
+   "step": "second:login",
+   "expected": "281",
+   "observed": "281 authentication accepted",
+   "verdict": "held",
+   "note": ""
+  },
+  {
+   "step": "second:post-offered-after-login",
+   "expected": "POST offered after login",
+   "observed": [
+    "VERSION 2",
+    "READER",
+    "POST",
+    "OVER MSGID",
+    "HDR",
+    "NEWNEWS",
+    "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT",
+    "IMPLEMENTATION fn-nntp-lab"
+   ],
+   "verdict": "held",
+   "note": "RFC 4643 section 2.1: the posting allowance is the principal's"
+  },
+  {
+   "step": "reread-fresh-connection",
+   "expected": "220 and the posted body",
+   "observed": "220 0 <node-probe.20260923T024803Z.43c7a506@probe.invalid> article follows",
+   "verdict": "held",
+   "note": "body marker found"
+  }
+ ],
+ "exit": 0
+}
