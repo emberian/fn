@@ -1071,11 +1071,21 @@ class ProtectedTransitTests(unittest.TestCase):
                            "records": {"feed-offer": 2, "feed-sent": 2,
                                        "feed-outcome": 1}}}
         marker = "NATIVE-PROTECTED-EXPECTED-DEVELOPER-CORE " + "c" * 64
+        rows = self.rows(base + "\nNATIVE-PROTECTED-WITNESS " + json.dumps(one))
+        self.assertEqual(rows["V0-FEED-ONCE"].verdict, v0_matrix.NOT_EXERCISED)
+        self.assertIn("acknowledged and durable-sent", rows["V0-FEED-ONCE"].blocker)
         lines = (base + "\n" + marker + "\n"
                  + "NATIVE-PROTECTED-WITNESS " + json.dumps(one) + "\n"
                  + "NATIVE-PROTECTED-WITNESS " + json.dumps(cut))
         rows = self.rows(lines)
         self.assertEqual(rows["V0-FEED-ONCE"].verdict, v0_matrix.ACCEPTED)
+        cut["settled"]["records"]["feed-offer"] = 1
+        lines = (base + "\n" + marker + "\n"
+                 + "NATIVE-PROTECTED-WITNESS " + json.dumps(one) + "\n"
+                 + "NATIVE-PROTECTED-WITNESS " + json.dumps(cut))
+        rows = self.rows(lines)
+        self.assertEqual(rows["V0-FEED-ONCE"].verdict, v0_matrix.NOT_EXERCISED)
+        cut["settled"]["records"]["feed-offer"] = 2
         one["after"]["records"]["feed-offer"] = 2
         lines = (base + "\n" + marker + "\n"
                  + "NATIVE-PROTECTED-WITNESS " + json.dumps(one) + "\n"
