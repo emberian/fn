@@ -83,3 +83,24 @@
   (declare (xargs :guard t)) (nth 2 plan))
 (defun fn-bpnf-namespace-hidden (plan)
   (declare (xargs :guard t)) (nth 3 plan))
+
+; The host observes one directory only.  The new splitter does not weaken the
+; legacy contiguous frontier: the old planner still judges exactly its final
+; names and hidden stages, while kind-five replay judges received name/bytes.
+; The result is a read-only recovery plan, not another lifecycle transition.
+(defun fn-bpnf-mixed-recovery-plan (names)
+  (declare (xargs :guard t))
+  (let ((split (fn-bpnf-namespace-plan names)))
+    (if (not (fn-bpnf-namespace-planp split))
+        (list :fault :fnbs-namespace)
+      (let ((legacy
+             (fn-bpn-lifecycle-namespace-plan
+              (append (fn-bpnf-namespace-legacy split)
+                      (fn-bpnf-namespace-hidden split)))))
+        (if (not (fn-bpn-lifecycle-namespace-planp legacy))
+            (list :fault :legacy-namespace)
+          (list :ready
+                (fn-bpn-lifecycle-plan-record-names legacy)
+                (fn-bpnf-namespace-received split)
+                (fn-bpn-lifecycle-plan-hidden-stages legacy)
+                (fn-bpn-lifecycle-plan-next-token legacy)))))))

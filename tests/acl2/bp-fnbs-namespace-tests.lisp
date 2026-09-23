@@ -29,6 +29,22 @@
    (fn-bpnf-namespace-legacy
     (fn-bpnf-namespace-plan (bpnfn-mixed-names))))))
 (assert-event
+ (equal (fn-bpnf-mixed-recovery-plan (bpnfn-mixed-names))
+        (list :ready
+              (list (fn-bpn-lifecycle-record-name 0)
+                    (fn-bpn-lifecycle-record-name 1))
+              (list (fn-bpnf-stored-record-name 0 0)
+                    (fn-bpnf-stored-record-name 9 1))
+              (list ".record-leftover") 2)))
+(assert-event
+ (equal (fn-bpnf-mixed-recovery-plan
+         (list (fn-bpnf-stored-record-name 0 0)))
+        (list :ready nil (list (fn-bpnf-stored-record-name 0 0)) nil 0)))
+(assert-event
+ (equal (fn-bpnf-mixed-recovery-plan
+         (list (fn-bpn-lifecycle-record-name 1)))
+        '(:fault :legacy-namespace)))
+(assert-event
  (equal (fn-bpnf-namespace-plan (list "stray.fnb"))
         '(:fault :fnbs-namespace)))
 (assert-event

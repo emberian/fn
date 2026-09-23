@@ -103,6 +103,9 @@ session configuration. The foundation delegates outbound events to
 `fn-bpn-step`, its bounded restart replay, `fn-bpnf-recover-fnbs-step`, and
 `fn-bpnf-step` have verified guards in `bp-node-machine-guards.lisp`.
 Recovery validates whole held rows on the cold path; ordinary steps do not.
+Reception issues an FNBS operation only when its epoch and operation ID fit
+the 64-bit frame field; the maximum operation ID is a terminal frontier and
+is refused so the incremented state frontier remains representable.
 The ACL2 mixed FNBS namespace plan partitions legacy and kind-5 final names
 before their respective byte decoders and rejects unknown names. A native
 caller of the foundation
@@ -699,8 +702,8 @@ an occupied damaged final name is a recovery fault. These are the first
 physical and codec parts of A2. `fn-bpnf-byte-crash-keeps-canonical-kind-five`
 proves exact recovery of one fenced canonical record in any admissible crash
 image that selects its final inode. The general `fn-bs-crash-imagep` to observed
-journal theorem, multi-record replay, restored epoch/frontier, and native
-publisher/recovery caller are still open. The present kind-5 subset has no
+journal theorem and native publisher/recovery caller are still open. The
+present kind-5 subset has no
 submission or receipt handoff; the broader row below remains the target.
 `fn-bpnf-actual-link-crash-is-absent-or-exact` further connects the real
 `fn-bs-link` pending entry to the absent-or-exact crash choices;
@@ -726,15 +729,17 @@ process.
 directory into legacy lifecycle finals, kind-5 received finals, and hidden
 stages. The old contiguous namespace planner validates the legacy subset;
 the kind-5 byte replay validates the received subset. An unknown public name
-faults before either replay. This classifier is awaiting certification in
-the coherent combined A2/guard batch.
+faults before either replay. `fn-bpnf-mixed-recovery-plan` composes the split
+with the legacy contiguous planner and returns both final-name partitions,
+hidden stages, and the old token frontier. Its mixed, kind-5-only, and
+legacy-gap tests certified in the coherent A2/guard batch.
 `books/bp-fnbs-publication.lisp` authorizes the immutable kind-5 publisher
 only from the exact pending `:store` issued echo and observed lock ownership
 and absent final name. It returns ACL2-derived final name, frame bytes and
 `fn-jpub-initial`; stale epoch/operation ID, changed held row, uncertain
 issued status, or missing lock/name precondition faults. `fn-bpnf-stored-
-frame-limit` supplies the bounded kind-5 physical read size. This join is
-awaiting the same coherent certification and native caller.
+frame-limit` supplies the bounded kind-5 physical read size. This join
+certified in the coherent A2/guard batch and still awaits a native caller.
 
 Every record is built by its constructor and read by selectors; no book and
 no theorem matches a record by list shape. `fn-bpn-rec-kind`,

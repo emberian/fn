@@ -333,8 +333,9 @@
           (if (fn-bpnf-issued st)
               (fn-bpnf-answer st (list (list :receive-answer ingress
                                                 '(:refused :busy))))
-            (if (or (not (natp (fn-bpnf-next-op st)))
-                    (not (natp (fn-bpnf-epoch st))))
+            (if (or (not (fn-frame-natp (fn-bpnf-epoch st)))
+                    (not (fn-frame-natp (fn-bpnf-next-op st)))
+                    (equal (fn-bpnf-next-op st) *fn-frame-max-nat*))
               (fn-bpnf-answer st (list (list :receive-answer ingress
                                                 '(:refused :arguments))))
             (if (not decision)
