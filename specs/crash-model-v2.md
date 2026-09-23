@@ -1323,6 +1323,12 @@ part of K0.
 ; ACL2 subjects. The physical byte/kernel relation and stage freshness at
 ; call entry remain obligations; retention/identity union codec round trips
 ; remain separate proof work.
+; fn-bs-k0-record-prepare-preserves-relation and its fn-sn-prepare lift now
+; carry an already related reserved state through ACL2 article preparation
+; without changing bytes. fn-bs-k0-served-article-prepare-to-attempted-relation
+; joins that handoff, ACL2 host frame/name and actual P-RECORD pair 10.
+; The *physical relation at reserved entry* still needs a maintained
+; whole-trace proof from initialization/frontier/prior finish or recovery.
 
 ; K1. The scan never faults on a crash image of a related state.  No torn
 ; unit is ever under an authority name, because links and renames are
