@@ -1,6 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-family-replay")
 (include-book "bp-node-fragment-plan-tests")
+(include-book "bp-report-deletion-tests")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defconst *bpnfr-p0-arrival-one*
@@ -50,3 +51,42 @@
   (equal (car (fn-bpnf-family-replay-rows
                (list (nth 2 (bpnfr-replay-rows)))
                (fn-bpnf-base *bpnff-state*))) :ready)))
+
+; One ordered kind-5 then kind-10 history keeps the subject as a tombstone.
+; Reversing the order or changing the subject identity faults at recovery.
+(defconst *bpnfr-delete-held*
+  (update-nth 3 0 *bprd-request-held*))
+(defconst *bpnfr-delete-record*
+  (fn-bpn-report-delete-record
+   4 1 0 (fn-bpp-primary-identity
+           (fn-bpb-bundle-primary
+            (fn-bpnf-held-bundle *bpnfr-delete-held*)))
+   :lifetime-expired))
+(defun bpnfr-delete-rows ()
+  (declare (xargs :guard t :verify-guards nil))
+  (list
+   (list (fn-bpnf-stored-record-name 4 0)
+         (fn-bpnf-stored-record-frame
+          (fn-bpnf-stored-record 4 0 *bpnfr-delete-held*)))
+   (list (fn-bpnf-stored-record-name 4 1)
+         (fn-bpnf-delete-frame *bpnfr-delete-record*))))
+(defun bpnfr-delete-answer ()
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bpnf-family-replay-rows
+   (bpnfr-delete-rows) (fn-bpnf-base *bpah-state*)))
+(assert-event (equal (car (bpnfr-delete-answer)) :ready))
+(assert-event
+ (equal (fn-bpn-nth 14 (car (nth 1 (bpnfr-delete-answer))))
+        :lifetime-expired))
+(assert-event
+ (equal (car (fn-bpnf-family-replay-rows
+              (reverse (bpnfr-delete-rows))
+              (fn-bpnf-base *bpah-state*))) :fault))
+(assert-event
+ (equal (car (fn-bpnf-family-replay-rows
+              (list (car (bpnfr-delete-rows))
+                    (list (fn-bpnf-stored-record-name 4 1)
+                          (fn-bpnf-delete-frame
+                           (fn-bpn-report-delete-record
+                            4 1 0 '(1) :lifetime-expired))))
+              (fn-bpnf-base *bpah-state*))) :fault))

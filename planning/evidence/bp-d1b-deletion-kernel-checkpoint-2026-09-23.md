@@ -39,3 +39,14 @@ pre-commit/no-policy negative fixtures passed focused
 including planner guard verification passed `run-20260923T220848Z-180d`,
 [manifest](manifests/certify-20260923T220851Z-797062.json). The planner
 is still not a host-called publisher or a completed D1b generation path.
+
+On the frozen C2 fragment source, `books/bp-fnbs-deletion-codec.lisp` now
+frames kind 10 as epoch/op/arrival/exact primary identity/reason 1, with
+bounded canonical decode. The one ordered `fn-bpnf-family-replay-rows-aux`
+fold processes 5, 7, 18 and 10 together; kind 10 applies only to a prior
+pending held row and leaves a tombstone. Reversed ordering and wrong
+identity fault. The codec test passed `run-20260923T221535Z-e072`,
+[manifest](manifests/certify-20260923T221541Z-864340.json); the ordered
+replay and its tests passed `run-20260923T221658Z-2df8`,
+[manifest](manifests/certify-20260923T221702Z-878604.json). Publication,
+live step and host caller are still open.

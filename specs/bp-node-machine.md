@@ -2336,7 +2336,9 @@ selector/tombstone kernel only (`books/bp-report-deletion.lisp`). It requires
 definite expiry and exact arrival/primary identity, and cannot issue a report
 until a single ordered FNBS replay and durable publication path accepts the
 deletion. The current native caller has no status-report generation or
-consumption claim.
+consumption claim. The kind-10 codec and single ordered FNBS 5/7/18/10 replay
+are source-present with scoped certification; live issue/publication and
+consumer joins are not yet implemented.
 
 Minimal generation and consumption before slice B's gate (§11): the
 deletion assertion at §4.2's `:expire` and §4.3's deletions, and §4.1
