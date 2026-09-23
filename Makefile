@@ -151,6 +151,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-scan \
 	books/byte-store-keystones \
 	tests/acl2/byte-store-scan-tests \
+	tests/acl2/byte-store-sweep-tests \
 	books/byte-store-compaction-correspondence \
 	tests/acl2/byte-store-compaction-correspondence-tests \
 	books/byte-store-programs \

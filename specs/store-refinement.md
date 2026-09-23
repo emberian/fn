@@ -351,12 +351,18 @@ directories before taking its lock.  A missing `staging/` directory is therefore
 a storage fault, rather than an empty staging observation.  After `fnn-recover`
 has replayed the durable configuration and transactions and completed its five
 existing recovery barriers, writable recovery supplies a bounded observation of
-the staging namespace to ACL2 `fn-sn-sweep-staging`, through
-`fn-store-sn-sweep-staging-list`.  It unlinks only names returned by that ACL2
-subject; observed names outside the `.stage-` policy remain reported.  A
-read-only open reports the bounded observation but does not mutate it.  More
-than the ACL2-supplied limit of 64 entries faults before a larger host list is
-built, so recovery does not turn an unbounded directory into a logical input.
+the staging namespace to ACL2 `fn-sn-sweep-round`, through
+`fn-store-sn-sweep-round`, together with whether the directory held more.  It
+unlinks only names returned by that ACL2 subject; observed names outside the
+staging prefixes (`books/store-sweep.lisp`, every prefix a host program stages
+under) remain reported.  One observation retains at most the ACL2-supplied
+limit of 64 names, so recovery never turns an unbounded directory into a
+logical input; the sweep goes round again while ACL2 answers `:again`, and
+`fn-sn-sweep-rounds-collect-every-orphan` says a directory of N orphans ends
+empty for every N.  A directory holding more than one observation of names the
+model may not remove is refused (exit 1), not faulted.  A read-only open
+reports one bounded observation (`staging-orphans=64+` when there are more)
+but does not mutate it.
 
 The recovery cleanup is nonauthoritative: it does not alter the replayed
 configuration, transaction history, or frontier.  Runtime evidence exercises a

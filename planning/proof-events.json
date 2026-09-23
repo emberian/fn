@@ -1320,6 +1320,26 @@
         {
           "kind": "theorem",
           "name": "fn-bs-crash-image-records-do-not-fault"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-sweep-round-keeps-every-cut-reopenable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-sweep-round-removes-only-unheld-staging-names"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-sweep-rounds-collect-every-orphan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-sweep-rounds-keep-every-name-they-may-not-remove"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-sweep-rounds-end-done-or-refused"
         }
       ]
     },
