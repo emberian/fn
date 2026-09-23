@@ -1,0 +1,6 @@
+test_web_post_and_thread_read_use_the_native_owner (test_fn_web_native.NativeWebClientTests.test_web_post_and_thread_read_use_the_native_owner) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.710s
+
+OK

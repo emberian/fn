@@ -87,9 +87,10 @@ class Result:
 
 
 class Client:
-    def __init__(self, args, user: str, password: str):
+    def __init__(self, args, user: str, password: str, session_factory=Session):
         self.args = args
         self.user, self.password = user, password
+        self.session_factory = session_factory
         self.lines: list[str] = []
         self.session = None
 
@@ -113,7 +114,8 @@ class Client:
 
     def open(self) -> None:
         try:
-            self.session = Session(self.args.host, self.args.port, self.args.timeout)
+            self.session = self.session_factory(self.args.host, self.args.port,
+                                                self.args.timeout)
         except (OSError, Disconnected) as exc:
             # `Disconnected` and not only `OSError`: a node whose owner has
             # stopped behind a forwarder -- the `ssh -L` tunnel of
@@ -555,7 +557,7 @@ def resolve(args, parser) -> None:
         parser.error("--plain sends no login, so --credentials cannot apply")
 
 
-def compose(args, user: str, parser) -> tuple:
+def compose(args, user: str, parser, body_override: str | None = None) -> tuple:
     """The article to post, and the Message-ID it carries."""
     for name, value in (("group", args.group), ("subject", args.subject),
                         ("from", args.sender), ("references", args.references),
@@ -568,7 +570,9 @@ def compose(args, user: str, parser) -> tuple:
     if not (msgid.startswith("<") and msgid.endswith(">") and "@" in msgid):
         parser.error("--message-id %s is not <local@domain>" % msgid)
     sender = args.sender or "%s <%s@%s>" % (user or "anonymous", user or "anonymous", args.host)
-    if args.body_file:
+    if body_override is not None:
+        body = body_override
+    elif args.body_file:
         try:
             body = Path(args.body_file).expanduser().read_text()
         except OSError as exc:
