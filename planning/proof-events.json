@@ -1319,6 +1319,10 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-bs-crash-image-consumer-replay-ok"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-bs-crash-image-reopens"
         },
         {

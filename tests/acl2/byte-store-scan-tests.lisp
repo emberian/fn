@@ -16,7 +16,9 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-keystones")
 (include-book "../../books/byte-store-programs")
+(include-book "../../books/byte-store-relation")
 (include-book "../../books/byte-store-txn-name")
+(include-book "../../books/byte-store-frame")
 (include-book "../../books/codec-attach")
 
 ; The byte scanner consumes the shared Store-event dispatcher, so one
@@ -84,6 +86,37 @@
 (assert-event (fn-bs-inop (fn-bs-lookup *fn-bs-initialized-store*
                                         :root *fn-bs-scan-frontier-name*)))
 (assert-event (fn-bs-dir-quietp *fn-bs-initialized-store* :root))
+
+; E2/K4: an initial byte image and its actual modeled death have a strict
+; consumer replay at the host reopen entry.  The bridge proves this from the
+; maintained completed-prefix relation and K2's scanned kernel image; no
+; host-side consumer predicate is assumed over the observed record list.
+(defun bsk-e2-initial-node () (fn-sn-initial nil 10))
+(defun bsk-e2-initial-store ()
+  (fn-bs-initial-image 4 (fn-bs-initial-config-octets)
+                        (fn-bs-initial-frontier-octets)))
+(defun bsk-e2-initial-crash ()
+  (fn-bs-crash (bsk-e2-initial-store) nil))
+(assert-event (fn-csi-full-relationp (bsk-e2-initial-node)))
+(assert-event
+ (fn-bs-store-relation (bsk-e2-initial-store)
+                       (fn-sn-files (bsk-e2-initial-node))))
+(defthm bsk-e2-initial-crash-admissible
+  (fn-bs-crash-imagep (bsk-e2-initial-store)
+                      (bsk-e2-initial-crash))
+  :hints (("Goal"
+           :use ((:instance fn-bs-lose-everything-is-an-admissible-image
+                            (s (bsk-e2-initial-store)))))))
+(assert-event
+ (fn-sn-observed-consumer-okp
+  (fn-bs-scan-records (fn-bs-scan-store (bsk-e2-initial-crash)))))
+(assert-event
+ (fn-sn-open-okp
+  (fn-sn-open-observed
+   (fn-sn-groups (bsk-e2-initial-node))
+   (fn-sn-capacity (bsk-e2-initial-node))
+   (fn-bs-scan-frontier (fn-bs-scan-store (bsk-e2-initial-crash)))
+   (fn-bs-scan-records (fn-bs-scan-store (bsk-e2-initial-crash))))))
 
 ; -----------------------------------------------------------------------------
 ; Tooth 1: without (fn-bs-store-relation bs ks).

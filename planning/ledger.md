@@ -13,20 +13,20 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 525 |
 | Certification roots in the Makefile | 520 |
 | Books inside the root closure | 524 |
-| `defthm` and `defthmd` events | 7965 |
-| `defun` events | 5985 |
+| `defthm` and `defthmd` events | 7970 |
+| `defun` events | 5988 |
 | Functions with verified guards | 1961 |
 | Functions declared `:verify-guards nil` and never verified | 321 |
 | Functions left at the default with an explicit guard | 2948 |
-| Functions left at the default with no guard | 755 |
-| `assert-event` checks | 8683 |
-| `must-fail` checks | 395 |
+| Functions left at the default with no guard | 758 |
+| `assert-event` checks | 8694 |
+| `must-fail` checks | 396 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 72 |
 | Export-hygiene warnings | 101 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 28 |
-| Include-hygiene warnings | 387 |
+| Include-hygiene warnings | 390 |
 | Host-names warnings | 750 |
 | Hand-written-record warnings | 18 |
 
@@ -183,7 +183,7 @@ that `make certify` requests.
 | `books/byte-store-frame.lisp` | root | 11 | 16 | 1/0/13/2 | 0 | 0 | 0 |
 | `books/byte-store-initializer.lisp` | root | 8 | 10 | 0/8/0/2 | 0 | 0 | 0 |
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
-| `books/byte-store-keystones.lisp` | root | 34 | 3 | 0/3/0/0 | 0 | 0 | 0 |
+| `books/byte-store-keystones.lisp` | root | 35 | 3 | 0/3/0/0 | 0 | 0 | 0 |
 | `books/byte-store-native-correspondence.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/byte-store-observation-scan.lisp` | root | 15 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/byte-store-observation.lisp` | root | 0 | 8 | 0/8/0/0 | 0 | 0 | 0 |
@@ -215,7 +215,7 @@ that `make certify` requests.
 | `books/config.lisp` | root | 42 | 133 | 1/0/132/0 | 0 | 0 | 0 |
 | `books/consumer-position.lisp` | root | 56 | 29 | 28/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-store-events.lisp` | root | 1 | 13 | 13/0/0/0 | 0 | 0 | 0 |
-| `books/consumer-store-invariants.lisp` | root | 77 | 5 | 0/5/0/0 | 0 | 0 | 0 |
+| `books/consumer-store-invariants.lisp` | root | 80 | 5 | 0/5/0/0 | 0 | 0 | 0 |
 | `books/consumer-store-projection.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
@@ -469,7 +469,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-record-fence-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 7 | 5 | 0 |
 | `tests/acl2/byte-store-record-provenance-tests.lisp` | root | 1 | 16 | 0/1/0/15 | 14 | 12 | 0 |
 | `tests/acl2/byte-store-relation-tests.lisp` | root | 1 | 5 | 0/0/0/5 | 12 | 12 | 0 |
-| `tests/acl2/byte-store-scan-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 20 | 0 | 0 |
+| `tests/acl2/byte-store-scan-tests.lisp` | root | 1 | 8 | 0/0/0/8 | 24 | 0 | 0 |
 | `tests/acl2/byte-store-stable-prefix-tests.lisp` | root | 1 | 11 | 0/0/0/11 | 4 | 2 | 0 |
 | `tests/acl2/byte-store-sweep-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 8 | 0 | 0 |
 | `tests/acl2/byte-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
@@ -490,7 +490,7 @@ that `make certify` requests.
 | `tests/acl2/config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 95 | 0 | 0 |
 | `tests/acl2/consumer-position-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 36 | 8 | 0 |
 | `tests/acl2/consumer-store-events-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 6 | 1 | 0 |
-| `tests/acl2/consumer-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 3 | 0 |
+| `tests/acl2/consumer-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 4 | 0 |
 | `tests/acl2/consumer-store-node-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 22 | 0 | 0 |
 | `tests/acl2/consumer-store-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
@@ -663,7 +663,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-node-stale-completion-is-no-op` | `books/node.lisp` | 320 | branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 801 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
-| `fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session` | `books/owner-invariants.lisp` | 725 | branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
+| `fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session` | `books/owner-invariants.lisp` | 736 | branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
 | `fn-own-feed-port-lost-is-port-peer` | `books/owner-feed-port.lisp` | 80 | definition-restated: the conclusion is the body of fn-own-feed-port-lost-peer; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-own-feed-port-observe-is-port-peer` | `books/owner-feed-port.lisp` | 75 | definition-restated: the conclusion is the body of fn-own-feed-port-observe-peer; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-own-feed-port-restart-is-port-peer` | `books/owner-feed-port.lisp` | 85 | definition-restated: the conclusion is the body of fn-own-feed-port-restart-peer; reflexive-conclusion: a conjunct is (equal X X) |
