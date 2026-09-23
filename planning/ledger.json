@@ -527,9 +527,9 @@
     "books": 525,
     "books_in_root_closure": 524,
     "roots": 520,
-    "theorems": 7970,
+    "theorems": 7973,
     "functions": 5988,
-    "assert_events": 8694,
+    "assert_events": 8698,
     "must_fails": 396,
     "encapsulates": 26,
     "guards": {
@@ -542,7 +542,7 @@
     "export_hygiene_warnings": 101,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 28,
-    "include_hygiene_warnings": 390,
+    "include_hygiene_warnings": 391,
     "host_names_warnings": 750,
     "hand_written_record_warnings": 18
   },
@@ -2383,7 +2383,7 @@
       "book": "books/bp-receiver-evolving-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
+      "theorems": 38,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -2408,7 +2408,7 @@
       "book": "books/bp-receiver-evolving-store-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 28,
+      "theorems": 30,
       "functions": 11,
       "guards": {
         "verified": 0,
@@ -2424,6 +2424,7 @@
       "encapsulates": 0,
       "includes": [
         "bp-receiver-evolving-node-invariants",
+        "consumer-store-invariants",
         "store-observed"
       ],
       "system_includes": [],
@@ -8804,9 +8805,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 51,
+      "assert_events": 55,
       "must_fails": 14,
-      "defconsts": 19,
+      "defconsts": 20,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -16622,6 +16623,13 @@
         "line": 10,
         "include": "bp-receiver-evolving-node-invariants",
         "included": "books/bp-receiver-evolving-node-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-receiver-evolving-store-invariants.lisp",
+        "line": 12,
+        "include": "consumer-store-invariants",
+        "included": "books/consumer-store-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
