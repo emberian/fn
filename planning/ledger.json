@@ -429,6 +429,8 @@
     "books/config-store-traces",
     "tests/acl2/config-store-traces-tests",
     "books/config-owner-live",
+    "books/config-owner-read-invariants",
+    "tests/acl2/config-owner-read-invariants-tests",
     "tests/acl2/config-owner-live-tests",
     "books/owner-config",
     "books/ideal",
@@ -540,25 +542,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 542,
-    "books_in_root_closure": 541,
-    "roots": 536,
-    "theorems": 8154,
-    "functions": 6097,
-    "assert_events": 8881,
-    "must_fails": 426,
+    "books": 544,
+    "books_in_root_closure": 543,
+    "roots": 538,
+    "theorems": 8252,
+    "functions": 6102,
+    "assert_events": 8911,
+    "must_fails": 430,
     "encapsulates": 26,
     "guards": {
       "verified": 2001,
       "declared-off": 325,
-      "default-guarded": 2985,
+      "default-guarded": 2990,
       "default-unguarded": 786
     },
     "suspect_theorems": 74,
-    "export_hygiene_warnings": 101,
+    "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
-    "teeth_form_warnings": 33,
-    "include_hygiene_warnings": 414,
+    "teeth_form_warnings": 35,
+    "include_hygiene_warnings": 417,
     "host_names_warnings": 793,
     "hand_written_record_warnings": 18
   },
@@ -3847,7 +3849,7 @@
       "book": "books/config-owner-live.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 29,
+      "theorems": 102,
       "functions": 9,
       "guards": {
         "verified": 0,
@@ -3864,6 +3866,32 @@
       "includes": [
         "config-store-traces",
         "owner-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-owner-read-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-live",
+        "owner-tls-prefix"
       ],
       "system_includes": [],
       "suspects": [],
@@ -6303,12 +6331,12 @@
       "book": "books/owner-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
-      "functions": 43,
+      "theorems": 42,
+      "functions": 44,
       "guards": {
         "verified": 0,
         "declared-off": 6,
-        "default-guarded": 37,
+        "default-guarded": 38,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -6418,7 +6446,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 140,
+      "theorems": 145,
       "functions": 8,
       "guards": {
         "verified": 0,
@@ -11529,16 +11557,47 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 33,
-      "must_fails": 0,
-      "defconsts": 10,
+      "assert_events": 43,
+      "must_fails": 1,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/config-owner-live",
         "config-observed-tests"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/config-owner-read-invariants-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 3,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-owner-read-invariants",
+        "config-owner-live-tests",
+        "served-tls-prefix-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -13305,9 +13364,9 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 141,
+      "assert_events": 146,
       "must_fails": 1,
-      "defconsts": 59,
+      "defconsts": 63,
       "defmacros": 4,
       "encapsulates": 0,
       "includes": [
@@ -15372,7 +15431,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 802,
+      "line": 843,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]
@@ -15866,6 +15925,12 @@
         "theorem": "fn-checkpoint-capacity-of-fn-checkpoint-make",
         "book": "books/checkpoint.lisp",
         "line": 72,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-ocl-connection-archive-has-pinned-domain",
+        "book": "books/config-owner-live.lisp",
+        "line": 1293,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -16616,6 +16681,18 @@
         "check": "fn-bs-txn-name-injective-without-name-equality",
         "book": "tests/acl2/byte-store-txn-name-tests.lisp",
         "line": 63,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-ocl-read-without-historical-input-is-not-preserved",
+        "book": "tests/acl2/config-owner-live-tests.lisp",
+        "line": 136,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "ocri-read-without-relation-is-not-preserved",
+        "book": "tests/acl2/config-owner-read-invariants-tests.lisp",
+        "line": 58,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -18896,9 +18973,30 @@
       },
       {
         "book": "tests/acl2/config-owner-live-tests.lisp",
-        "line": 5,
+        "line": 6,
         "include": "config-observed-tests",
         "included": "tests/acl2/config-observed-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-owner-read-invariants-tests.lisp",
+        "line": 4,
+        "include": "../../books/config-owner-read-invariants",
+        "included": "books/config-owner-read-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-owner-read-invariants-tests.lisp",
+        "line": 5,
+        "include": "config-owner-live-tests",
+        "included": "tests/acl2/config-owner-live-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-owner-read-invariants-tests.lisp",
+        "line": 6,
+        "include": "served-tls-prefix-tests",
+        "included": "tests/acl2/served-tls-prefix-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
