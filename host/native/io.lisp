@@ -825,6 +825,10 @@ round policy."
 ;; completion subject a second time.
 (defvar *fnn-observe-callback* #'fnn-bridge-io)
 (defvar *fnn-finish-callback* #'fnn-bridge-finish)
+; Developer fault cut, dynamically scoped to one canonical Store publication.
+; NIL in normal operation.  The cut runs after the final link and before its
+; directory barrier, so an injected EIO is an uncertain publication.
+(defvar *fnn-record-directory-fault-observer* nil)
 ; host/native/checkpoint.lisp installs this callback after it loads.  A build
 ; without that optional layer retains authoritative full replay and reports
 ; no selected checkpoint.
@@ -1547,6 +1551,9 @@ after the syscall."
             (fnn-indeterminate "ACL2 rejected record publication after the final-name attempt"))
           (fnn-at store :record-attempted)
           (handler-case (progn (fnn-at store :record-barrier)
+                               (when *fnn-record-directory-fault-observer*
+                                 (funcall *fnn-record-directory-fault-observer*
+                                          final))
                                (fnn-fsync-dir (fnn-transactions store)))
             (fnn-os-error (e) (fnn-observe store :record-directory :error) (error e)))
           (fnn-at store :record-durable)
