@@ -23,3 +23,35 @@
                                fn-sn-completion-record
                                fn-stxe-p fn-stxk-p fn-stxa-p
                                fn-store-retention-event-p))))
+
+; These two projections are deliberately independent of the replay step.
+; Article state is newest first; the Store journal is oldest first.
+(defun fn-articles-msgid-stamps (articles)
+  (declare (xargs :guard t))
+  (if (consp articles)
+      (append (fn-articles-msgid-stamps (cdr articles))
+              (list (cons (fn-article-msgid (car articles))
+                          (fn-article-stamp (car articles)))))
+    nil))
+
+(defun fn-replay-article-record (record)
+  (declare (xargs :guard t))
+  (if (fn-stxa-p record)
+      (fn-replay-composite-record record)
+    record))
+
+(defun fn-replay-article-eventp (record)
+  (declare (xargs :guard t))
+  (and (not (fn-store-retention-event-p record))
+       (not (fn-stxe-p record))
+       (not (fn-stxk-p record))))
+
+(defun fn-replay-journal-article-stamps (records)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (if (fn-replay-article-eventp (car records))
+          (cons (cons (fn-record-msgid (fn-replay-article-record (car records)))
+                      (fn-record-stamp (fn-replay-article-record (car records))))
+                (fn-replay-journal-article-stamps (cdr records)))
+        (fn-replay-journal-article-stamps (cdr records)))
+    nil))
