@@ -132,6 +132,9 @@
               (fn-own-prefix-archive groups capacity records
                                      (fn-own-conn-version conn)
                                      (fn-own-conn-frontier conn)))
+       (fn-midx-correspondencep
+        (fn-own-conn-index conn)
+        (fn-state-articles (fn-own-conn-archive conn)))
        (fn-own-conn-boundedp conn groups)))
 
 (defun fn-own-conns-okp (conns groups capacity records)
@@ -150,7 +153,10 @@
        (equal (fn-own-view-archive view)
               (fn-own-prefix-archive groups capacity records
                                      (fn-own-view-version view)
-                                     (fn-own-view-frontier view)))))
+                                     (fn-own-view-frontier view)))
+       (fn-midx-correspondencep
+        (fn-own-view-index view)
+        (fn-state-articles (fn-own-view-archive view)))))
 
 (defun fn-own-ledger-durablep (ledger records)
   (declare (xargs :guard t))
@@ -610,6 +616,17 @@
                             fn-auth-open-config))
            :use ((:instance fn-auth-open-session-is-consistent
                             (tlsp nil))))))
+
+(defthm fn-own-conn-boundedp-of-make-indexed
+  (equal (fn-own-conn-boundedp
+          (fn-own-conn-make-indexed id version frontier wire session archive
+                                    config observation verdicts index)
+          groups)
+         (fn-own-conn-boundedp
+          (fn-own-conn-make id version frontier wire session archive config
+                            observation)
+          groups))
+  :hints (("Goal" :in-theory (enable fn-own-conn-boundedp))))
 
 (defthm fn-own-open-preserves-relation
   (implies (fn-own-relation o)
@@ -1281,12 +1298,17 @@
   :hints (("Goal"
            :use ((:instance fn-own-refresh-preserves-relation
                             (o (fn-own-make store
-                                            (fn-own-view-make
-                                             0 0 (fn-own-prefix-archive
-                                                  (fn-sn-groups store)
-                                                  (fn-sn-capacity store)
-                                                  (fn-sf-records (fn-sn-files store))
-                                                  0 0))
+                                            (let ((archive
+                                                   (fn-own-prefix-archive
+                                                    (fn-sn-groups store)
+                                                    (fn-sn-capacity store)
+                                                    (fn-sf-records
+                                                     (fn-sn-files store))
+                                                    0 0)))
+                                              (fn-own-view-make-indexed
+                                               0 0 archive nil
+                                               (fn-midx-build
+                                                (fn-state-articles archive))))
                                             nil 0 max-conns nil nil nil nil
                                             nil nil nil nil))))
            :in-theory (e/d (fn-own-relation)
@@ -1323,7 +1345,7 @@
              (equal (car (fn-own-read o id octets))
                     (fn-served-result-effects
                      (fn-served-step
-                      (fn-served-make-conn
+                      (fn-served-make-conn-indexed
                        (fn-own-conn-wire conn)
                        (fn-own-conn-live-session o conn)
                        (fn-node-acceptance
@@ -1333,7 +1355,9 @@
                                            (fn-own-conn-frontier conn)))
                        (fn-own-conn-config conn)
                        (fn-own-conn-observation conn)
-                       (fn-own-clock o))
+                       (fn-own-clock o)
+                       (fn-own-conn-verdicts conn)
+                       (fn-own-conn-index conn))
                       octets)))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-okp
@@ -1353,7 +1377,7 @@
              (equal (car (fn-own-read final id octets))
                     (fn-served-result-effects
                      (fn-served-step
-                      (fn-served-make-conn
+                      (fn-served-make-conn-indexed
                        (fn-own-conn-wire conn)
                        (fn-own-conn-live-session final conn)
                        (fn-node-acceptance
@@ -1363,7 +1387,9 @@
                                            (fn-own-conn-frontier conn)))
                        (fn-own-conn-config conn)
                        (fn-own-conn-observation conn)
-                       (fn-own-clock final))
+                       (fn-own-clock final)
+                       (fn-own-conn-verdicts conn)
+                       (fn-own-conn-index conn))
                       octets)))))
   :hints (("Goal" :use (fn-own-run-preserves-relation
                         (:instance fn-own-read-is-served-step-on-pinned-prefix
@@ -1388,7 +1414,7 @@
              (equal (car (fn-own-read-step o id event))
                     (fn-served-result-effects
                      (fn-served-dispatch
-                      (fn-served-make-conn
+                      (fn-served-make-conn-indexed
                        (fn-own-conn-wire conn)
                        (fn-own-conn-session conn)
                        (fn-node-acceptance
@@ -1398,7 +1424,9 @@
                                            (fn-own-conn-frontier conn)))
                        (fn-own-conn-config conn)
                        (fn-own-conn-observation conn)
-                       (fn-own-clock o))
+                       (fn-own-clock o)
+                       (fn-own-conn-verdicts conn)
+                       (fn-own-conn-index conn))
                       event)))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-okp
@@ -1418,7 +1446,7 @@
              (equal (car (fn-own-read-step final id event))
                     (fn-served-result-effects
                      (fn-served-dispatch
-                      (fn-served-make-conn
+                      (fn-served-make-conn-indexed
                        (fn-own-conn-wire conn)
                        (fn-own-conn-session conn)
                        (fn-node-acceptance
@@ -1428,7 +1456,9 @@
                                            (fn-own-conn-frontier conn)))
                        (fn-own-conn-config conn)
                        (fn-own-conn-observation conn)
-                       (fn-own-clock final))
+                       (fn-own-clock final)
+                       (fn-own-conn-verdicts conn)
+                       (fn-own-conn-index conn))
                       event)))))
   :hints (("Goal" :use (fn-own-run-preserves-relation
                         (:instance fn-own-reader-sees-pinned-prefix-replay
@@ -2007,7 +2037,7 @@
                   (:instance fn-own-find-conn-of-replace-conn-same
                              (conns (fn-own-conns o))
                              (conn
-                              (fn-own-conn-make
+                              (fn-own-conn-make-indexed
                                (fn-own-conn-id (fn-own-find-conn id (fn-own-conns o)))
                                (fn-own-view-version (fn-own-view o))
                                (fn-own-view-frontier (fn-own-view o))
@@ -2042,7 +2072,9 @@
                                (fn-own-view-archive (fn-own-view o))
                                (fn-own-conn-config (fn-own-find-conn id (fn-own-conns o)))
                                (fn-own-conn-observation
-                                (fn-own-find-conn id (fn-own-conns o)))))))
+                                (fn-own-find-conn id (fn-own-conns o)))
+                               (fn-own-view-verdicts (fn-own-view o))
+                               (fn-own-view-index (fn-own-view o))))))
             :in-theory (e/d (fn-own-relation fn-own-advance fn-own-set-conns)
                             (fn-own-conn-boundedp fn-own-find-conn-okp
                              fn-post-sessionp fn-nntp-open-session

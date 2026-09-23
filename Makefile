@@ -367,12 +367,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-invariants \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
+	tests/acl2/nntp-pinned-index-tests \
 	tests/acl2/nntp-teeth-tests \
 	books/mailbox \
 	books/injection \
 	books/injection-invariants \
 	tests/acl2/injection-tests \
 	books/nntp-post \
+	books/nntp-pinned-effects \
 	tests/acl2/nntp-post-tests \
 	books/path \
 	books/path-update \
@@ -435,6 +437,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-agent \
 	books/owner-log \
 	tests/acl2/owner-tests \
+	tests/acl2/owner-verdict-tests \
 	tests/acl2/owner-operator-tests \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
@@ -473,6 +476,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/policy-tests \
 	books/stx-carrier \
 	books/stx-verify \
+	books/stx-reader \
+	tests/acl2/stx-reader-tests \
+	books/nntp-verdict \
+	books/nntp-verdict-effects \
+	tests/acl2/nntp-verdict-tests \
 	books/stx-invariants \
 	books/stx-lace \
 	books/stx-index \

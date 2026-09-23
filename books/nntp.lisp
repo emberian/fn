@@ -186,3 +186,66 @@
     fn-nntp-command fn-nntp-step))
 
 (in-theory (disable fn-nntp-vocabulary))
+
+; Served connections carry an immutable accepted archive, its historical
+; verdict projection and the corresponding Message-ID trie.  Only the four
+; Message-ID retrieval spellings use the trie here; all other commands retain
+; the established archive dispatcher except the pinned :fn-verified HDR item.
+(include-book "nntp-verdict")
+
+(defun fn-nntp-archive-command-pinned
+    (session archive index verdicts env keyword args)
+  (cond
+   ((and (or (fn-nntp-keywordp keyword "ARTICLE")
+             (fn-nntp-keywordp keyword "HEAD")
+             (fn-nntp-keywordp keyword "BODY")
+             (fn-nntp-keywordp keyword "STAT"))
+         (consp args) (null (cdr args))
+         (fn-nntp-message-id-tokenp (car args)))
+    (fn-nntp-msgid-retrieval-indexed
+     session archive index
+     (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
+           ((fn-nntp-keywordp keyword "HEAD") :head)
+           ((fn-nntp-keywordp keyword "BODY") :body)
+           (t :stat))
+     (car args)))
+   ((and (fn-nntp-keywordp keyword "HDR")
+         (consp args)
+         (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
+    (fn-nntp-verdict-hdr-response session archive verdicts args))
+   (t (fn-nntp-archive-command session archive env keyword args))))
+
+(defun fn-nntp-command-pinned (session archive index verdicts env tokens)
+  (let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
+        (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
+    (if (not (fn-nntp-keyword-tokenp keyword))
+        (fn-nntp-single session "501 syntax error")
+      (if (not (fn-nntp-archive-keywordp keyword))
+          (fn-nntp-session-command session env keyword args)
+        (if (fn-nntp-session-projected session)
+            (fn-nntp-archive-command-pinned
+             session archive index verdicts env keyword args)
+          (fn-nntp-single session "503 archive projection unavailable"))))))
+
+(defun fn-nntp-step-pinned (session archive index verdicts env wire-event)
+  (if (or (not (fn-nntp-sessionp session))
+          (not (equal (fn-nntp-session-openp session) t)))
+      (fn-nntp-make-result session nil)
+    (if (and (consp wire-event)
+             (equal (car wire-event) :command)
+             (consp (cdr wire-event))
+             (null (cdr (cdr wire-event))))
+        (let ((line (car (cdr wire-event))))
+          (if (not (fn-nntp-command-inputp line))
+              (fn-nntp-single session "501 syntax error")
+            (let ((tokens (fn-nntp-tokenize line)))
+              (if (and (consp tokens)
+                       (fn-nntp-command-arguments-at-mostp tokens))
+                  (fn-nntp-command-pinned
+                   session archive index verdicts env tokens)
+                (fn-nntp-single session "501 syntax error")))))
+      (fn-nntp-single session "501 syntax error"))))
+
+(verify-guards fn-nntp-archive-command-pinned)
+(verify-guards fn-nntp-command-pinned)
+(verify-guards fn-nntp-step-pinned)

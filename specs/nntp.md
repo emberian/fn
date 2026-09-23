@@ -153,6 +153,21 @@ completeness. `fn-nntp-newnews-lines-are-clean` and
 the output bound. The per-group index of `books/nntp-index.lisp` is not on the
 served path; replacing the whole-list walk remains open.
 
+Message-ID forms of `ARTICLE`, `HEAD`, `BODY`, and `STAT` use the connection's
+pinned trie rather than scanning its accepted article list. The owner refreshes
+the current view with `fn-midx-refresh` when Store reaches an idle phase, then
+pins the archive and corresponding trie together at open or after a durable
+posting outcome. Existing connections keep their earlier pair. The proof-side
+`fn-own-relation` includes exact trie-to-archive correspondence for the current
+view and every retained connection; it is established by `fn-own-start-relation`
+and carried by `fn-own-run-preserves-relation`. Under that premise,
+`fn-nntp-msgid-retrieval-indexed-refines-scan` equates the indexed answer with
+the original list lookup. The host-called `fn-own-read` is tied to the pinned
+served step by `fn-own-read-is-served-step-on-pinned-prefix`. These are in-memory
+indexes, reconstructed from committed acceptance on recovery; they do not
+change acceptance authority or add disk index files. Per-group number/range
+reads and `NEWNEWS` still walk the pinned archive.
+
 230 is a complete answer. 501 is the syntax refusal for malformed arguments,
 date/time or wildmat. 503 remains only for a two-digit year when the pinned
 reader observation has no wall clock, per §7.3.2. NEWNEWS changes no session

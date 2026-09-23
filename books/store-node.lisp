@@ -13,6 +13,7 @@
 ; fn-node-statep would be a cycle (w11/node-index).  This record is not in
 ; books/stx-index's closure, so carrying it here is not.
 (include-book "stx-index")
+(include-book "stx-reader")
 (include-book "records-seam")
 (include-book "records-stamp")
 ; The codecs cluster withdraws the record and codec definitions at export
@@ -898,11 +899,7 @@
 
 (defun fn-sn-verdict-lookup-list (msgid xs)
   (declare (xargs :guard t))
-  (if (consp xs)
-      (if (and (consp (car xs)) (equal msgid (car (car xs))))
-          (cdr (car xs))
-        (fn-sn-verdict-lookup-list msgid (cdr xs)))
-    nil))
+  (fn-stx-reader-lookup msgid xs))
 
 ; Durable kind-4 acceptance installs a historical verdict here.  A legacy
 ; fn-r completion also exposes its current-process observation for compatibility,
