@@ -20,6 +20,9 @@ session. None of them is a gate or a claim; each says what it does at the top.
   groups, principals `ember`/`yue`/`tulip` with generated passwords kept only
   in `/tank/fn/node/credentials.txt` (mode 0600), and a user systemd unit
   `fn-node.service`. Refuses to touch an existing `/tank/fn/node/store`.
+- `two-host-protected-gate.md`: stage one source-pinned frozen image in
+  separate hbox and persvati scratch paths and run the protected NNTP gate
+  after its image hashes are supplied. It never uses the live node store.
 
 After `hbox-node-deploy.sh`, the check from the laptop is `tools/node_probe.py`
 (see docs/operator.md, "Reaching it from a laptop"): STARTTLS, the 483 before

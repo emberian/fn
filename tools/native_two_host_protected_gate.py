@@ -9,6 +9,126 @@ import argparse, hashlib, json, os, re, secrets, select, shlex, socket, ssl, sub
 from pathlib import Path
 
 
+MAX_LAUNCHER_BYTES = 16 * 1024
+SAFE_ABSOLUTE = re.compile(r"/[A-Za-z0-9_./+@%:=-]+")
+FROZEN_MARKER = "# fn frozen image launcher v1"
+FROZEN_PREAMBLE = [
+    'here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)',
+    'export SBCL_HOME="$here/runtime/sbcl-home/"',
+    'export FN_OPENSSL_PREFIX="$here/openssl"',
+    'export LD_LIBRARY_PATH="$here/lib:$here/openssl/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"',
+]
+RUNTIME_FLAGS = {
+    "--disable-ldb", "--noinform", "--end-runtime-options",
+    "--no-userinit", "--no-sysinit", "--disable-debugger",
+    "--end-toplevel-options", "--lose-on-corruption",
+}
+RUNTIME_NUMBERS = {"--tls-limit", "--dynamic-space-size", "--control-stack-size"}
+
+
+def literal_absolute_path(path):
+    """Accept only a canonical-looking POSIX path, never a shell expression."""
+    return (bool(SAFE_ABSOLUTE.fullmatch(path)) and path.startswith("/")
+            and all(part not in ("", ".", "..") for part in path.split("/")[1:]))
+
+
+def launcher_paths(script, image):
+    """Recognize the frozen v1 or literal SBCL launcher; do not execute it.
+
+    The one allowed variable in SBCL's generated exec tail is
+    ``${SBCL_USER_ARGS}``.  All gate invocations force it empty.  The frozen
+    ``$here`` is resolved only through the exact packaging preamble.
+    """
+    if not literal_absolute_path(image):
+        raise ValueError("image path is not canonical absolute")
+    if len(script.encode("utf-8")) > MAX_LAUNCHER_BYTES or "\0" in script or "\r" in script:
+        raise ValueError("launcher is not bounded text")
+    lines = script.splitlines()
+    if not lines or lines[0] != "#!/bin/sh":
+        raise ValueError("unknown launcher interpreter")
+    frozen = FROZEN_MARKER in lines
+    body = [line for line in lines[1:] if line.strip() and not line.lstrip().startswith("#")]
+    if frozen:
+        if lines.count(FROZEN_MARKER) != 1 or body[:-1] != FROZEN_PREAMBLE:
+            raise ValueError("unknown frozen launcher preamble")
+    else:
+        for line in body[:-1]:
+            match = re.fullmatch(r"export (SBCL_HOME|FN_OPENSSL_PREFIX|LD_LIBRARY_PATH)='([^']*)'", line)
+            if not match or not literal_absolute_path(match.group(2).rstrip("/")):
+                raise ValueError("unknown literal launcher environment")
+    if not body:
+        raise ValueError("launcher has no exec")
+    command = body[-1]
+    if any(char in command for char in "`;&|<>\\"):
+        raise ValueError("launcher exec has shell syntax")
+    if not re.fullmatch(r'exec "[^"\n]+"(?: [^\n]+)+ "\$@"', command):
+        raise ValueError("unknown launcher exec shape")
+    try:
+        words = shlex.split(command, posix=True)
+    except ValueError as error:
+        raise ValueError("unknown launcher quoting") from error
+    if len(words) < 5 or words[0] != "exec" or words[-1] != "$@":
+        raise ValueError("unknown launcher arguments")
+    runtime = words[1]
+    core = None
+    seen = set()
+    args = words[2:-1]
+    index = 0
+    while index < len(args):
+        option = args[index]
+        if option in seen and option != "${SBCL_USER_ARGS}":
+            raise ValueError("duplicate launcher option")
+        if option in RUNTIME_NUMBERS:
+            if index + 1 >= len(args) or not args[index + 1].isdecimal() or int(args[index + 1]) <= 0:
+                raise ValueError("unknown numeric runtime option")
+            seen.add(option); index += 2
+        elif option == "--core":
+            if index + 1 >= len(args):
+                raise ValueError("launcher has no core path")
+            seen.add(option); core = args[index + 1]; index += 2
+        elif option == "--eval":
+            if index + 1 >= len(args) or args[index + 1] != "(acl2::sbcl-restart)":
+                raise ValueError("unknown runtime evaluation")
+            seen.add(option); index += 2
+        elif option == "${SBCL_USER_ARGS}":
+            if (option in seen or index == 0 or args[index - 1] != "--noinform"
+                    or index + 1 >= len(args) or args[index + 1] != "--end-runtime-options"):
+                raise ValueError("unbound SBCL_USER_ARGS position")
+            seen.add(option); index += 1
+        elif option in RUNTIME_FLAGS:
+            seen.add(option); index += 1
+        else:
+            raise ValueError("unknown runtime option or variable")
+    if core is None:
+        raise ValueError("launcher has no core")
+    expected_core = image + ".core"
+    if frozen:
+        expected_runtime = str(Path(image).parent / "runtime" / "sbcl")
+        if runtime != "$here/runtime/sbcl" or core != "$here/" + Path(expected_core).name:
+            raise ValueError("frozen launcher runtime/core mismatch")
+        return expected_runtime, expected_core
+    if not literal_absolute_path(runtime) or not literal_absolute_path(core):
+        raise ValueError("literal launcher contains expansion or traversal")
+    if core != expected_core:
+        raise ValueError("literal launcher core mismatch")
+    return runtime, core
+
+
+def image_argv(image, *arguments):
+    # Generated SBCL launchers splice this variable into runtime arguments;
+    # the frozen wrapper appends an inherited library path after its own libs.
+    return ["env", "SBCL_USER_ARGS=", "LD_LIBRARY_PATH=", image, *arguments]
+
+
+def observed_image_paths(runtime_path, argv, expected_runtime, expected_core):
+    if runtime_path != expected_runtime:
+        raise RuntimeError("running runtime path changed")
+    if argv.count("--core") != 1 or argv.index("--core") + 1 >= len(argv):
+        raise RuntimeError("running argv has no unique core")
+    if argv[argv.index("--core") + 1] != expected_core:
+        raise RuntimeError("running core path changed")
+
+
 def run(argv, *, data=None, timeout=120, check=True):
     result = subprocess.run(argv, input=data, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, timeout=timeout)
@@ -114,17 +234,32 @@ def main():
     ap.add_argument("--evidence-dir", required=True)
     ap.add_argument("--timeout", type=int, default=300)
     args = ap.parse_args()
+    if not re.fullmatch(r"[0-9a-f]{40}", args.source):
+        ap.error("--source must be the full lowercase 40-hex source revision")
     nodes = [] ; tunnels = [] ; owners = [] ; observations = []
     token = secrets.token_hex(6)
     local = tempfile.TemporaryDirectory(prefix="fn-two-host-protected-")
     try:
         for side in "ab":
             host=getattr(args,"host_"+side); image=getattr(args,"image_"+side)
-            core=image+".core"; launcher=remote_sha(host,image); core_sha=remote_sha(host,core)
-            script=ssh(host,["cat",image]).stdout.decode("utf-8","replace")
-            match=re.search(r'exec "([^"]+)".*--core "([^"]+)"',script)
-            if not match or match.group(2) != core: raise RuntimeError("unbound core path on "+host)
-            runtime=match.group(1); runtime_sha=remote_sha(host,runtime)
+            if not literal_absolute_path(image):
+                raise RuntimeError("image path is not canonical absolute on "+host)
+            resolved_image=ssh(host,["readlink","-f",image]).stdout.decode().strip()
+            if resolved_image != image:
+                raise RuntimeError("image path is not canonical on "+host)
+            launcher=remote_sha(host,image)
+            script_bytes=ssh(host,["head","-c",str(MAX_LAUNCHER_BYTES+1),image]).stdout
+            if len(script_bytes) > MAX_LAUNCHER_BYTES:
+                raise RuntimeError("launcher exceeds parse bound on "+host)
+            if hashlib.sha256(script_bytes).hexdigest() != launcher:
+                raise RuntimeError("launcher changed during identity check on "+host)
+            script=script_bytes.decode("utf-8","strict")
+            runtime,core=launcher_paths(script,image)
+            if FROZEN_MARKER in script.splitlines():
+                image_dir=shlex.quote(str(Path(image).parent))
+                ssh(host,["sh","-c","cd {} && sha256sum -c image.sha256".format(image_dir)],timeout=180)
+            core_sha=remote_sha(host,core); runtime_sha=remote_sha(host,runtime)
+            resolved_runtime=ssh(host,["readlink","-f",runtime]).stdout.decode().strip()
             manifest=str(Path(image).parent/"build-source.sha256")
             if remote_sha(host,manifest) != getattr(args,"source_manifest_sha_"+side):
                 raise RuntimeError("source manifest identity mismatch on "+host)
@@ -132,13 +267,14 @@ def main():
             if (launcher,core_sha,runtime_sha) != expected: raise RuntimeError("image identity mismatch on "+host)
             root="/tmp/fn-protected-{}-{}".format(args.source[:12],token)
             ssh(host,["mkdir","-m","700",root])
-            node=dict(side=side,host=host,image=image,root=root,runtime=runtime)
+            node=dict(side=side,host=host,image=image,root=root,
+                      runtime=runtime,resolved_runtime=resolved_runtime,core=core)
             nodes.append(node)
             listen=remote_port(host); tunnel=remote_port(host)
             cert=root+"/cert.pem"; key=root+"/key.pem"; store=root+"/store"; config=root+"/fn.toml"; auth=root+"/auth.toml"
             node.update(listen=listen,tunnel=tunnel,cert=cert,key=key,store=store,config=config,auth=auth)
             ssh(host,["openssl","req","-x509","-newkey","rsa:2048","-nodes","-sha256","-days","1","-subj","/CN=localhost","-keyout",key,"-out",cert])
-            ssh(host,[image,"--fn","store",store,"init","fn.test"])
+            ssh(host,image_argv(image,"--fn","store",store,"init","fn.test"))
         # Fetch each certificate for local validation and install it as the
         # opposite node's explicit outbound trust anchor.
         for n in nodes:
@@ -153,8 +289,8 @@ def main():
                     'protected_only = true\npath = "{auth}"\n[control]\npath = "{root}/control.sock"\n').format(**n)
             write_remote(n["host"],n["config"],config.encode(),"600")
             pw=passwords[other["side"]]
-            ssh(n["host"],[n["image"],"--fn","operator",n["config"],"principal","set-password",login,"--posting"],data=(pw+"\n"+pw+"\n").encode(),timeout=180)
-            listing=ssh(n["host"],[n["image"],"--fn","operator",n["config"],"principal","list"]).stdout.decode()
+            ssh(n["host"],image_argv(n["image"],"--fn","operator",n["config"],"principal","set-password",login,"--posting"),data=(pw+"\n"+pw+"\n").encode(),timeout=180)
+            listing=ssh(n["host"],image_argv(n["image"],"--fn","operator",n["config"],"principal","list")).stdout.decode()
             ids=re.findall(r"[0-9a-f]{64}",listing)
             if len(ids)!=1: raise RuntimeError("principal projection on "+n["host"])
             n["principal"]=ids[0]; n["login"]=login; n["password"]=pw
@@ -174,7 +310,7 @@ def main():
             anchor=n["root"]+"/peer-ca.pem"; write_remote(n["host"],anchor,Path(other["local_cert"]).read_bytes(),"600")
             profile=n["root"]+"/outbound.fnauth"; write_remote(n["host"],profile,("FNAUTH1\n{}\n{}\n".format(other["login"],other["password"])).encode(),"600")
             n["anchor"], n["profile"] = anchor, profile
-            argv=[n["image"],"--fn","operator",n["config"],"peer","add",other["side"],other["side"]+".example.invalid","127.0.0.1",str(n["tunnel"]),"fn.*","fn.*","principal",n["principal"],profile,"false","true","starttls","localhost",anchor]
+            argv=image_argv(n["image"],"--fn","operator",n["config"],"peer","add",other["side"],other["side"]+".example.invalid","127.0.0.1",str(n["tunnel"]),"fn.*","fn.*","principal",n["principal"],profile,"false","true","starttls","localhost",anchor)
             ssh(n["host"],argv)
 
         def start_owner(n):
@@ -182,7 +318,7 @@ def main():
             remote="echo $$ > {}; exec {}".format(
                 shlex.quote(pidfile),
                 " ".join(shlex.quote(x) for x in
-                         [n["image"],"--fn","operator",n["config"],"run"]))
+                         image_argv(n["image"],"--fn","operator",n["config"],"run")))
             cmd=["ssh","-o","BatchMode=yes",n["host"],"sh -c "+shlex.quote(remote)]
             log=Path(local.name)/(n["side"]+"-owner-{}.stderr".format(len(owners)))
             log_handle=log.open("wb")
@@ -198,11 +334,10 @@ def main():
                 raise RuntimeError("running runtime identity changed on "+n["host"])
             argv=ssh(n["host"],["cat","/proc/"+pid+"/cmdline"]).stdout.split(b"\0")
             argv=[part.decode("utf-8","strict") for part in argv if part]
-            if "--core" not in argv or argv.index("--core")+1 >= len(argv):
-                raise RuntimeError("running argv has no core on "+n["host"])
+            observed_image_paths(observed_runtime,argv,n["resolved_runtime"],n["core"])
             observed_core=argv[argv.index("--core")+1]
             observed_core_sha=remote_sha(n["host"],observed_core)
-            if observed_core != n["image"]+".core" or observed_core_sha != getattr(args,"core_sha_"+n["side"]):
+            if observed_core_sha != getattr(args,"core_sha_"+n["side"]):
                 raise RuntimeError("running core changed on "+n["host"])
             observations.append(dict(event="owner-start",host=n["host"],pid=int(pid),
                 command=cmd,proc_argv=argv,runtime_path=observed_runtime,
@@ -225,7 +360,7 @@ def main():
             article=("From: gate@example.invalid\r\nNewsgroups: fn.test\r\nSubject: protected\r\nDate: Mon, 21 Sep 2026 12:00:00 +0000\r\nMessage-ID: {}\r\n\r\n{}\r\n".format(mid,label)).encode()
             payload=n["root"]+"/"+label+".article"
             write_remote(n["host"],payload,article,"600")
-            ssh(n["host"],[n["image"],"--fn","operator",n["config"],"post","--message-id",mid,"--payload",payload,"--group","fn.test"])
+            ssh(n["host"],image_argv(n["image"],"--fn","operator",n["config"],"post","--message-id",mid,"--payload",payload,"--group","fn.test"))
             return mid,article
 
         def await_article(n, mid, article, seconds):
