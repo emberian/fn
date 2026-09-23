@@ -427,9 +427,14 @@
          (peer-eid (fnn-core 'fn-bpn-host-eid announced))
          (answer (and owner channel
                       (fnn-owner-core 'fn-owner-bp-session-principal
-                                      channel announced)))
+                                      channel peer-eid)))
          (principal (and (eq (first answer) :admitted) (second answer)))
          (generation (if principal (third answer) 0)))
+    (when (and answer (eq (first answer) :refused))
+      ;; The reason is ACL2's admission result.  Keep it visible at the
+      ;; channel boundary without logging an identity or article octets.
+      (fnn-out "BP channel admission refused reason=~(~a~)"
+               (second answer)))
     (fnn-core 'fn-bpnf-tcpcl-ingress
               (fnn-bps-state service) session-counter xfer-id peer-eid
               principal generation)))
