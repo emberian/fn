@@ -209,6 +209,45 @@ decoded as source-address for durable command compatibility."
             (fn-native-admin-result :refused :peer-record nil nil 0 nil nil)))
       (fn-native-admin-result :refused :syntax nil nil 0 nil nil)))))
 
+; A BP-only peer boundary is one durable :set-peer row group.  The profile is
+; deliberately narrow: loopback IPv4, no translation, and every co-resident
+; process in the originator set.  Its auth-principal value cannot be a SHA-256
+; principal hex, so this row does not grant an NNTP peer login as a side effect.
+(defun fn-native-admin-bp-boundary-rows (name path eid port)
+  (declare (xargs :guard t))
+  (list (fn-cfg-row-make name "path-identity" path 0)
+        (fn-cfg-row-make name "transport-bp" eid 0)
+        (fn-cfg-row-make name "auth-principal" "bp-only-no-nntp-principal" 0)
+        (fn-cfg-row-make name "bp-trust" "network" 0)
+        (fn-cfg-row-make name "bp-boundary-listener" "127.0.0.1" port)
+        (fn-cfg-row-make name "bp-boundary-source" "127.0.0.1" 0)
+        (fn-cfg-row-make name "bp-boundary-translation" "none" 0)
+        (fn-cfg-row-make name "bp-boundary-originators"
+                         "all-co-resident" 0)))
+
+(defun fn-native-admin-bp-boundary-plan (words)
+  (declare (xargs :guard t))
+  (if (and (true-listp words) (equal (len words) 6)
+           (equal (nth 0 words) "bp-boundary")
+           (equal (nth 1 words) "add")
+           (fn-cfg-labelp (nth 2 words))
+           (not (equal (nth 2 words) ""))
+           (fn-path-identityp (fn-record-string-octets (nth 3 words)))
+           (fn-cfg-labelp (nth 4 words))
+           (fn-native-admin-decimalp (nth 5 words))
+           (<= 1 (fn-native-admin-decimal-value
+                  (coerce (nth 5 words) 'list)))
+           (<= (fn-native-admin-decimal-value
+                (coerce (nth 5 words) 'list)) 65535))
+      (let* ((name (nth 2 words))
+             (rows (fn-native-admin-bp-boundary-rows
+                    name (nth 3 words) (nth 4 words)
+                    (fn-native-admin-decimal-value
+                     (coerce (nth 5 words) 'list)))))
+        (fn-native-admin-result :accepted nil :set-bp-boundary
+                                (fn-record-string-octets name) 0 nil rows))
+    (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil)))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t))
@@ -265,6 +304,8 @@ decoded as source-address for durable command compatibility."
                (not (equal (caddr words) "")))
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
          (t (fn-native-admin-peer-plan words))))
+       ((and (consp words) (equal (car words) "bp-boundary"))
+        (fn-native-admin-bp-boundary-plan words))
        (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))))))
 
 ; The delta list the LIVE owner stages for an accepted plan.
@@ -291,6 +332,9 @@ decoded as source-address for durable command compatibility."
           (name (fn-record-octets-string (fn-native-admin-result-name plan))))
       (cond ((equal kind :set-peer)
              (list (fn-cfg-set-peer-delta (fn-native-admin-result-peer plan))))
+            ((equal kind :set-bp-boundary)
+             (list (fn-cfg-set-peer name
+                                    (fn-native-admin-result-value plan))))
             ((equal kind :remove-peer)
              (list (fn-cfg-remove-peer-delta name)))
             ((equal kind :create-group)

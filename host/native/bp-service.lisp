@@ -419,20 +419,20 @@
         (values result adu)))))
 
 (defun fnn-bps-tcpcl-ingress
-  (service conn session-counter xfer-id configured-peer)
+  (service conn session-counter xfer-id owner channel)
   (let* ((negotiated
            (fnn-core 'fn-tcl-session-negotiated (fnn-tclc-session conn)))
          (announced
            (fnn-core 'fn-tcl-negotiated-peer-node-id negotiated))
          (peer-eid (fnn-core 'fn-bpn-host-eid announced))
-         ;; Only the configured, TCPCL-admitted peer can select a principal.
-         ;; An unconfigured announced EID is evidence, not authority.
-         (principal
-           (and configured-peer
-                (fnn-octet-list (fnn-string-octets configured-peer)))))
+         (answer (and owner channel
+                      (fnn-owner-core 'fn-owner-bp-session-principal
+                                      channel announced)))
+         (principal (and (eq (first answer) :admitted) (second answer)))
+         (generation (if principal (third answer) 0)))
     (fnn-core 'fn-bpnf-tcpcl-ingress
               (fnn-bps-state service) session-counter xfer-id peer-eid
-              principal 0)))
+              principal generation)))
 
 (defun fnn-bps-open (journal config wall wall-error)
   (let* ((root (fnn-bp-journal-dir journal))
