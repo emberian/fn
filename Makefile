@@ -391,6 +391,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served \
 	books/served-tls-prefix \
 	books/owner-tls-prefix \
+	tests/acl2/owner-tls-pin-tests \
 	tests/acl2/served-tls-prefix-tests \
 	books/nntp-auth-invariants \
 	tests/acl2/served-tests \

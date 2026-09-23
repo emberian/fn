@@ -388,6 +388,7 @@
     "books/served",
     "books/served-tls-prefix",
     "books/owner-tls-prefix",
+    "tests/acl2/owner-tls-pin-tests",
     "tests/acl2/served-tls-prefix-tests",
     "books/nntp-auth-invariants",
     "tests/acl2/served-tests",
@@ -503,13 +504,13 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 504,
-    "books_in_root_closure": 503,
-    "roots": 499,
-    "theorems": 7693,
+    "books": 505,
+    "books_in_root_closure": 504,
+    "roots": 500,
+    "theorems": 7694,
     "functions": 5847,
-    "assert_events": 8490,
-    "must_fails": 361,
+    "assert_events": 8495,
+    "must_fails": 362,
     "encapsulates": 26,
     "guards": {
       "verified": 1892,
@@ -521,7 +522,7 @@
     "export_hygiene_warnings": 95,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 26,
-    "include_hygiene_warnings": 360,
+    "include_hygiene_warnings": 361,
     "host_names_warnings": 691,
     "hand_written_record_warnings": 18
   },
@@ -6008,7 +6009,7 @@
       "book": "books/owner-tls-prefix.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
+      "theorems": 3,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -12493,6 +12494,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-tls-pin-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 1,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-tls-prefix",
+        "owner-verdict-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-verdict-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -17727,6 +17756,13 @@
         "line": 18,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-tls-pin-tests.lisp",
+        "line": 5,
+        "include": "owner-verdict-tests",
+        "included": "tests/acl2/owner-verdict-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
