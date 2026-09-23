@@ -101,8 +101,13 @@ lane-days for the benchmark and the sync; the rest is the packages named.
 The standing rule (how we work, last bullet) and the method: the cost
 records under `planning/evidence/*-cost-2026-09-23.md` are the worked
 examples, `planning/evidence/certification-cost-2026-09-23.md` the whole-run
-analysis and its prioritized list. Whatever is still over ten seconds in
-the newest treewide manifest after tonight's lanes land is this package;
+analysis and its prioritized list. After tonight's fifteen cost lanes the fourth
+incremental run of dev's head (`certify-20260923T024141Z`, 62 certified,
+363 installed, all green) leaves exactly three books over ten seconds:
+`tcpcl-session` 23 s (its message recognizer splits 2,321 ways in two
+theorems; a fields lemma for a segment message is the fix the lane named),
+`owner-invariants` 17 s and `tcpcl-octets` 12 s; those three, and whatever
+the newest manifest shows after, are this package;
 also the lint that makes it a check: a `tools/proof_cost.py` that reads the
 newest manifest and names every book over the threshold, wired into
 `make check` as a warning. 1 to 2 lane-days, any box. Below the threshold
