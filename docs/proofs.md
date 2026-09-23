@@ -257,7 +257,26 @@ complete origin when one exists and otherwise composes the closure from the
 newest usable pair per book, never from a live worktree still on this
 machine, and `install` keeps the per-book rule and reports `foreign-local`.
 A pair whose bytes match a refused entry is removed, so a worktree an
-earlier origin-blind install poisoned recovers.
+earlier origin-blind install poisoned recovers. `install-set` is all or
+nothing, which after a change low in the graph meant refusing the run
+(2026-09-23: 338 of 409 books cached at dev's digests, 70 not, and the treewide
+submit was refused). **A certification run is incremental by default:**
+`certs.py install-partial` installs every book of the roots' closure, roots
+included, whose pair is cached at its current closure key and this ACL2
+toolchain identity, each from its own newest usable origin, and removes any
+local pair of the rest; `certify_books.py --incremental` does that in-process
+once it knows the toolchain, certifies the uninstalled books in dependency
+order with the critical-path scheduler, and does not certify a root that
+installed. Its manifest keeps `requested_books` as the books ACL2 certified
+and adds `roots`, `book_provenance` (`installed` or `certified` per closure
+book), `installed_books` (book to origin), `cache_install` (counts, origins,
+`roots_installed`) and `installed_over_failed`: an installed book one of whose
+dependencies this run certified and failed, which is a certificate of its
+bytes that does not include here. An installed book over a dependency the run
+certifies is sound because its key fixes that dependency's bytes, and ACL2
+checks the dependency's book-hash, which a fresh certificate of those bytes
+reproduces (the record's case 5). A fully cached closure certifies nothing and
+passes with every root `installed`.
 Farm runs are the reusable case: `farm.py submit --remote-root` runs under a
 path that does not exist here, and `wait` publishes with that path as the
 origin, so those pairs install into any local worktree. `install` computes the
@@ -494,12 +513,20 @@ locally and on the box, and `status` lists the runs on a host. `--cache` names
 the cache to use ON THE HOST; `submit` records it and `wait` reuses what was
 recorded, which is how a measurement of the cache isolates itself from the
 shared one. On hbox the runner is wrapped
-in `swarm-build`, which is where that box's memory cap is enforced. The
-invocation for a lane is
+in `swarm-build`, which is where that box's memory cap is enforced. A submit
+with plain roots or `--affected-by` is incremental: the preflight runs
+`install-partial` over the selected roots, prints how many books installed
+and how many are left to certify, never refuses for a miss, and the runner
+gets `--incremental` (under `--affected-by` the affected books are uncached
+by construction, so it certifies them and whatever else the cache lacks).
+`--require-origin ORIGIN` is the explicit demand for one complete dependency
+set from one origin and refuses otherwise; `--closure` stays root's
+from-scratch recertification (purge on a miss, certify the whole closure).
+The invocation for a lane is
 
     python3 tools/farm.py submit persvati --jobs 12 \
         --remote-root /home/ember/fn-lanes/<lane> \
-        --affected-by books/article.lisp --closure
+        --affected-by books/article.lisp
 
 and four things in it were each paid for by a run that produced nothing.
 `--remote-root` takes an **absolute** path: a leading `~` is resolved against
