@@ -98,7 +98,10 @@ signatures with native libraries, and asks ACL2 for the final conjunction.
 It reports `verified PRINCIPAL-HEX` (exit 0) or `unverified REASON` (exit 1).
 The caller-supplied ML public key must match the carrier's key set. This is an
 independent portable artifact check, not Store acceptance or a historical
-verdict. A generated field can travel with an article while the exact signed
+verdict. The commands use caller-supplied keys and do not enroll, succeed, or
+revoke a principal; manual enrollment remains the existing node policy, and
+the authority for key succession is still an unchosen D09 decision. A
+generated field can travel with an article while the exact signed
 source and mutable relay fields remain separate projections.
 
 The remaining Store join needs a versioned accepted-article binding with two
