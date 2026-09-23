@@ -1,0 +1,49 @@
+{
+  "domain": "8501",
+  "factoryId": "10",
+  "resourceBookId": "11",
+  "authorityCatalogueId": "12",
+  "federation": "9",
+  "tariffBase": "3",
+  "tariffPerBirth": "2",
+  "tariffPerGrant": "1",
+  "tariffPerInitialPayloadByte": "0",
+  "collector": "99",
+  "asset": "0",
+  "expectedSemantics": "6456933337608925423598368074884932038023287379680363841814784262278780659180",
+  "issuerEpoch": "2",
+  "genesisHeight": "10",
+  "factoryPredicate": {"type": "all", "predicates": []},
+  "enrollments": [{
+    "key": {
+      "keyId": "7007",
+      "keyEpoch": "2",
+      "algorithm": "1",
+      "subject": "7",
+      "publicKey": "3f6d2b0b59f89cc181cfa96d0228dcb65bc58732c46a0305a68a4d6ac6a7f3af",
+      "activeFrom": "0",
+      "activeUntil": "1000000",
+      "revoked": false
+    },
+    "accountId": "7",
+    "spendCapabilityId": "41",
+    "controlCapabilityId": "51",
+    "factoryObserveCapabilityId": "54",
+    "initialBalance": "100",
+    "accountPredicate": {"type": "all", "predicates": []}
+  }],
+  "factoryControllerSubject": "7",
+  "factoryControllerCapability": "53",
+  "meterAllowance": {
+    "incidences": "10000000",
+    "turnBytes": "10000000",
+    "memoryTouches": "10000000",
+    "witnessBytes": "10000000",
+    "proofWork": "10000000",
+    "storageBytes": "10000000",
+    "networkBytes": "10000000",
+    "sideEffectCount": "10000000",
+    "feeDebit": "10000000",
+    "leaseByteBlocks": "10000000"
+  }
+}
