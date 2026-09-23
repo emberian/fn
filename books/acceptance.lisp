@@ -463,6 +463,7 @@
                 (natp generation)
                 (stringp msgid)
                 (fn-octet-listp payload)
+                (fn-record-stampp stamp)
                 (fn-selection-validp groups (fn-state-groups s))
                 (not (fn-acceptedp msgid (fn-state-articles s))))
            (and (equal

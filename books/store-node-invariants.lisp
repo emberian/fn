@@ -398,7 +398,8 @@
                   (equal (fn-record-obligation-id record) (fn-node-stage-id stage))
                   (equal (fn-record-content-subject record) (fn-node-stage-subject stage))
                   (equal (fn-record-release-evidence record) (fn-node-stage-evidence stage))
-                  (equal (fn-record-charge record) (fn-node-stage-charge stage)))))
+                  (equal (fn-record-charge record) (fn-node-stage-charge stage))
+                  (equal (fn-record-stamp record) (fn-pending-stamp p)))))
   :rule-classes nil)
 
 (defun fn-sn-committed-recordp (node record)
@@ -412,6 +413,7 @@
          (equal (fn-article-msgid article) (fn-record-msgid record))
          (equal (fn-article-payload article) (fn-record-payload record))
          (equal (fn-article-groups article) (fn-record-groups record))
+         (equal (fn-article-stamp article) (fn-record-stamp record))
          (equal (fn-article-pin article) t)
          (equal binding (fn-node-make-binding
                          (fn-record-msgid record) (fn-record-content-subject record)

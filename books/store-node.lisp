@@ -427,6 +427,11 @@
                 (fn-sf-statep fn-node-statep fn-node-pending-matchesp
                  fn-sn-pending-record fn-sn-prepare-node)))))
 
+(defthm fn-sn-prepare-refuses-a-legacy-record
+  (implies (equal (fn-record-stamp record) :legacy)
+           (equal (fn-sn-prepare s record) s))
+  :hints (("Goal" :in-theory (enable fn-sn-prepare))))
+
 ; Retention events use the same reserved transaction and file publication
 ; machine.  Their node effect is deliberately deferred until fn-sn-finish:
 ; before the directory barrier the candidate is known absent or uncertain,
