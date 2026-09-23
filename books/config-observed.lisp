@@ -49,13 +49,19 @@
                   (fn-sn-open-ok opened)
                 (fn-sn-open-error :identity)))))))))
 
-(verify-guards fn-cpo-open-observed)
+(verify-guards fn-cpo-open-observed
+  :hints (("Goal"
+           :use ((:instance fn-cpr-replay-ok-is-configured
+                            (configs configs) (events events)))
+           :in-theory (e/d (fn-cnode-statep)
+                           (fn-cpr-replay fn-cpr-loop fn-sn-statep
+                            fn-cpr-replay-ok-is-configured)))))
 
 ; Proof-only relation for the observed recovery boundary. Future live Store
 ; transitions must carry the configuration history to preserve this relation;
 ; the current Store record has no such field yet.
 (defun fn-cpo-history-relation (st)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (let* ((events (fn-sf-records (fn-sn-files st)))
          (frontier (fn-sf-frontier (fn-sn-files st)))
          (replayed (fn-cpr-replay (fn-sn-config-history st) events))
@@ -72,16 +78,26 @@
          (equal (fn-sn-capacity st)
                 (fn-cfg-capacity (fn-cfg-value (fn-cnode-config cn)))))))
 
+(verify-guards fn-cpo-history-relation
+  :hints (("Goal"
+           :use ((:instance fn-cpr-replay-ok-is-configured
+                            (configs (fn-sn-config-history st))
+                            (events (fn-sf-records (fn-sn-files st)))))
+           :in-theory (e/d (fn-cnode-statep)
+                           (fn-cpr-replay fn-cpr-loop fn-sn-statep
+                            fn-cpr-replay-ok-is-configured)))))
+
 ; Durable configuration publication is an administrative transition, never
 ; a per-command served path. The candidate is replayed against the carried
 ; physical history at its historical reservation total. An uncertain write
 ; has no call to this transition; recovery re-observes both directories.
 (defun fn-cpo-configure-durable (st record)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (let* ((configs (fn-sn-config-history st))
          (events (fn-sf-records (fn-sn-files st)))
          (frontier (fn-sf-frontier (fn-sn-files st))))
     (if (and (fn-cpo-history-relation st)
+             (true-listp configs)
              (equal (fn-sf-phase (fn-sn-files st)) :ready)
              (fn-cfg-recordp record)
              (equal (fn-cfg-record-txid record) frontier))
@@ -100,6 +116,16 @@
                 (if (fn-sn-statep candidate) candidate st))
             st))
       st)))
+
+(verify-guards fn-cpo-configure-durable
+  :hints (("Goal"
+           :use ((:instance fn-cpr-replay-ok-is-configured
+                            (configs (append (fn-sn-config-history st)
+                                             (list record)))
+                            (events (fn-sf-records (fn-sn-files st)))))
+           :in-theory (e/d (fn-cnode-statep)
+                           (fn-cpr-replay fn-cpr-loop fn-sn-statep
+                            fn-cpr-replay-ok-is-configured)))))
 
 (defthm fn-cpo-configure-durable-keeps-observed-events
   (equal (fn-sf-records (fn-sn-files (fn-cpo-configure-durable st record)))
@@ -139,7 +165,14 @@
                   (equal (fn-sn-capacity st)
                          (fn-cfg-capacity
                           (fn-cfg-value (fn-cnode-config cn)))))))
-  :hints (("Goal" :in-theory (enable fn-cpo-open-observed fn-sn-open-okp))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-cpo-open-observed fn-cpo-install
+                 fn-sn-update-replayed fn-sn-open-okp fn-cnode-domain)
+                (fn-cpr-replay fn-cpr-loop fn-replay-identity
+                 fn-replay-identity-loop fn-stx-index-of-store
+                 fn-sn-statep fn-cnode-statep fn-sn-observed-seed
+                 fn-replay-advance-txid)))))
 
 (defthm fn-cpo-open-success-has-historical-relation
   (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier events))

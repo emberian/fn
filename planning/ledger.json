@@ -461,22 +461,22 @@
     "books": 459,
     "books_in_root_closure": 458,
     "roots": 454,
-    "theorems": 7388,
+    "theorems": 7389,
     "functions": 5639,
-    "assert_events": 8179,
+    "assert_events": 8186,
     "must_fails": 320,
     "encapsulates": 26,
     "guards": {
-      "verified": 1855,
+      "verified": 1857,
       "declared-off": 302,
-      "default-guarded": 2783,
+      "default-guarded": 2781,
       "default-unguarded": 699
     },
     "suspect_theorems": 69,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 24,
-    "include_hygiene_warnings": 303,
+    "include_hygiene_warnings": 302,
     "host_names_warnings": 664,
     "hand_written_record_warnings": 18
   },
@@ -3167,15 +3167,15 @@
       "book": "books/config-observed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 4,
+      "theorems": 5,
       "functions": 4,
       "guards": {
-        "verified": 1,
+        "verified": 3,
         "declared-off": 0,
-        "default-guarded": 3,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
-      "verify_guards_events": 1,
+      "verify_guards_events": 3,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -9720,9 +9720,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 17,
+      "assert_events": 21,
       "must_fails": 0,
-      "defconsts": 6,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -9745,13 +9745,12 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 12,
+      "assert_events": 15,
       "must_fails": 0,
-      "defconsts": 12,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/codec-attach",
         "../../books/config-physical-replay"
       ],
       "system_includes": [],
@@ -15775,13 +15774,6 @@
       {
         "book": "tests/acl2/codec-seam-tests.lisp",
         "line": 26,
-        "include": "../../books/codec-attach",
-        "included": "books/codec-attach.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/config-physical-replay-tests.lisp",
-        "line": 7,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

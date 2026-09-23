@@ -1069,6 +1069,14 @@ differences are deliberate:
   invalid decrease before release, a burned transaction-ID gap and an article
   after an increase. Native recovery does not call it yet: the Store and owner
   replay relations still assume one static final domain and capacity.
+  The follow-on `fn-cpo-open-observed` installs the physical configuration
+  history in a carried Store field and reconstructs the recovering node from
+  the ordered fold. `fn-cpo-configure-durable` is an ACL2 administrative
+  transition that changes that history, Store domain/capacity and node
+  together after an admissible durable record. Its history relation is proved
+  preserved by that transition. These entries are not yet native callers;
+  `fn-snt-relation`, owner connection pins, checkpoint suffix recovery and
+  native open still need to use the carried history before live adoption.
 - **The two-kind stream, earlier proposed (lane `w9/reconfig`).** The layout stays
   two directories -- article records in the transaction journal, configuration
   records under `config/` -- and the STREAM is one: every record of either
