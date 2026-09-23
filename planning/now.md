@@ -35,6 +35,13 @@ exchange. Continue coordinated Sol implementation with root convergence,
 source-pinned evidence and bounded incremental proof work. This goal does not
 authorize replacing or exposing the live node.
 
+The next source cut is fixed at `329a51a2`. Its
+[qualification record](evidence/native-freeze-329a51a2-2026-09-23.md) names
+the active fresh coherent hbox certification and planned runtime gates.
+Later BP recovery/guard, live reconfiguration and consumer work will enter
+the following cycle rather than moving this image cut. The previous stamped
+image remains the latest completed runtime qualification.
+
 The second convergence has a frozen stamped image at `daa6c15e`. Its
 [source-pinned evidence](evidence/t2-native-daa6c15e-2026-09-23.md) records
 checkpoint/admin/BP-obligation/protected-peering tests, all served POST and
