@@ -1785,6 +1785,11 @@ error for the same reason."
     (first selected)))
 
 (defun fnn-command-post (root message-id payload-path charge-text inject groups)
+  ;; This direct guard also protects callers of the raw function outside the
+  ;; CLI dispatcher.  The startup gate below rejects the CLI before dispatch.
+  (unless (fnn-developer-image-p)
+    (error 'fnn-usage-error
+           :message "store post is available only in the developer image"))
   (let* ((msgid (fnn-octets (fnn-ascii-octet-list message-id)))
          (fault (fnn-post-entry-fault inject)))
     (multiple-value-bind (store records) (fnn-open-live-store root t fault)
@@ -2410,7 +2415,19 @@ serialized profile when the saved image later starts."
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT"
-    "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"))
+    "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
+    "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"
+    "FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION"
+    "FN_BP_SERVICE_TEST_SEND_FAULT" "FN_BP_APP_TEST_PAUSE_AFTER_DECISION"
+    "FN_TCPCL_TEST_FAIL_STAGING_UNLINK" "FN_TCPCL_TEST_FAIL_STAGING_BARRIER"
+    "FN_TCPCL_TEST_PAUSE_AFTER_STAGE_DATA"
+    "FN_CHECKPOINT_TEST_FAIL" "FN_CHECKPOINT_TEST_STOP_AFTER"
+    "FN_CHECKPOINT_TEST_STOP" "FN_CHECKPOINT_TEST_MISMATCH"
+    "FN_APP_JOURNAL_TEST_OBSERVER"
+    "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE"
+    "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE"
+    "FN_APP_JOURNAL_TEST_FENCE_STORE" "FN_APP_JOURNAL_TEST_READ_ONLY_STORE"
+    "FN_APP_JOURNAL_TEST_FAIL" "FN_IMMUTABLE_PUBLISH_TEST_FAIL"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
@@ -2431,7 +2448,11 @@ serialized profile when the saved image later starts."
     (or (dolist (name +fnn-developer-selectors+)
           (when (sb-ext:posix-getenv name) (return name)))
         (and (fnn-store-post-fault-argument argv)
-             "the store post FAULT argument"))))
+             "the store post FAULT argument")
+        (and (>= (length argv) 3)
+             (string= (first argv) "store")
+             (string= (third argv) "post")
+             "store post"))))
 
 (defun fnn-developer-selector-gate (argv)
   "Refuse, before any store is opened, a production start that names a cut."

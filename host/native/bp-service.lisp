@@ -43,8 +43,7 @@
   ; hidden-stage evidence and whether final names form its exact frontier.
   (incf *fnn-bps-lifecycle-enumerations*)
   (when (and (> *fnn-bps-lifecycle-enumerations* 1)
-             (string= (or (sb-ext:posix-getenv
-                           "FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION") "")
+             (string= (or (fnn-developer-selector "FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION") "")
                       "1"))
     (fnn-fault "bp-service: lifecycle namespace was enumerated after recovery"))
   (let* ((limit (fnn-core 'fn-bpn-host-lifecycle-max-namespace-entries)))
@@ -178,8 +177,7 @@
                ; Test-only exact core/adapter fault.  It is inside the same
                ; handler as real send-path failures so the regression proves
                ; that a fault is never collapsed into transport uncertainty.
-               (when (string= (or (sb-ext:posix-getenv
-                                   "FN_BP_SERVICE_TEST_SEND_FAULT") "") "1")
+               (when (string= (or (fnn-developer-selector "FN_BP_SERVICE_TEST_SEND_FAULT") "") "1")
                  (fnn-fault "bp-service: injected send core fault"))
                (setq socket (fnn-tcl-connect (fnn-bps-route-host route)
                                              (fnn-bps-route-port route)))

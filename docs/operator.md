@@ -168,7 +168,7 @@ effect; the profile is selected during image construction and serialized.
 
 ### Developer selectors
 
-The developer image honours eight environment selectors and one positional
+The developer image honours the registered environment selectors and one positional
 argument that arm a cut or a fault. The table is `+fnn-developer-selectors+`
 in `host/native/io.lisp`; each is read only through `fnn-developer-selector`,
 which answers nothing on a production image.
@@ -193,16 +193,23 @@ otherwise). The cut sites are the `fnn-at` calls in `fnn-recover`,
 `fnn-advance-frontier`, `fnn-publish` and `fnn-finish`, which both entries
 call.
 
-A production image refuses to start when any selector in the table is set in
+A production image refuses raw `store ROOT post` with usage exit 5 before
+opening the Store or reading the payload, even if `FN_NATIVE_PROFILE=developer`
+is set at invocation. Use `operator CONFIG post` or NNTP submission for
+production posting. Raw insertion remains available on developer images;
+Store inspection and recovery remain production operations.
+
+A production image refuses to start when any selector in the registry is set in
 its environment, even to the empty string, or when `store ROOT post` is given
 a FAULT other than `-`. `fnn-main` runs `fnn-developer-selector-gate` before
 dispatch, so the refusal is usage exit 5 naming the variable, and no store,
 socket or request is reached. A running production node therefore never
 meets a selector in the middle of a request: accepted, refused and uncertain
-keep their meanings for every real request. The selectors that other layers
-read (`FN_BP_*`, `FN_TCPCL_TEST_*`, `FN_CHECKPOINT_TEST_*`,
-`FN_APP_JOURNAL_TEST_*`, `FN_IMMUTABLE_PUBLISH_TEST_FAIL`) are not in this
-table yet; the DTN image they are exercised on has no developer profile.
+keep their meanings for every real request. The same startup gate covers the
+registered BP, TCPCL, checkpoint, application-journal, and immutable-publication
+test selectors. The DTN build selects and serializes the same profile, with a
+separate `build/fn-host-dtn-developer` output when
+`FN_NATIVE_PROFILE=developer` is supplied during construction.
 
 ## Install
 

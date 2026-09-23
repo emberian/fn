@@ -209,24 +209,27 @@ component launcher is `packaging/fn-native`; its current operator commands and
 unsupported profiles are documented in [the operator guide](../docs/operator.md).
 It does not yet satisfy the full two-node production gate.
 
-The build selects and serializes one entry profile. The default `production`
+The build selects and serializes one entry profile, including in the DTN-only
+build. The default `production`
 profile writes `build/fn-host`, does not register the raw `owner` verb and
 refuses the raw `reader` branch. Its one news-service start is
 `operator CONFIG run`, whose store, listener, authentication, control and
 posting projections come from the ACL2 native-operator/configuration plan.
 `FN_NATIVE_PROFILE=developer tools/build_native_host.sh` writes the separate
 `build/fn-host-developer` image with those two diagnostic entries enabled.
+The DTN-only build writes `build/fn-host-dtn` by default and
+`build/fn-host-dtn-developer` with the explicit developer profile.
 Changing that environment variable when a saved image restarts does not change
 its serialized profile. The developer image also honours the developer
 selectors (the environment variables of `+fnn-developer-selectors+` and the
-`store ROOT post` FAULT argument; [the operator guide](../docs/operator.md#developer-selectors)
+`store ROOT post` entry and its FAULT argument; [the operator guide](../docs/operator.md#developer-selectors)
 lists them). A production image refuses to start with any of them: `fnn-main`
 runs `fnn-developer-selector-gate` before dispatch and exits 5 naming the
 selector, before any store or socket is opened. Store diagnostics and the existing BP/TCPCL/application
 verbs remain available in the production image; this split does not claim full
 operator parity for them.
 
-**Selected production entry restriction (2026-09-23; implementation pending).**
+**Selected production entry restriction (2026-09-23).**
 Raw `store ROOT post` is a developer diagnostic. A production image,
 including the production DTN image, must reject that entry with the existing
 unsupported-entry/usage exit 5 before opening the store, reading a payload,
@@ -234,7 +237,9 @@ or performing any publication. The serialized image profile controls this
 restriction; an environment override at invocation cannot enable it.
 Production posting goes through `operator CONFIG post` or the served NNTP
 submission path, with the normal injection and durable outcome contract.
-Store inspection and recovery remain available. SCN-015 must exercise both
+Store inspection and recovery remain available. The host startup gate and a
+direct handler guard implement this restriction; saved-image evidence remains
+required for the combined source. SCN-015 must exercise both
 rejection orders (fresh and existing store), developer raw insertion, and
 successful ordinary production submission. This changes the required
 production surface; the da5fd8cb image still exposes raw posting.
