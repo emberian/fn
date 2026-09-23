@@ -578,7 +578,7 @@
     "roots": 569,
     "theorems": 8286,
     "functions": 6229,
-    "assert_events": 9050,
+    "assert_events": 9053,
     "must_fails": 450,
     "encapsulates": 26,
     "guards": {
@@ -11388,7 +11388,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 5,
+      "assert_events": 8,
       "must_fails": 1,
       "defconsts": 0,
       "defmacros": 0,
@@ -16084,7 +16084,7 @@
     {
       "theorem": "fn-bpn-report-author-step-delegates-ordinary-events",
       "book": "books/bp-report-author.lisp",
-      "line": 117,
+      "line": 120,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-bpn-report-author-step and the conclusion is that branch's value"
       ]
