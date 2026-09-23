@@ -375,6 +375,7 @@
     "tests/acl2/nntp-newnews-tests",
     "books/bp-release",
     "books/bp-release-invariants",
+    "books/bp-workflow-constructors",
     "tests/acl2/bp-release-tests",
     "books/scheduler",
     "books/scheduler-invariants",
@@ -457,17 +458,17 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 458,
-    "books_in_root_closure": 457,
-    "roots": 453,
-    "theorems": 7382,
-    "functions": 5657,
-    "assert_events": 8183,
+    "books": 459,
+    "books_in_root_closure": 458,
+    "roots": 454,
+    "theorems": 7385,
+    "functions": 5661,
+    "assert_events": 8199,
     "must_fails": 324,
     "encapsulates": 26,
     "guards": {
       "verified": 1850,
-      "declared-off": 302,
+      "declared-off": 306,
       "default-guarded": 2778,
       "default-unguarded": 727
     },
@@ -475,7 +476,7 @@
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 24,
-    "include_hygiene_warnings": 304,
+    "include_hygiene_warnings": 306,
     "host_names_warnings": 667,
     "hand_written_record_warnings": 18
   },
@@ -2362,6 +2363,32 @@
       "encapsulates": 0,
       "includes": [
         "bp-workflow-binding-core"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-workflow-constructors.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-adu",
+        "bp-release"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8905,13 +8932,14 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 65,
+      "assert_events": 78,
       "must_fails": 4,
-      "defconsts": 27,
+      "defconsts": 29,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-release-invariants"
+        "../../books/bp-release-invariants",
+        "../../books/bp-workflow-constructors"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -10170,7 +10198,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 53,
+      "assert_events": 56,
       "must_fails": 0,
       "defconsts": 4,
       "defmacros": 0,
@@ -14606,6 +14634,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-workflow-constructors.lisp",
+        "line": 6,
+        "include": "bp-release",
+        "included": "books/bp-release.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-workflow-invariants.lisp",
         "line": 3,
         "include": "bp-workflow",
@@ -15450,6 +15485,13 @@
         "line": 14,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-release-tests.lisp",
+        "line": 11,
+        "include": "../../books/bp-workflow-constructors",
+        "included": "books/bp-workflow-constructors.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
