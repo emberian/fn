@@ -3224,3 +3224,31 @@ the slice that closes it.
 
 The first draft's F7 (`host/bp-release-owner-host.lisp:8` calling a function
 no book defined) is closed on `dev` by `9dd5e3a2` (§10).
+
+### Finite native A2 receive and recovery join (2026-09-23)
+
+The `bp receive` command opens one `fnn-bps` handle under the shared spool
+and FNBS lifecycle locks. The handle owns `fn-bpnf-step`; outbound events
+enter it as `(:base event)`. On startup, ACL2's mixed namespace plan separates
+legacy contiguous final names and kind-5 epoch/operation names in the same
+directory. The host reads bounded exact bytes once, and
+`fn-bpnf-recover-auto-event` supplies the recovery event to the actual step.
+A fault in either replay leg stops the service before listening.
+
+For one complete inbound TCPCL transfer, the host observes session and
+configured admission provenance; `fn-bpnf-receive-wire-event` applies the
+existing BP reception policy and constructs `:receive-bundle` only for the
+canonical exact wire. The step's `:persist` effect is authorized by
+`fn-bpnf-publication-authorize`; ACL2 supplies the kind-5 frame, final name,
+and journal publication initial state. The physical result is fed back as
+`(:persist-result epoch operation-id result)`. Only its matching durable
+completion or exact duplicate yields `(:accepted path-or-nil)` for TCPCL;
+refusal and uncertainty remain distinct. An uncertain operation remains
+fenced until recovery. The separate operator evidence namespace remains
+secondary to FNBS custody.
+
+This slice retains complete bundles and does not yet bind application
+dispatch, durable receipt handoff, or returned receipt release. Those are A3
+composition obligations; a TCPCL transfer ACK proves none of them. The
+namespace planner's current ACL2 behavior is certified, while its guard
+verification remains open through the inherited lifecycle helper chain.

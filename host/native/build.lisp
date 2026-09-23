@@ -68,10 +68,14 @@
 (include-book "books/bp-authored-wire")
 (include-book "books/bp-node-machine")
 (include-book "books/bp-node-machine-codec")
-; Guard events for the exact fn-bpn-step called by bp-service, including its
-; maintained-state executable branch.  Makefile certification alone does not
-; put verify-guards results into this saved image's ACL2 world.
+; Guard events for the exact fn-bpnf-step called by bp-service and its
+; outbound fn-bpn-step base.  Certification alone does not put guard events
+; into this saved image's ACL2 world.
 (include-book "books/bp-node-machine-guards")
+(include-book "books/bp-node-receive-boundary")
+(include-book "books/bp-fnbs-replay")
+(include-book "books/bp-fnbs-namespace")
+(include-book "books/bp-fnbs-publication")
 (include-book "books/bp-receive-evidence")
 (include-book "books/anchor-wire")
 (include-book "books/anchor-servers")

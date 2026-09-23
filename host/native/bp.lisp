@@ -393,6 +393,45 @@ may or may not be durable."
          (fnn-out "BP uncertain xfer=~d reason=~(~a~)" xfer-id reason)
          path)))))
 
+(defun fnn-bp-deliver-node
+  (service conn session-counter xfer-id octets configured-peer)
+  "Complete one transfer through the single FNBS machine owner."
+  (let* ((tally (fnn-bps-tally service))
+         (ingress (fnn-bps-tcpcl-ingress
+                   service conn session-counter xfer-id configured-peer)))
+    (multiple-value-bind (result adu)
+        (fnn-bps-receive service ingress octets)
+      (case (first result)
+        (:accepted
+         ;; Keep the existing operator evidence namespace after FNBS custody
+         ;; commits.  Its path is not the TCPCL acceptance authority.
+         (fnn-bp-evidence-publish tally :accepted octets adu)
+         (incf (fnn-bp-tally-accepted tally))
+         (setf (fnn-bp-tally-last-adu tally) adu
+               (fnn-bp-tally-last-reason tally) :stored)
+         (fnn-out "BP accepted xfer=~d adu=~d path=~a"
+                  xfer-id (length adu) (second result)))
+        (:refused
+         ;; A refused transfer has no kind-5 custody record.  The separate
+         ;; evidence namespace retains its exact wire and refusal reason.
+         (let* ((reason (second result))
+                (text (fnn-octet-list
+                       (fnn-string-octets (format nil "~(~a~)~%" reason)))))
+           (fnn-bp-evidence-publish tally :refused octets text)
+           (incf (fnn-bp-tally-refused tally))
+           (setf (fnn-bp-tally-last-reason tally) reason)
+           (fnn-out "BP refused xfer=~d reason=~(~a~)" xfer-id reason)))
+        (:uncertain
+         ;; No new I/O follows an ambiguous FNBS publication.  TCPCL's
+         ;; disposition mapper withholds the held ACK and stops this owner.
+         (incf (fnn-bp-tally-uncertain tally))
+         (setf (fnn-bp-tally-last-reason tally) (second result))
+         (fnn-out "BP uncertain xfer=~d reason=~(~a~)"
+                  xfer-id (second result)))
+        (otherwise
+         (fnn-indeterminate "bp: invalid foundation callback result")))
+      result)))
+
 (defun fnn-bp-exit-code (tally conn)
   "Three outcomes, three codes.  Uncertain dominates a refusal, and a refusal
 dominates an acceptance: a run that saw one of each did not succeed."
@@ -476,12 +515,9 @@ dominates an acceptance: a run that saw one of each did not succeed."
                                reply-peer wall wall-error)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (journal-root (fnn-bp-journal-dir journal))
-         (spool-lock (fnn-tcl-spool-acquire journal-root)))
+         (service (fnn-bps-open journal config wall wall-error)))
     (unwind-protect
-         (let* ((tally (fnn-bp-evidence-open
-                        (make-fnn-bp-tally
-                         :config config :wall wall :wall-error wall-error
-                         :journal journal-root :spool-lock spool-lock)))
+         (let* ((tally (fnn-bp-evidence-open (fnn-bps-tally service)))
                 (reply (when reply-adu
                          (let* ((peer (fnn-bp-eid (or reply-peer node-id)))
                                 (adu (fnn-octet-list
@@ -495,16 +531,21 @@ dominates an acceptance: a run that saw one of each did not succeed."
                 (listener nil)
                 (code +fnn-exit-ok+))
            (unwind-protect
-                (let ((*fnn-tcl-deliver*
-                        (lambda (conn xfer-id octets)
-                          (fnn-bp-deliver tally conn xfer-id octets))))
+                (progn
                   (multiple-value-bind (bound bound-port) (fnn-tcl-listen port)
                     (setq listener bound)
                     (fnn-out "BP LISTENING ~d" bound-port))
                   (fnn-accept-loop
                    listener
                    (lambda (socket)
-                     (let ((fd (fnn-socket-fd socket)))
+                     (let* ((fd (fnn-socket-fd socket))
+                            (session-counter
+                              (incf (fnn-bps-next-session service)))
+                            (*fnn-tcl-deliver*
+                              (lambda (conn xfer-id octets)
+                                (fnn-bp-deliver-node
+                                 service conn session-counter xfer-id octets
+                                 peer-eid))))
                        (unwind-protect
                             (handler-case
                                 (let ((conn (fnn-tcl-session
@@ -534,7 +575,7 @@ dominates an acceptance: a run that saw one of each did not succeed."
                   (fnn-bp-summary tally)
                   code)
              (when listener (fnn-socket-shut listener))))
-      (fnn-tcl-spool-release spool-lock))))
+      (fnn-bps-release service))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; `bp decode' -- a file of octets in, the node's verdict out, no socket.
