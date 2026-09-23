@@ -14,13 +14,13 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 444 |
 | Books inside the root closure | 448 |
 | `defthm` and `defthmd` events | 7359 |
-| `defun` events | 5588 |
+| `defun` events | 5594 |
 | Functions with verified guards | 1850 |
-| Functions declared `:verify-guards nil` and never verified | 300 |
-| Functions left at the default with an explicit guard | 2754 |
-| Functions left at the default with no guard | 684 |
-| `assert-event` checks | 8118 |
-| `must-fail` checks | 315 |
+| Functions declared `:verify-guards nil` and never verified | 301 |
+| Functions left at the default with an explicit guard | 2757 |
+| Functions left at the default with no guard | 686 |
+| `assert-event` checks | 8120 |
+| `must-fail` checks | 316 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 69 |
 | Export-hygiene warnings | 93 |
@@ -175,7 +175,7 @@ that `make certify` requests.
 | `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 14 | 30 | 30/0/0/0 | 0 | 0 | 0 |
-| `books/checkpoint-codec.lisp` | root | 110 | 32 | 13/0/18/1 | 0 | 0 | 1 |
+| `books/checkpoint-codec.lisp` | root | 110 | 36 | 13/1/21/1 | 0 | 0 | 1 |
 | `books/checkpoint-compaction.lisp` | root | 5 | 19 | 0/15/4/0 | 0 | 0 | 0 |
 | `books/checkpoint-publish.lisp` | root | 65 | 63 | 13/1/49/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
@@ -417,7 +417,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-txn-name-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
 | `tests/acl2/cbor-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/cbor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 38 | 0 | 0 |
-| `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 78 | 0 | 0 |
+| `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 80 | 1 | 0 |
 | `tests/acl2/checkpoint-compaction-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 4 | 0 |
 | `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 85 | 0 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
@@ -569,7 +569,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bs-pack-reclaim-plan-is-selected-covered-names` | `books/byte-store-compaction-correspondence.lisp` | 47 | branch-of-definition: the hypothesis negates a branch test of fn-bs-pack-reclaim-plan and the conclusion is that branch's value |
 | `fn-clock-drop-permission-is-exactly-expired-by-definition` | `books/clock-invariants.lisp` | 164 | definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-cnode-inadmissible-config-changes-nothing` | `books/node-config.lisp` | 424 | branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value |
-| `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1250 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
+| `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1305 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
 | `fn-drt-mark-unfolds-to-a-tagged-list` | `tests/acl2/defrecord-tests.lisp` | 169 | definition-restated: the conclusion is the body of fn-drt-mark; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-drt-point-unfolds-to-a-list` | `tests/acl2/defrecord-tests.lisp` | 174 | definition-restated: the conclusion is the body of fn-drt-point; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-exchange-ingest-refusal-is-no-op` | `books/exchange.lisp` | 282 | branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value |
