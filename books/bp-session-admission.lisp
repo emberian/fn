@@ -30,6 +30,8 @@
 (defun fn-bpaj-loopback-peerp (name rows listener-port)
   (declare (xargs :guard t))
   (and (fn-cfg-labelp name)
+       (let ((peer (fn-cfg-peer-find name rows)))
+         (and peer (equal (car (fn-cfg-peer-transport peer)) :bp)))
        (fn-record-uint32p listener-port)
        (<= listener-port 65535)
        (fn-bpaj-unique-boundary-rowp rows name "bp-trust" "network" 0)
@@ -88,6 +90,9 @@
       (let ((name (fn-cfg-row-a (car rows))))
         (or (and (equal (fn-cfg-row-b (car rows)) "bp-trust")
                  (fn-cfg-labelp name)
+                 (let ((peer (fn-cfg-peer-find name all)))
+                   (and peer
+                        (equal (fn-cfg-peer-transport peer) (list :bp eid))))
                  (equal principal (fn-record-string-octets name))
                  (fn-bpaj-unique-boundary-rowp all name "bp-trust" "network" 0)
                  (fn-bpaj-unique-boundary-rowp all name "transport-bp" eid 0))
