@@ -366,7 +366,7 @@
                                      fn-bpb-bundlep fn-bpb-bundle-id)))
   :rule-classes nil)
 
-(defthm fn-bpnf-step-never-reuses-operation-id
+(defthm fn-bpnf-next-operation-id-never-decreases
   (<= (fn-bpnf-next-op st)
       (fn-bpnf-next-op
        (fn-bpnf-answer-state (fn-bpnf-step st event))))
