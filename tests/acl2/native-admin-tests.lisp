@@ -157,6 +157,27 @@
 (assert-event (not (fn-native-admin-candidate-openp nil 4294967296
                                                  (list *fn-cfg-default-record*))))
 
+; Physical replay must admit a capacity decrease after an undertaking is
+; released. Replaying both article events at the final capacity would reject
+; this valid image; moving the decrease before release must still be refused.
+(defconst *fn-na-historical-events*
+  (list (fn-store-retention-event-make :undertake 0 0 0
+                                        "admin-history" "subject" "evidence" 10)
+        (fn-store-retention-event-make :release 1 1 1
+                                        "admin-history" "subject" "evidence" 0)))
+(assert-event
+ (fn-native-admin-candidate-openp
+  *fn-na-historical-events* 8
+  (list *fn-cfg-default-record*
+        (fn-cfg-record-make 1 7 2 (list (fn-cfg-set-capacity 1))
+                            *fn-cfg-default-stamp*))))
+(assert-event
+ (not (fn-native-admin-candidate-openp
+       *fn-na-historical-events* 8
+       (list *fn-cfg-default-record*
+             (fn-cfg-record-make 1 1 2 (list (fn-cfg-set-capacity 1))
+                                 *fn-cfg-default-stamp*)))))
+
 ; Raw clocks are observations only.  ACL2 accepts a schema-representable pair
 ; and refuses an out-of-domain value without wrapping it.
 (assert-event (equal (fn-native-admin-clock-status

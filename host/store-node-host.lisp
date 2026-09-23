@@ -124,12 +124,10 @@ reopen predicate, writer-lock observation and observed final namespace."
        records frontier config-records (fn-record-parse-value parsed)
        lock-owned names))))
 
-; The configuration history is replayed first (`fn-cnode-config-replay',
-; books/node-config), and the node the article history is replayed into takes
-; its allocation domain and its capacity from that configured node.  The
-; configuration is then held beside the store state for admission and for
-; the operator's reconfiguration requests.  Fail closed: an undecodable,
-; out-of-order or inadmissible configuration record is a :fault at open.
+; The physical configuration and Store histories share transaction IDs, but
+; have independent sequence spaces. ACL2 interleaves them at recovery, with
+; configuration before a tied Store event, and carries that history in the
+; opened Store. The final configuration remains available for administration.
 (defun fn-store-sn-recover (octet-records frontier config-octet-records state)
   (declare (xargs :stobjs state :mode :program))
   (let ((records (fn-store-decode-records octet-records))
@@ -137,14 +135,12 @@ reopen predicate, writer-lock observation and observed final namespace."
     (if (or (equal records :bad) (equal config-records :bad)
             (null config-records))
         (value :fault)
-      (let ((replayed (fn-cnode-config-replay config-records)))
+      (let ((replayed (fn-cpr-replay config-records records)))
         (if (not (equal (fn-replay-result-kind replayed) :ok))
             (value :fault)
           (let* ((cn (fn-replay-result-node replayed))
                  (cfg (fn-cnode-config cn))
-                 (opened (fn-sn-open-observed (fn-cnode-domain cn)
-                                              (fn-cfg-capacity (fn-cfg-value cfg))
-                                              frontier records)))
+                 (opened (fn-cpo-open-observed config-records frontier records)))
             ; No barrier is fabricated here: Python must report each of five
             ; real fsync observations via fn-store-sn-io before this state is
             ; :ready.

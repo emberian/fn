@@ -28,6 +28,7 @@
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
+(include-book "../books/config-owner-live")
 (include-book "../books/owner-tls-prefix")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
@@ -143,16 +144,15 @@
     state))
 
 ; The process root.  A decoded observed image opens through
-; fn-sn-open-observed exactly as host/store-node-host.lisp does; the owner
+; fn-cpo-open-observed exactly as host/store-node-host.lisp does; the owner
 ; is started over that state (fn-own-open-observed-start-relation).  The
 ; dispatch is on the typed result's kind, never on fn-sn-open-okp, which
 ; would run the whole-state recognizer once more per recovery: a result of
 ; kind :ok is fn-sn-open-okp by fn-own-open-kind-ok-is-okp
 ; (books/owner-invariants.lisp, under fn-sn-open-observed-result-is-typed).
-; The configuration history is replayed first (fn-cnode-config-replay,
-; books/node-config), exactly as host/store-node-host.lisp fn-store-sn-recover
-; does; the node opens over the allocation domain and the configured capacity
-; and the live configuration is retained only in fn-owner's fn-ocfg value.
+; The physical configuration and Store records are interleaved by ACL2's
+; transaction ordering before the owner opens. The final configuration and
+; the carried Store history come from the same observed journals.
 (defun fn-owner-recover (octet-records frontier config-octet-records max-conns state)
   (declare (xargs :stobjs state :mode :program))
   (let ((records (fn-store-decode-records octet-records))
@@ -160,14 +160,12 @@
     (if (or (equal records :bad) (equal config-records :bad)
             (null config-records) (not (natp max-conns)))
         (value :fault)
-      (let ((replayed (fn-cnode-config-replay config-records)))
+      (let ((replayed (fn-cpr-replay config-records records)))
         (if (not (equal (fn-replay-result-kind replayed) :ok))
             (value :fault)
           (let* ((cn (fn-replay-result-node replayed))
                  (cfg (fn-cnode-config cn))
-                 (opened (fn-sn-open-observed (fn-cnode-domain cn)
-                                              (fn-cfg-capacity (fn-cfg-value cfg))
-                                              frontier records)))
+                 (opened (fn-cpo-open-observed config-records frontier records)))
             (if (and (equal (fn-sn-open-kind opened) :ok)
                      (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
                             :recovering))
@@ -257,22 +255,26 @@
 
 (defun fn-owner-reconfigure-complete (generation state)
   ; This is called only after Store.write_config_record has named the record
-  ; durable.  An uncertain write has no call here and forces recovery.  The
-  ; model publishes fn-ocfg's configuration first; fn-own-configure then
-  ; refreshes only the injection configuration for future posts, preserving
-  ; all connection/session pins already held by fn-ocfg.
+  ; durable. An uncertain write has no call here and forces recovery. ACL2
+  ; installs the new Store domain/capacity and carried physical history in
+  ; one owner transition while preserving existing connection pins.
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-ocfg state))
          (record (fn-ocfg-staged before)))
     (if (or (not record)
             (not (equal (fn-cfg-record-generation record) generation)))
         (value :refused)
-      (let* ((state (fn-owner-step (list :complete) state))
-             (cfg (fn-owner-config state))
-             (state (fn-owner-replace-core
-                     (fn-own-configure (fn-owner-core state)
-                                       (fn-owner-post-config cfg)) state)))
-        (value :durable)))))
+      (let ((next (fn-ocl-complete before)))
+        (if (fn-ocfg-staged next)
+            ; The record is physically durable, but the live model could not
+            ; install it. The native caller fences and reopens this history.
+            (value :recovery-required)
+          (let* ((state (fn-owner-install-ocfg next state))
+                 (cfg (fn-owner-config state))
+                 (state (fn-owner-replace-core
+                         (fn-own-configure (fn-owner-core state)
+                                           (fn-owner-post-config cfg)) state)))
+            (value :durable)))))))
 
 (defun fn-owner-config-generation (state)
   (declare (xargs :stobjs state :mode :program))
