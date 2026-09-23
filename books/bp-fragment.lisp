@@ -406,6 +406,20 @@
 
 (verify-guards fn-bpf-refragment-block)
 
+; Map the local starts of a second cut into the original ADU coordinates.
+; The parent's total and identity fields, rather than the cut payload's
+; length, are used for every child.
+(defun fn-bpf-refragment-primaries (parent starts)
+  (declare (xargs :guard (and (fn-bpp-blockp parent)
+                              (fn-bpp-fragmentp (fn-bpp-flags parent))
+                              (nat-listp starts))))
+  (if (consp starts)
+      (cons (fn-bpf-refragment-block parent (car starts))
+            (fn-bpf-refragment-primaries parent (cdr starts)))
+    nil))
+
+(verify-guards fn-bpf-refragment-primaries)
+
 ; Only a whole parent may be reconstructed by dropping the fragment fields.
 ; A fragment parent has its own offset and total, which must be retained by a
 ; second cut instead (fn-bpf-refragment-block above).
