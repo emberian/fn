@@ -57,13 +57,23 @@ case "$1" in
 esac
 CONTROL
 chmod +x "$tmp/control"
+set +e
 PATH="$tmp/mock:$PATH" FN_UPGRADE_CONTROL="$tmp/control" \
+  sh "$root/packaging/upgrade-native.sh" "$tmp/node" "$tmp/image" unchecked > "$tmp/out" 2> "$tmp/err"
+rc=$?
+set -e
+test "$rc" -eq 4
+grep -q 'Store compatibility must be established' "$tmp/err"
+test ! -e "$tmp/node/releases/.unchecked.stage"
+PATH="$tmp/mock:$PATH" FN_UPGRADE_STORE_COMPATIBLE=yes FN_UPGRADE_CONTROL="$tmp/control" \
   sh "$root/packaging/upgrade-native.sh" "$tmp/node" "$tmp/image" good >/dev/null
 [ "$(readlink "$tmp/node/current")" = "$tmp/node/releases/good" ]
+grep -Fq "ExecStart=$tmp/node/releases/good/bin/fn" "$tmp/node/releases/good/share/fn/systemd/fn.service"
+! grep -Fq '.good.stage' "$tmp/node/releases/good/share/fn/native-artifacts.txt"
 test "$("$tmp/node/current/bin/fn" operator /none status)" = "$tmp/node/current/libexec/fn/fn-host.core"
 : > "$tmp/node/fail-next"
 set +e
-PATH="$tmp/mock:$PATH" FN_UPGRADE_CONTROL="$tmp/control" \
+PATH="$tmp/mock:$PATH" FN_UPGRADE_STORE_COMPATIBLE=yes FN_UPGRADE_CONTROL="$tmp/control" \
   sh "$root/packaging/upgrade-native.sh" "$tmp/node" "$tmp/image" bad > "$tmp/out" 2> "$tmp/err"
 rc=$?
 set -e
@@ -75,7 +85,7 @@ test "$(cat "$tmp/node/store/article.octets")" = article-octets
 # A modified frozen core fails preflight without switching the running release.
 printf tamper >> "$tmp/image/fn-host.core"
 set +e
-PATH="$tmp/mock:$PATH" FN_UPGRADE_CONTROL="$tmp/control" \
+PATH="$tmp/mock:$PATH" FN_UPGRADE_STORE_COMPATIBLE=yes FN_UPGRADE_CONTROL="$tmp/control" \
   sh "$root/packaging/upgrade-native.sh" "$tmp/node" "$tmp/image" tampered > "$tmp/out" 2> "$tmp/err"
 rc=$?
 set -e
