@@ -53,6 +53,22 @@
                    (equal (fn-bpn-report-decode
                            (fn-bpn-report-encode *fn-bpn-report-fragment*))
                           (fn-cbor-ok *fn-bpn-report-fragment* nil))))
+; A maximal-profile DTN SSP exercises the payload part of the 1194-octet
+; bound, beyond the short numeric-only vectors.
+(defconst *fn-bpn-report-long-eid*
+  (list :report '((nil) (nil) (nil) (nil)) 11
+        (cons :dtn (append '(47 47 97 47)
+                           (make-list 1020 :initial-element 97)))
+        (list *fn-bpc-max-uint* *fn-bpc-max-uint*)
+        (cons *fn-bpc-max-uint* *fn-bpc-max-uint*)))
+(assert-event (and (fn-bpn-reportp *fn-bpn-report-long-eid*)
+                   (< 1024 (len (fn-bpn-report-encode
+                                  *fn-bpn-report-long-eid*)))
+                   (<= (len (fn-bpn-report-encode
+                             *fn-bpn-report-long-eid*)) 1194)
+                   (equal (fn-bpn-report-decode
+                           (fn-bpn-report-encode *fn-bpn-report-long-eid*))
+                          (fn-cbor-ok *fn-bpn-report-long-eid* nil))))
 ; Dropping the report recognizer admits an out-of-profile reason.
 (must-fail
  (defthm fn-bpn-report-roundtrip-without-reportp-is-false
