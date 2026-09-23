@@ -9,10 +9,12 @@ target are both restricted to loopback for this first interface.
 from __future__ import annotations
 
 import argparse
+from collections import OrderedDict
 import html
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hmac
 import secrets
+import threading
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlencode, urlsplit
 
@@ -25,6 +27,7 @@ MAX_BLOCK_LINES = 2048
 MAX_FORM = 24576
 MAX_BODY = 16384
 MAX_RECENT = 40
+MAX_SUBMISSIONS = 128
 
 
 class BoundedSession(Session):
@@ -116,19 +119,82 @@ class Backend:
     def article(self, group: str, number: int):
         return self.using(lambda client: client.show(str(number), group))
 
-    def post(self, group: str, subject: str, sender: str, references: str,
-             body: str):
+    def prepare(self, group: str, subject: str, sender: str, references: str,
+                body: str):
         form = SimpleNamespace(group=group, subject=subject, sender=sender,
                                references=references, message_id="", body_file="",
                                host=self.args.host)
-        lines, msgid = fn_client.compose(form, self.user, FormErrors(), body)
+        return fn_client.compose(form, self.user, FormErrors(), body)
+
+    def post(self, group: str, lines: tuple[str, ...], msgid: str):
         try:
-            return self.using(lambda client: client.post(group, lines, msgid))
+            return self.using(lambda client: client.post(group, list(lines), msgid))
         except fn_client.Stop as exc:
             # A connection failure before POST still has a stable identifier
             # for later settlement. Keep it through the HTTP boundary.
             return fn_client.Result(exc.word, exc.detail,
                                     {"message_id": msgid}, "")
+
+
+class SubmissionBook:
+    """One process's bounded, exact source and outcome memory, never an fn ack."""
+
+    def __init__(self, backend: Backend):
+        self.backend = backend
+        self.lock = threading.Lock()
+        self.entries = OrderedDict()
+
+    def new(self, group: str) -> str:
+        with self.lock:
+            if len(self.entries) >= MAX_SUBMISSIONS:
+                self.entries.popitem(last=False)
+            token = secrets.token_urlsafe(24)
+            self.entries[token] = {"group": group, "lines": None, "message_id": "",
+                                   "result": None, "settlement": None}
+            return token
+
+    def get(self, token: str):
+        with self.lock:
+            return self.entries.get(token)
+
+    def submit(self, token: str, group: str, subject: str, sender: str,
+               references: str, body: str):
+        # Hold the lock through the finite NNTP operation. Two HTTP requests
+        # with this token cannot both issue POST, even when they race.
+        with self.lock:
+            entry = self.entries.get(token)
+            if entry is None:
+                return None
+            if group != entry["group"]:
+                raise ValueError("form group does not match its submission identifier")
+            if entry["result"] is not None:
+                return entry
+            lines, msgid = self.backend.prepare(group, subject, sender,
+                                                 references, body)
+            entry["lines"] = tuple(lines)
+            entry["message_id"] = msgid
+            try:
+                entry["result"] = self.backend.post(group, entry["lines"], msgid)
+            except (OSError, Disconnected) as exc:
+                entry["result"] = fn_client.Result(
+                    fn_client.UNCERTAIN, fn_client.unsettled(msgid, str(exc)),
+                    {"message_id": msgid}, "")
+            return entry
+
+    def settle(self, token: str):
+        with self.lock:
+            entry = self.entries.get(token)
+            if entry is None or not entry["message_id"]:
+                return entry
+            try:
+                result = self.backend.using(
+                    lambda client: client.show(entry["message_id"], ""))
+            except fn_client.Stop as exc:
+                result = fn_client.Result(exc.word, exc.detail, {}, "")
+            except (OSError, Disconnected) as exc:
+                result = fn_client.Result(fn_client.UNCERTAIN, str(exc), {}, "")
+            entry["settlement"] = result
+            return entry
 
 
 def e(value) -> str:
@@ -142,6 +208,15 @@ def href(path: str, **parameters) -> str:
 def group_token(value: str) -> bool:
     return bool(value) and len(value) <= 240 and all(
         c.isascii() and (c.isalnum() or c in ".-_+") for c in value)
+
+
+def group_summary(row: dict) -> str:
+    first, last = row["first"], row["last"]
+    address = ("No local articles yet" if first is None or last is None or last < first else
+               "Local article numbers %s–%s" % (first, last))
+    policy = {"y": "posting allowed", "n": "read only", "m": "moderated"}.get(
+        row["status"], "status " + row["status"])
+    return address + " · " + policy
 
 
 def depth_of(row: dict, by_id: dict, seen=None) -> int:
@@ -167,6 +242,8 @@ a:hover { color:#922e24 } nav a { margin-right:1rem }
 .badge { display:inline-block; border-radius:100px; padding:.15rem .6rem; font-size:.8rem; background:#e2efe7; color:#144d3d }
 .accepted { background:#daf1df } .refused { background:#fae0d9 } .uncertain { background:#fff0be }
 .thread { border-left:3px solid #b7d5c6 } pre { white-space:pre-wrap; overflow-wrap:anywhere; font-family:ui-monospace, monospace }
+details { margin-top:1rem; border-top:1px solid #d9e1d9; padding-top:.6rem } summary { cursor:pointer; font-weight:650 }
+.hint { border-left:3px solid #d1a24b; padding:.5rem .8rem; background:#fff9e8 }
 input,textarea { box-sizing:border-box; width:100%; padding:.7rem; margin:.2rem 0 .9rem; border:1px solid #9cad9e; border-radius:6px; font:inherit; background:#fff }
 textarea { min-height:12rem } label { display:block; font-weight:650 }
 button,.button { display:inline-block; border:0; border-radius:6px; padding:.65rem 1rem; background:#145f50; color:white; font:inherit; cursor:pointer; text-decoration:none }
@@ -197,7 +274,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(encoded)))
         self.send_header("Cache-Control", "no-store")
-        self.send_header("Referrer-Policy", "no-referrer")
+        # Chromium sends Origin: null for a same-origin form when no-referrer
+        # is set; same-origin still prevents a referrer going to another site.
+        self.send_header("Referrer-Policy", "same-origin")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
         self.end_headers()
@@ -219,6 +298,56 @@ class Handler(BaseHTTPRequestHandler):
                   "'>" + e(word) + "</span><h2>" + e(detail) + "</h2>" +
                   ("<p>Message-ID: <code>" + e(msgid) + "</code></p>" if msgid else "") +
                   link + "</div>", 200 if word in ("done", "accepted") else 503)
+
+    def submission_result(self, token: str, settle: bool = False):
+        entry = (self.server.submissions.settle(token) if settle else
+                 self.server.submissions.get(token))
+        if entry is None:
+            self.page("Submission unavailable", "<p>This form's local record has expired or "
+                      "the web client restarted. No post was sent for this request. "
+                      "Check the node by Message-ID if you kept it.</p>", 410)
+            return
+        result = entry["result"]
+        if result is None:
+            self.page("Draft", "<p>This form has not been submitted.</p>", 200)
+            return
+        word, msgid = result.word, entry["message_id"]
+        if word == fn_client.ACCEPTED:
+            meaning = "The node answered that it accepted this article."
+        elif word == fn_client.REFUSED:
+            meaning = "The node refused this exact article. This form will not post it again."
+        else:
+            meaning = ("The article may or may not have been accepted. Do not post a "
+                       "new copy while its status is unknown.")
+        observed = ""
+        if entry["settlement"] is not None:
+            found = entry["settlement"]
+            if found.word == fn_client.DONE:
+                finding = "The node now serves this Message-ID. The original POST response remains recorded above."
+            elif found.word == fn_client.REFUSED:
+                finding = "The node did not serve this Message-ID in this lookup. The original POST outcome has not changed."
+            else:
+                finding = "The lookup could not establish whether the article is served."
+            observed = "<p class='hint'>" + e(finding) + "</p>"
+        self.page("Post " + word, "<nav><a href='/'>Groups</a></nav><article>"
+                  "<span class='badge " + e(word) + "'>" + e(word) + "</span>"
+                  "<h2>" + e(meaning) + "</h2>"
+                  "<p class='meta'>Message-ID: <code>" + e(msgid) + "</code></p>"
+                  + observed + "<p><a href='" + e(href("/settle", id=token)) +
+                  "'>Check whether the node serves this Message-ID</a></p>"
+                  "<details><summary>Node response and diagnostic detail</summary><pre>" +
+                  e(result.detail) + "</pre></details>"
+                  "<p class='muted'>Refresh this page safely; it never sends another POST. "
+                  "This client keeps the exact submitted source and result only while "
+                  "this process runs and the form remains in its bounded memory.</p>"
+                  "</article>")
+
+    def redirect(self, location: str):
+        self.send_response(303)
+        self.send_header("Location", location)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def run_backend(self, operation):
         try:
@@ -244,8 +373,7 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 cards = "".join("<article><h2><a href='" + e(href("/g", name=row["group"])) +
                                 "'>" + e(row["group"]) + "</a></h2><p class='meta'>" +
-                                e(row["first"]) + "–" + e(row["last"]) +
-                                " · " + e(row["status"]) + "</p></article>"
+                                e(group_summary(row)) + "</p></article>"
                                 for row in result.data["groups"])
                 self.page("Groups", "<h2>Groups</h2>" + (cards or "<p>No groups are served.</p>"))
             elif path == "/g":
@@ -264,8 +392,9 @@ class Handler(BaseHTTPRequestHandler):
                                 str(depth_of(row, by_id) * 18) + "px'><h2><a href='" +
                                 e(href("/a", group=group, number=row["number"])) + "'>" +
                                 e(row["subject"]) + "</a></h2><p class='meta'>" +
-                                e(row["from"]) + " · " + e(row["date"]) +
-                                " · #" + e(row["number"]) + "</p></article>"
+                                e(" · ".join(x for x in (row["from"], row["date"],
+                                                 "local #%s" % row["number"]) if x)) +
+                                "</p></article>"
                                 for row in rows)
                 self.page(group, "<nav><a href='/'>Groups</a><a href='" +
                           e(href("/compose", group=group)) + "'>Write a post</a></nav>"
@@ -287,15 +416,21 @@ class Handler(BaseHTTPRequestHandler):
                 one = result.data["articles"][0]
                 fields = one["headers"]
                 first = lambda name: fn_client.first(fields, name) or ""
-                present = bool(first("fn-statement"))
-                provenance = ("<p><span class='badge'>Authorship evidence: " +
-                              ("FN-Statement present; not verified here" if present else
-                               "no FN-Statement in this article") + "</span></p>"
-                              "<p class='meta'>From header (claimed): " + e(first("from")) +
+                statement = bool(first("fn-statement"))
+                carrier = bool(first("fn-authorship"))
+                provenance = ("<p class='hint'><strong>Who wrote this?</strong> The displayed "
+                              "From name is a claim in the article. This reader has not "
+                              "verified the writer's identity.</p><p class='meta'>"
+                              + ("FN-Statement present; not verified here" if statement else
+                                 "No FN-Statement recorded in this article") + "<br>" +
+                              ("FN-Authorship carrier present; not verified here" if carrier else
+                               "No FN-Authorship carrier recorded in this article") + "</p>"
+                              "<details><summary>Recorded handling details</summary>"
+                              "<p class='meta'>From (claimed): " + e(first("from")) +
                               "<br>Path: " + e(first("path") or "not supplied") +
                               "<br>Injection-Info: " + e(first("injection-info") or "not supplied") +
                               "<br>Injection-Date: " + e(first("injection-date") or "not supplied") +
-                              "</p><p class='muted'>Viewing does not acknowledge application processing.</p>")
+                              "</p></details><p class='muted'>Viewing does not acknowledge application processing.</p>")
                 self.page(first("subject") or "Article", "<nav><a href='" +
                           e(href("/g", name=group)) + "'>" + e(group) + "</a><a href='" +
                           e(href("/compose", group=group, reply=number)) + "'>Reply</a></nav>"
@@ -326,15 +461,24 @@ class Handler(BaseHTTPRequestHandler):
                                   msgid).strip()
                     if len(references) > 800:
                         references = msgid
+                submission_id = self.server.submissions.new(group)
                 form = ("<form method='post' action='/post'><input type='hidden' name='csrf' value='" +
                         e(self.server.token) + "'><input type='hidden' name='group' value='" + e(group) +
+                        "'><input type='hidden' name='submission_id' value='" + e(submission_id) +
                         "'><input type='hidden' name='references' value='" + e(references) +
                         "'><label>Subject<input name='subject' maxlength='240' required value='" +
                         e(subject[:240]) + "'></label><label>From (optional)<input name='sender' maxlength='240' value='" +
                         e(self.server.backend.user) + "'></label><label>Message<textarea name='body' maxlength='16384' required></textarea></label>"
                         "<button>Post to " + e(group) + "</button></form>")
                 self.page("Compose", "<nav><a href='" + e(href("/g", name=group)) +
-                          "'>" + e(group) + "</a></nav><h2>Write a post</h2>" + form)
+                          "'>" + e(group) + "</a></nav><h2>Write a post</h2>"
+                          "<p class='muted'>One form sends one exact article. If the reply "
+                          "is uncertain, keep its Message-ID and check it before trying again.</p>" + form)
+            elif path in ("/result", "/settle"):
+                token = values.get("id", "")
+                if not token or len(token) > 64:
+                    raise ValueError("invalid submission identifier")
+                self.submission_result(token, settle=(path == "/settle"))
             elif path == "/find":
                 msgid = values.get("id", "")
                 if not (len(msgid) <= 250 and msgid.startswith("<") and msgid.endswith(">")
@@ -369,6 +513,9 @@ class Handler(BaseHTTPRequestHandler):
             if not hmac.compare_digest(values.get("csrf", ""), self.server.token):
                 self.page("Refused", "<p>Form token is invalid.</p>", 403)
                 return
+            submission_id = values.get("submission_id", "")
+            if not submission_id or len(submission_id) > 64:
+                raise ValueError("invalid submission identifier")
             group, subject = values.get("group", ""), values.get("subject", "")
             sender, references, body = (values.get("sender", ""),
                                         values.get("references", ""), values.get("body", ""))
@@ -378,10 +525,13 @@ class Handler(BaseHTTPRequestHandler):
                                             for x in (subject, sender, references)) or
                     any(len(line.encode()) > 998 for line in body.splitlines())):
                 raise ValueError("post fields are invalid or too large")
-            result = self.run_backend(lambda: self.server.backend.post(
-                group, subject, sender, references, body))
-            if result is not None:
-                self.outcome(result.word, result.detail, result.data.get("message_id", ""))
+            entry = self.server.submissions.submit(
+                submission_id, group, subject, sender, references, body)
+            if entry is None:
+                self.page("Submission unavailable", "<p>This form's local record "
+                          "expired or the web client restarted. No POST was sent.</p>", 410)
+                return
+            self.redirect(href("/result", id=submission_id))
         except (ValueError, UnicodeDecodeError) as exc:
             self.page("Invalid post", "<p>" + e(exc) + "</p>", 400)
 
@@ -392,6 +542,7 @@ class WebServer(ThreadingHTTPServer):
     def __init__(self, port: int, backend: Backend):
         self.backend = backend
         self.token = secrets.token_urlsafe(32)
+        self.submissions = SubmissionBook(backend)
         super().__init__(("127.0.0.1", port), Handler)
 
 
