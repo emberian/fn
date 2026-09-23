@@ -123,6 +123,21 @@ the authority for key succession is still an unchosen D09 decision. A
 generated field can travel with an article while the exact signed
 source and mutable relay fields remain separate projections.
 
+The companion `hybrid-verify-source ARTICLE ML-PUBLIC-PEM` uses the same
+ACL2 carrier projection and native two-suite decision. On success it emits
+one `fn-portable-v1` line with lowercase hex fields in this exact order:
+principal (32 octets), ACL2-derived authored-source identity (48 octets),
+verified Ed25519 key (32 octets), verified ML-DSA-65 key (1952 octets), and
+exact authored source (at most 32768 octets). The final newline is required;
+the output is bounded below 70000 characters. It refuses malformed carriers,
+bad signatures, and nonzero native outcomes rather than emitting partial
+source evidence. A consumer compares the full key set and principal with
+independent pins, and can derive an application payload only from the returned
+authenticated source. This line establishes portable authorship, never local
+Store admission, historical keyring enrollment, group membership, or cursor
+progress. A source identity in a report without this check and a Store event
+reference remains a claim.
+
 The remaining Store join needs a versioned accepted-article binding with two
 distinct subjects: the received article octets used for storage and content
 identity, and the exact authored source recovered by the ACL2 carrier
