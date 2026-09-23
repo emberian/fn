@@ -30,10 +30,15 @@ The user replaced the goal with concurrent v0/v1 development grounded in
 identify reproducible experiments; they are not a project-wide implementation
 freeze. Preserve the live `da5fd8cb` node and existing shared compute pools.
 
-Current coordination snapshot: root source `a8e4b17e` is in full incremental
-qualification on hbox, run `run-20260923T224556Z-1ba9`, at
-`/tank/fn/gates/reader-clone-poll-a8e4-20260923`. Stamp has staged its exact
-native image source and will build only after the root verdict. Live node unchanged.
+Current coordination snapshot: `bc9be7ec` passed full source qualification
+(run `run-20260923T230009Z-f41e`, original manifest
+`certify-20260923T230027Z-407330.json`) and both shared native builds at
+`/tank/fn/gates/reader-clone-poll-native-bc9-20260923`. INN and selected
+peering passed. Poll and live-created-group posting exposed host composition
+bugs; the source-matched image stays immutable while the fixes land. Live node unchanged.
+Root has integrated later K0 argument/preparation bridges, Mini read-only
+projection (current-source guard/dependency correction pending), poll CLI fix,
+peering harness/evidence, and owner proof-cost hints.
 
 | Agent | Current substantive result and coordination |
 | --- | --- |
@@ -203,3 +208,46 @@ Current convergence checkpoint (root `b9bf596d`):
   `/tank/fn/gates/integrate-a3-scanner-20260923`, four jobs, existing pool/cache: passed, 493 cached, 28 newly
   certified, 27.353 seconds, manifest `certify-20260923T205938Z-120445`.
   Prior `2234c1f3` run passed (496 cached, 17 certified, 15.164 seconds).
+
+## Current cooperation checkpoint — 23:16 UTC
+
+- `stamp_review`: integrated poll CLI fix `e1b4eeb8` → root `59cfdc25`;
+  repairs live configuration observer caches and current-owner group-code
+  projection, with raw and saved-image regression. New-group post refusal
+  followed by BUSY is an observed defect, not dismissed as a fixture issue.
+- `fragment_refinement`: INN/peering evidence integrated (`d81ff4fb`,
+  `a5fdc44a`); now repairs shared completion handling when a commit callback
+  refuses after the owner took a control request. Coordinates owner.lisp
+  edits with stamp; preserves uncertain/fault fences.
+- `store_invariants` and `mini_evidence_bridge`: cursor decoder guards were
+  already verified; the Mini projection came from an older dependency and
+  calls removed `fn-cp-at-mostp`. Adapt it to current bounded primitive and
+  close actual projection guards. Mini getter packet `36869776` removes
+  duplicated host preflight constants. One final current-source run is owed.
+- `bp_foundation`: coherent root-based union in `build/lanes/bp-current-union`
+  includes fragment/expiry/K6 v3/D1b/composed admission, plus new actual BP
+  owner-event relation lemmas (`9a5b3898`) and owner cost hints (`cb21c4d6`).
+  Final selected owner/dependent run `run-20260923T231510Z-0e00` is active;
+  status lane closes actual report wrapper guards. No separate image build.
+- `topic_metadata` and `consumer_contract`: cooperate from full P3 ancestry
+  (c43aa989,66f81e7a,15f4fb19,6055b4a5,b8101d94,702d6ef1), not an isolated
+  last commit. Topic slot12 and derived sequence-index slot13 share an updater
+  that preserves untouched fields; physical config reopen must retain both.
+  Pure index `2c82adaf` is qualified, actual called poll join is in progress.
+- `acceptance_stamp`: actual ADVANCE outcome avoids repinning refused rebuilds;
+  a certified duplicate-ID counterexample shows historical relation needs
+  unique connection IDs. Carried uniqueness/ADVANCE preservation and dependent
+  reader union qualify together; no root landing yet.
+- `crash_differential`: continues actual P-FRONTIER successful reserved-entry
+  relation from prior related state. Root suggested public checked-attachment
+  frontier codec interfaces for host wrappers, rather than a new abstract/
+  concrete equality assumption. Hardware and general trace scope remain open.
+- `feed_replay`: efficient OVER range through existing group bucket and trie;
+  proves reachable number/ID/article correspondence instead of introducing
+  a disposable per-request full-archive projection.
+- `authorship_carrier`: owner proof-cost packet `c922852d` integrated as
+  `762c8ee2`; closed unrelated definitions in two theorem-local hints, no
+  theorem statement/runtime changes. Store/projection and BP lanes reuse it.
+
+The next small repaired poll/clone/Mini-projection image should not wait for
+all later P3 or BP work. Keep each source and test-driver identity explicit.

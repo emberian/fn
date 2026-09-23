@@ -8,8 +8,18 @@ books, 86.662 seconds at four jobs. The
 [integration record](evidence/reader-consumer-clone-integration-2026-09-23.md)
 preserves the first failed run and each repair. The shared developer and
 production image build now proceeds at
-`/tank/fn/gates/reader-clone-poll-native-bc9-20260923`; runtime qualification
-is pending. This supersedes the staged but unbuilt a8e4 image.
+`/tank/fn/gates/reader-clone-poll-native-bc9-20260923`; the developer and production builds passed. The
+[real INN and selected peering tests](evidence/nntp-peering-bc9be7ec-2026-09-23.md)
+passed on the production image. The
+[signed poll test failed before submission](evidence/native-e2-poll-bc9-original.md):
+the CLI incorrectly passed its output path as a request argument. The host
+fix `59cfdc25` and shipped-function regression are integrated, but require a
+new source-matched image. Reader testing also found a live-created group
+visible to GROUP but refused on POST, followed by BUSY on another post;
+current-owner domain projection and completion-error handling are under repair.
+Independent clone path and historical-authorship tests passed in the image
+lane; their original evidence is still being assembled. This supersedes the
+staged but unbuilt a8e4 image.
 
 ## Earlier integration checkpoint — 22:48 UTC
 
