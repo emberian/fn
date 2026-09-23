@@ -427,11 +427,6 @@
   (value (fn-cpa-clone-phase-of-octets
           (fn-owner-store state) marker-octets)))
 
-(defun fn-owner-checkpoint-bootstrap-proposal (history-id incarnation-id state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-cpa-bootstrap-proposal
-          (fn-owner-store state) history-id incarnation-id)))
-
 (defun fn-owner-known-abort (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-store state))

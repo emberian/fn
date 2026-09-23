@@ -232,9 +232,12 @@ physical prefix names must not change issued dense Store positions.
 ### Cold writable clone activation
 
 A byte copy is not an activated Store.  The native `checkpoint clone SOURCE
-DESTINATION FRESH-INCARNATION-ID` operation requires an offline, locked source;
-a destination that does not exist; and an explicit caller-supplied fresh
-incarnation ID.  It first builds a private sibling directory containing the
+DESTINATION` operation requires an offline, locked source and a destination
+that does not exist.  The host observes a fresh 32-octet incarnation ID from
+the OS CSPRNG; ACL2 validates its shape, rejects equality with the copied
+history or current incarnation, and constructs the durable rollover event.
+Distinct sibling clones rely on probabilistic entropy uniqueness, not a
+proved global uniqueness claim.  It first builds a private sibling directory containing the
 exact source bytes and a durable `clone-pending.fnce` fence.  The fence holds
 the canonical version-one `fnce` rollover event proposed by ACL2, not a
 second projection format.  Publication uses Linux `renameat2` with
@@ -249,7 +252,7 @@ the ordinary Store transaction.  ACL2 supplies the offline copy ceilings:
 depth 16, at most 1,000,000 directory entries, and at most 2^40 bytes of
 regular-file content; the host streams in 65,536-byte chunks and refuses
 before exceeding those limits.  The history ID remains the same; the new
-incarnation differs from the copied source.  A same-ID, malformed, or
+incarnation differs from the copied source.  A same-ID, history-ID, malformed, or
 unbootstrapped proposal is refused.  The fence is removed only after a second
 exact-history reopen confirms the durable rollover and new incarnation; the
 fence removal and its parent-directory barrier are themselves part of the
@@ -266,12 +269,11 @@ copied old cursor tokens are invalid after the new incarnation; registration
 state resets, while exact journal history, article and retention obligations,
 authorship verdicts, and keyring snapshots remain.  This paragraph is the
 activation contract.  The source contains the executor and pre-open fence;
-native saved-image qualification and a served consumer cursor witness remain
+native saved-image qualification and a nonzero served consumer cursor witness remain
 open.  `checkpoint clone-resume DESTINATION` is the only operator path that
 may reopen a fenced destination; it verifies the same durable event rather
-than proposing a second incarnation.  The developer-only
-`consumer-bootstrap-fixture` makes an E2 Store for integration tests and is
-not a production bootstrap interface.
+than proposing a second incarnation.  Tests and operators use the production
+`consumer bootstrap CONTROL` owner command.
 
 The filename codec reuses the byte store's proved natural-decimal renderer.
 `fn-cpp-generation-name-decode-of-render` is its called-codec round trip;

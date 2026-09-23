@@ -59,6 +59,8 @@
                 (fn-node-acceptance (fn-sn-node store)))))
     (cond ((not (fn-cp-statep consumer)) (list :refused :unbootstrapped))
           ((not (fn-cp-idp fresh-id)) (list :refused :incarnation-id))
+          ((equal fresh-id (fn-cp-nth 1 consumer))
+           (list :refused :history-id))
           ((equal fresh-id (fn-cp-nth 2 consumer))
            (list :refused :same-incarnation))
           ((or (not (fn-cp-uintp sequence))
@@ -67,26 +69,6 @@
            (list :refused :coordinates))
           (t (list :ok (fn-cpe-make sequence txid txid
                                     (list :rollover fresh-id)))))))
-
-; This constructor is used only by the saved-image integration fixture until
-; the consumer interface has a public bootstrap policy.  It still derives all
-; Store coordinates in ACL2 and admits only the first consumer bootstrap.
-(defun fn-cpa-bootstrap-proposal (store history-id incarnation-id)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((sequence (fn-sn-identity-next store))
-        (txid (fn-state-next-txid
-               (fn-node-acceptance (fn-sn-node store)))))
-    (cond ((fn-sn-consumer store) (list :refused :already-bootstrapped))
-          ((or (not (fn-cp-idp history-id))
-               (not (fn-cp-idp incarnation-id)))
-           (list :refused :identity))
-          ((or (not (fn-cp-uintp sequence))
-               (equal sequence *fn-cbor-max-uint*)
-               (not (fn-cp-uintp txid)))
-           (list :refused :coordinates))
-          (t (list :ok (fn-cpe-make
-                        sequence txid txid
-                        (list :bootstrap history-id incarnation-id)))))))
 
 (defun fn-cpa-last-record (records)
   (declare (xargs :measure (len records)))
@@ -114,7 +96,7 @@
                            (fn-cpa-last-record
                             (fn-sf-records (fn-sn-files store))))
                     (equal (fn-sn-identity-next store)
-                           (1+ (fn-cpe-sequence marker-event))))
+                           (1+ (nfix (fn-cpe-sequence marker-event)))))
                :completed
              :refused))
           ((equal (fn-cpa-rollover-proposal store fresh-id)
@@ -128,3 +110,12 @@
     (if (equal (car decoded) :ok)
         (fn-cpa-clone-phase store (fn-cp-nth 1 decoded))
       :refused)))
+
+; These are called only on cold recovery/clone paths, but executable guard
+; verification is still required independently of the surrounding tests.
+(verify-guards fn-cpa-auxiliary-of-history)
+(verify-guards fn-cpa-store-auxiliary-agrees)
+(verify-guards fn-cpa-rollover-proposal)
+(verify-guards fn-cpa-last-record)
+(verify-guards fn-cpa-clone-phase)
+(verify-guards fn-cpa-clone-phase-of-octets)

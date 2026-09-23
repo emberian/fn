@@ -544,15 +544,15 @@
     "books_in_root_closure": 541,
     "roots": 536,
     "theorems": 8153,
-    "functions": 6087,
-    "assert_events": 8868,
+    "functions": 6086,
+    "assert_events": 8866,
     "must_fails": 426,
     "encapsulates": 26,
     "guards": {
-      "verified": 1985,
-      "declared-off": 331,
+      "verified": 1991,
+      "declared-off": 325,
       "default-guarded": 2985,
-      "default-unguarded": 786
+      "default-unguarded": 785
     },
     "suspect_theorems": 74,
     "export_hygiene_warnings": 101,
@@ -3582,14 +3582,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 11,
+      "functions": 10,
       "guards": {
-        "verified": 0,
-        "declared-off": 6,
+        "verified": 6,
+        "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 5
+        "default-unguarded": 4
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 6,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 5,
@@ -11314,7 +11314,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 41,
+      "assert_events": 39,
       "must_fails": 0,
       "defconsts": 21,
       "defmacros": 0,
@@ -23083,6 +23083,13 @@
       {
         "host": "host/native/checkpoint.lisp",
         "line": 711,
+        "name": "fnn-owner-consumer-entropy-observation",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/checkpoint.lisp",
+        "line": 711,
         "name": "fnn-mkdir",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -23096,15 +23103,8 @@
       },
       {
         "host": "host/native/checkpoint.lisp",
-        "line": 795,
+        "line": 800,
         "name": "fnn-register-verb",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/checkpoint.lisp",
-        "line": 823,
-        "name": "fnn-register-developer-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
@@ -25210,28 +25210,28 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 830,
+        "line": 825,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1234,
+        "line": 1229,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1243,
+        "line": 1238,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1341,
+        "line": 1336,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

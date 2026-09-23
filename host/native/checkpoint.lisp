@@ -708,15 +708,20 @@
     (fnn-out "clone activated with durable incarnation rollover")
     +fnn-exit-ok+))
 
-(defun fnn-checkpoint-command-clone (source destination fresh-id)
+(defun fnn-checkpoint-command-clone (source destination)
   (multiple-value-bind (source-real target parent)
       (fnn-clone-canonical-paths source destination)
     (multiple-value-bind (store records) (fnn-open-live-store source-real t)
       (declare (ignore records))
       (unwind-protect
-           (let* ((proposed
+           (let* ((fresh-id
+                    (multiple-value-bind (history incarnation)
+                        (fnn-owner-consumer-entropy-observation)
+                      (declare (ignore history))
+                      incarnation))
+                  (proposed
                     (fnn-core-state 'fn-store-checkpoint-rollover-proposal
-                                    (fnn-octet-list (fnn-string-octets fresh-id)))))
+                                    fresh-id)))
              (unless (and (listp proposed) (eq (first proposed) :ok))
                (fnn-refuse "ACL2 refused clone incarnation: ~s" proposed))
              (let* ((event (second proposed))
@@ -781,10 +786,10 @@
            (error 'fnn-usage-error :message "checkpoint pack-reclaim ROOT"))
          (fnn-checkpoint-command-pack-reclaim (first args)))
         ((string= command "clone")
-         (unless (= (length args) 3)
+         (unless (= (length args) 2)
            (error 'fnn-usage-error :message
-                  "checkpoint clone SOURCE DESTINATION FRESH-INCARNATION-ID"))
-         (fnn-checkpoint-command-clone (first args) (second args) (third args)))
+                  "checkpoint clone SOURCE DESTINATION"))
+         (fnn-checkpoint-command-clone (first args) (second args)))
         ((string= command "clone-resume")
          (unless (= (length args) 1)
            (error 'fnn-usage-error :message "checkpoint clone-resume DESTINATION"))
@@ -793,32 +798,3 @@
                   (format nil "unknown checkpoint command ~a" command)))))
 
 (fnn-register-verb "checkpoint" #'fnn-checkpoint-command)
-
-(defun fnn-checkpoint-bootstrap-fixture (command args)
-  "Developer-only saved-image fixture, not a public consumer bootstrap CLI."
-  (declare (ignore command))
-  (unless (= (length args) 3)
-    (error 'fnn-usage-error :message
-           "consumer-bootstrap-fixture ROOT HISTORY-ID INCARNATION-ID"))
-  (let ((service nil))
-    (unwind-protect
-         (progn
-           (setq service (fnn-owner-install (first args) 1))
-           (let ((proposal
-                   (fnn-owner-core
-                    'fn-owner-checkpoint-bootstrap-proposal
-                    (fnn-octet-list (fnn-string-octets (second args)))
-                    (fnn-octet-list (fnn-string-octets (third args))))))
-             (unless (and (listp proposal) (eq (first proposal) :ok))
-               (fnn-refuse "ACL2 refused fixture bootstrap: ~s" proposal))
-             (unless (eq (fnn-owner-consumer-commit service (second proposal))
-                         :durable)
-               (fnn-indeterminate "fixture bootstrap was not durable"))))
-      (when service
-        (ignore-errors (fnn-owner-feed-close-all service))
-        (fnn-store-close (fnn-owner-service-store service)))))
-  (fnn-out "consumer bootstrap durably committed")
-  +fnn-exit-ok+)
-
-(fnn-register-developer-verb
- "consumer-bootstrap-fixture" #'fnn-checkpoint-bootstrap-fixture)

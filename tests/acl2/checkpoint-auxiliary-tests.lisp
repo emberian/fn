@@ -158,21 +158,12 @@
          *cpa-reopened*
          (fn-cpe-make 4 4 4 (list :rollover '(111 108 100))))
         :refused))
-(make-event
- `(defconst *cpa-empty-open*
-    ',(fn-sn-open-observed '("fn.letters") 32 0 nil)))
-(assert-event (fn-sn-open-okp *cpa-empty-open*))
-(assert-event
- (equal (fn-cpa-bootstrap-proposal
-         (fn-sn-open-state *cpa-empty-open*) '(104) '(105))
-        (list :ok (fn-cpe-make 0 0 0 '(:bootstrap (104) (105))))))
-(assert-event
- (equal (fn-cpa-bootstrap-proposal *cpa-reopened* '(104) '(105))
-        '(:refused :already-bootstrapped)))
-
 (assert-event
  (equal (fn-cpa-rollover-proposal *cpa-reopened* '(110 101 119))
         '(:refused :same-incarnation)))
+(assert-event
+ (equal (fn-cpa-rollover-proposal *cpa-reopened* '(104 105 115 116))
+        '(:refused :history-id)))
 (assert-event
  (equal (fn-cpa-rollover-proposal *cpa-reopened* nil)
         '(:refused :incarnation-id)))

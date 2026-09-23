@@ -189,7 +189,10 @@ source now has a cold `checkpoint clone` and fenced `checkpoint clone-resume`
 path: it copies exact Store bytes under an exclusive source lock, installs a
 durable canonical rollover-event fence before exposing the destination, and
 refuses ordinary opens until owner publication and an independent reopen
-confirm the new incarnation. A same-ID or malformed proposal is refused
+confirm the new incarnation. Production clone observes 32 new octets from
+the OS CSPRNG and ACL2 rejects equality with the current incarnation or
+history ID. Sibling uniqueness is probabilistic under the OS entropy trust
+boundary, not a theorem of globally unique IDs. A same-ID or malformed proposal is refused
 without publication; an occupied destination is untouched; uncertain
 completion leaves the copied target fenced. This
 source path awaits a combined saved-image witness and a served cursor test;
