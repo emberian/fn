@@ -268,6 +268,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-foundation-tests \
 	books/bp-node-fragment-family \
 	tests/acl2/bp-node-fragment-family-tests \
+	books/bp-node-fragment-plan \
+	tests/acl2/bp-node-fragment-plan-tests \
 	books/bp-node-receive-boundary \
 	tests/acl2/bp-node-receive-boundary-tests \
 	books/bp-fnbs-codec \

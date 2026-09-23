@@ -2066,6 +2066,13 @@ fragment whose payload bytes themselves decode as a valid request ADU. Its
 host-facing theorem `fn-bpah-host-pending-view-excludes-fragment` and a
 reachable partial-ADU witness cover this safety gate. A complete C2 query
 still requires durable family replacement before Store may see a whole ADU.
+`fn-bpnf-family-plan` in `bp-node-fragment-plan.lisp` now projects a bounded
+candidate from the C2 active set: it takes the offset-zero primary and
+extension blocks, replaces the payload with the fast reassembly result,
+names the consumed principal/identity/arrival rows, and checks the exact
+post-replacement slot and octet budgets. It is read-only and not yet a
+native caller or durable kind-18 transition. Guard verification and the
+publication/replay step remain open before it can authorize dispatch.
 
 - `(:ok bytes)`: propose kind 18 `(fn-bpn-rec-reassembled token family held
   ids)`. Applied atomically: the fragment entries leave the live list (their
