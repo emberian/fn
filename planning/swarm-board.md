@@ -75,6 +75,10 @@ shared dispatch brief at `build/launch-20260923/BRIEF.md` and the relevant specs
   observed a queued article with no offer. TLS zero-time reads never polled the
   socket; the host fix and real OpenSSL witness are landed. Matrix and feed
   agents share the new two-node restart/mid-transfer gate.
+  That suite now passes on frozen `f0b8b166`, including reciprocal protected
+  exchange, both restart cases and credential/anchor rejection controls;
+  [the evidence](evidence/matrix-protected-f0b8b166-2026-09-23.md) records
+  the exact journal observations and one recipient article after retry.
 - The bounded feed-port replay theorem and served process-death visible-file
   relation are landed with exact manifests. Physical FNFD correspondence and
   the visible-relation-to-recovery theorem remain distinct open obligations.
