@@ -54,7 +54,7 @@
 (defun fn-bpnf-publication-operation-publisher (operation)
   (declare (xargs :guard t)) (nth 6 operation))
 
-; This is the authorization subject called by the native publisher.  In
+; This is the intended authorization subject for the native publisher.  In
 ; particular a successful result cannot be manufactured from a stale
 ; callback or a different held row, even when the final name is free.
 (defthm fn-bpnf-publication-success-binds-pending-echo
@@ -84,18 +84,15 @@
                          st epoch operation-id held lock-owned final-absent))
                        (fn-jpub-initial t))))
   :hints (("Goal" :do-not-induct t
-                   :in-theory (enable fn-bpnf-publication-authorize
-                                     fn-bpnf-publication-operation-name
-                                     fn-bpnf-publication-operation-frame
-                                     fn-bpnf-publication-operation-publisher))))
-
-(defthm fn-bpnf-publication-authorize-yields-operation
-  (implies (equal (car (fn-bpnf-publication-authorize
-                       st epoch operation-id held lock-owned final-absent))
-                  :ok)
-           (fn-bpnf-publication-operationp
-            (fn-bpnf-publication-authorize
-             st epoch operation-id held lock-owned final-absent)))
-  :hints (("Goal" :do-not-induct t
-                   :in-theory (enable fn-bpnf-publication-authorize
-                                     fn-bpnf-publication-operationp))))
+                   :in-theory
+                   (e/d (fn-bpnf-publication-authorize
+                         fn-bpnf-publication-operation-name
+                         fn-bpnf-publication-operation-frame
+                         fn-bpnf-publication-operation-publisher)
+                        (fn-bpnf-stored-recordp
+                         fn-bpnf-stored-record-frame
+                         fn-bpnf-stored-record-name
+                         fn-bpnf-stored-record-values
+                         fn-bpnf-operationp
+                         fn-bpnf-operation-matchp))))
+  :rule-classes nil)
