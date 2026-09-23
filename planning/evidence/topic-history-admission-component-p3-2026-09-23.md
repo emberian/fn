@@ -80,6 +80,16 @@ roots. The test accepts a bound root and rejects a wrong local administrator,
 missing prior accepted event and missing snapshot. This does not integrate
 the projection into Store's carried state or validate the native caller.
 
+The local administrator component constructs a one-time install event from a
+bounded observed UID and a separate 32-octet entropy observation. Its root
+wrapper refuses a different current UID before invoking root preparation;
+replay of a prior installation does not use current process credentials.
+The [source-matched book and test manifest](manifests/certify-20260923T222820Z-998372.json)
+passed on persvati, jobs 2, with explicit roots. The test's accepted root,
+wrong-UID refusal, duplicate-install refusal and must-fail wrong-UID case
+exercise the called wrapper. This logical event has no Store payload or
+native caller yet, so it does not establish durable operator authority.
+
 This packet has no same-journal publication,
 replay/index relation, retention dependency pin, historical administrator
 configuration lookup, native command or source-matched native test. It cannot
