@@ -120,6 +120,10 @@ not currently check a store incarnation. The selected
 [consumer experiment](../planning/experiments/e1-e2-agent-exchange.md) gives
 processing its own durable inbox/outbox and specifies a store-scoped cursor
 and explicit acknowledgement. That interface is not implemented yet.
+The proposed [v1 consumer contract](../specs/consumer-progress.md) binds a
+cursor to a Store history, incarnation, query and authorization view, with a
+separate durable ack. Its specified crash and replay traces are
+[here](../planning/experiments/e1-e2-v1-traces.json).
 
 If the state file itself cannot be written, the outcome word and the exit code
 are still the node's -- the read happened and the articles are out, and that is

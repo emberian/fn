@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "status": "specified-not-executed",
+  "contract": "specs/consumer-progress.md",
+  "execution_rule": "Each trace runs the ACL2 owner/Store decision and native host publication with real reopen at the named cut, then observes both fn's durable position and the consumer database. No current caller implements these actions.",
+  "fixtures": {
+    "store_a": "history HA, incarnation IA, administrator A",
+    "store_b": "history HB, incarnation IB, administrator B, same endpoint in replacement traces",
+    "report_r": "signed immutable source SR, Message-ID MR, application operation OR, dregg receipt DR",
+    "reply_q": "signed immutable source SQ, Message-ID MQ, correlation (OR, SR)",
+    "view_1": "initial query group agent.reports and principal agent-b policy; E2-06 initially hides R",
+    "view_2": "in E2-06, older hidden R becomes visible to agent-b"
+  },
+  "traces": [
+    {
+      "id": "E2-01",
+      "name": "sleep, filtered prefix and empty page",
+      "actions": ["commit nonarticle record 1 and hidden article 2 in HB/IB", "register B under view 1", "poll with scan limit 2; observe empty page and continuation at 2", "commit R at record 3 while B sleeps", "reopen fn", "poll from continuation; commit B inbox R and Q outbox atomically", "ack scanned prefix", "reopen fn and B database"],
+      "expect": ["no ack from either poll alone", "empty page can advance through record 2 without exposing its identity", "after reopen B has one R verdict and immutable Q; fn B position is 3", "A's independent position remains unchanged"],
+      "cuts": ["after empty poll", "after B transaction before fn ack", "after ack publication before reply"]
+    },
+    {
+      "id": "E2-02",
+      "name": "two consumers, one report",
+      "actions": ["register B and C on HB/IB", "commit R", "poll R as B and C", "B commits inbox/outbox and acks", "reopen fn and both databases", "C polls its original cursor and commits independently"],
+      "expect": ["B's recorded position advances without moving C's", "each consumer has one local transition", "no fn retention release is inferred"],
+      "cuts": ["after B ack before C transaction"]
+    },
+    {
+      "id": "E2-03",
+      "name": "duplicate transport and application operation conflict",
+      "actions": ["accept R on B via BP attempt X", "receive duplicate R under attempt Y", "deliver application retry R2 with new Message-ID and the same operation ID but different signed source", "poll and process all admitted articles", "reopen both stores"],
+      "expect": ["R has one fn article/charge under the existing identity rule", "X and Y remain distinguishable transport evidence", "B makes one transition for OR and retains R2 as conflicting application evidence", "Q in outbox is byte-identical across replays"],
+      "cuts": ["after B transaction commit before fn ack"]
+    },
+    {
+      "id": "E2-04",
+      "name": "uncertain consumer transaction and uncertain ack",
+      "actions": ["poll R", "kill B at the inbox/outbox transaction publication cut", "reopen B database and query inbox key plus Q outbox key", "complete transaction if absent or reuse exact Q if present", "send ack and kill fn at the ack publication cut", "reopen fn and query position", "repeat the same ack only if position stayed old"],
+      "expect": ["B has either neither record or both after its cut, never half a pair", "after settlement B has one transition and one Q", "fn position is old or advanced after its cut and never invented from socket output", "repeat ack is idempotent"],
+      "cuts": ["consumer transaction before/after durable barrier", "fn ack before/after durable barrier"]
+    },
+    {
+      "id": "E2-05",
+      "name": "endpoint replacement and restore fork",
+      "actions": ["B acks R in HB/IB", "replace the endpoint with a copied store HB/IB2 whose local article numbers repeat", "offer the old cursor and attempt ack", "reopen replacement fn", "explicitly rebase B under HB/IB2 and scan from zero"],
+      "expect": ["old cursor is refused wrong-store/rebase-required without mutation", "old HB/IB ack does not appear as HB/IB2 progress", "R is offered again and B applies its explicit provenance/dedup policy"],
+      "cuts": ["after replacement open", "after rebase publication before reply"]
+    },
+    {
+      "id": "E2-06",
+      "name": "authorization view makes old report visible",
+      "actions": ["commit hidden R at record 1 and visible Q at record 2", "B scans and acks through record 2 under view 1", "change effective read policy to view 2", "attempt old cursor poll and ack", "rebase and scan from zero", "reopen fn and B database"],
+      "expect": ["old view cursor is refused without advancing", "new scan offers R despite its record position below the former ack", "B's inbox deduplicates any repeated Q", "hidden source and record location are not disclosed by old-view page contents/token"],
+      "cuts": ["after policy event before rebase", "after rebase publication before reply"]
+    },
+    {
+      "id": "E2-07",
+      "name": "scope forgery and bounded registration",
+      "actions": ["register B under query reports", "offer B token as C and under query replies", "offer a malformed or unknown-version token", "fill the configured consumer table", "attempt one more register", "reopen fn"],
+      "expect": ["all wrong-scope/token requests refuse before ack mutation", "the full table refuses before a durable registration promise", "existing positions survive reopen", "bounded decode work and no denied article metadata in refusals"],
+      "cuts": ["after last accepted registration", "after refused over-capacity registration"]
+    },
+    {
+      "id": "E2-08",
+      "name": "retention gap and independent page budgets",
+      "actions": ["commit visible R, then reclaim its article bytes under the existing retention decision before B polls", "poll across R", "restore the article from authorized evidence or declare an explicit application waiver", "commit one article larger than the configured page-byte limit", "poll across that article and reopen fn"],
+      "expect": ["reclaimed visible R yields unavailable at its record position and no continuation past it", "no ack implies R was processed", "an oversized single article yields bounded refusal without a cursor past it", "scan, item, byte, token and registration limits are checked independently"],
+      "cuts": ["after reclaim before poll", "after oversized poll refusal"]
+    },
+    {
+      "id": "E1-01",
+      "name": "separate administrators, sleeping reply and uncertain post",
+      "actions": ["A commits R with exact-source hybrid authorship and dregg receipt DR", "trusted peer transports R to B's separate Store while B sleeps", "B verifies authorship and independently verifies DR", "B commits inbox R with Q outbox and acks", "B posts Q and loses final reply", "lookup MQ and compare exact SQ before any retry", "A wakes, verifies Q correlation to OR and SR, then commits its own inbox transaction"],
+      "expect": ["HA/IA and HB/IB have independent numbers, policies and ack positions", "transport acknowledgement, fn retention receipt, dregg receipt and B ack have distinct issuers/meanings", "uncertain post yields one accepted Q or a definitive absence before retry", "A's processing is independent of B's ack"],
+      "cuts": ["after B ack before Q post", "after B post publication before reply", "after A poll before A transaction"]
+    },
+    {
+      "id": "E1-02",
+      "name": "authorship versus application receipt and correlation",
+      "actions": ["deliver R with valid fn signature but false DR", "deliver a reply Q2 whose Message-ID references MR but whose source correlation is wrong", "deliver R3 with unknown application payload version", "B and A poll through these articles and reopen"],
+      "expect": ["authorship verdict does not make false DR valid", "Q2 does not satisfy R's correlation but remains attributable evidence if admitted", "R3 has no application authority and parsing stays within limits", "no application transition is inferred from fn ack alone"],
+      "cuts": ["after each consumer transaction before ack"]
+    }
+  ]
+}

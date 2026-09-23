@@ -88,6 +88,12 @@ does not silently split R into independently accepted application operations.
 
 ## E2: a scoped, bounded consumer position
 
+The selected E2 direction now has a concrete proposed v1 operation, identity,
+limit and recovery contract in [consumer progress](../../specs/consumer-progress.md).
+Its [adversarial trace set](e1-e2-v1-traces.json) identifies the fn and
+consumer database observations and the process-death cuts each implementation
+must execute. They are specified traces, not passing tests or a served API.
+
 Proposed cursor meaning is `(store-history/incarnation, consumer-id,
 query-definition/version, authorization-view/version, committed position)`.
 It is opaque on the wire and authenticates those fields; it is **not** a bare
