@@ -237,7 +237,11 @@ that does not exist.  The host observes a fresh 32-octet incarnation ID from
 the OS CSPRNG; ACL2 validates its shape, rejects equality with the copied
 history or current incarnation, and constructs the durable rollover event.
 Distinct sibling clones rely on probabilistic entropy uniqueness, not a
-proved global uniqueness claim.  It first builds a private sibling directory containing the
+proved global uniqueness claim.  Source and destination CLI paths must be
+absolute, NUL-free and at most 512 UTF-8 octets, matching the ACL2 native
+configuration path bound.  Canonicalized aliases, the staging path, fence
+path and every joined copy path are checked against the same bound before
+traversal.  It first builds a private sibling directory containing the
 exact source bytes and a durable `clone-pending.fnce` fence.  The fence holds
 the canonical version-one `fnce` rollover event proposed by ACL2, not a
 second projection format.  Publication uses Linux `renameat2` with
@@ -260,10 +264,13 @@ activation operation.
 
 A death before directory publication leaves only an unservable private
 staging tree.  A death after publication but before a completed rollover
-leaves the destination fenced.  An ambiguous publication or completion also
+leaves the destination fenced.  An ambiguous publication or rollover completion also
 leaves it fenced, requiring recovery to inspect the durable journal.  If the
 rollover completed but fence removal did not, retry verifies that same event
-and removes the fence without appending another rollover.  A different
+and removes the fence without appending another rollover.  After independent
+reopen confirms the durable rollover, an unlink or directory-barrier error
+still reports uncertainty.  The marker may already be absent, but ordinary
+opens are safe because the new incarnation is durable.  A different
 incarnation or an existing nonempty destination is never overwritten.  The
 copied old cursor tokens are invalid after the new incarnation; registration
 state resets, while exact journal history, article and retention obligations,

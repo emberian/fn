@@ -4,6 +4,17 @@
 (include-book "../../books/hybrid-store")
 (include-book "../../books/codec-attach")
 
+; The clone caller bounds both raw CLI paths and canonical/derived paths by
+; the same ACL2-owned native Store path width before filesystem traversal.
+(assert-event (equal (fn-cpa-clone-path-bound) *fn-ncfg-max-path*))
+(assert-event
+ (fn-cpa-clone-input-pathp (cons 47 (make-list 511 :initial-element 97))))
+(assert-event
+ (not (fn-cpa-clone-input-pathp
+       (cons 47 (make-list 512 :initial-element 97)))))
+(assert-event (not (fn-cpa-clone-input-pathp '(97 98 99))))
+(assert-event (not (fn-cpa-clone-input-pathp '(47 97 0 98))))
+
 ; The selected pack keeps exact bootstrap, article, keyring-snapshot and
 ; unbound standalone-verdict bytes.  The latter is not an accepted composite
 ; verdict and must not be promoted to historical authority on reopen.

@@ -192,9 +192,13 @@ refuses ordinary opens until owner publication and an independent reopen
 confirm the new incarnation. Production clone observes 32 new octets from
 the OS CSPRNG and ACL2 rejects equality with the current incarnation or
 history ID. Sibling uniqueness is probabilistic under the OS entropy trust
-boundary, not a theorem of globally unique IDs. A same-ID or malformed proposal is refused
-without publication; an occupied destination is untouched; uncertain
-completion leaves the copied target fenced. This
+boundary, not a theorem of globally unique IDs. Clone paths and their
+canonical aliases are bounded by the ACL2 512-octet native Store path policy.
+A same-ID or malformed proposal is refused without publication; an occupied
+destination is untouched. Uncertainty before durable rollover confirmation
+leaves the copied target fenced. If fence removal fails after the independent
+reopen confirmed the durable rollover, the command still reports uncertainty
+but an already-unlinked fence can permit safe ordinary opens. This
 source path awaits a combined saved-image witness and a served cursor test;
 arbitrary filesystem copying is not a supported writable clone. The
 selected exact-prefix pack retains every original event byte and reconstructs

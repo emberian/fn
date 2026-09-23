@@ -37,6 +37,14 @@
   (declare (xargs :mode :program))
   (fn-cpa-clone-max-bytes))
 
+(defun fn-store-checkpoint-clone-path-bound ()
+  (declare (xargs :mode :program))
+  (fn-cpa-clone-path-bound))
+
+(defun fn-store-checkpoint-clone-input-pathp (path)
+  (declare (xargs :mode :program))
+  (fn-cpa-clone-input-pathp path))
+
 (defun fn-store-checkpoint-clone-phase (marker-octets state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cpa-clone-phase-of-octets

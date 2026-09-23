@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "store-node")
 (include-book "checkpoint-compaction")
+(include-book "native-config")
 
 (defconst *fn-cpa-version* 1)
 (defconst *fn-cpa-clone-fence-name*
@@ -17,6 +18,20 @@
 (defun fn-cpa-clone-max-depth () *fn-cpa-clone-max-depth*)
 (defun fn-cpa-clone-max-entries () *fn-cpa-clone-max-entries*)
 (defun fn-cpa-clone-max-bytes () *fn-cpa-clone-max-bytes*)
+(defun fn-cpa-clone-path-bound () *fn-ncfg-max-path*)
+
+; The native clone CLI accepts only absolute, NUL-free path octets within the
+; same ACL2-owned width as an operator Store path.  Canonical aliases and
+; recursively joined entry paths must satisfy this width again in the host
+; before a filesystem call, since a short alias may resolve to a long path.
+(defun fn-cpa-clone-input-pathp (path)
+  (declare (xargs :guard t))
+  (and (consp path)
+       (equal (car path) 47)
+       (fn-cbor-octet-listp path)
+       (fn-cbor-at-mostp path *fn-ncfg-max-path*)
+       (not (member-equal 0 path))))
+(verify-guards fn-cpa-clone-input-pathp)
 
 ; The full replay is deliberately confined to recovery, never a served path.
 ; Returning :bad keeps a partial or malformed consumer/identity history from
