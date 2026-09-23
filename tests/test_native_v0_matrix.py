@@ -486,9 +486,10 @@ class NativeSliceAccountingTests(unittest.TestCase):
             self.assertIn("FN_NATIVE_HOST=/opt/fn/fn-host ", client.command)
             self.assertNotIn("fn-host-developer", client.command)
             self.assertNotIn("FN_NATIVE_CONTROL_FAULT", client.command)
-            # Nothing else in the slice runs on the developer image.
+            # The protected sent-cut witness also uses a developer source;
+            # ordinary served clients and peer tests use production.
             for step in gate.steps:
-                if "init owner" in step.name:
+                if "init owner" in step.name or step.name == "native protected peering witness":
                     continue
                 self.assertNotIn("fn-host-developer", step.command, step.name)
 
@@ -948,9 +949,9 @@ class ProtectedTransitTests(unittest.TestCase):
         feed = {"kind": "protected-feed", "security": "starttls", "auth": "authinfo",
                 "target_policy": {"required": True, "protected_only": True},
                 "transit": {"ab": {"identical": True,
-                                   "unauthenticated_offer": "480 authentication required"},
+                                   "unauthenticated_offer": "502 transit is not permitted"},
                             "ba": {"identical": True,
-                                   "unauthenticated_offer": "480 authentication required"}},
+                                   "unauthenticated_offer": "502 transit is not permitted"}},
                 "reconnect": {"ab": {"identical": True}, "ba": {"identical": True}},
                 "identity": cls.identity()}
         password = {"kind": "protected-refusal", "case": "wrong-password",
@@ -1003,7 +1004,7 @@ class ProtectedTransitTests(unittest.TestCase):
         rows = self.rows(self.witness_lines())
         for rid in self.IDS[:4]:
             self.assertEqual(rows[rid].verdict, v0_matrix.ACCEPTED, rid)
-            self.assertIn("480", rows[rid].observed, rid)
+            self.assertIn("502", rows[rid].observed, rid)
         for rid in self.IDS[4:]:
             self.assertEqual(rows[rid].verdict, v0_matrix.REFUSED, rid)
         self.assertIn("test_reciprocal_starttls_authinfo_transfer_and_reconnect",
@@ -1056,11 +1057,30 @@ class ProtectedTransitTests(unittest.TestCase):
                "after": {"state_after_restart": "done",
                          "records": {"feed-offer": 1, "feed-sent": 1,
                                      "feed-outcome": 1}}}
-        line = "NATIVE-PROTECTED-WITNESS " + json.dumps(one)
-        rows = self.rows(base + "\n" + line)
+        cut = {"kind": "feed-sent-restart", "security": "starttls",
+               "auth": "authinfo", "sender_stopped_after_sent": True,
+               "sender_killed": True, "sender_restarted": True,
+               "recipient_articles": 1, "identity": self.identity(),
+               "developer_identity": {"status": "observed",
+                                      "runtime_sha256": "a" * 64,
+                                      "core_sha256": "c" * 64},
+               "interrupted": {"sent_before_restart": "t",
+                               "state_after_restart": "queued",
+                               "records": {"feed-offer": 1, "feed-sent": 1}},
+               "settled": {"state_after_restart": "done",
+                           "records": {"feed-offer": 2, "feed-sent": 2,
+                                       "feed-outcome": 1}}}
+        marker = "NATIVE-PROTECTED-EXPECTED-DEVELOPER-CORE " + "c" * 64
+        lines = (base + "\n" + marker + "\n"
+                 + "NATIVE-PROTECTED-WITNESS " + json.dumps(one) + "\n"
+                 + "NATIVE-PROTECTED-WITNESS " + json.dumps(cut))
+        rows = self.rows(lines)
         self.assertEqual(rows["V0-FEED-ONCE"].verdict, v0_matrix.ACCEPTED)
         one["after"]["records"]["feed-offer"] = 2
-        rows = self.rows(base + "\n" + "NATIVE-PROTECTED-WITNESS " + json.dumps(one))
+        lines = (base + "\n" + marker + "\n"
+                 + "NATIVE-PROTECTED-WITNESS " + json.dumps(one) + "\n"
+                 + "NATIVE-PROTECTED-WITNESS " + json.dumps(cut))
+        rows = self.rows(lines)
         self.assertEqual(rows["V0-FEED-ONCE"].verdict, v0_matrix.NOT_EXERCISED)
         self.assertIn("settled owner queue", rows["V0-FEED-ONCE"].blocker)
 
