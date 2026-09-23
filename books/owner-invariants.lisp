@@ -1884,6 +1884,34 @@
                             fn-own-set-conns fn-own-enqueue)
                            (fn-served-step fn-own-conn-boundedp)))))
 
+(defthm fn-own-find-conn-of-replace-same-id
+  (implies (and (fn-own-find-conn id conns)
+                (equal (fn-own-conn-id next) id))
+           (equal (fn-own-find-conn id (fn-own-replace-conn next conns))
+                  next))
+  :hints (("Goal"
+           :use ((:instance fn-own-find-conn-of-replace-conn-same
+                            (conn next))))))
+
+(defthm fn-own-read-survivor-keeps-historical-fields
+  (implies
+   (fn-own-find-conn
+    id (fn-own-conns (cdr (fn-own-read o id octets))))
+   (let ((old (fn-own-find-conn id (fn-own-conns o)))
+         (next (fn-own-find-conn
+                id (fn-own-conns (cdr (fn-own-read o id octets))))))
+     (and (fn-own-conn-shapep next)
+          (equal (fn-own-conn-id next) (fn-own-conn-id old))
+          (equal (fn-own-conn-version next) (fn-own-conn-version old))
+          (equal (fn-own-conn-frontier next) (fn-own-conn-frontier old))
+          (equal (fn-own-conn-archive next) (fn-own-conn-archive old)))))
+  :hints (("Goal"
+           :use ((:instance fn-own-find-conn-id
+                            (conns (fn-own-conns o))))
+           :in-theory (e/d (fn-own-read fn-own-finish-read
+                            fn-own-set-conns fn-own-enqueue)
+                           (fn-served-step fn-own-conn-boundedp)))))
+
 (defthm fn-own-find-conn-of-remove-conn-other
   (implies (not (equal id other))
            (equal (fn-own-find-conn other (fn-own-remove-conn id conns))
