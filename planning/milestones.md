@@ -1,3 +1,7 @@
+Current selected-v1 join: consumer projection and native publication integrated
+at `98996532` / `944916e6`; combined certification is pending. CNS-001,
+PRF-064 and SCN-033 track this work; end-to-end fetch/ack remains open.
+
 Current task (2026-09-23): concurrent v0/v1 development grounded in the actual
 Mini/Bread OS interfaces. [Current work](now.md) names integrated source,
 qualified image scope and remaining release obligations; the
