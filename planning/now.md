@@ -4,9 +4,16 @@ The plan is [plan-2026-09-22-trajectory](plan-2026-09-22-trajectory.md);
 the loop is [how-we-work](how-we-work.md). T0 landed on 2026-09-22: the deployed node is hbox at 192.168.50.39:1119
 from the `dabebb84` image, its page is [docs/nodes/hbox.md](../docs/nodes/hbox.md)
 and its record is [node-hbox-dabebb84](evidence/node-hbox-dabebb84-2026-09-22.md).
-The current phase is 1. Live lanes: `t1/codec-seam` (the codec boundary and the store cluster,
-its final run being harvested) and `t4/snr` (why `store-node-resolution`
-takes 1748 s, from its logs). Landed since the node, 2026-09-22 to 23:
+The current phase is 1. The hbox node runs the second image built from `dev`, `da5fd8cb`, upgraded
+in place on 2026-09-23 with its store kept
+([record](evidence/node-hbox-da5fd8cb-2026-09-23.md)); the image closure
+certifies from scratch in 1 min 44 s and an incremental run of dev's head
+in about a minute, after fifteen proof-cost lanes and the cache, runner
+and incremental-mode tooling of 2026-09-23 (the numbers are the ITER
+table of the [Codex handoff](handoff-to-codex-2026-09-23.md), whose State
+section is the current state). The INN lab holds 33 of 33 on this image;
+the cut campaign on it is the one lane still out. Everything else is in
+the handoff; no Claude lane is live on any book. Landed since the node, 2026-09-22 to 23:
 `t9b/role`, `t13/inn`, `t13/agents`, `t5/campaign`, `t12a/bp-rev2` (the
 contract patched against [gpt-6's second review](review-2026-09-22-bp-node-machine-2.md);
 [the third](review-2026-09-23-bp-node-machine-3.md) is answered and folded

@@ -34,10 +34,12 @@ disagree, those win and this file is wrong.
   restating it as identity modulo the prepend). `V0-CFG-LIVE-REFUSE`,
   `V0-NODE-PROFILE` and `V0-POST-FROM-MAILBOX` agree, which witnesses the
   live-rows, profile and conformance repairs on an image.
-- The cut campaign and the INN lab on this image are running as this is
-  written; their records land as `evidence/campaign-da5fd8cb-2026-09-23.md`
-  and `evidence/inn-lab-da5fd8cb-2026-09-23.md`, and this section is amended
-  with what they say.
+- The INN lab on this image holds 33 of 33 with no fn-side finding
+  ([record](evidence/inn-lab-da5fd8cb-2026-09-23.md)): the operator's post
+  crosses injected, INN's article is served under fn's Path with no Xref,
+  `From: yue` is refused. The cut campaign on this image is running as this
+  is written; its record lands as `evidence/campaign-da5fd8cb-2026-09-23.md`
+  and this line is amended with what it says.
 - No lane is live on any book. The tooling as of tonight: the certificate
   cache composes across runs; a plain run is incremental; the runner starts
   the longest chain first; `farm.py wait` returns; eight local ACL2 session
