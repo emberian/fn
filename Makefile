@@ -435,6 +435,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
+	books/group-bucket-index \
+	tests/acl2/group-bucket-index-tests \
 	tests/acl2/nntp-reader-profile-tests \
 	tests/acl2/nntp-legacy-tests \
 	tests/acl2/nntp-newnews-tests \
