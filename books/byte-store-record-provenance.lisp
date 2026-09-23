@@ -2,6 +2,7 @@
 ; wrote and fenced, not merely a record with matching decoded fields.
 (in-package "ACL2")
 (include-book "byte-store-relation")
+(include-book "byte-store-program-invariants")
 
 (local (defthm fn-bs-k6-take-all
          (implies (true-listp xs)
@@ -1716,3 +1717,203 @@
                              fn-bs-k6-lookup-is-entry-after
                              fn-bs-durable fn-bs-content
                              fn-bs-durable-content))))))
+
+; K0 old-prefix preservation.  The new inode is outside every retained
+; transaction target by authority-known and the next-inode bound (proved in
+; byte-store-program-invariants).  Each old pathname therefore keeps its
+; exact durable octets through create, write, file fence and immutable link;
+; the existing decoder agreement theorem lifts that pointwise fact to the
+; complete previously durable record list.
+(local
+ (defthm fn-bs-k0-file-cut-keeps-other-durable-content
+   (implies (and (fn-bs-statep bs)
+                 (fn-bs-namep stage)
+                 (not (fn-bs-lookup bs :staging stage))
+                 (true-listp frame)
+                 (not (equal other (fn-bs-next-ino bs))))
+            (equal (fn-bs-durable-content
+                    (car (nth 5 (fn-bs-run bs ks
+                                           (fn-bs-record-program stage name frame)
+                                           nil groups capacity)))
+                    other)
+                   (fn-bs-durable-content bs other)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k6-interpreted-record-fence-is-write-fence)
+                  (:instance fn-bs-fence-file-touches-only-its-inode
+                             (s (mv-nth 1 (fn-bs-write
+                                            (mv-nth 1 (fn-bs-create bs :staging stage :ok))
+                                            (fn-bs-next-ino bs) 0 frame :ok)))
+                             (ino (fn-bs-next-ino bs))))
+            :in-theory (e/d (fn-bs-create fn-bs-write fn-bs-durable-content)
+                            (fn-bs-run fn-bs-record-program fn-bs-statep
+                             fn-bs-fence-file fn-bs-lookup
+                             fn-bs-k6-lookup-is-entry-after))))))
+
+(local
+ (defthm fn-bs-k0-link-keeps-durable-content
+   (equal (fn-bs-durable-content
+           (mv-nth 1 (fn-bs-link bs :staging stage
+                                 :transactions name :ok)) other)
+          (fn-bs-durable-content bs other))
+   :hints (("Goal" :in-theory (enable fn-bs-link fn-bs-durable-content)))))
+
+(local
+ (defthm fn-bs-k0-attempted-cut-keeps-other-durable-content
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-record-inputp ks stage name frame)
+                 (not (fn-bs-lookup bs :staging stage))
+                 (not (equal other (fn-bs-next-ino bs))))
+            (equal (fn-bs-durable-content
+                    (car (nth 10 (fn-bs-run bs ks
+                                            (fn-bs-record-program stage name frame)
+                                            nil groups capacity)))
+                    other)
+                   (fn-bs-durable-content bs other)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-store-relation-unfolds)
+                  (:instance fn-bs-k6-state-next-ino-is-inop)
+                  (:instance fn-bs-txn-name-is-a-name
+                             (n (fn-store-event-sequence (fn-sf-record-candidate ks))))
+                  (:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                  (:instance fn-bs-k6-file-cut-source-is-fenced-frame)
+                  (:instance fn-bs-k6-actual-link-cut-is-file-cut-link)
+                  (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state)
+                  (:instance fn-bs-k0-file-cut-keeps-other-durable-content)
+                  (:instance fn-bs-k0-link-keeps-durable-content
+                             (bs (car (nth 5 (fn-bs-run bs ks
+                                                            (fn-bs-record-program stage name frame)
+                                                            nil groups capacity))))))
+            :in-theory (e/d (fn-bs-record-inputp)
+                            (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                             fn-bs-statep fn-bs-durable-content fn-bs-lookup
+                             fn-bs-k6-lookup-is-entry-after))))))
+
+(local
+ (defthm fn-bs-k0-attempted-durable-transaction-lookup-is-input
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-record-inputp ks stage final frame)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (equal
+             (fn-bs-lookup
+              (fn-bs-durable
+               (car (nth 10 (fn-bs-run bs ks
+                                            (fn-bs-record-program stage final frame)
+                                            nil groups capacity))))
+              :transactions name)
+             (fn-bs-lookup (fn-bs-durable bs) :transactions name)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k6-related-attempt-durable-namespace-is-input-namespace
+                             (name final))
+                  (:instance fn-bs-quiet-lookup-is-durable-entry
+                             (s (fn-bs-durable bs)) (dir :transactions))
+                  (:instance fn-bs-quiet-lookup-is-durable-entry
+                             (s (fn-bs-durable
+                                 (car (nth 10 (fn-bs-run bs ks
+                                                              (fn-bs-record-program stage final frame)
+                                                              nil groups capacity)))))
+                             (dir :transactions)))
+            :in-theory (e/d (fn-bs-durable fn-bs-durable-entry)
+                            (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                             fn-bs-record-inputp fn-bs-lookup fn-bs-view))))))
+
+(local
+ (defthm fn-bs-k0-attempted-durable-transaction-content-is-input
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-record-inputp ks stage final frame)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (equal
+             (fn-bs-content
+              (fn-bs-durable
+               (car (nth 10 (fn-bs-run bs ks
+                                            (fn-bs-record-program stage final frame)
+                                            nil groups capacity))))
+              (fn-bs-lookup
+               (fn-bs-durable
+                (car (nth 10 (fn-bs-run bs ks
+                                             (fn-bs-record-program stage final frame)
+                                             nil groups capacity))))
+               :transactions name))
+             (fn-bs-content (fn-bs-durable bs)
+                            (fn-bs-lookup (fn-bs-durable bs)
+                                          :transactions name))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k0-attempted-durable-transaction-lookup-is-input)
+                  (:instance fn-bs-related-allocation-is-not-a-transaction-target
+                             (name name))
+                  (:instance fn-bs-quiet-lookup-is-durable-entry
+                             (s (fn-bs-durable bs)) (dir :transactions))
+                  (:instance fn-bs-k0-attempted-cut-keeps-other-durable-content
+                             (name final)
+                             (other (fn-bs-durable-entry bs :transactions name)))
+                  (:instance fn-bs-k0-durable-state-content-is-durable-content
+                             (bs bs)
+                             (ino (fn-bs-durable-entry bs :transactions name)))
+                  (:instance fn-bs-k0-durable-state-content-is-durable-content
+                             (bs (car (nth 10 (fn-bs-run bs ks
+                                                            (fn-bs-record-program stage final frame)
+                                                            nil groups capacity))))
+                             (ino (fn-bs-durable-entry bs :transactions name))))
+            :in-theory (e/d (fn-bs-durable fn-bs-durable-entry)
+                            (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                             fn-bs-record-inputp fn-bs-lookup fn-bs-content
+                             fn-bs-durable-content))))))
+
+(local
+ (defthm fn-bs-k0-attempted-durable-prefix-agrees
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-record-inputp ks stage final frame)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (fn-bs-txn-prefix-agreesp
+             (fn-bs-durable
+              (car (nth 10 (fn-bs-run bs ks
+                                           (fn-bs-record-program stage final frame)
+                                           nil groups capacity))))
+             (fn-bs-durable bs) n count))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-bs-txn-prefix-agreesp
+                             (fn-bs-durable
+                              (car (nth 10 (fn-bs-run bs ks
+                                                           (fn-bs-record-program stage final frame)
+                                                           nil groups capacity))))
+                             (fn-bs-durable bs) n count)
+            :in-theory (e/d (fn-bs-txn-prefix-agreesp)
+                            (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                             fn-bs-record-inputp fn-bs-lookup fn-bs-content)))
+           ("Subgoal *1/4"
+            :use ((:instance fn-bs-k0-attempted-durable-transaction-lookup-is-input
+                             (name (fn-bs-txn-name n)))))
+           ("Subgoal *1/3"
+            :use ((:instance fn-bs-k0-attempted-durable-transaction-content-is-input
+                             (name (fn-bs-txn-name n))))))))
+
+(defthm fn-bs-k0-attempted-cut-keeps-old-durable-record-prefix
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal
+            (fn-bs-durable-records
+             (car (nth 10 (fn-bs-run bs ks
+                                           (fn-bs-record-program stage name frame)
+                                           nil groups capacity))))
+            (fn-bs-durable-records bs)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k6-related-attempt-durable-namespace-is-input-namespace)
+                 (:instance fn-bs-k0-attempted-durable-prefix-agrees
+                            (final name) (n 0)
+                            (count (len (fn-bs-durable-names bs :transactions))))
+                 (:instance fn-bs-read-records-under-agreement
+                            (a (fn-bs-durable
+                                (car (nth 10 (fn-bs-run bs ks
+                                                             (fn-bs-record-program stage name frame)
+                                                             nil groups capacity)))))
+                            (b (fn-bs-durable bs)) (n 0)
+                            (count (len (fn-bs-durable-names bs :transactions)))))
+           :in-theory (e/d (fn-bs-durable-records fn-bs-durable-names)
+                           (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                            fn-bs-record-inputp fn-bs-read-records
+                            fn-bs-txn-prefix-agreesp)))))

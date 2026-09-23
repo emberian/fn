@@ -505,3 +505,46 @@
   (bsk0-issued-link-equalp (bsk0-occupied-stage) (bsk6-prepared)
                             ".stage-k5-2" (fn-bs-txn-name 1)
                             (bsk5-frame-2))))
+
+; K0 retained-prefix teeth. The positive cut follows an acknowledged old
+; article and runs both an article and a non-article Store event.  Without
+; the relation, reusing an old authority inode can overwrite its frame;
+; without the typed name or O_EXCL freshness, execution stops before pair 10.
+(defun bsk0-prefix-equalp (bs ks stage name frame)
+  (equal (fn-bs-durable-records
+          (car (nth 10 (fn-bs-run bs ks
+                                       (fn-bs-record-program stage name frame)
+                                       nil *bsk5-groups* *bsk5-capacity*))))
+         (fn-bs-durable-records bs)))
+(assert-event
+ (and (equal (fn-bs-durable-records (bsk6-start))
+             (list *bsk5-record*))
+      (bsk0-prefix-equalp (bsk6-start) (bsk6-prepared)
+                            ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))
+      (bsk0-prefix-equalp (bsk6-start) (bsk6-retention-prepared)
+                            ".stage-k6-retention" (fn-bs-txn-name 1)
+                            (bsk6-retention-frame))))
+
+(defun bsk0-alias-old-record ()
+  (let ((bs (bsk6-start)))
+    (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs) (fn-bs-dirs bs)
+                (fn-bs-pending bs)
+                (fn-bs-durable-entry bs :transactions (fn-bs-txn-name 0)))))
+(assert-event
+ (let ((bs (bsk0-alias-old-record)))
+   (and (not (fn-bs-store-relation bs (bsk6-prepared)))
+        (fn-bs-record-inputp (bsk6-prepared) ".stage-k5-2"
+                             (fn-bs-txn-name 1) (bsk5-frame-2))
+        (not (fn-bs-lookup bs :staging ".stage-k5-2")))))
+(must-fail
+ (assert-event
+  (bsk0-prefix-equalp (bsk0-alias-old-record) (bsk6-prepared)
+                       ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
+(must-fail
+ (assert-event
+  (bsk0-prefix-equalp (bsk6-start) (bsk6-prepared)
+                       ".stage-k5-2" (fn-bs-txn-name 0) (bsk5-frame-2))))
+(must-fail
+ (assert-event
+  (bsk0-prefix-equalp (bsk0-occupied-stage) (bsk6-prepared)
+                       ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
