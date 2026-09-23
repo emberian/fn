@@ -75,7 +75,10 @@
     (dolist (candidate (fnn-crypto-library-candidates))
       (handler-case
           (progn
-            (sb-alien:load-shared-object candidate)
+            ;; Build-time ABI validation must not serialize the build host's
+            ;; library path into the saved core.  Startup re-loads and checks
+            ;; this process's library after resetting readiness.
+            (sb-alien:load-shared-object candidate :dont-save t)
             (return-from fnn-crypto-load-library candidate))
         (error (condition) (setq last-error condition))))
     (error 'fnn-crypto-unavailable

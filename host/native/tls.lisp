@@ -209,14 +209,14 @@
     (unless pair
       (error 'fnn-tls-unavailable
              :detail "no complete OpenSSL libcrypto/libssl pair exists"))
-    ;; Preserve this identity across saved-image restart.  Reset revalidates
-    ;; readiness and ABI, but an environment change cannot replace a library
-    ;; whose symbols may already be resident in this process/image.
+    ;; Pin one pair for this process incarnation.  The foreign objects are
+    ;; omitted from saved cores, so restart can select the frozen bundle's
+    ;; paths without mixing two OpenSSL versions in one process.
     (setq *fnn-tls-pinned-libraries* pair)
     (handler-case
         (progn
-          (sb-alien:load-shared-object (first pair))
-          (sb-alien:load-shared-object (second pair))
+          (sb-alien:load-shared-object (first pair) :dont-save t)
+          (sb-alien:load-shared-object (second pair) :dont-save t)
           pair)
       (error (condition)
         (error 'fnn-tls-unavailable
@@ -253,10 +253,11 @@ configured server context and never a protected client session."
                                   condition))))))))
 
 (defun fnn-tls-reset ()
-  "Forget serialized loader readiness before a saved image enters service."
+  "Forget serialized loader readiness and pair before saved-image service."
   (sb-thread:with-mutex (*fnn-tls-initialize-lock*)
     (setq *fnn-tls-state* :uninitialized
           *fnn-tls-libraries* nil
+          *fnn-tls-pinned-libraries* nil
           *fnn-tls-version* nil))
   t)
 
