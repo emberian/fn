@@ -7,14 +7,14 @@
 
 (defun fn-cpo-install (st cn configs)
   (declare (xargs :guard t))
-  (fn-sn-make-v3
+  (fn-sn-make-v4
    (fn-cnode-domain-of (fn-cnode-config cn))
    (fn-cfg-capacity (fn-cfg-value (fn-cnode-config cn)))
    (fn-sn-files st) (fn-cnode-node cn)
    (fn-sn-keyring st) (fn-sn-index st)
    (fn-sn-keyring-generation st) (fn-sn-verdicts st)
    (fn-sn-keyring-snapshots st) (fn-sn-identity-next st)
-   configs))
+   configs (fn-sn-consumer st)))
 
 (defun fn-cpo-open-observed (configs frontier events)
   (declare (xargs :guard t :verify-guards nil))
@@ -32,19 +32,23 @@
             (let* ((advanced (fn-replay-advance-txid node frontier))
                    (config (fn-cnode-config cn))
                    (identity (fn-replay-identity events))
+                   (consumer (fn-cpe-projection-replay nil events 0))
                    (files (fn-sf-make :recovering frontier nil events
                                       nil nil nil 0))
                    (seed (fn-sn-observed-seed
                           (fn-cnode-domain-of config)
                           (fn-cfg-capacity (fn-cfg-value config))
                           frontier events))
-                   (opened (fn-cpo-install
-                            (fn-sn-update-replayed
-                             seed files advanced
-                             (fn-stx-index-of-store (fn-stx-store advanced) nil)
-                             identity)
-                            (fn-cnode-make advanced config) configs)))
+                   (opened (fn-sn-with-consumer
+                            (fn-cpo-install
+                             (fn-sn-update-replayed
+                              seed files advanced
+                              (fn-stx-index-of-store (fn-stx-store advanced) nil)
+                              identity)
+                             (fn-cnode-make advanced config) configs)
+                            (fn-cp-nth 1 consumer))))
               (if (and (equal (fn-stxk-context-kind identity) :ok)
+                       (eq (car consumer) :ok)
                        (fn-sn-statep opened))
                   (fn-sn-open-ok opened)
                 (fn-sn-open-error :identity)))))))))

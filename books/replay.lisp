@@ -31,6 +31,7 @@
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-store-event-p
                                       fn-store-retention-event-p
+                                      fn-cpe-eventp
                                       fn-record-shape-vocabulary
                                       fn-record-record-vocabulary))))
 (local
@@ -70,6 +71,13 @@
                  (natp (fn-stxa-txid record))
                  (natp (fn-stxa-generation record))))
    :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
+(local
+ (defthm fn-replay-cpe-counters-are-natural
+   (implies (fn-cpe-eventp record)
+            (and (natp (fn-cpe-sequence record))
+                 (natp (fn-cpe-txid record))
+                 (natp (fn-cpe-generation record))))
+   :hints (("Goal" :in-theory (enable fn-cpe-eventp fn-cp-uintp)))))
 (defthm fn-replay-record-counters-are-natural
    (implies (fn-store-event-p record)
             (and (natp (fn-store-event-sequence record))
@@ -87,21 +95,24 @@
                   fn-replay-retention-counters-are-natural
                   fn-replay-stxe-counters-are-natural
                   fn-replay-stxk-counters-are-natural
-                  fn-replay-stxa-counters-are-natural)
+                  fn-replay-stxa-counters-are-natural
+                  fn-replay-cpe-counters-are-natural)
             :cases ((fn-record-p record)
                     (fn-store-retention-event-p record)
                     (fn-stxe-p record)
-                    (fn-stxk-p record))
+                    (fn-stxk-p record)
+                    (fn-stxa-p record))
             :in-theory
             (e/d (fn-store-event-p fn-store-event-sequence
                                    fn-store-event-txid fn-store-event-generation)
                  (fn-record-p fn-store-retention-event-p fn-stxe-p fn-stxk-p
-                              fn-stxa-p
+                              fn-stxa-p fn-cpe-eventp
                               fn-replay-article-counters-are-natural
                               fn-replay-retention-counters-are-natural
                               fn-replay-stxe-counters-are-natural
                               fn-replay-stxk-counters-are-natural
-                              fn-replay-stxa-counters-are-natural)))))
+                              fn-replay-stxa-counters-are-natural
+                              fn-replay-cpe-counters-are-natural)))))
 
 ; Convergence (board, codecs CHANGE on records): `fn-store-event-p' is opaque and exports no forward shape rule; the loop guard needs true-listp from it.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
@@ -484,8 +495,10 @@
                   :verify-guards nil))
   (if (fn-store-retention-event-p record)
       (fn-replay-apply-retention-event node record)
-    (if (or (fn-stxe-p record) (fn-stxk-p record))
-        (fn-replay-apply-identity-neutral node record)
+    (if (or (fn-stxe-p record) (fn-stxk-p record) (fn-cpe-eventp record))
+        (if (and (fn-cpe-eventp record) (not (null (fn-node-stage node))))
+            nil
+          (fn-replay-apply-identity-neutral node record))
       ; Unreachable-in-composition: journal replay enters with no pending
       ; transaction.  A standalone article step refuses a staged node, lest a
       ; record with matching coordinates complete that different article.
@@ -534,7 +547,7 @@
 ; for the same reason.
 (local (in-theory (disable fn-store-event-p fn-store-event-sequence
                            fn-record-p fn-stxe-p fn-stxk-p fn-stxa-p
-                           fn-store-retention-event-p
+                           fn-store-retention-event-p fn-cpe-eventp
                            fn-replay-composite-record)))
 
 ; A non-NIL one-record result is the existing node transaction machine's

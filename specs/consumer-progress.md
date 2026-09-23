@@ -1,7 +1,7 @@
 # Experimental consumer position, version 1
 
-Status: **selected experiment contract; ACL2 decision kernel implemented, no
-served or durable Store interface**, 2026-09-23. This
+Status: **selected experiment contract; ACL2 decision kernel and phase-aware
+Store model certified in scope, no served consumer interface**, 2026-09-23. This
 specifies E2 of [the sleeping-agent exchange](../planning/experiments/e1-e2-agent-exchange.md).
 It is an fn design guarantee, not an NNTP or BP requirement and not a v0 release
 gate. The selected E1 payload remains opaque to fn. The executable traces to
@@ -110,7 +110,11 @@ scan, item or byte bound; it still carries the cursor for the prefix actually
 scanned. Oversize single articles are not silently skipped: the poll reports a
 bounded refusal at that position, leaving progress unchanged, until an
 explicit large-object retrieval contract exists. Register/rebase/ack metadata
-is charged before the durable promise. A full table refuses registration;
+is charged before the durable promise. Each event consumes one place in the
+persisted Store transaction-count profile and its kind-specific ACL2 byte
+ceiling is checked before reservation; the 256-entry table limit alone does
+not bound repeated ack history. A full table or exhausted Store profile
+refuses registration or publication, respectively;
 there is no implicit expiry or unlimited unread backlog. Only explicit
 unregister frees a slot in v1.
 
@@ -169,25 +173,77 @@ entire Store on each request. `qver` and `view` must be computed by an ACL2
 owner policy projection, not accepted from client bytes. The poll/query
 selection and this policy projection are still unimplemented.
 
-Store integration must add durable history/incarnation identity and bounded
-consumer events to `fn-store-event-p` / `fn-store-event-encode` and its exact
-decoder in `books/store-events.lisp`, sequence/txid routing, the
-`fn-replay-apply-record` arm in `books/replay.lisp`, and
-`fn-sn-prepare-identity` / `fn-sn-finish` / observed reopen in
-`books/store-node.lisp`. The global next epoch, entries and ack positions
-must replay with the same records, then survive checkpoint and compaction;
+The candidate v1 Store event envelope is the distinct `fnce` magic, version
+one, operation-kind octet, three unsigned 32-bit fields for dense Store
+journal sequence, allocator txid and generation, then an exact bounded
+operation. The six kinds are bootstrap, register, ack, rebase, unregister and
+incarnation rollover. The longest valid event is a 364-octet ack, under a
+512-octet decoder preflight. A bootstrap commits ACL2-validated history and
+incarnation IDs before any consumer registration. Host-supplied entropy is an
+observation, not an endpoint, wall-clock or configuration-generation
+derivation. A duplicate bootstrap in one Store history is refused. A normal
+crash replay retains both IDs. Writable restore or clone must durably commit
+an explicit new-incarnation transition before consumer service. Until that
+path is integrated, writable restore/clone must refuse a consumer-enabled
+Store rather than make two writable futures under one cursor scope. The
+selected exact-prefix pack retains every original event byte and reconstructs
+the entire dense Store stream before open; its prefix reclaim may preserve
+cursor positions only while this exact expansion remains the recovery path.
+The separate node-checkpoint snapshot does not yet carry the consumer
+projection and must not be used as consumer recovery authority. A future
+checkpoint that retains only a logical summary must preserve the original
+dense Store sequence base, consumer projection and replay offset; counting
+only retained physical records would make a previously issued position mean
+something else.
+
+The `fnce` codec and Store event union/sequence/txid routing are in
+`books/consumer-store-events.lisp` and `books/store-events.lisp`. The
+acceptance-neutral `fn-replay-apply-record` arm advances the shared txid.
+`books/consumer-store-projection.lisp` interprets that same committed Store
+stream. The Store model stages through `fn-sn-prepare-consumer`, installs
+the projection only at durable `fn-sn-finish`, reconstructs it at crash
+recovery and observed reopen, and carries it beside physical configuration
+history. `fn-csi-store-step-preserves-full-relation` covers the actual decoded
+`fn-snrt-step` transition under a maintained phase-aware relation; its
+`fn-snrt-run` induction covers arbitrary finite logical mixed traces, including
+linked unfinished candidates, crash and recovery. The scoped ACL2 book/test
+certification is recorded in
+`planning/evidence/manifests/certify-20260923T210725Z-145187.json`.
+That model proof does not establish native filesystem crash refinement or an
+authenticated consumer caller. The global next epoch, entries and ack
+positions must also survive checkpoint and compaction;
 prechange checkpoint images need a versioned migration rule. The native
+consumer record belongs to the existing dense Store journal sequence and
+allocator txid stream, not to a second consumer log. Config records retain
+their independent dense config sequence and stamp the next-unconsumed Store
+txid. On a tie, config precedes the consumer event; multiple configs at that
+txid retain config-generation order. Burned Store txids remain possible.
+The logical consumer event order, recovery replay order and physical record
+comparison must use this same relation. A scalar next epoch must be committed
+with each register/rebase event: uncertain publication cannot reuse an epoch
+until reopen has settled whether that event is in the durable prefix.
+The native
 publication path must exercise refusal and ambiguity around its
 `record-linked`, `record-attempted`, `record-durable`, `record-completing`,
 `record-staging-cleaned`, `finish-consumed` and `finish-durable` process-death
-cuts, plus recovery cuts. The Store event needs its own bounded codec and
-durable metadata charge. The first proposed integration caller is an
+cuts, plus recovery cuts. The first proposed integration caller is an
 ACL2-backed `fn-owner-consumer-*` wrapper beside `fn-owner-chunk` in
 `host/owner-host.lisp`; `host/native/owner.lisp` must route its bounded bytes
 through that wrapper and the existing `fnn-owner-publish-prepared` completion
 gate. The host-called wrapper must be the theorem subject, or have a named
-equivalence to the kernel. None of those caller and durability joins exists
-yet. No seal/open primitive is required by this first public-group profile.
+equivalence to the kernel. None of those native caller or checkpoint joins
+exists yet. No seal/open primitive is required by this first public-group profile.
 The consumer library owns its own crash-safe transaction and dregg verifier.
 The trace file names the required two-database observations; passing article
 arrival or a printed watermark cannot satisfy them.
+
+CNS-001: fn's selected v1 experiment requires a Store-scoped, versioned
+consumer position whose registration epoch and acknowledgement are committed
+in the ordinary Store history. A bounded poll may advance only over a pinned
+committed prefix, and an acknowledgement declares consumer-owned processing
+without asserting it. Crash/reopen must reconstruct the same position, while
+an incarnation or view change fences the old cursor. The consumer must atomically
+bind source-inclusive inbox evidence, a separate unique application operation
+index, and a reply outbox before acknowledging. The logical Store model and
+cursor decision kernel are implemented; the authenticated native operations,
+consumer database and two-store trace remain to be executed.

@@ -121,7 +121,8 @@
                  fn-sn-known-abort-files fn-sn-known-abort-file-start)))))
 
 (local (in-theory
-        (e/d (fn-sn-update fn-sn-completion-enabledp fn-sn-completion-record
+        (e/d (fn-sn-update fn-sn-completion-core-enabledp
+              fn-sn-completion-record
               fn-sn-io fn-sn-file-step fn-sn-prepare fn-sn-finish fn-sn-crash
               fn-sn-recover fn-sn-committed-recordp
               fn-replay-apply-record fn-replay-okp fn-replay-faultp
@@ -134,6 +135,7 @@
               fn-sn-record-bindsp fn-snt-relation fn-snt-pending-linkp
               fn-snt-deferred-linkp fn-snt-completion-linkp
               fn-sf-history-recoverablep fn-sf-replay-node
+              fn-sn-completion-enabledp
               fn-sn-refuse-reservation-enabledp fn-sn-refuse-reservation
               fn-sn-known-abort-enabledp fn-sn-known-abort-file-start
               fn-sn-known-abort-files fn-sn-known-abort
@@ -347,6 +349,20 @@
                             fn-store-event-p fn-store-retention-event-p
                             fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
+(defthm fn-sn-prepare-consumer-cannot-acknowledge
+  (equal (fn-sf-successes (fn-sn-files (fn-sn-prepare-consumer s event)))
+         (fn-sf-successes (fn-sn-files s)))
+  :hints (("Goal"
+           :use ((:instance fn-sf-successes-of-prepare-record
+                            (s (fn-sn-files s)) (record event)
+                            (groups (fn-sn-groups s))
+                            (capacity (fn-sn-capacity s))))
+           :in-theory (e/d (fn-sn-prepare-consumer fn-sn-update)
+                           (fn-sn-statep fn-sf-prepare-record
+                            fn-replay-apply-record fn-cpe-projection-step
+                            fn-record-shape-vocabulary
+                            fn-store-event-p fn-cpe-eventp)))))
+
 (defthm fn-sn-known-abort-files-reaches-ready
   (implies (and (fn-sf-statep files)
                 (or (equal (fn-sf-phase files) :record-staged)
@@ -428,6 +444,7 @@
                            (fn-sn-statep fn-sf-statep
                             fn-sf-history-recoverablep fn-sf-replay-node
                             fn-snt-pending-linkp fn-sn-completion-enabledp
+                            fn-sn-completion-core-enabledp
                             fn-replay-advance-txid)))))
 
 ; Both arms land `:ready', and on both the node is the replay of the durable
@@ -467,6 +484,7 @@
                              fn-sf-history-recoverablep
                              fn-sf-replay-node fn-node-complete
                              fn-sn-completion-enabledp
+                             fn-sn-completion-core-enabledp
                              fn-record-shape-vocabulary
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
@@ -500,6 +518,7 @@
     (:known-abort (fn-sn-known-abort s))
     (:prepare-retention (fn-sn-prepare-retention s (cadr event)))
     (:prepare-identity (fn-sn-prepare-identity s (cadr event)))
+    (:prepare-consumer (fn-sn-prepare-consumer s (cadr event)))
     (otherwise (fn-snt-step s event))))
 
 (defun fn-snrt-run (s events)
@@ -517,7 +536,8 @@
            (fn-snt-relation (fn-snrt-step s event)))
   :hints (("Goal" :in-theory (disable fn-snt-relation fn-sn-prepare fn-sn-io
                       fn-sn-finish fn-sn-crash fn-sn-recover
-                      fn-sn-prepare-retention fn-sn-prepare-identity))))
+                      fn-sn-prepare-retention fn-sn-prepare-identity
+                      fn-sn-prepare-consumer))))
 
 (defthm fn-snrt-mixed-trace-preserves-live-history-relation
   (implies (fn-snt-relation s)
@@ -606,7 +626,8 @@
            (and (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
-                (not (fn-stxa-p (fn-sn-completion-record s))))
+                (not (fn-stxa-p (fn-sn-completion-record s)))
+                (not (fn-cpe-eventp (fn-sn-completion-record s))))
            (and (fn-sn-record-bindsp (fn-sn-node s) (fn-sn-completion-record s))
                 (equal (fn-sn-node next)
                        (fn-node-complete (fn-sn-node s)
@@ -667,7 +688,8 @@
                  (:instance fn-snt-step-records-prefix))
            :in-theory (e/d (fn-snrt-step
                             fn-snt-prepare-retention-keeps-records
-                            fn-snt-prepare-identity-keeps-records)
+                            fn-snt-prepare-identity-keeps-records
+                            fn-snt-prepare-consumer-keeps-records)
                            (fn-snt-relation fn-snt-step fn-sn-refuse-reservation
                             fn-sn-known-abort  
                             fn-sf-prefixp fn-snt-step-records-prefix)))))

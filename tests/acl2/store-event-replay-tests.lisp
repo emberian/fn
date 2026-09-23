@@ -48,3 +48,26 @@
 ; resurrect the released forwarding pin.
 (assert-event
  (equal (fn-replay '("g") 32 *fn-ser-history*) *fn-ser-open*))
+
+; Consumer metadata occupies the same dense journal sequence and allocator
+; txid stream.  This node replay arm is deliberately acceptance-neutral: it
+; cannot by itself claim that a registration or ack projection was reopened.
+(defconst *fn-ser-consumer-history*
+  (list (fn-cpe-make 0 0 0 '(:bootstrap (1) (2)))
+        (fn-cpe-make 1 1 1 '(:register (3) (4) (5) 1 1 1))
+        (fn-record-make 2 2 2 "<after-consumer@example.invalid>" '(9)
+                        '("g") "archive-c" "subject-c" "post-c" 1 :legacy)))
+(defconst *fn-ser-consumer-open*
+  (fn-replay '("g") 32 *fn-ser-consumer-history*))
+(assert-event (equal (fn-replay-result-kind *fn-ser-consumer-open*) :ok))
+(assert-event (equal (fn-replay-result-sequence *fn-ser-consumer-open*) 3))
+(assert-event
+ (equal (fn-state-next-txid
+         (fn-node-acceptance (fn-replay-result-node *fn-ser-consumer-open*)))
+        3))
+(assert-event
+ (equal (len (fn-state-articles
+              (fn-node-acceptance (fn-replay-result-node *fn-ser-consumer-open*))))
+        1))
+(assert-event (equal (fn-replay '("g") 32 *fn-ser-consumer-history*)
+                     *fn-ser-consumer-open*))

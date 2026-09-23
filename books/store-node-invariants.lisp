@@ -281,7 +281,8 @@
                 (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
-                (not (fn-stxa-p (fn-sn-completion-record s))))
+                (not (fn-stxa-p (fn-sn-completion-record s)))
+                (not (fn-cpe-eventp (fn-sn-completion-record s))))
            (equal
             (fn-sn-verdict-lookup
              (fn-sn-finish s)
@@ -449,12 +450,21 @@
 ; not weakened away: `fn-sn-completion-enabledp' already carries the condition
 ; each arm must meet (books/store-node.lisp), and the success keystone below
 ; keeps that conjunct at full strength for all three.
+(local
+ (defthm fn-snx-completion-projection-ok-by-definition
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-cpe-eventp (fn-sn-completion-record s)))
+            (eq (car (fn-cpe-projection-step
+                      (fn-sn-consumer s) (fn-sn-completion-record s)
+                      (fn-sn-identity-next s))) :ok))
+   :hints (("Goal" :in-theory (enable fn-sn-completion-enabledp)))))
 (defthm fn-sn-finish-is-actual-durable-completion
   (implies (and (fn-sn-completion-enabledp s)
                 (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
-                (not (fn-stxa-p (fn-sn-completion-record s))))
+                (not (fn-stxa-p (fn-sn-completion-record s)))
+                (not (fn-cpe-eventp (fn-sn-completion-record s))))
            (equal (fn-sn-node (fn-sn-finish s))
                   (fn-node-complete (fn-sn-node s)
                     (fn-record-txid (fn-sn-completion-record s))
@@ -481,7 +491,8 @@
                 (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
-                (not (fn-stxa-p (fn-sn-completion-record s))))
+                (not (fn-stxa-p (fn-sn-completion-record s)))
+                (not (fn-cpe-eventp (fn-sn-completion-record s))))
            (fn-sn-committed-recordp (fn-sn-node (fn-sn-finish s))
                                     (fn-sn-completion-record s)))
   :hints (("Goal" :use (fn-sn-finish-is-actual-durable-completion
@@ -547,7 +558,8 @@
                             (fn-sn-completion-record s)))
                       (not (fn-stxe-p (fn-sn-completion-record s)))
                       (not (fn-stxk-p (fn-sn-completion-record s)))
-                      (not (fn-stxa-p (fn-sn-completion-record s))))
+                      (not (fn-stxa-p (fn-sn-completion-record s)))
+                      (not (fn-cpe-eventp (fn-sn-completion-record s))))
                  (and (fn-sn-record-bindsp (fn-sn-node s)
                                            (fn-sn-completion-record s))
                       (equal (fn-sn-node (fn-sn-finish s))
@@ -587,13 +599,15 @@
             (and (not (fn-store-retention-event-p record))
                  (not (fn-stxe-p record))
                  (not (fn-stxk-p record))
-                 (not (fn-stxa-p record))))
+                 (not (fn-stxa-p record))
+                 (not (fn-cpe-eventp record))))
    :hints (("Goal"
             :in-theory (e/d ((:d fn-record-p) (:d fn-record-shapep)
                              (:d fn-store-retention-event-p)
                              (:d fn-stxe-p) (:d fn-stxe-shapep)
                              (:d fn-stxk-p) (:d fn-stxk-shapep)
-                             (:d fn-stxa-p) (:d fn-stxa-shapep))
+                             (:d fn-stxa-p) (:d fn-stxa-shapep)
+                             (:d fn-cpe-eventp))
                             ((:d fn-stxe-bounded-octetsp)
                              (:d fn-record-uint32p) (:d fn-record-msgidp)
                              (:d fn-record-payloadp)
@@ -1353,13 +1367,75 @@
                                     fn-node-complete fn-sn-accepted-delta
                                     fn-record-shape-vocabulary
                                     fn-record-record-vocabulary))))))
+
+; Consumer records are a distinct five-field Store kind.  Their node replay
+; only advances txid; the carried consumer projection changes separately.
+(local
+ (defthm fn-snx-cpe-no-other-event
+   (implies (fn-cpe-eventp event)
+            (and (not (fn-store-retention-event-p event))
+                 (not (fn-stxe-p event))
+                 (not (fn-stxk-p event))
+                 (not (fn-stxa-p event))))
+   :hints (("Goal" :in-theory (enable fn-cpe-eventp
+                                      fn-store-retention-event-p
+                                      fn-stxe-shapep fn-stxk-shapep
+                                      fn-stxa-shapep)))))
+(local
+ (defthm fn-snx-identity-neutral-keeps-articles
+   (implies (consp (fn-replay-apply-identity-neutral node event))
+            (equal (fn-state-articles
+                    (fn-node-acceptance
+                     (fn-replay-apply-identity-neutral node event)))
+                   (fn-state-articles (fn-node-acceptance node))))
+   :hints (("Goal" :in-theory (enable fn-replay-apply-identity-neutral)))))
+(local
+ (defthm fn-snx-consumer-completion-node-idle-by-definition
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-cpe-eventp (fn-sn-completion-record s)))
+            (null (fn-node-stage (fn-sn-node s))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-completion-enabledp fn-replay-apply-record)
+                 (fn-cpe-eventp fn-store-retention-event-p
+                  fn-stxe-p fn-stxk-p fn-stxa-p
+                  fn-replay-apply-identity-neutral))))))
+(local
+ (defthm fn-snx-consumer-completion-replay-non-nil-by-definition
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-cpe-eventp (fn-sn-completion-record s)))
+            (consp (fn-replay-apply-identity-neutral
+                    (fn-sn-node s) (fn-sn-completion-record s))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-completion-enabledp fn-replay-apply-record)
+                 (fn-cpe-eventp fn-store-retention-event-p
+                  fn-stxe-p fn-stxk-p fn-stxa-p
+                  fn-replay-apply-identity-neutral))))))
+(local
+ (defthmd fn-sn-finish-consumer-arm-keeps-the-store-and-index
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-cpe-eventp (fn-sn-completion-record s)))
+            (and (equal (fn-sn-index (fn-sn-finish s)) (fn-sn-index s))
+                 (equal (fn-sn-keyring (fn-sn-finish s)) (fn-sn-keyring s))
+                 (equal (fn-stx-store (fn-sn-node (fn-sn-finish s)))
+                        (fn-stx-store (fn-sn-node s)))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-finish fn-stx-store fn-replay-apply-record)
+                 (fn-sn-completion-enabledp fn-sn-completion-record
+                  fn-cpe-eventp
+                  fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p
+                  fn-replay-apply-identity-neutral
+                  fn-replay-apply-retention-event fn-sf-core-completion
+                  fn-sf-emit-success fn-record-shape-vocabulary))
+            :use (fn-snx-consumer-completion-node-idle-by-definition
+                  fn-snx-consumer-completion-replay-non-nil-by-definition)))))
 (local
  (defthmd fn-sn-finish-acceptance-arm-fields
    (implies (and (fn-sn-completion-enabledp s)
                  (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                  (not (fn-stxe-p (fn-sn-completion-record s)))
                  (not (fn-stxk-p (fn-sn-completion-record s)))
-                 (not (fn-stxa-p (fn-sn-completion-record s))))
+                 (not (fn-stxa-p (fn-sn-completion-record s)))
+                 (not (fn-cpe-eventp (fn-sn-completion-record s))))
             (and (equal (fn-sn-index (fn-sn-finish s))
                         (fn-stx-index-add (fn-sn-index s)
                                           (fn-sn-accepted-delta s)))
@@ -1410,20 +1486,24 @@
                    (and (fn-sn-completion-enabledp s)
                         (fn-stxa-p (fn-sn-completion-record s)))
                    (and (fn-sn-completion-enabledp s)
+                        (fn-cpe-eventp (fn-sn-completion-record s)))
+                   (and (fn-sn-completion-enabledp s)
                         (not (fn-store-retention-event-p
                               (fn-sn-completion-record s)))
                         (not (fn-stxe-p (fn-sn-completion-record s)))
                         (not (fn-stxk-p (fn-sn-completion-record s)))
-                        (not (fn-stxa-p (fn-sn-completion-record s)))))
+                        (not (fn-stxa-p (fn-sn-completion-record s)))
+                        (not (fn-cpe-eventp (fn-sn-completion-record s)))))
            :in-theory (e/d (fn-stx-index-invariantp
                             fn-sn-finish-retention-arm-keeps-the-store-and-index
                             fn-sn-finish-identity-arm-keeps-the-store-and-index
                             fn-sn-finish-composite-arm-fields
+                            fn-sn-finish-consumer-arm-keeps-the-store-and-index
                             fn-sn-finish-acceptance-arm-fields)
                            (fn-sn-finish fn-sn-completion-enabledp
                             fn-sn-completion-record fn-sn-record-bindsp
                             fn-store-retention-event-p
-                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
                             fn-replay-apply-record fn-replay-identity-step
                             fn-sn-identity-context
                             fn-sf-core-completion fn-sf-emit-success

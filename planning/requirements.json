@@ -1602,6 +1602,29 @@
       ],
       "implementation_note": "The experimental root/control/report codec, ACL2-owned canonical folded field renderer, widened bounded article envelope and offline native carrier inspection are implemented. No durable topic admission, current policy or governance authority follows from projection.",
       "note": "General constructor bound/inverse, host-called authored-field binding, physical-line bound and ACL2 max-profile/negative tests are certified. Source-matched native max-profile saved-image execution remains pending. The fixed-controller profile remains experimental."
+    },
+    {
+      "id": "CNS-001",
+      "title": "Scoped durable consumer progress for a sleeping agent",
+      "specification": "specs/consumer-progress.md",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-064"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/consumer-position.lisp",
+        "books/consumer-store-events.lisp",
+        "books/consumer-store-projection.lisp",
+        "books/consumer-store-invariants.lisp",
+        "tests/acl2/consumer-store-invariants-tests.lisp",
+        "planning/experiments/e1-e2-v1-traces.json"
+      ],
+      "note": "Selected v1 experiment, not a v0 gate. The finite cursor/event kernel and Store completed-prefix model are certified. Authenticated native register/poll/ack/rebase and bounded metadata charge, checkpoint/clone integration, consumer-owned database, and the executed two-store exchange remain open; the adversarial E2 traces are specifications awaiting a runner."
     }
   ]
 }

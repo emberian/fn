@@ -1936,6 +1936,16 @@
           "note": "Exact host-called projection satisfies ordinary NNTP injection trace grammar; successful nonnil result is essential."
         }
       ]
+    },
+    {
+      "id": "PRF-064",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-csi-store-step-preserves-full-relation",
+          "pending_subject": "Logical fn-snrt-step is the decoded Store dispatcher used in model traces; the native owner consumer command/poll path has not yet been joined to this theorem subject."
+        }
+      ]
     }
   ]
 }

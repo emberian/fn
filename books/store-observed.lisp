@@ -152,6 +152,15 @@
 
 (verify-guards fn-sn-observed-identity-okp)
 
+; A structurally valid Store image can contain a consumer registration with
+; no bootstrap, or a stale acknowledgement. Such an image is not an E2
+; recovery image even when its article and identity replays succeed.
+(defun fn-sn-observed-consumer-okp (records)
+  (declare (xargs :guard t :verify-guards nil))
+  (eq (car (fn-cpe-projection-replay nil records 0)) :ok))
+
+(verify-guards fn-sn-observed-consumer-okp)
+
 (defun fn-sn-observed-historyp (frontier records)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-record-uint32p frontier)
@@ -635,12 +644,14 @@
                 (fn-sf-history-recoverablep (fn-sn-groups st) (fn-sn-capacity st)
                                             (fn-sf-records (fn-sn-files st))
                                             (fn-sf-frontier (fn-sn-files st)))
-                (fn-sn-observed-identity-okp (fn-sf-records (fn-sn-files st))))
+                (fn-sn-observed-identity-okp (fn-sf-records (fn-sn-files st)))
+                (fn-sn-observed-consumer-okp (fn-sf-records (fn-sn-files st))))
            (equal (fn-sf-phase (fn-sn-files (fn-sn-recover st))) :recovering))
   :hints (("Goal"
            :use ((:instance fn-sn-statep-implies-files-statep (st st)))
            :in-theory (e/d (fn-sn-recover fn-sf-recover fn-sn-update
-                            fn-sn-observed-identity-okp)
+                            fn-sn-observed-identity-okp
+                            fn-sn-observed-consumer-okp)
                             (fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
                              fn-sf-replay-node)))))
 
@@ -648,7 +659,8 @@
   (implies (and (fn-sn-observed-configurationp groups capacity)
                 (fn-sn-observed-historyp frontier records)
                 (fn-sf-history-recoverablep groups capacity records frontier)
-                (fn-sn-observed-identity-okp records))
+                (fn-sn-observed-identity-okp records)
+                (fn-sn-observed-consumer-okp records))
            (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records)))
   :hints (("Goal"
            :use (fn-sn-observed-seed-is-state
@@ -692,6 +704,7 @@
   (implies (and (fn-snt-relation s)
                 (fn-sf-crash-imagep (fn-sn-files s) frontier records)
                 (fn-sn-observed-identity-okp records)
+                (fn-sn-observed-consumer-okp records)
                 (member-equal pair (fn-sf-successes (fn-sn-files s))))
            (and (fn-sn-open-okp
                  (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
@@ -742,7 +755,8 @@
 (defthm fn-sn-recovery-admissible-image-reopens
   (implies (and (fn-snt-relation s)
                 (fn-sf-recovery-crash-imagep (fn-sn-files s) frontier records)
-                (fn-sn-observed-identity-okp records))
+                (fn-sn-observed-identity-okp records)
+                (fn-sn-observed-consumer-okp records))
            (fn-sn-open-okp
             (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
                                  frontier records)))
@@ -820,6 +834,7 @@
     (implies (and (fn-snt-relation s)
                   (fn-sf-crash-imagep (fn-sn-files s) frontier records)
                   (fn-sn-observed-identity-okp records)
+                  (fn-sn-observed-consumer-okp records)
                   (member-equal pair (fn-sf-successes (fn-sn-files s))))
              (fn-sf-record-has-pairp pair (fn-sf-records (fn-sn-files final)))))
   :hints (("Goal"

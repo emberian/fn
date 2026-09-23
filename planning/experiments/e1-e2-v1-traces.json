@@ -76,6 +76,13 @@
       "cuts": ["after unregister publication before reply", "after second register publication before reply", "after delayed old ack refusal"]
     },
     {
+      "id": "E2-10",
+      "name": "exact-prefix pack and summary checkpoint boundary",
+      "actions": ["bootstrap HB/IB, register B and durably ack through Store sequence N", "capture and select an exact-prefix pack that includes the bootstrap and ack", "reclaim the covered physical transaction files and reopen from exact packed bytes plus suffix", "offer the saved cursor and poll the next committed record", "attempt a summary-only node-checkpoint restore without a consumer projection"],
+      "expect": ["pack expansion reconstructs the original dense Store sequence from zero and keeps HB/IB and B's ack position N", "the cursor still names the same scanned prefix after reclaim", "summary-only checkpoint restore refuses consumer service until a versioned projection and sequence-base migration exists", "no endpoint, clock or config-generation value substitutes for incarnation"],
+      "cuts": ["after pack selection before physical reclaim", "during prefix reclaim before directory durability", "after node-checkpoint decode before consumer service"]
+    },
+    {
       "id": "E1-01",
       "name": "separate administrators, sleeping reply and uncertain post",
       "actions": ["A commits R with exact-source hybrid authorship and dregg receipt DR", "trusted peer transports R to B's separate Store while B sleeps", "B verifies authorship and independently verifies DR", "B commits inbox R with Q outbox and acks", "B posts Q and loses final reply", "lookup MQ and compare exact SQ before any retry", "A wakes, verifies Q correlation to OR and SR, then commits its own inbox transaction"],
@@ -89,5 +96,11 @@
       "expect": ["authorship verdict does not make false DR valid", "Q2 does not satisfy R's correlation but remains attributable evidence if admitted", "R3 has no application authority and parsing stays within limits", "no application transition is inferred from fn ack alone"],
       "cuts": ["after each consumer transaction before ack"]
     }
-  ]
+  ],
+  "acl2_model_evidence": {
+    "scope": "Store completed-prefix relation through fn-snrt-step/run, including linked unfinished ack and two model crash images; no native owner/consumer execution",
+    "book": "books/consumer-store-invariants.lisp",
+    "witness": "tests/acl2/consumer-store-invariants-tests.lisp",
+    "manifest": "planning/evidence/manifests/certify-20260923T210725Z-145187.json"
+  }
 }

@@ -16,6 +16,7 @@
 (include-book "stx-reader")
 (include-book "records-seam")
 (include-book "records-stamp")
+(include-book "consumer-store-projection")
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
@@ -25,12 +26,13 @@
 ; Total MBE selectors preserve the original ACL2 values on malformed inputs.
 ; The composed record is opaque below its lemmas (docs/proof-style.md s1).
 ; Layout: (groups capacity files node keyring index keyring-generation verdicts
-;          historical-keyring-snapshots identity-next-sequence config-history)
+;          historical-keyring-snapshots identity-next-sequence config-history
+;          consumer-projection)
 ; keyring and index were appended, not inserted, so the first four accessors
 ; keep their positions and their bodies (D21).
 (defun fn-sn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 11)))
+  (and (true-listp x) (equal (len x) 12)))
 
 (defun fn-sn-groups (s) (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car s)
@@ -141,6 +143,15 @@
 
 (verify-guards fn-sn-config-history)
 
+; NIL before the first committed bootstrap.  The bounded consumer projection
+; is carried through live transitions and reconstructed at observed reopen.
+; Its whole-table invariant is not a conjunct of fn-sn-statep, which guards
+; every served Store operation.
+(defun fn-sn-consumer (s)
+  (declare (xargs :guard t))
+  (fn-store-event-nth 11 s))
+
+
 (defun fn-sn-keyring-snapshot-listp (xs)
   (declare (xargs :guard t))
   (if (consp xs)
@@ -163,14 +174,93 @@
                       keyring-generation verdicts snapshots identity-next)
   (declare (xargs :guard t))
   (list groups capacity files node keyring index keyring-generation verdicts
-        snapshots identity-next nil))
+        snapshots identity-next nil nil))
 
 (defun fn-sn-make-v3 (groups capacity files node keyring index
                       keyring-generation verdicts snapshots identity-next
                       config-history)
   (declare (xargs :guard t))
   (list groups capacity files node keyring index keyring-generation verdicts
-        snapshots identity-next config-history))
+        snapshots identity-next config-history nil))
+
+(defun fn-sn-make-v4 (groups capacity files node keyring index
+                      keyring-generation verdicts snapshots identity-next
+                      config-history consumer)
+  (declare (xargs :guard t))
+  (list groups capacity files node keyring index keyring-generation verdicts
+        snapshots identity-next config-history consumer))
+
+(defthm fn-sn-consumer-of-fn-sn-make-v2
+  (equal (fn-sn-consumer
+          (fn-sn-make-v2 groups capacity files node keyring index
+                         keyring-generation verdicts snapshots identity-next))
+         nil))
+(defthm fn-sn-consumer-of-fn-sn-make-v3
+  (equal (fn-sn-consumer
+          (fn-sn-make-v3 groups capacity files node keyring index
+                         keyring-generation verdicts snapshots identity-next
+                         config-history))
+         nil))
+(defthm fn-sn-consumer-of-fn-sn-make-v4
+  (equal (fn-sn-consumer
+          (fn-sn-make-v4 groups capacity files node keyring index
+                         keyring-generation verdicts snapshots identity-next
+                         config-history consumer))
+         consumer))
+(defthm fn-sn-shapep-of-fn-sn-make-v4
+  (fn-sn-shapep
+   (fn-sn-make-v4 groups capacity files node keyring index
+                  keyring-generation verdicts snapshots identity-next
+                  config-history consumer))
+  :hints (("Goal" :in-theory (enable fn-sn-shapep))))
+(defthm fn-sn-groups-of-fn-sn-make-v4
+  (equal (fn-sn-groups (fn-sn-make-v4 groups capacity files node keyring index
+                                     keyring-generation verdicts snapshots
+                                     identity-next config-history consumer)) groups))
+(defthm fn-sn-capacity-of-fn-sn-make-v4
+  (equal (fn-sn-capacity (fn-sn-make-v4 groups capacity files node keyring index
+                                       keyring-generation verdicts snapshots
+                                       identity-next config-history consumer)) capacity))
+(defthm fn-sn-files-of-fn-sn-make-v4
+  (equal (fn-sn-files (fn-sn-make-v4 groups capacity files node keyring index
+                                    keyring-generation verdicts snapshots
+                                    identity-next config-history consumer)) files))
+(defthm fn-sn-node-of-fn-sn-make-v4
+  (equal (fn-sn-node (fn-sn-make-v4 groups capacity files node keyring index
+                                   keyring-generation verdicts snapshots
+                                   identity-next config-history consumer)) node))
+(defthm fn-sn-keyring-of-fn-sn-make-v4
+  (equal (fn-sn-keyring (fn-sn-make-v4 groups capacity files node keyring index
+                                      keyring-generation verdicts snapshots
+                                      identity-next config-history consumer)) keyring))
+(defthm fn-sn-index-of-fn-sn-make-v4
+  (equal (fn-sn-index (fn-sn-make-v4 groups capacity files node keyring index
+                                    keyring-generation verdicts snapshots
+                                    identity-next config-history consumer)) index))
+(defthm fn-sn-keyring-generation-of-fn-sn-make-v4
+  (equal (fn-sn-keyring-generation
+          (fn-sn-make-v4 groups capacity files node keyring index
+                         keyring-generation verdicts snapshots identity-next
+                         config-history consumer)) keyring-generation))
+(defthm fn-sn-verdicts-of-fn-sn-make-v4
+  (equal (fn-sn-verdicts (fn-sn-make-v4 groups capacity files node keyring index
+                                       keyring-generation verdicts snapshots
+                                       identity-next config-history consumer)) verdicts))
+(defthm fn-sn-keyring-snapshots-of-fn-sn-make-v4
+  (equal (fn-sn-keyring-snapshots
+          (fn-sn-make-v4 groups capacity files node keyring index
+                         keyring-generation verdicts snapshots identity-next
+                         config-history consumer)) snapshots))
+(defthm fn-sn-identity-next-of-fn-sn-make-v4
+  (equal (fn-sn-identity-next
+          (fn-sn-make-v4 groups capacity files node keyring index
+                         keyring-generation verdicts snapshots identity-next
+                         config-history consumer)) identity-next))
+(defthm fn-sn-config-history-of-fn-sn-make-v4
+  (equal (fn-sn-config-history
+          (fn-sn-make-v4 groups capacity files node keyring index
+                         keyring-generation verdicts snapshots identity-next
+                         config-history consumer)) config-history))
 
 (defun fn-sn-make (groups capacity files node keyring index)
   (declare (xargs :guard t))
@@ -317,7 +407,9 @@
                     (:d fn-sn-index) (:d fn-sn-keyring-generation)
                     (:d fn-sn-verdicts) (:d fn-sn-keyring-snapshots)
                     (:d fn-sn-identity-next) (:d fn-sn-config-history)
-                    (:d fn-sn-make-v2) (:d fn-sn-make-v3) (:d fn-sn-make)))
+                    (:d fn-sn-consumer)
+                    (:d fn-sn-make-v2) (:d fn-sn-make-v3)
+                    (:d fn-sn-make-v4) (:d fn-sn-make)))
 
 ; Shape facts type reasoning used to supply while the record opened
 ; (docs/proof-style.md s1), exported as forward-chaining rules only.
@@ -390,42 +482,50 @@
 ; says so by using fn-sn-update-indexed instead.
 (defun fn-sn-update (s files node)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-sn-make-v3 (fn-sn-groups s) (fn-sn-capacity s) files node
+  (fn-sn-make-v4 (fn-sn-groups s) (fn-sn-capacity s) files node
               (fn-sn-keyring s) (fn-sn-index s)
               (fn-sn-keyring-generation s) (fn-sn-verdicts s)
               (fn-sn-keyring-snapshots s) (fn-sn-identity-next s)
-              (fn-sn-config-history s)))
+              (fn-sn-config-history s) (fn-sn-consumer s)))
 
 (verify-guards fn-sn-update)
 (defun fn-sn-update-indexed (s files node index)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-sn-make-v3 (fn-sn-groups s) (fn-sn-capacity s) files node
+  (fn-sn-make-v4 (fn-sn-groups s) (fn-sn-capacity s) files node
               (fn-sn-keyring s) index
               (fn-sn-keyring-generation s) (fn-sn-verdicts s)
               (fn-sn-keyring-snapshots s) (fn-sn-identity-next s)
-              (fn-sn-config-history s)))
+              (fn-sn-config-history s) (fn-sn-consumer s)))
 
 (verify-guards fn-sn-update-indexed)
 
 (defun fn-sn-update-accepted (s files node index msgid verdict)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-sn-make-v3 (fn-sn-groups s) (fn-sn-capacity s) files node
+  (fn-sn-make-v4 (fn-sn-groups s) (fn-sn-capacity s) files node
               (fn-sn-keyring s) index (fn-sn-keyring-generation s)
               (cons (cons msgid verdict) (fn-sn-verdicts s))
               (fn-sn-keyring-snapshots s) (fn-sn-identity-next s)
-              (fn-sn-config-history s)))
+              (fn-sn-config-history s) (fn-sn-consumer s)))
 
 (verify-guards fn-sn-update-accepted)
 
 (defun fn-sn-update-replayed (s files node index identity-context)
   (declare (xargs :guard t))
-  (fn-sn-make-v3
+  (fn-sn-make-v4
    (fn-sn-groups s) (fn-sn-capacity s) files node
    (fn-sn-keyring s) index (fn-sn-keyring-generation s)
    (fn-replay-verdict-pairs (fn-stxk-context-verdicts identity-context))
    (fn-stxk-context-snapshots identity-context)
    (fn-stxk-context-next identity-context)
-   (fn-sn-config-history s)))
+   (fn-sn-config-history s) (fn-sn-consumer s)))
+
+(defun fn-sn-with-consumer (s consumer)
+  (declare (xargs :guard t))
+  (fn-sn-make-v4
+   (fn-sn-groups s) (fn-sn-capacity s) (fn-sn-files s) (fn-sn-node s)
+   (fn-sn-keyring s) (fn-sn-index s) (fn-sn-keyring-generation s)
+   (fn-sn-verdicts s) (fn-sn-keyring-snapshots s)
+   (fn-sn-identity-next s) (fn-sn-config-history s) consumer))
 
 (defthm fn-sn-verdict-listp-of-recorded-cons
   (implies (and (fn-sn-verdict-listp verdicts)
@@ -512,7 +612,9 @@
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (null (fn-node-stage (fn-sn-node s)))
            (fn-record-p record)
-           (not (equal (fn-record-stamp record) :legacy)))
+           (not (equal (fn-record-stamp record) :legacy))
+           (eq (car (fn-cpe-projection-step
+                     (fn-sn-consumer s) record (fn-sn-identity-next s))) :ok))
       (let* ((node (fn-sn-prepare-node (fn-sn-node s) record))
              (files (fn-sf-prepare-record (fn-sn-files s) record
                                           (fn-sn-groups s) (fn-sn-capacity s))))
@@ -542,6 +644,8 @@
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (fn-store-retention-event-p event)
+           (eq (car (fn-cpe-projection-step
+                     (fn-sn-consumer s) event (fn-sn-identity-next s))) :ok)
            (consp (fn-replay-apply-retention-event (fn-sn-node s) event)))
       (let ((files (fn-sf-prepare-record (fn-sn-files s) event
                                          (fn-sn-groups s) (fn-sn-capacity s))))
@@ -564,6 +668,8 @@
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (or (fn-stxe-p event) (fn-stxk-p event) (fn-stxa-p event))
+           (eq (car (fn-cpe-projection-step
+                     (fn-sn-consumer s) event (fn-sn-identity-next s))) :ok)
            (or (not (fn-stxa-p event))
                (not (equal (fn-record-stamp (fn-replay-composite-record event))
                            :legacy)))
@@ -571,6 +677,24 @@
            (equal (fn-stxk-context-kind
                    (fn-replay-identity-step (fn-sn-identity-context s) event))
                   :ok))
+      (let ((files (fn-sf-prepare-record (fn-sn-files s) event
+                                         (fn-sn-groups s) (fn-sn-capacity s))))
+        (if (equal (fn-sf-phase files) :record-staged)
+            (fn-sn-update s files (fn-sn-node s))
+          s))
+    s))
+
+; A consumer proposal enters the same reserved Store publication machine.
+; Its prefix interpretation is checked before staging; only the durable
+; finish below installs it in the carried projection.
+(defun fn-sn-prepare-consumer (s event)
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sn-statep s) :exec t)
+           (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+           (fn-cpe-eventp event)
+           (eq (car (fn-cpe-projection-step
+                     (fn-sn-consumer s) event (fn-sn-identity-next s))) :ok)
+           (consp (fn-replay-apply-record (fn-sn-node s) event)))
       (let ((files (fn-sf-prepare-record (fn-sn-files s) event
                                          (fn-sn-groups s) (fn-sn-capacity s))))
         (if (equal (fn-sf-phase files) :record-staged)
@@ -593,24 +717,38 @@
                      (fn-sf-records (fn-sn-files s))))
 
 (verify-guards fn-sn-completion-record)
-(defun fn-sn-completion-enabledp (s)
+(defun fn-sn-completion-core-enabledp (s)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (and (mbe :logic (fn-sn-statep s) :exec t)
        (equal (fn-sf-phase (fn-sn-files s)) :completing)
        (let ((record (fn-sn-completion-record s)))
-         (cond ((fn-store-retention-event-p record)
+         (and (cond ((fn-store-retention-event-p record)
                 (consp (fn-replay-apply-retention-event (fn-sn-node s) record)))
                ((or (fn-stxe-p record) (fn-stxk-p record) (fn-stxa-p record))
                 (and (consp (fn-replay-apply-record (fn-sn-node s) record))
                      (equal (fn-stxk-context-kind
                              (fn-replay-identity-step
                               (fn-sn-identity-context s) record)) :ok)))
-               (t (fn-sn-record-bindsp (fn-sn-node s) record))))
+               ((fn-cpe-eventp record)
+                (consp (fn-replay-apply-record (fn-sn-node s) record)))
+               (t (fn-sn-record-bindsp (fn-sn-node s) record)))))
        (equal (fn-sf-completion (fn-sn-files s))
               (fn-sf-record-pair (fn-sn-completion-record s)))))
 
-(verify-guards fn-sn-completion-enabledp
+(verify-guards fn-sn-completion-core-enabledp
   :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))
+
+; The node/file publication gate and the consumer projection gate are
+; separate facts.  Existing Store replay relations reason about the former;
+; the phase-aware E2 relation establishes the latter before an actual finish.
+(defun fn-sn-completion-enabledp (s)
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (and (fn-sn-completion-core-enabledp s)
+       (eq (car (fn-cpe-projection-step
+                 (fn-sn-consumer s) (fn-sn-completion-record s)
+                 (fn-sn-identity-next s))) :ok)))
+
+(verify-guards fn-sn-completion-enabledp)
 
 ; One logical completion operation.  Success is recorded only after calling
 ; the actual matching durable node branch; there is no externally supplied
@@ -667,31 +805,35 @@
                                       (fn-sn-composite-delta record
                                                              (fn-sn-keyring s)))
                   (fn-sn-index s))))
-    (fn-sn-make-v3
+    (fn-sn-make-v4
      (fn-sn-groups s) (fn-sn-capacity s) files node
      (fn-sn-keyring s) index (fn-sn-keyring-generation s)
      (append new-verdicts (fn-sn-verdicts s))
      (fn-stxk-context-snapshots ctx) (fn-stxk-context-next ctx)
-     (fn-sn-config-history s))))
+     (fn-sn-config-history s) (fn-sn-consumer s))))
 
 (defun fn-sn-advance-identity-next (s)
   (declare (xargs :guard t))
-  (fn-sn-make-v3
+  (fn-sn-make-v4
    (fn-sn-groups s) (fn-sn-capacity s) (fn-sn-files s) (fn-sn-node s)
    (fn-sn-keyring s) (fn-sn-index s) (fn-sn-keyring-generation s)
    (fn-sn-verdicts s) (fn-sn-keyring-snapshots s)
-   (1+ (nfix (fn-sn-identity-next s))) (fn-sn-config-history s)))
+   (1+ (nfix (fn-sn-identity-next s))) (fn-sn-config-history s)
+   (fn-sn-consumer s)))
 
 (defun fn-sn-finish (s)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (fn-sn-completion-enabledp s)
       (let* ((record (fn-sn-completion-record s))
              (retentionp (fn-store-retention-event-p record))
+             (consumerp (fn-cpe-eventp record))
              (identityp (or (fn-stxe-p record) (fn-stxk-p record)
                             (fn-stxa-p record)))
+             (projection (fn-cpe-projection-step
+                          (fn-sn-consumer s) record (fn-sn-identity-next s)))
              (node (cond (retentionp
                           (fn-replay-apply-retention-event (fn-sn-node s) record))
-                         (identityp
+                         ((or identityp consumerp)
                           (fn-replay-apply-record (fn-sn-node s) record))
                          (t
                           (fn-node-complete (fn-sn-node s) (fn-record-txid record)
@@ -702,7 +844,8 @@
         ; The one site where the index changes, and it changes by at most one
         ; cons (fn-stx-index-grows-by-at-most-one-binding).  No walk of the
         ; store happens here; that is the whole point of carrying it.
-        (if retentionp
+        (fn-sn-with-consumer
+          (if (or retentionp consumerp)
             (fn-sn-advance-identity-next
              (fn-sn-update-indexed
               s (fn-sf-emit-success files (fn-store-event-sequence record)
@@ -722,7 +865,8 @@
               (fn-record-msgid record)
               (fn-stx-verdict-of-octets
                (fn-record-payload record)
-               (fn-sn-keyring s) (fn-sn-keyring-generation s)))))))
+               (fn-sn-keyring s) (fn-sn-keyring-generation s))))))
+          (fn-cp-nth 1 projection)))
     s))
 
 ; The guard obligations are type facts about the state's fields, the
@@ -787,10 +931,11 @@
            (fn-sf-crash-choicep frontier-choice record-choice))
       ; The node is reset to the empty store, so the index is the empty one.
       ; This is a recomputation whose cost is zero, not a carried value.
-      (fn-sn-update-indexed
-       s (fn-sf-crash (fn-sn-files s) frontier-choice record-choice)
-       (fn-node-initial-state (fn-sn-groups s) (fn-sn-capacity s))
-       (fn-stx-index-empty))
+      (fn-sn-with-consumer
+       (fn-sn-update-indexed
+        s (fn-sf-crash (fn-sn-files s) frontier-choice record-choice)
+        (fn-node-initial-state (fn-sn-groups s) (fn-sn-capacity s))
+        (fn-stx-index-empty)) nil)
     s))
 
 (verify-guards fn-sn-crash)
@@ -804,16 +949,21 @@
                                        (fn-sf-records files)
                                        (fn-sf-frontier files)))
              (identity-context
-              (fn-replay-identity (fn-sf-records files))))
+              (fn-replay-identity (fn-sf-records files)))
+             (consumer-replay
+              (fn-cpe-projection-replay nil (fn-sf-records files) 0)))
         ; Recovery is the one transition whose node does not come from a
         ; step of this machine, so it is the one that recomputes.  It is not
         ; a served path: it runs once, at open, on the replayed store.
         (if (and (equal (fn-sf-phase files) :recovering)
-                 (equal (fn-stxk-context-kind identity-context) :ok))
-            (fn-sn-update-replayed
-             s files node
-             (fn-stx-index-of-store (fn-stx-store node) (fn-sn-keyring s))
-             identity-context)
+                 (equal (fn-stxk-context-kind identity-context) :ok)
+                 (eq (car consumer-replay) :ok))
+            (fn-sn-with-consumer
+             (fn-sn-update-replayed
+              s files node
+              (fn-stx-index-of-store (fn-stx-store node) (fn-sn-keyring s))
+              identity-context)
+             (fn-cp-nth 1 consumer-replay))
           ; The article replay and the identity replay are both required.
           ; Never leave :recovering visible when only the former succeeded:
           ; observed open uses that phase to authorize its durability barriers.
@@ -860,12 +1010,13 @@
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (fn-prin-keyringp keyring))
-      (fn-sn-make-v3 (fn-sn-groups s) (fn-sn-capacity s) (fn-sn-files s)
+      (fn-sn-make-v4 (fn-sn-groups s) (fn-sn-capacity s) (fn-sn-files s)
                   (fn-sn-node s) keyring
                   (fn-stx-index-of-store (fn-stx-store (fn-sn-node s)) keyring)
                   (1+ (fn-sn-keyring-generation s))
                   (fn-sn-verdicts s) (fn-sn-keyring-snapshots s)
-                  (fn-sn-identity-next s) (fn-sn-config-history s))
+                  (fn-sn-identity-next s) (fn-sn-config-history s)
+                  (fn-sn-consumer s))
     s))
 
 (verify-guards fn-sn-set-keyring

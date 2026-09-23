@@ -12,6 +12,8 @@
 (defconst *cpt-reg* (fn-cp-register *cpt-first* *cpt-p* *cpt-c* *cpt-q* 1 1))
 (assert-event (equal (car *cpt-reg*) :write))
 (defconst *cpt-registered* (fn-cp-apply *cpt-first* (cadr *cpt-reg*)))
+(assert-event (and (fn-cp-statep *cpt-first*)
+                   (fn-cp-statep *cpt-registered*)))
 (assert-event (and (equal (nth 3 *cpt-registered*) 10)
                    (equal (nth 4 *cpt-first*) 1)
                    (equal (nth 4 *cpt-registered*) 2)))
@@ -33,6 +35,9 @@
 (assert-event (equal (fn-cp-cursor-decode
                       (fn-cp-cursor-encode *cpt-max-cursor*))
                      (list :ok *cpt-max-cursor*)))
+(must-fail (defthm fn-cpt-roundtrip-needs-valid-cursor
+             (equal (fn-cp-cursor-decode (fn-cp-cursor-encode cursor))
+                    (list :ok cursor))))
 (assert-event (equal (fn-cp-cursor-decode
                       (append (fn-cp-cursor-encode *cpt-five*) '(0)))
                      '(:refused :grammar)))
@@ -41,6 +46,9 @@
                      '(:refused :version)))
 (assert-event (equal (fn-cp-cursor-decode (make-list 513 :initial-element 0))
                      '(:refused :octets)))
+(must-fail (defthm fn-cpt-overlong-refusal-needs-overlong-input
+             (equal (fn-cp-cursor-decode octets)
+                    '(:refused :octets))))
 (assert-event (equal (fn-cp-cursor-decode
                       (append *fn-cp-magic* (list *fn-cp-version* 65)))
                      '(:refused :grammar)))
@@ -51,6 +59,7 @@
 (defconst *cpt-ack* (fn-cp-ack *cpt-registered* *cpt-p* 1 1 *cpt-five*))
 (assert-event (equal (car *cpt-ack*) :write))
 (defconst *cpt-acked* (fn-cp-apply *cpt-registered* (cadr *cpt-ack*)))
+(assert-event (fn-cp-statep *cpt-acked*))
 (assert-event (and (equal (nth 3 *cpt-acked*) 10)
                    (equal (nth 4 *cpt-acked*) 2)))
 (assert-event (equal (nth 7 (fn-cp-find *cpt-c* (nth 5 *cpt-acked*))) 5))
@@ -72,6 +81,12 @@
 (defconst *cpt-removed* (fn-cp-apply *cpt-acked* (cadr *cpt-unreg*)))
 (defconst *cpt-reg2* (fn-cp-register *cpt-removed* *cpt-p* *cpt-c* *cpt-q* 1 1))
 (defconst *cpt-again* (fn-cp-apply *cpt-removed* (cadr *cpt-reg2*)))
+(assert-event (and (fn-cp-statep *cpt-removed*)
+                   (fn-cp-statep *cpt-again*)
+                   (equal (fn-cp-apply-trace
+                           *cpt-acked*
+                           (list (cadr *cpt-unreg*) (cadr *cpt-reg2*)))
+                          *cpt-again*)))
 (assert-event (equal (nth 6 (fn-cp-find *cpt-c* (nth 5 *cpt-again*))) 2))
 (assert-event (equal (fn-cp-ack *cpt-again* *cpt-p* 1 1 *cpt-five*)
                      '(:refused :scope)))
@@ -119,6 +134,7 @@
       (fn-cpt-fill (fn-cp-apply s (cadr candidate)) (1- n)))))
 (defconst *cpt-full* (fn-cpt-fill *cpt-first* 256))
 (assert-event (equal (len (nth 5 *cpt-full*)) *fn-cp-max-consumers*))
+(assert-event (fn-cp-statep *cpt-full*))
 (assert-event (equal (fn-cp-register *cpt-full* *cpt-p* '(0 0) *cpt-q* 1 1)
                      '(:refused :capacity)))
 (defconst *cpt-full-rebase* (fn-cp-rebase *cpt-full* *cpt-p* '(0) *cpt-q* 1 2))
@@ -129,3 +145,10 @@
 (must-fail (defthm fn-cpt-capacity-needs-bounded-initial-table
              (<= (len (nth 5 (fn-cp-apply s event)))
                  *fn-cp-max-consumers*)))
+
+; No invariant is asserted of malformed initial states.  The transition
+; theorem and its trace corollary both require a recognized starting state.
+(must-fail (defthm fn-cpt-statep-needs-valid-start
+             (fn-cp-statep (fn-cp-apply s event))))
+(must-fail (defthm fn-cpt-trace-needs-valid-start
+             (fn-cp-statep (fn-cp-apply-trace s events))))

@@ -1002,6 +1002,28 @@
         "planning/evidence/topic-history-metadata-p3-2026-09-23.md"
       ],
       "execution_scope": "ACL2 component tests certified, including the maximum root and malformed/duplicate/folding cases. A source-matched saved-image CLI test is prepared but not yet run; Store topic-event admission and current-policy status are outside this first slice."
+    },
+    {
+      "id": "SCN-033",
+      "title": "Sleeping-agent durable consumer progress across Store and inbox crashes",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "CNS-001"
+      ],
+      "steps": [
+        "Commit the immutable signed report in a separately administered Store while the consumer sleeps; register under a pinned history, incarnation, query and view.",
+        "Poll a bounded page, atomically bind the exact source and operation identity to the consumer inbox and immutable reply outbox, then acknowledge only the scanned committed prefix.",
+        "At linked-but-unfinished Store records and consumer transaction/ack publication cuts, crash and reopen the Store and consumer database, settle uncertainty by querying both durable states, and repeat safely.",
+        "Replace or clone the endpoint with a fresh durable incarnation, change the authorization view, and offer old cursors and delayed acknowledgements before explicit rebase."
+      ],
+      "expected": [
+        "The Store position is unchanged by poll or reply generation and advances only on a durable consumer ack declaration.",
+        "After recovery, Store progress equals replay of the committed prefix; the consumer has neither or both inbox/outbox records at its transaction cut and one operation-index result.",
+        "A linked Store candidate is either absent or replayed once at recovery; no stale live projection is accepted as progress.",
+        "Old incarnation, registration epoch and view cursors are refused without mutation; independent stores and consumers keep separate positions."
+      ],
+      "note": "The ACL2 Store model portion is witnessed in tests/acl2/consumer-store-invariants-tests.lisp and certified in planning/evidence/manifests/certify-20260923T210725Z-145187.json. The end-to-end E2-01.. trace specifications in planning/experiments/e1-e2-v1-traces.json remain unexecuted until native authenticated poll/ack and consumer database integration."
     }
   ]
 }

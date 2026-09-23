@@ -26,7 +26,7 @@
 (local (in-theory (e/d (fn-sn-statep fn-sn-initial fn-sn-pending-record
                         fn-sn-record-bindsp fn-sn-prepare
                         fn-sn-identity-context
-                        fn-sn-completion-record fn-sn-completion-enabledp
+                        fn-sn-completion-record fn-sn-completion-core-enabledp
                         fn-sn-finish fn-sn-file-step fn-sn-io fn-sn-crash
                         fn-sn-recover fn-sn-committed-recordp
                         fn-sf-phase-shapep fn-sf-initial-state
@@ -48,6 +48,7 @@
                         fn-node-prepare fn-node-complete fn-node-recover
                         fn-replay-advance-txid fn-replay fn-replay-loop
                         fn-sf-replay-node fn-sn-prepare-node
+                        fn-sn-completion-enabledp
                         fn-retain-statep fn-node-initial-state
                          fn-state-next-txid
                           ))))
@@ -145,6 +146,41 @@
                        :frontier-attempted :fenced-frontier
                        :recovering :fenced-recovery)))
 
+; Proof-side consumer history relation.  It is never called by a served
+; command.  Live states interpret exactly the completed Store prefix; the
+; one appended but unfinished completion and the staged candidate retain a
+; separately checked next step.  A crash erases the process projection, and
+; recovery must reconstruct it before entering :recovering.
+(defun fn-snt-consumerp (s)
+  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
+  (let* ((files (fn-sn-files s))
+         (phase (fn-sf-phase files))
+         (records (fn-sf-records files))
+         (next (fn-sn-identity-next s))
+         (consumer (fn-sn-consumer s)))
+    (cond
+     ((equal phase :replaying) (null consumer))
+     ((equal phase :fault) t)
+     ((equal phase :completing)
+      (and (equal (len records) (1+ next))
+           (equal (fn-cpe-projection-replay nil (take next records) 0)
+                  (list :ok consumer))
+           (equal (nth next records) (fn-sn-completion-record s))
+           (eq (car (fn-cpe-projection-step
+                     consumer (fn-sn-completion-record s) next)) :ok)))
+     (t
+      (and (equal (len records) next)
+           (equal (fn-cpe-projection-replay nil records 0)
+                  (list :ok consumer))
+           (or (not (fn-sf-record-phasep phase))
+               (eq (car (fn-cpe-projection-step
+                         consumer (fn-sf-record-candidate files) next))
+                   :ok)))))))
+
+(verify-guards fn-snt-consumerp
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep)
+                                  (fn-sf-statep fn-node-statep)))))
+
 ; This is a proof relation, never an executable transition guard.  Before
 ; publication the actual proposal's two resolutions match current/extended
 ; replay.  After publication only its durable resolution matches history.
@@ -206,10 +242,14 @@
          (fn-sf-history-recoverablep groups capacity history (1- frontier))
          (equal node (fn-sf-replay-node groups capacity history (1- frontier)))
          (consp (fn-replay-apply-record node record))
-         (or (fn-store-retention-event-p record)
-             (equal (fn-stxk-context-kind
-                     (fn-replay-identity-step (fn-sn-identity-context s) record))
-                    :ok))
+         (cond ((fn-store-retention-event-p record) t)
+               ((fn-cpe-eventp record)
+                (eq (car (fn-cpe-projection-step
+                          (fn-sn-consumer s) record
+                          (fn-sn-identity-next s))) :ok))
+               (t (equal (fn-stxk-context-kind
+                          (fn-replay-identity-step
+                           (fn-sn-identity-context s) record)) :ok)))
          (equal (fn-replay-apply-record node record)
                 (fn-sf-replay-node groups capacity
                                    (append history (list record)) frontier))
@@ -274,7 +314,7 @@
           ; kind and nothing had to say which; this book has not certified
           ; since 2026-09-21 01:20.  See `fn-snt-completion-linkp' above.
           ((equal phase :completing)
-           (and (fn-sn-completion-enabledp s)
+           (and (fn-sn-completion-core-enabledp s)
                 (fn-snt-completion-linkp s)))
           ((equal phase :replaying)
            (equal node (fn-node-initial-state groups capacity)))
@@ -325,32 +365,35 @@
 ; verdicts, its keyring snapshots and its identity sequence, and the equation
 ; was false for any state that carries them; books/store-node-traces has not
 ; certified since 2026-09-21 01:20, so it was never proved in the widened
-; shape.  The reconstruction is `fn-sn-make-v3' over all eleven fields.
+; shape.  The reconstruction is `fn-sn-make-v4' over all twelve fields.
 (defthm fn-snt-state-reconstruction
   (implies (fn-sn-statep s)
-           (equal (fn-sn-make-v3 (fn-sn-groups s) (fn-sn-capacity s)
+           (equal (fn-sn-make-v4 (fn-sn-groups s) (fn-sn-capacity s)
                                  (fn-sn-files s) (fn-sn-node s)
                                  (fn-sn-keyring s) (fn-sn-index s)
                                  (fn-sn-keyring-generation s)
                                  (fn-sn-verdicts s)
                                  (fn-sn-keyring-snapshots s)
                                  (fn-sn-identity-next s)
-                                 (fn-sn-config-history s))
+                                 (fn-sn-config-history s)
+                                 (fn-sn-consumer s))
                   s))
   :hints (("Goal" :in-theory (enable len fn-sn-statep fn-sn-shapep
-                                     fn-sn-make-v3 fn-sn-groups
+                                     fn-sn-make-v4 fn-sn-groups
                                      fn-sn-capacity fn-sn-files fn-sn-node
                                      fn-sn-keyring fn-sn-index
                                      fn-sn-keyring-generation fn-sn-verdicts
                                      fn-sn-keyring-snapshots
-                                     fn-sn-identity-next fn-sn-config-history)
+                                     fn-sn-identity-next fn-sn-config-history
+                                     fn-sn-consumer)
            :expand ((len s) (len (cdr s)) (len (cddr s))
                     (len (cdddr s)) (len (cddddr s))
                     (len (cdr (cddddr s))) (len (cddr (cddddr s)))
                     (len (cdddr (cddddr s))) (len (cddddr (cddddr s)))
                     (len (cdr (cddddr (cddddr s))))
                     (len (cddr (cddddr (cddddr s))))
-                    (len (cdddr (cddddr (cddddr s)))))
+                    (len (cdddr (cddddr (cddddr s))))
+                    (len (cddddr (cddddr (cddddr s)))))
            :do-not-induct t)))
 
 (defthm fn-snt-typed-store-components
@@ -521,6 +564,13 @@
                                   (fn-node-pending-matchesp
                                    fn-sn-pending-record)))))
 
+(defthm fn-snt-bound-record-excludes-consumer-by-shape
+  (implies (fn-sn-record-bindsp node record)
+           (not (fn-cpe-eventp record)))
+  :hints (("Goal" :use fn-snt-bound-record-is-an-article-record
+           :in-theory (disable fn-sn-record-bindsp fn-record-p
+                               fn-cpe-eventp))))
+
 ; The reserved frontier is the candidate's successor, so the node the
 ; relation carries (replay at frontier - 1) is replay at the candidate txid.
 ; Stated as the arithmetic fact, :rule-classes nil, so the main proof does not
@@ -593,22 +643,20 @@
 ; now, because applying the event is the WHOLE node effect of a deferred
 ; publication.
 
-; A store event that is not an article record is one of the other four, by
-; `fn-store-event-p's own disjunction.  With `fn-store-event-p' closed
-; everywhere below -- it is a five-way splitter over the codecs -- this is
-; what says a deferred candidate reaches a retention or identity arm of
-; `fn-sn-completion-enabledp' and `fn-sn-finish' rather than their last one.
+; This disjunction only unfolds the Store union.  Consumer events are a
+; separate final arm; it is not evidence that their projection was applied.
 (local
- (defthm fn-snt-a-store-event-is-an-article-or-one-of-the-four
+ (defthm fn-snt-store-event-final-arms-by-definition
    (implies (and (fn-store-event-p event)
                  (not (fn-record-p event))
                  (not (fn-store-retention-event-p event))
                  (not (fn-stxe-p event))
                  (not (fn-stxk-p event)))
-            (fn-stxa-p event))
+            (or (fn-stxa-p event) (fn-cpe-eventp event)))
    :hints (("Goal" :in-theory (e/d (fn-store-event-p)
                                    (fn-record-p fn-store-retention-event-p
                                     fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-cpe-eventp
                                     fn-record-shape-vocabulary
                                     fn-record-record-vocabulary))))))
 
@@ -828,6 +876,17 @@
                                    fn-store-event-p fn-store-retention-event-p
                                    fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
+(defthm fn-sn-prepare-consumer-preserves-state
+  (implies (fn-sn-statep s)
+           (fn-sn-statep (fn-sn-prepare-consumer s event)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep fn-sn-prepare-consumer)
+                                  (fn-sf-statep fn-node-statep
+                                   fn-sf-prepare-record
+                                   fn-replay-apply-record
+                                   fn-cpe-projection-step
+                                   fn-record-shape-vocabulary
+                                   fn-store-event-p fn-cpe-eventp)))))
+
 (defthm fn-snt-prepare-retention-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-prepare-retention s event)))
@@ -943,6 +1002,46 @@
             (history (fn-sf-records (fn-sn-files s)))
             (txid (+ -1 (fn-sf-frontier (fn-sn-files s)))))))))
 
+(defthm fn-snt-prepare-consumer-preserves-relation
+  (implies (fn-snt-relation s)
+           (fn-snt-relation (fn-sn-prepare-consumer s event)))
+  :hints (("Goal"
+    :cases ((and (fn-sn-statep s)
+                 (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                 (fn-cpe-eventp event)
+                 (eq (car (fn-cpe-projection-step
+                           (fn-sn-consumer s) event
+                           (fn-sn-identity-next s))) :ok)
+                 (consp (fn-replay-apply-record (fn-sn-node s) event))
+                 (equal (fn-sf-phase (fn-sf-prepare-record
+                                      (fn-sn-files s) event
+                                      (fn-sn-groups s) (fn-sn-capacity s)))
+                        :record-staged)))
+    :in-theory (e/d (fn-sf-prepare-record fn-sn-prepare-consumer)
+                    (fn-sn-statep fn-sn-record-bindsp fn-sf-history-recoverablep
+                     fn-sn-completion-enabledp fn-sn-completion-record
+                     fn-sf-recover fn-sf-record-listp
+                     fn-replay-apply-record fn-replay-apply-retention-event
+                     fn-replay-apply-identity-neutral fn-replay-composite-record
+                     fn-replay-identity-step fn-cpe-projection-step
+                     fn-snt-completion-linkp
+                     fn-record-shape-vocabulary fn-record-record-vocabulary
+                     fn-store-event-p fn-store-retention-event-p
+                     fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp)))
+          ("Subgoal 1"
+    :use (fn-sn-prepare-consumer-preserves-state
+          (:instance fn-snt-an-article-record-is-no-other-store-event
+            (record event))
+          (:instance fn-snt-candidate-is-frontier-predecessor
+            (record event)
+            (records (fn-sf-records (fn-sn-files s)))
+            (frontier (fn-sf-frontier (fn-sn-files s))))
+          (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
+          (:instance fn-snt-deferred-preparation-outcome
+            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
+            (history (fn-sf-records (fn-sn-files s)))
+            (txid (+ -1 (fn-sf-frontier (fn-sn-files s)))))))))
+
 ; File stages that do not publish a record retain the same live proposal.
 (defthm fn-snt-start-frontier-preserves-relation
   (implies (fn-snt-relation s)
@@ -950,6 +1049,7 @@
   :hints (("Goal" :use ((:instance fn-sn-io-preserves-state
                                      (operation :start-frontier)))
            :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
+                               fn-sn-completion-core-enabledp
                                fn-snt-pending-linkp fn-snt-deferred-linkp fn-snt-completion-linkp fn-sn-completion-enabledp))))
 
 (defthm fn-snt-frontier-file-preserves-relation
@@ -958,6 +1058,7 @@
   :hints (("Goal" :use ((:instance fn-sn-io-preserves-state
                                      (operation :frontier-file)))
            :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
+                               fn-sn-completion-core-enabledp
                                fn-snt-pending-linkp fn-snt-deferred-linkp fn-snt-completion-linkp fn-sn-completion-enabledp))))
 
 (defthm fn-snt-frontier-replace-preserves-relation
@@ -966,6 +1067,7 @@
   :hints (("Goal" :use ((:instance fn-sn-io-preserves-state
                                      (operation :frontier-replace)))
            :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
+                               fn-sn-completion-core-enabledp
                                fn-snt-pending-linkp fn-snt-deferred-linkp fn-snt-completion-linkp fn-sn-completion-enabledp))))
 
 (defthm fn-snt-frontier-directory-preserves-relation
@@ -981,6 +1083,7 @@
                           (first (fn-sf-frontier (fn-sn-files s)))
                           (second (1+ (fn-sf-frontier (fn-sn-files s))))))
            :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
+                               fn-sn-completion-core-enabledp
                                fn-snt-pending-linkp fn-snt-deferred-linkp fn-snt-completion-linkp fn-sn-completion-enabledp))))
 
 (defthm fn-snt-record-file-preserves-relation
@@ -1091,6 +1194,7 @@
   :hints (("Goal" :use ((:instance fn-sn-io-preserves-state
                                      (operation :recovery-barrier)))
            :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
+                               fn-sn-completion-core-enabledp
                                fn-snt-pending-linkp fn-snt-deferred-linkp fn-snt-completion-linkp fn-sn-completion-enabledp))))
 
 (defthm fn-snt-finish-image
@@ -1117,7 +1221,8 @@
                     (s (fn-sn-files s))
                     (sequence (fn-store-event-sequence (fn-sn-completion-record s)))
                     (txid (fn-store-event-txid (fn-sn-completion-record s)))))
-           :in-theory (disable fn-sn-record-bindsp fn-sn-completion-record
+           :in-theory (e/d (fn-sn-completion-enabledp)
+                           (fn-sn-record-bindsp fn-sn-completion-record
                                fn-record-shape-vocabulary
                                fn-store-event-p fn-store-retention-event-p
                                fn-stxe-p fn-stxk-p fn-stxa-p
@@ -1126,7 +1231,7 @@
                                fn-replay-apply-identity-neutral
                                fn-replay-composite-record
                                fn-sn-identity-context
-                               fn-replay-identity-step))))
+                               fn-replay-identity-step)))))
 
 ; The node the OTHER two arms of `fn-sn-finish' publish.  `6ab2c783' and
 ; `4bb7bb3d' added them and no theorem said what they produce;
@@ -1179,7 +1284,8 @@
            ; Closed for the same reason as the directory step above: this
            ; goal dispatches on the completion record's kind through
            ; `fn-sn-completion-enabledp' and never looks inside it.
-           :in-theory (disable fn-sn-finish fn-sn-statep fn-sn-record-bindsp
+           :in-theory (e/d (fn-sn-completion-enabledp)
+                           (fn-sn-finish fn-sn-statep fn-sn-record-bindsp
                                fn-sf-history-recoverablep fn-snt-pending-linkp fn-snt-deferred-linkp
                                fn-sn-completion-record
                                fn-record-shape-vocabulary
@@ -1190,7 +1296,7 @@
                                fn-replay-apply-identity-neutral
                                fn-replay-composite-record
                                fn-sn-identity-context
-                               fn-replay-identity-step))))
+                               fn-replay-identity-step)))))
 
 (defthm fn-snt-crash-preserves-relation
   (implies (fn-snt-relation s)
@@ -1410,6 +1516,16 @@
                                    fn-store-event-p fn-store-retention-event-p
                                    fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
+(defthm fn-snt-prepare-consumer-keeps-records
+  (equal (fn-sf-records (fn-sn-files (fn-sn-prepare-consumer s event)))
+         (fn-sf-records (fn-sn-files s)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-prepare-consumer fn-sn-update)
+                                  (fn-sn-statep fn-sf-prepare-record
+                                   fn-replay-apply-record
+                                   fn-cpe-projection-step
+                                   fn-record-shape-vocabulary
+                                   fn-store-event-p fn-cpe-eventp)))))
+
 (defthm fn-snt-io-records-prefix
   (implies (fn-sn-statep s)
            (fn-sf-prefixp (fn-sf-records (fn-sn-files s))
@@ -1528,7 +1644,8 @@
            :in-theory (e/d (fn-snt-relation)
                            (fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
                             fn-sf-replay-node fn-snt-pending-linkp fn-snt-deferred-linkp fn-snt-completion-linkp
-                            fn-sn-completion-enabledp fn-snt-idle-phasep
+                            fn-sn-completion-enabledp
+                            fn-sn-completion-core-enabledp fn-snt-idle-phasep
                             fn-sf-record-phasep fn-sn-crash fn-sf-crash
                             fn-sf-crash-imagep fn-sf-image-frontier-choice
                             fn-sf-image-record-choice  
@@ -1589,7 +1706,8 @@
                            (fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
                             fn-sf-replay-node fn-sf-record-listp
                             fn-snt-pending-linkp fn-snt-deferred-linkp fn-snt-completion-linkp fn-snt-idle-phasep
-                            fn-sn-completion-enabledp fn-sf-record-phasep
+                            fn-sn-completion-enabledp
+                            fn-sn-completion-core-enabledp fn-sf-record-phasep
                             fn-sn-crash fn-sf-crash
                             fn-sf-image-frontier-choice fn-sf-image-record-choice
                             fn-snt-relation-implies-structural-state

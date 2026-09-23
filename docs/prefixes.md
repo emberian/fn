@@ -55,6 +55,8 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-id-`, `fn-charge-` | `identity`, `identity-invariants` | Content-identity derivation (subject and archive obligation), the hexadecimal projection, and the per-payload charge policy |
 | `fn-store-` | `store-config` | The configured group table and the name/code mapping shared by every adapter |
 | `fn-cp-` | `consumer-position` | Experimental E2 v1 bounded cursor codec and finite register/ack/rebase/unregister decision kernel; its `:write` result is a proposal, with no Store or served caller yet |
+| `fn-cpe-` | `consumer-store-events` | Versioned, bounded E2 Store-journal event grammar and exact codec for bootstrap, register, ack, rebase, unregister and incarnation rollover; durability requires the Store finish/recovery join |
+| `fn-csi-` | `consumer-store-invariants` | Completed Store prefix versus carried consumer projection, with explicit completing-window and recovery obligations |
 | `fn-bp-` | `bp-workflow`, `bp-workflow-invariants`, `bp-workflow-transport-invariants`, `bp-workflow-binding-core`, `bp-workflow-binding-invariants`, `bp-workflow-records`, `bp-workflow-replay-status` | Sender workflow: work, attempts, intents, transport observations, journal replay, and the reopened image's read model (status across a restart, and whether a work was recovered or enqueued this session) |
 | `fn-bpa-` | `bp-adu` | Canonical CBOR application data units: request and receipt |
 | `fn-bpi-` | `bp-ingress` | Legacy article ADU ingress, routing and composed-store admission |
