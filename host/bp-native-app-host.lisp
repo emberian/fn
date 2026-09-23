@@ -5,6 +5,19 @@
 ; image.  Every call below reads the canonical configured owner installed by
 ; host/owner-host.lisp.
 (in-package "ACL2")
+
+(defun fn-owner-bp-session-principal (channel announced state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpaj-session-principal
+          (fn-owner-config state) channel announced)))
+
+(defun fn-owner-bp-receipt-trustedp (view state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpah-receipt-trustedp view (fn-owner-config state))))
+
+(defun fn-owner-bp-request-trustedp (view state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpah-request-trustedp view (fn-owner-config state))))
 (include-book "../books/bp-native-app-fast")
 
 (defun fn-owner-app-bind-receipt-store (state)

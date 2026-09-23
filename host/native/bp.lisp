@@ -411,13 +411,13 @@ may or may not be durable."
        (list :uncertain reason)))))
 
 (defun fnn-bp-deliver-node
-  (service conn session-counter xfer-id octets configured-peer)
+  (service conn session-counter xfer-id octets owner channel)
   "Complete one transfer through the single FNBS machine owner."
   (when (string= (or (fnn-developer-selector "FN_BP_TEST_DELIVER_FAULT") "") "1")
     (fnn-fault "bp: injected receive core fault"))
   (let* ((tally (fnn-bps-tally service))
          (ingress (fnn-bps-tcpcl-ingress
-                   service conn session-counter xfer-id configured-peer)))
+                   service conn session-counter xfer-id owner channel)))
     (multiple-value-bind (result adu)
         (fnn-bps-receive service ingress octets)
       (case (first result)
@@ -560,7 +560,7 @@ dominates an acceptance: a run that saw one of each did not succeed."
                               (lambda (conn xfer-id octets)
                                 (fnn-bp-deliver-node
                                  service conn session-counter xfer-id octets
-                                 peer-eid))))
+                                 nil nil))))
                        (unwind-protect
                             (handler-case
                                 (let ((conn (fnn-tcl-session

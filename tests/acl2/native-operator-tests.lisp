@@ -414,6 +414,16 @@
                           (fn-nop-test-argv '("peer" "list"))))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-peer-list*) :accepted))
 (assert-event (equal (fn-native-operator-result-native-action *fn-nop-peer-list*) :admin))
+(defconst *fn-nop-bp-boundary*
+  (fn-native-operator-run
+   *fn-nop-minimal-config*
+   (fn-nop-test-argv '("bp-boundary" "add" "dtn-peer"
+                       "peer.example.invalid" "dtn://peer/" "4556"))))
+(assert-event
+ (and (equal (fn-native-operator-result-status *fn-nop-bp-boundary*)
+             :accepted)
+      (equal (fn-native-operator-result-native-action *fn-nop-bp-boundary*)
+             :admin)))
 (assert-event (fn-native-admin-result-queryp
                (fn-native-operator-result-admin-plan *fn-nop-peer-list*)))
 (assert-event (not (fn-native-admin-result-queryp
