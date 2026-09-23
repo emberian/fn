@@ -1747,18 +1747,23 @@
       "assumptions": [
         "A-DURABILITY"
       ],
-      "status": "planned",
+      "status": "in-progress",
       "evidence": [
         "books/store-events.lisp",
         "books/replay.lisp",
         "books/store-node.lisp",
+        "books/store-identity-sequence-invariants.lisp",
         "host/owner-host.lisp",
         "host/native/owner.lisp",
         "tests/acl2/store-identity-traces-tests.lisp",
+        "tests/acl2/store-identity-sequence-invariants-tests.lisp",
         "tests/native_owner_publication.lisp"
       ],
-      "pending_subject": "Certify the actual fn-sn prepare/finish/recovery preservation and correspondence theorems for the carried journal sequence and kind-4 snapshot binding, then relate every physical publication/recovery cut to that state. The raw witness establishes condition routing and reservation cleanup only; it does not prove filesystem durability or cryptographic primitive correctness.",
-      "progress_note": "Source integration carries journal sequence separately from allocation frontier, uses one native prepared-publication helper for article, retention and identity events, and replays enrolled kind-3 plus bound kind-4 history. A fresh source trace covers enrollment, atomic acceptance, reopen, a burned transaction-id gap, later events and another reopen; it preserves the kind-4 historical verdict and reports no historical authority for a legacy fn-r record. The raw shared-helper witness covers expected refusal followed by a valid commit, indeterminate fencing, and structural-fault fencing. No theorem events are registered yet and the combined image gate remains separate. No event yet; T4."
+      "pending_subject": "The carried journal sequence is preserved by initial, prepare, I/O, refusal, abort, finish and recovery transitions, but its invariant has not been joined to every actual owner publication path or the physical publication/recovery cuts. Prove the kind-4 snapshot/article/verdict binding over the host-called completion and recovery paths. The raw witness establishes condition routing and reservation cleanup only; it does not prove filesystem durability or cryptographic primitive correctness.",
+      "progress_note": "Source integration carries journal sequence separately from allocation frontier, uses one native prepared-publication helper for article, retention and identity events, and replays enrolled kind-3 plus bound kind-4 history. The phase-aware relation fn-sn-identity-sequencep and fn-sn-finish-preserves-identity-sequence cover every completion arm: a completing file has exactly one more committed record than the carried cursor, and a matching finish returns to equal count and cursor. Preparation, I/O, refusal, abort and recovery preservation also certify with a reachable mixed-history witness and a bad-cursor tooth. Certification is recorded in planning/evidence/store-identity-sequence-t4-2026-09-23.md. The physical cut and snapshot-binding joins remain open.",
+      "events": [
+        "fn-sn-finish-preserves-identity-sequence"
+      ]
     },
     {
       "id": "PRF-051",

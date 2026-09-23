@@ -142,6 +142,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-prepare-correspondence \
 	tests/acl2/store-prepare-correspondence-tests \
 	books/store-node-resolution \
+	books/store-identity-sequence-invariants \
+	tests/acl2/store-identity-sequence-invariants-tests \
 	tests/acl2/store-node-resolution-tests \
 	tests/acl2/store-node-resolution-traces-tests \
 	tests/acl2/store-identity-traces-tests \
