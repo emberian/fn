@@ -428,15 +428,15 @@
     "books": 423,
     "books_in_root_closure": 422,
     "roots": 421,
-    "theorems": 7087,
-    "functions": 5426,
-    "assert_events": 7833,
-    "must_fails": 280,
+    "theorems": 7088,
+    "functions": 5427,
+    "assert_events": 7835,
+    "must_fails": 281,
     "encapsulates": 26,
     "guards": {
       "verified": 1746,
       "declared-off": 288,
-      "default-guarded": 2721,
+      "default-guarded": 2722,
       "default-unguarded": 671
     },
     "suspect_theorems": 65,
@@ -1033,7 +1033,7 @@
       "book": "books/bp-adu.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 18,
+      "theorems": 19,
       "functions": 41,
       "guards": {
         "verified": 7,
@@ -8977,16 +8977,16 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 37,
-      "functions": 19,
+      "functions": 20,
       "guards": {
         "verified": 9,
         "declared-off": 0,
-        "default-guarded": 10,
+        "default-guarded": 11,
         "default-unguarded": 0
       },
       "verify_guards_events": 9,
-      "assert_events": 37,
-      "must_fails": 0,
+      "assert_events": 39,
+      "must_fails": 1,
       "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
@@ -8995,7 +8995,9 @@
         "../../books/defrecord",
         "../../books/deftransition"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [
         "fn-drt-mark-unfolds-to-a-tagged-list",
         "fn-drt-point-unfolds-to-a-list"
@@ -11745,7 +11747,7 @@
     {
       "theorem": "fn-bp-effect-for-pending-attempt-unfolds",
       "book": "books/bp-workflow-invariants.lisp",
-      "line": 884,
+      "line": 890,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value"
       ]
@@ -11761,7 +11763,7 @@
     {
       "theorem": "fn-bpb-decode-refuses-overlong-input",
       "book": "books/bp-bundle-invariants.lisp",
-      "line": 530,
+      "line": 540,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpb-decode and the conclusion is that branch's value"
       ]
@@ -11769,7 +11771,7 @@
     {
       "theorem": "fn-bpbi-bpp-encode-unfolds",
       "book": "books/bp-bundle-invariants.lisp",
-      "line": 277,
+      "line": 287,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-bpp-encode"
       ]
@@ -11777,7 +11779,7 @@
     {
       "theorem": "fn-bpc-decode-refuses-overlong-input",
       "book": "books/bp-primary-cbor.lisp",
-      "line": 1175,
+      "line": 1179,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpc-decode and the conclusion is that branch's value"
       ]
@@ -11900,7 +11902,7 @@
     {
       "theorem": "fn-drt-mark-unfolds-to-a-tagged-list",
       "book": "tests/acl2/defrecord-tests.lisp",
-      "line": 119,
+      "line": 169,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-drt-mark",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -11909,7 +11911,7 @@
     {
       "theorem": "fn-drt-point-unfolds-to-a-list",
       "book": "tests/acl2/defrecord-tests.lisp",
-      "line": 124,
+      "line": 174,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-drt-point",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -12375,7 +12377,7 @@
       {
         "theorem": "fn-bpc-decode-refuses-overlong-input",
         "book": "books/bp-primary-cbor.lisp",
-        "line": 1175,
+        "line": 1179,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

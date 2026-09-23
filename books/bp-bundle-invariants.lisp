@@ -64,11 +64,16 @@
 (defthm fn-bpb-encode-block-is-consp
   (consp (fn-bpb-encode-block b)))
 
+;; The head octet is the first `cons` of `fn-bpb-encode-block-with-crc`,
+;; whatever the CRC field and the argument encodings are, so both stay
+;; closed.  Open, the CRC scan and the arguments split the goal 128 ways
+;; (17 s, 2026-09-23).
 (defthm fn-bpb-encode-block-head
   (equal (car (fn-bpb-encode-block b))
          (if (equal (fn-bpb-block-crc-type b) 0)
              *fn-bpb-block-head-5*
-           *fn-bpb-block-head-6*)))
+           *fn-bpb-block-head-6*))
+  :hints (("Goal" :in-theory (disable fn-bpb-block-crc fn-bpc-argument))))
 
 ; -----------------------------------------------------------------------------
 ; The two field readers, each against the encoder that wrote the field.
@@ -257,7 +262,12 @@
                     (append (fn-bpb-encode-block (fn-bpb-bundle-payload bundle))
                             (list *fn-bpb-array-break*)))))
   :hints (("Goal" :in-theory (e/d (fn-cbor-octet-listp fn-cbor-octetp)
-                                  (fn-bpb-encode-block fn-bpb-encode-blocks)))))
+                                  (fn-bpb-encode-block fn-bpb-encode-blocks
+                                   ;; the bundle's field recognizers stay
+                                   ;; closed: the encoders' octet facts need
+                                   ;; them as they stand (4.5 s open)
+                                   fn-bpb-block-listp fn-bpb-payload-blockp
+                                   fn-bpb-splitp fn-bpp-blockp)))))
 
 ; `fn-bpp-encode` IS `(fn-bpc-enc :item (fn-bpp-block-value b
 ; (fn-bpp-block-crc b)))` by definition, and that is the form

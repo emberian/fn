@@ -262,6 +262,10 @@
   :hints (("Goal" :use fn-cbor-u32-from-bounds
            :in-theory (disable fn-cbor-u32-from-bounds))))
 
+;; The two u64 facts below read the eight octets as two closed
+;; `fn-bpc-u32-octets` halves, through `fn-bpc-u32-octets-fields` and
+;; `-prefix-fields` above.  Opening the halves instead cost 37 s and 32 s of
+;; type reasoning over nested floor/mod terms (2026-09-23).
 (defthm fn-bpc-u64-bytes-fields
   (implies (natp n)
    (and (consp (append (fn-bpc-u64-bytes n) xs))
@@ -273,7 +277,7 @@
        (consp (cddr (cddddr (append (fn-bpc-u64-bytes n) xs))))
        (consp (cdddr (cddddr (append (fn-bpc-u64-bytes n) xs))))
        (equal (cddddr (cddddr (append (fn-bpc-u64-bytes n) xs))) xs)))
-  :hints (("Goal" :in-theory (e/d (fn-bpc-u64-bytes fn-bpc-u32-octets)
+  :hints (("Goal" :in-theory (e/d (fn-bpc-u64-bytes)
                                   (floor mod cancel-floor-+-basic
                                    cancel-mod-+-basic rewrite-floor-mod
                                    rewrite-mod-mod floor-floor-integer)))))
@@ -291,7 +295,7 @@
        (true-listp (fn-bpc-u64-bytes n))
        (equal (cddddr (cddddr (fn-bpc-u64-bytes n))) nil)
        (equal (len (fn-bpc-u64-bytes n)) 8)))
-  :hints (("Goal" :in-theory (e/d (fn-bpc-u64-bytes fn-bpc-u32-octets)
+  :hints (("Goal" :in-theory (e/d (fn-bpc-u64-bytes)
                                   (floor mod cancel-floor-+-basic
                                    cancel-mod-+-basic rewrite-floor-mod
                                    rewrite-mod-mod floor-floor-integer)))))
