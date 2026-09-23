@@ -265,6 +265,8 @@
     "tests/acl2/bp-node-foundation-tests",
     "books/bp-node-fragment-family",
     "tests/acl2/bp-node-fragment-family-tests",
+    "books/bp-node-fragment-plan",
+    "tests/acl2/bp-node-fragment-plan-tests",
     "books/bp-node-receive-boundary",
     "tests/acl2/bp-node-receive-boundary-tests",
     "books/bp-fnbs-codec",
@@ -542,25 +544,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 544,
-    "books_in_root_closure": 543,
-    "roots": 538,
-    "theorems": 8252,
-    "functions": 6104,
-    "assert_events": 8916,
-    "must_fails": 430,
+    "books": 546,
+    "books_in_root_closure": 545,
+    "roots": 540,
+    "theorems": 8253,
+    "functions": 6107,
+    "assert_events": 8926,
+    "must_fails": 431,
     "encapsulates": 26,
     "guards": {
       "verified": 2002,
-      "declared-off": 325,
-      "default-guarded": 2990,
+      "declared-off": 327,
+      "default-guarded": 2991,
       "default-unguarded": 787
     },
     "suspect_theorems": 74,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 35,
-    "include_hygiene_warnings": 417,
+    "include_hygiene_warnings": 420,
     "host_names_warnings": 793,
     "hand_written_record_warnings": 18
   },
@@ -1939,6 +1941,31 @@
         "bp-fragment-fast",
         "bp-fragment-invariants",
         "bp-node-foundation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-node-fragment-plan.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-node-fragment-family"
       ],
       "system_includes": [],
       "suspects": [],
@@ -10157,6 +10184,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-node-fragment-plan-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 1,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-node-fragment-plan",
+        "bp-node-fragment-family-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-node-host-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -17146,6 +17201,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-node-fragment-plan.lisp",
+        "line": 5,
+        "include": "bp-node-fragment-family",
+        "included": "books/bp-node-fragment-family.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-node-machine-authorization.lisp",
         "line": 3,
         "include": "bp-node-machine-invariants",
@@ -18382,6 +18444,20 @@
         "line": 4,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-fragment-plan-tests.lisp",
+        "line": 2,
+        "include": "../../books/bp-node-fragment-plan",
+        "included": "books/bp-node-fragment-plan.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-fragment-plan-tests.lisp",
+        "line": 3,
+        "include": "bp-node-fragment-family-tests",
+        "included": "tests/acl2/bp-node-fragment-family-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
