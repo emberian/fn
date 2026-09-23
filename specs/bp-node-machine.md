@@ -718,6 +718,12 @@ fenced. This does not yet establish the byte-store publisher's whole-history
 crash relation or a native caller; an epoch distinct from the old process is
 a recovery input, and process-death callbacks cannot survive to the new
 process.
+`books/bp-fnbs-namespace.lisp` partitions one bounded physical FNBS
+directory into legacy lifecycle finals, kind-5 received finals, and hidden
+stages. The old contiguous namespace planner validates the legacy subset;
+the kind-5 byte replay validates the received subset. An unknown public name
+faults before either replay. This classifier is awaiting certification in
+the coherent combined A2/guard batch.
 
 Every record is built by its constructor and read by selectors; no book and
 no theorem matches a record by list shape. `fn-bpn-rec-kind`,
