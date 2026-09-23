@@ -28,12 +28,12 @@ under `planning/evidence/manifests/` plus this worktree's unarchived
 `build/acl2/certify-*/manifest.json` for the NEWEST run, by run-id timestamp,
 that recorded a verdict for it:
 
-  green   the newest verdict at THIS digest is `certs.certified_books`' pass
-          rule -- that run's own fresh success marker for this book, a
-          recorded certificate digest, and ACL2 exit 0.
-  red     the newest verdict at this digest is a failure, and it is newer than
-          any green at this digest.  A book red at its digest is called red,
-          not merely uncertified.
+  green   the newest passing verdict for this book and its CURRENT include
+          closure satisfies `certs.certified_books`' pass rule -- that run's
+          fresh success marker, a certificate digest, and ACL2 exit 0.
+  red     a failure for this book and current closure is newer than its
+          matching green. A failure lacking closure digests remains a
+          conservative red; a known different closure is not this verdict.
   never   no run vouches either way at this digest.  The record still names
           the newest green at ANY digest, so `last green 2026-09-21T09:50Z at
           an older digest` reads differently from `never green at all`.
@@ -47,12 +47,13 @@ whatever about images, saved cores, or whether ACL2 would accept the installed
 pair at include time (`tools/certs.py` decides that, and ACL2 decides it
 again).  A green here is a claim that those bytes once certified somewhere we
 have the record of, which is the weakest useful thing and strictly more than
-`git log` says.  It also does not check the book's DEPENDENCIES' digests for
-the verdict -- same book bytes over a changed dependency is a different
-certificate key -- so each green record carries `deps_moved`, the books in
-its own closure whose bytes have moved since that run; a green with a moved
-dependency is a green about one file's source, not a reusable pair, and on a
-tree this busy most greens have one.  A handful of the archived manifests
+`git log` says. For a pass, it prefers a run matching the book's full current
+include closure; same book bytes over changed dependencies are a different
+certificate key. If none matches, the latest pass at the book's own bytes is
+still shown with `deps_moved`, and the merge gate rejects it as stale. A
+failure with a known different closure does not override a matching pass;
+one with missing closure digests is conservatively retained. A handful of
+the archived manifests
 failed without per-book attribution and without usable success markers, so a
 failure inside one of those is invisible here and is counted as
 `unattributed`.  And a book absent from every manifest is unmeasured, not
@@ -188,6 +189,7 @@ class Record:
     digest: str
     verdict: str = "absent"
     green: Run | None = None
+    exact_green: Run | None = None
     red: Run | None = None
     last_green: Run | None = None
     deps_moved: list[str] = field(default_factory=list)
@@ -222,6 +224,8 @@ def audit(root: Path = ROOT, roots: list[str] | None = None) -> dict:
         digests.update(certs.closure(root, name))
     records = {book: Record(book=book, digest=digest)
                for book, digest in digests.items()}
+    listings = {book: certs.closure_listing(certs.closure(root, book))
+                for book in records}
 
     read = manifests(root)
     runs = {run.run_id: run for run, _ in read}
@@ -235,6 +239,13 @@ def audit(root: Path = ROOT, roots: list[str] | None = None) -> dict:
         for book in failed:
             record = records.get(book)
             if record is None or run.sources.get(f"{book}.lisp") != record.digest:
+                continue
+            # A failure against a known different closure does not refute a
+            # pass at the current bytes. Older manifests that omit closure
+            # digests remain conservative: their failure is not dismissed.
+            paths = [item.rpartition(":")[0] for item in listings[book]]
+            if all(path in run.sources for path in paths) and certs.closure_drift(
+                    listings[book], run.sources):
                 continue
             if record.red is None or run.stamp >= record.red.stamp:
                 record.red = run
@@ -259,15 +270,20 @@ def audit(root: Path = ROOT, roots: list[str] | None = None) -> dict:
                 continue
             if record.green is None or run.stamp >= record.green.stamp:
                 record.green = run
+            if not certs.closure_drift(listings[book], entry.closure_sources):
+                if record.exact_green is None or run.stamp >= record.exact_green.stamp:
+                    record.exact_green = run
 
     for record in records.values():
+        if record.exact_green is not None:
+            record.green = record.exact_green
         if record.red is not None and (record.green is None
                                        or record.red.stamp > record.green.stamp):
             record.verdict = "red"
         elif record.green is not None:
             record.verdict = "green"
             record.deps_moved = certs.closure_drift(
-                certs.closure_listing(certs.closure(root, record.book)),
+                listings[record.book],
                 record.green.sources)
         elif record.book in requested_somewhere:
             record.verdict = "never"
