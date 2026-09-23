@@ -66,3 +66,85 @@
     (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
            (append (fn-bs-durable-records bs)
                    (list (fn-sf-record-candidate ks)))))))
+
+; Without the byte/kernel relation, two pending final names can cross the
+; fence, adding a prior record as well as the alleged candidate.
+(assert-event
+ (let ((bs (bsk5-two-pending)) (ks (cdr (bsk8-attempted))))
+   (and (not (fn-bs-store-relation bs ks))
+        (equal (fn-sf-phase ks) :record-attempted)
+        (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
+        (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
+               (list *bsk5-record* *bsk5-record-2*)))))
+(must-fail
+ (assert-event
+  (let ((bs (bsk5-two-pending)) (ks (cdr (bsk8-attempted))))
+    (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
+           (append (fn-bs-durable-records bs)
+                   (list (fn-sf-record-candidate ks)))))))
+
+; The phase clause excludes the recovery window. There the newly replayed
+; record is already in the kernel's record list and its candidate is NIL,
+; while its physical link can still await the recovery directory fence.
+(defun bsk8-replaying-pending-link ()
+  (let* ((pair (bsk5-linked-2)) (ks (cdr pair)))
+    (cons (car pair)
+          (fn-sf-make :replaying (fn-sf-frontier ks) nil
+                      (append (fn-sf-records ks)
+                              (list (fn-sf-record-candidate ks)))
+                      nil nil nil 0))))
+(assert-event
+ (let* ((pair (bsk8-replaying-pending-link))
+        (bs (car pair)) (ks (cdr pair)))
+   (and (fn-bs-store-relation bs ks)
+        (fn-bs-replay-visiblep ks)
+        (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
+        (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
+               (list *bsk5-record* *bsk5-record-2*)))))
+(must-fail
+ (assert-event
+  (let* ((pair (bsk8-replaying-pending-link))
+         (bs (car pair)) (ks (cdr pair)))
+    (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
+           (append (fn-bs-durable-records bs)
+                   (list (fn-sf-record-candidate ks)))))))
+
+; The complete K8 conclusion is on the scanner of a modeled post-fence
+; crash image.  There is still a staging operation to choose independently,
+; but no transaction-directory choice after the fence.
+(local
+ (defthm bsk8-legal-choice-constructs-crash-image
+   (implies (fn-bs-crash-choicesp choices (fn-bs-pending bs)
+                                  (fn-bs-unit bs))
+            (fn-bs-crash-imagep bs (fn-bs-crash bs choices)))
+   :hints (("Goal" :use ((:instance fn-bs-crash-imagep-suff
+                                     (s bs)
+                                     (image (fn-bs-crash bs choices))))))))
+(assert-event
+ (let* ((pair (bsk8-attempted))
+        (bs (car pair)) (ks (cdr pair))
+        (fenced (fn-bs-fence-dir bs :transactions))
+        (image (fn-bs-crash fenced nil)))
+   (and (fn-bs-store-relation bs ks)
+        (fn-bs-crash-choicesp nil (fn-bs-pending fenced)
+                              (fn-bs-unit fenced))
+        (equal (fn-bs-scan-records (fn-bs-scan-store image))
+               (append (fn-sf-records ks)
+                       (list (fn-sf-record-candidate ks)))))))
+
+; A pre-fence image does not satisfy the post-fence crash-image premise and
+; can still omit the candidate even with relation, phase and issued link.
+(assert-event
+ (let* ((pair (bsk8-attempted))
+        (bs (car pair))
+        (image (fn-bs-crash bs nil)))
+   (equal (fn-bs-scan-records (fn-bs-scan-store image))
+          (list *bsk5-record*))))
+(must-fail
+ (assert-event
+  (let* ((pair (bsk8-attempted))
+         (bs (car pair)) (ks (cdr pair))
+         (image (fn-bs-crash bs nil)))
+    (equal (fn-bs-scan-records (fn-bs-scan-store image))
+           (append (fn-sf-records ks)
+                   (list (fn-sf-record-candidate ks)))))))

@@ -393,3 +393,196 @@
                  fn-bs-k8-pending-link-view-record-list)
            :in-theory (disable fn-bs-read-records fn-bs-durable-records
                                fn-bs-fence-dir))))
+
+; The pending authority inode moves into the durable directory at the
+; fence.  Its membership in the authority set does not change, and neither
+; do the file-inode table or the per-inode fence facts.  These are the
+; nontrivial relation-preservation facts needed to apply K1 after the fence.
+(defthm fn-bs-k8-strip-cdrs-of-new-assoc
+  (implies (and (alistp alist) (not (assoc-equal key alist)))
+           (equal (strip-cdrs (fn-bs-put-assoc key val alist))
+                  (append (strip-cdrs alist) (list val))))
+  :hints (("Goal" :induct (fn-bs-put-assoc key val alist)
+           :in-theory (enable fn-bs-put-assoc))))
+
+(defthm fn-bs-k8-filter-head-names-directory
+  (implies (consp (fn-bs-ops-for-dir ops dir))
+           (equal (nth 1 (car (fn-bs-ops-for-dir ops dir))) dir))
+  :hints (("Goal" :induct (fn-bs-ops-for-dir ops dir)
+           :in-theory (enable fn-bs-ops-for-dir))))
+
+(defthm fn-bs-k8-pending-link-fence-durable-entries
+  (implies (and (fn-bs-store-relation bs ks)
+                (equal (fn-sf-phase ks) :record-attempted)
+                (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
+           (equal (cdr (assoc-equal
+                        :transactions
+                        (fn-bs-dirs (fn-bs-fence-dir bs :transactions))))
+                  (fn-bs-put-assoc
+                   (fn-bs-txn-name (len (fn-bs-durable-names bs :transactions)))
+                   (nth 3 (car (fn-bs-ops-for-dir
+                                (fn-bs-pending bs) :transactions)))
+                   (cdr (assoc-equal :transactions (fn-bs-dirs bs))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-store-relation-implies-the-pending-shape
+                 (:instance fn-bs-assoc-of-put-assoc-same
+                            (k :transactions)
+                            (v (fn-bs-put-assoc
+                                (fn-bs-txn-name
+                                 (len (fn-bs-durable-names bs :transactions)))
+                                (nth 3 (car (fn-bs-ops-for-dir
+                                             (fn-bs-pending bs) :transactions)))
+                                (cdr (assoc-equal :transactions (fn-bs-dirs bs)))))
+                            (a (fn-bs-dirs bs))))
+           :in-theory (enable fn-bs-fence-dir fn-bs-pending-shape-okp
+                              fn-bs-apply-ops fn-bs-apply-op))))
+
+(defthm fn-bs-k8-no-root-targets-after-transaction-filter
+  (implies (not (fn-bs-ops-for-dir ops :root))
+           (equal (fn-bs-pending-entry-targets
+                   (fn-bs-ops-not-for-dir ops :transactions)) nil))
+  :hints (("Goal" :induct (fn-bs-ops-not-for-dir ops :transactions)
+           :in-theory (enable fn-bs-ops-not-for-dir fn-bs-ops-for-dir
+                              fn-bs-pending-entry-targets))))
+
+(defthm fn-bs-k8-single-transaction-target
+  (implies (and (not (fn-bs-ops-for-dir ops :root))
+                (consp (fn-bs-ops-for-dir ops :transactions))
+                (not (consp (cdr (fn-bs-ops-for-dir ops :transactions))))
+                (equal (car (car (fn-bs-ops-for-dir ops :transactions)))
+                       :set-entry))
+           (equal (fn-bs-pending-entry-targets ops)
+                  (list (nth 3 (car (fn-bs-ops-for-dir
+                                     ops :transactions))))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-bs-pending-entry-targets ops)
+           :in-theory (enable fn-bs-pending-entry-targets
+                              fn-bs-ops-for-dir))))
+
+(defthm fn-bs-k8-attempted-pending-link-has-no-root-ops
+  (implies (and (fn-bs-store-relation bs ks)
+                (equal (fn-sf-phase ks) :record-attempted)
+                (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
+           (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-window-unfolds
+                 fn-bs-pending-matches-phase-unfolds)
+           :in-theory (enable fn-bs-replay-visiblep
+                              fn-sf-frontier-new-visiblep))))
+
+(defthm fn-bs-k8-pending-link-fence-keeps-authority-list
+  (implies (and (fn-bs-store-relation bs ks)
+                (equal (fn-sf-phase ks) :record-attempted)
+                (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
+           (equal (fn-bs-authority-inode-list
+                   (fn-bs-fence-dir bs :transactions))
+                  (fn-bs-authority-inode-list bs)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-store-relation-implies-the-pending-shape
+                 fn-bs-k8-pending-link-fence-durable-entries
+                 fn-bs-k8-attempted-pending-link-has-no-root-ops
+                 (:instance fn-bs-k8-single-transaction-target
+                            (ops (fn-bs-pending bs)))
+                 (:instance fn-bs-k8-no-root-targets-after-transaction-filter
+                            (ops (fn-bs-pending bs)))
+                 (:instance fn-bs-k8-strip-cdrs-of-new-assoc
+                            (key (fn-bs-txn-name
+                                  (len (fn-bs-durable-names bs :transactions))))
+                            (val (nth 3 (car (fn-bs-ops-for-dir
+                                              (fn-bs-pending bs) :transactions))))
+                            (alist (cdr (assoc-equal :transactions
+                                                     (fn-bs-dirs bs)))))
+                 (:instance fn-bs-alistp-of-dir-entries
+                            (dirs (fn-bs-dirs bs)) (dir :transactions))
+                 (:instance fn-bs-txn-name-not-in-txn-names
+                            (i (len (fn-bs-durable-names bs :transactions)))
+                            (n (len (fn-bs-durable-names bs :transactions)))))
+           :in-theory (enable fn-bs-authority-inode-list
+                              fn-bs-pending-shape-okp fn-bs-durable-names
+                              fn-bs-statep))))
+
+(defthm fn-bs-k8-fence-preserves-all-fencedp
+  (equal (fn-bs-all-fencedp (fn-bs-fence-dir bs dir) inos)
+         (fn-bs-all-fencedp bs inos))
+  :hints (("Goal" :induct (fn-bs-all-fencedp bs inos)
+           :in-theory (enable fn-bs-all-fencedp))))
+
+(defthm fn-bs-k8-fence-preserves-known-inode-list
+  (equal (fn-bs-inode-list-knownp (fn-bs-fence-dir bs dir) inos)
+         (fn-bs-inode-list-knownp bs inos))
+  :hints (("Goal" :induct (fn-bs-inode-list-knownp bs inos)
+           :in-theory (enable fn-bs-inode-list-knownp))))
+
+(defthm fn-bs-k8-pending-link-fence-preserves-relation
+  (implies (and (fn-bs-store-relation bs ks)
+                (equal (fn-sf-phase ks) :record-attempted)
+                (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
+           (fn-bs-store-relation
+            (fn-bs-fence-dir bs :transactions) ks))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-k8-fence-materializes-names
+                 fn-bs-k8-pending-link-fence-durable-records
+                 fn-bs-store-relation-view-namespace-with-a-pending-link
+                 fn-bs-store-relation-unfolds
+                 fn-bs-k8-attempted-pending-link-has-no-root-ops
+                 fn-bs-k8-pending-link-fence-keeps-authority-list
+                 (:instance fn-bs-ops-for-dir-of-ops-not-for-dir
+                            (ops (fn-bs-pending bs)) (dir :transactions))
+                 (:instance fn-bs-txn-names-of-1+
+                            (n (len (fn-bs-durable-names bs :transactions))))
+                 (:instance fn-bs-txn-names-length
+                            (n (1+ (len (fn-bs-durable-names
+                                          bs :transactions))))))
+           :in-theory (e/d (fn-bs-store-relation fn-bs-replay-visiblep
+                             fn-bs-contiguous-namesp fn-sf-crash-imagep
+                             fn-sf-record-present-visiblep
+                             fn-bs-pending-matches-phase
+                             fn-bs-pending-shape-okp
+                             fn-bs-authority-fencedp fn-bs-authority-knownp)
+                           (fn-bs-authority-inode-list fn-bs-all-fencedp
+                            fn-bs-inode-list-knownp)))))
+
+(defthm fn-bs-k8-quiet-transaction-crash-scans-durable-records
+  (implies (and (fn-bs-store-relation fs ks)
+                (fn-bs-crash-imagep fs image)
+                (not (consp (fn-bs-ops-for-dir
+                             (fn-bs-pending fs) :transactions))))
+           (equal (fn-bs-scan-records (fn-bs-scan-store image))
+                  (fn-bs-durable-records fs)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-bs-crash-image-scan-records (bs fs)))
+           :in-theory (disable fn-bs-store-relation fn-bs-crash-imagep
+                               fn-bs-scan-store fn-bs-durable-records))))
+
+; K8 at the actual issued-link cut.  Every byte-model crash image after a
+; completed transaction-directory fence scans the exact old list and the
+; exact candidate, independent of remaining staging operations or crash
+; choices.  The issued-link premise is an explicit K0 call-trace obligation.
+(defthm fn-bs-k8-issued-link-fence-crash-scans-exact-candidate
+  (implies (and (fn-bs-store-relation bs ks)
+                (equal (fn-sf-phase ks) :record-attempted)
+                (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
+                (fn-bs-crash-imagep
+                 (fn-bs-fence-dir bs :transactions) image))
+           (equal (fn-bs-scan-records (fn-bs-scan-store image))
+                  (append (fn-sf-records ks)
+                          (list (fn-sf-record-candidate ks)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-k8-pending-link-fence-preserves-relation
+                 fn-bs-k8-pending-link-fence-durable-records
+                 (:instance
+                  fn-bs-k8-quiet-transaction-crash-scans-durable-records
+                  (fs (fn-bs-fence-dir bs :transactions)))
+                 fn-bs-store-relation-window-unfolds
+                 fn-bs-pending-matches-phase-unfolds
+                 (:instance fn-bs-ops-for-dir-of-ops-not-for-dir
+                            (ops (fn-bs-pending bs)) (dir :transactions)))
+           :in-theory (enable fn-bs-replay-visiblep))))
