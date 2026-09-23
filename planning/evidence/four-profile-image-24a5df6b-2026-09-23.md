@@ -64,8 +64,8 @@ revision `24a5df6b` and reported these results; its later test-only commit
 | `tests.test_native_storage_codec` | 11 passed |
 | `tests.test_native_app_journal` | 8 passed, 2 failed: `FN-WORKFLOW-UNDERTAKE-RECORD` missing |
 | `tests.test_native_checkpoint` | 8 passed, 9 failed: `FN-BS-PACK-RECLAIM-PLAN` missing |
-| `tests.test_native_bp_obligation` | 2 passed, 1 failed: `FN-OWNER-WORKFLOW-FORWARD-PINNEDP` non-action |
-| `tests.test_native_bp_app` | 2 passed, 1 failed: same non-action |
+| `tests.test_bp_obligation_native` | 2 passed, 1 failed: `FN-OWNER-WORKFLOW-FORWARD-PINNEDP` non-action |
+| `tests.test_bp_app_native` | 2 passed, 1 failed: same non-action |
 | `tests.test_native_admin` | Incomplete: four early failures from a stale lowercase `verification=verified` test expectation against `VERIFIED`; a long owner test was terminated after more than five minutes. |
 
 The passing control suite includes its normal production posting and recovery
