@@ -770,6 +770,130 @@ class NativeSliceAccountingTests(unittest.TestCase):
                              v0_matrix.NOT_EXERCISED)
 
 
+class RelayedArticleTests(unittest.TestCase):
+    """V0-TRANSIT-IDENTICAL against fn-peer-relayed-octets (specs/peering.md 2.3).
+
+    Since 9a659682 the target serves the source's article with its own
+    <path-identity>, a section 3.2.1 diagnostic and "!" prepended to Path and
+    every Xref removed; the row checks exactly that and names what else moved.
+    """
+
+    ID, EXPECTED = "b.gate.example.invalid", "a.gate.example.invalid"
+    POSTED = ("Path: a.gate.example.invalid!not-for-mail\r\n"
+              "From: gate@example.invalid\r\n"
+              "Subject: outcome, written on A\r\n"
+              "Newsgroups: fn.letters\r\n"
+              "Date: Wed, 23 Sep 2026 02:47:25 +0000\r\n"
+              "Message-ID: <alpha@a.example.invalid>\r\n"
+              "Xref: a.gate.example.invalid fn.letters:1\r\n"
+              "\r\n"
+              "The first line of the body.\r\n"
+              "The second line of the body.\r\n")
+    RELAYED = (POSTED.replace("Path: a.gate", "Path: b.gate.example.invalid!!a.gate")
+               .replace("Xref: a.gate.example.invalid fn.letters:1\r\n", ""))
+
+    def differences(self, served, sent=None, expected=EXPECTED):
+        return v0_matrix.relayed_article_differences(
+            sent if sent is not None else self.POSTED, served, self.ID, expected)
+
+    def test_identical_modulo_the_prepend_and_the_xref_removal_passes(self):
+        self.assertEqual(self.differences(self.RELAYED), [])
+        self.assertEqual(self.differences(self.RELAYED.encode()), [])
+        self.assertEqual(v0_matrix.relayed_article_differences(
+            self.POSTED.split("\r\n")[:-1], self.RELAYED.split("\r\n")[:-1],
+            self.ID, self.EXPECTED), [])
+
+    def test_the_mismatch_diagnostic_must_name_the_expected_source(self):
+        mismatch = self.RELAYED.replace(
+            "b.gate.example.invalid!!", "b.gate.example.invalid!.MISMATCH."
+            "a.gate.example.invalid!")
+        self.assertEqual(self.differences(mismatch), [])
+        wrong = mismatch.replace(".MISMATCH.a.gate", ".MISMATCH.c.gate")
+        found = self.differences(wrong)
+        self.assertEqual(len(found), 1)
+        self.assertIn(".MISMATCH.c.gate", found[0])
+
+    def test_a_changed_body_fails_naming_the_line(self):
+        found = self.differences(self.RELAYED.replace("second line", "2nd line"))
+        self.assertIn("only posted: 'The second line of the body.'", found)
+        self.assertIn("only served: 'The 2nd line of the body.'", found)
+        self.assertEqual(len(found), 2)
+
+    def test_a_changed_other_header_fails_naming_the_line(self):
+        found = self.differences(self.RELAYED.replace("Subject: outcome",
+                                                      "Subject: Outcome"))
+        self.assertEqual(found, ["only posted: 'Subject: outcome, written on A'",
+                                 "only served: 'Subject: Outcome, written on A'"])
+
+    def test_a_surviving_xref_fails(self):
+        survived = self.RELAYED.replace(
+            "\r\n\r\n", "\r\nXref: a.gate.example.invalid fn.letters:1\r\n\r\n", 1)
+        self.assertEqual(self.differences(survived),
+                         ["Xref survived: 'Xref: a.gate.example.invalid fn.letters:1'"])
+        folded = self.RELAYED.replace(
+            "\r\n\r\n", "\r\nxref: a.gate.example.invalid\r\n fn.letters:1\r\n\r\n", 1)
+        self.assertEqual(self.differences(folded),
+                         ["Xref survived: 'xref: a.gate.example.invalid'"])
+
+    def test_a_path_without_the_identity_fails(self):
+        # The byte-identical article the row expected before 9a659682.
+        found = self.differences(self.POSTED.replace(
+            "Xref: a.gate.example.invalid fn.letters:1\r\n", ""))
+        self.assertEqual(len(found), 1)
+        self.assertIn("Path is not the posted Path with b.gate.example.invalid!!", found[0])
+        self.assertIn("'Path: a.gate.example.invalid!not-for-mail'", found[0])
+        other = self.RELAYED.replace("Path: b.gate.example.invalid!!",
+                                     "Path: c.gate.example.invalid!!")
+        self.assertEqual(len(self.differences(other)), 1)
+
+    def test_a_path_that_already_names_the_node_is_left_alone(self):
+        sent = self.RELAYED
+        self.assertEqual(self.differences(sent, sent=sent), [])
+        twice = sent.replace("Path: b.gate.example.invalid!!",
+                             "Path: b.gate.example.invalid!!b.gate.example.invalid!!")
+        self.assertEqual(len(self.differences(twice, sent=sent)), 1)
+
+    def test_an_article_with_no_path_gets_none(self):
+        sent = self.POSTED.replace("Path: a.gate.example.invalid!not-for-mail\r\n", "")
+        served = self.RELAYED.replace(
+            "Path: b.gate.example.invalid!!a.gate.example.invalid!not-for-mail\r\n", "")
+        self.assertEqual(self.differences(served, sent=sent), [])
+        found = self.differences(self.RELAYED, sent=sent)
+        self.assertEqual(len(found), 1)
+        self.assertIn("posted 0 Path field(s), served 1", found[0])
+
+    def test_the_row_names_the_differing_lines(self):
+        with tempfile.TemporaryDirectory() as home:
+            gate = native_gate(home)
+            lines = self.POSTED.split("\r\n")[:-1]
+            relayed = self.RELAYED.split("\r\n")[:-1]
+            gate.transit_identical(
+                {"reread": "220 0 <alpha@a.example.invalid> article follows",
+                 "sent_lines": lines, "reread_lines": relayed},
+                gate.a, gate.b, "ab", "feed.py relay")
+            broken = [line.replace("second", "2nd") for line in relayed]
+            gate.transit_identical(
+                {"reread": "220 0 <beta@b.example.invalid> article follows",
+                 "sent_lines": [line.replace("a.gate", "b.gate", 1) if line.startswith("Path")
+                                else line for line in lines],
+                 "reread_lines": broken},
+                gate.b, gate.a, "ba", "feed.py relay")
+        rows = {row.json("", None)["id"]: row.json("", None) for row in gate.rows}
+        ab, ba = rows["V0-TRANSIT-IDENTICAL-AB"], rows["V0-TRANSIT-IDENTICAL-BA"]
+        self.assertEqual(ab["verdict"], v0_matrix.ACCEPTED)
+        self.assertIn("b.gate.example.invalid!!a.gate", ab["observed"])
+        self.assertEqual(ba["verdict"], v0_matrix.REFUSED)
+        self.assertIn("The 2nd line of the body.", ba["observed"])
+        self.assertIn("Path is not the posted Path with a.gate.example.invalid!!",
+                      ba["observed"])
+
+    def test_the_relay_driver_reports_both_sides(self):
+        source = v0_matrix.V0Matrix.feed_driver()
+        self.assertIn('out["sent_lines"] = lines', source)
+        self.assertIn('out["reread_lines"] = got', source)
+        compile(source, "feed.py", "exec")
+
+
 class ProtectedTransitTests(unittest.TestCase):
     """The owner's feed over STARTTLS and AUTHINFO (PRF-047, PRF-051; T9c).
 

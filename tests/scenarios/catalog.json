@@ -748,7 +748,7 @@
         "Offer a further article each way with MODE STREAM, CHECK and TAKETHIS, and repeat the offer after the target holds it."
       ],
       "expected": [
-        "A wanted offer draws 335 and then 235, and the target serves the same octets the source served; local article numbers may differ.",
+        "A wanted offer draws 335 and then 235, and the target serves the source's octets with its own path-identity and the RFC 5537 section 3.2.1 diagnostic prepended to Path and every Xref removed, every other header and the body byte-identical (specs/peering.md 2.3); local article numbers may differ.",
         "A second offer of a held Message-ID draws 435 and no second copy is written.",
         "An article whose Path already names the target is refused after its 335 and is not served afterwards.",
         "CHECK answers 238 for a wanted article and 438 for one the target holds; TAKETHIS answers 239 and 439 to match, never a 2xx and never a retry code.",
