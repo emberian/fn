@@ -149,7 +149,9 @@
                         (fn-replay-apply-record node record)))))
                     (fn-record-stamp article))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-stamp-prepared-completion-installs-stamp
+           :use ((:instance fn-replay-advance-keeps-idle-stage
+                            (txid (fn-store-event-txid record)))
+                 (:instance fn-stamp-prepared-completion-installs-stamp
                             (node (fn-replay-advance-txid
                                    node (fn-store-event-txid record)))
                             (generation (fn-record-generation
@@ -176,6 +178,7 @@
            (e/d (fn-replay-apply-record)
                 (fn-record-shape-vocabulary
                  fn-node-prepare fn-node-complete
+                 fn-replay-advance-keeps-idle-stage
                  fn-stxe-p fn-stxk-p fn-stxa-p
                  fn-store-retention-event-p))))
   :rule-classes nil)

@@ -468,6 +468,12 @@ the Store event decoder hands it records, and the codec has already mapped a
 schema-0 record to stamp `:legacy` (§2.1). The mixed case is therefore the
 general case of both theorems, and the witness is what shows it is not vacuous.
 
+The article arm of `fn-replay-apply-record` refuses a node with a staged
+transaction before preparing the record. The journal replay loop enters that
+arm idle; the direct-call guard prevents a different pending article with the
+same transaction coordinates from being completed under the incoming record's
+identity or stamp.
+
 ### 2.6 NEWNEWS answers from the stamp
 
 Subject: `fn-nntp-newnews-response` (`books/nntp-responses.lisp`), which the
