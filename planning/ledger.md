@@ -11,7 +11,7 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 423 |
-| Certification roots in the Makefile | 421 |
+| Certification roots in the Makefile | 418 |
 | Books inside the root closure | 422 |
 | `defthm` and `defthmd` events | 7126 |
 | `defun` events | 5428 |
