@@ -120,8 +120,17 @@
 (assert-event (equal (fn-bpah-held-class *bpah-partial-held*) :request))
 (assert-event (fn-bpp-fragmentp (fn-bpp-flags *bpah-partial-primary*)))
 (assert-event (null (fn-bpah-pending-view *bpah-partial-state* *bpah-local*)))
+(assert-event
+ (not (fn-bpah-request-trustedp
+       (fn-bpah-pending-view *bpah-partial-state* *bpah-local*)
+       *bpah-request-cfg*)))
 (must-fail
  (assert-event (equal (fn-bpah-view-class
                        (fn-bpah-pending-view *bpah-partial-state*
                                               *bpah-local*))
                       :request)))
+(must-fail
+ (assert-event
+  (fn-bpah-request-trustedp
+   (fn-bpah-pending-view *bpah-partial-state* *bpah-local*)
+   *bpah-request-cfg*)))
