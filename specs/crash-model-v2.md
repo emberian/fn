@@ -1576,9 +1576,21 @@ hypothesis counterexamples. Local clause lemmas now also establish that
 the actual pair-10 byte state satisfies `fn-bs-pending-shape-okp` and its
 new pending target decodes to the typed candidate from its complete fenced
 frame; tests exercise both clauses for article and retention events. The
-remaining output-relation clauses include unchanged durable record bytes,
-state well-formedness and authority inode provenance, and the corresponding
-file-kernel crash-image predicate; no one-link fact alone proves them.
+Those facts alone do not establish the whole output relation; the old
+durable prefix, state, root authority and file-kernel image need separate
+arguments.
+
+`fn-bs-k0-attempted-cut-keeps-old-durable-record-prefix` now proves the
+old decoded record list is identical at the actual pair-10 P-RECORD cut for
+an arbitrary retained history. The proof uses `fn-bs-related-allocation-is-not-a-transaction-target`
+to separate the fresh inode from every old authority target, carries exact
+octets and lookups through the file fence and link, then applies
+`fn-bs-read-records-under-agreement` over the old namespace. The second
+article and a typed retention event witness a nonempty old prefix. A
+counterexample reuses an old record inode as `next-ino` and changes the
+old prefix when the input relation is dropped; wrong transaction name and
+occupied staging name stop before pair 10. The full output relation remains
+open pending composition of state, root authority and crash-image clauses.
 
 ; K7. Fence after uncertainty: after an error outcome of a :link, :rename or
 ; :fsync-dir step, the kernel is fenced and the byte store's pending list

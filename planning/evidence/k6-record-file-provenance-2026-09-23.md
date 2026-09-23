@@ -182,10 +182,25 @@ article and retention fixtures evaluate both. The book and test roots
 passed selected hbox certification under `run-20260923T211841Z-3e5c`,
 original manifest
 `planning/evidence/manifests/certify-20260923T211844Z-175171.json`.
-The outstanding byte-side proof is preservation of the old durable decoded
+The then-outstanding byte-side proof was preservation of the old durable decoded
 record list through fresh inode allocation/write/fence for arbitrary
 retained history, then composition with state and authority-known/fenced
 invariants and the kernel crash-image clause. A source relation permits
 other durable authority inodes; the argument must use authority-known plus
 the next-inode allocation bound to exclude aliasing, rather than assuming
 old record bytes are unaffected.
+
+That old-prefix obligation is now proved in
+`fn-bs-k0-attempted-cut-keeps-old-durable-record-prefix`, over the actual
+P-RECORD pair-10 interpreter state and arbitrary retained history. The
+fresh-allocation theorem supplies non-aliasing of every old transaction
+target; the proof establishes pointwise exact durable octets, uses unchanged
+durable names, and applies the scanner's generic read-agreement theorem.
+The test book has article and retention witnesses after an acknowledged
+article, plus relation, typed-input and staging-freshness counterexamples.
+Dropping the relation allows `next-ino` to alias the old durable article
+inode and the new write changes that old record. Selected hbox certification
+of book and test roots passed under `run-20260923T212653Z-31d7`, original
+manifest `planning/evidence/manifests/certify-20260923T212655Z-195160.json`.
+Whole pair-10 relation composition still needs state and root authority
+provenance, plus the file-kernel crash-image and phase clauses.
