@@ -6449,6 +6449,36 @@
       "limit": "",
       "blocker": "slrn is not installed on persvati (nor on hbox, measured 2026-09-20); tests/interop_slrn.py has never run against an fn node",
       "owner": null
+    },
+    {
+      "id": "V0-NODE-PROFILE",
+      "feature": "F-NODE",
+      "feature_title": "node init, configuration, start and stop",
+      "title": "the operator honours `[log] path` (a post's line lands in the file) and refuses `[posting] agent` by name",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "HST-003"
+      ],
+      "scenarios": [
+        "SCN-021"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
     }
   ],
   "by_requirement": {

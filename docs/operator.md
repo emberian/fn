@@ -83,6 +83,23 @@ article. It is a durable configuration record like a group or a peer, refused
 while the owner holds the writer lock offline and applied live through the
 owner otherwise.
 
+The same slot is the injecting agent: every article a served POST injects
+carries `Path: IDENTITY!not-for-mail` and `Injection-Info: IDENTITY` for the
+policy value in force when the connection opened (books/owner-agent.lisp,
+`fn-oag-post-config`), and a store without the policy injects as
+`fn.example.invalid`. There is no second place to name it. `[posting] agent`
+in fn.toml is refused by `run` as `UNSUPPORTED-PROFILE agent`, whatever it
+says: a value there could only disagree with Path, and a name with `@` in it
+is not a `<path-identity>`. Set the policy instead.
+
+What `run` admits of fn.toml, key by key (`fn-native-config-unsupported-key`,
+books/native-config.lisp): `[store]`, `[listener]` (a numeric address or a
+loopback alias, TLS paths paired), `[auth]` (`protected_only` only with a TLS
+pair), `[posting] enabled`, `[control]`, and `[log] path` when it is absolute.
+It refuses, naming the key, `[posting] agent`, `[anchor]`, `[acl2]` and a
+relative `[log] path`: `usage operator run (UNSUPPORTED-PROFILE agent)` and
+exit 5. The offline verbs above still accept such a file.
+
 `help` does not read the configuration file. `run` uses the normalized native
 owner callback. Missing, nonregular or oversized configuration is usage (5);
 a hard read/open failure remains a fault (4). Refused work (1), uncertain
@@ -219,8 +236,13 @@ fn --config /etc/fn/fn.toml init \
 
 This creates the store and writes the configuration file.
 [`packaging/fn.toml.example`](../packaging/fn.toml.example) documents every
-table: `[store] path`, `[listener] host port`, `[posting] enabled agent`,
-`[anchor] server`, `[acl2] path slots`, `[log] path`, `[control] path`.
+table: `[store] path`, `[listener] host port`, `[posting] enabled`,
+`[anchor] server`, `[acl2] path slots`, `[log] path`, `[control] path`. This
+development `fn init` also writes `[posting] agent` from `--agent`, and
+`[anchor]`/`[acl2]` from their flags; the native `operator CONFIG run`
+refuses all three by name (see [Native component entry](#native-component-entry)),
+so delete those lines from a file this command wrote before handing it to
+the native image, and set `policy set path-identity` for the agent.
 
 The groups are **not** in the configuration file. They are durable
 configuration records inside the store, which ACL2 replays at every open;
@@ -455,16 +477,30 @@ line, the log line, and the reply on the control socket. Never map
 
 The service log (`[log] path`, otherwise stderr, which under systemd is the
 journal) carries one line per post and one per accepted connection, with the
-outcome word first. A connection line says the **role** the owner gave the
-connection at accept, which it decides from the peer table and not from
-anything the client says: `reader`, or `peer` with the record's name.
+outcome word first. `run` opens `[log] path` append-only (created 0640 if it
+is absent, never through a symlink) before it opens the store, so a wrong
+path fails before recovery; fn never truncates or rotates it. A connection
+line says the **role** the owner gave the connection at accept, which it
+decides from the peer table and not from anything the client says: `reader`,
+or `peer` with the record's name. A post line's word is the reply's word:
+`accepted` exactly when the owner consumed a durable completion (the 240),
+`refused`, `uncertain`, and for a control post `duplicate` too. A served
+post names the connection and the agent its Injection-Info carries; a
+control post stores an already-authored article and names no agent. Every
+field is at most 256 printable octets, anything else shown as `?`, so a line
+is one line whatever a client sent (books/owner-log.lisp).
 
 ```
-accepted post path=control message-id=<a@example.invalid> agent=news@example.invalid detail=committed sequence=3 charge=41 time=2026-09-19T21:04:11Z
-accepted reader connection=2 time=2026-09-19T21:04:33Z
-accepted peer connection=3 peer=innA time=2026-09-19T21:04:35Z
-refused post path=control message-id=<b@example.invalid> agent=news@example.invalid detail=refused: group-unknown time=2026-09-19T21:05:02Z
+accepted reader connection=2 time=2026-09-22T21:04:33Z
+accepted post path=served connection=2 message-id=<a@example.invalid> agent=news.example.org time=2026-09-22T21:04:34Z
+accepted peer connection=3 peer=innA time=2026-09-22T21:04:35Z
+accepted post path=control message-id=<b@example.invalid> time=2026-09-22T21:05:01Z
+refused post path=control message-id=<c@example.invalid> time=2026-09-22T21:05:02Z
 ```
+
+A POST refused before it becomes a submission (a 441 from the injection
+check itself) writes no post line; the connection line and the client's
+reply are the record of it.
 
 If a connection you expected to be a reader is logged as a `peer`, the
 source address matched a peer record's `auth` slot: the owner matches the

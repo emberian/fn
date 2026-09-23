@@ -1109,8 +1109,7 @@
         "PRF-031",
         "PRF-033",
         "PRF-039",
-        "PRF-056",
-        "PRF-057"
+        "PRF-053"
       ],
       "verification": [
         "proof",
@@ -1130,7 +1129,7 @@
         "planning/evidence/auth-w10-2026-09-20.md"
       ],
       "implementation_note": "A narrow proto-article subset checks Message-ID/Newsgroups multiplicity/grammar and absence of Injection-Info/Xref while preserving source field views. Full injection, gateway provenance, dates, native signatures and authority policy remain open. D01 selects exact authored source plus separate mutable trace/injection projections; full injection must honor that boundary without rewriting signed bytes.",
-      "note": "books/injection and books/injection-invariants certify, but provenance is the open half: no native signature, no gateway injection record and no authority check, and PRF-013 has no events. 2026-09-22 (T13-conform): the operator's `fn operator CONFIG post` is now injected by fn-inj-decide as a served POST is (PRF-056; it stored its payload with no Path and INN refused it 437), and From is checked as an RFC 5536 3.1.2 mailbox-list, refused :from-invalid (PRF-057; `From: yue` was answered 240). A relayed article's Path gains this node's identity and its Xref is removed at acceptance (PRF-058). Certified on persvati for the lane's closure; no image carries any of it until the next freeze."
+      "note": "books/injection and books/injection-invariants certify, but provenance is the open half: no native signature, no gateway injection record and no authority check, and PRF-013 has no events."
     },
     {
       "id": "NNT-005",
@@ -1272,7 +1271,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-015",
-        "PRF-016"
+        "PRF-016",
+        "PRF-054"
       ],
       "verification": [
         "proof",
