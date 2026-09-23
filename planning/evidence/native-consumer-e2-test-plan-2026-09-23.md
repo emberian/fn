@@ -50,3 +50,8 @@ before reply makes the client report uncertain; reopening and querying
 event in Python. A consumer-owned inbox transaction and signed-source
 reference-only API are still separate work: poll currently returns the full
 encoded accepted event, not a consumer inbox commitment.
+When `FN_CONSUMER_POLL_EVIDENCE_DIR` names a new absolute directory, the
+successful native test copies the exact authored source, returned fn-e parent,
+returned fncu continuation, principal, and public verification keys there
+after its assertions. It refuses an existing directory so two runs cannot
+silently mix fixtures.

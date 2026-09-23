@@ -330,6 +330,21 @@ class NativeConsumerE2Tests(unittest.TestCase):
         self.assertEqual(after_report.read_bytes(), b"")
         self.stop_owner(reopened)
 
+        # Optional byte-for-byte synthetic fixture for an independent
+        # consumer. The test validates it before publication and makes no
+        # decision from these copied bytes.
+        export_name = os.environ.get("FN_CONSUMER_POLL_EVIDENCE_DIR")
+        if export_name:
+            export = Path(export_name)
+            self.assertTrue(export.is_absolute())
+            export.mkdir(parents=True, exist_ok=False)
+            (export / "authored.source").write_bytes(source)
+            (export / "accepted.fn-e").write_bytes(report)
+            (export / "continuation.fncu").write_bytes(continuation)
+            (export / "principal.bin").write_bytes(principal.read_bytes())
+            (export / "ed-public.bin").write_bytes(ed_public.read_bytes())
+            (export / "ml-public.pem").write_bytes(ml_public.read_bytes())
+
     @unittest.skipUnless(sys.platform.startswith("linux") and os.geteuid() == 0
                          and shutil.which("setpriv"),
                          "requires Linux root and setpriv to offer a distinct "
