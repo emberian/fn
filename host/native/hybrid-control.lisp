@@ -81,11 +81,7 @@
                                       (mapcar #'fnn-octet-list groups) received))
                   msgid (fnn-octets received) groups evidence generation txid
                   (lambda ()
-                    (handler-case (fnn-owner-identity-commit service event)
-                      (fnn-store-indeterminate () :uncertain)
-                      (fnn-store-fault (e) (error e))
-                      (fnn-store-error () :refused)
-                      (fnn-os-error () :refused)))))
+                    (fnn-owner-identity-commit service event))))
              :refused)))))))))
 
 (defun fnn-hybrid-control-handle (service frame)
