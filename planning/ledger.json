@@ -539,8 +539,8 @@
     "roots": 530,
     "theorems": 8035,
     "functions": 6039,
-    "assert_events": 8789,
-    "must_fails": 406,
+    "assert_events": 8793,
+    "must_fails": 407,
     "encapsulates": 26,
     "guards": {
       "verified": 1982,
@@ -12730,10 +12730,10 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
-      "must_fails": 1,
-      "defconsts": 18,
-      "defmacros": 4,
+      "assert_events": 22,
+      "must_fails": 2,
+      "defconsts": 19,
+      "defmacros": 5,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",

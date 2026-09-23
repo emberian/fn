@@ -144,3 +144,60 @@
      (fn-served-result-effects
       (fn-served-step (fn-served-result-conn *aft-poster-open*)
                       *aft-post-read*))))))
+
+; The awaiting hypothesis is independent as a state claim: after a real 340
+; offer, replacing only the pinned credential policy with a no-posters policy
+; yields a well-formed but unreachable connection.  A pending local body can
+; then finish despite that new policy.  fn-auth-fold-step-preserves-safe-connp
+; proves this state cannot arise from the no-posters open above.
+(defmacro aft-forged-pending-conn ()
+  '(let* ((offered (fn-served-result-conn (aft-poster-offer)))
+          (as (fn-served-conn-session offered))
+          (no-post-as
+           (fn-auth-make-session
+            (fn-auth-session-base as) *aft-acfg*
+            (fn-auth-session-pending as)
+            (fn-auth-session-subject as)
+            (fn-auth-session-tlsp as)
+            (fn-auth-session-handshakingp as))))
+     (fn-served-make-conn-indexed
+      (fn-served-conn-wire offered) no-post-as
+      (fn-served-conn-archive offered)
+      (fn-served-conn-config offered)
+      (fn-served-conn-observation offered)
+      (fn-served-conn-injection offered)
+      (fn-served-conn-verdicts offered)
+      (fn-served-conn-index offered))))
+(defconst *aft-post-body*
+  (append (aft-line "From: reader@example.invalid")
+          (aft-line "Subject: auth fold witness")
+          (aft-line "Message-ID: <post@example.invalid>")
+          (aft-line "Newsgroups: fn.letters")
+          '(13 10)
+          (aft-line "body")
+          (aft-line ".")))
+(assert-event (fn-served-connp (aft-forged-pending-conn)))
+(assert-event
+ (fn-auth-config-no-postersp
+  (fn-auth-session-config
+   (fn-served-conn-session (aft-forged-pending-conn)))))
+(assert-event
+ (fn-auth-fold-post-awaiting
+  (fn-served-conn-session (aft-forged-pending-conn))))
+(assert-event
+ (fn-inj-injectedp
+  (fn-served-submission
+   (fn-served-result-effects
+    (fn-served-step (aft-forged-pending-conn) *aft-post-body*)))))
+(local
+ (must-fail
+  (defthm aft-step-without-no-pending-post-premise
+    (implies
+     (and (fn-served-connp (aft-forged-pending-conn))
+          (fn-auth-config-no-postersp
+           (fn-auth-session-config
+            (fn-served-conn-session (aft-forged-pending-conn)))))
+     (fn-auth-fold-no-local-effectsp
+      (fn-served-result-effects
+       (fn-served-step (aft-forged-pending-conn)
+                       *aft-post-body*)))))))

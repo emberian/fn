@@ -607,6 +607,15 @@ transit peer: a no-posting credential can bind a configured peer role, and
 TAKETHIS may then produce a distinct transit submission. The complete-read
 witness and local POST counterexample for the removed policy premise are in
 `tests/acl2/nntp-auth-fold-tests.lisp`.
+The test also constructs a well-formed, no-posters connection with a pending
+POST body by changing the pinned policy after a genuine 340 offer. Its body
+does submit locally, demonstrating why the no-pending premise is needed for
+an arbitrary state. That state is **unreachable in composition** from a
+no-posters open: the open has no pending POST, and
+`fn-auth-fold-step-preserves-safe-connp` preserves that fact across reads.
+`fn-served-connp` is the structural connection invariant seeded by open and
+carried by the served path; it is theorem vocabulary, not a runtime
+whole-store check or an independent posting authority condition.
 
 ## Scope
 
