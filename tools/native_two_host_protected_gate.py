@@ -268,6 +268,7 @@ def main():
             root="/tmp/fn-protected-{}-{}".format(args.source[:12],token)
             ssh(host,["mkdir","-m","700",root])
             node=dict(side=side,host=host,image=image,root=root,
+                      path_identity=side+".gate.example.invalid",
                       runtime=runtime,resolved_runtime=resolved_runtime,core=core)
             nodes.append(node)
             listen=remote_port(host); tunnel=remote_port(host)
@@ -288,6 +289,8 @@ def main():
                     'tls_cert = "{cert}"\ntls_key = "{key}"\n[auth]\nrequired = true\n'
                     'protected_only = true\npath = "{auth}"\n[control]\npath = "{root}/control.sock"\n').format(**n)
             write_remote(n["host"],n["config"],config.encode(),"600")
+            ssh(n["host"],image_argv(n["image"],"--fn","operator",n["config"],
+                                     "policy","set","path-identity",n["path_identity"]))
             pw=passwords[other["side"]]
             ssh(n["host"],image_argv(n["image"],"--fn","operator",n["config"],"principal","set-password",login,"--posting"),data=(pw+"\n"+pw+"\n").encode(),timeout=180)
             listing=ssh(n["host"],image_argv(n["image"],"--fn","operator",n["config"],"principal","list")).stdout.decode()
@@ -310,7 +313,7 @@ def main():
             anchor=n["root"]+"/peer-ca.pem"; write_remote(n["host"],anchor,Path(other["local_cert"]).read_bytes(),"600")
             profile=n["root"]+"/outbound.fnauth"; write_remote(n["host"],profile,("FNAUTH1\n{}\n{}\n".format(other["login"],other["password"])).encode(),"600")
             n["anchor"], n["profile"] = anchor, profile
-            argv=image_argv(n["image"],"--fn","operator",n["config"],"peer","add",other["side"],other["side"]+".example.invalid","127.0.0.1",str(n["tunnel"]),"fn.*","fn.*","principal",n["principal"],profile,"false","true","starttls","localhost",anchor)
+            argv=image_argv(n["image"],"--fn","operator",n["config"],"peer","add",other["side"],other["path_identity"],"127.0.0.1",str(n["tunnel"]),"fn.*","fn.*","principal",n["principal"],profile,"false","true","starttls","localhost",anchor)
             ssh(n["host"],argv)
 
         def start_owner(n):
@@ -357,18 +360,32 @@ def main():
 
         def make_article(n, label):
             mid="<protected-{}-{}-{}@example.invalid>".format(label,n["side"],token)
-            article=("From: gate@example.invalid\r\nNewsgroups: fn.test\r\nSubject: protected\r\nDate: Mon, 21 Sep 2026 12:00:00 +0000\r\nMessage-ID: {}\r\n\r\n{}\r\n".format(mid,label)).encode()
+            article=("From: gate@example.invalid\r\nNewsgroups: fn.test\r\nSubject: protected\r\nDate: Mon, 21 Sep 2026 12:00:00 +0000\r\nMessage-ID: {}\r\nX-Authored-Canary: {}-{}\r\n\r\n{}\r\n".format(mid,n["side"],label,label)).encode()
             payload=n["root"]+"/"+label+".article"
             write_remote(n["host"],payload,article,"600")
             ssh(n["host"],image_argv(n["image"],"--fn","operator",n["config"],"post","--message-id",mid,"--payload",payload,"--group","fn.test"))
             served=nntp_article(local_ports[n["side"]],n["local_cert"],n["login"],n["password"],mid)
-            if (served is None or b"\r\n\r\n" not in served
-                    or served.split(b"\r\n\r\n",1)[1] != article.split(b"\r\n\r\n",1)[1]):
-                raise RuntimeError("source article did not retain input body "+mid)
+            source_path=b"Path: "+n["path_identity"].encode()+b"!not-for-mail\r\n"
+            if served is None or not served.startswith(source_path) or not served.endswith(article):
+                raise RuntimeError("source injection changed authored octets or Path "+mid)
             observations.append(dict(event="source-article",host=n["host"],message_id=mid,
                 input_sha256=hashlib.sha256(article).hexdigest(),input_bytes=len(article),
                 served_sha256=hashlib.sha256(served).hexdigest(),served_bytes=len(served)))
             return mid,served
+
+        def expected_relay_projection(source, origin, target, mid):
+            # A concrete oracle for this fixture, not an alternate Path
+            # implementation: the origin's injected Path is the first field,
+            # and the target's configured peer identity matches it exactly.
+            prefix=b"Path: "+origin["path_identity"].encode()+b"!not-for-mail\r\n"
+            if not source.startswith(prefix):
+                raise RuntimeError("source Path was not the injected fixture "+mid)
+            target_path=(b"Path: "+target["path_identity"].encode()+b"!!"
+                         +origin["path_identity"].encode()+b"!not-for-mail\r\n")
+            expected=target_path+source[len(prefix):]
+            if b"\r\nXref:" in source or b"\r\nxref:" in source:
+                raise RuntimeError("operator injection unexpectedly retained Xref "+mid)
+            return expected
 
         def await_article(n, mid, article, seconds):
             deadline=time.monotonic()+seconds; observed=None
@@ -387,6 +404,11 @@ def main():
                                      if observed is not None else None),
                     observed_bytes=(len(observed) if observed is not None else None)))
                 raise RuntimeError("protected transfer mismatch "+mid)
+            observations.append(dict(event="transfer-projection",host=n["host"],
+                path_identity=n["path_identity"],message_id=mid,
+                expected_sha256=hashlib.sha256(article).hexdigest(),
+                observed_sha256=hashlib.sha256(observed).hexdigest(),
+                article_bytes=len(observed)))
 
         def assert_absent(n, mid, seconds=4):
             deadline=time.monotonic()+seconds
@@ -398,7 +420,7 @@ def main():
         for n in nodes: start_owner(n)
         for n,other in ((nodes[0],nodes[1]),(nodes[1],nodes[0])):
             mid,article=make_article(n,"positive")
-            await_article(other,mid,article,args.timeout)
+            await_article(other,mid,expected_relay_projection(article,n,other,mid),args.timeout)
 
         # A wrong outbound password cannot fall back to cleartext.  The
         # accepted article and FNFD journal remain at A; restoring only the
@@ -423,7 +445,8 @@ def main():
             journal_before_bytes=len(before),journal_after_bytes=len(after)))
         stop_owner(a)
         write_remote(a["host"],a["profile"],("FNAUTH1\n{}\n{}\n".format(b["login"],b["password"])).encode(),"600")
-        start_owner(a); await_article(b,bad_mid,bad_article,args.timeout)
+        start_owner(a)
+        await_article(b,bad_mid,expected_relay_projection(bad_article,a,b,bad_mid),args.timeout)
 
         # An unrelated CA likewise stays peer-local and queued.  Restore the
         # exact target certificate, restart A, and require delivery.
@@ -445,7 +468,8 @@ def main():
             journal_before_bytes=len(before),journal_after_bytes=len(after)))
         stop_owner(a)
         write_remote(a["host"],a["anchor"],Path(b["local_cert"]).read_bytes(),"600")
-        start_owner(a); await_article(b,ca_mid,ca_article,args.timeout)
+        start_owner(a)
+        await_article(b,ca_mid,expected_relay_projection(ca_article,a,b,ca_mid),args.timeout)
         observations.append(dict(event="gate-pass",declared_source=args.source,
                                  hosts=[args.host_a,args.host_b]))
         print("PASS declared-source={} hosts={},{}".format(args.source,args.host_a,args.host_b))
