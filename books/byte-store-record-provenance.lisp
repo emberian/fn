@@ -2202,3 +2202,389 @@
                  (:instance fn-bs-k0-link-cut-has-new-inode)
                  (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state))
            :in-theory (theory 'minimal-theory))))
+
+; K0 authority-list shape and old inode-table preservation.
+(local
+ (defthm fn-bs-k0-pending-entry-targets-of-append
+  (equal (fn-bs-pending-entry-targets (append a b))
+         (append (fn-bs-pending-entry-targets a)
+                 (fn-bs-pending-entry-targets b)))
+  :hints (("Goal" :induct (append a b)
+           :in-theory (enable fn-bs-pending-entry-targets))))
+)
+
+(local
+ (defthm fn-bs-k0-pending-entry-targets-of-inode-filter
+  (equal (fn-bs-pending-entry-targets (fn-bs-ops-not-for-ino ops ino))
+         (fn-bs-pending-entry-targets ops))
+  :hints (("Goal" :induct (fn-bs-ops-not-for-ino ops ino)
+           :in-theory (enable fn-bs-ops-not-for-ino
+                              fn-bs-pending-entry-targets))))
+)
+
+(local
+ (defthm fn-bs-k0-file-cut-keeps-pending-authority-targets
+  (implies (and (fn-bs-statep bs) (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage))
+                (true-listp frame))
+           (equal (fn-bs-pending-entry-targets
+                   (fn-bs-pending
+                    (car (nth 5 (fn-bs-run bs ks
+                                           (fn-bs-record-program stage name frame)
+                                           nil groups capacity)))))
+                  (fn-bs-pending-entry-targets (fn-bs-pending bs))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k6-interpreted-record-fence-is-write-fence))
+           :in-theory (e/d (fn-bs-create fn-bs-write fn-bs-fence-file
+                            fn-bs-pending-entry-targets)
+                           (fn-bs-run fn-bs-record-program fn-bs-statep
+                            fn-bs-lookup fn-bs-ops-not-for-ino)))))
+)
+
+(local
+ (defthm fn-bs-k0-append-associative
+  (equal (append (append x y) z) (append x (append y z))))
+)
+
+(defthm fn-bs-k0-attempted-cut-authority-targets-are-old-plus-new
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal
+            (fn-bs-authority-inode-list
+             (car (nth 10 (fn-bs-run bs ks
+                                           (fn-bs-record-program stage name frame)
+                                           nil groups capacity))))
+            (append (fn-bs-authority-inode-list bs)
+                    (list (fn-bs-next-ino bs)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-store-relation-unfolds)
+                 (:instance fn-bs-k0-file-cut-keeps-pending-authority-targets)
+                 (:instance fn-bs-k6-file-cut-dirs-are-input-dirs)
+                 (:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                 (:instance fn-bs-k6-file-cut-source-is-fenced-frame)
+                 (:instance fn-bs-k6-state-next-ino-is-inop)
+                 (:instance fn-bs-k6-actual-link-cut-is-file-cut-link)
+                 (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state))
+           :in-theory (e/d (fn-bs-authority-inode-list fn-bs-pending-entry-targets
+                            fn-bs-durable-entry fn-bs-link
+                            fn-bs-k0-pending-entry-targets-of-append)
+                           (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                            fn-bs-statep fn-bs-lookup
+                            fn-bs-k6-lookup-is-entry-after)))))
+
+(local
+ (defthm fn-bs-k0-other-inode-has-no-selected-write
+  (implies (not (equal other ino))
+           (equal (fn-bs-ops-for-ino (fn-bs-ops-for-ino ops ino) other) nil))
+  :hints (("Goal" :induct (fn-bs-ops-for-ino ops ino)
+           :in-theory (enable fn-bs-ops-for-ino))))
+)
+
+(local
+ (defthm fn-bs-k0-fence-file-keeps-other-inode-entry
+  (implies (not (equal other ino))
+           (equal (assoc-equal other (fn-bs-inodes (fn-bs-fence-file bs ino)))
+                  (assoc-equal other (fn-bs-inodes bs))))
+  :hints (("Goal" :use ((:instance fn-bs-k0-other-inode-has-no-selected-write
+                                    (ops (fn-bs-pending bs)))
+                         (:instance fn-bs-apply-writes-keeps-quiet-ino
+                                    (ops (fn-bs-ops-for-ino (fn-bs-pending bs) ino))
+                                    (inodes (fn-bs-inodes bs)) (ino other)))
+           :in-theory (e/d (fn-bs-fence-file
+                            fn-bs-apply-ops-inodes-are-apply-writes)
+                           (fn-bs-apply-ops fn-bs-ops-for-ino)))))
+)
+
+(local
+ (defthm fn-bs-k0-file-cut-keeps-other-inode-entry
+  (implies (and (fn-bs-statep bs) (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage))
+                (true-listp frame)
+                (not (equal other (fn-bs-next-ino bs))))
+           (equal (assoc-equal other
+                               (fn-bs-inodes
+                                (car (nth 5 (fn-bs-run bs ks
+                                                       (fn-bs-record-program stage name frame)
+                                                       nil groups capacity)))))
+                  (assoc-equal other (fn-bs-inodes bs))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k6-interpreted-record-fence-is-write-fence)
+                 (:instance fn-bs-k0-fence-file-keeps-other-inode-entry
+                            (bs (mv-nth 1 (fn-bs-write
+                                           (mv-nth 1 (fn-bs-create bs :staging stage :ok))
+                                           (fn-bs-next-ino bs) 0 frame :ok)))
+                            (ino (fn-bs-next-ino bs))))
+           :in-theory (e/d (fn-bs-create fn-bs-write)
+                           (fn-bs-run fn-bs-record-program fn-bs-statep
+                            fn-bs-fence-file fn-bs-lookup
+                            fn-bs-k6-lookup-is-entry-after)))))
+)
+
+(defthm fn-bs-k0-attempted-cut-keeps-other-inode-entry
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage))
+                (not (equal other (fn-bs-next-ino bs))))
+           (equal (assoc-equal other
+                               (fn-bs-inodes
+                                (car (nth 10 (fn-bs-run bs ks
+                                                        (fn-bs-record-program stage name frame)
+                                                        nil groups capacity)))))
+                  (assoc-equal other (fn-bs-inodes bs))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-store-relation-unfolds)
+                 (:instance fn-bs-k6-state-next-ino-is-inop)
+                 (:instance fn-bs-txn-name-is-a-name
+                            (n (fn-store-event-sequence (fn-sf-record-candidate ks))))
+                 (:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                 (:instance fn-bs-k6-file-cut-source-is-fenced-frame)
+                 (:instance fn-bs-k6-actual-link-cut-is-file-cut-link)
+                 (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state)
+                 (:instance fn-bs-k0-file-cut-keeps-other-inode-entry)
+                 (:instance fn-bs-k0-link-keeps-inode-entry
+                            (bs (car (nth 5 (fn-bs-run bs ks
+                                                           (fn-bs-record-program stage name frame)
+                                                           nil groups capacity))))))
+           :in-theory (e/d (fn-bs-record-inputp)
+                           (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                            fn-bs-statep fn-bs-lookup
+                            fn-bs-k6-lookup-is-entry-after)))))
+
+; K0 attempted-cut authority existence and file-fence preservation.
+(local (defthm fn-bs-k0-attempted-cut-keeps-known-list
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage))
+                (fn-bs-inode-list-knownp bs xs)
+                (not (member-equal (fn-bs-next-ino bs) xs)))
+           (fn-bs-inode-list-knownp
+            (car (nth 10 (fn-bs-run bs ks
+                                    (fn-bs-record-program stage name frame)
+                                    nil groups capacity))) xs))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-bs-inode-list-knownp bs xs)
+           :in-theory (e/d (fn-bs-inode-list-knownp)
+                           (fn-bs-run fn-bs-record-program
+                            fn-bs-store-relation fn-bs-statep
+                            fn-bs-record-inputp fn-bs-lookup)))
+          ("Subgoal *1/1''"
+           :use ((:instance fn-bs-k0-attempted-cut-keeps-other-inode-entry
+                            (other (car xs))))))))
+
+(local (defthm fn-bs-k0-inode-list-knownp-append
+  (equal (fn-bs-inode-list-knownp bs (append x y))
+         (and (fn-bs-inode-list-knownp bs x)
+              (fn-bs-inode-list-knownp bs y)))
+  :hints (("Goal" :induct (append x y)
+           :in-theory (enable fn-bs-inode-list-knownp)))))
+
+(defthm fn-bs-k0-attempted-cut-authority-known
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-bs-authority-knownp
+            (car (nth 10 (fn-bs-run bs ks
+                                    (fn-bs-record-program stage name frame)
+                                    nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-related-allocation-is-fresh)
+                 (:instance fn-bs-k0-attempted-cut-authority-targets-are-old-plus-new)
+                 (:instance fn-bs-k0-attempted-cut-keeps-known-list
+                            (xs (fn-bs-authority-inode-list bs)))
+                 (:instance fn-bs-k0-attempted-cut-has-new-inode))
+           :in-theory (e/d (fn-bs-store-relation fn-bs-authority-knownp
+                            fn-bs-inode-list-knownp
+                            fn-bs-k0-inode-list-knownp-append)
+                           (fn-bs-run fn-bs-record-program fn-bs-statep
+                            fn-bs-record-inputp fn-bs-lookup
+                            fn-bs-authority-fencedp fn-bs-durable-records
+                            fn-bs-replay-matches-scan
+                            fn-bs-pending-matches-phase fn-sf-crash-imagep)))))
+
+(local (defthm fn-bs-k0-other-inode-filter-preserves-selected-ops
+  (implies (not (equal other ino))
+           (equal (fn-bs-ops-for-ino (fn-bs-ops-not-for-ino ops ino) other)
+                  (fn-bs-ops-for-ino ops other)))
+  :hints (("Goal" :induct (fn-bs-ops-not-for-ino ops ino)
+           :in-theory (enable fn-bs-ops-not-for-ino fn-bs-ops-for-ino)))))
+
+(local (defthm fn-bs-k0-file-cut-keeps-other-fenced
+  (implies (and (fn-bs-statep bs) (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage))
+                (true-listp frame)
+                (not (equal other (fn-bs-next-ino bs)))
+                (fn-bs-fencedp bs other))
+           (fn-bs-fencedp
+            (car (nth 5 (fn-bs-run bs ks
+                                   (fn-bs-record-program stage name frame)
+                                   nil groups capacity))) other))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k6-interpreted-record-fence-is-write-fence))
+           :in-theory (e/d (fn-bs-create fn-bs-write fn-bs-fence-file
+                            fn-bs-fencedp fn-bs-ops-for-ino-of-append
+                            fn-bs-k0-other-inode-filter-preserves-selected-ops)
+                           (fn-bs-run fn-bs-record-program fn-bs-statep
+                            fn-bs-lookup fn-bs-k6-lookup-is-entry-after))))))
+
+(defthm fn-bs-k0-attempted-cut-keeps-other-fenced
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage))
+                (not (equal other (fn-bs-next-ino bs)))
+                (fn-bs-fencedp bs other))
+           (fn-bs-fencedp
+            (car (nth 10 (fn-bs-run bs ks
+                                    (fn-bs-record-program stage name frame)
+                                    nil groups capacity))) other))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-store-relation-unfolds)
+                 (:instance fn-bs-k6-state-next-ino-is-inop)
+                 (:instance fn-bs-txn-name-is-a-name
+                            (n (fn-store-event-sequence (fn-sf-record-candidate ks))))
+                 (:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                 (:instance fn-bs-k6-file-cut-source-is-fenced-frame)
+                 (:instance fn-bs-k6-actual-link-cut-is-file-cut-link)
+                 (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state)
+                 (:instance fn-bs-k0-file-cut-keeps-other-fenced))
+           :in-theory (e/d (fn-bs-record-inputp fn-bs-fencedp
+                            fn-bs-link fn-bs-ops-for-ino-of-append)
+                           (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                            fn-bs-statep fn-bs-lookup
+                            fn-bs-k6-lookup-is-entry-after)))))
+
+(local (defthm fn-bs-k0-attempted-cut-new-target-fenced
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-bs-fencedp
+            (car (nth 10 (fn-bs-run bs ks
+                                    (fn-bs-record-program stage name frame)
+                                    nil groups capacity)))
+            (fn-bs-next-ino bs)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-store-relation-unfolds)
+                 (:instance fn-bs-k6-actual-record-linked-cut-has-exact-frame)
+                 (:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                 (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state))
+           :in-theory (e/d (fn-bs-record-inputp)
+                           (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                            fn-bs-statep fn-bs-lookup fn-bs-fencedp
+                            fn-bs-k6-lookup-is-entry-after))))))
+
+(local (defthm fn-bs-k0-attempted-cut-keeps-fenced-list
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage))
+                (fn-bs-all-fencedp bs xs)
+                (not (member-equal (fn-bs-next-ino bs) xs)))
+           (fn-bs-all-fencedp
+            (car (nth 10 (fn-bs-run bs ks
+                                    (fn-bs-record-program stage name frame)
+                                    nil groups capacity))) xs))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-bs-all-fencedp bs xs)
+           :in-theory (e/d (fn-bs-all-fencedp)
+                           (fn-bs-run fn-bs-record-program
+                            fn-bs-store-relation fn-bs-statep
+                            fn-bs-record-inputp fn-bs-lookup)))
+          ("Subgoal *1/1''"
+           :use ((:instance fn-bs-k0-attempted-cut-keeps-other-fenced
+                            (other (car xs))))))))
+
+(local (defthm fn-bs-k0-all-fencedp-append
+  (equal (fn-bs-all-fencedp bs (append x y))
+         (and (fn-bs-all-fencedp bs x)
+              (fn-bs-all-fencedp bs y)))
+  :hints (("Goal" :induct (append x y)
+           :in-theory (enable fn-bs-all-fencedp)))))
+
+(defthm fn-bs-k0-attempted-cut-authority-fenced
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-bs-authority-fencedp
+            (car (nth 10 (fn-bs-run bs ks
+                                    (fn-bs-record-program stage name frame)
+                                    nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-related-allocation-is-fresh)
+                 (:instance fn-bs-k0-attempted-cut-authority-targets-are-old-plus-new)
+                 (:instance fn-bs-k0-attempted-cut-keeps-fenced-list
+                            (xs (fn-bs-authority-inode-list bs)))
+                 (:instance fn-bs-k0-attempted-cut-new-target-fenced))
+           :in-theory (e/d (fn-bs-store-relation fn-bs-authority-fencedp
+                            fn-bs-all-fencedp fn-bs-k0-all-fencedp-append)
+                           (fn-bs-run fn-bs-record-program fn-bs-statep
+                            fn-bs-record-inputp fn-bs-lookup
+                            fn-bs-authority-knownp fn-bs-durable-records
+                            fn-bs-replay-matches-scan
+                            fn-bs-pending-matches-phase fn-sf-crash-imagep)))))
+
+; K0: the actual attempted Store record cut re-establishes the full relation.
+(local (defthm fn-bs-k0-staged-input-durable-records-match
+  (implies (and (fn-bs-store-relation bs ks)
+                (equal (fn-sf-phase ks) :record-staged))
+           (equal (fn-bs-durable-records bs) (fn-sf-records ks)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-store-relation-window-unfolds))
+           :in-theory (e/d (fn-bs-replay-visiblep fn-sf-crash-imagep
+                            fn-sf-record-present-visiblep)
+                           (fn-bs-store-relation fn-bs-durable-records
+                            fn-bs-durable-frontier fn-bs-pending-matches-phase
+                            fn-sf-statep))))))
+
+(defthm fn-bs-k0-record-attempted-cut-establishes-relation
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-bs-store-relation
+            (car (nth 10 (fn-bs-run bs ks
+                                    (fn-bs-record-program stage name frame)
+                                    nil groups capacity)))
+            (cdr (nth 10 (fn-bs-run bs ks
+                                    (fn-bs-record-program stage name frame)
+                                    nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-store-relation-unfolds)
+                 (:instance fn-bs-k0-staged-input-durable-records-match)
+                 (:instance fn-bs-store-relation-window-unfolds)
+                 (:instance fn-bs-pending-matches-phase-unfolds)
+                 (:instance fn-bs-k0-attempted-cut-keeps-durable-frontier)
+                 (:instance fn-bs-k0-attempted-cut-statep)
+                 (:instance fn-bs-k0-attempted-cut-keeps-durable-config)
+                 (:instance fn-bs-k6-related-attempt-durable-namespace-is-input-namespace)
+                 (:instance fn-bs-k0-attempted-cut-keeps-old-durable-record-prefix)
+                 (:instance fn-bs-k0-attempted-cut-kernel-admits-durable-image)
+                 (:instance fn-bs-k0-attempted-cut-has-pending-shape)
+                 (:instance fn-bs-k0-attempted-cut-has-one-issued-transaction-link)
+                 (:instance fn-bs-k0-attempted-cut-has-no-root-pending)
+                 (:instance fn-bs-k0-attempted-cut-pending-target-decodes-candidate)
+                 (:instance fn-bs-k0-attempted-cut-authority-known)
+                 (:instance fn-bs-k0-attempted-cut-authority-fenced)
+                 (:instance fn-bs-k0-record-attempted-cut-kernel-is-link-observation)
+                 (:instance fn-sf-record-file-result-preserves-state (s ks) (result :ok))
+                 (:instance fn-sf-record-link-result-preserves-state
+                            (s (fn-sf-record-file-result ks :ok)) (result :ok)))
+           :in-theory (e/d (fn-bs-store-relation fn-bs-contiguous-namesp
+                            fn-bs-durable-entry fn-bs-durable-names
+                            fn-bs-pending-matches-phase
+                            fn-bs-replay-visiblep fn-sf-record-present-visiblep
+                            fn-sf-record-file-result fn-sf-record-link-result
+                            fn-bs-record-inputp)
+                           (fn-bs-run fn-bs-record-program fn-bs-statep
+                            fn-bs-lookup fn-bs-durable-records
+                            fn-bs-authority-knownp fn-bs-authority-fencedp
+                            fn-sf-statep fn-sf-crash-imagep
+                            fn-bs-fencedp fn-bs-pending-shape-okp)))))

@@ -1312,6 +1312,11 @@ part of K0.
 ; Initialization has its own establishment obligation: the relation requires
 ; durable config/frontier authority and therefore does not hold at its early
 ; mkdir/create/write/link cuts. Those cuts remain in the byte crash model.
+; The successful P-RECORD `record-attempted` pair is now proved below from
+; an already related input, ACL2's typed record frame/name, and fresh staging.
+; This is preservation at one concrete host-called cut, not general K0:
+; establishing the input relation at every served invocation, all other
+; intermediate cuts, outcomes, programs and recovery transitions remains open.
 
 ; K1. The scan never faults on a crash image of a related state.  No torn
 ; unit is ever under an authority name, because links and renames are
@@ -1589,8 +1594,14 @@ octets and lookups through the file fence and link, then applies
 article and a typed retention event witness a nonempty old prefix. A
 counterexample reuses an old record inode as `next-ino` and changes the
 old prefix when the input relation is dropped; wrong transaction name and
-occupied staging name stop before pair 10. The full output relation remains
-open pending composition of state, root authority and crash-image clauses.
+occupied staging name stop before pair 10. The full output relation was
+open at that packet's source revision. The later
+`fn-bs-k0-record-attempted-cut-establishes-relation` composes the clauses
+for this successful P-RECORD pair: it derives old-plus-new authority
+targets, preserves every old inode entry and file fence, and proves that
+the staged input's durable records equal the kernel list. It requires an
+already related input; host call-entry establishment and other cuts remain
+separate.
 
 ; K7. Fence after uncertainty: after an error outcome of a :link, :rename or
 ; :fsync-dir step, the kernel is fenced and the byte store's pending list

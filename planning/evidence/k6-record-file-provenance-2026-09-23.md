@@ -241,3 +241,45 @@ manifest `planning/evidence/manifests/certify-20260923T222110Z-325598.json`.
 The new inode's authority-known fact is only one member of the authority
 list. Preservation of every prior authority target and the fenced status
 of the entire list remain before the full relation can be claimed.
+
+The next K0 packet closes that successful `record-attempted` pair-10
+relation. `fn-bs-k0-attempted-cut-authority-targets-are-old-plus-new`
+derives the exact authority inode list from the actual interpreter trace.
+`fn-bs-k0-attempted-cut-keeps-other-inode-entry` proves every old table
+entry survives fresh allocation, write, file fence and link; list induction
+and the fresh inode theorem establish `fn-bs-authority-knownp` at the cut.
+The parallel filtered-write argument proves every old authority inode
+remains fenced, while the link's target is the new fenced inode. The
+`fn-bs-k0-staged-input-durable-records-match` lemma derives the old record
+list equality from the *input* relation's crash-image arm at
+`:record-staged`, rather than assuming the desired output scan. Finally,
+`fn-bs-k0-record-attempted-cut-establishes-relation` composes those facts
+with state, config, frontier, pending shape/candidate, and logical callback
+lemmas to prove `fn-bs-store-relation` of the actual pair-10
+`fn-bs-run`/`fn-bs-record-program` result. The stated premises are an
+already related input, ACL2's typed frame/name input and fresh staging.
+
+The test book executes a second article and a typed retention event after
+an acknowledged article, checking the full relation and old inode
+preservation. It also has `must-fail` runs when the input relation, typed
+final name, or staging freshness premise is removed. Two additional
+structural counterexamples separate authority existence (a dangling old
+entry) and fencing (a pending write to the old article inode); these
+remain byte-state-valid but are not related inputs. Selected hbox roots
+`books/byte-store-record-provenance` and
+`tests/acl2/byte-store-record-provenance-tests` passed under
+`run-20260923T223322Z-7fe8`, original manifest
+`planning/evidence/manifests/certify-20260923T223325Z-359941.json`.
+ACL2 8.7 at `/tank/fn/toolchains/w28/acl2-literal-4g` took 6.901 s
+for the book and 2.217 s for its test root; source, closure and core
+digests are in the manifest. A bounded live proof session first isolated
+the missing staged-input record equality, and the final relation theorem
+proved in 0.88 s of ACL2 prover time with byte and codec internals closed
+except the named relation/phase selectors.
+
+This is one successful P-RECORD cut with an input relation premise.
+Establishment of that premise at every served call, other P-RECORD cuts
+and outcomes, frontier/initialization/recovery programs, adapter-to-model
+syscall correspondence, and physical successful-barrier qualification
+remain open. The theorem does not convert the selected native SIGKILL or
+dm-flakey observations into a power-loss guarantee.
