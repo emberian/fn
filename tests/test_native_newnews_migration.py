@@ -66,8 +66,10 @@ class NativeNewnewsMigrationTests(unittest.TestCase):
                     chunks.append(chunk)
             self.assertEqual(process.wait(timeout=60), 0)
             reply = b"".join(chunks)
-            self.assertTrue(reply.startswith(b"200 "), reply)
-            return reply
+            greeting, separator, responses = reply.partition(b"\r\n")
+            self.assertEqual(separator, b"\r\n", reply)
+            self.assertTrue(greeting.startswith(b"201 "), reply)
+            return responses
         finally:
             if process.poll() is None:
                 process.terminate()
@@ -91,20 +93,25 @@ class NativeNewnewsMigrationTests(unittest.TestCase):
             self.command(OLD, store, "post", "--message-id", old_id.decode(),
                          "--payload", payload, "--group", "fn.letters")
 
+            heading = b"230 list of new articles by message-id follows\r\n"
+            closing = b"205 closing connection\r\n"
             old_only = self.newnews(store)
-            self.assertIn(b"230 list of new articles by message-id follows\r\n"
-                          + old_id + b"\r\n.\r\n", old_only)
-            self.assertIn(b"230 list of new articles by message-id follows\r\n"
-                          b".\r\n", old_only)
+            # This reader has no pinned wall observation. With no later stamped
+            # article, :legacy has horizon :none and is conservatively reported
+            # at both thresholds, including one in the future.
+            self.assertEqual(old_only,
+                             heading + old_id + b"\r\n.\r\n"
+                             + heading + old_id + b"\r\n.\r\n" + closing)
 
             payload.write_bytes(payload.read_bytes().replace(b"old", b"new"))
             self.command(NEW, store, "post", "--message-id", new_id.decode(),
                          "--payload", payload, "--group", "fn.letters")
             mixed = self.newnews(store)
-            self.assertIn(b"230 list of new articles by message-id follows\r\n"
-                          + new_id + b"\r\n" + old_id + b"\r\n.\r\n", mixed)
-            self.assertIn(b"230 list of new articles by message-id follows\r\n"
-                          b".\r\n", mixed)
+            # The new article's durable stamp supplies the legacy upper bound.
+            # Both are new since 1970; neither is new since 2099.
+            self.assertEqual(mixed,
+                             heading + new_id + b"\r\n" + old_id
+                             + b"\r\n.\r\n" + heading + b".\r\n" + closing)
 
 
 if __name__ == "__main__":
