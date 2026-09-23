@@ -11,13 +11,18 @@
   (declare (xargs :guard t))
   (and (fn-bpnf-heldp held)
        (fn-bpp-eidp node)
-       (equal (fn-bpp-destination
-               (fn-bpb-bundle-primary (fn-bpnf-held-bundle held)))
-              node)
-       (null (fn-bpn-nth 10 held))
-       (equal (fn-bpn-nth 12 held) '(:dispatch-pending))
-       (null (fn-bpn-nth 14 held))
-       (member-equal (fn-bpah-held-class held) '(:request :receipt))))
+       (let ((bundle (fn-bpnf-held-bundle held)))
+         (and (fn-bpb-bundlep bundle)
+              (let ((primary (fn-bpb-bundle-primary bundle)))
+                (and (fn-bpp-blockp primary)
+                     (natp (fn-bpp-flags primary))
+                     (not (fn-bpp-fragmentp (fn-bpp-flags primary)))
+                     (equal (fn-bpp-destination primary) node)
+                     (null (fn-bpn-nth 10 held))
+                     (equal (fn-bpn-nth 12 held) '(:dispatch-pending))
+                     (null (fn-bpn-nth 14 held))
+                     (member-equal (fn-bpah-held-class held)
+                                   '(:request :receipt))))))))
 
 (defun fn-bpah-select-oldest (held-list node selected)
   (declare (xargs :guard t))
@@ -50,6 +55,46 @@
                   (fn-bpaj-eid-text (fn-bpp-source primary))
                   (fn-bpaj-eid-text (fn-bpp-destination primary)))
           nil)))))
+
+; The native bp-node caller asks this selector before invoking Store.  A
+; fragment can carry bytes that happen to decode as a complete request ADU;
+; those bytes are not eligible until a durable family replacement has made a
+; new whole-bundle held row.
+(defthm fn-bpah-local-pending-excludes-fragment
+  (implies (fn-bpah-local-pendingp held node)
+           (not (fn-bpp-fragmentp
+                 (fn-bpp-flags (fn-bpb-bundle-primary
+                                (fn-bpnf-held-bundle held))))))
+  :hints (("Goal" :in-theory (enable fn-bpah-local-pendingp))))
+
+(defthm fn-bpah-select-oldest-retains-pending
+  (implies (or (null selected) (fn-bpah-local-pendingp selected node))
+           (let ((h (fn-bpah-select-oldest held-list node selected)))
+             (or (null h) (fn-bpah-local-pendingp h node))))
+  :hints (("Goal" :induct (fn-bpah-select-oldest held-list node selected)
+           :in-theory (disable fn-bpah-local-pendingp fn-bpah-held-class))))
+
+(defthm fn-bpah-host-pending-view-excludes-fragment
+  (implies (equal (car (fn-bpah-pending-view st node)) :delivery)
+           (not (fn-bpp-fragmentp
+                 (fn-bpp-flags
+                  (fn-bpb-bundle-primary
+                   (fn-bpnf-held-bundle
+                    (fn-bpah-select-oldest (fn-bpnf-held-list st)
+                                            node nil)))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpah-select-oldest-retains-pending
+                            (held-list (fn-bpnf-held-list st))
+                            (selected nil))
+                 (:instance fn-bpah-local-pending-excludes-fragment
+                            (held (fn-bpah-select-oldest
+                                   (fn-bpnf-held-list st) node nil))))
+           :in-theory (e/d (fn-bpah-pending-view)
+                           (fn-bpah-select-oldest-retains-pending
+                            fn-bpah-local-pending-excludes-fragment
+                            fn-bpah-local-pendingp fn-bpah-select-oldest
+                            fn-bpah-held-class fn-bpp-fragmentp))))
+  :rule-classes nil)
 
 (defun fn-bpah-view-class (view)
   (declare (xargs :guard t))
