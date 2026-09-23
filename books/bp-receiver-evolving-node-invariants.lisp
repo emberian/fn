@@ -447,6 +447,13 @@
                                 fn-node-binding-subject fn-node-binding-id)
                               (theory 'minimal-theory)))))
 
+(local
+ (defthm fn-bprv-article-record-is-not-consumer-event
+   (implies (fn-record-p record)
+            (not (fn-cpe-eventp record)))
+   :hints (("Goal" :in-theory
+            (enable fn-record-p fn-record-shapep fn-cpe-eventp)))))
+
 (defthm fn-bprv-apply-record-installs-record
   (implies (and (fn-node-statep node) (fn-bprv-node-idlep node) (fn-record-p record)
                 (consp (fn-replay-apply-record node record)))
@@ -455,7 +462,8 @@
   :hints (("Goal"
            :use ((:instance fn-replay-advance-preserves-node-statep
                             (recorded-txid (fn-record-txid record)))
-                 fn-replay-apply-record-non-nil-is-node-state)
+                 fn-replay-apply-record-non-nil-is-node-state
+                 fn-bprv-article-record-is-not-consumer-event)
            :in-theory (union-theories
                        '(car-cons cdr-cons fn-replay-apply-record fn-node-pending-matchesp
                          fn-snt-an-article-record-is-no-other-store-event fn-store-event-p fn-store-event-txid
@@ -529,6 +537,8 @@
                             (charge (fn-record-charge record2))
                             (stamp (fn-record-stamp record2)))
                  (:instance fn-replay-apply-record-non-nil-is-node-state (record record2))
+                 (:instance fn-bprv-article-record-is-not-consumer-event
+                            (record record2))
                  (:instance fn-node-complete-preserves-existing-binding
                             (s (fn-node-prepare
                                 (fn-replay-advance-txid node (fn-record-txid record2))
