@@ -12,10 +12,12 @@ import os
 import pathlib
 import shutil
 import signal
+import socket
 import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from contextlib import nullcontext
@@ -130,6 +132,43 @@ class CacheStartupTests(unittest.TestCase):
 
 
 class ProcessLifetimeTests(unittest.TestCase):
+    def test_start_preserves_an_old_live_json_server(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            sessions = pathlib.Path(temporary)
+            directory = sessions / "old-session"
+            directory.mkdir()
+            listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            listener.bind(str(directory / "sock"))
+            listener.listen(1)
+            received = []
+
+            def answer():
+                connection, _ = listener.accept()
+                with connection:
+                    received.append(json.loads(proof_repl.read_all(connection)))
+                    connection.sendall(b'{"state":{"ready":true}}')
+
+            worker = threading.Thread(target=answer)
+            worker.start()
+            try:
+                args = SimpleNamespace(name="old-session", book="books/irrelevant")
+                with mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                     mock.patch.object(proof_repl, "install_closure") as acquire:
+                    self.assertEqual(proof_repl.start(args), 2)
+                    acquire.assert_not_called()
+                self.assertTrue(worker.is_alive(), "start must not touch the old socket")
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                    client.connect(str(directory / "sock"))
+                    client.sendall(b'{"op":"status"}')
+                    client.shutdown(socket.SHUT_WR)
+                    self.assertEqual(json.loads(proof_repl.read_all(client)),
+                                     {"state": {"ready": True}})
+                worker.join(timeout=2)
+                self.assertEqual(received, [{"op": "status"}])
+                self.assertTrue((directory / "sock").exists())
+            finally:
+                listener.close()
+
     def test_stopping_busy_session_stops_descendants_and_releases_output(self):
         # A busy prover can have its own child holding the output pipe open.
         # The old wrapper-only kill left both alive until their sleep ended.

@@ -278,10 +278,13 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
              "stopped_at": None, "error": None, "ready": False, "sends": 0}
 
     def save() -> None:
-        state_path.write_text(json.dumps(state, indent=1))
+        staged = directory / f".state-{os.getpid()}.tmp"
+        staged.write_text(json.dumps(state, indent=1))
+        os.replace(staged, state_path)
 
     acl2 = None
     server = None
+    bound = False
     try:
         save()
         source = ROOT / f"{book}.lisp"
@@ -311,9 +314,15 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
         state["ready"] = acl2.alive()
         save()
 
-        sock_path.unlink(missing_ok=True)
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        server.bind(str(sock_path))
+        try:
+            server.bind(str(sock_path))
+        except OSError as error:
+            state["error"] = f"session socket unavailable: {error}"
+            state["ready"] = False
+            save()
+            return 1
+        bound = True
         server.listen(4)
         while acl2.alive():
             connection, _ = server.accept()
@@ -337,7 +346,8 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
             acl2.kill()
         state["ready"] = False
         save()
-        sock_path.unlink(missing_ok=True)
+        if bound:
+            sock_path.unlink(missing_ok=True)
         os.close(lock_fd)
     return 0
 
@@ -437,26 +447,19 @@ def start(args) -> int:
         print(f"proof-repl: session {args.name!r} is starting or live; stop it first")
         return 2
     try:
-        # A server started by the older tool has no name lock. Do not unlink
-        # its live socket while transitioning to the locked protocol.
+        # A server started by the older tool has no name lock. Do not probe
+        # its socket: an empty or interrupted probe is malformed JSON to the
+        # old server and can terminate that still-live proof session.
         old_sock = directory / "sock"
         if old_sock.exists():
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
-                probe.settimeout(.2)
-                try:
-                    probe.connect(str(old_sock))
-                except OSError:
-                    pass
-                else:
-                    print(f"proof-repl: session {args.name!r} is already live; "
-                          "stop it first")
-                    return 2
+            print(f"proof-repl: session {args.name!r} has a socket; "
+                  "stop it or inspect the stale endpoint before restarting")
+            return 2
         acquired, detail = install_closure(args.book)
         print(detail)
         if not acquired:
             return 1
         directory.mkdir(parents=True, exist_ok=True)
-        (directory / "sock").unlink(missing_ok=True)
         (directory / "state.json").unlink(missing_ok=True)
         with open(directory / "server.log", "a", encoding="utf-8") as log:
             command = [sys.executable, __file__, "serve", args.name, args.book,
@@ -472,7 +475,11 @@ def start(args) -> int:
         while time.monotonic() < deadline:
             state_path = directory / "state.json"
             if state_path.exists():
-                state = json.loads(state_path.read_text())
+                try:
+                    state = json.loads(state_path.read_text())
+                except (FileNotFoundError, json.JSONDecodeError):
+                    time.sleep(0.05)
+                    continue
                 if state.get("ready") and (directory / "sock").exists():
                     break
                 if state.get("error") and not state.get("ready"):
