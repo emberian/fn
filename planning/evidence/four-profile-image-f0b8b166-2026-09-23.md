@@ -69,7 +69,12 @@ qualification was run here.
 The entry-profile lane subsequently ran the full `tests.test_native_admin` suite:
 **9/9 passed in 2.744 seconds** on this `f0b8b166` production/developer pair.
 Its test-only harness revisions were `e5c2ff5f`, `1ae58422` and `277f7e4f`,
-copied to `/tmp` outside the frozen checkout. Ordinary admin/post operations
+copied to hbox `/tmp/fn-entry-admin-latest.py` outside the frozen checkout
+(SHA-256 `a8e98aa1d188349326fa8ff259017af84675796b43dc5f08813788e9adaed58e`).
+That harness came from lane tip `277f7e4f78bfacd1cdf2a76a8bf99cd57e4114a3`
+and set synthetic `__file__` to
+`/tank/fn/gates/takeover-image-upgrade-f0b8b166/tests/test_native_admin.py`
+so its root resolved to the image source checkout. Ordinary admin/post operations
 used the production image; only the explicit
 `FN_IMMUTABLE_PUBLISH_TEST_FAIL` fault witnesses used the developer image.
 This is a runtime result for the saved `f0b8b166` cores with a later, separately
