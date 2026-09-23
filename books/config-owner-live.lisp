@@ -5,6 +5,11 @@
 (include-book "owner-config")
 (include-book "config-store-traces")
 
+; Keep the carried index constructors opaque while proving historical pins.
+; Their selector theorems expose each field without expanding 11-field lists.
+(in-theory (disable fn-own-conn-make-group-indexed
+                    fn-own-view-make-group-indexed))
+
 (defun fn-ocl-owner-with-store (o st)
   (declare (xargs :guard t))
   (fn-own-refresh
@@ -334,7 +339,8 @@
                             (xs (fn-sf-records (fn-sn-files st)))))
            :in-theory (e/d (fn-ocl-view-historyp fn-ocl-owner-with-store
                             fn-own-refresh fn-own-store-idlep fn-cst-relation)
-                           (fn-cst-replay-node fn-cpr-replay fn-own-take)))))
+                           (fn-cst-replay-node fn-cpr-replay fn-own-take
+                            fn-own-view-make-group-indexed)))))
 
 (defthm fn-ocl-complete-success-store-ready
   (implies (and (fn-ocfg-staged oc)
@@ -424,7 +430,8 @@
            :in-theory (e/d (fn-ocl-view-configp fn-ocl-owner-with-store
                             fn-own-refresh fn-own-store-idlep
                             fn-ocl-store-config)
-                           (fn-cpr-replay fn-own-take)))))
+                           (fn-cpr-replay fn-own-take
+                            fn-own-view-make-group-indexed)))))
 
 (defthm fn-ocl-complete-preserves-full-historical-relation
   (implies
@@ -769,7 +776,7 @@
               (fn-own-reader-context
                (fn-own-set-conns o (cons conn (fn-own-conns o)))
                id cfg)))
-            (fn-own-conn-make-indexed
+            (fn-own-conn-make-group-indexed
              id (fn-own-conn-version conn)
              (fn-own-conn-frontier conn)
              (fn-own-conn-wire conn)
@@ -782,10 +789,12 @@
              (fn-own-conn-config conn)
              (fn-own-conn-observation conn)
              (fn-own-conn-verdicts conn)
-             (fn-own-conn-index conn))))
-  :hints (("Goal" :in-theory (enable fn-own-reader-context
-                                      fn-own-set-conns fn-own-find-conn
-                                      fn-own-replace-conn))))
+             (fn-own-conn-index conn)
+             (fn-own-conn-group-index conn))))
+  :hints (("Goal" :in-theory (e/d (fn-own-reader-context
+                                    fn-own-set-conns fn-own-find-conn
+                                    fn-own-replace-conn)
+                                   (fn-own-conn-make-group-indexed)))))
 
 (defthm fn-ocl-reader-context-new-connection-is-bounded
   (implies
@@ -812,7 +821,8 @@
                             (frontier (fn-own-conn-frontier conn))
                             (wire (fn-own-conn-wire conn))))
            :in-theory (disable fn-own-conn-boundedp
-                               fn-peer-open-session fn-auth-with-base))))
+                               fn-peer-open-session fn-auth-with-base
+                               fn-own-conn-make-group-indexed))))
 
 (defthm fn-ocl-reader-context-first-connection
   (implies
@@ -822,7 +832,7 @@
    (equal
     (fn-own-find-conn id
                       (fn-own-conns (fn-own-reader-context o id cfg)))
-    (fn-own-conn-make-indexed
+    (fn-own-conn-make-group-indexed
      id
      (fn-own-conn-version (car (fn-own-conns o)))
      (fn-own-conn-frontier (car (fn-own-conns o)))
@@ -836,10 +846,12 @@
      (fn-own-conn-config (car (fn-own-conns o)))
      (fn-own-conn-observation (car (fn-own-conns o)))
      (fn-own-conn-verdicts (car (fn-own-conns o)))
-     (fn-own-conn-index (car (fn-own-conns o))))))
-  :hints (("Goal" :in-theory (enable fn-own-reader-context
-                                      fn-own-set-conns fn-own-find-conn
-                                      fn-own-replace-conn))))
+     (fn-own-conn-index (car (fn-own-conns o)))
+     (fn-own-conn-group-index (car (fn-own-conns o))))))
+  :hints (("Goal" :in-theory (e/d (fn-own-reader-context
+                                    fn-own-set-conns fn-own-find-conn
+                                    fn-own-replace-conn)
+                                   (fn-own-conn-make-group-indexed)))))
 
 (defthm fn-ocl-reader-context-first-is-bounded
   (implies
@@ -853,7 +865,8 @@
                       (fn-own-conns (fn-own-reader-context o id cfg)))
     groups))
   :hints (("Goal"
-           :use ((:instance fn-ocl-new-reader-context-session-is-bounded
+           :use (fn-ocl-reader-context-first-connection
+                 (:instance fn-ocl-new-reader-context-session-is-bounded
                             (as (fn-own-conn-session
                                  (car (fn-own-conns o))))
                             (archive (fn-own-conn-archive
@@ -872,7 +885,8 @@
            :in-theory (e/d (fn-own-reader-context fn-own-set-conns
                             fn-own-find-conn fn-own-replace-conn)
                            (fn-own-conn-boundedp
-                            fn-peer-open-session fn-auth-with-base)))))
+                            fn-peer-open-session fn-auth-with-base
+                            fn-own-conn-make-group-indexed)))))
 
 (defthm fn-ocl-indexed-open-context-is-bounded
   (fn-own-conn-boundedp
@@ -919,7 +933,9 @@
                                 (cdr (fn-ocfg-open oc acfg))))))))
            :in-theory (e/d (fn-ocfg-open fn-own-open)
                            (fn-ocl-relation fn-ocl-conn-historyp
-                            fn-cpr-replay fn-cst-replay-node)))))
+                            fn-cpr-replay fn-cst-replay-node
+                            fn-own-conn-make-group-indexed
+                            fn-own-view-make-group-indexed)))))
 
 (defthm fn-ocl-open-keeps-store-and-view
   (and (equal (fn-own-store
@@ -967,9 +983,10 @@
                 (fn-cfgp cfg))
            (equal (cdr (fn-own-conns (fn-own-reader-context o id cfg)))
                   (cdr (fn-own-conns o))))
-  :hints (("Goal" :in-theory (enable fn-own-reader-context
-                                      fn-own-set-conns fn-own-replace-conn
-                                      fn-own-find-conn))))
+  :hints (("Goal" :in-theory (e/d (fn-own-reader-context
+                                    fn-own-set-conns fn-own-replace-conn
+                                    fn-own-find-conn)
+                                   (fn-own-conn-make-group-indexed)))))
 
 (defthm fn-ocl-reader-context-replaces-first-connection
   (implies
@@ -979,7 +996,7 @@
    (equal
     (fn-own-conns (fn-own-reader-context o id cfg))
     (cons
-     (fn-own-conn-make-indexed
+     (fn-own-conn-make-group-indexed
       id
       (fn-own-conn-version (car (fn-own-conns o)))
       (fn-own-conn-frontier (car (fn-own-conns o)))
@@ -993,11 +1010,13 @@
       (fn-own-conn-config (car (fn-own-conns o)))
       (fn-own-conn-observation (car (fn-own-conns o)))
       (fn-own-conn-verdicts (car (fn-own-conns o)))
-      (fn-own-conn-index (car (fn-own-conns o))))
+      (fn-own-conn-index (car (fn-own-conns o)))
+      (fn-own-conn-group-index (car (fn-own-conns o))))
      (cdr (fn-own-conns o)))))
-  :hints (("Goal" :in-theory (enable fn-own-reader-context
-                                      fn-own-set-conns fn-own-replace-conn
-                                      fn-own-find-conn))))
+  :hints (("Goal" :in-theory (e/d (fn-own-reader-context
+                                    fn-own-set-conns fn-own-replace-conn
+                                    fn-own-find-conn)
+                                   (fn-own-conn-make-group-indexed)))))
 
 (defthm fn-ocl-open-preserves-all-connection-histories
   (implies (fn-ocl-relation oc)
