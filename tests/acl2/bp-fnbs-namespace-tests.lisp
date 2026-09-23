@@ -37,6 +37,15 @@
                     (fn-bpnf-stored-record-name 9 1))
               (list ".record-leftover") 2)))
 (assert-event
+ (fn-bpnf-mixed-recovery-planp
+  (fn-bpnf-mixed-recovery-plan (bpnfn-mixed-names))))
+(assert-event
+ (equal (fn-bpnf-mixed-legacy-observed
+         (fn-bpnf-mixed-recovery-plan (bpnfn-mixed-names)))
+        (list (fn-bpn-lifecycle-record-name 0)
+              (fn-bpn-lifecycle-record-name 1)
+              ".record-leftover")))
+(assert-event
  (equal (fn-bpnf-mixed-recovery-plan
          (list (fn-bpnf-stored-record-name 0 0)))
         (list :ready nil (list (fn-bpnf-stored-record-name 0 0)) nil 0)))

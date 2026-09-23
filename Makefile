@@ -219,6 +219,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-machine-tests \
 	books/bp-node-foundation \
 	tests/acl2/bp-node-foundation-tests \
+	books/bp-node-receive-boundary \
+	tests/acl2/bp-node-receive-boundary-tests \
 	books/bp-fnbs-codec \
 	books/bp-fnbs-codec-invariants \
 	tests/acl2/bp-fnbs-codec-tests \
