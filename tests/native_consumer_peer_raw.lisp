@@ -1,4 +1,4 @@
-;;; Exercise the production Darwin peer-UID observation on a connected local
+;;; Exercise the production peer-UID observation on a connected local
 ;;; socket.  No Store process or live node is contacted.
 (require :sb-posix)
 (require :sb-bsd-sockets)
@@ -16,7 +16,7 @@
             do (eval form) (setf found t)))
   (unless found (error "deployed peer credential check missing")))
 
-#+darwin
+#+(or darwin linux)
 (let* ((path (format nil "/tmp/fn-consumer-peer-~d.sock" (sb-posix:getpid)))
        (listener (make-instance 'sb-bsd-sockets:local-socket
                                 :type :stream :protocol 0))
@@ -37,5 +37,7 @@
     (when client (sb-bsd-sockets:socket-close client))
     (sb-bsd-sockets:socket-close listener)
     (ignore-errors (sb-posix:unlink path))))
-#+darwin (format t "native consumer peer credential boundary passed~%")
-#-darwin (format t "native consumer peer Darwin-only test skipped passed~%")
+#+(or darwin linux)
+(format t "native consumer peer credential boundary passed~%")
+#-(or darwin linux)
+(format t "native consumer peer credential boundary unsupported-port test passed~%")

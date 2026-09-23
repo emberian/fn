@@ -232,10 +232,10 @@ cuts, plus recovery cuts. The first local owner command source now runs through
 `host/owner-host.lisp`, which calls `fn-col-*` over the live owner. The
 `FNCT` kind-4/5 codec and CLI plan in `books/consumer-local-control.lisp`
 carry bounded request/reply bytes over the existing mode-0600 Unix control
-socket. The Darwin handler also observes the connected peer's effective UID
-with `getpeereid`, refuses on observation failure or an owner-UID mismatch,
-then pins the ACL2 local principal. A non-Darwin port refuses this profile
-until it supplies an equivalent peer-credential observation. The native
+socket. The host observes the connected peer's UID with Darwin `getpeereid`
+or Linux `SO_PEERCRED` after `getpeername`, refuses a failed observation or
+owner-UID mismatch, then pins the ACL2 local principal. Other ports refuse
+this profile until they supply an equivalent peer-credential observation. The native
 handler serializes each command with the owner, publishes
 the exact ACL2 event through `fnn-owner-consumer-commit` and the shared
 `fnn-owner-publish-prepared` gate, and returns a cursor only after durable
