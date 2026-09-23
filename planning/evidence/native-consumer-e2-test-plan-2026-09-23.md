@@ -2,15 +2,16 @@
 
 `tests/test_native_consumer_e2.py` is a real-process driver for the local
 consumer command in `8d3175fd`. It awaits a source-matched developer image
-containing that command, Linux `SO_PEERCRED`, and the durable
-`consumer-bootstrap-fixture` from the preservation-clone packet. No native
+containing that command, Linux `SO_PEERCRED`, and the production local
+`consumer bootstrap CONTROL_ABS` command. No native
 E2 result is claimed by this plan. The test constructs no cursor bytes: every
 `fncu` file is the output of ACL2 through `register` or `position`, and `ack`
 reads that exact file.
 
-The first scenario initializes and bootstraps two independent Stores, opens
-their real owners, registers the same consumer name, and compares the owner
-issued positions. A normal accepted article does not advance the recorded
+The first scenario initializes two independent Stores, opens their real
+owners, bootstraps through each owner, registers the same consumer name, and compares the owner
+issued positions. Registration before bootstrap is refused with no token.
+A normal accepted article does not advance the recorded
 consumer ack. Equal-position ack is accepted without an extra declaration;
 the other Store's cursor is refused; unregister and re-register changes the
 epoch and refuses the old cursor. Reopening preserves the new position and
@@ -20,7 +21,8 @@ pass through `fnn-owner-consumer-commit` and full Store replay. These are the
 model's register, no-op ack, unregister, and recovery paths, rather than
 simulated endpoint responses.
 
-The second scenario arms developer `FN_NATIVE_CONTROL_TEST_STOP=after-submit`.
+The second scenario bootstraps through an ordinary owner, stops it, then
+arms developer `FN_NATIVE_CONTROL_TEST_STOP=after-submit` on reopen.
 `host/native/control.lisp` prints `CONTROL-SUBMITTED` after the owner has
 completed the durable consumer register, while the worker is stopped before
 sending the reply. The driver kills the owner process, requires the client to
