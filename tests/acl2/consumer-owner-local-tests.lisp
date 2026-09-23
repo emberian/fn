@@ -56,6 +56,63 @@
 (defconst *colt-o1* (fn-own-start *colt-s1* 2))
 (defconst *colt-position* (fn-col-position *colt-o1* *colt-id*))
 (assert-event (eq (car *colt-position*) :position))
+(defconst *colt-article*
+  (fn-record-make 2 2 2 "<poll@fn.test>" '(65 66)
+                  '("fn.test") "poll-pin" "poll-content" "poll-release"
+                  2 841000000))
+(defconst *colt-after-article*
+  (fn-sn-finish
+   (fn-sn-io
+    (fn-sn-io
+     (fn-sn-io
+      (fn-sn-prepare (colt-reserve *colt-s1*) *colt-article*)
+      :record-file :ok)
+     :record-link :ok)
+    :record-directory :ok)))
+(assert-event (equal (fn-sf-phase (fn-sn-files *colt-after-article*))
+                     :ready))
+(assert-event (equal (fn-sf-records (fn-sn-files *colt-after-article*))
+                     (list (fn-cpe-make 0 0 0 '(:bootstrap (1) (2)))
+                           (cadr *colt-register*) *colt-article*)))
+(defconst *colt-poll*
+  (fn-col-poll (fn-own-start *colt-after-article* 2) *colt-id*))
+(assert-event (eq (car *colt-poll*) :poll))
+(assert-event (equal (caddr *colt-poll*) *colt-article*))
+(assert-event
+ (equal (fn-cp-nth 9
+         (fn-cp-nth 1 (fn-cp-cursor-decode (cadr *colt-poll*))))
+        3))
+(assert-event
+ (equal (fn-col-position (fn-own-start *colt-after-article* 2) *colt-id*)
+        *colt-position*))
+(defconst *colt-second-article*
+  (fn-record-make 3 3 3 "<poll-two@fn.test>" '(66)
+                  '("fn.test") "poll-two-pin" "poll-two-content"
+                  "poll-two-release" 1 841000001))
+(assert-event
+ (equal (fn-col-poll-scan (list *colt-article* *colt-second-article*)
+                          *colt-group* 2 4 16)
+        (list :scan 3 *colt-article*)))
+(defconst *colt-other-article*
+  (fn-record-make 2 2 2 "<other@fn.test>" '(67)
+                  '("fn.other") "other-pin" "other-content"
+                  "other-release" 1 841000000))
+(assert-event
+ (equal (fn-col-poll-scan (list *colt-other-article* *colt-second-article*)
+                          *colt-group* 2 4 16)
+        (list :scan 4 *colt-second-article*)))
+(defun colt-neutral-window (sequence count)
+  (if (zp count) nil
+    (cons (fn-cpe-make sequence sequence sequence '(:rollover (1)))
+          (colt-neutral-window (1+ sequence) (1- count)))))
+(assert-event
+ (equal (fn-col-poll-scan (colt-neutral-window 2 16)
+                          *colt-group* 2 18 16)
+        '(:scan 18 nil)))
+(assert-event
+ (equal (fn-col-poll-scan (list *colt-second-article*)
+                          *colt-group* 2 4 16)
+        '(:refused :history)))
 (assert-event (equal (fn-col-register *colt-o1* *colt-id* *colt-group*)
                      (list :no-op
                            (fn-cp-scope-cursor

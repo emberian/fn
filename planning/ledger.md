@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 542 |
 | Certification roots in the Makefile | 536 |
 | Books inside the root closure | 541 |
-| `defthm` and `defthmd` events | 8153 |
-| `defun` events | 6086 |
-| Functions with verified guards | 1991 |
+| `defthm` and `defthmd` events | 8154 |
+| `defun` events | 6097 |
+| Functions with verified guards | 2001 |
 | Functions declared `:verify-guards nil` and never verified | 325 |
 | Functions left at the default with an explicit guard | 2985 |
-| Functions left at the default with no guard | 785 |
-| `assert-event` checks | 8866 |
+| Functions left at the default with no guard | 786 |
+| `assert-event` checks | 8881 |
 | `must-fail` checks | 426 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 74 |
@@ -215,8 +215,8 @@ that `make certify` requests.
 | `books/config-store-traces.lisp` | root | 2 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 42 | 133 | 1/0/132/0 | 0 | 0 | 0 |
-| `books/consumer-local-control.lisp` | root | 0 | 10 | 10/0/0/0 | 0 | 0 | 0 |
-| `books/consumer-owner-local.lisp` | root | 0 | 6 | 6/0/0/0 | 0 | 0 | 0 |
+| `books/consumer-local-control.lisp` | root | 0 | 15 | 15/0/0/0 | 0 | 0 | 0 |
+| `books/consumer-owner-local.lisp` | root | 1 | 11 | 11/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-position.lisp` | root | 56 | 29 | 28/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-store-events.lisp` | root | 1 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-store-invariants.lisp` | root | 80 | 5 | 0/5/0/0 | 0 | 0 | 0 |
@@ -500,8 +500,8 @@ that `make certify` requests.
 | `tests/acl2/config-store-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/config-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 0 | 0 |
 | `tests/acl2/config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 95 | 0 | 0 |
-| `tests/acl2/consumer-local-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
-| `tests/acl2/consumer-owner-local-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 16 | 0 | 0 |
+| `tests/acl2/consumer-local-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
+| `tests/acl2/consumer-owner-local-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 26 | 0 | 0 |
 | `tests/acl2/consumer-position-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 36 | 8 | 0 |
 | `tests/acl2/consumer-store-events-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 6 | 1 | 0 |
 | `tests/acl2/consumer-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 4 | 0 |

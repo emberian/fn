@@ -238,7 +238,7 @@ publication path must exercise refusal and ambiguity around its
 `record-linked`, `record-attempted`, `record-durable`, `record-completing`,
 `record-staging-cleaned`, `finish-consumed` and `finish-durable` process-death
 cuts, plus recovery cuts. The first local owner command source now runs through
-`fn-owner-consumer-local-{bootstrap,register,ack,position,unregister}` in
+`fn-owner-consumer-local-{bootstrap,register,ack,position,poll,unregister}` in
 `host/owner-host.lisp`, which calls `fn-col-*` over the live owner. The
 `FNCT` kind-4/5 codec and CLI plan in `books/consumer-local-control.lisp`
 carry bounded request/reply bytes over the existing mode-0600 Unix control
@@ -256,6 +256,24 @@ its uniqueness are host trust assumptions, not ACL2 theorems. A lost
 post-submission reply is uncertain and `position` recovers
 the recorded declaration. This source route still needs a combined saved
 image and process-death test before it can be claimed served.
+
+The local `consumer poll CONTROL ID CURSOR_OUT REPORT_OUT` source selector
+examines at most 16 consecutive committed Store events and stops at the first
+article in the registered historical group query. It returns an exact fncu
+cursor at the scanned prefix and either empty report bytes or one exact
+ACL2-encoded `fn-r` legacy article / `fn-e` accepted-article event. The
+schema-1 composite event includes the received article, separate bound exact
+authored source and identity, and historical verdict; legacy events retain
+their explicit version and make no source-authorship claim. The FNCT kind-6
+reply has a separate 196,963-octet payload ceiling, within the 4,194,304-octet
+underlying frame payload ceiling; ordinary control requests retain their smaller cap.
+Its cursor and report lengths are checked independently. Poll leaves the
+durable consumer position unchanged; only a subsequent `ack` writes progress.
+The current list-backed selector copies a 16-event window after a positional
+walk of at most the configured Store transaction limit, so its pessimistic
+work is that limit plus 16 event steps per poll, not constant-time lookup.
+The native saved-image positive fetch/advancing-ack and Mini inbox/outbox join
+remain separate evidence obligations.
 
 That **local-owner profile** pins one OS owner principal inside ACL2; its
 query is exact historical membership in one group that is configured at

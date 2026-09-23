@@ -842,6 +842,8 @@ client, which can issue POSITION after reconnecting."
                  (fnn-owner-core 'fn-owner-consumer-local-ack first))
                 (:position
                  (fnn-owner-core 'fn-owner-consumer-local-position first))
+                (:poll
+                 (fnn-owner-core 'fn-owner-consumer-local-poll first))
                 (:unregister
                  (fnn-owner-core 'fn-owner-consumer-local-unregister first))
                 (otherwise '(:refused :operation))))
@@ -853,6 +855,12 @@ client, which can issue POSITION after reconnecting."
             (unless (fnn-octet-list-p token)
               (fnn-fault "ACL2 returned malformed consumer position"))
             (list :consumer-reply :accepted token)))
+         (:poll
+          (let ((token (second proposal)) (report (third proposal)))
+            (unless (and (fnn-octet-list-p token)
+                         (fnn-octet-list-p report))
+              (fnn-fault "ACL2 returned malformed consumer poll"))
+            (list :consumer-poll-reply :accepted token report)))
          (:no-op
           (let ((token (fnn-core 'fn-cp-cursor-encode (second proposal))))
             (unless (fnn-octet-list-p token)

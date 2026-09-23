@@ -1647,7 +1647,7 @@
         "planning/evidence/manifests/certify-20260923T213301Z-209515.json",
         "planning/experiments/e1-e2-v1-traces.json"
       ],
-      "note": "Selected v1 experiment, not a v0 gate. The finite cursor/event kernel and Store completed-prefix model are certified. The local mode-0600 owner command source and ACL2 codec are scoped certified but not yet saved-image qualified; it has no article poll/fetch. Remote authenticated poll/ack/rebase, native crash refinement, bounded metadata charge, checkpoint/clone integration, consumer-owned database, and the executed two-store exchange remain open; adversarial E2 traces are specifications awaiting a runner."
+      "note": "Selected v1 experiment, not a v0 gate. The finite cursor/event kernel and Store completed-prefix model are certified. The local mode-0600 owner declaration commands have saved-image qualification on a prior source; a new 16-event bounded poll/source report selector and kind-6 cursor/report codec have scoped ACL2 tests but still need a combined native image and positive advancing-ack test. Remote authenticated poll/ack/rebase, native crash refinement, bounded metadata charge, checkpoint/clone integration, consumer-owned database, and the executed two-store exchange remain open; adversarial E2 traces are specifications awaiting a runner."
     }
   ]
 }

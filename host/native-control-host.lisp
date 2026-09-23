@@ -71,6 +71,19 @@
   (declare (xargs :mode :program))
   (fn-ncl-reply-decode octets))
 
+(defun fn-native-control-host-consumer-poll-reply-encode
+    (status cursor report)
+  (declare (xargs :mode :program))
+  (fn-ncl-poll-reply-encode status cursor report))
+
+(defun fn-native-control-host-consumer-poll-max-frame ()
+  (declare (xargs :mode :program))
+  (+ *fn-frame-overhead-octets* *fn-ncl-poll-max-payload*))
+
+(defun fn-native-control-host-consumer-poll-reply-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-ncl-poll-reply-decode octets))
+
 (defun fn-native-control-host-consumer-cli-plan (command argv)
   (declare (xargs :mode :program))
   (fn-ncl-cli-plan command argv))
