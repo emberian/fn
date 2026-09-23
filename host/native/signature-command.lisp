@@ -173,9 +173,12 @@ A valid carrier does not establish topic anchoring or report admission."
   (unless (= (length args) 2)
     (error 'fnn-usage-error
            :message "usage: fn consumer-project CURSOR.fncu ACCEPTED.fn-e"))
-  (let* ((cursor (fnn-octet-list (fnn-read-regular-bounded (first args) 346)))
+  (let* ((cursor (fnn-octet-list
+                  (fnn-read-regular-bounded
+                   (first args) (fnn-core 'fn-cpj-max-cursor-octets))))
          (event (fnn-octet-list
-                 (fnn-read-regular-bounded (second args) 196608)))
+                 (fnn-read-regular-bounded
+                  (second args) (fnn-core 'fn-cpj-max-event-octets))))
          (projected (fnn-core 'fn-cpj-project cursor event)))
     (unless (eq (first projected) :ok)
       (fnn-out "fn-consumer-project-refused-v1 ~(~a~)" (second projected))

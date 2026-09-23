@@ -28,7 +28,7 @@ in incremental run `run-20260923T225942Z-cb54`, manifest
 content-matched dependencies, two certified roots). The witness uses a
 constructed signed-carrier composite and refuses a wrong cursor position,
 legacy parent, malformed parent, wrong authored identity and oversized
-cursor. `make check` passed at these bytes. `fn-cpj-project` is an admitted
-executable definition, not a guard-verified theorem; the included
-`fn-cp-cursor-decode` guard is not verified. No native image containing this
-verb has yet been built or run.
+cursor. `make check` passed at these bytes. `fn-cpj-project` was admitted as
+an executable definition in this source-matched run; its guard is a separate
+obligation. Current integrated `fn-cp-cursor-decode` has a verified guard.
+No native image containing this verb has yet been built or run.
