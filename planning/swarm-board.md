@@ -143,3 +143,32 @@ while its preservation packet awaits E2. Initial source inspection shows the
 old no-any-submission formulation fails when AUTHINFO grants a transit peer
 role. The meaningful local-POST safety property must allow authorized transit;
 a reachable witness and explicit corrected contract are required.
+
+## Native checkpoint and continuing work
+
+`884e4816` has a built developer image with passed full hybrid-author, indexed
+reader/restart and topic-inspection suites. Evidence is
+[native-reader-884e4816](evidence/native-reader-884e4816-2026-09-23.md).
+Mini P2 portable authorship passed on the same image; its archive is forthcoming.
+`stamp_review` reuses it for isolated INN/live-config and applicable native
+matrix coverage. Do not rebuild for that campaign or disturb the live node.
+
+Indexed-open source through `ceed4b9e` separately passed all Makefile roots
+in hbox `run-20260923T203850Z-16b5`, 29 certified / 483 cached; the earlier
+image excludes that cost optimization. Root static check is recorded under
+`build/launch-20260923/indexed-open-check.log`.
+
+Next integration packets remain active: K6 source `14d08cdb` adds actual
+pair-10 crash/decoder provenance and fixes the typed Store-event sequence
+accessor; T8/T17 colleagues compose exact pin cleanup and historical read
+preservation; E2 colleagues close a runaway resolution proof before the
+consumer crash-prefix relation; A3's native return receipt peer mismatch is
+fixed in `7e62af7c` and awaits its combined image. A3's five fault tests passed
+on the preceding image, which still refuses the happy-path receipt.
+
+P3 will add folded field rendering/decoding and coherent signed-envelope
+bounds for its full maximum roster, rather than silently reducing the profile.
+Current 998-octet physical line and 8192-octet header limits do not fit every
+maximal codec value after the mandatory hybrid carrier. The short-duplicate
+native witness now reaches actual topic rejection; the earlier oversize
+negative remains recorded separately.
