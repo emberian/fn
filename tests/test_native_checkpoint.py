@@ -110,6 +110,16 @@ class NativeCheckpointTests(unittest.TestCase):
         self.native("checkpoint", "clone", source, target,
                     "incarnation-another", expected=run_store.EXIT_REFUSED)
 
+        # Publication has not happened at this cut.  The abandoned sibling
+        # staging tree remains fenced, and the source remains recoverable.
+        prepublication = self.base / "clone-prepublication"
+        self.stopped_then_killed(
+            ("checkpoint", "clone", source, prepublication,
+             "new-before-publication"), "clone-fence-durable")
+        self.assertFalse(prepublication.exists())
+        self.assertIn("articles=1",
+                      self.native("store", source, "recover").stdout)
+
         for point in ("clone-published", "clone-rollover-durable"):
             with self.subTest(point=point):
                 destination = self.base / point
@@ -126,6 +136,19 @@ class NativeCheckpointTests(unittest.TestCase):
                               self.native("store", destination, "recover").stdout)
                 packed = self.native("checkpoint", "pack", destination)
                 self.assertIn("records=3", packed.stdout)
+
+        # Process death after unlink is safe because the independent reopen
+        # already confirmed the durable rollover.  A power-loss claim still
+        # relies on the subsequent parent-directory fsync and OS contract.
+        unlinked = self.base / "clone-fence-unlinked"
+        self.stopped_then_killed(
+            ("checkpoint", "clone", source, unlinked, "new-after-unlink"),
+            "clone-fence-unlinked")
+        self.assertFalse((unlinked / "clone-pending.fnce").exists())
+        self.assertIn("articles=1",
+                      self.native("store", unlinked, "recover").stdout)
+        self.assertIn("records=3",
+                      self.native("checkpoint", "pack", unlinked).stdout)
 
     def test_native_and_python_frames_cross_open_byte_identically(self):
         source = self.initialized("source")
