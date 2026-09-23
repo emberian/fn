@@ -122,3 +122,14 @@ affected replay/publication roots passed selected persvati run
 `run-20260923T203900Z-dc90`,
 [manifest](manifests/certify-20260923T203907Z-4069328.json).
 The corrected trust predicate has not yet run in a combined native image.
+
+The same `4e7dd362` developer image ran five independent native fault cases
+from `tests/test_bp_node_native.py` with `FN_ACL2` at
+`/tank/fn/toolchains/w28/acl2-literal-4g`, the source-matched image, and
+OpenSSL 3.5.8. The conflicting return-job, FNRJ decision-death, kind-7
+death, durable outbox-death, and ambiguous kind-5 publication tests all
+passed (5/5, 74.319 seconds). These cases do not exercise the corrected
+receipt trust predicate or prove sender pin release. The image's source was
+`4e7dd362`; the test driver was the tracked source at `7e62af7c` copied to
+`/tmp/test_bp_node_native_a3.py` on hbox, with only its marker assertion
+changed since that image.
