@@ -764,7 +764,11 @@ class InnLab(deploy_gate.DeployGate):
             "permits a relay to change it (Path, Xref)", ("",)),
         "operator-post-feeds-inn": (
             "an article submitted through `operator post` reaches innd through "
-            "fn's outbound feed", ("",)),
+            "fn's outbound feed, injected: Path naming fn, Injection-Date and "
+            "Injection-Info", ("",)),
+        "fn-post-from-invalid-441": (
+            "a POST whose From names no address (`From: yue`) draws 441 from fn "
+            "and is not served (RFC 5536 3.1.2)", ("",)),
         "inn-transfer-235": ("a hand-made IHAVE into innd draws 335 then 235", ("",)),
         "inn-duplicate-435": (
             "a second IHAVE of an article innd holds draws 435", ("", "fn-article")),
