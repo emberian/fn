@@ -458,6 +458,8 @@
                      (list (pt-echo "239 " *pt-id1*))))
 (assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-t* (fn-peer-decision :want nil) :refused)
                      (list (pt-echo "439 " *pt-id1*))))
+(assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-t* (fn-peer-decision :want nil) :clock-unusable)
+                     (list (pt-echo "436 " *pt-id1*))))
 (assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-t* (fn-peer-decision :defer :busy) nil)
                      (list (pt-echo "436 " *pt-id1*))))
 ; The code classes innfeed acts on (retry: 431/436; drop: 437/439), on every
@@ -465,6 +467,7 @@
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :defer :busy) nil) 436))
 (assert-event (equal (fn-peer-transit-code :ihave (fn-peer-decision :defer :capacity) nil) 436))
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :want nil) :uncertain) 436))
+(assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :want nil) :clock-unusable) 436))
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :refuse :loop) nil) 439))
 (assert-event (equal (fn-peer-transit-code :ihave (fn-peer-decision :have :history) nil) 437))
 (assert-event (equal (fn-peer-transit-code :takethis (fn-peer-decision :want nil) :refused) 439))
@@ -479,6 +482,8 @@
                      (list (pt-reply "436 retry later; recovery pending"))))
 (assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-i* (fn-peer-decision :want nil) :refused)
                      (list (pt-reply "437 transfer rejected; refused by acceptance"))))
+(assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-i* (fn-peer-decision :want nil) :clock-unusable)
+                     (list (pt-reply "436 retry later; no usable clock reading"))))
 (assert-event (equal (fn-peer-transit-outcome-effects *pt-ps0* *pt-sub-i* (fn-peer-decision :have :history) nil)
                      (list (pt-reply "437 transfer rejected; duplicate"))))
 ; The remaining offer cells: 436 (defer at offer: the inflight limit) and

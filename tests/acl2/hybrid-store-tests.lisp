@@ -46,6 +46,26 @@
    *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
    :verified :verified (fn-clock-observation 1 841000000000 0 t))))
 (assert-equal
+ (fn-record-stamp
+  (fn-record-result-record
+   (fn-record-decode-exact
+    (fn-stxa-article-record
+     (fn-hsig-authorized-submission-event
+      2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
+      *hst-authored-source* '("example") "obligation" "subject" "release"
+      (fn-charge-for-payload (len *hst-authored-source*))
+      *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+      :verified :verified (fn-clock-observation 1 841000000000 0 t))))))
+ 841000000)
+(assert-equal
+ (fn-hsig-authorized-submission-event
+  2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
+  *hst-authored-source* '("example") "obligation" "subject" "release"
+  (fn-charge-for-payload (len *hst-authored-source*))
+  *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+  :verified :verified (fn-clock-observation 1 0 0 nil))
+ nil)
+(assert-equal
  (fn-hsig-authorized-submission-event
   2 3 4 4 *hst-snapshot* "<conflict@example.invalid>"
   *hst-authored-source* '("example") "obligation" "subject" "release"
