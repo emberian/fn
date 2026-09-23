@@ -317,6 +317,19 @@ class MergeGateTests(unittest.TestCase):
             deps = green_check.dependents(root, report, ["books/dep"])
             self.assertEqual(deps, {"books/top": ["books/dep"]})
 
+    def test_host_include_is_a_dependency_not_an_uncertifiable_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            book(root, "books/dep", '(in-package "ACL2")')
+            book(root, "host/helper", '(in-package "ACL2")\n'
+                 '(include-book "../books/dep")\n')
+            book(root, "books/top", '(in-package "ACL2")\n'
+                 '(include-book "../host/helper")\n')
+            report = green_check.audit(root, roots=["books/top"])
+            self.assertIn("host/helper", report["books_by_verdict"])
+            self.assertEqual(green_check.dependents(root, report, ["books/dep"]),
+                             {"books/top": ["books/dep"]})
+
     def test_the_gate_is_green_only_when_every_row_is_green(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

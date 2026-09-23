@@ -32,10 +32,14 @@ selected stamp test closure passed in
 `build/acl2/certify-20260923T161451Z-1543548` found one stale acceptance
 fixture and the optimized prepare mismatch; the repair run
 `build/acl2/certify-20260923T161928Z-1585422` passed all five affected roots.
-`python3 tools/green_check.py --changed-since 24a5df6b41e8885f992610cbcfc267c0dbfdb17c --summary`
-then reported 94 changed books, 229 books including one, and zero not green at
-the bytes this lane carries. Manifests record each source digest and certificate
-provenance. `make check` passed after `python3 tools/ledger.py --write`.
+The earlier source-only green check reported 94 changed books, 229 books
+including one, and zero not green, but this missed moved dependency bytes. The
+dependency-aware gate (`84a42c63`) found 120 certifiable stale roots after
+excluding six host include files that cannot be requested as independent ACL2
+roots. Their bytes remain in each dependent book's closure key. Incremental
+recertification is in progress; this lane does not yet claim the strict merge
+gate green. Manifests record each source digest and certificate provenance.
+`make check` passed after `python3 tools/ledger.py --write`.
 
 The independent cbor2 6.1.4 probe passed 39/39 cases; its raw manifest is
 `build/cbor-interop/run-20260923T150521Z-82870/manifest.json` (SHA-256
