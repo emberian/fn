@@ -584,7 +584,8 @@ def parse_progress(output: str) -> dict[str, str]:
 def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
          timeout_seconds: int = DEFAULT_WAIT_SECONDS,
          cache: str | None = None,
-         collect: Callable[[str, str, Path, Path, str | None], None] | None = None
+         collect: Callable[[str, str, Path, Path, str | None], None] | None = None,
+         remote: str | None = None,
          ) -> int:
     """Block until the remote run writes its status file, then fetch evidence.
 
@@ -601,7 +602,11 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
     """
     collect = collect or fetch
     started = time.monotonic()
-    remote = remote_root(root, identifier)
+    # `--remote-root` names the gate the run lives in; without it the run
+    # record's remote path decides.  Until 2026-09-23 this line ignored the
+    # override and every wait on a run under another gate read a status file
+    # that did not exist there, so it reported the run running forever.
+    remote = remote_root(root, identifier, remote)
     cache = cache or run_record(root, identifier).get("cache")
     while True:
         progress = parse_progress(ssh(host, progress_script(remote, identifier),
@@ -810,7 +815,9 @@ def main(argv: list[str] | None = None) -> int:
                 parser.error("wait takes exactly one run id")
             return wait(arguments.host, arguments.rest[0], root,
                         arguments.poll_seconds, arguments.wait_seconds,
-                        arguments.cache)
+                        arguments.cache,
+                        remote=(str(expand_remote(arguments.host, arguments.remote_root))
+                                if arguments.remote_root else None))
         remote = (expand_remote(arguments.host, arguments.remote_root)
                   if arguments.remote_root else root)
         return status(arguments.host, remote)
