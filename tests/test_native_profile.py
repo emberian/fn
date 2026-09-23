@@ -44,7 +44,8 @@ def environment():
     for name in ("FN_HOST", "FN_NATIVE_CONTROL_TEST_STOP",
                  "FN_NATIVE_CONTROL_FAULT", "FN_NATIVE_POST_FAULT",
                  "FN_NATIVE_OWNER_TEST_SIGTERM",
-                 "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"):
+                 "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP",
+                 "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"):
         env.pop(name, None)
     return env
 

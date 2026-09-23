@@ -377,6 +377,16 @@ ACL2 framer."
     (loop
       (multiple-value-bind (word command)
           (fnn-feed-reply-step service link input now)
+        ;; Developer image only: fnn-feed-reply-step has crossed the FNFD
+        ;; append/fsync barrier for :feed-sent. Stop this worker before its
+        ;; TAKETHIS/article bytes reach the protected socket, so a test can
+        ;; kill the process at an unresolved attempt that fn-feed-restart
+        ;; expresses. Production images reject this selector at startup.
+        (when (and (eq word :send)
+                   (string= (or (fnn-developer-selector
+                                 "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT") "")
+                            "1"))
+          (fnn-control-stop-calling-thread))
         (when (> (length command) 0)
           (fnn-feed-send link command))
         (when (fnn-feed-stoppingp runtime) (return))
