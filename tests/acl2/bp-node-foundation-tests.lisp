@@ -16,17 +16,27 @@
    (fn-bpb-bundle-blocks *bpnf-bundle*)
    (fn-bpb-payload-block (fn-bpn-config-crc-type *bpnf-config*) '(9 2 3 4))))
 (defconst *bpnf-wire* (fn-bpb-encode *bpnf-bundle*))
-(defconst *bpnf-ingress-p* (list :cl 1 1 *bpnf-peer* '(112) 0))
-(defconst *bpnf-ingress-q* (list :cl 2 1 *bpnf-peer* '(113) 0))
+(defconst *bpnf-ingress-p* (list :cl (cons 1 1) 1 *bpnf-peer* '(112) 0))
+(defconst *bpnf-ingress-q* (list :cl (cons 2 1) 1 *bpnf-peer* '(113) 0))
 (defconst *bpnf-base* (fn-bpn-initial-machine-state *bpnf-config* 4 1048576))
 (defconst *bpnf-s0* (fn-bpnf-state *bpnf-base* nil nil nil nil nil nil 3 0))
 
 (assert-event (fn-bpb-bundlep *bpnf-bundle*))
+(assert-event (fn-bpnf-cl-ingressp *bpnf-ingress-p*))
+(assert-event (not (fn-bpnf-cl-ingressp
+                    (list :cl 1 1 *bpnf-peer* '(112) 0))))
 (assert-event (fn-bpb-bundlep *bpnf-changed*))
 (assert-event (equal (fn-bpb-bundle-id *bpnf-bundle*)
                      (fn-bpb-bundle-id *bpnf-changed*)))
 (assert-event (not (equal (fn-bpnf-immutable *bpnf-bundle*)
                           (fn-bpnf-immutable *bpnf-changed*))))
+(assert-event
+ (equal (fn-bpnf-answer-effects
+         (fn-bpnf-step *bpnf-s0*
+                        (list :receive-bundle *bpnf-bundle* *bpnf-wire*
+                              (list :cl 1 1 *bpnf-peer* '(112) 0))))
+        (list (list :receive-answer (list :cl 1 1 *bpnf-peer* '(112) 0)
+                    '(:refused :invalid-bundle)))))
 (assert-event (equal (fn-bpnf-receive-decision nil *bpnf-ingress-p* *bpnf-bundle*)
                      :fresh))
 (assert-event
