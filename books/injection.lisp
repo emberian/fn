@@ -41,6 +41,7 @@
 
 (in-package "ACL2")
 (include-book "article-fields")
+(include-book "mailbox")
 (include-book "clock")
 (local (include-book "arithmetic/top" :dir :system))
 ; books/clock.lisp withdraws its observation recognizer at export (bp CHANGE,
@@ -541,6 +542,18 @@
   (declare (xargs :guard (fn-article-syntax-p article)))
   (null (fn-article-get-headers article name)))
 
+; RFC 5536 section 3.1.2: From is an RFC 5322 mailbox-list (books/mailbox.lisp,
+; the bounded recognizer).  Presence alone was checked until 2026-09-22, and
+; `From: yue' was injected and served (planning/evidence/agents-on-hbox-
+; 2026-09-22.md).  Read only after :from-missing and :from-duplicate, so the
+; field is the one From field.
+(defun fn-inj-from-validp (article)
+  (declare (xargs :guard (fn-article-syntax-p article)))
+  (let ((fields (fn-article-get-headers article *fn-inj-from-name*)))
+    (and (consp fields)
+         (fn-article-fieldp (car fields))
+         (fn-mbx-mailbox-listp (fn-article-field-unfolded-value (car fields))))))
+
 (defun fn-inj-memberp (x xs)
   (declare (xargs :guard t))
   (if (consp xs)
@@ -564,6 +577,7 @@
     :injection-date-present)
    ((fn-inj-absentp article *fn-inj-from-name*) :from-missing)
    ((not (fn-inj-single-fieldp article *fn-inj-from-name*)) :from-duplicate)
+   ((not (fn-inj-from-validp article)) :from-invalid)
    ((fn-inj-absentp article *fn-inj-subject-name*) :subject-missing)
    ((not (fn-inj-single-fieldp article *fn-inj-subject-name*))
     :subject-duplicate)
@@ -592,6 +606,65 @@
      (fn-inj-append
       (if generate-id (fn-inj-message-id-line msgid) nil)
       (if generate-date (fn-inj-date-line date) nil))))))
+
+; -----------------------------------------------------------------------------
+; A stored article that IS an injection of a source
+;
+; `fn-inj-reinjectionp stored source agent msgid' says: `stored' is exactly
+; the Path line this agent writes, an Injection-Date line with some 31-octet
+; date, the Injection-Info line this agent writes, then optionally the
+; Message-ID line of `msgid' and optionally a Date line with that same date,
+; then `source' octet for octet.  That is the shape of every article
+; fn-inj-decide injects (fn-inj-injected-article-is-a-reinjection-of-its-
+; source, books/injection-invariants.lisp), for every clock reading.
+;
+; It is what makes a retry of one proto-article recognisable after the clock
+; has moved: books/owner.lisp `fn-own-operator-decision' offers the stored
+; octets again, and the store answers that Message-ID's duplicate, where a
+; fresh injection would differ in its Injection-Date and be a conflict.  A
+; posting agent that supplies its Message-ID has an exact retry identity
+; (the header of this book); this is the same identity for the octets.
+
+(defun fn-inj-strip (prefix x)
+  ; x with `prefix' removed from its front, or :no.
+  (declare (xargs :guard t))
+  (if (consp prefix)
+      (if (and (consp x) (equal (car x) (car prefix)))
+          (fn-inj-strip (cdr prefix) (cdr x))
+        :no)
+    x))
+
+(defun fn-inj-take (n x)
+  (declare (xargs :guard t :measure (nfix n)))
+  (let ((n (nfix n)))
+    (if (or (zp n) (atom x)) nil
+      (cons (car x) (fn-inj-take (- n 1) (cdr x))))))
+
+(defun fn-inj-drop (n x)
+  (declare (xargs :guard t :measure (nfix n)))
+  (let ((n (nfix n)))
+    (if (or (zp n) (atom x)) x
+      (fn-inj-drop (- n 1) (cdr x)))))
+
+(defun fn-inj-tail-matchp (r date source)
+  (declare (xargs :guard t))
+  (or (equal r source)
+      (equal (fn-inj-strip (fn-inj-date-line date) r) source)))
+
+(defun fn-inj-reinjectionp (stored source agent msgid)
+  (declare (xargs :guard t))
+  (let* ((r1 (fn-inj-strip (fn-inj-path-line agent) stored))
+         (date (fn-inj-take 31 (fn-inj-drop (len *fn-inj-injection-date-field*)
+                                            r1)))
+         (r2 (fn-inj-strip (fn-inj-injection-date-line date) r1))
+         (r3 (fn-inj-strip (fn-inj-injection-info-line agent) r2))
+         (r4 (fn-inj-strip (fn-inj-message-id-line msgid) r3)))
+    (and (not (equal r1 :no))
+         (not (equal r2 :no))
+         (not (equal r3 :no))
+         (or (fn-inj-tail-matchp r3 date source)
+             (and (not (equal r4 :no))
+                  (fn-inj-tail-matchp r4 date source))))))
 
 (defun fn-inj-decide (source config observation)
   (declare (xargs :guard t))
@@ -694,12 +767,18 @@
 (verify-guards fn-inj-generated-message-id)
 (verify-guards fn-inj-single-fieldp)
 (verify-guards fn-inj-absentp)
+(verify-guards fn-inj-from-validp)
 (verify-guards fn-inj-memberp)
 (verify-guards fn-inj-groups-admissiblep)
 (verify-guards fn-inj-mandatory-reason)
 (verify-guards fn-inj-proto-reason)
 (verify-guards fn-inj-prefix)
 (verify-guards fn-inj-decide)
+(verify-guards fn-inj-strip)
+(verify-guards fn-inj-take)
+(verify-guards fn-inj-drop)
+(verify-guards fn-inj-tail-matchp)
+(verify-guards fn-inj-reinjectionp)
 
 ; ---------------------------------------------------------------------------
 ; Export theory.  The definitions are proof vocabulary for
@@ -724,7 +803,10 @@
           fn-inj-append fn-inj-path-line fn-inj-injection-info-line
           fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line
           fn-inj-generated-message-id fn-inj-single-fieldp fn-inj-absentp
+          fn-inj-from-validp
           fn-inj-memberp fn-inj-groups-admissiblep fn-inj-mandatory-reason
-          fn-inj-proto-reason fn-inj-prefix fn-inj-decide)))
+          fn-inj-proto-reason fn-inj-prefix fn-inj-decide
+          fn-inj-strip fn-inj-take fn-inj-drop fn-inj-tail-matchp
+          fn-inj-reinjectionp)))
 
 (in-theory (disable fn-inj-vocabulary))

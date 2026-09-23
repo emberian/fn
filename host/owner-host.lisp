@@ -453,9 +453,20 @@
                                       (fn-peer-submission-msgid decision)
                                     (fn-inj-decision-msgid decision))
                                   state))
+             ; A transit article is stored, served and fed on as
+             ; fn-peer-relayed-octets makes it: its Path updated with this
+             ; node's identity and its Xref removed (RFC 5537 3.6/3.7,
+             ; books/path-update.lisp).  These are the octets the host
+             ; digests and stores; fn-owner-transit-decide stages the same
+             ; function of the same octets (fn-peer-injection-arguments'
+             ; payload) and leaves it in fn-owner-transit-payload, which the
+             ; native drain compares with this before the store attempt.
              (state (f-put-global 'fn-owner-submit-octets
                                   (if transitp
-                                      (fn-peer-submission-octets decision)
+                                      (fn-peer-relayed-octets
+                                       (fn-owner-config state)
+                                       (fn-peer-submission-peer decision)
+                                       (fn-peer-submission-octets decision))
                                     (fn-inj-decision-octets decision))
                                   state))
              ; A transit submission's memberships are not in the submission:
@@ -469,16 +480,36 @@
                      ((fn-own-control-submissionp sub) :taken-control)
                      (t :taken)))))))
 
-; The local CLI submits an already-authored article object.  This is one
-; owner event, not a call around the owner to the store bridge: ACL2 checks
-; the boundary, preserves the supplied octets exactly and queues the same
-; submission record fn-own-take-submission consumes for served POST.
+; The hybrid-signed author path and the BP application path submit an
+; already-authored article object whose octets a signature or a journal
+; binds.  This is one owner event, not a call around the owner to the store
+; bridge: ACL2 checks the boundary, preserves the supplied octets exactly and
+; queues the same submission record fn-own-take-submission consumes for
+; served POST.
 (defun fn-owner-control-submit (msgid-octets group-octets payload state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
          (result (fn-own-control-submit-result owner msgid-octets
                                                 group-octets payload))
          (state (fn-owner-step (list :control-submit msgid-octets
+                                     group-octets payload)
+                               state)))
+    (value result)))
+
+; `fn operator CONFIG post': the operator is a posting agent and this node
+; its injecting agent (RFC 5537 section 3.5).  books/owner.lisp
+; fn-own-operator-submit injects the payload under the owner's posting
+; configuration and the owner's current clock reading, refuses without one
+; (D10-a), and resubmits the stored article when the same octets were
+; already injected (fn-own-operator-retry-resubmits-the-stored-injection).
+; The injected octets are what fn-owner-take then leaves in
+; fn-owner-submit-octets; the host stores those, never the payload it read.
+(defun fn-owner-operator-submit (msgid-octets group-octets payload state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (result (fn-own-operator-submit-result owner msgid-octets
+                                                 group-octets payload))
+         (state (fn-owner-step (list :operator-submit msgid-octets
                                      group-octets payload)
                                state)))
     (value result)))
@@ -681,6 +712,16 @@
                  (state (f-put-global 'fn-owner-transit-evidence
                                       (fn-record-string-octets
                                        (fn-peer-evidence peer cfg))
+                                      state))
+                 ; (nth 2 args) is the payload fn-node-prepare is given:
+                 ; fn-peer-relayed-octets of the received octets
+                 ; (fn-peer-injection-arguments-stages-the-relayed-octets).
+                 ; fn-owner-take left the same function of the same octets in
+                 ; fn-owner-submit-octets; the native drain compares the two.
+                 (state (f-put-global 'fn-owner-transit-payload
+                                      (if (equal (fn-peer-decision-kind d) :want)
+                                          (nth 2 args)
+                                        nil)
                                       state)))
             (value (fn-peer-decision-kind d))))))))
 

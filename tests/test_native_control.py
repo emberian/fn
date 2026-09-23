@@ -49,6 +49,20 @@ def free_port():
         return probe.getsockname()[1]
 
 
+# What `operator post` stores (books/owner.lisp fn-own-operator-submit): the
+# injecting agent's Path, Injection-Date and Injection-Info lines, then the
+# submitted octets unchanged.  These stores set no `path-identity`, so the
+# agent is the owner's fallback identity (host/owner-host.lisp
+# `*fn-owner-agent*').  The Injection-Date is the owner's clock, so only its
+# RFC 5322 shape is fixed here.
+INJECTION_PREFIX = re.compile(
+    rb"\APath: fn\.example\.invalid!not-for-mail\r\n"
+    rb"Injection-Date: (Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} "
+    rb"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} "
+    rb"\d{2}:\d{2}:\d{2} \+0000\r\n"
+    rb"Injection-Info: fn\.example\.invalid\r\n")
+
+
 class NativeControlCutGateTests(unittest.TestCase):
     """Every developer selector passes one gate, at process start.
 
@@ -127,6 +141,12 @@ class NativeControlTests(unittest.TestCase):
                 b"Date: Mon, 21 Sep 2026 09:00:00 +0000\r\n"
                 b"Message-ID: " + message_id.encode("ascii") +
                 b"\r\n\r\nexact payload bytes\r\n")
+
+    def assert_injected(self, stored, payload):
+        """`stored' is `payload' injected by this node: RFC 5537 3.5."""
+        prefix = INJECTION_PREFIX.match(stored)
+        self.assertIsNotNone(prefix, stored[:160])
+        self.assertEqual(stored[prefix.end():], payload)
 
     def start_owner(self, extra_env=None, image=None):
         env = environment()
@@ -214,7 +234,7 @@ class NativeControlTests(unittest.TestCase):
 
         observed = self.inspect(message_id)
         self.assertEqual(observed.returncode, 0, observed.stderr.decode())
-        self.assertEqual(observed.stdout, payload)
+        self.assert_injected(observed.stdout, payload)
         absent = self.inspect_store(second_store, message_id)
         self.assertNotEqual(absent.returncode, 0)
 
@@ -272,7 +292,7 @@ class NativeControlTests(unittest.TestCase):
         for message_id, payload in zip(ids, payloads):
             observed = self.inspect(message_id)
             self.assertEqual(observed.returncode, 0, observed.stderr.decode())
-            self.assertEqual(observed.stdout, payload)
+            self.assert_injected(observed.stdout, payload)
 
         restarted = self.start_owner()
         try:
@@ -374,7 +394,7 @@ class NativeControlTests(unittest.TestCase):
 
         observed = self.inspect(message_id)
         self.assertEqual(observed.returncode, 0, observed.stderr.decode())
-        self.assertEqual(observed.stdout, payload)
+        self.assert_injected(observed.stdout, payload)
         restarted = self.start_owner()
         try:
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as client_socket:
@@ -434,6 +454,47 @@ class NativeControlTests(unittest.TestCase):
         self.assertEqual(injected.returncode, EXIT_USAGE, injected.stderr.decode())
         self.assertIn(b"FAULT argument", injected.stderr)
         self.assertEqual(self.store_digest(), before)
+
+    def test_operator_post_is_injected_and_refuses_what_post_refuses(self):
+        """`operator post` injects as the served POST does (INN lab of
+        2026-09-22, finding 1), and refuses what injection refuses: a From
+        with no address (RFC 5536 3.1.2; the agents run's `From: yue`), a
+        supplied Path, and a Message-ID the article does not carry."""
+        owner = self.start_owner()
+        try:
+            message_id = "<native-control-injected@example.invalid>"
+            payload = self.article(message_id)
+            accepted = self.post(message_id, payload)
+            self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
+
+            yue_id = "<native-control-yue@example.invalid>"
+            yue = self.article(yue_id).replace(b"From: author@example.invalid",
+                                              b"From: yue")
+            refused = self.post(yue_id, yue)
+            self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+
+            path_id = "<native-control-path@example.invalid>"
+            refused_path = self.post(path_id, b"Path: elsewhere!not-for-mail\r\n"
+                                     + self.article(path_id))
+            self.assertEqual(refused_path.returncode, 1, refused_path.stderr.decode())
+
+            other = self.post("<native-control-other@example.invalid>",
+                              self.article("<native-control-named@example.invalid>"))
+            self.assertEqual(other.returncode, 1, other.stderr.decode())
+            owner.send_signal(signal.SIGTERM)
+            self.assertEqual(owner.wait(timeout=30), 0,
+                             owner.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if owner.poll() is None:
+                owner.kill()
+                owner.wait(timeout=10)
+            owner.stdout.close()
+            owner.stderr.close()
+        observed = self.inspect(message_id)
+        self.assertEqual(observed.returncode, 0, observed.stderr.decode())
+        self.assert_injected(observed.stdout, payload)
+        for absent in (yue_id, path_id, "<native-control-other@example.invalid>"):
+            self.assertNotEqual(self.inspect(absent).returncode, 0, absent)
 
     def test_disabled_posting_refuses_cli_and_served_post(self):
         with self.config.open("a", encoding="ascii") as stream:
