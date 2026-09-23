@@ -396,6 +396,8 @@ may or may not be durable."
 (defun fnn-bp-deliver-node
   (service conn session-counter xfer-id octets configured-peer)
   "Complete one transfer through the single FNBS machine owner."
+  (when (string= (or (fnn-developer-selector "FN_BP_TEST_DELIVER_FAULT") "") "1")
+    (fnn-fault "bp: injected receive core fault"))
   (let* ((tally (fnn-bps-tally service))
          (ingress (fnn-bps-tcpcl-ingress
                    service conn session-counter xfer-id configured-peer)))
