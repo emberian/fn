@@ -22,13 +22,14 @@ independent NNTP client read the same article bytes. The [agent exercise](planni
 records the exchange. The [deployed node record](planning/evidence/node-hbox-da5fd8cb-2026-09-23.md)
 names the later image that preserved those articles through an upgrade.
 
-Newer [source-pinned image tests](planning/evidence/t2-native-daa6c15e-2026-09-23.md)
-exercise posting, recovery cuts, protected peering, and an acceptance-stamp
-migration in isolation. They are evidence about that tested image, not about
-the older running node or a finished release. The full BP receive and receipt
-path, portable author verification, and selected legacy-checkpoint migration
-remain work in progress. [Current work](planning/now.md) distinguishes source,
-image, and deployed-node progress.
+Newer isolated images have exchanged articles between hbox and persvati over
+[protected NNTP connections](planning/evidence/native-two-host-path-1836ed01-2026-09-23.md),
+and preserved [exact-source author signatures and their recorded verdicts](planning/evidence/native-t8-t10a-295bbe35-2026-09-23.md)
+through reopening a store. These exercises qualify particular images and
+boundaries. The joined BP delivery/receipt path, durable agent consumption,
+and the remaining crash-correspondence proofs are still being built.
+[Current work](planning/now.md) distinguishes source, image, and deployed-node
+progress; there is no finished release yet.
 
 High assurance is the aim. It means proving properties of the functions the
 server actually calls, stating their assumptions, and testing the boundaries

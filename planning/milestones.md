@@ -3,15 +3,20 @@ Mini/Bread OS interfaces. [Current work](now.md) names integrated source,
 qualified image scope and remaining release obligations; the
 [swarm board](swarm-board.md) names cooperating implementation lanes. Frozen
 `329a51a2` passed scoped native migration, storage, peering and process-death
-tests; its cross-host attempt exposed a saved-library relocation defect now
-being repaired. It is not the final v0 release freeze. The live node remains
+tests; the saved-library relocation defect it exposed is repaired and
+`1836ed01` passed protected hbox–persvati exchange. It is not the final v0
+release freeze. The live node remains
 `da5fd8cb`. Native BP/TCPCL/contact integration, durable author and consumer
 bindings, historical live configuration, pinned reader verdicts, served
 indexes, byte-level durability and a human client advance concurrently.
 The [OS integration study](dregg-os-integration-2026-09-23.md) proposes the
-next real Mini evidence and consumer experiments; P0 is being implemented in
-an isolated Mini worktree. The conditional K5 prefix theorem has landed;
-K0/K6/K8 and physical qualification retain their documented open scope.
+next real Mini evidence and consumer experiments; P0's native export/verify
+and signed public fixture are complete, with P1's durable reply transaction
+under development in an isolated Mini worktree. The conditional K5 prefix
+and corrected K8 issued-link crash-scan theorems have landed; K0/K6 and
+physical qualification retain their documented open scope. The295 native
+image passed historical live configuration and T10a author/reopen tests;
+the reader/index union and BP clock-domain repair are being qualified.
 Release gates remain the [trajectory](plan-2026-09-22-trajectory.md), and
 image qualification proceeds alongside implementation under
 [how we work](how-we-work.md).
