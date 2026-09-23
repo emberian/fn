@@ -1,6 +1,6 @@
-;;; Durable outbound BP queue service.
+;;; Durable BP node service for outbound work and received FNBS custody.
 ;;;
-;;; Every decision is fn-bpn-step.  This adapter observes files, persistence
+;;; Every decision is fn-bpnf-step.  This adapter observes files, persistence
 ;;; barriers, sockets and TCPCL outcomes, then reports those observations back
 ;;; to the step function.  A TCPCL outcome never deletes bundle bytes or emits
 ;;; an fn archive/application receipt.
@@ -8,7 +8,8 @@
 (in-package "ACL2")
 
 (defstruct fnn-bps
-  root lifecycle tally state spool-lock lock-fd (stages nil) (outcome :accepted))
+  root lifecycle tally state spool-lock lock-fd (stages nil)
+  (next-session 0) (outcome :accepted))
 
 (defvar *fnn-bps-lifecycle-enumerations* 0)
 
@@ -46,7 +47,7 @@
              (string= (or (fnn-developer-selector "FN_BP_SERVICE_TEST_FAIL_SECOND_LIFECYCLE_ENUMERATION") "")
                       "1"))
     (fnn-fault "bp-service: lifecycle namespace was enumerated after recovery"))
-  (let* ((limit (fnn-core 'fn-bpn-host-lifecycle-max-namespace-entries)))
+  (let* ((limit (fnn-core 'fn-bpnf-namespace-max-entries)))
     (unless (and (integerp limit) (>= limit 0))
       (fnn-fault "bp-service: ACL2 returned an invalid lifecycle namespace bound"))
     (let* ((names
@@ -62,8 +63,8 @@
                   (fnn-indeterminate
                    "bp-service: lifecycle namespace cannot be enumerated: ~a" e)))
               #'string<))
-         (plan (fnn-core 'fn-bpn-host-lifecycle-namespace-plan names)))
-      (unless (eq (fnn-core 'fn-bpn-host-lifecycle-plan-ready-p plan) t)
+         (plan (fnn-core 'fn-bpnf-mixed-recovery-plan names)))
+      (unless (eq (fnn-core 'fn-bpnf-mixed-recovery-planp plan) t)
         (fnn-indeterminate "bp-service: ACL2 rejected lifecycle namespace"))
       (values names plan))))
 
@@ -78,6 +79,14 @@
         (unless record
           (fnn-indeterminate "bp-service: lifecycle record ~a is damaged" name))
         (push record records)))))
+
+(defun fnn-bps-read-kind-five-rows (service names)
+  (let ((limit (fnn-core 'fn-bpnf-stored-frame-limit))
+        (rows nil))
+    (dolist (name names (nreverse rows))
+      (let* ((path (fnn-join (fnn-bps-lifecycle service) name))
+             (raw (fnn-read-regular-bounded path limit)))
+        (push (list name (fnn-octet-list raw)) rows)))))
 
 (defun fnn-bps-sequence-ready (service has-records)
   (let* ((dir (fnn-join (fnn-bps-root service) "sequence"))
@@ -106,17 +115,21 @@
               :ready
             :fault))))))
 
-(defun fnn-bps-step (service event)
-  ;; Assurance subject: this is the host call to fn-bpn-step, with no sibling
-  ;; dispatcher between the native service and the proved transition.  The
-  ;; initial state is checked once at open.  The step-preservation theorem
-  ;; carries that invariant; check only the bounded event at this boundary.
-  (unless (eq (fnn-core 'fn-bpn-machine-eventp event) t)
-    (fnn-indeterminate "bp-service: malformed machine event"))
-  (let ((answer (fnn-core 'fn-bpn-step (fnn-bps-state service) event)))
+(defun fnn-bps-base (service)
+  (fnn-core 'fn-bpnf-base (fnn-bps-state service)))
+
+(defun fnn-bps-foundation-step (service event)
+  ;; The initial base-state invariant is checked once at open.  This checks
+  ;; only the bounded event before the exact guarded machine call.
+  (unless (eq (fnn-core 'fn-bpnf-host-eventp event) t)
+    (fnn-indeterminate "bp-service: malformed foundation event"))
+  (let ((answer (fnn-core 'fn-bpnf-step (fnn-bps-state service) event)))
     (setf (fnn-bps-state service)
-          (fnn-core 'fn-bpn-host-answer-state answer))
-    (fnn-core 'fn-bpn-host-answer-effects answer)))
+          (fnn-core 'fn-bpnf-answer-state answer))
+    (fnn-core 'fn-bpnf-answer-effects answer)))
+
+(defun fnn-bps-step (service event)
+  (fnn-bps-foundation-step service (list :base event)))
 
 (defun fnn-bps-record-path (service token)
   (fnn-join (fnn-bps-lifecycle service)
@@ -134,7 +147,7 @@
     (let* ((final-absent (if (fnn-lstat final) nil t))
            (operation
              (fnn-core 'fn-bpn-host-lifecycle-publication-authorize
-                       (fnn-bps-state service) token record
+                       (fnn-bps-base service) token record
                        (if (fnn-bps-lock-fd service) t nil)
                        final-absent)))
       (unless (eq (fnn-core
@@ -161,6 +174,35 @@
        (fnn-core
         'fn-bpn-host-lifecycle-publication-operation-publication operation)
        stage final dir frame :cleanup-directory dir))))
+
+(defun fnn-bps-persist-kind-five (service epoch operation-id held)
+  (let* ((dir (fnn-bps-lifecycle service))
+         (name (fnn-core 'fn-bpnf-stored-record-name epoch operation-id))
+         (final (fnn-join dir name))
+         (final-absent (if (fnn-lstat final) nil t))
+         (operation
+           (fnn-core 'fn-bpnf-publication-authorize
+                     (fnn-bps-state service) epoch operation-id held
+                     (if (fnn-bps-lock-fd service) t nil) final-absent)))
+    (when (equal operation '(:fault :fnbs-publication-codec))
+      (return-from fnn-bps-persist-kind-five (values :refused nil)))
+    (unless (eq (fnn-core 'fn-bpnf-publication-operationp operation) t)
+      (fnn-indeterminate
+       "bp-service: kind-5 publication authority refused the pending echo"))
+    (let* ((authorized-name
+             (fnn-core 'fn-bpnf-publication-operation-name operation))
+           (stage (fnn-join dir (format nil ".record-~d-~a"
+                                         (sb-posix:getpid) (fnn-random-hex 12))))
+           (frame (fnn-octets
+                   (fnn-core 'fn-bpnf-publication-operation-frame operation)))
+           (publisher
+             (fnn-core 'fn-bpnf-publication-operation-publisher operation)))
+      (unless (equal authorized-name name)
+        (fnn-fault "bp-service: ACL2 kind-5 name changed after authorization"))
+      (let ((outcome
+              (fnn-immutable-publish-effect
+               publisher stage final dir frame :cleanup-directory dir)))
+        (values outcome (and (eq outcome :durable) final))))))
 
 (defun fnn-bps-route-host (route) (fnn-octets-string (fnn-octets (second route))))
 (defun fnn-bps-route-port (route) (third route))
@@ -244,6 +286,59 @@
       (t nil)))
   service)
 
+(defun fnn-bps-receive (service ingress wire)
+  "Return the ACL2-selected TCPCL disposition after kind-5 custody settles."
+  (let* ((tally (fnn-bps-tally service))
+         (observation
+           (fnn-bp-observation (fnn-bp-tally-wall tally)
+                                (fnn-bp-tally-wall-error tally)))
+         (prepared
+           (fnn-core 'fn-bpnf-receive-wire-event
+                     (fnn-bp-tally-config tally) wire observation ingress)))
+    (unless (eq (fnn-core 'fn-bpnf-receive-wire-readyp prepared) t)
+      (return-from fnn-bps-receive (values prepared nil)))
+    (let* ((event (fnn-core 'fn-bpnf-receive-wire-event-value prepared))
+           (adu (fnn-core 'fn-bpb-payload (second event)))
+           (effects (fnn-bps-foundation-step service event))
+           (path nil))
+      (when (and (consp effects) (consp (car effects))
+                 (eq (caar effects) :persist))
+        (let* ((proposal (car effects))
+               (epoch (second proposal))
+               (operation-id (third proposal))
+               (held (fourth proposal)))
+          (unless (and (null (cdr effects)) (= (length proposal) 4))
+            (fnn-indeterminate "bp-service: malformed kind-5 publication effect"))
+          (multiple-value-bind (outcome final)
+              (fnn-bps-persist-kind-five service epoch operation-id held)
+            (setq path final
+                  effects (fnn-bps-foundation-step
+                           service (list :persist-result epoch operation-id
+                                         outcome))))))
+      (let ((result (fnn-core 'fn-bpnf-callback-result effects ingress path)))
+        (when (eq (first result) :uncertain)
+          (setf (fnn-bps-outcome service) :uncertain))
+        (when (eq (first result) :refused)
+          (unless (eq (fnn-bps-outcome service) :uncertain)
+            (setf (fnn-bps-outcome service) :refused)))
+        (values result adu)))))
+
+(defun fnn-bps-tcpcl-ingress
+  (service conn session-counter xfer-id configured-peer)
+  (let* ((negotiated
+           (fnn-core 'fn-tcl-session-negotiated (fnn-tclc-session conn)))
+         (announced
+           (fnn-core 'fn-tcl-negotiated-peer-node-id negotiated))
+         (peer-eid (fnn-core 'fn-bpn-host-eid announced))
+         ;; Only the configured, TCPCL-admitted peer can select a principal.
+         ;; An unconfigured announced EID is evidence, not authority.
+         (principal
+           (and configured-peer
+                (fnn-octet-list (fnn-string-octets configured-peer)))))
+    (fnn-core 'fn-bpnf-tcpcl-ingress
+              (fnn-bps-state service) session-counter xfer-id peer-eid
+              principal 0)))
+
 (defun fnn-bps-open (journal config wall wall-error)
   (let* ((root (fnn-bp-journal-dir journal))
          ; Shared journal ownership precedes cleanup and the lifecycle lock.
@@ -251,7 +346,7 @@
          (spool-lock (fnn-tcl-spool-acquire root))
          (life (fnn-join root "lifecycle"))
          (tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
-                                   :journal root))
+                                   :journal root :spool-lock spool-lock))
          (service nil))
     (handler-case
         (progn
@@ -273,36 +368,48 @@
                 (make-fnn-bps
                  :root root :lifecycle life :tally tally
                  :spool-lock spool-lock :lock-fd (fnn-bps-lock root)
-                 :state (fnn-core 'fn-bpn-host-machine-initial
+                 :state (fnn-core 'fn-bpnf-initial-state
                                   config
                                   (fnn-core 'fn-bpn-host-machine-max-jobs)
                                   (fnn-core 'fn-bpn-host-machine-max-octets))))
           (unless (eq (fnn-core 'fn-bpn-machine-invariantp
-                                (fnn-bps-state service)) t)
+                                (fnn-bps-base service)) t)
             (fnn-indeterminate "bp-service: invalid initial machine state"))
           (setf *fnn-bps-lifecycle-enumerations* 0)
           (multiple-value-bind (observed-names plan)
               (fnn-bps-namespace-plan service)
+            (declare (ignore observed-names))
             (let* ((record-names
-                     (fnn-core 'fn-bpn-host-lifecycle-plan-record-names plan))
+                     (fnn-core 'fn-bpnf-mixed-legacy-names plan))
+                   (received-names
+                     (fnn-core 'fn-bpnf-mixed-received-names plan))
+                   (legacy-observed
+                     (fnn-core 'fn-bpnf-mixed-legacy-observed plan))
                    (decoded (fnn-bps-read-records service record-names))
                    (recovery (fnn-core 'fn-bpn-host-lifecycle-recovery
-                                       observed-names decoded)))
+                                       legacy-observed decoded)))
               (unless (eq (fnn-core 'fn-bpn-host-lifecycle-recovery-ready-p
                                     recovery) t)
                 (fnn-indeterminate
                  "bp-service: lifecycle names do not bind decoded record tokens"))
               (let* ((records
                        (fnn-core 'fn-bpn-host-lifecycle-recovery-records recovery))
-                     (sequence (fnn-bps-sequence-ready service (and records t))))
+                     (rows (fnn-bps-read-kind-five-rows service received-names))
+                     (sequence (fnn-bps-sequence-ready service (and records t)))
+                     (event (fnn-core 'fn-bpnf-recover-auto-event
+                                      (fnn-bps-state service) records sequence rows)))
                 (setf (fnn-bps-stages service)
                       (fnn-core 'fn-bpn-host-lifecycle-recovery-stages recovery))
                 (fnn-bps-drive-effects
-                 service (fnn-bps-step service (list :restart records sequence)))
+                 service (fnn-bps-foundation-step service event))
                 (unless (eq (fnn-core 'fn-bpn-host-lifecycle-recovery-agrees-p
-                                      recovery (fnn-bps-state service)) t)
+                                      recovery (fnn-bps-base service)) t)
                   (fnn-indeterminate
                    "bp-service: recovered namespace and machine frontier disagree"))
+                (unless (eq (fnn-core 'fn-bpn-machine-invariantp
+                                      (fnn-bps-base service)) t)
+                  (fnn-indeterminate
+                   "bp-service: recovered base machine invariant failed"))
                 service))))
       (error (e)
         (if service
@@ -319,7 +426,7 @@
     (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
           for effects = (fnn-bps-step service (list :clock obs))
           while effects do (fnn-bps-drive-effects service effects)))
-  (dolist (peer (fnn-core 'fn-bpn-host-ready-peers (fnn-bps-state service)))
+  (dolist (peer (fnn-core 'fn-bpn-host-ready-peers (fnn-bps-base service)))
     (fnn-bps-drive-effects service (fnn-bps-step service (list :contact peer t))))
   service)
 
@@ -341,7 +448,7 @@
                 (work-octets (fnn-octet-list (fnn-string-octets work)))
                 (attempt-octets (fnn-octet-list (fnn-string-octets attempt)))
                 (existing (fnn-core 'fn-bpn-host-existing-sequence
-                                    (fnn-bps-state service) work-octets
+                                    (fnn-bps-base service) work-octets
                                     attempt-octets generation))
                 ;; Allocation has crossed W12's file and directory barriers
                 ;; before this sequence enters fn-bpn-step.

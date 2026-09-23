@@ -2276,6 +2276,22 @@ session in arrival order **among eligible candidates** until it is sent,
 expires or is deleted (RFC 9171 §5.4). The FIFO theorem, restated
 (review-2 §2.2), over the immutable `arrival` field (F-M):
 
+The native FNBS contact runner uses `fn-bpsc-contact-event` in
+`books/bp-contact-service.lisp` for a single peer/window tick. The CLI's
+`start-delay` and `end-delay` are offsets in milliseconds from that invocation's
+one monotonic observation, and ACL2 constructs and bounds the resulting
+window. They are not persistent absolute contact-plan timestamps; no epoch
+agreement is assumed across processes or reboot. The runner advances the
+machine's clock before consulting ready peers, opens a contact only when
+that peer is ready and the observation falls inside the inclusive window,
+and closes the contact after a bounded send batch. Its host caller is
+`fnn-command-bp-contact-tick` in `host/native/bp-contact.lisp`; effects go
+through the same `fnn-bps-step` and durable publisher as the normal BP
+service. The older FNWF `fn-sched-tick-step` cannot be called on the FNBS
+machine: its modeled `:durable` completion does not represent an observed
+FNBS publication outcome. This finite runner does not itself establish the
+multi-class fairness or return-receipt progress claims below.
+
 ```lisp
 (defthm fn-bpn-start-one-selects-the-least-arrival-among-eligible
   (implies (and (fn-bpn-lifecycle-invariantp st)
@@ -3248,3 +3264,31 @@ the slice that closes it.
 
 The first draft's F7 (`host/bp-release-owner-host.lisp:8` calling a function
 no book defined) is closed on `dev` by `9dd5e3a2` (§10).
+
+### Finite native A2 receive and recovery join (2026-09-23)
+
+The `bp receive` command opens one `fnn-bps` handle under the shared spool
+and FNBS lifecycle locks. The handle owns `fn-bpnf-step`; outbound events
+enter it as `(:base event)`. On startup, ACL2's mixed namespace plan separates
+legacy contiguous final names and kind-5 epoch/operation names in the same
+directory. The host reads bounded exact bytes once, and
+`fn-bpnf-recover-auto-event` supplies the recovery event to the actual step.
+A fault in either replay leg stops the service before listening.
+
+For one complete inbound TCPCL transfer, the host observes session and
+configured admission provenance; `fn-bpnf-receive-wire-event` applies the
+existing BP reception policy and constructs `:receive-bundle` only for the
+canonical exact wire. The step's `:persist` effect is authorized by
+`fn-bpnf-publication-authorize`; ACL2 supplies the kind-5 frame, final name,
+and journal publication initial state. The physical result is fed back as
+`(:persist-result epoch operation-id result)`. Only its matching durable
+completion or exact duplicate yields `(:accepted path-or-nil)` for TCPCL;
+refusal and uncertainty remain distinct. An uncertain operation remains
+fenced until recovery. The separate operator evidence namespace remains
+secondary to FNBS custody.
+
+This slice retains complete bundles and does not yet bind application
+dispatch, durable receipt handoff, or returned receipt release. Those are A3
+composition obligations; a TCPCL transfer ACK proves none of them. The
+namespace planner's current ACL2 behavior is certified, while its guard
+verification remains open through the inherited lifecycle helper chain.
