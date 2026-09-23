@@ -56,6 +56,7 @@
 (include-book "books/bp-node-records")
 (include-book "books/bp-authored-wire")
 (include-book "books/bp-node-machine")
+(include-book "books/bp-contact-service")
 (include-book "books/bp-node-machine-codec")
 ; Carry the verified step guards into this image as well as the default one.
 (include-book "books/bp-node-machine-guards")
@@ -107,6 +108,7 @@
         ; The BPv7 node, over the convergence layer above it and nothing else.
         (load "host/native/bp.lisp")
         (load "host/native/bp-service.lisp")
+        (load "host/native/bp-contact.lisp")
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
         ; and `--noinform' below keeps SBCL's own banner off it too.  The
         ; `model' verb writes reply octets to stdout and nothing else may.
