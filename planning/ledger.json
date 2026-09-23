@@ -509,16 +509,16 @@
     "books": 507,
     "books_in_root_closure": 506,
     "roots": 502,
-    "theorems": 7741,
-    "functions": 5885,
-    "assert_events": 8525,
-    "must_fails": 372,
+    "theorems": 7742,
+    "functions": 5886,
+    "assert_events": 8527,
+    "must_fails": 373,
     "encapsulates": 26,
     "guards": {
       "verified": 1892,
       "declared-off": 313,
       "default-guarded": 2907,
-      "default-unguarded": 773
+      "default-unguarded": 774
     },
     "suspect_theorems": 72,
     "export_hygiene_warnings": 96,
@@ -5194,7 +5194,7 @@
       "book": "books/nntp-auth-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
+      "theorems": 6,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -11989,17 +11989,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 19,
+      "functions": 20,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 19
+        "default-unguarded": 20
       },
       "verify_guards_events": 0,
-      "assert_events": 236,
-      "must_fails": 38,
-      "defconsts": 88,
+      "assert_events": 238,
+      "must_fails": 39,
+      "defconsts": 89,
       "defmacros": 13,
       "encapsulates": 0,
       "includes": [
@@ -15645,19 +15645,19 @@
       {
         "check": "aut-peer-open-pins-the-open-config",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1072,
+        "line": 1094,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-not-posting",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1176,
+        "line": 1198,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-the-post-command-event",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1217,
+        "line": 1239,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {

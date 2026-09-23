@@ -125,6 +125,28 @@
 (defun aut-step (as text)
   (fn-auth-step as *aut-archive* *aut-config* *aut-obs* *aut-obs*
                 (list :command (fn-nntp-string-octets text))))
+(defun aut-step-pinned (as text index)
+  (fn-auth-step-pinned as *aut-archive* index nil *aut-config* *aut-obs*
+                       *aut-obs* (list :command (fn-nntp-string-octets text))))
+
+; The pinned and legacy public steps make the same AUTHINFO decision even
+; with no index.  A delegated STAT on an accepted article separates them
+; when that pin is stale, so the handled-command premise does real work.
+(assert-event
+ (and (fn-auth-command
+       *aut-s-req* *aut-config*
+       (car (fn-nntp-tokenize (fn-nntp-string-octets "AUTHINFO USER reader")))
+       (cdr (fn-nntp-tokenize (fn-nntp-string-octets "AUTHINFO USER reader"))))
+      (equal (aut-step-pinned *aut-s-req* "AUTHINFO USER reader" nil)
+             (aut-step *aut-s-req* "AUTHINFO USER reader"))))
+(defconst *aut-stat-id-line* "STAT <teeth@example.invalid>")
+(assert-event
+ (not (equal (aut-step-pinned *aut-s-open* *aut-stat-id-line* nil)
+             (aut-step *aut-s-open* *aut-stat-id-line*))))
+(must-fail
+ (defthm fn-auth-false-all-commands-agree-with-stale-pin
+   (equal (aut-step-pinned *aut-s-open* *aut-stat-id-line* nil)
+          (aut-step *aut-s-open* *aut-stat-id-line*))))
 (defun aut-reply (as text)
   (fn-post-result-effects (aut-step as text)))
 (defun aut-after (as text)

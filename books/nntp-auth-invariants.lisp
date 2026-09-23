@@ -250,6 +250,31 @@
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).
 
+; The two public steps share the authentication gate.  On a command answered
+; by that gate, the historical verdict/index arguments are immaterial: only
+; delegation can observe them.  The premise is about the parsed command, not
+; about a guessed index correspondence, so AUTHINFO and the permission refusals
+; retain their decision even before an index is available.
+(defthm fn-auth-step-pinned-agrees-with-auth-step-on-handled-command
+  (implies (and (fn-nntp-command-inputp line)
+                (consp (fn-nntp-tokenize line))
+                (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
+                (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
+                (fn-auth-command as config
+                                 (car (fn-nntp-tokenize line))
+                                 (cdr (fn-nntp-tokenize line))))
+           (equal (fn-auth-step-pinned
+                   as archive index verdicts config observation injection
+                   (list :command line))
+                  (fn-auth-step as archive config observation injection
+                                (list :command line))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-auth-step-pinned fn-auth-step)
+                           (fn-auth-command fn-auth-sessionp
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp)))))
+
 (deftheory fn-auth-served-vocabulary
   '((:d fn-auth-no-posting-credsp) (:d fn-auth-config-no-postersp)
     (:d fn-served-post-command-eventp)))
