@@ -88,6 +88,22 @@ identity, and a finite quota of 1 through 64 report admissions. At most 16
 anchors fit the local projection. The administrator ID travels in the proposed
 anchor event so recovery can compare it with historical local configuration.
 
+The selected local-operator profile will install one immutable administrator
+binding through the connected Unix control socket after the existing
+same-effective-UID peer-credential gate. The OS-observed UID is input, not a
+topic authority decision: ACL2 checks its unsigned 32-bit range and a fresh
+32-octet entropy-observed administrator ID. The ID is locally installed and
+independent of UID, so equal UIDs in separate stores or a reused OS account
+do not imply equal administrator identities. The binding's Store event records that ID, UID, configuration
+generation and install sequence. A fresh anchor must name this installed ID
+and generation and come from the same authenticated UID. Recovery checks an
+anchor against the earlier install record, never against the process's current
+UID; changing the owner UID cannot rewrite historical admissions or silently
+inherit the old binding. The first root-only profile has no replacement or
+succession operation. Reuse of the same OS account remains inside the local
+operator trust boundary; a later replacement or revocation must be explicit.
+This binding/event/native join is still open.
+
 A report proposal resolves the retained T10 event/snapshot again. It requires
 the selected root policy to be active, the verified author reference in the
 root roster, all declared parents to have earlier admissions in that same
@@ -111,6 +127,14 @@ recognizes this distinct grammar and assigns its sequence, transaction,
 generation and publication-size fields. Replay still refuses a topic event:
 the prior T10 source and installed local administrator have no joined
 historical projection yet, so decoded bytes alone cannot confer authority.
+
+`books/topic-history-prefix.lisp` is the recovery-side ordered projector. It
+collects preceding T10 accepted events and keyring snapshots and resolves
+each topic event's exact authorship reference only from that earlier prefix.
+It then invokes the same `fn-th-commit-anchor` or `fn-th-commit-report`
+transition and faults on a missing source, snapshot, mismatched administrator
+or invalid report. It must run with Store/T10 replay validation and is not
+yet the carried Store slot or a native publication caller.
 
 This is a certified executable component, not a durable Store or native owner
 path yet: Store replay join, owner publication, historical administrator

@@ -487,6 +487,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/topic-history-admission-tests \
 	tests/acl2/topic-history-store-events-tests \
 	tests/acl2/topic-history-store-union-tests \
+	tests/acl2/topic-history-prefix-tests \
 	tests/acl2/hybrid-store-tests \
 	books/crypto-attach \
 	books/auth-secret \
