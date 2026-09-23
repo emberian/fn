@@ -13,16 +13,18 @@ cache.
     python3 tools/farm.py status hbox
 
 ``submit`` mirrors this worktree to the requested absolute path on the host,
-installs one complete certificate set for the selected roots' dependencies
-into the mirrored tree, starts the runner detached with its own log and status
-file, and returns a run id.  The installer first computes the runner's exact
-selected roots, then takes every dependency from the box's cache with the
-same ACL2 toolchain: from one origin when one holds them all, otherwise
-composed from every snapshot origin, the newest pair per book
-(``tools/certs.py``; the measurement that ACL2 accepts a composed closure is
-``planning/evidence/certificate-cache-2026-09-23.md``).  A miss refuses before
-ACL2 starts unless ``--closure`` explicitly requests dependency-ordered
-recertification at the new origin.  The install is
+installs from the box's cache into the mirrored tree, starts the runner
+detached with its own log and status file, and returns a run id.  The
+installer first computes the runner's exact selected roots.  By default it
+then installs every book of their closure, roots included, that the cache
+holds at its current digest and this ACL2 toolchain, each from its own
+newest usable origin (``certs.py install-partial``; the measurement that ACL2
+accepts a closure composed from several origins is
+``planning/evidence/certificate-cache-2026-09-23.md``), and the runner, given
+``--incremental``, certifies only the rest in dependency order.  A miss is
+work, not a refusal.  ``--require-origin`` demands one complete dependency
+set from one origin and refuses a miss before ACL2 starts; ``--closure`` is
+root's from-scratch recertification.  The install is
 the difference between certifying what changed and certifying a whole dependency closure: on 2026-09-20 a lane's
 ``--closure`` run on an empty remote root spent 30 minutes re-certifying the
 substrate for four new books.  ``wait`` blocks on that id, printing progress
@@ -89,6 +91,11 @@ EVIDENCE = re.compile(r"Certification evidence: (build/acl2/[A-Za-z0-9._-]+)")
 INSTALLED_SET = re.compile(
     r"artifact-set (\S+) origin (\S+) source (\S+) toolchain (\S+); "
     r"installed (\d+), kept (\d+), missing (\d+), removed (\d+)"
+    r"(?:; origins (\S+))?")
+# What `certs.py install-partial` prints: the closure size, then the counts.
+INSTALLED_PARTIAL = re.compile(
+    r"install-partial: (\d+) books.*\n\s*toolchain (\S+); installed (\d+), "
+    r"kept (\d+), missing (\d+), removed (\d+); roots installed (\d+) of (\d+)"
     r"(?:; origins (\S+))?")
 
 # Seams: the tests drive the real command construction through these.
@@ -187,8 +194,32 @@ def certs_script(host: str, root: Path, action: str,
             f"{kind}{action}")
 
 
+def parse_origins(words: str) -> dict[str, int]:
+    """`/a=3,/b=5`: which origins a set drew from, and how many books each."""
+    return {where: int(count) for where, _, count in
+            (word.rpartition("=") for word in words.split(","))}
+
+
 def parse_installed(output: str) -> dict[str, object]:
-    """The identity/count line `certs.py install-set` prints."""
+    """The identity/count line `certs.py install-set` or `install-partial` prints."""
+    partial = INSTALLED_PARTIAL.search(output)
+    if partial:
+        books, toolchain, *numbers, origins = partial.groups()
+        installed, kept, missing, removed, roots_installed, roots = (
+            int(number) for number in numbers)
+        parsed: dict[str, object] = {
+            "mode": "incremental",
+            "books": int(books),
+            "toolchain_identity": toolchain,
+            "installed": installed, "kept": kept, "missing": missing,
+            "removed": removed, "roots_installed": roots_installed,
+            "roots": roots,
+            # Every book the cache lacked is certified, roots included.
+            "certify": missing,
+        }
+        if origins:
+            parsed["origins"] = parse_origins(origins)
+        return parsed
     found = INSTALLED_SET.search(output)
     if not found:
         return {}
@@ -202,10 +233,7 @@ def parse_installed(output: str) -> dict[str, object]:
                    (int(number) for number in numbers))),
     }
     if origins:
-        # `/a=3,/b=5`: which origins a composed (or single) set drew from.
-        parsed["origins"] = {
-            where: int(count) for where, _, count in
-            (word.rpartition("=") for word in origins.split(","))}
+        parsed["origins"] = parse_origins(origins)
     return parsed
 
 
@@ -221,27 +249,47 @@ def selection_words(books: list[str], affected_by: list[str],
     return words
 
 
+def incremental(closure: bool, require_origin: str | None) -> bool:
+    """Whether a run is the default incremental plan.
+
+    Every run is, except root's from-scratch ``--closure`` and a run that
+    demands one origin with ``--require-origin``.
+    """
+    return not closure and require_origin is None
+
+
 def cache_preflight_script(host: str, remote: Path, books: list[str],
                            affected_by: list[str], closure: bool,
                            cache: str | None = None,
-                           acl2: str | None = None) -> str:
-    """Select and install one complete dependency set before ACL2 starts.
+                           acl2: str | None = None,
+                           require_origin: str | None = None) -> str:
+    """Install from the box's cache before ACL2 starts, by the run's plan.
 
-    An incremental run installs the selected roots' dependencies from any
-    usable origin with this ACL2 toolchain, composing several snapshot origins
-    when no one origin holds them all.  Measured 2026-09-23: a parent
+    The default, incremental plan (``certs.py install-partial``) installs
+    every book of the selected roots' closure whose pair is cached at its
+    current digest and this ACL2 toolchain, each from its own newest usable
+    origin, and names the rest; the runner (``--incremental``) certifies only
+    those.  It never refuses for a miss.  Measured 2026-09-23: a parent
     certified over a closure from three origins includes cleanly with all
     three removed, because ACL2 compares sub-books by familiar name,
     annotations and book-hash, never by full-book-name
-    (``planning/evidence/certificate-cache-2026-09-23.md``).  ``--closure`` is
-    root's explicit recertification plan and keeps the single-origin rule:
-    it purges the closure on a miss and certifies it under ``remote``.
+    (``planning/evidence/certificate-cache-2026-09-23.md``).
+    ``--require-origin`` demands one complete dependency set from that one
+    origin and refuses otherwise.  ``--closure`` is root's explicit
+    recertification plan and keeps the single-origin rule: it purges the
+    closure on a miss and certifies it under ``remote``.
     """
     settings = host_settings(host, cache, acl2)
     select = " ".join(shlex.quote(word) for word in
                       selection_words(books, affected_by, closure))
-    mode = (f"--require-origin {remote_quote(remote)} --purge-on-miss "
-            if closure else "--dependencies-only ")
+    if closure:
+        mode = (f"--require-origin {remote_quote(remote)} --purge-on-miss "
+                "install-set")
+    elif require_origin is not None:
+        mode = (f"--require-origin {remote_quote(require_origin)} "
+                "--dependencies-only install-set")
+    else:
+        mode = "install-partial"
     return (
         f"cd {remote_quote(remote)} || exit 9; "
         f"roots=$({select}) || exit 13; "
@@ -253,16 +301,22 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
         "|| exit 14; "
         f"python3 tools/certs.py --cache {remote_quote(settings['cache'])} "
         f"--toolchain-identity \"$toolchain\" "
-        f"{mode}install-set $roots")
+        f"{mode} $roots")
 
 
 def install_from_cache(host: str, remote: Path, books: list[str],
                        affected_by: list[str], closure: bool,
                        cache: str | None = None,
-                       acl2: str | None = None) -> dict[str, object]:
-    """Install one coherent input set, or require explicit closure recertification."""
+                       acl2: str | None = None,
+                       require_origin: str | None = None) -> dict[str, object]:
+    """Install what the run's plan takes from the cache, or say why not.
+
+    An incremental install refuses only when it did not run (no count line
+    came back): a miss is what the runner certifies.
+    """
     answer = ssh(host, cache_preflight_script(
-        host, remote, books, affected_by, closure, cache, acl2), check=False)
+        host, remote, books, affected_by, closure, cache, acl2,
+        require_origin), check=False)
     counts = parse_installed(answer.stdout)
     if counts and answer.returncode == 0:
         return counts
@@ -273,12 +327,16 @@ def install_from_cache(host: str, remote: Path, books: list[str],
         return counts | {"recertify_closure": True}
     detail = (answer.stdout.strip() or
               f"ssh exited {answer.returncode}")[-800:]
+    if incremental(closure, require_origin):
+        raise FarmError(
+            f"{host}: installing from the cache did not complete under "
+            f"{remote}; ACL2 was not started. Cache preflight: {detail}")
     raise FarmError(
         f"{host}: the cache holds no complete certificate set for the selected "
         f"roots' dependencies with this ACL2 toolchain, from one origin or "
-        f"composed from several; ACL2 was not started under {remote}. The "
-        f"missing books need a run that certifies them (name them as roots, or "
-        f"--closure for root's full recertification). Cache preflight: {detail}")
+        f"from {require_origin or 'this run root'}; ACL2 was not started "
+        f"under {remote}. Without --require-origin the run installs what is "
+        f"cached and certifies the rest. Cache preflight: {detail}")
 
 
 def run_id() -> str:
@@ -350,7 +408,8 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
                   jobs: int, timeout_seconds: int, affected_by: list[str],
                   closure: bool = False, cache: str | None = None,
                   acl2: str | None = None, no_publish: bool = False,
-                  pcert: bool = False, budget_seconds: int | None = None) -> str:
+                  pcert: bool = False, budget_seconds: int | None = None,
+                  require_origin: str | None = None) -> str:
     """The submit script: every step that can fail exits with its own code.
 
     `cd X && ... &` backgrounds the whole list, so ssh returned 0 whatever
@@ -369,6 +428,8 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         runner.extend(["--affected-by", path])
     if closure:
         runner.append("--closure")
+    elif incremental(closure, require_origin):
+        runner.append("--incremental")
     if no_publish:
         runner.append("--no-publish")
     if pcert:
@@ -414,8 +475,9 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
            cache: str | None = None, acl2: str | None = None,
            no_publish: bool = False,
            prepare: Callable[[str, Path], None] | None = None,
-           pcert: bool = False, budget_seconds: int | None = None) -> str:
-    """Mirror, install a coherent input set, and start the detached runner.
+           pcert: bool = False, budget_seconds: int | None = None,
+           require_origin: str | None = None) -> str:
+    """Mirror, install from the box's cache, and start the detached runner.
 
     `prepare(host, remote)` runs between the mirror and ACL2, on the box's
     copy only.  `tools/triage.py` substitutes a red book's last green source
@@ -433,14 +495,21 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
     if prepare is not None:
         prepare(host, remote)
     cached = install_from_cache(
-        host, remote, books, affected_by, closure, cache, acl2)
+        host, remote, books, affected_by, closure, cache, acl2, require_origin)
     print(f"{identifier}: from {host}'s cache, "
           + ", ".join(f"{name} {len(value)}" if name == "origins"
                       else f"{name} {value}" for name, value in cached.items()),
           file=sys.stderr)
+    if cached.get("mode") == "incremental":
+        print(f"{identifier}: installed {cached['installed'] + cached['kept']} "
+              f"of {cached['books']} books from "
+              f"{len(cached.get('origins') or {})} origin(s); certifying "
+              f"{cached['certify']} ({cached['roots_installed']} of "
+              f"{cached['roots']} roots already certified at these bytes)",
+              file=sys.stderr)
     script = remote_script(host, remote, identifier, books, jobs,
                            timeout_seconds, affected_by, closure, cache, acl2,
-                           no_publish, pcert, budget_seconds)
+                           no_publish, pcert, budget_seconds, require_origin)
     if no_publish and publishes(script):
         raise FarmError(
             f"{host}: {identifier} was asked not to publish and its runner "
@@ -458,6 +527,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
         "books": books,
         "affected_by": affected_by,
         "closure": closure,
+        "incremental": incremental(closure, require_origin),
+        "require_origin": require_origin,
         "no_publish": no_publish,
         "pcert": pcert,
         "budget_seconds": budget_seconds,
@@ -697,6 +768,12 @@ def main(argv: list[str] | None = None) -> int:
                         help="also certify what those roots include, in "
                              "dependency order: the box then needs no "
                              "certificate of its own")
+    parser.add_argument("--require-origin", default=None, metavar="ORIGIN",
+                        help="install the roots' dependencies as one complete "
+                             "set from this one origin (an absolute run root on "
+                             "the host) and refuse if it lacks any, instead of "
+                             "the default: install what is cached from any "
+                             "snapshot origin and certify the rest")
     parser.add_argument("--timeout-seconds", type=int, default=1800,
                         help="per-ACL2-invocation timeout on the host")
     parser.add_argument("--wait-seconds", type=int, default=DEFAULT_WAIT_SECONDS,
@@ -724,7 +801,8 @@ def main(argv: list[str] | None = None) -> int:
                                 Path(arguments.remote_root) if arguments.remote_root
                                 else None,
                                 arguments.closure, arguments.cache,
-                                arguments.acl2)
+                                arguments.acl2,
+                                require_origin=arguments.require_origin)
             print(identifier)
             return 0
         if arguments.action == "wait":

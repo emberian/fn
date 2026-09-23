@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import tempfile
 import unittest
@@ -550,6 +551,82 @@ class ClosureTests(unittest.TestCase):
             self.assertEqual(sorted(set(repository.event_log())),
                              ["books/base", "books/leaf-a", "books/mid",
                               "end", "start"])
+
+
+class IncrementalTests(unittest.TestCase):
+    """`--incremental`: install what the cache holds, certify only the rest."""
+
+    def seeded(self, directory: str, books: list[str]) -> FakeRepository:
+        """A repository whose cache holds `books` and whose tree holds no pair."""
+        repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+        code, _ = repository.certify(books, jobs=2)
+        self.assertEqual(code, 0)
+        for path in list(repository.root.glob("books/*.cert")) + \
+                list(repository.root.glob("books/*.port")):
+            path.unlink()
+        return repository
+
+    def test_a_cached_bottom_certifies_exactly_the_top_in_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.seeded(directory, ["books/base", "books/mid"])
+            code, manifest = repository.certify(
+                ["books/leaf-a", "books/leaf-b"], jobs=4, extra=["--incremental"])
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            self.assertEqual(manifest["requested_books"],
+                             ["books/leaf-a", "books/leaf-b"])
+            self.assertEqual(sorted(set(repository.event_log()) - {"start", "end"}),
+                             ["books/leaf-a", "books/leaf-b"])
+            self.assertEqual(manifest["roots"], ["books/leaf-a", "books/leaf-b"])
+            self.assertEqual(manifest["book_provenance"], {
+                "books/base": "installed", "books/mid": "installed",
+                "books/leaf-a": "certified", "books/leaf-b": "certified"})
+            origin = str(repository.root)
+            self.assertEqual(manifest["installed_books"],
+                             {"books/base": origin, "books/mid": origin})
+            self.assertEqual(manifest["cache_install"]["installed"], 2)
+            self.assertEqual(manifest["cache_install"]["origins"], {origin: 2})
+            self.assertEqual(manifest["cache_install"]["roots_installed"], [])
+            self.assertEqual(manifest["installed_over_failed"], [])
+            self.assertTrue(manifest["incremental"])
+            self.assertTrue((repository.root / "books/base.cert").is_file())
+
+    def test_an_uncached_book_between_cached_ones_is_ordered_before_its_dependents(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.seeded(directory, ["books/base"])
+            code, manifest = repository.certify(
+                ["books/leaf-c"], jobs=4, extra=["--incremental"])
+            self.assertEqual(code, 0)
+            self.assertEqual(manifest["requested_books"], ["books/mid", "books/leaf-c"])
+            self.assertLess(repository.index("end", "books/mid"),
+                            repository.index("start", "books/leaf-c"))
+
+    def test_a_fully_cached_closure_certifies_nothing_and_reports_installed_roots(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.seeded(directory, ["books/base", "books/mid", "books/leaf-a"])
+            code, manifest = repository.certify(
+                ["books/leaf-a"], jobs=4, extra=["--incremental"])
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            self.assertEqual(manifest["requested_books"], [])
+            self.assertEqual(repository.event_log(), [])
+            self.assertEqual(manifest["cache_install"]["roots_installed"], ["books/leaf-a"])
+            self.assertEqual(set(manifest["book_provenance"].values()), {"installed"})
+
+    def test_an_installed_book_over_a_failed_dependency_is_named(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.seeded(directory, ["books/base", "books/mid"])
+            key, _ = runner.certs.closure_key(repository.root, "books/base")
+            shutil.rmtree(repository.cache / key)
+            code, manifest = repository.certify(
+                ["books/leaf-a"], jobs=2, extra=["--incremental"], fail="books/base")
+            self.assertEqual(code, 1)
+            self.assertEqual(manifest["book_results"]["books/base"], "failed")
+            self.assertEqual(manifest["installed_over_failed"], ["books/mid"])
+
+    def test_incremental_and_closure_are_refused_together(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            with self.assertRaises(SystemExit):
+                repository.dry_run(["books/mid"], [], extra=["--incremental", "--closure"])
 
 
 class CriticalPathScheduleTests(unittest.TestCase):

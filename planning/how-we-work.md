@@ -113,6 +113,15 @@ published a certification of `dev`'s head since. The rules that follow:
   what the lane changed and what includes it. Since 2026-09-23 that run is
   a plain-roots run, not `--closure`: whatever is cached at the current
   digests installs from any snapshot origin, and only the rest certifies.
+  That is the default for every submit without `--closure` or
+  `--require-origin` (`certs.py install-partial`, `certify_books.py
+  --incremental`): a book whose pair is cached at its closure key and
+  toolchain installs, roots included, and the uncached books certify in
+  dependency order, so a change low in the graph costs that book and what
+  includes it, never a refusal. `submit` prints "installed N of M books ...
+  certifying K" at once; the manifest says `installed` or `certified` per
+  book and names the origins drawn from. `--require-origin` is the explicit
+  way to demand one origin.
 - **A lane does not merge `dev` mid-flight.** It branches from `dev`, works,
   certifies its own change against the digests it branched at, and root
   merges on landing; if root needs the lane on a newer base, root says so
@@ -132,8 +141,9 @@ published a certification of `dev`'s head since. The rules that follow:
   with purge-on-miss and certifies every book of the closure again (the
   seam lane's final submit: "missing 171, removed 278"). A lane submits
   `farm.py submit <box> --affected-by <changed book> ...` (or the changed
-  books and test books as plain roots): everything unchanged installs from
-  the cache and only the changed books and their dependents certify. Root
+  books and test books as plain roots): everything cached at its current
+  digest installs, and only the changed books, their dependents and
+  anything else the cache lacks certify. Root
   uses `--closure` for the freeze and the treewide run, nothing else.
 - **A book over ten seconds is a defect.** On 2026-09-23 every book over
   a minute turned out to be a recognizer, codec or table left enabled

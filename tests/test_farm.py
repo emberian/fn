@@ -268,6 +268,13 @@ COMPOSED = ("install-set: 220 books, cache /home/ember/fn-certcache\n"
             "/home/ember/fn-gates/w31-treewide=53\n")
 
 
+PARTIAL = ("install-partial: 409 books, cache /home/ember/fn-certcache\n"
+           "  toolchain tool-p; installed 330, kept 8, missing 71, removed 0; "
+           "roots installed 160 of 233; origins "
+           "/home/ember/fn-gates/dev-head=300,/home/ember/fn-gates/tool-cache=38\n"
+           "  uncached: books/served\n")
+
+
 class CacheTests(unittest.TestCase):
     """The box's cache is what a run should start from, and add to.
 
@@ -289,12 +296,13 @@ class CacheTests(unittest.TestCase):
             runner = next(i for i, s in enumerate(scripts) if "nohup sh -c" in s)
             self.assertLess(install, runner)  # certify only what is not cached
             self.assertIn('--cache "$HOME"/fn-certcache', scripts[install])
-            # A plain-roots run takes its dependencies from any snapshot
-            # origin, composed when no one origin has them all: ACL2 does not
-            # compare sub-books by full-book-name (certificate-cache-2026-09-23).
+            # A plain-roots run installs whatever of the roots' closure is
+            # cached, each book from its own origin, and certifies the rest:
+            # ACL2 does not compare sub-books by full-book-name
+            # (certificate-cache-2026-09-23).
             self.assertNotIn("--require-origin", scripts[install])
-            self.assertIn("--dependencies-only", scripts[install])
-            self.assertIn("install-set $roots", scripts[install])
+            self.assertIn("install-partial $roots", scripts[install])
+            self.assertIn("--incremental", scripts[runner])
             self.assertIn("tools/acl2_toolchain.py identity \"$acl2\"", scripts[install])
             self.assertIn("--toolchain-identity \"$toolchain\"", scripts[install])
             self.assertIn("cd /home/ember/fn-lanes/w5 ||", scripts[install])
@@ -325,6 +333,82 @@ class CacheTests(unittest.TestCase):
                              {"/home/ember/fn-gates/dev-head": 150,
                               "/home/ember/fn-gates/w31-treewide": 53})
             self.assertEqual(farm.cache_summary(record), "200+3/2")
+
+    def test_an_incremental_install_is_recorded_with_what_is_left_to_certify(self):
+        fake = Fake([], certs=PARTIAL)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("persvati", root, ["books/alpha"], jobs=8,
+                                         timeout_seconds=60, affected_by=[],
+                                         remote=Path("/home/ember/fn-gates/dev-head"))
+            self.assertIn("tools/certify_books.py --jobs 8 --incremental",
+                          fake.runner_script())
+            record = json.loads(farm.record_path(root, identifier).read_text())
+            self.assertTrue(record["incremental"])
+            self.assertEqual(record["cache_install"], {
+                "mode": "incremental", "books": 409,
+                "toolchain_identity": "tool-p", "installed": 330, "kept": 8,
+                "missing": 71, "removed": 0, "roots_installed": 160,
+                "roots": 233, "certify": 71,
+                "origins": {"/home/ember/fn-gates/dev-head": 300,
+                            "/home/ember/fn-gates/tool-cache": 38}})
+            self.assertEqual(farm.cache_summary(record), "330+8/2")
+
+    def test_an_incremental_miss_does_not_refuse(self):
+        missing = ("install-partial: 3 books, cache /tank/fn/certcache\n"
+                   "  toolchain tool-p; installed 0, kept 0, missing 3, removed 0; "
+                   "roots installed 0 of 1\n  uncached: books/alpha\n")
+        fake = Fake([], certs=missing)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                farm.submit("hbox", root, ["books/alpha"], jobs=4,
+                            timeout_seconds=60, affected_by=[],
+                            remote=Path("/tank/fn/tree"))
+            self.assertIn("--incremental", fake.runner_script())
+
+    def test_affected_by_is_incremental_too(self):
+        fake = Fake([], certs=PARTIAL)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                farm.submit("hbox", root, [], jobs=4, timeout_seconds=60,
+                            affected_by=["books/article.lisp"],
+                            remote=Path("/tank/fn/tree"))
+            install = next(s for s in fake.scripts() if "tools/certs.py" in s)
+            self.assertIn("--dry-run --affected-by books/article.lisp", install)
+            self.assertIn("install-partial $roots", install)
+            self.assertIn("--affected-by books/article.lisp --incremental",
+                          fake.runner_script())
+
+    def test_require_origin_demands_one_complete_set_and_refuses_a_miss(self):
+        missing = ("install-set: 3 books, cache /tank/fn/certcache\n"
+                   "  artifact-set NONE origin NONE source NONE toolchain NONE; "
+                   "installed 0, kept 0, missing 3, removed 0\n")
+        fake = Fake([], certs=missing, codes={"tools/certs.py": 1})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                code = farm.main(["submit", "hbox", "books/alpha", "--root", str(root),
+                                  "--remote-root", "/tank/fn/tree",
+                                  "--require-origin", "/tank/fn/gate"])
+            self.assertEqual(code, 2)
+            install = next(s for s in fake.scripts() if "tools/certs.py" in s)
+            self.assertIn("--require-origin /tank/fn/gate --dependencies-only "
+                          "install-set $roots", install)
+            self.assertFalse(any("nohup sh -c" in script for script in fake.scripts()))
+
+    def test_require_origin_runs_without_incremental_when_the_set_is_whole(self):
+        fake = Fake([], certs=INSTALLED)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                farm.submit("hbox", root, ["books/alpha"], jobs=4,
+                            timeout_seconds=60, affected_by=[],
+                            remote=Path("/tank/fn/tree"),
+                            require_origin="/home/ember/fn-lanes/w5")
+            self.assertNotIn("--incremental", fake.runner_script())
 
     def test_the_older_identity_line_still_parses(self):
         parsed = farm.parse_installed(INSTALLED)
@@ -543,7 +627,7 @@ class WaitTests(unittest.TestCase):
                                          timeout_seconds=60, affected_by=[],
                                          cache="/scratch/cache")
             installs = [s for s in fake.scripts()
-                        if "tools/certs.py" in s and "install-set $roots" in s]
+                        if "tools/certs.py" in s and "install-partial $roots" in s]
             self.assertEqual(len(installs), 1)
             self.assertIn("--cache /scratch/cache", installs[0])
             self.assertIn("FN_CERT_CACHE=/scratch/cache", fake.runner_script())
