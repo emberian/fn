@@ -69,6 +69,9 @@
 (include-book "books/bp-fnbs-delivery-replay")
 (include-book "books/bp-fnbs-delivery-publication")
 (include-book "books/bp-fnbs-family-publication")
+(include-book "books/bp-fnbs-deletion-publication")
+(include-book "books/bp-report-author")
+(include-book "books/bp-report-observe")
 (include-book "books/bp-app-handoff")
 (include-book "books/bp-receive-evidence")
 

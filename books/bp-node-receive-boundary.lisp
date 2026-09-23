@@ -101,6 +101,12 @@
          (fn-clock-observationp (fn-bpn-nth 1 event))
          (if (equal (fn-bpn-nth 2 event) t) t
            (equal (fn-bpn-nth 2 event) nil))))
+   ((equal (fn-cbor-ag-car event) :queue-report)
+    (and (true-listp event) (equal (len event) 5)
+         (fn-frame-natp (fn-bpn-nth 1 event))
+         (fn-bpp-timep (fn-bpn-nth 2 event))
+         (fn-bpn-routep (fn-bpn-nth 3 event))
+         (fn-clock-observationp (fn-bpn-nth 4 event))))
    ((equal (fn-cbor-ag-car event) :recover-fnbs)
     (and (true-listp event) (equal (len event) 5)
          (true-listp (fn-bpn-nth 2 event))

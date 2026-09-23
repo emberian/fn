@@ -165,7 +165,7 @@
   ;; only the bounded event before the exact guarded machine call.
   (unless (eq (fnn-core 'fn-bpnf-host-eventp event) t)
     (fnn-indeterminate "bp-service: malformed foundation event"))
-  (let ((answer (fnn-core 'fn-bpnf-fragment-step
+  (let ((answer (fnn-core 'fn-bpn-report-author-step
                           (fnn-bps-state service) event)))
     (setf (fnn-bps-state service)
           (fnn-core 'fn-bpnf-answer-state answer))
@@ -301,6 +301,33 @@
       (fnn-immutable-publish-effect
        publisher stage final dir frame :cleanup-directory dir))))
 
+(defun fnn-bps-persist-kind-ten (service epoch operation-id record)
+  (let* ((dir (fnn-bps-lifecycle service))
+         (name (fnn-core 'fn-bpnf-stored-record-name epoch operation-id))
+         (final (fnn-join dir name))
+         (final-absent (if (fnn-lstat final) nil t))
+         (operation
+           (fnn-core 'fn-bpnf-delete-publication-authorize
+                     (fnn-bps-state service) epoch operation-id record
+                     (if (fnn-bps-lock-fd service) t nil) final-absent)))
+    (when (equal operation '(:fault :delete-codec))
+      (return-from fnn-bps-persist-kind-ten :refused))
+    (unless (eq (fnn-core 'fn-bpnf-delete-publication-operationp operation) t)
+      (fnn-indeterminate
+       "bp-service: kind-10 publication authority refused pending echo"))
+    (let* ((authorized-name
+             (fnn-core 'fn-bpnf-delete-publication-name operation))
+           (stage (fnn-join dir (format nil ".record-~d-~a"
+                                         (sb-posix:getpid) (fnn-random-hex 12))))
+           (frame (fnn-octets
+                   (fnn-core 'fn-bpnf-delete-publication-frame operation)))
+           (publisher
+             (fnn-core 'fn-bpnf-delete-publication-publisher operation)))
+      (unless (equal authorized-name name)
+        (fnn-fault "bp-service: ACL2 kind-10 name changed after authorization"))
+      (fnn-immutable-publish-effect
+       publisher stage final dir frame :cleanup-directory dir))))
+
 (defun fnn-bps-route-host (route) (fnn-octets-string (fnn-octets (second route))))
 (defun fnn-bps-route-port (route) (third route))
 (defun fnn-bps-route-node (route) (fnn-octets-string (fnn-octets (fourth route))))
@@ -348,6 +375,33 @@
 (defun fnn-bps-drive-effects (service effects)
   (dolist (effect effects)
     (case (first effect)
+      (:persist-delete
+       (unless (= (length effect) 4)
+         (fnn-indeterminate "bp-service: malformed kind-10 publication effect"))
+       (let* ((epoch (second effect))
+              (operation-id (third effect))
+              (record (fourth effect))
+              (outcome
+                (fnn-bps-persist-kind-ten
+                 service epoch operation-id record)))
+         (when (eq outcome :uncertain)
+           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-drive-effects
+          service (fnn-bps-foundation-step
+                   service (list :persist-result epoch operation-id outcome)))))
+      (:delete-ready
+       (fnn-out "BP held carrier deletion durable arrival=~d" (second effect)))
+      (:delete-answer
+       (case (second effect)
+         (:refused
+          (unless (eq (fnn-bps-outcome service) :uncertain)
+            (setf (fnn-bps-outcome service) :refused))
+          (fnn-out "BP held carrier deletion refused"))
+         (otherwise
+          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-indeterminate "bp-service: held deletion uncertain"))))
+      (:report-due
+       (fnn-out "BP status report intent durable; outbound queue pending"))
       (:persist-family
        (unless (= (length effect) 4)
          (fnn-indeterminate "bp-service: malformed kind-18 publication effect"))

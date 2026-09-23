@@ -288,6 +288,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-report-step-tests \
 	books/bp-report-outbox \
 	tests/acl2/bp-report-outbox-tests \
+	books/bp-report-author \
+	tests/acl2/bp-report-author-tests \
+	books/bp-report-observe \
+	tests/acl2/bp-report-observe-tests \
 	books/bp-fnbs-deletion-publication \
 	tests/acl2/bp-fnbs-deletion-publication-tests \
 	books/bp-fnbs-family-publication \
