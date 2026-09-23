@@ -1457,3 +1457,97 @@
                                fn-bs-scan-records fn-bs-durable-records
                                fn-bs-durable-content fn-bs-record-of
                                fn-bs-lookup fn-bs-durable-names))))
+
+; K0 trace slice.  The host calls the ACL2 record-file and record-link
+; observations only after the corresponding successful syscalls.  These
+; equalities derive the logical state at that *actual* interpreter cut;
+; they do not assume the byte/kernel relation at the output.
+(local
+ (defthm fn-bs-k0-record-file-cut-kernel-is-file-observation
+   (implies (and (fn-bs-statep bs)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (equal (cdr (nth 5 (fn-bs-run bs ks
+                                            (fn-bs-record-program stage name frame)
+                                            nil groups capacity)))
+                   (fn-sf-record-file-result ks :ok)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k6-interpreted-record-fence-without-namep)
+                  (:instance fn-bs-k6-write-created-inode-returns-ok-without-namep))
+            :in-theory (e/d (fn-bs-record-program fn-bs-run fn-bs-step
+                             fn-sf-dispatch fn-bs-fsync-file)
+                            (fn-bs-statep fn-bs-create fn-bs-write
+                             fn-bs-fence-file fn-bs-lookup fn-bs-content
+                             fn-bs-view))))))
+
+(local
+ (defthm fn-bs-k0-record-suffix-starts-at-file-cut
+   (implies (and (fn-bs-statep bs)
+                 (fn-bs-record-inputp ks stage name frame)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (equal (nth 10 (fn-bs-run bs ks
+                                         (fn-bs-record-program stage name frame)
+                                         nil groups capacity))
+                   (nth 4 (fn-bs-run
+                           (car (nth 5 (fn-bs-run bs ks
+                                                   (fn-bs-record-program stage name frame)
+                                                   nil groups capacity)))
+                           (cdr (nth 5 (fn-bs-run bs ks
+                                                   (fn-bs-record-program stage name frame)
+                                                   nil groups capacity)))
+                           (nthcdr 6 (fn-bs-record-program stage name frame))
+                           nil groups capacity))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k0-record-file-cut-kernel-is-file-observation))
+            :in-theory (e/d (fn-bs-record-program fn-bs-run fn-bs-step
+                             fn-bs-fsync-file)
+                            (fn-bs-statep fn-bs-create fn-bs-write
+                             fn-bs-fence-file fn-bs-lookup fn-bs-content
+                             fn-bs-view))))))
+
+(local
+ (defthm fn-bs-k0-record-suffix-link-callback
+   (implies (and (fn-bs-inop (fn-bs-lookup file :staging stage))
+                 (not (fn-bs-lookup file :transactions name)))
+            (equal (cdr (nth 4 (fn-bs-run
+                                file fileks
+                                (nthcdr 6 (fn-bs-record-program stage name frame))
+                                nil groups capacity)))
+                   (fn-sf-record-link-result fileks :ok)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k6-link-returns-ok (bs file)))
+            :in-theory (e/d (fn-bs-record-program fn-bs-run fn-bs-step
+                             fn-sf-dispatch)
+                            (fn-bs-link fn-bs-lookup fn-sf-record-link-result))))))
+
+(defthm fn-bs-k0-record-attempted-cut-kernel-is-link-observation
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal (cdr (nth 10 (fn-bs-run bs ks
+                                            (fn-bs-record-program stage name frame)
+                                            nil groups capacity)))
+                  (fn-sf-record-link-result
+                   (fn-sf-record-file-result ks :ok) :ok)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-store-relation-unfolds)
+                 (:instance fn-bs-k6-state-next-ino-is-inop)
+                 (:instance fn-bs-k0-record-suffix-starts-at-file-cut)
+                 (:instance fn-bs-k0-record-file-cut-kernel-is-file-observation)
+                 (:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                 (:instance fn-bs-k6-file-cut-source-is-fenced-frame)
+                 (:instance fn-bs-k0-record-suffix-link-callback
+                            (file (car (nth 5 (fn-bs-run bs ks
+                                                           (fn-bs-record-program stage name frame)
+                                                           nil groups capacity))))
+                            (fileks (cdr (nth 5 (fn-bs-run bs ks
+                                                              (fn-bs-record-program stage name frame)
+                                                              nil groups capacity))))))
+           :in-theory (e/d (fn-bs-record-inputp fn-bs-inop)
+                           (fn-bs-run fn-bs-record-program fn-bs-statep
+                            fn-bs-store-relation fn-bs-lookup
+                            fn-bs-k6-lookup-is-entry-after
+                            fn-sf-record-link-result)))))
