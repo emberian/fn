@@ -2,7 +2,8 @@
 """Differential evidence: the native host against the Python host.
 
 Runs one scripted command sequence through `tools/run_store.py` twice, once
-per host (`FN_HOST=native` selects build/fn-host), and compares after every
+per host (`FN_HOST=native` selects the explicit developer image for raw Store
+diagnostics), and compares after every
 step: the exit code, standard output, and every byte under the two store
 directories.  Standard error is compared as text and reported, but only the
 outcome class (exit code) is a hard criterion there, because Python's OSError
@@ -32,6 +33,8 @@ def env_for(host):
     env.pop("FN_HOST", None)
     if host == "native":
         env["FN_HOST"] = "native"
+        env["FN_NATIVE_HOST"] = os.environ.get(
+            "FN_NATIVE_DEVELOPER_HOST", str(ROOT / "build" / "fn-host-developer"))
     return env
 
 
