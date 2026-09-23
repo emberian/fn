@@ -683,6 +683,20 @@ not in it (M1, unchanged).
 
 ### 3.3 Records (FNBS kinds)
 
+**Implementation status (2026-09-23, A2 partial).**
+`books/bp-fnbs-codec.lisp` now owns the kind-5 byte frame for the typed
+`:cl` reception proposed by `fn-bpnf-step`: epoch, operation ID, arrival,
+session pair, transfer ID, peer EID, explicit optional-principal presence,
+admission generation, and the exact received wire octets. Its decoder
+reconstructs the initial held row after BP wire decoding and refuses malformed
+bytes. `books/bp-fnbs-byte-publisher.lisp` models private creation/write,
+file barrier, link and directory barrier with the actual `fn-bs-*` operations;
+an occupied damaged final name is a recovery fault. These are the first
+physical and codec parts of A2. The general `fn-bs-crash-imagep` to observed
+journal theorem, multi-record replay, restored epoch/frontier, and native
+publisher/recovery caller are still open. The present kind-5 subset has no
+submission or receipt handoff; the broader row below remains the target.
+
 Every record is built by its constructor and read by selectors; no book and
 no theorem matches a record by list shape. `fn-bpn-rec-kind`,
 `fn-bpn-rec-token` are total over `fn-bpn-recordp`; each kind has its field
