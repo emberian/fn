@@ -371,15 +371,17 @@
       "steps": [
         "Import native signed content, gateway provenance, and legacy wire variants.",
         "Change Path/Xref and gateway injection projections while keeping exact authored source octets, including unknown allowed headers and MIME bytes; separately alter signed source content.",
-        "Present unrelated signatures and forged administrative requests."
+        "Present unrelated signatures and forged administrative requests.",
+        "Render the selected FN-Authorship carrier from independently supplied Ed25519 and ML-DSA-65 keys, verify the received article, then alter one exact source byte and one encoded public-key byte separately."
       ],
       "expected": [
         "Provenance categories remain distinct.",
         "The selected signing preimage binds exact authored source bytes. Changing mutable projections does not rewrite those bytes; changing authored content is not a projection-only change.",
-        "Relay mutation and authored conflict are distinguished; unrelated signers gain no authority."
+        "Relay mutation and authored conflict are distinguished; unrelated signers gain no authority.",
+        "The portable verifier accepts only the intact both-signature artifact and refuses each altered variant; its result is distinct from a Store historical verdict."
       ],
       "evidence": [],
-      "design_note": "D01 selects this source boundary; concrete envelope/preimage encoding and D09 verification profile remain open. These are scenario requirements, not executed signature tests."
+      "design_note": "D01 selects this source boundary and the FN-Authorship v1 carrier implements a bounded portable artifact check. The native CLI source/keyset mutation witness covers only that check; Store binding, served HDR and peer transit remain open."
     },
     {
       "id": "SCN-013",

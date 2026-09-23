@@ -89,6 +89,32 @@ ACL2 projection and preimage, asks libsodium and OpenSSL for independent
 observations, and calls ACL2's both-required `fn-hsig-authorize`. The actual
 Store verdict and reader exposure join remains T10 work.
 
+The native `hybrid-sign-carrier PRINCIPAL ED-PUBLIC ED-SECRET ML-PUBLIC-PEM
+ML-PRIVATE-PEM SOURCE OUTPUT` command writes an ACL2-rendered article with
+`FN-Authorship` to a new file after both signatures verify. The companion
+`hybrid-verify-carrier ARTICLE ML-PUBLIC-PEM` command reads a bounded article,
+uses ACL2's received-source projection, checks the Ed25519 and ML-DSA-65
+signatures with native libraries, and asks ACL2 for the final conjunction.
+It reports `verified PRINCIPAL-HEX` (exit 0) or `unverified REASON` (exit 1).
+The caller-supplied ML public key must match the carrier's key set. This is an
+independent portable artifact check, not Store acceptance or a historical
+verdict. A generated field can travel with an article while the exact signed
+source and mutable relay fields remain separate projections.
+
+The remaining Store join needs a versioned accepted-article binding with two
+distinct subjects: the received article octets used for storage and content
+identity, and the exact authored source recovered by the ACL2 carrier
+projection. Its admission constructor must show that the carrier's ordered
+key set and both signatures equal the historical verdict detail, the selected
+enrollment snapshot matches that key set, and both primitive observations
+authorized that authored source. The versioned record should carry an ACL2-
+derived authored-source identity separately from the received article's
+content identity. Replay must check the structural bindings
+without promoting an unsupported profile or reinterpreting old kind-4 bytes;
+the recorded verdict remains historical, while current capability uses the
+current keyring. Only after the composite finish/index theorem covers this
+record can a served `:fn-verified` value be attributed to that accepted event.
+
 ## The seam
 
 `fn-digest` (any object to 32 octets) and the triple `fn-sig-public-key`,
