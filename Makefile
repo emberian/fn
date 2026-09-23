@@ -260,7 +260,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/tcpcl-octets \
 	books/tcpcl-session \
 	books/tcpcl-invariants \
+	books/tcpcl-delivery \
+	books/tcpcl-delivery-invariants \
 	tests/acl2/tcpcl-tests \
+	tests/acl2/tcpcl-delivery-tests \
 	books/anchor \
 	books/anchor-wire \
 	books/anchor-servers \
