@@ -468,6 +468,32 @@ label; it does not select a policy."
       (fnn-posix (path) (sb-posix:closedir dir)))
     (nreverse names)))
 
+;; The staging sweep's enumeration.  Unlike the bounded listing above, a
+;; directory larger than LIMIT is not a fault here: the sweep is decided in
+;; rounds (books/store-sweep.lisp, fn-sn-sweep-round), so one round retains at
+;; most LIMIT names and reports only that the directory held another.  Which
+;; names are retained is directory order, sorted afterwards; nothing here
+;; classifies a name.
+(defun fnn-list-directory-window (path limit)
+  "Up to LIMIT entry names of PATH, and whether PATH held a further entry."
+  (unless (and (integerp limit) (> limit 0))
+    (fnn-fault "invalid ACL2 directory observation limit"))
+  (let ((dir (fnn-posix (path) (sb-posix:opendir path))) (names nil) (entry-count 0)
+        (more nil))
+    (unwind-protect
+         (loop
+           (let ((entry (fnn-posix (path) (sb-posix:readdir dir))))
+             (when (sb-alien:null-alien entry) (return))
+             (let ((name (sb-posix:dirent-name entry)))
+               (unless (or (string= name ".") (string= name ".."))
+                 (when (>= entry-count limit)
+                   (setq more t)
+                   (return))
+                 (push name names)
+                 (incf entry-count)))))
+      (fnn-posix (path) (sb-posix:closedir dir)))
+    (values (nreverse names) more)))
+
 (defun fnn-link (old new) (fnn-posix (new) (sb-posix:link old new)))
 (defun fnn-replace (old new) (fnn-posix (new) (sb-posix:rename old new)))
 (defun fnn-unlink (path) (fnn-posix (path) (sb-posix:unlink path)))
@@ -729,23 +755,30 @@ binding.  It performs no filename parser, decimal conversion, or gap policy."
       (fnn-fault "ACL2 returned a non-positive staging observation limit"))
     value))
 
-(defun fnn-bridge-sweep-staging (observed)
-  "Ask the recovery model which observed staging names may be unlinked.
+(defun fnn-bridge-sweep-round (observed more)
+  "Ask the recovery model what one bounded staging observation decides.
 
-OBSERVED came from one bounded directory enumeration.  The native adapter
-marshals that observation and verifies the returned representation; it does
-not repeat the staging-prefix, held-name, or phase policy."
-  (let ((value (fnn-core-state 'fn-store-sn-sweep-staging-list
+OBSERVED came from one bounded directory enumeration and MORE says whether the
+directory held a further entry.  The answer is (values ACTION REMOVALS):
+:DONE, :AGAIN or :REFUSED, books/store-sweep.lisp fn-sn-sweep-round.  The
+native adapter marshals the observation and verifies the returned
+representation; it does not repeat the staging-prefix, held-name, phase or
+round policy."
+  (let ((value (fnn-core-state 'fn-store-sn-sweep-round
                                (mapcar (lambda (name)
                                          (fnn-octet-list (fnn-string-octets name)))
                                        observed)
+                               (if more t nil)
                                nil)))
-    (unless (and (listp value) (every #'fnn-octet-list-p value))
-      (fnn-fault "ACL2 returned malformed staging sweep names"))
-    (mapcar (lambda (octets)
-              (handler-case (fnn-octets-string (fnn-octets octets))
-                (error () (fnn-fault "ACL2 returned a non-UTF-8 staging name"))))
-            value)))
+    (unless (and (consp value) (member (first value) '(:done :again :refused))
+                 (consp (rest value)) (null (cddr value))
+                 (listp (second value)) (every #'fnn-octet-list-p (second value)))
+      (fnn-fault "ACL2 returned a malformed staging sweep round"))
+    (values (first value)
+            (mapcar (lambda (octets)
+                      (handler-case (fnn-octets-string (fnn-octets octets))
+                        (error () (fnn-fault "ACL2 returned a non-UTF-8 staging name"))))
+                    (second value)))))
 (defun fnn-bridge-io (operation result)
   (fnn-action (fnn-core-state 'fn-store-sn-io operation result)))
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)
@@ -927,7 +960,8 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defparameter +fnn-default-groups+ (list "fn.letters" "fn.test"))
 
 (defstruct (fnn-store (:constructor %make-fnn-store))
-  root writable lock-fd config frontier fenced (orphans nil) (completion-pending nil)
+  root writable lock-fd config frontier fenced (orphans nil) (orphans-more nil)
+  (completion-pending nil)
   ;; The checkpoint layer runs only after authoritative full replay.  It keeps
   ;; its diagnostic outcome here and never replaces the live store-node state.
   (checkpoint-outcome '(:none))
@@ -1150,43 +1184,66 @@ kernel may have issued the namespace operation even when it reports failure."
             actual-lower)))
 
 (defun fnn-staging-observation (store)
-  "The bounded physical observation supplied to the ACL2 staging policy."
+  "One bounded physical observation for the ACL2 staging policy.
+
+The answer is (values NAMES MORE): at most the ACL2 limit of sorted names, and
+whether the directory held another entry."
   (let ((limit (fnn-bridge-staging-observation-limit)))
     (handler-case
-        (sort (fnn-list-directory-bounded (fnn-staging store) limit
-                                          "staging namespace")
-              #'string<)
+        (multiple-value-bind (names more) (fnn-list-directory-window (fnn-staging store) limit)
+          (values (sort names #'string<) more))
       (fnn-os-error () (fnn-fault "cannot enumerate staging")))))
 
 (defun fnn-staging-orphans (store)
-  "The bounded report after a recovery policy decision or a read-only open."
-  (fnn-staging-observation store))
+  "The bounded report after a recovery policy decision or a read-only open.
+
+A shared-lock reader does not sweep; it reports one observation and says when
+the directory held more than it shows."
+  (multiple-value-bind (names more) (fnn-staging-observation store)
+    (setf (fnn-store-orphans-more store) more)
+    names))
 
 (defun fnn-sweep-staging (store)
-  "Apply the ACL2-owned recovery policy to one bounded staging observation.
+  "Apply the ACL2-owned recovery policy, one bounded observation per round.
 
-The core's result must be an observed name.  That check is representation
-validation at the host boundary, not a second staging policy.  ENOENT means a
-concurrent external removal won the race; any other unlink error is uncertain
-because the name may or may not still be present after the syscall."
-  (let* ((observed (fnn-staging-observation store))
-         (removals (fnn-bridge-sweep-staging observed)))
-    (dolist (name removals)
-      (unless (member name observed :test #'string=)
-        (fnn-fault "ACL2 returned a staging removal outside the observation"))
-      (handler-case
-          (progn
-            (fnn-unlink (fnn-join (fnn-staging store) name))
-            ;; Developer-only source-pinned recovery seam.  It runs after the
-            ;; real unlink, so EIO here is a post-success observation and
-            ;; SIGKILL is process death before the next directory observation.
-            (fnn-at store :recovery-stage-unlinked))
-        (fnn-os-error (e)
-          (if (= (fnn-os-errno e) sb-posix:enoent)
-              nil
-              (fnn-indeterminate "cannot collect staging orphan ~a: ~a" name e)))))
-    (setf (fnn-store-orphans store) (fnn-staging-observation store))
-    removals))
+Each round enumerates at most the ACL2 limit, asks fn-sn-sweep-round, and
+unlinks what it returns.  :AGAIN promises the round removed a name, so the next
+enumeration is of a strictly smaller directory
+(fn-sn-sweep-rounds-collect-every-orphan); :REFUSED is a directory holding more
+names than one observation, none of which the model may remove, and it is a
+refusal, not a fault.  The core's removals must be observed names; that check
+is representation validation at the host boundary, not a second staging
+policy.  ENOENT means a concurrent external removal won the race; any other
+unlink error is uncertain because the name may or may not still be present
+after the syscall."
+  (let ((removed nil))
+    (loop
+      (multiple-value-bind (observed more) (fnn-staging-observation store)
+        (multiple-value-bind (action removals) (fnn-bridge-sweep-round observed more)
+          (dolist (name removals)
+            (unless (member name observed :test #'string=)
+              (fnn-fault "ACL2 returned a staging removal outside the observation"))
+            (handler-case
+                (progn
+                  (fnn-unlink (fnn-join (fnn-staging store) name))
+                  ;; Developer-only source-pinned recovery seam.  It runs after the
+                  ;; real unlink, so EIO here is a post-success observation and
+                  ;; SIGKILL is process death before the next directory observation.
+                  (fnn-at store :recovery-stage-unlinked))
+              (fnn-os-error (e)
+                (if (= (fnn-os-errno e) sb-posix:enoent)
+                    nil
+                    (fnn-indeterminate "cannot collect staging orphan ~a: ~a" name e))))
+            (push name removed))
+          (case action
+            (:again nil)
+            (:done (return))
+            (:refused
+             (fnn-refuse "staging namespace holds more than ~d names recovery may not remove"
+                         (length observed)))
+            (otherwise (fnn-fault "ACL2 returned an invalid staging sweep action"))))))
+    (setf (fnn-store-orphans store) (fnn-staging-orphans store))
+    (nreverse removed)))
 
 (defun fnn-load-config (store)
   (fnn-check-regular (fnn-config-path store))
@@ -1559,8 +1616,8 @@ from the live ACL2 configuration; the native host does not name a provenance."
 (defun fnn-orphan-report (store)
   (if (null (fnn-store-orphans store))
       "staging-orphans=0"
-      (format nil "staging-orphans=~d [~{~a~^ ~}]" (length (fnn-store-orphans store))
-              (fnn-store-orphans store))))
+      (format nil "staging-orphans=~d~:[~;+~] [~{~a~^ ~}]" (length (fnn-store-orphans store))
+              (fnn-store-orphans-more store) (fnn-store-orphans store))))
 
 (defun fnn-checkpoint-report (store)
   (let ((outcome (fnn-store-checkpoint-outcome store)))
