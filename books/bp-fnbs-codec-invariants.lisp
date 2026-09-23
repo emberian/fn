@@ -121,6 +121,43 @@
            :in-theory (disable fn-frame-fields-octets
                                fn-frame-values-okp))))
 
+; Version 1 appends four u64 fields: schema version, anchor tag, age, and
+; CLOCK_BOOTTIME anchor.  Its payload is 32 octets longer than legacy kind 5.
+(defthm fn-bpnf-kind-five-v1-payload-length
+  (implies (fn-frame-values-okp *fn-bpnf-stored-fields-v1* values)
+           (equal (len (fn-frame-fields-octets
+                        *fn-bpnf-stored-fields-v1* values))
+                  (+ 108 (len (nth 6 values))
+                     (len (nth 8 values)) (len (nth 10 values)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-frame-fields-octets
+                              fn-frame-field-octets
+                              fn-frame-len-of-append
+                              fn-frame-u64-bytes-len
+                              fn-frame-u32-bytes-len))))
+
+(defthm fn-bpnf-kind-five-v1-fits-with-peer-bound
+  (implies (and (fn-frame-values-okp *fn-bpnf-stored-fields-v1* values)
+                (<= (len (nth 6 values)) 2048)
+                (<= (len (nth 8 values)) 512)
+                (<= (len (nth 10 values)) *fn-bpnf-max-held-image*))
+           (and (<= (len (fn-frame-fields-octets
+                         *fn-bpnf-stored-fields-v1* values))
+                    *fn-bpn-lifecycle-max-payload*)
+                (fn-cbor-at-mostp
+                 (fn-frame-fields-octets *fn-bpnf-stored-fields-v1* values)
+                 *fn-bpn-lifecycle-max-payload*)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnf-kind-five-v1-payload-length)
+                 (:instance fn-frame-fields-octets-are-octets
+                            (specs *fn-bpnf-stored-fields-v1*))
+                 (:instance fn-cbor-at-mostp-from-length
+                            (xs (fn-frame-fields-octets
+                                 *fn-bpnf-stored-fields-v1* values))
+                            (bound *fn-bpn-lifecycle-max-payload*)))
+           :in-theory (disable fn-frame-fields-octets
+                               fn-frame-values-okp))))
+
 (defthm fn-bpnf-eid-encoded-peer-fits
   (implies (fn-bpp-eidp peer)
            (<= (len (fn-bpn-peer-octets peer)) 2048))
@@ -160,6 +197,7 @@
 (defthm fn-bpnf-stored-values-fit-frame
   (implies
    (and (fn-bpnf-stored-recordp record)
+        (equal (len (fn-bpnf-stored-record-values record)) 11)
         (fn-frame-values-okp
          *fn-bpnf-stored-fields* (fn-bpnf-stored-record-values record)))
    (fn-cbor-at-mostp
@@ -186,6 +224,7 @@
 (defthm fn-bpnf-valid-kind-five-encodes
   (implies
    (and (fn-bpnf-stored-recordp record)
+        (equal (len (fn-bpnf-stored-record-values record)) 11)
         (fn-frame-values-okp
          *fn-bpnf-stored-fields* (fn-bpnf-stored-record-values record)))
    (not (equal (fn-bpnf-stored-record-frame record) :bad)))
@@ -201,6 +240,7 @@
 
 (defthm fn-bpnf-stored-frame-is-fnbs-seal
   (implies (and (fn-bpnf-stored-recordp record)
+                (equal (len (fn-bpnf-stored-record-values record)) 11)
                 (fn-frame-values-okp
                  *fn-bpnf-stored-fields*
                  (fn-bpnf-stored-record-values record))
@@ -286,6 +326,7 @@
 (defthm fn-bpnf-stored-unframe-of-canonical-frame
   (implies
    (and (fn-bpnf-stored-recordp record)
+        (equal (len (fn-bpnf-stored-record-values record)) 11)
         (fn-frame-values-okp *fn-bpnf-stored-fields*
                              (fn-bpnf-stored-record-values record))
         (fn-frame-inputp

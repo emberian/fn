@@ -39,3 +39,18 @@ and remains open. The Bundle Age path uses `fn-clock-expiry-decision` under
 its clock assumptions; the age estimate alone is a lower bound and this
 checkpoint does not claim authentication or complete physical lifetime
 soundness.
+
+The first affected-root wave `run-20260923T214022Z-4ef7` certified 19
+of 22 newly required books, then exposed a legacy invariant applying the
+11-field premise to a 15-field record. The separate codec invariant now
+scopes legacy proofs to exact 11 fields, proves the new v1 payload is
+`108 + peer + principal + wire` octets, and bounds it under the existing
+component caps. Decoder tries exact old fields before v1; exact parsing
+and frame equality retain the same accepted language. Focused v1/legacy
+codec roots passed `run-20260923T214503Z-98da`,
+[manifest](manifests/certify-20260923T214506Z-546038.json).
+The subsequent affected wave exposed the analogous byte-crash legacy
+premise; its fixed book and publisher test passed
+`run-20260923T214719Z-270b`,
+[manifest](manifests/certify-20260923T214722Z-572215.json).
+The full affected closure still needs a clean rerun at the combined bytes.

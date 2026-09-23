@@ -165,13 +165,13 @@
                     (equal (fn-frame-result-kind answer) *fn-bpnf-stored-code*)))
           nil
         (let* ((payload (fn-frame-result-payload answer))
-               (new (fn-frame-fields-parse
-                     *fn-bpnf-stored-fields-v1* payload))
-               (old (if (fn-frame-parse-okp new)
+               (old (fn-frame-fields-parse
+                     *fn-bpnf-stored-fields* payload))
+               (new (if (fn-frame-parse-okp old)
                         nil
                       (fn-frame-fields-parse
-                       *fn-bpnf-stored-fields* payload)))
-               (parsed (if (fn-frame-parse-okp new) new old))
+                       *fn-bpnf-stored-fields-v1* payload)))
+               (parsed (if (fn-frame-parse-okp old) old new))
                (record (if (fn-frame-parse-okp parsed)
                            (fn-bpnf-stored-from-values
                             (fn-frame-parse-value parsed))
