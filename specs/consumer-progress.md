@@ -1,6 +1,7 @@
 # Experimental consumer position, version 1
 
-Status: **selected experiment contract, unimplemented**, 2026-09-23. This
+Status: **selected experiment contract; ACL2 decision kernel implemented, no
+served or durable Store interface**, 2026-09-23. This
 specifies E2 of [the sleeping-agent exchange](../planning/experiments/e1-e2-agent-exchange.md).
 It is an fn design guarantee, not an NNTP or BP requirement and not a v0 release
 gate. The selected E1 payload remains opaque to fn. The executable traces to
@@ -35,9 +36,14 @@ could change, including a newly visible old article. If the implementation
 cannot prove that a change preserves visibility, it changes the view version.
 These versions are durable identifiers, not process-local counters.
 
-The first trusted-peer, public-group profile uses a bounded versioned cursor
-encoding. A future ACL2 decoder owns its field grammar, version check and
-scope comparison; the authenticated caller is bound to the principal and
+The first trusted-peer, public-group profile uses `books/consumer-position.lisp`
+cursor bytes: `fncu` (four octets), version 1 (one octet), five nonempty
+length-prefixed octet IDs (history, incarnation, consumer, principal, query;
+one through 64 octets each), then four big-endian unsigned 32-bit integers
+(query version, view version, registration epoch, scanned position). The
+maximum encoding is 346 octets under the 512-octet decoder preflight. The
+ACL2 decoder owns field grammar, version check and scope comparison; the
+authenticated caller is bound to the principal and
 consumer entry before poll or ack. A cursor from another store, incarnation,
 consumer, registration epoch, principal, query or view is refused before any
 ack mutation. An unknown version is refused without guessing its meaning.
@@ -47,14 +53,15 @@ The page and errors still disclose no denied article source or identity.
 A later sealed-token profile could hide cursor fields and authenticate the
 encoding, with a selected primitive and key lifecycle stated as separate
 assumptions. No such cryptographic primitive is selected or required for v1.
-The exact first wire encoding remains to be fixed before a served interface.
+The kernel fixes this candidate v1 encoding. Its eventual served command
+framing and authenticated transport binding remain to be specified.
 
 ## Operations and their meanings
 
 All requests have bounded lengths and an authenticated caller. `register`
 binds a consumer ID, principal and query under the current view, and durably
 sets its recorded position to zero with a fresh `registration-epoch`. The
-epoch comes from a durable, never-reused Store allocation, not a wall clock;
+epoch must come from a durable, never-reused Store allocation, not a wall clock;
 exhaustion refuses registration. A duplicate registration with identical
 scope returns the existing position; changing scope requires `rebase`.
 `poll(cursor, limits)` pins one committed frontier, scans **at most** the
@@ -152,14 +159,35 @@ store-history identity, consumer table, query decision or ack event.
 that is not a consumer transaction. NEWNEWS and acceptance stamps cannot
 substitute for this prefix scan.
 
-Implementation must first add durable history/incarnation identity and the
-bounded consumer-entry event to Store's record/replay/compaction/restore path,
-including refusal, ambiguous publication, and every process-death cut. Then
-add ACL2 query/poll/token-field/ack/rebase decisions over the actual committed
-projection, with preservation and scope theorems and non-degenerate teeth.
-The host-called served owner step must be the theorem subject, or have a named
-equivalence to the inner decision. Only then may the native host carry bounded
-bytes, invoke the selected seal/open primitive, and publish the Store event.
+The executable `fn-cp-register`, `fn-cp-ack`, `fn-cp-rebase` and
+`fn-cp-unregister` return `:write` proposals, `:no-op` for an idempotent
+durable state already known, or `:refused`. `fn-cp-apply` models the projection
+of a *committed* proposal; neither a proposal nor this in-memory application
+means Store acceptance. The kernel checks current scope, monotone ack,
+frontier, capacity and a scalar registration epoch without revalidating an
+entire Store on each request. `qver` and `view` must be computed by an ACL2
+owner policy projection, not accepted from client bytes. The poll/query
+selection and this policy projection are still unimplemented.
+
+Store integration must add durable history/incarnation identity and bounded
+consumer events to `fn-store-event-p` / `fn-store-event-encode` and its exact
+decoder in `books/store-events.lisp`, sequence/txid routing, the
+`fn-replay-apply-record` arm in `books/replay.lisp`, and
+`fn-sn-prepare-identity` / `fn-sn-finish` / observed reopen in
+`books/store-node.lisp`. The global next epoch, entries and ack positions
+must replay with the same records, then survive checkpoint and compaction;
+prechange checkpoint images need a versioned migration rule. The native
+publication path must exercise refusal and ambiguity around its
+`record-linked`, `record-attempted`, `record-durable`, `record-completing`,
+`record-staging-cleaned`, `finish-consumed` and `finish-durable` process-death
+cuts, plus recovery cuts. The Store event needs its own bounded codec and
+durable metadata charge. The first proposed integration caller is an
+ACL2-backed `fn-owner-consumer-*` wrapper beside `fn-owner-chunk` in
+`host/owner-host.lisp`; `host/native/owner.lisp` must route its bounded bytes
+through that wrapper and the existing `fnn-owner-publish-prepared` completion
+gate. The host-called wrapper must be the theorem subject, or have a named
+equivalence to the kernel. None of those caller and durability joins exists
+yet. No seal/open primitive is required by this first public-group profile.
 The consumer library owns its own crash-safe transaction and dregg verifier.
 The trace file names the required two-database observations; passing article
 arrival or a printed watermark cannot satisfy them.

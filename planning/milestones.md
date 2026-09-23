@@ -14,7 +14,11 @@ application-evidence and durable-consumer experiments while retaining the
 selected v0 gate; these are not additional release requirements.
 The proposed [E2 v1 contract](../specs/consumer-progress.md) and
 [adversarial traces](experiments/e1-e2-v1-traces.json) now name the future
-Store/owner caller and crash observations; neither is implemented or a v0 gate.
+Store/owner caller and crash observations. The bounded
+[ACL2 consumer-position kernel](../books/consumer-position.lisp) now decides
+cursor scope and register/ack/rebase/unregister proposals; it has no Store
+event, served caller, consumer database or executed two-store trace and is
+not a v0 gate.
 [Current work](now.md) identifies the tested image and active/proposed work.
 Release scope and step contracts remain in
 [the trajectory plan](plan-2026-09-22-trajectory.md) §§2–3; the execution

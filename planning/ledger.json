@@ -74,6 +74,8 @@
     "books/records-attach",
     "books/store-events",
     "tests/acl2/store-events-tests",
+    "books/consumer-position",
+    "tests/acl2/consumer-position-tests",
     "tests/acl2/records-tests",
     "tests/acl2/records-teeth-tests",
     "books/provenance-codec",
@@ -454,19 +456,19 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 455,
-    "books_in_root_closure": 454,
-    "roots": 450,
-    "theorems": 7367,
-    "functions": 5628,
-    "assert_events": 8150,
-    "must_fails": 320,
+    "books": 457,
+    "books_in_root_closure": 456,
+    "roots": 452,
+    "theorems": 7376,
+    "functions": 5656,
+    "assert_events": 8182,
+    "must_fails": 324,
     "encapsulates": 26,
     "guards": {
       "verified": 1850,
       "declared-off": 302,
       "default-guarded": 2777,
-      "default-unguarded": 699
+      "default-unguarded": 727
     },
     "suspect_theorems": 69,
     "export_hygiene_warnings": 93,
@@ -3233,6 +3235,29 @@
         "clock",
         "records-invariants"
       ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/consumer-position.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 27,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 27
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -9705,6 +9730,33 @@
         "../../books/store-config"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/consumer-position-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 32,
+      "must_fails": 4,
+      "defconsts": 25,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/consumer-position"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },

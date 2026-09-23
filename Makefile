@@ -77,6 +77,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-attach \
 	books/store-events \
 	tests/acl2/store-events-tests \
+	books/consumer-position \
+	tests/acl2/consumer-position-tests \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
 	books/provenance-codec \
