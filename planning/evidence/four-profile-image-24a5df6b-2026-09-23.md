@@ -50,3 +50,25 @@ ACL2 definition in this revision, and the workflow record recognizer has no
 `:undertake` kind. Until the caller and contract are repaired and the image
 rebuilt, this image does not qualify that operation. No live upgrade, Store
 schema migration, full protocol matrix, or power-loss qualification was run.
+
+## Shared source-matched runtime suite
+
+The entry-profile lane ran the frozen launchers from this image with source
+revision `24a5df6b` and reported these results; its later test-only commit
+`72e0ce9e` was **not** in this image or these counts.
+
+| Suite | Result at this image |
+| --- | --- |
+| `tests.test_native_image_profiles` | 12 passed |
+| `tests.test_native_control` | 13 passed |
+| `tests.test_native_storage_codec` | 11 passed |
+| `tests.test_native_app_journal` | 8 passed, 2 failed: `FN-WORKFLOW-UNDERTAKE-RECORD` missing |
+| `tests.test_native_checkpoint` | 8 passed, 9 failed: `FN-BS-PACK-RECLAIM-PLAN` missing |
+| `tests.test_bp_obligation_native` | 2 passed, 1 failed: `FN-OWNER-WORKFLOW-FORWARD-PINNEDP` non-action |
+| `tests.test_bp_app_native` | 2 passed, 1 failed: same non-action |
+| `tests.test_native_admin` | Incomplete: four early failures from a stale lowercase `verification=verified` test expectation against `VERIFIED`; a long owner test was terminated after more than five minutes. |
+
+The passing control suite includes its normal production posting and recovery
+fixtures. The red DTN/BP cases are open caller/semantic gaps. The incomplete
+admin suite cannot be counted as a pass. This record is scoped to the frozen
+source and image; later test edits require their own run and source identity.
