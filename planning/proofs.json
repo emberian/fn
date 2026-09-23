@@ -222,9 +222,12 @@
         "tests/evidence/2026-09-18-assurance.json",
         "books/bp-adu.lisp",
         "tests/evidence/2026-09-18-bp-workflow.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "tests/acl2/records-teeth-tests.lisp",
+        "tests/acl2/acceptance-stamp-tests.lisp",
+        "planning/evidence/t2a-acceptance-stamp-4670cc35-2026-09-23.md"
       ],
-      "progress_note": "Primitive and full schema-0 value round trips and accepted-input canonicality are certified. Exact article source preservation remains checked. An independent cbor2 6.1.4 run passed 38 cases. Native/batch/signature schemas and domain-separated preimages remain open. Experimental BP request/receipt ADU roundtrip and exact accepted-input canonicality are also certified, without selecting D01/D09. D01 was subsequently selected by the user for exact authored source bytes and separate projections; native encoding/preimage proofs and D09 remain open."
+      "progress_note": "The record codec now supports schema 0 (:legacy) and schema 1 (bounded acceptance stamp), with round-trip, canonicality and legacy-byte witnesses certified in the T2a lane. The combined native image and migration witness remain open. The codec evidence is scoped to its admitted grammars; unknown-record opaque preservation and complete native signature/Store integration are not established by it. The separate hybrid-carrier evidence describes exact-source serialization and its remaining universal round-trip obligation."
     },
     {
       "id": "PRF-006",
