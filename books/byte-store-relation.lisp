@@ -178,6 +178,25 @@
                  fn-bs-inode-list-knownp fn-bs-authority-knownp)
                 (fn-bs-apply-ops fn-bs-run))))
 
+; The relation is a fact about the states of the whole run.  While the run is
+; still being unrolled, opening it on a partly unrolled prefix only fails (92
+; of 121 openings were useless in the certify log, 4.8 of 6 s), so the staged
+; hint keeps it closed until no fn-bs-run call is left, then opens it.
+(local
+ (deftheory fn-bs-k0-unroll-theory
+   (set-difference-theories (theory 'fn-bs-k0-frontier-theory)
+                            '(fn-bs-run-relatedp fn-bs-store-relation))))
+
+(local
+ (defun fn-bs-k0-staged-hint (clause stable-under-simplificationp)
+   (declare (xargs :mode :program))
+   (and stable-under-simplificationp
+        (if (fn-bs-k0-find-run clause)
+            (list :computed-hint-replacement
+                  '((fn-bs-k0-staged-hint clause stable-under-simplificationp))
+                  :expand (list (fn-bs-k0-find-run clause)))
+          '(:in-theory (theory 'fn-bs-k0-frontier-theory))))))
+
 (defthm fn-bs-first-frontier-program-preserves-relation
   (implies (and (posp unit)
                 (fn-bs-initial-inputp config frontier)
@@ -189,8 +208,8 @@
   :rule-classes nil
   :hints (("Goal" :do-not '(preprocess)
            :in-theory
-           (theory 'fn-bs-k0-frontier-theory))
-          (fn-bs-k0-unroll-hint clause stable-under-simplificationp)))
+           (theory 'fn-bs-k0-unroll-theory))
+          (fn-bs-k0-staged-hint clause stable-under-simplificationp)))
 
 
 (defthm fn-bs-first-frontier-program-completes
@@ -222,5 +241,5 @@
                             (fn-bs-frontier-program stage frontier) nil nil nil))))
   :rule-classes nil
   :hints (("Goal" :do-not '(preprocess)
-           :in-theory (theory 'fn-bs-k0-frontier-theory))
-          (fn-bs-k0-unroll-hint clause stable-under-simplificationp)))
+           :in-theory (theory 'fn-bs-k0-unroll-theory))
+          (fn-bs-k0-staged-hint clause stable-under-simplificationp)))

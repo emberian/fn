@@ -78,6 +78,17 @@
 ; goal about `cdr'.  Closed here, book-locally, which is where
 ; docs/proof-style.md section 8 says a record accessor belongs.
 (local (in-theory (disable fn-nntp-result-effects)))
+; Two exported rules of the NNTP books state a shape fact about a recognizer:
+; fn-nntp-article-idp-is-consp (books/nntp-invariants) and
+; fn-nntp-response-text-true-listp (books/nntp-effects).  With the syntax
+; vocabulary open above, each is tried on every `consp' and `true-listp' term
+; of a dispatch over the auth step, and relieving its hypothesis opens the
+; Message-ID grammar or the response-text scan on a term that is neither.
+; In the certify log's two role keystones they were the top of the profile
+; (560 k and 175 k useless frames of 2.3 s); no proof here reads an article
+; identifier, and none needs a response text's shape from this rule.
+(local (in-theory (disable fn-nntp-article-idp-is-consp
+                           fn-nntp-response-text-true-listp)))
 
 ; -----------------------------------------------------------------------------
 ; A credential
@@ -1110,8 +1121,12 @@
 (defthm fn-auth-effectsp-of-append-auth
   (implies (and (fn-auth-effectsp a) (fn-auth-effectsp b))
            (fn-auth-effectsp (append a b)))
+  ; fn-auth-nntp-effects-are-auth-effects is closed: it is tried on every
+  ; fn-auth-effectsp term of the induction and opens fn-nntp-effectsp to
+  ; relieve its hypothesis, 277 k useless frames of the 0.87 s.
   :hints (("Goal" :induct (fn-auth-effectsp a)
-           :in-theory (disable fn-auth-effectp))))
+           :in-theory (disable fn-auth-effectp
+                               fn-auth-nntp-effects-are-auth-effects))))
 
 (defthm fn-auth-starttls-effect-is-typed
   (fn-auth-effectsp (list (fn-auth-starttls-effect)))
@@ -1207,6 +1222,24 @@
 ; of a transition").  Opened over the whole step the same proof costs more
 ; than 2,000,000 prover steps across 182 subgoals and does not close.
 
+; The two facts about fn-auth-principal-match that a consistency proof reads:
+; a match is a name, and a match was read out of a checked configuration.
+; With them the match stays closed, instead of opening the row count, the
+; name scan and the record lookup under every branch of AUTHINFO.
+(local (defthm fn-auth-principal-match-is-a-string
+  (or (null (fn-auth-principal-match principal cfg))
+      (stringp (fn-auth-principal-match principal cfg)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (e/d (fn-auth-principal-match)
+                                  (fn-cfg-peer-find fn-digest-hex fn-cfgp))))))
+
+(local (defthm fn-auth-principal-match-means-a-configuration
+  (implies (fn-auth-principal-match principal cfg)
+           (fn-cfgp cfg))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-auth-principal-match)
+                                  (fn-cfg-peer-find fn-digest-hex fn-cfgp))))))
+
 (local (defthm fn-auth-authinfo-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
            (fn-auth-session-consistentp
@@ -1226,7 +1259,8 @@
                             fn-auth-configp fn-auth-single fn-nntp-single
                             fn-auth-find-cred fn-auth-checkp
                             fn-auth-token-argp fn-nntp-keywordp
-                            fn-nntp-printable-tokenp fn-prin-idp))))))
+                            fn-nntp-printable-tokenp fn-prin-idp
+                            fn-auth-principal-match))))))
 
 (local (defthm fn-auth-starttls-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
@@ -1267,7 +1301,9 @@
                            (fn-auth-authinfo fn-auth-starttls fn-auth-single
                             fn-auth-gatedp fn-auth-postingp fn-nntp-keywordp
                             fn-nntp-keyword-tokenp fn-nntp-multi
-                            fn-auth-capability-lines fn-inj-config-allow
+                            fn-auth-capability-lines
+                            fn-auth-capability-lines-for-peer
+                            fn-auth-peer-record fn-inj-config-allow
                             fn-auth-sessionp fn-auth-session-consistentp))))))
 
 (local (defthm fn-auth-delegate-preserves-consistentp
@@ -1325,6 +1361,50 @@
 ; first of the three facts OB-AUTH-FOLD (K2) waits on; the other two are a
 ; wire lemma and a reader lemma in books that this one does not own.
 
+; The config field one transition at a time.  Opened over the whole step
+; with every arm open, the keystone below split 180 ways on the AUTHINFO,
+; STARTTLS and binding arms together (2.4 s in the certify log); each arm
+; rebuilds the session from the config it was given, and that is the fact.
+(local (defthm fn-auth-authinfo-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-authinfo as args)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-authinfo fn-auth-bind-principal-peer
+                                   fn-auth-with-base)
+                                  (fn-auth-single fn-auth-find-cred fn-auth-checkp
+                                   fn-auth-token-argp fn-nntp-keywordp
+                                   fn-auth-principal-match fn-node-statep))))))
+
+(local (defthm fn-auth-starttls-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session (fn-auth-starttls as args)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-starttls fn-auth-clear-principal-peer
+                                   fn-auth-with-base)
+                                  (fn-auth-single fn-auth-principal-rolep))))))
+
+(local (defthm fn-auth-command-keeps-the-config
+  (implies (fn-auth-command as config keyword args)
+           (equal (fn-auth-session-config
+                   (fn-post-result-session
+                    (fn-auth-command as config keyword args)))
+                  (fn-auth-session-config as)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-command)
+                                  (fn-auth-authinfo fn-auth-starttls fn-auth-single
+                                   fn-auth-gatedp fn-auth-postingp fn-nntp-keywordp
+                                   fn-nntp-keyword-tokenp fn-nntp-multi
+                                   fn-auth-capability-lines-for-peer
+                                   fn-auth-peer-record fn-inj-config-allow))))))
+
+(local (defthm fn-auth-delegate-keeps-the-config
+  (equal (fn-auth-session-config
+          (fn-post-result-session
+           (fn-auth-delegate as archive config observation injection
+                             wire-event)))
+         (fn-auth-session-config as))
+  :hints (("Goal" :in-theory (e/d (fn-auth-delegate fn-auth-with-base)
+                                  (fn-peer-step))))))
+
 (defthm fn-auth-step-preserves-the-config
   (equal (fn-auth-session-config
           (fn-post-result-session
@@ -1332,17 +1412,10 @@
          (fn-auth-session-config as))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
-                            fn-auth-tls-eventp fn-auth-tls-established
-                            fn-auth-authinfo fn-auth-starttls
-                            fn-auth-delegate fn-auth-with-base
-                            fn-auth-bind-principal-peer
-                            fn-auth-clear-principal-peer)
-                           (fn-peer-step fn-auth-single fn-auth-find-cred
-                            fn-auth-checkp fn-auth-token-argp
-                            fn-auth-sessionp fn-auth-postingp
-                            fn-nntp-keywordp fn-nntp-single fn-nntp-multi
-                            fn-auth-capability-lines-for-peer
+           :in-theory (e/d (fn-auth-step fn-auth-tls-eventp
+                            fn-auth-tls-established)
+                           (fn-peer-step fn-auth-command fn-auth-delegate
+                            fn-auth-sessionp
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp)))))
@@ -1352,6 +1425,30 @@
 ; fn-peer-step-submission-is-typed is the whole of its typing.  Only the
 ; delegate branch has a submission at all: every branch this book answers
 ; builds its result with a NIL third field.
+
+; No branch this book answers has a submission, one arm at a time, so the
+; theorem below reads the step's dispatch with fn-auth-command closed instead
+; of opening all of its arms (221-way split, 2.2 s in the certify log).
+(local (defthm fn-auth-authinfo-has-no-submission
+  (not (fn-post-result-submission (fn-auth-authinfo as args)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-authinfo fn-auth-bind-principal-peer)
+                                  (fn-auth-single fn-auth-find-cred fn-auth-checkp
+                                   fn-auth-token-argp fn-nntp-keywordp
+                                   fn-auth-principal-match fn-node-statep))))))
+
+(local (defthm fn-auth-starttls-has-no-submission
+  (not (fn-post-result-submission (fn-auth-starttls as args)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-starttls)
+                                  (fn-auth-single fn-auth-clear-principal-peer))))))
+
+(local (defthm fn-auth-command-has-no-submission
+  (not (fn-post-result-submission (fn-auth-command as config keyword args)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-command)
+                                  (fn-auth-authinfo fn-auth-starttls fn-auth-single
+                                   fn-auth-gatedp fn-auth-postingp fn-nntp-keywordp
+                                   fn-nntp-keyword-tokenp fn-nntp-multi
+                                   fn-auth-capability-lines-for-peer
+                                   fn-auth-peer-record fn-inj-config-allow))))))
 
 (defthm fn-auth-submission-is-the-delegated-submission
   (implies (fn-post-result-submission
@@ -1370,11 +1467,7 @@
                                    fn-nntp-command-inputp
                                    fn-auth-tls-eventp
                                    fn-nntp-keyword-tokenp
-                                   fn-nntp-command-arguments-at-mostp))
-           :expand ((fn-auth-command
-                     as config
-                     (car (fn-nntp-tokenize (car (cdr wire-event))))
-                     (cdr (fn-nntp-tokenize (car (cdr wire-event)))))))))
+                                   fn-nntp-command-arguments-at-mostp)))))
 
 ; KEYSTONE.  The outer auth dispatcher is transparent for the three inbound
 ; transit verbs.  The peer step is therefore the sole authorization decision:
@@ -2144,12 +2237,16 @@
                         (fn-peer-session-cfg (fn-auth-session-base as))))))
   :hints (("Goal"
            :do-not-induct t
+           ; The match stays closed: the conclusion names it, and the node
+           ; the binding tests comes from the configuration a match was
+           ; read out of (fn-auth-principal-match-means-a-configuration).
            :in-theory (e/d (fn-auth-authinfo fn-auth-bind-principal-peer
                             fn-auth-with-base fn-auth-session-peer
-                            fn-auth-principal-match fn-auth-sessionp)
+                            fn-auth-sessionp)
                            (fn-auth-single fn-auth-find-cred fn-auth-checkp
                             fn-auth-token-argp fn-nntp-keywordp
                             fn-nntp-single fn-cfg-peer-find fn-cfgp
+                            fn-auth-principal-match
                             fn-digest-hex fn-peer-sessionp fn-auth-configp
                             fn-nntp-printable-tokenp fn-prin-idp
                             fn-node-statep))))))

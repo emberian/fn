@@ -278,6 +278,26 @@
             :in-theory (e/d (fn-tcl-broken-stream) (fn-tcl-c2-closed))
             :expand ((fn-tcl-recv-segment s m now))))))
 
+; fn-tcl-settle closes an :ending session whose transfers are both gone.  It
+; adds a (:close) event and moves the phase; it touches neither the inbound
+; record nor any transfer event.  Opened under fn-tcl-step it doubles every
+; arm (the 177-way split of the certify log, 3.1 s); these two facts are all
+; the step theorems read from it, so they keep it closed.
+(local (defthm fn-tcl-settle-keeps-inbound
+         (equal (fn-tcl-session-inbound (fn-tcl-result-session (fn-tcl-settle r)))
+                (fn-tcl-session-inbound (fn-tcl-result-session r)))
+         :hints (("Goal" :in-theory (enable fn-tcl-settle)))))
+
+(local (defthm fn-tcl-settle-member-events
+         (iff (member-equal x (fn-tcl-result-events (fn-tcl-settle r)))
+              (or (member-equal x (fn-tcl-result-events r))
+                  (and (equal x (list :close))
+                       (equal (fn-tcl-session-phase (fn-tcl-result-session r)) :ending)
+                       (equal (fn-tcl-session-term (fn-tcl-result-session r)) :both)
+                       (null (fn-tcl-session-inbound (fn-tcl-result-session r)))
+                       (null (fn-tcl-session-outbound (fn-tcl-result-session r))))))
+         :hints (("Goal" :in-theory (enable fn-tcl-settle)))))
+
 (defthm fn-tcl-final-ack-means-every-segment
   (implies (and (fn-tcl-sessionp s)
                 (fn-tcl-messagep m (fn-tcl-segment-mru s))
@@ -314,8 +334,8 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-tcl-recv-segment-final-ack-means-every-segment
                             (s (fn-tcl-touch-rx s now))))
-           :in-theory (e/d (fn-tcl-step fn-tcl-settle)
-                           (fn-tcl-c2-closed fn-tcl-recv-segment
+           :in-theory (e/d (fn-tcl-step)
+                           (fn-tcl-c2-closed fn-tcl-recv-segment fn-tcl-settle
                             fn-tcl-complete fn-tcl-stage fn-tcl-refuse
                             fn-tcl-broken-stream)))))
 
@@ -391,9 +411,9 @@
                          (equal (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound s))
                                 (fn-tcl-xfer-segment-xfer-id m)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-step fn-tcl-settle fn-tcl-recv-segment
+           :in-theory (e/d (fn-tcl-step fn-tcl-recv-segment
                             fn-tcl-broken-stream)
-                           (fn-tcl-c2-closed)))))
+                           (fn-tcl-c2-closed fn-tcl-settle)))))
 
 ; The recognizer stays CLOSED from here too.  C3 and C4 were written against
 ; an open one, and the five forms below this line that paid for it were
@@ -447,6 +467,83 @@
                 (null (fn-tcl-session-inbound
                        (fn-tcl-result-session (fn-tcl-input-error s header reason now)))))))
 
+; C3 one arm at a time.  The two step theorems below used to open every arm
+; of fn-tcl-step together with fn-tcl-settle and the message recognizer (39
+; definitions, 108- and 114-way splits, 1.6 and 2.5 s in the certify log).
+; What they need from an arm is its outcome count and, for the segment arm,
+; that a live transfer the arm ends is ended by exactly one outcome; the arms
+; that keep or never create an inbound record say so above.
+(local (defthm fn-tcl-settle-keeps-outcome-count
+         (equal (fn-tcl-inbound-outcome-count (fn-tcl-result-events (fn-tcl-settle r)) id)
+                (fn-tcl-inbound-outcome-count (fn-tcl-result-events r) id))
+         :hints (("Goal" :in-theory (enable fn-tcl-settle)))))
+
+(local (defthm fn-tcl-recv-contact-at-most-one-outcome
+         (<= (fn-tcl-inbound-outcome-count (fn-tcl-result-events (fn-tcl-recv-contact s m now)) id) 1)
+         :rule-classes :linear
+         :hints (("Goal" :in-theory (e/d (fn-tcl-broken-stream)
+                                         (fn-tcl-c2-closed fn-tcl-ext-decision))
+                  :expand ((fn-tcl-recv-contact s m now))))))
+
+(local (defthm fn-tcl-recv-init-at-most-one-outcome
+         (<= (fn-tcl-inbound-outcome-count (fn-tcl-result-events (fn-tcl-recv-init s m now)) id) 1)
+         :rule-classes :linear
+         :hints (("Goal" :in-theory (e/d (fn-tcl-broken-stream)
+                                         (fn-tcl-c2-closed fn-tcl-ext-decision))
+                  :expand ((fn-tcl-recv-init s m now))))))
+
+(local (defthm fn-tcl-unexpected-at-most-one-outcome
+         (<= (fn-tcl-inbound-outcome-count (fn-tcl-result-events (fn-tcl-unexpected s header now)) id) 1)
+         :rule-classes :linear
+         :hints (("Goal" :in-theory (e/d (fn-tcl-broken-stream)
+                                         (fn-tcl-c2-closed fn-tcl-ext-decision))
+                  :expand ((fn-tcl-unexpected s header now))))))
+
+(local (defthm fn-tcl-recv-segment-at-most-one-outcome
+         (<= (fn-tcl-inbound-outcome-count (fn-tcl-result-events (fn-tcl-recv-segment s m now)) id) 1)
+         :rule-classes :linear
+         :hints (("Goal" :in-theory (e/d (fn-tcl-broken-stream)
+                                         (fn-tcl-c2-closed fn-tcl-ext-decision))
+                  :expand ((fn-tcl-recv-segment s m now))))))
+
+(local (defthm fn-tcl-recv-ack-at-most-one-outcome
+         (<= (fn-tcl-inbound-outcome-count (fn-tcl-result-events (fn-tcl-recv-ack s m now)) id) 1)
+         :rule-classes :linear
+         :hints (("Goal" :in-theory (e/d (fn-tcl-broken-stream)
+                                         (fn-tcl-c2-closed fn-tcl-ext-decision))
+                  :expand ((fn-tcl-recv-ack s m now))))))
+
+(local (defthm fn-tcl-recv-refuse-at-most-one-outcome
+         (<= (fn-tcl-inbound-outcome-count (fn-tcl-result-events (fn-tcl-recv-refuse s m now)) id) 1)
+         :rule-classes :linear
+         :hints (("Goal" :in-theory (e/d (fn-tcl-broken-stream)
+                                         (fn-tcl-c2-closed fn-tcl-ext-decision))
+                  :expand ((fn-tcl-recv-refuse s m now))))))
+
+(local (defthm fn-tcl-recv-term-at-most-one-outcome
+         (<= (fn-tcl-inbound-outcome-count (fn-tcl-result-events (fn-tcl-recv-term s m now)) id) 1)
+         :rule-classes :linear
+         :hints (("Goal" :in-theory (e/d (fn-tcl-broken-stream)
+                                         (fn-tcl-c2-closed fn-tcl-ext-decision))
+                  :expand ((fn-tcl-recv-term s m now))))))
+
+(local (defthm fn-tcl-recv-segment-ends-a-live-inbound-once
+         (implies (and (fn-tcl-sessionp s)
+                       (fn-tcl-session-inbound s)
+                       (equal id (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound s)))
+                       (not (and (fn-tcl-session-inbound
+                                  (fn-tcl-result-session (fn-tcl-recv-segment s m now)))
+                                 (equal (fn-tcl-inbound-xfer-id
+                                         (fn-tcl-session-inbound
+                                          (fn-tcl-result-session (fn-tcl-recv-segment s m now))))
+                                        id))))
+                  (equal (fn-tcl-inbound-outcome-count
+                          (fn-tcl-result-events (fn-tcl-recv-segment s m now)) id)
+                         1))
+         :hints (("Goal" :in-theory (e/d (fn-tcl-broken-stream)
+                                         (fn-tcl-c2-closed fn-tcl-ext-decision))
+                  :expand ((fn-tcl-recv-segment s m now))))))
+
 (defthm fn-tcl-step-emits-at-most-one-inbound-outcome
   (implies (and (fn-tcl-sessionp s)
                 (fn-tcl-messagep m (fn-tcl-segment-mru s))
@@ -454,9 +551,9 @@
            (<= (fn-tcl-inbound-outcome-count (fn-tcl-result-events (fn-tcl-step s m now)) id)
                1))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep fn-tcl-step fn-tcl-recv-segment
-                            fn-tcl-recv-init fn-tcl-broken-stream)
-                           (fn-tcl-ext-decision)))))
+           :in-theory (e/d (fn-tcl-step)
+                           (fn-tcl-c2-closed fn-tcl-recv-segment fn-tcl-settle
+                            fn-tcl-ext-decision)))))
 
 (defthm fn-tcl-live-inbound-ends-in-exactly-one-outcome
   (implies (and (fn-tcl-sessionp s)
@@ -473,9 +570,9 @@
                    (fn-tcl-result-events (fn-tcl-step s m now)) id)
                   1))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep fn-tcl-step fn-tcl-recv-segment
-                            fn-tcl-recv-init fn-tcl-broken-stream)
-                           (fn-tcl-ext-decision)))))
+           :in-theory (e/d (fn-tcl-step)
+                           (fn-tcl-c2-closed fn-tcl-recv-segment fn-tcl-settle
+                            fn-tcl-ext-decision)))))
 
 (defthm fn-tcl-tick-fails-a-live-inbound-only-when-closing
   (implies (and (fn-tcl-sessionp s) (fn-clock-observationp obs))

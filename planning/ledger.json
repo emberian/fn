@@ -428,8 +428,8 @@
     "books": 423,
     "books_in_root_closure": 422,
     "roots": 421,
-    "theorems": 7097,
-    "functions": 5427,
+    "theorems": 7117,
+    "functions": 5428,
     "assert_events": 7835,
     "must_fails": 281,
     "encapsulates": 26,
@@ -437,13 +437,13 @@
       "verified": 1746,
       "declared-off": 288,
       "default-guarded": 2722,
-      "default-unguarded": 671
+      "default-unguarded": 672
     },
     "suspect_theorems": 65,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 23,
-    "include_hygiene_warnings": 263,
+    "include_hygiene_warnings": 260,
     "host_names_warnings": 654,
     "hand_written_record_warnings": 18
   },
@@ -2443,12 +2443,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 12,
-      "functions": 7,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 5,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -4226,7 +4226,7 @@
       "book": "books/nntp-auth.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 107,
+      "theorems": 116,
       "functions": 58,
       "guards": {
         "verified": 40,
@@ -6652,7 +6652,7 @@
       "book": "books/tcpcl-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 51,
+      "theorems": 62,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -11723,7 +11723,7 @@
     {
       "theorem": "fn-auth-consistent-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 409,
+      "line": 420,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp"
       ]
@@ -11731,7 +11731,7 @@
     {
       "theorem": "fn-auth-session-peer-folds",
       "book": "books/nntp-auth.lisp",
-      "line": 2221,
+      "line": 2318,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-auth-session-peer"
       ]
@@ -11739,7 +11739,7 @@
     {
       "theorem": "fn-auth-token-argp-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 796,
+      "line": 807,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp"
       ]
@@ -12515,19 +12515,19 @@
       {
         "theorem": "fn-auth-session-peer-of-fn-auth-make-session",
         "book": "books/nntp-auth.lisp",
-        "line": 491,
+        "line": 502,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-auth-session-peer-of-fn-auth-with-base",
         "book": "books/nntp-auth.lisp",
-        "line": 496,
+        "line": 507,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines",
         "book": "books/nntp-auth.lisp",
-        "line": 1715,
+        "line": 1808,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -13573,13 +13573,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/feed-correspondence.lisp",
-        "line": 7,
-        "include": "feed-events",
-        "included": "books/feed-events.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/feed-totality.lisp",
         "line": 4,
         "include": "feed-correspondence",
@@ -13668,13 +13661,6 @@
         "line": 38,
         "include": "injection-invariants",
         "included": "books/injection-invariants.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/owner-feed.lisp",
-        "line": 50,
-        "include": "feed-events",
-        "included": "books/feed-events.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -14459,13 +14445,6 @@
         "line": 3,
         "include": "../../books/feed-connection",
         "included": "books/feed-connection.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/feed-correspondence-tests.lisp",
-        "line": 2,
-        "include": "../../books/feed-events",
-        "included": "books/feed-events.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -19680,7 +19659,7 @@
       },
       {
         "book": "books/nntp-auth.lisp",
-        "line": 96,
+        "line": 107,
         "shape": "fn-auth-config-shapep",
         "shapes": 3,
         "accessors": 14,
