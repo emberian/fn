@@ -62,3 +62,10 @@ overwrite assumptions, barrier and namespace behavior, error handling, and the
 fault tests performed. Simulated crash proofs and process-kill tests alone do not
 establish actual power-failure behavior. D14 selects the first qualification
 profile and the boundary between proved algorithm and trusted platform.
+
+The [isolated hbox device-EIO observation](../planning/evidence/t16-private-eio-2026-09-23.md)
+uses ext4 on a disposable tmpfs-backed loop device and a private `dm-flakey`
+mapper. It exercises a failed transaction-directory `fsync` after the final
+link. It is an error-handling profile only: it does not qualify hbox's ZFS,
+physical power loss, write-cache behavior, completed-barrier survival, torn
+writes, or A-DURABILITY/A-WRITE-ISOLATION for a deployed node.
