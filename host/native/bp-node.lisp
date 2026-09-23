@@ -169,15 +169,19 @@
                    (fnn-indeterminate
                     "BP node owed receipt is absent from durable FNRJ replay"))
                  ;; A key collision alone is not handoff evidence.  ACL2 must
-                 ;; compare the durable job's exact receipt ADU and peer.
+                 ;; bind kind-7 owed evidence, the exact FNRJ replay ADU, and
+                 ;; the durable return job's payload and peer.
                  (when (eq (fnn-core 'fn-bpn-host-existing-sequence-p
                                       existing) t)
-                   (unless (eq (fnn-core 'fn-bpah-outbox-job-matchp
-                                         (fnn-bps-state bp) view
-                                         (fnn-octet-list adu)
-                                         (fnn-bp-eid (fifth view))) t)
-                     (fnn-indeterminate
-                      "BP node receipt job key has conflicting durable bytes"))
+                   (let ((status
+                           (fnn-core 'fn-bpah-outbox-effective-status
+                                     (fnn-bps-state bp) view
+                                     (fnn-octet-list adu)
+                                     (fnn-bp-eid (fifth view)))))
+                     (unless (and (consp status)
+                                  (eq (first status) :handed-off))
+                       (fnn-indeterminate
+                        "BP node receipt job key has conflicting durable bytes")))
                    (return-from fnn-bpnode-queue-outbox :already-queued))
                  (let* ((peer (fnn-bp-eid (fifth view)))
                       (sequence (fnn-bp-reserve-sequence (fnn-bps-tally bp)))
@@ -194,11 +198,19 @@
                   bp (fnn-bps-step
                       bp (list :enqueue work attempt generation sequence
                                route peer (fnn-octet-list adu) observation)))
-                 (unless (eq (fnn-core 'fn-bpn-host-existing-sequence-p
-                                        (fnn-core 'fn-bpn-host-existing-sequence
-                                                  (fnn-bps-base bp) work attempt
-                                                  generation)) t)
-                   (fnn-refuse "BP node receipt could not enter durable FNBS queue"))
+                 (when (eq (fnn-bps-outcome bp) :uncertain)
+                   (fnn-indeterminate
+                    "BP node receipt queue publication is uncertain"))
+                 (when (eq (fnn-bps-outcome bp) :refused)
+                   (fnn-refuse "BP node receipt queue was refused"))
+                 (let ((status
+                         (fnn-core 'fn-bpah-outbox-effective-status
+                                   (fnn-bps-state bp) view
+                                   (fnn-octet-list adu) peer)))
+                   (unless (and (consp status)
+                                (eq (first status) :handed-off))
+                     (fnn-indeterminate
+                      "BP node receipt lacks exact durable return handoff")))
                  (fnn-out "BP node receipt queued id=~a"
                           (fnn-octets-string (fnn-octets (second view))))
                  (fnn-bpnode-pause-at-durable-cut

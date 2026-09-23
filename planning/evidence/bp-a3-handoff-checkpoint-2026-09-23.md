@@ -141,11 +141,19 @@ artifact set `fd95947d1bfb7fae`, passed
 on hbox (1/1, 11.406 seconds). Its runtime used the same ACL2 executable and
 OpenSSL library above. The test authored a request ADU, delivered it twice in
 distinct carriers, observed one receiver article and two return-job
-publications, byte-relayed a later contact, and verified a trusted receipt
-released the exact sender forwarding pin while an unrelated pin survived.
+publications, byte-relayed a later contact, and verified a receipt under the
+current configured-peer and announced-EID checks released the exact sender
+forwarding pin while an unrelated pin survived.
 This is native behavior evidence; the separate ACL2 effective handoff-status
 projection over kind-7 owed evidence and the exact durable return job remains
 open.
+
+The receive boundary still derives the admitted principal from the CLI
+configured peer after TCPCL's announced-EID check. It does not call the
+specified observed-channel `fn-bpaj-session-principal` decision, which is not
+yet implemented. These loopback tests establish no authentication against a
+spoofing co-resident process or untrusted relay; receipt authorization beyond
+the configured local profile remains open under §2.3 and D-14.
 
 The same image passed a separate uncertain-FNRJ cut (1/1, 17.826 seconds):
 an injected ambiguous receipt-decision namespace barrier returned exit 3
@@ -159,3 +167,12 @@ the wrong BP carrier peer. Cold `bp-node dispatch` fenced with exit 3 before
 claiming handoff; the receiver still held one article. This additional
 native test passed on the same `7ad230b5` image (1/1, 17.626 seconds). It
 separates peer binding from the earlier wrong-ADU collision witness.
+
+The ACL2 effective handoff projection is now in `books/bp-handoff-status.lisp`
+with exact FNRJ receipt-ID/ADU, trigger, durable return-job payload and peer
+binding; see [its separate evidence](bp-effective-handoff-2026-09-23.md).
+The native caller now requires its `(:handed-off sequence)` result both for
+an existing outbox key and after a new enqueue. It returns uncertain after
+an ambiguous queue publication before checking that projection, and keeps a
+definitive queue refusal separate. The companion ambiguous-outbox native
+test is present but this host join has not yet run in a rebuilt image.
