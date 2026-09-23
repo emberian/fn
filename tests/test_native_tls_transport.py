@@ -109,6 +109,11 @@ class NativeTlsTransportTest(unittest.TestCase):
                 context.minimum_version = ssl.TLSVersion.TLSv1_2
                 with socket.create_connection(("127.0.0.1", port), timeout=5) as raw_peer:
                     with context.wrap_socket(raw_peer, server_hostname="localhost") as protected:
+                        for line in process.stdout:
+                            lines.append(line)
+                            if line.startswith("TLS-READY"):
+                                break
+                        self.assertIn("TLS-READY\n", lines)
                         protected.sendall(b"CAPABILITIES\r\n")
                         self.assertEqual(protected.recv(64), b"200 ok\r\n")
 
