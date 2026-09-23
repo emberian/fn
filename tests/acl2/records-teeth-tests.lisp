@@ -146,13 +146,25 @@
 ;                    (fn-record-result-record (fn-record-decode-exact octets)))))
 
 ; The witness: an accepted encoding carries the magic and the schema octet
-; its record needs (0 at schema 0).
+; its record needs (1 at schema 1, 0 at schema 0).
 (assert-event (equal (take 5 *rec-teeth-octets*) *fn-record-magic-octets*))
 (assert-event (equal (nth 5 *rec-teeth-octets*)
                      (fn-record-schema-octet
                       (fn-record-result-record
                        (fn-record-decode-exact *rec-teeth-octets*)))))
-(assert-event (equal (nth 5 *rec-teeth-octets*) 0))
+(assert-event (equal (nth 5 *rec-teeth-octets*) 1))
+(defconst *rec-teeth-legacy-record*
+  (fn-record-with-stamp *rec-teeth-record* :legacy))
+(defconst *rec-teeth-legacy-octets*
+  (fn-record-encode-impl *rec-teeth-legacy-record*))
+(assert-event (equal (nth 5 *rec-teeth-legacy-octets*) 0))
+(assert-event (equal (fn-record-decode-exact *rec-teeth-legacy-octets*)
+                     (list :ok *rec-teeth-legacy-record*)))
+(assert-event
+ (equal (fn-record-encode
+         (fn-record-result-record
+          (fn-record-decode-exact *rec-teeth-legacy-octets*)))
+        *rec-teeth-legacy-octets*))
 
 ; The hypothesis dropped, for the magic: a Store event of another kind
 ; (`fn-e', books/store-events.lisp), refused by the record decoder.
@@ -167,7 +179,7 @@
 
 ; The hypothesis dropped, for the schema octet: the right magic followed by
 ; a version octet no grammar has (refused as `:unknown-version').
-(defconst *rec-teeth-unknown-version* '(68 102 110 45 114 1))
+(defconst *rec-teeth-unknown-version* '(68 102 110 45 114 2))
 (assert-event (equal (fn-record-decode-exact *rec-teeth-unknown-version*)
                      '(:error :unknown-version)))
 
@@ -181,7 +193,7 @@
 
 ; The magic case is ground and needs no decoder.  The schema case of the
 ; implementation, where the conclusion is decided by evaluation and is
-; false: the refused input's sixth octet is 1 where the schema-0 record
+; false: the refused input's sixth octet is 2 where the dummy record
 ; needs 0.
 (local
  (must-fail
