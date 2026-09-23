@@ -1,0 +1,316 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "books/hybrid-carrier": 0,
+    "tests/acl2/hybrid-carrier-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-gates/takeover-authorship-carrier/build/acl2/certify-20260923T142748Z-612433",
+  "book_failures": {},
+  "book_provenance": {
+    "books/article": "installed",
+    "books/article-fields": "installed",
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/clock": "installed",
+    "books/codec-attach": "installed",
+    "books/crypto-seam": "installed",
+    "books/defrecord": "installed",
+    "books/hybrid-carrier": "certified",
+    "books/hybrid-profile": "installed",
+    "books/hybrid-signature": "installed",
+    "books/injection": "installed",
+    "books/mailbox": "installed",
+    "books/records": "installed",
+    "books/records-attach": "installed",
+    "books/records-canonicality": "installed",
+    "books/records-invariants": "installed",
+    "books/records-seam": "installed",
+    "books/records-shape": "installed",
+    "books/statement": "installed",
+    "books/statement-attach": "installed",
+    "books/statement-codec": "installed",
+    "books/statement-invariants": "installed",
+    "books/statement-items": "installed",
+    "books/statement-seam": "installed",
+    "books/stx-carrier": "installed",
+    "tests/acl2/hybrid-carrier-tests": "certified"
+  },
+  "book_results": {
+    "books/hybrid-carrier": "passed",
+    "tests/acl2/hybrid-carrier-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/hybrid-carrier": 1.447,
+    "tests/acl2/hybrid-carrier-tests": 1.434
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 1800,
+  "cache_install": {
+    "directory": "/home/ember/fn-certcache",
+    "installed": 0,
+    "kept": 25,
+    "origins": {
+      "/home/ember/fn-gates/dev-head": 25
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286"
+  },
+  "cert_cache": {
+    "already_cached": 2,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/hybrid-carrier",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/hybrid-carrier-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 2,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/hybrid-carrier": "01de0ece1eff487923a3b2b74fe8ce89103b5a9485a21d8cca78befa3319d79f",
+    "tests/acl2/hybrid-carrier-tests": "3818c163b35d9333844431cd74c92f2d8aa230b761468efc87badbf1715d7075"
+  },
+  "certify_wall_seconds": 2.887,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "driver_digests_sha256": {
+    "books/hybrid-carrier": "cbfbec519884af9fdce01d11f658d6a50e19da55946183a43c912514b6ec959c",
+    "tests/acl2/hybrid-carrier-tests": "0f5db895e88e740ec517a5e600286bc956746dd42abf5c002d8eb6234a1b012c"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 5b167d63b535570b2457cc83f70d0d6f 8ad30ea5386b",
+    "FN_CERTIFY_SUCCESS 5b167d63b535570b2457cc83f70d0d6f 3386a81a244f"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T14:27:52+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "incremental": true,
+  "installed_books": {
+    "books/article": "/home/ember/fn-gates/dev-head",
+    "books/article-fields": "/home/ember/fn-gates/dev-head",
+    "books/cbor": "/home/ember/fn-gates/dev-head",
+    "books/cbor-invariants": "/home/ember/fn-gates/dev-head",
+    "books/clock": "/home/ember/fn-gates/dev-head",
+    "books/codec-attach": "/home/ember/fn-gates/dev-head",
+    "books/crypto-seam": "/home/ember/fn-gates/dev-head",
+    "books/defrecord": "/home/ember/fn-gates/dev-head",
+    "books/hybrid-profile": "/home/ember/fn-gates/dev-head",
+    "books/hybrid-signature": "/home/ember/fn-gates/dev-head",
+    "books/injection": "/home/ember/fn-gates/dev-head",
+    "books/mailbox": "/home/ember/fn-gates/dev-head",
+    "books/records": "/home/ember/fn-gates/dev-head",
+    "books/records-attach": "/home/ember/fn-gates/dev-head",
+    "books/records-canonicality": "/home/ember/fn-gates/dev-head",
+    "books/records-invariants": "/home/ember/fn-gates/dev-head",
+    "books/records-seam": "/home/ember/fn-gates/dev-head",
+    "books/records-shape": "/home/ember/fn-gates/dev-head",
+    "books/statement": "/home/ember/fn-gates/dev-head",
+    "books/statement-attach": "/home/ember/fn-gates/dev-head",
+    "books/statement-codec": "/home/ember/fn-gates/dev-head",
+    "books/statement-invariants": "/home/ember/fn-gates/dev-head",
+    "books/statement-items": "/home/ember/fn-gates/dev-head",
+    "books/statement-seam": "/home/ember/fn-gates/dev-head",
+    "books/stx-carrier": "/home/ember/fn-gates/dev-head"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 5b167d63b535570b2457cc83f70d0d6f 8ad30ea5386b",
+    "FN_CERTIFY_SUCCESS 5b167d63b535570b2457cc83f70d0d6f 3386a81a244f"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/hybrid-carrier",
+    "tests/acl2/hybrid-carrier-tests"
+  ],
+  "requested_books": [
+    "books/hybrid-carrier",
+    "tests/acl2/hybrid-carrier-tests"
+  ],
+  "roots": [
+    "books/hybrid-carrier",
+    "tests/acl2/hybrid-carrier-tests"
+  ],
+  "run_id": "certify-20260923T142748Z-612433",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "books_with_archived_wall": 2,
+    "policy": "critical-path-first",
+    "predicted_critical_path_seconds": 51.987
+  },
+  "slot_wait_seconds": {
+    "books/hybrid-carrier": 0.0,
+    "tests/acl2/hybrid-carrier-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/article-fields.lisp": "99e7cf20e18f181bd2b3dcf35d7c1aabaed80a15329aa850c5fed44469dc98d6",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/codec-attach.lisp": "d26dacf4a14e32216acc4779ad007734120389815fba89585966761875fca252",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/hybrid-carrier.lisp": "b49599c51da1f6de84f5db68f57336365f178b5b0fb572f1596766dc89e1870e",
+    "books/hybrid-profile.lisp": "7e2f6086ee92ac982c1ecbca907c8dfb0d5d1381b2cd2edca43fbbd74ad9d9c3",
+    "books/hybrid-signature.lisp": "3754723a986d0363e58c7f0a0ce47a035733424be6c49a7e152790882cc4c8ff",
+    "books/injection.lisp": "b419f7e7bdeb414a4265936b20bd0e83d4286b62270b3d0ec0ae378c990c992b",
+    "books/mailbox.lisp": "9e3bad61d82cd15077ba149af647701f8bdf179adef06119787485ff4be3baac",
+    "books/records-attach.lisp": "dfd7681d95190fa9704a936e0e6b34d929b1bc69b8bb4d2e303a7ecbb29abbe1",
+    "books/records-canonicality.lisp": "cbc87fbd2167779e66be164658874448ba0e13aa2383ab1f5a6cb381f9f9ad0c",
+    "books/records-invariants.lisp": "fa9b5871ec15966ca5a1f374a83f7a2ad3863998dd913898f54c6055022b37c3",
+    "books/records-seam.lisp": "e1e62329922c67475b5d29318e63f9ae25817557340c3b6bb23095aa443de570",
+    "books/records-shape.lisp": "eda424ad4def1b5be467652b4766d2f7c1cb7d78319fcbcfd89857dc9a0c4eae",
+    "books/records.lisp": "e9b5394a5f01dc64a12921057c750a5f0a706b03f58c3a69cd90bb9e65f47bfc",
+    "books/statement-attach.lisp": "0ca7a4dd3a18036585791cc5eec9171f34b7bb12cccb25b472699a0095b4489e",
+    "books/statement-codec.lisp": "1d74adc060854fcca78b634d86d8256aa2662df0bb0f50f7ba83cc90997030b2",
+    "books/statement-invariants.lisp": "9989ee8c43c6c1b41df938e90cbc77d9e7d239af61a5bc42718815ce708afa87",
+    "books/statement-items.lisp": "d276c25e727687d2a0d81511dac307fca0ce21dcd138088449256edb089dea6e",
+    "books/statement-seam.lisp": "632414aa7641096c9a571804d0c45b225315119600051a9c251dae00c908874c",
+    "books/statement.lisp": "ae18fbadc0c28f134cf565a28bc984685e7f997e2ac8e403792ff19fca50a87c",
+    "books/stx-carrier.lisp": "1dd4ad390544ddc2efbd9427cada1bfa41d542c9f2c61e4fde94beb7edbdf343",
+    "tests/acl2/hybrid-carrier-tests.lisp": "f57fb2f98c1a630ae307b187a8d81b926a4d4fd18a2ab85173adc0c71c45a607"
+  },
+  "source_digests_sha256_after": {
+    "books/article-fields.lisp": "99e7cf20e18f181bd2b3dcf35d7c1aabaed80a15329aa850c5fed44469dc98d6",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/codec-attach.lisp": "d26dacf4a14e32216acc4779ad007734120389815fba89585966761875fca252",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/hybrid-carrier.lisp": "b49599c51da1f6de84f5db68f57336365f178b5b0fb572f1596766dc89e1870e",
+    "books/hybrid-profile.lisp": "7e2f6086ee92ac982c1ecbca907c8dfb0d5d1381b2cd2edca43fbbd74ad9d9c3",
+    "books/hybrid-signature.lisp": "3754723a986d0363e58c7f0a0ce47a035733424be6c49a7e152790882cc4c8ff",
+    "books/injection.lisp": "b419f7e7bdeb414a4265936b20bd0e83d4286b62270b3d0ec0ae378c990c992b",
+    "books/mailbox.lisp": "9e3bad61d82cd15077ba149af647701f8bdf179adef06119787485ff4be3baac",
+    "books/records-attach.lisp": "dfd7681d95190fa9704a936e0e6b34d929b1bc69b8bb4d2e303a7ecbb29abbe1",
+    "books/records-canonicality.lisp": "cbc87fbd2167779e66be164658874448ba0e13aa2383ab1f5a6cb381f9f9ad0c",
+    "books/records-invariants.lisp": "fa9b5871ec15966ca5a1f374a83f7a2ad3863998dd913898f54c6055022b37c3",
+    "books/records-seam.lisp": "e1e62329922c67475b5d29318e63f9ae25817557340c3b6bb23095aa443de570",
+    "books/records-shape.lisp": "eda424ad4def1b5be467652b4766d2f7c1cb7d78319fcbcfd89857dc9a0c4eae",
+    "books/records.lisp": "e9b5394a5f01dc64a12921057c750a5f0a706b03f58c3a69cd90bb9e65f47bfc",
+    "books/statement-attach.lisp": "0ca7a4dd3a18036585791cc5eec9171f34b7bb12cccb25b472699a0095b4489e",
+    "books/statement-codec.lisp": "1d74adc060854fcca78b634d86d8256aa2662df0bb0f50f7ba83cc90997030b2",
+    "books/statement-invariants.lisp": "9989ee8c43c6c1b41df938e90cbc77d9e7d239af61a5bc42718815ce708afa87",
+    "books/statement-items.lisp": "d276c25e727687d2a0d81511dac307fca0ce21dcd138088449256edb089dea6e",
+    "books/statement-seam.lisp": "632414aa7641096c9a571804d0c45b225315119600051a9c251dae00c908874c",
+    "books/statement.lisp": "ae18fbadc0c28f134cf565a28bc984685e7f997e2ac8e403792ff19fca50a87c",
+    "books/stx-carrier.lisp": "1dd4ad390544ddc2efbd9427cada1bfa41d542c9f2c61e4fde94beb7edbdf343",
+    "tests/acl2/hybrid-carrier-tests.lisp": "f57fb2f98c1a630ae307b187a8d81b926a4d4fd18a2ab85173adc0c71c45a607"
+  },
+  "start_order": [
+    "books/hybrid-carrier",
+    "tests/acl2/hybrid-carrier-tests"
+  ],
+  "started_utc": "2026-09-23T14:27:48+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/home/ember/fn-gates/takeover-authorship-carrier"
+}

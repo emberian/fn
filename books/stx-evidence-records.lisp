@@ -2,13 +2,12 @@
 ;
 ; The outer Store envelope is `fn-e`, version 0, kind 2.  This book owns the
 ; kind-2 payload and nothing in the legacy `fn-r` article-record grammar.
-; Unknown profile tags are preserved as bytes.  They are evidence, never
-; authority: fn-stxe-profile-supportedp is deliberately false until D09
-; selects a production signature profile.
+; Unknown profile tags are preserved as bytes, but cannot confer authority.
 
 (in-package "ACL2")
 (include-book "stx-lace")
 (include-book "defrecord")
+(include-book "hybrid-profile")
 
 (defconst *fn-stxe-magic* '(102 110 45 101)) ; "fn-e"
 (defconst *fn-stxe-version* 0)
@@ -56,17 +55,19 @@
                                      *fn-stxe-max-profile*)))
   :recognizer fn-stxe-p)
 
-; D09 remains open.  A decoder must retain an unknown tag, while every
-; authority consumer must refuse it until a selected profile is registered.
+; The sole selected profile is the versioned two-signature D09 profile.
+; Future tags can be added without changing the interpretation of v1 bytes.
+; Recognition alone does not validate arbitrary persisted detail bytes: a
+; consumer must bind the kind-4 event to its snapshot and verification path.
 (defun fn-stxe-profile-supportedp (profile)
-  (declare (ignore profile) (xargs :guard t))
-  nil)
+  (declare (xargs :guard t))
+  (equal profile *fn-hsig-profile-tag*))
 
 (defun fn-stxe-authority-verdict (e)
   (declare (xargs :guard t))
   (if (and (fn-stxe-p e)
            (fn-stxe-profile-supportedp (fn-stxe-profile e)))
-      (fn-stxe-token e)
+      :requires-binding
     :unsupported-profile))
 
 (defun fn-stxe-verdict-detail-octets (verdict)
