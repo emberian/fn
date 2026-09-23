@@ -24,9 +24,9 @@
     "accepted": 141,
     "refused": 34,
     "uncertain": 3,
-    "not-exercised": 38,
+    "not-exercised": 39,
     "not-built": 1,
-    "total": 217,
+    "total": 218,
     "disagreed": 7,
     "faulted": 0,
     "independent": 2,
@@ -62,13 +62,14 @@
         "V0-NODE-START-B",
         "V0-NODE-STOP-A",
         "V0-NODE-STOP-B",
-        "V0-NODE-LOOPBACK"
+        "V0-NODE-LOOPBACK",
+        "V0-NODE-PROFILE"
       ],
       "counts": {
         "accepted": 14,
         "refused": 1,
         "uncertain": 0,
-        "not-exercised": 0,
+        "not-exercised": 1,
         "not-built": 0
       },
       "disagreed": 0
@@ -892,6 +893,36 @@
       "log": "planning/evidence/v0-matrix-2026-09-21.md",
       "limit": "one non-loopback address; nothing here tests a bind that the kernel would refuse for a different reason",
       "blocker": null,
+      "owner": null
+    },
+    {
+      "id": "V0-NODE-PROFILE",
+      "feature": "F-NODE",
+      "feature_title": "node init, configuration, start and stop",
+      "title": "the operator honours `[log] path` (a post's line lands in the file) and refuses `[posting] agent` by name",
+      "node": null,
+      "direction": null,
+      "requirements": [
+        "HST-003"
+      ],
+      "scenarios": [
+        "SCN-021"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
       "owner": null
     },
     {
@@ -6449,36 +6480,6 @@
       "limit": "",
       "blocker": "slrn is not installed on persvati (nor on hbox, measured 2026-09-20); tests/interop_slrn.py has never run against an fn node",
       "owner": null
-    },
-    {
-      "id": "V0-NODE-PROFILE",
-      "feature": "F-NODE",
-      "feature_title": "node init, configuration, start and stop",
-      "title": "the operator honours `[log] path` (a post's line lands in the file) and refuses `[posting] agent` by name",
-      "node": null,
-      "direction": null,
-      "requirements": [
-        "HST-003"
-      ],
-      "scenarios": [
-        "SCN-021"
-      ],
-      "verdict": "not-exercised",
-      "expected": "accepted",
-      "agrees": null,
-      "client": null,
-      "independent": null,
-      "invocation": "(none)",
-      "observed": "(not run)",
-      "exit_code": null,
-      "revision": "3f68944",
-      "backend": "development-python",
-      "source": "3f68944",
-      "image": "development Python entry points from 3f68944",
-      "log": "planning/evidence/v0-matrix-2026-09-21.md",
-      "limit": "",
-      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
-      "owner": null
     }
   ],
   "by_requirement": {
@@ -6521,6 +6522,7 @@
       "V0-NODE-REINIT-A",
       "V0-NODE-REINIT-B",
       "V0-NODE-LOOPBACK",
+      "V0-NODE-PROFILE",
       "V0-CRASH-RESTART"
     ],
     "HST-004": [
@@ -6948,6 +6950,7 @@
       "V0-NODE-STOP-A",
       "V0-NODE-STOP-B",
       "V0-NODE-LOOPBACK",
+      "V0-NODE-PROFILE",
       "V0-OUT-ACCEPTED-A",
       "V0-OUT-ACCEPTED-B",
       "V0-OUT-REFUSED-A",
@@ -7048,5 +7051,5 @@
       "V0-BP-REPLAY"
     ]
   },
-  "rows_digest": "f4125558f6df6900ecceb562ef0938c8398de7eb2f889665dfac9f2f1549bace"
+  "rows_digest": "bdc8b4d005f21d2f9974142dd80a4ed6b316429f05b7ddc17347a0dce9f3e4aa"
 }

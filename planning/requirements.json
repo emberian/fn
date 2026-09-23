@@ -1109,7 +1109,9 @@
         "PRF-031",
         "PRF-033",
         "PRF-039",
-        "PRF-053"
+        "PRF-053",
+        "PRF-056",
+        "PRF-057"
       ],
       "verification": [
         "proof",
