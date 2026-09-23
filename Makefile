@@ -458,6 +458,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/hybrid-carrier \
 	tests/acl2/hybrid-carrier-tests \
 	books/hybrid-store-invariants \
+	books/topic-history-metadata \
+	tests/acl2/topic-history-metadata-tests \
 	tests/acl2/hybrid-store-tests \
 	books/crypto-attach \
 	books/auth-secret \

@@ -11,8 +11,8 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 507 |
-| Certification roots in the Makefile | 500 |
-| Books inside the root closure | 504 |
+| Certification roots in the Makefile | 502 |
+| Books inside the root closure | 506 |
 | `defthm` and `defthmd` events | 7700 |
 | `defun` events | 5870 |
 | Functions with verified guards | 1892 |
@@ -367,7 +367,7 @@ that `make certify` requests.
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
 | `books/tcpcl-session.lisp` | root | 98 | 57 | 9/0/48/0 | 0 | 0 | 0 |
 | `books/tcpcl-spool.lisp` | root | 2 | 18 | 0/0/18/0 | 0 | 0 | 0 |
-| `books/topic-history-metadata.lisp` | - | 6 | 21 | 0/0/21/0 | 0 | 0 | 1 |
+| `books/topic-history-metadata.lisp` | root | 6 | 21 | 0/0/21/0 | 0 | 0 | 1 |
 | `books/transfer-assembly-invariants.lisp` | root | 25 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/transfer-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/transfer-journal-invariants.lisp` | root | 32 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -584,7 +584,7 @@ that `make certify` requests.
 | `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 4 | 0 |
 | `tests/acl2/tcpcl-spool-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 139 | 0 | 0 |
-| `tests/acl2/topic-history-metadata-tests.lisp` | - | 0 | 2 | 0/0/2/0 | 20 | 1 | 0 |
+| `tests/acl2/topic-history-metadata-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 20 | 1 | 0 |
 | `tests/acl2/transfer-journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 59 | 0 | 0 |
 | `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 0 | 0 |
 | `tests/acl2/wildmat-parser-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
