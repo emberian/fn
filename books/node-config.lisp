@@ -193,7 +193,7 @@
 ; carried invariant, both coherence equalities.
 
 (defun fn-cnode-prepare (cn cfg-gen generation msgid payload groups
-                            obligation-id subject evidence charge)
+                            obligation-id subject evidence charge stamp)
   (declare (xargs :guard (fn-cnode-statep cn) :verify-guards nil))
   (if (mbe :logic (not (fn-cnode-statep cn)) :exec nil)
       cn
@@ -202,7 +202,7 @@
         cn
       (let ((next (fn-node-prepare (fn-cnode-node cn) generation msgid
                                    payload groups obligation-id subject
-                                   evidence charge)))
+                                   evidence charge stamp)))
         (if (equal next (fn-cnode-node cn))
             cn
           (fn-cnode-make next (fn-cnode-config cn)))))))
@@ -248,12 +248,12 @@
   (and (equal (fn-state-groups
                (fn-node-acceptance
                 (fn-node-prepare s generation msgid payload groups
-                                 obligation-id subject evidence charge)))
+                                 obligation-id subject evidence charge stamp)))
               (fn-state-groups (fn-node-acceptance s)))
        (equal (fn-retain-capacity
                (fn-node-retention
                 (fn-node-prepare s generation msgid payload groups
-                                 obligation-id subject evidence charge)))
+                                 obligation-id subject evidence charge stamp)))
               (fn-retain-capacity (fn-node-retention s)))))
 
 (defthm fn-cnode-node-complete-keeps-groups-and-capacity
@@ -281,13 +281,13 @@
 ; When prepare stages, the pending article carries exactly the offered groups.
 (defthm fn-cnode-node-prepare-stages-the-offered-groups
   (implies (not (equal (fn-node-prepare s generation msgid payload groups
-                                        obligation-id subject evidence charge)
+                                        obligation-id subject evidence charge stamp)
                        s))
            (equal (fn-pending-groups
                    (fn-state-pending
                     (fn-node-acceptance
                      (fn-node-prepare s generation msgid payload groups
-                                      obligation-id subject evidence charge))))
+                                      obligation-id subject evidence charge stamp))))
                   groups)))
 
 ; A matching stage's retention (fn-retain-admit of the committed ledger) keeps
@@ -312,7 +312,7 @@
   (implies (fn-cnode-statep cn)
            (fn-cnode-statep
             (fn-cnode-prepare cn cfg-gen generation msgid payload groups
-                              obligation-id subject evidence charge)))
+                              obligation-id subject evidence charge stamp)))
   :hints (("Goal" :in-theory (e/d (fn-cnode-statep fn-cnode-prepare)
                                   (fn-node-statep)))))
 
@@ -332,7 +332,7 @@
 (defthm fn-cnode-article-transitions-never-change-config
   (and (equal (fn-cnode-config
                (fn-cnode-prepare cn cfg-gen generation msgid payload groups
-                                 obligation-id subject evidence charge))
+                                 obligation-id subject evidence charge stamp))
               (fn-cnode-config cn))
        (equal (fn-cnode-config (fn-cnode-complete cn txid generation status))
               (fn-cnode-config cn))
@@ -350,7 +350,7 @@
   (implies (and (fn-cnode-statep cn)
                 (not (equal (fn-cnode-prepare cn cfg-gen generation msgid payload
                                               groups obligation-id subject
-                                              evidence charge)
+                                              evidence charge stamp)
                             cn)))
            (and (equal cfg-gen (fn-cfg-generation (fn-cnode-config cn)))
                 (fn-subsetp groups (fn-cnode-served cn))
@@ -360,7 +360,7 @@
                           (fn-cnode-node
                            (fn-cnode-prepare cn cfg-gen generation msgid payload
                                              groups obligation-id subject
-                                             evidence charge)))))
+                                             evidence charge stamp)))))
                        groups)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cnode-prepare fn-cnode-selection-servedp)

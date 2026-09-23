@@ -47,7 +47,7 @@
             (fn-ct-result-receipt
              (fn-ct-publish-article s a digest articles digests store profile
                                     generation groups evidence
-                                    obligation-digest completion)))
+                                    obligation-digest completion stamp)))
            (fn-ct-article-validp a digest articles digests store profile
                                  (len articles)))
   :hints (("Goal" :in-theory (e/d (fn-ct-publish-article fn-ct-result-receipt
@@ -61,7 +61,7 @@
   (implies (equal (fn-ct-result-status
                    (fn-ct-publish-article s a digest articles digests store
                                           profile generation groups evidence
-                                          obligation-digest completion))
+                                          obligation-digest completion stamp))
                   :accepted)
            (and (fn-ct-article-validp a digest articles digests store profile
                                       (len articles))
@@ -70,19 +70,19 @@
                              s generation (fn-ct-article-msgid a)
                              (fn-ct-article-octets a) groups
                              (fn-ct-obligation-string obligation-digest)
-                             (fn-ct-subject-string a) evidence (fn-ct-charge a))
+                             (fn-ct-subject-string a) evidence (fn-ct-charge a) stamp)
                             s))
                 (equal (fn-ct-result-state
                         (fn-ct-publish-article s a digest articles digests
                                                store profile generation groups
                                                evidence obligation-digest
-                                               completion))
+                                               completion stamp))
                        (fn-node-complete
                         (fn-node-prepare
                          s generation (fn-ct-article-msgid a)
                          (fn-ct-article-octets a) groups
                          (fn-ct-obligation-string obligation-digest)
-                         (fn-ct-subject-string a) evidence (fn-ct-charge a))
+                         (fn-ct-subject-string a) evidence (fn-ct-charge a) stamp)
                         (fn-state-next-txid (fn-node-acceptance s))
                         generation :durable))))
   ; A `:use` fact, not a rewrite rule: the conjunct `(equal completion
@@ -103,19 +103,19 @@
                         (fn-ct-publish-article s a digest articles digests
                                                store profile generation groups
                                                evidence obligation-digest
-                                               completion))
+                                               completion stamp))
                        :invalid)
                 (equal (fn-ct-result-state
                         (fn-ct-publish-article s a digest articles digests
                                                store profile generation groups
                                                evidence obligation-digest
-                                               completion))
+                                               completion stamp))
                        s)
                 (equal (fn-ct-result-receipt
                         (fn-ct-publish-article s a digest articles digests
                                                store profile generation groups
                                                evidence obligation-digest
-                                               completion))
+                                               completion stamp))
                        nil)))
   :hints (("Goal" :in-theory (e/d (fn-ct-publish-article fn-ct-result-status
                                    fn-ct-result-state fn-ct-result-receipt
@@ -243,7 +243,7 @@
            (equal (fn-frame-item
                    0 (fn-ct-publish-list s candidates digests obligation-digests
                                          completions articles all-digests store
-                                         profile generation groups evidence))
+                                         profile generation groups evidence stamp))
                   (fn-frame-item
                    0 (fn-ct-publish-list
                       s (cdr candidates)
@@ -251,11 +251,11 @@
                       (if (consp obligation-digests) (cdr obligation-digests) nil)
                       (if (consp completions) (cdr completions) nil)
                       articles all-digests store profile generation groups
-                      evidence))))
+                      evidence stamp))))
   :hints (("Goal" :do-not-induct t
            :expand ((fn-ct-publish-list s candidates digests obligation-digests
                                         completions articles all-digests store
-                                        profile generation groups evidence))
+                                        profile generation groups evidence stamp))
            :in-theory (e/d (fn-frame-item)
                            (fn-ct-publish-article fn-ct-article-validp
                             fn-ct-publish-list)))))
@@ -273,13 +273,13 @@
 (local
  (defthm fn-ct-prepare-on-non-state-by-definition
    (implies (not (fn-node-statep s))
-            (equal (fn-node-prepare s g m p gr o sub e c) s))
+            (equal (fn-node-prepare s g m p gr o sub e c stamp) s))
    :hints (("Goal" :in-theory (enable fn-node-prepare)))))
 
 (local
  (defthm fn-ct-prepare-changed-means-acceptance-changed
-   (implies (not (equal (fn-node-prepare s g m p gr o sub e c) s))
-            (not (equal (fn-accept-prepare (fn-node-acceptance s) g m p gr)
+   (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp) s))
+            (not (equal (fn-accept-prepare (fn-node-acceptance s) g m p gr stamp)
                         (fn-node-acceptance s))))
    :hints (("Goal" :in-theory (e/d (fn-node-prepare)
                                    (fn-node-statep fn-retain-admissiblep
@@ -288,9 +288,9 @@
 
 (local
  (defthm fn-ct-prepare-acceptance
-   (implies (not (equal (fn-node-prepare s g m p gr o sub e c) s))
-            (equal (fn-node-acceptance (fn-node-prepare s g m p gr o sub e c))
-                   (fn-accept-prepare (fn-node-acceptance s) g m p gr)))
+   (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp) s))
+            (equal (fn-node-acceptance (fn-node-prepare s g m p gr o sub e c stamp))
+                   (fn-accept-prepare (fn-node-acceptance s) g m p gr stamp)))
    :hints (("Goal" :in-theory (e/d (fn-node-prepare fn-node-make-state
                                     fn-node-acceptance)
                                    (fn-node-statep fn-retain-admissiblep
@@ -299,8 +299,8 @@
 
 (local
  (defthm fn-ct-prepare-stage
-   (implies (not (equal (fn-node-prepare s g m p gr o sub e c) s))
-            (consp (fn-node-stage (fn-node-prepare s g m p gr o sub e c))))
+   (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp) s))
+            (consp (fn-node-stage (fn-node-prepare s g m p gr o sub e c stamp))))
    :hints (("Goal" :in-theory (e/d (fn-node-prepare fn-node-make-state
                                     fn-node-stage fn-node-make-stage)
                                    (fn-node-statep fn-retain-admissiblep
@@ -308,13 +308,13 @@
 
 (local
  (defthm fn-ct-accept-prepare-changed
-   (implies (not (equal (fn-accept-prepare s g m p gr) s))
-            (and (equal (fn-state-fenced (fn-accept-prepare s g m p gr)) nil)
+   (implies (not (equal (fn-accept-prepare s g m p gr stamp) s))
+            (and (equal (fn-state-fenced (fn-accept-prepare s g m p gr stamp)) nil)
                  (fn-pending-matchesp (fn-state-pending
-                                       (fn-accept-prepare s g m p gr))
+                                       (fn-accept-prepare s g m p gr stamp))
                                       (fn-state-next-txid s) g)
                  (equal (fn-pending-msgid
-                         (fn-state-pending (fn-accept-prepare s g m p gr)))
+                         (fn-state-pending (fn-accept-prepare s g m p gr stamp)))
                         m)))
    :hints (("Goal" :in-theory (e/d (fn-accept-prepare fn-make-state
                                     fn-state-fenced fn-state-pending
@@ -351,8 +351,8 @@
 (local
  (defthm fn-ct-prepared-pending-matches
    (implies (and (fn-node-statep s)
-                 (not (equal (fn-node-prepare s g m p gr o sub e c) s)))
-            (fn-node-pending-matchesp (fn-node-prepare s g m p gr o sub e c)
+                 (not (equal (fn-node-prepare s g m p gr o sub e c stamp) s)))
+            (fn-node-pending-matchesp (fn-node-prepare s g m p gr o sub e c stamp)
                                       (fn-state-next-txid (fn-node-acceptance s))
                                       g))
    :hints (("Goal" :in-theory (e/d (fn-node-pending-matchesp)
@@ -367,12 +367,12 @@
                                        fn-article-msgid)))))
 
 (defthm fn-ct-prepare-then-durable-complete-accepts
-  (implies (not (equal (fn-node-prepare s g m p gr o sub e c) s))
+  (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp) s))
            (fn-acceptedp
             m
             (fn-state-articles
              (fn-node-acceptance
-              (fn-node-complete (fn-node-prepare s g m p gr o sub e c)
+              (fn-node-complete (fn-node-prepare s g m p gr o sub e c stamp)
                                 (fn-state-next-txid (fn-node-acceptance s))
                                 g :durable)))))
   :hints (("Goal" :do-not-induct t
@@ -388,11 +388,11 @@
                             (obligation-id o) (subject sub) (evidence e)
                             (charge c))
                  (:instance fn-ct-node-statep-acceptance
-                            (s (fn-node-prepare s g m p gr o sub e c)))
+                            (s (fn-node-prepare s g m p gr o sub e c stamp)))
                  (:instance fn-ct-accept-prepare-changed
                             (s (fn-node-acceptance s)))
                  (:instance fn-ct-durable-complete-installs
-                            (s (fn-accept-prepare (fn-node-acceptance s) g m p gr))
+                            (s (fn-accept-prepare (fn-node-acceptance s) g m p gr stamp))
                             (txid (fn-state-next-txid (fn-node-acceptance s))))))))
 
 ; KEYSTONE: an :accepted result names an article the node has published.
@@ -400,7 +400,7 @@
   (implies (equal (fn-ct-result-status
                    (fn-ct-publish-article s a digest articles digests store
                                           profile generation groups evidence
-                                          obligation-digest completion))
+                                          obligation-digest completion stamp))
                   :accepted)
            (fn-acceptedp
             (fn-ct-article-msgid a)
@@ -409,7 +409,7 @@
               (fn-ct-result-state
                (fn-ct-publish-article s a digest articles digests store
                                       profile generation groups evidence
-                                      obligation-digest completion))))))
+                                      obligation-digest completion stamp))))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-ct-publish-article fn-node-prepare
                                fn-node-complete fn-acceptedp
@@ -430,10 +430,10 @@
                 (fn-ct-unknowns-okp us2 profile))
            (equal (fn-ct-publish-container
                    s (fn-ct-make-container v as us) digests obligation-digests
-                   completions store profile generation groups evidence)
+                   completions store profile generation groups evidence stamp)
                   (fn-ct-publish-container
                    s (fn-ct-make-container v as us2) digests obligation-digests
-                   completions store profile generation groups evidence)))
+                   completions store profile generation groups evidence stamp)))
   :hints (("Goal" :in-theory (e/d (fn-ct-publish-container fn-ct-containerp
                                    fn-ct-make-container fn-ct-version
                                    fn-ct-articles fn-ct-unknowns fn-frame-item)
