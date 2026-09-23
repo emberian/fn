@@ -401,6 +401,10 @@
 ; The local-control socket binds its one OS owner to fn-col's fixed principal.
 ; These ACL2 calls alone choose the operation, current cursor scope and Store
 ; coordinates.  No request may provide qver, view, principal or event bytes.
+(defun fn-owner-consumer-local-bootstrap (history incarnation state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-col-bootstrap (fn-owner-core state) history incarnation)))
+
 (defun fn-owner-consumer-local-register (consumer group state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-register (fn-owner-core state) consumer group)))

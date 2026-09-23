@@ -806,6 +806,19 @@ the current connection."
           (fnn-refuse "canonical Store refused consumer event")))
       (fnn-owner-publish-prepared service "consumer"))))
 
+(defun fnn-owner-consumer-entropy-observation ()
+  "Observe 64 OS entropy octets; ACL2 validates and owns the identities."
+  (let ((bytes (make-array 64 :element-type '(unsigned-byte 8))))
+    (handler-case
+        (with-open-file (input "/dev/urandom" :direction :input
+                               :element-type '(unsigned-byte 8))
+          (unless (= (read-sequence bytes input) 64)
+            (fnn-fault "short consumer identity entropy observation")))
+      (error (condition)
+        (fnn-fault "consumer identity entropy unavailable: ~a" condition)))
+    (values (loop for i below 32 collect (aref bytes i))
+            (loop for i from 32 below 64 collect (aref bytes i)))))
+
 (defun fnn-owner-consumer-local-serialized (service operation first second)
   "Run one 0600 local-control consumer declaration under the owner mutex.
 
@@ -818,6 +831,11 @@ client, which can issue POSITION after reconnecting."
    (lambda ()
      (let* ((proposal
               (case operation
+                (:bootstrap
+                 (multiple-value-bind (history incarnation)
+                     (fnn-owner-consumer-entropy-observation)
+                   (fnn-owner-core 'fn-owner-consumer-local-bootstrap
+                                   history incarnation)))
                 (:register
                  (fnn-owner-core 'fn-owner-consumer-local-register first second))
                 (:ack
@@ -855,6 +873,7 @@ client, which can issue POSITION after reconnecting."
                          (fnn-fault "durable registration has no position"))
                        (second position)))
                     (:ack first)
+                    (:bootstrap nil)
                     (:unregister nil)
                     (otherwise
                      (fnn-fault "unexpected consumer write operation")))))

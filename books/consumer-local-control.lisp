@@ -11,10 +11,10 @@
 
 (defun fn-ncl-command-code (kind)
   (case kind (:register 0) (:ack 1) (:position 2)
-        (:unregister 3) (otherwise nil)))
+        (:unregister 3) (:bootstrap 4) (otherwise nil)))
 (defun fn-ncl-code-command (code)
   (case code (0 :register) (1 :ack) (2 :position)
-        (3 :unregister) (otherwise nil)))
+        (3 :unregister) (4 :bootstrap) (otherwise nil)))
 (verify-guards fn-ncl-command-code)
 (verify-guards fn-ncl-code-command)
 
@@ -22,6 +22,7 @@
   (let* ((code (fn-ncl-command-code kind))
          (payload
           (case kind
+            (:bootstrap (and (null first) (null second) (list code)))
             (:register (and (fn-cp-idp first) (fn-cp-idp second)
                             (append (list code) (fn-cp-id-bytes first)
                                     (fn-cp-id-bytes second))))
@@ -48,6 +49,9 @@
           (let ((kind (fn-ncl-code-command (car payload)))
                 (body (cdr payload)))
            (case kind
+            (:bootstrap
+             (if (null body) (list :consumer :bootstrap nil nil)
+               (list :refused :bootstrap)))
             (:register
              (let ((one (fn-cp-read-id body)))
                (if (not (eq (fn-cp-nth 0 one) :ok))
@@ -118,6 +122,10 @@
         (fourth (fn-cp-nth 3 argv)))
     (cond
      ((not (fn-ncl-absolute-pathp control)) (list :usage :control-path))
+     ((equal command '(98 111 111 116 115 116 114 97 112)) ; bootstrap
+      (if (equal (len argv) 1)
+          (list :run :bootstrap control nil nil nil)
+        (list :usage :bootstrap)))
      ((equal command '(114 101 103 105 115 116 101 114)) ; register
       (if (and (equal (len argv) 4)
                (fn-cp-idp id) (fn-ncfg-printablep id)
