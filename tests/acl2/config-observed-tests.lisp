@@ -26,6 +26,11 @@
  (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state *cpo-t-open*)))
         :recovering))
 (assert-event
+ (equal (fn-sn-config-history (fn-sn-open-state *cpo-t-open*))
+        *cpo-t-configs*))
+(assert-event
+ (fn-cpo-history-relation (fn-sn-open-state *cpo-t-open*)))
+(assert-event
  (equal (fn-sn-open-kind
          (fn-sn-open-observed '("fn.letters" "fn.test") 1
                               8 *cpo-t-events*))
@@ -42,3 +47,32 @@
                                     *fn-cfg-default-stamp*))
           8 *cpo-t-events*))
         :error))
+
+; The five real recovery barriers are still required before an administrative
+; config transition. It changes the carried history, domain/capacity and node
+; together, while the Store event list and frontier remain exact.
+(defconst *cpo-t-ready*
+  (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io
+             (fn-sn-open-state *cpo-t-open*) :recovery-barrier :ok)
+             :recovery-barrier :ok) :recovery-barrier :ok)
+             :recovery-barrier :ok) :recovery-barrier :ok))
+(defconst *cpo-t-increase*
+  (fn-cfg-record-make 2 8 3 (list (fn-cfg-set-capacity 20))
+                      *fn-cfg-default-stamp*))
+(defconst *cpo-t-live*
+  (fn-cpo-configure-durable *cpo-t-ready* *cpo-t-increase*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *cpo-t-ready*)) :ready))
+(assert-event (fn-cpo-history-relation *cpo-t-ready*))
+(assert-event (fn-cpo-history-relation *cpo-t-live*))
+(assert-event (equal (fn-sn-capacity *cpo-t-live*) 20))
+(assert-event (equal (fn-sn-config-history *cpo-t-live*)
+                     (append *cpo-t-configs* (list *cpo-t-increase*))))
+(assert-event (equal (fn-sf-records (fn-sn-files *cpo-t-live*))
+                     *cpo-t-events*))
+(assert-event (equal (fn-sf-frontier (fn-sn-files *cpo-t-live*)) 8))
+(assert-event
+ (equal (fn-cpo-configure-durable
+         *cpo-t-ready*
+         (fn-cfg-record-make 2 8 3 (list (fn-cfg-set-capacity 0))
+                             *fn-cfg-default-stamp*))
+        *cpo-t-ready*))

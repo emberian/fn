@@ -461,15 +461,15 @@
     "books": 459,
     "books_in_root_closure": 458,
     "roots": 454,
-    "theorems": 7371,
-    "functions": 5634,
-    "assert_events": 8169,
+    "theorems": 7388,
+    "functions": 5639,
+    "assert_events": 8179,
     "must_fails": 320,
     "encapsulates": 26,
     "guards": {
-      "verified": 1854,
+      "verified": 1855,
       "declared-off": 302,
-      "default-guarded": 2779,
+      "default-guarded": 2783,
       "default-unguarded": 699
     },
     "suspect_theorems": 69,
@@ -3167,12 +3167,12 @@
       "book": "books/config-observed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
-      "functions": 1,
+      "theorems": 4,
+      "functions": 4,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 3,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -6762,15 +6762,15 @@
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 31,
-      "functions": 50,
+      "theorems": 45,
+      "functions": 52,
       "guards": {
-        "verified": 32,
+        "verified": 33,
         "declared-off": 2,
-        "default-guarded": 16,
+        "default-guarded": 17,
         "default-unguarded": 0
       },
-      "verify_guards_events": 32,
+      "verify_guards_events": 33,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -9720,9 +9720,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 7,
+      "assert_events": 17,
       "must_fails": 0,
-      "defconsts": 3,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -13172,7 +13172,7 @@
     {
       "theorem": "fn-sn-article-record-without-a-usable-clock-is-refused",
       "book": "books/store-node.lisp",
-      "line": 372,
+      "line": 456,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value"
       ]
@@ -13212,7 +13212,7 @@
     {
       "theorem": "fn-snt-apply-record-of-a-retention-event",
       "book": "books/store-node-traces.lisp",
-      "line": 617,
+      "line": 619,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value"
       ]
