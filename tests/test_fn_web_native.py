@@ -6,6 +6,7 @@ to its source snapshot. This test creates and removes only its own Store.
 import http.client
 import os
 from pathlib import Path
+import re
 import select
 import subprocess
 import sys
@@ -55,15 +56,22 @@ class NativeWebClientTests(unittest.TestCase):
                                                       server.server_port, timeout=30)
                     headers = {}
                     if method == "POST":
+                        compose_status, compose_page = request("GET", "/compose?group=fn.agents")
+                        self.assertEqual(compose_status, 200)
+                        token = re.search(r"name='submission_id' value='([^']+)'", compose_page).group(1)
                         headers["Content-Type"] = "application/x-www-form-urlencoded"
                         headers["Origin"] = "http://127.0.0.1:%d" % server.server_port
-                        data = urlencode({"csrf": server.token, "group": "fn.agents",
+                        data = urlencode({"csrf": server.token, "submission_id": token,
+                                          "group": "fn.agents",
                                           "subject": "Native web post", "sender": "Human <h@local.invalid>",
                                           "references": "", "body": "Native owner body <visible>"})
                     conn.request(method, path, body=data, headers=headers)
                     result = conn.getresponse()
                     answer = result.status, result.read().decode("utf-8")
+                    location = result.getheader("Location")
                     conn.close()
+                    if answer[0] == 303:
+                        return request("GET", location)
                     return answer
 
                 status, page = request("GET", "/")

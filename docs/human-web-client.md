@@ -45,12 +45,27 @@ browser or recipient acknowledgement. A lookup that cannot find the article
 reports that observation; it does not turn an earlier uncertain outcome into
 a retrospective refusal.
 
+Opening a compose form creates a random, local submission identifier. Its
+first valid POST freezes the exact article lines and Message-ID. A second
+click, concurrent POST, browser back/submit, or lost HTTP redirect with that
+identifier returns the same recorded outcome without another NNTP POST.
+The response redirects to a GET result page, so refreshing the page is also
+read only. The optional settlement link only asks `ARTICLE` by that same
+Message-ID; it records what the node serves now without rewriting the original
+POST response. The bounded client memory holds at most 128 forms. Evicted
+identifiers return 410 and never send a replacement. This memory does not
+survive a web-client restart: an old form then returns 410, and any uncertain
+post must be investigated separately with a retained Message-ID. There is no
+client-side durable spool, and client memory is never an fn acceptance record.
+
 The client caps each NNTP line at 8 KiB and multiline block at 256 KiB or
 2,048 lines, the recent view at 40 articles, HTTP form at 24 KiB, and post
 body at 16 KiB. Article text and header values are escaped, rendered as text
 without remote images or scripts, and served with a restrictive content
 security policy. This first slice has no saved drafts, search index, unread
-state, or verified authorship display.
+state, or verified authorship display. A `FN-Statement` and an
+`FN-Authorship` carrier are shown as separate recorded presences, never as a
+verified identity. The node's raw status stays in the result page's details.
 
 `tests/test_fn_web.py` exercises a real local NNTP socket and HTTP server for
 reading, escaped content, form checks and all three POST outcomes.
