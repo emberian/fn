@@ -7,9 +7,10 @@ Subjects, in the order the live arm meets them:
   `fnn-owner-live-admin-serialized` (host/native/admin.lisp), which stages
   `fn-native-admin-plan-deltas` (books/native-admin.lisp) through
   `fn-ocfg-step`, publishes the record and completes it.
-* A reader connection opened before the change keeps answering exactly what it
-  answered before (`fn-ocfg-no-reader-observes-a-half-change`,
-  books/owner-config.lisp).
+* A reader connection opened before the change keeps its archived domain and
+  config pin; a new connection sees the live Store domain without a restart
+  (`fn-ocl-complete-preserves-pinned-connection-histories`,
+  books/config-owner-live.lisp).
 * The second of two live reconfigurations is published: the one the old
   `fn-ocfg-complete` could not publish after a live group creation.
 * The durable history is what a restart reads: `peer list` after the owner
@@ -94,14 +95,26 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         self.assertIn("(defthm fn-native-admin-live-group-delta-is-a-typed-delta", self.admin)
 
     def test_completion_publishes_what_recovery_replays(self):
-        start = self.owner_config.index("(defun fn-ocfg-complete (oc)")
-        end = self.owner_config.index("(defun", start + 10)
-        body = self.owner_config[start:end]
-        self.assertIn("(fn-ocfg-published-config (fn-ocfg-config oc) record)", body)
+        live = (ROOT / "books" / "config-owner-live.lisp").read_text(encoding="ascii")
+        start = live.index("(defun fn-ocl-complete (oc)")
+        end = live.index("(defthm", start)
+        body = live[start:end]
+        self.assertIn("(fn-cpo-configure-durable old-store record)", body)
+        self.assertIn("(fn-ocl-store-config new-store)", body)
+        self.assertIn("(fn-ocfg-pins oc)", body)
         self.assertNotIn("fn-cnode-apply-config", body)
-        for name in ("fn-ocfg-no-reader-observes-a-half-change",
-                     "fn-ocfg-crash-at-any-instant-recovers-the-live-generation"):
-            self.assertIn("(defthm " + name, self.owner_config)
+        for name in ("fn-ocl-complete-keeps-existing-served-table",
+                     "fn-ocl-complete-preserves-pinned-connection-histories"):
+            self.assertIn("(defthm " + name, live)
+
+    def test_actual_native_open_and_completion_call_the_physical_history_model(self):
+        owner = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
+        store = (ROOT / "host" / "store-node-host.lisp").read_text(encoding="ascii")
+        live = (ROOT / "books" / "config-owner-live.lisp").read_text(encoding="ascii")
+        self.assertIn("(fn-cpo-open-observed config-records frontier records)", owner)
+        self.assertIn("(fn-cpo-open-observed config-records frontier records)", store)
+        self.assertIn("(fn-ocl-complete before)", owner)
+        self.assertIn("(fn-own-refresh", live)
 
     def test_the_live_arm_is_the_event_sequence_the_theorem_names(self):
         # reconfigure, close the private connection, publish, complete
@@ -302,20 +315,22 @@ class LiveReconfigurationImageTests(unittest.TestCase):
         self.assertEqual(accepted.returncode, EXIT_OK, accepted.stderr.decode())
         self.assertEqual(len(self.config_files()), len(before) + 1)
 
-    @unittest.expectedFailure
     def test_a_group_created_live_is_served_before_restart(self):
-        # books/owner-config.lisp OPEN item 3: publication moves the owner's
-        # configuration, not the live node's allocation domain, and GROUP
-        # answers from the domain.  This is the V0-CFG-LIVE observation; it
-        # becomes an unexpected success when the owner and store cluster close
-        # that seam.
         owner = self.start_owner()
+        old_connection, old_stream = self.reader()
+        old_before = self.command(old_connection, old_stream, "LIST ACTIVE", True)
+        self.assertTrue(old_before[0].startswith(b"215"), old_before)
         created = self.operator("group", "create", "fn.live")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        old_after = self.command(old_connection, old_stream, "LIST ACTIVE", True)
+        self.assertEqual(old_after, old_before)
         connection, stream = self.reader()
         status, _ = self.command(connection, stream, "GROUP fn.live", False)
+        fresh_list = self.command(connection, stream, "LIST ACTIVE", True)
         self.stop_owner(owner)
         self.assertTrue(status.startswith(b"211"), status)
+        self.assertTrue(fresh_list[0].startswith(b"215"), fresh_list)
+        self.assertTrue(any(b"fn.live " in row for row in fresh_list[1]), fresh_list)
 
 
 if __name__ == "__main__":

@@ -385,6 +385,14 @@
     "tests/acl2/nntp-auth-teeth-tests",
     "books/config-stream",
     "tests/acl2/config-stream-tests",
+    "books/config-physical-replay",
+    "tests/acl2/config-physical-replay-tests",
+    "books/config-observed",
+    "tests/acl2/config-observed-tests",
+    "books/config-store-traces",
+    "tests/acl2/config-store-traces-tests",
+    "books/config-owner-live",
+    "tests/acl2/config-owner-live-tests",
     "books/owner-config",
     "books/ideal",
     "books/nntp-index",
@@ -479,25 +487,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 480,
-    "books_in_root_closure": 479,
-    "roots": 475,
-    "theorems": 7464,
-    "functions": 5746,
-    "assert_events": 8328,
+    "books": 488,
+    "books_in_root_closure": 487,
+    "roots": 483,
+    "theorems": 7510,
+    "functions": 5772,
+    "assert_events": 8398,
     "must_fails": 339,
     "encapsulates": 26,
     "guards": {
-      "verified": 1864,
+      "verified": 1876,
       "declared-off": 307,
-      "default-guarded": 2825,
+      "default-guarded": 2839,
       "default-unguarded": 750
     },
     "suspect_theorems": 70,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 24,
-    "include_hygiene_warnings": 335,
+    "include_hygiene_warnings": 337,
     "host_names_warnings": 691,
     "hand_written_record_warnings": 18
   },
@@ -3492,6 +3500,83 @@
       "read_error": null
     },
     {
+      "book": "books/config-observed.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 4,
+      "guards": {
+        "verified": 3,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-physical-replay",
+        "store-observed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-owner-live.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 22,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-store-traces",
+        "owner-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-physical-replay.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 5,
+      "guards": {
+        "verified": 3,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-stream"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/config-records.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3513,6 +3598,32 @@
         "config",
         "records-seam",
         "replay"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-store-traces.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 7,
+      "guards": {
+        "verified": 5,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 5,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-observed",
+        "store-node-traces"
       ],
       "system_includes": [],
       "suspects": [],
@@ -4758,6 +4869,7 @@
       "encapsulates": 2,
       "includes": [
         "byte-store-txn-name",
+        "config-observed",
         "identity",
         "journal-publish",
         "native-config",
@@ -7064,15 +7176,15 @@
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 31,
-      "functions": 50,
+      "theorems": 45,
+      "functions": 52,
       "guards": {
-        "verified": 32,
+        "verified": 33,
         "declared-off": 2,
-        "default-guarded": 16,
+        "default-guarded": 17,
         "default-unguarded": 0
       },
-      "verify_guards_events": 32,
+      "verify_guards_events": 33,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -10261,6 +10373,108 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/config-observed-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 22,
+      "must_fails": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-observed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/config-owner-live-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 26,
+      "must_fails": 0,
+      "defconsts": 9,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-owner-live",
+        "config-observed-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/config-physical-replay-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 0,
+      "defconsts": 14,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-physical-replay"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/config-store-traces-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-store-traces",
+        "config-observed-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/config-stream-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -11096,9 +11310,9 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 101,
+      "assert_events": 103,
       "must_fails": 2,
-      "defconsts": 18,
+      "defconsts": 19,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -13643,7 +13857,7 @@
     {
       "theorem": "fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session",
       "book": "books/owner-invariants.lisp",
-      "line": 649,
+      "line": 651,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value"
       ]
@@ -13759,7 +13973,7 @@
     {
       "theorem": "fn-sn-article-record-without-a-usable-clock-is-refused",
       "book": "books/store-node.lisp",
-      "line": 372,
+      "line": 456,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value"
       ]
@@ -13807,7 +14021,7 @@
     {
       "theorem": "fn-snt-apply-record-of-a-retention-event",
       "book": "books/store-node-traces.lisp",
-      "line": 617,
+      "line": 619,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value"
       ]
@@ -14853,13 +15067,13 @@
       {
         "check": "fn-na-lock-without-acceptance",
         "book": "tests/acl2/native-admin-tests.lisp",
-        "line": 222,
+        "line": 243,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-na-lock-without-a-publication-state",
         "book": "tests/acl2/native-admin-tests.lisp",
-        "line": 235,
+        "line": 256,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -15501,7 +15715,7 @@
       },
       {
         "book": "books/native-admin.lisp",
-        "line": 13,
+        "line": 14,
         "include": "byte-store-txn-name",
         "included": "books/byte-store-txn-name.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -16582,6 +16796,20 @@
         "line": 26,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-owner-live-tests.lisp",
+        "line": 5,
+        "include": "config-observed-tests",
+        "included": "tests/acl2/config-observed-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-store-traces-tests.lisp",
+        "line": 5,
+        "include": "config-observed-tests",
+        "included": "tests/acl2/config-observed-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -22069,28 +22297,28 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 778,
+        "line": 780,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1182,
+        "line": 1184,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1191,
+        "line": 1193,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1289,
+        "line": 1291,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
