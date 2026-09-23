@@ -46,13 +46,15 @@ line), with one reachable witness and one `must-fail` per hypothesis in the
 test book; iterate with `python3 tools/proof_repl.py` (a live ACL2 over a
 book, seconds to a red form; `docs/proofs.md`); certify your books, their
 test books and their closure on the farm before you report
-(`python3 tools/farm.py submit <box> <books> --closure --jobs 4
+(`python3 tools/farm.py submit <box> --affected-by <changed book> --jobs 4
 --timeout-seconds 1800 --remote-root /home/ember/fn-gates/<lane> --acl2
 /home/ember/fn-gates/toolchains/w25/acl2-literal --cache
 /home/ember/fn-certcache` on persvati; hbox uses
 `/tank/fn/gates/<lane>`, `/tank/fn/toolchains/w28/acl2-literal-4g`,
-`/tank/fn/certcache`; then `farm.py wait`; `git add -f` the manifest); for a
-whole-closure picture use one provisional wave (`python3 tools/triage.py`,
+`/tank/fn/certcache`; then report the run id and root harvests with `farm.py wait`;
+never `--closure`, which recertifies the whole closure from the cache's
+purge); for a whole-closure picture, only when a run failed behind a
+cascade, use one provisional wave (`python3 tools/triage.py`,
 every independent red at once, publishes nothing); regenerate the ledger
 (`python3 tools/ledger.py --write`); `make check` exits 0; commit named
 files with prose messages; one worktree per lane under `build/lanes/`,

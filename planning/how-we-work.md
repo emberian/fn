@@ -123,6 +123,11 @@ published a certification of `dev`'s head since. The rules that follow:
 - **A provisional wave runs only when the closure failed behind a
   cascade**, to name the reds behind it; never beside a closure run, and
   never to "show the books proved" when the closure passed.
-- **Scope the run.** `certify_books.py --affected-by BOOK` certifies the
-  changed books and their dependents only; with the cache current, that is
-  the whole cost.
+- **Never submit a lane run with `--closure`.** In this tree `--closure`
+  is the explicit recertification plan: the farm installs from the cache
+  with purge-on-miss and certifies every book of the closure again (the
+  seam lane's final submit: "missing 171, removed 278"). A lane submits
+  `farm.py submit <box> --affected-by <changed book> ...` (or the changed
+  books and test books as plain roots): everything unchanged installs from
+  the cache and only the changed books and their dependents certify. Root
+  uses `--closure` for the freeze and the treewide run, nothing else.
