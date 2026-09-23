@@ -1758,14 +1758,20 @@
         "books/replay.lisp",
         "books/store-node.lisp",
         "books/store-identity-sequence-invariants.lisp",
+        "books/stx-accept-records.lisp",
+        "books/hybrid-store.lisp",
         "host/owner-host.lisp",
         "host/native/owner.lisp",
+        "host/native/hybrid-control.lisp",
+        "tests/acl2/stx-accept-records-tests.lisp",
+        "tests/acl2/hybrid-store-tests.lisp",
+        "tests/test_native_hybrid_author.py",
         "tests/acl2/store-identity-traces-tests.lisp",
         "tests/acl2/store-identity-sequence-invariants-tests.lisp",
         "tests/native_owner_publication.lisp"
       ],
       "pending_subject": "The carried journal sequence is preserved by initial, prepare, I/O, refusal, abort, finish and recovery transitions, but its invariant has not been joined to every actual owner publication path or the physical publication/recovery cuts. Prove the kind-4 snapshot/article/verdict binding over the host-called completion and recovery paths. The raw witness establishes condition routing and reservation cleanup only; it does not prove filesystem durability or cryptographic primitive correctness.",
-      "progress_note": "Source integration carries journal sequence separately from allocation frontier, uses one native prepared-publication helper for article, retention and identity events, and replays enrolled kind-3 plus bound kind-4 history. The phase-aware relation fn-sn-identity-sequencep and fn-sn-finish-preserves-identity-sequence cover every completion arm: a completing file has exactly one more committed record than the carried cursor, and a matching finish returns to equal count and cursor. Preparation, I/O, refusal, abort and recovery preservation also certify with a reachable mixed-history witness and a bad-cursor tooth. Certification is recorded in planning/evidence/store-identity-sequence-t4-2026-09-23.md. The physical cut and snapshot-binding joins remain open.",
+      "progress_note": "Source integration carries journal sequence separately from allocation frontier, uses one native prepared-publication helper for article, retention and identity events, and replays enrolled kind-3 plus bound kind-4 history. The phase-aware relation fn-sn-identity-sequencep and fn-sn-finish-preserves-identity-sequence cover every completion arm. The selected kind-4 schema-1 codec now carries exact authored source and its ACL2-derived identity separately from the embedded received-carrier article; the replay snapshot binder checks carrier projection, enrolled ordered keys, both signature components' shape and the recorded principal. ACL2 constructor/codec tests exercise source and keyset substitutions. The native caller now verifies both primitives before asking ACL2 to construct this event. Combined saved-image acceptance/reopen evidence, reader HDR projection, host/physical recovery refinement and key succession remain open; structural replay checks do not prove native primitive correctness.",
       "events": [
         "fn-sn-finish-preserves-identity-sequence"
       ]
