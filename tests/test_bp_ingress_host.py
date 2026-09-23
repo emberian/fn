@@ -1,6 +1,7 @@
 """Live BP ADU ingress checks through workflow staging, ACL2, and Store files."""
 import tempfile
 import unittest
+from unittest import mock
 import zlib
 from pathlib import Path
 
@@ -90,6 +91,20 @@ class BpIngressHostTests(unittest.TestCase):
 
     def live(self):
         return run_bp_ingress.open_live_bp_store(self.store_root, writable=False)
+
+    def test_unusable_prepare_clock_keeps_bpa_bid_staged(self):
+        bid = "bpa-no-clock"
+        self.stage(bid, self.adu("no-clock"))
+        report = run_bp_ingress.identify_bundle(bid, lambda found: self.bundles[found])
+        with mock.patch.object(run_bp_ingress, "identify_bundle", return_value=report), \
+             mock.patch.object(run_bp_ingress.bundle_bridge, "observation",
+                               return_value=(1, 0, 0, False)):
+            result = self.invoke(bid)
+        self.assertEqual(result.outcome, "refused-clock-unusable")
+        self.assertIn(bid, self.inventory)
+        self.assertEqual(self.deleted, [])
+        self.assertTrue(result.staged_path.is_file())
+        self.assertEqual(list((self.store_root / "transactions").glob("*.txn")), [])
 
     def test_distinct_adus_get_distinct_store_bindings_and_conflict_refuses(self):
         payload = self.adu("once")
