@@ -1056,7 +1056,38 @@ differences are deliberate:
   history through `fn-cnode-config-replay` and the article history into a
   node whose domain and capacity come from the configured node; codes are
   positions in the domain, stable across retirement and revival.
-- **The two-kind stream, decided (lane `w9/reconfig`).** The layout stays
+- **T8b physical-format correction (2026-09-23).** The preceding open path
+  remains the native caller. Its two files number records independently:
+  configuration sequence is the preceding generation, Store sequence is the
+  journal position, and a configuration record carries the next unconsumed
+  Store transaction ID. The unified-sequence fold described below was a model
+  of a proposed encoding, not the format these writers emitted. The new
+  recovery-only `fn-cpr-replay` in `books/config-physical-replay.lisp` orders
+  physical records by transaction ID, takes configuration before a tied Store
+  event and checks both independent sequences. It is proved to return a
+  configured node on success and tested against a decrease after release, an
+  invalid decrease before release, a burned transaction-ID gap and an article
+  after an increase. The Store and owner recovery wrappers now call this
+  physical fold, and the administrative candidate check uses the same
+  historical observed open. Native image validation remains pending.
+  The follow-on `fn-cpo-open-observed` installs the physical configuration
+  history in a carried Store field and reconstructs the recovering node from
+  the ordered fold. `fn-cpo-configure-durable` is an ACL2 administrative
+  transition that changes that history, Store domain/capacity and node
+  together after an admissible durable record. Its history relation is proved
+  preserved by that transition. The live owner completion wrapper calls the
+  ACL2 `fn-ocl-complete`, which installs the Store transition and refreshes the
+  committed view for future connections while retaining old reader archives
+  and configuration pins. A failed install after a durable publication forces
+  recovery. `fn-ocl-conn-historyp` reconstructs each pinned archive at its
+  own configuration generation and Store-journal prefix;
+  `fn-ocl-complete-preserves-pinned-connection-histories` proves completion
+  retains that relation for all old connections. The old `fn-snt-relation` and
+  `fn-own-relation` still use static final parameters and do not characterize
+  valid historical decreases. Remaining phase-aware owner transition proofs,
+  checkpoint suffix correspondence and native image tests are required before
+  T8b live adoption is complete.
+- **The two-kind stream, earlier proposed (lane `w9/reconfig`).** The layout stays
   two directories -- article records in the transaction journal, configuration
   records under `config/` -- and the STREAM is one: every record of either
   kind carries its position in the unified stream in its own sequence field,
@@ -1275,3 +1306,21 @@ acceptance state's group list and do not show it until a restart; a capacity
 change reaches the retention ledger only at restart. Closing it needs a
 per-connection domain in `fn-own-conn-okp` and a store re-parameterisation
 proved against `fn-snt-relation`: an owner and store cluster step.
+
+### T8b physical-history owner model (2026-09-23)
+
+The live completion caller now uses `fn-ocl-complete` in
+`books/config-owner-live.lisp`. It applies the exact durable configuration
+record to the Store's carried physical history, publishes the configuration
+obtained by replaying that installed history, and refreshes the current
+owner view. Existing connections retain their archives and pinned
+configuration; a newly opened connection sees the new domain and capacity.
+An unapplicable durable record remains staged so the native owner fences for
+recovery. The historical relation reconstructs each connection at its pinned
+generation and Store-journal version, while the current view uses the full
+installed history. `fn-ocl-complete-preserves-full-historical-relation`
+proves this relation across successful ready-phase completion under a
+physical Store-history premise. The [T8b evidence](../planning/evidence/config-physical-replay-t8b-2026-09-23.md)
+records the selected certification and old/new connection witness. Native
+image execution and preservation across ordinary Store/owner transitions
+are still required before a live-service claim.

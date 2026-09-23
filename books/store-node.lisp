@@ -24,12 +24,12 @@
 ; Total MBE selectors preserve the original ACL2 values on malformed inputs.
 ; The composed record is opaque below its lemmas (docs/proof-style.md s1).
 ; Layout: (groups capacity files node keyring index keyring-generation verdicts
-;          historical-keyring-snapshots identity-next-sequence)
+;          historical-keyring-snapshots identity-next-sequence config-history)
 ; keyring and index were appended, not inserted, so the first four accessors
 ; keep their positions and their bodies (D21).
 (defun fn-sn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 10)))
+  (and (true-listp x) (equal (len x) 11)))
 
 (defun fn-sn-groups (s) (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car s)
@@ -128,6 +128,18 @@
 
 (verify-guards fn-sn-identity-next)
 
+; Physical configuration records are retained as an opaque recovery journal.
+; Its ordered, admissible interpretation is proved in config-observed, above
+; this Store layer. The served state recognizer must not traverse it.
+(defun fn-sn-config-history (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (nth 10 s)
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+              (fn-ag-cdr s)))))))))))))
+
+(verify-guards fn-sn-config-history)
+
 (defun fn-sn-keyring-snapshot-listp (xs)
   (declare (xargs :guard t))
   (if (consp xs)
@@ -150,7 +162,14 @@
                       keyring-generation verdicts snapshots identity-next)
   (declare (xargs :guard t))
   (list groups capacity files node keyring index keyring-generation verdicts
-        snapshots identity-next))
+        snapshots identity-next nil))
+
+(defun fn-sn-make-v3 (groups capacity files node keyring index
+                      keyring-generation verdicts snapshots identity-next
+                      config-history)
+  (declare (xargs :guard t))
+  (list groups capacity files node keyring index keyring-generation verdicts
+        snapshots identity-next config-history))
 
 (defun fn-sn-make (groups capacity files node keyring index)
   (declare (xargs :guard t))
@@ -193,6 +212,63 @@
   (equal (fn-sn-identity-next
           (fn-sn-make-v2 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next))
          identity-next))
+(defthm fn-sn-config-history-of-fn-sn-make-v2
+  (equal (fn-sn-config-history
+          (fn-sn-make-v2 groups capacity files node keyring index keyring-generation verdicts snapshots identity-next))
+         nil))
+
+(defthm fn-sn-shapep-of-fn-sn-make-v3
+  (fn-sn-shapep (fn-sn-make-v3 groups capacity files node keyring index
+                                keyring-generation verdicts snapshots identity-next
+                                config-history)))
+(defthm fn-sn-groups-of-fn-sn-make-v3
+  (equal (fn-sn-groups (fn-sn-make-v3 groups capacity files node keyring index
+                                       keyring-generation verdicts snapshots identity-next
+                                       config-history)) groups))
+(defthm fn-sn-capacity-of-fn-sn-make-v3
+  (equal (fn-sn-capacity (fn-sn-make-v3 groups capacity files node keyring index
+                                         keyring-generation verdicts snapshots identity-next
+                                         config-history)) capacity))
+(defthm fn-sn-files-of-fn-sn-make-v3
+  (equal (fn-sn-files (fn-sn-make-v3 groups capacity files node keyring index
+                                      keyring-generation verdicts snapshots identity-next
+                                      config-history)) files))
+(defthm fn-sn-node-of-fn-sn-make-v3
+  (equal (fn-sn-node (fn-sn-make-v3 groups capacity files node keyring index
+                                     keyring-generation verdicts snapshots identity-next
+                                     config-history)) node))
+(defthm fn-sn-keyring-of-fn-sn-make-v3
+  (equal (fn-sn-keyring (fn-sn-make-v3 groups capacity files node keyring index
+                                        keyring-generation verdicts snapshots identity-next
+                                        config-history)) keyring))
+(defthm fn-sn-index-of-fn-sn-make-v3
+  (equal (fn-sn-index (fn-sn-make-v3 groups capacity files node keyring index
+                                      keyring-generation verdicts snapshots identity-next
+                                      config-history)) index))
+(defthm fn-sn-keyring-generation-of-fn-sn-make-v3
+  (equal (fn-sn-keyring-generation
+          (fn-sn-make-v3 groups capacity files node keyring index
+                         keyring-generation verdicts snapshots identity-next
+                         config-history)) keyring-generation))
+(defthm fn-sn-verdicts-of-fn-sn-make-v3
+  (equal (fn-sn-verdicts (fn-sn-make-v3 groups capacity files node keyring index
+                                         keyring-generation verdicts snapshots identity-next
+                                         config-history)) verdicts))
+(defthm fn-sn-keyring-snapshots-of-fn-sn-make-v3
+  (equal (fn-sn-keyring-snapshots
+          (fn-sn-make-v3 groups capacity files node keyring index
+                         keyring-generation verdicts snapshots identity-next
+                         config-history)) snapshots))
+(defthm fn-sn-identity-next-of-fn-sn-make-v3
+  (equal (fn-sn-identity-next
+          (fn-sn-make-v3 groups capacity files node keyring index
+                         keyring-generation verdicts snapshots identity-next
+                         config-history)) identity-next))
+(defthm fn-sn-config-history-of-fn-sn-make-v3
+  (equal (fn-sn-config-history
+          (fn-sn-make-v3 groups capacity files node keyring index
+                         keyring-generation verdicts snapshots identity-next
+                         config-history)) config-history))
 
 (defthm fn-sn-shapep-of-fn-sn-make
   (fn-sn-shapep (fn-sn-make groups capacity files node keyring index)))
@@ -231,12 +307,16 @@
   (equal (fn-sn-identity-next
           (fn-sn-make groups capacity files node keyring index))
          0))
+(defthm fn-sn-config-history-of-fn-sn-make
+  (equal (fn-sn-config-history
+          (fn-sn-make groups capacity files node keyring index))
+         nil))
 (in-theory (disable (:d fn-sn-shapep) (:d fn-sn-groups) (:d fn-sn-capacity)
                     (:d fn-sn-files) (:d fn-sn-node) (:d fn-sn-keyring)
                     (:d fn-sn-index) (:d fn-sn-keyring-generation)
                     (:d fn-sn-verdicts) (:d fn-sn-keyring-snapshots)
-                    (:d fn-sn-identity-next)
-                    (:d fn-sn-make-v2) (:d fn-sn-make)))
+                    (:d fn-sn-identity-next) (:d fn-sn-config-history)
+                    (:d fn-sn-make-v2) (:d fn-sn-make-v3) (:d fn-sn-make)))
 
 ; Shape facts type reasoning used to supply while the record opened
 ; (docs/proof-style.md s1), exported as forward-chaining rules only.
@@ -309,38 +389,42 @@
 ; says so by using fn-sn-update-indexed instead.
 (defun fn-sn-update (s files node)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-sn-make-v2 (fn-sn-groups s) (fn-sn-capacity s) files node
+  (fn-sn-make-v3 (fn-sn-groups s) (fn-sn-capacity s) files node
               (fn-sn-keyring s) (fn-sn-index s)
               (fn-sn-keyring-generation s) (fn-sn-verdicts s)
-              (fn-sn-keyring-snapshots s) (fn-sn-identity-next s)))
+              (fn-sn-keyring-snapshots s) (fn-sn-identity-next s)
+              (fn-sn-config-history s)))
 
 (verify-guards fn-sn-update)
 (defun fn-sn-update-indexed (s files node index)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-sn-make-v2 (fn-sn-groups s) (fn-sn-capacity s) files node
+  (fn-sn-make-v3 (fn-sn-groups s) (fn-sn-capacity s) files node
               (fn-sn-keyring s) index
               (fn-sn-keyring-generation s) (fn-sn-verdicts s)
-              (fn-sn-keyring-snapshots s) (fn-sn-identity-next s)))
+              (fn-sn-keyring-snapshots s) (fn-sn-identity-next s)
+              (fn-sn-config-history s)))
 
 (verify-guards fn-sn-update-indexed)
 
 (defun fn-sn-update-accepted (s files node index msgid verdict)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-sn-make-v2 (fn-sn-groups s) (fn-sn-capacity s) files node
+  (fn-sn-make-v3 (fn-sn-groups s) (fn-sn-capacity s) files node
               (fn-sn-keyring s) index (fn-sn-keyring-generation s)
               (cons (cons msgid verdict) (fn-sn-verdicts s))
-              (fn-sn-keyring-snapshots s) (fn-sn-identity-next s)))
+              (fn-sn-keyring-snapshots s) (fn-sn-identity-next s)
+              (fn-sn-config-history s)))
 
 (verify-guards fn-sn-update-accepted)
 
 (defun fn-sn-update-replayed (s files node index identity-context)
   (declare (xargs :guard t))
-  (fn-sn-make-v2
+  (fn-sn-make-v3
    (fn-sn-groups s) (fn-sn-capacity s) files node
    (fn-sn-keyring s) index (fn-sn-keyring-generation s)
    (fn-replay-verdict-pairs (fn-stxk-context-verdicts identity-context))
    (fn-stxk-context-snapshots identity-context)
-   (fn-stxk-context-next identity-context)))
+   (fn-stxk-context-next identity-context)
+   (fn-sn-config-history s)))
 
 (defthm fn-sn-verdict-listp-of-recorded-cons
   (implies (and (fn-sn-verdict-listp verdicts)
@@ -582,19 +666,20 @@
                                       (fn-sn-composite-delta record
                                                              (fn-sn-keyring s)))
                   (fn-sn-index s))))
-    (fn-sn-make-v2
+    (fn-sn-make-v3
      (fn-sn-groups s) (fn-sn-capacity s) files node
      (fn-sn-keyring s) index (fn-sn-keyring-generation s)
      (append new-verdicts (fn-sn-verdicts s))
-     (fn-stxk-context-snapshots ctx) (fn-stxk-context-next ctx))))
+     (fn-stxk-context-snapshots ctx) (fn-stxk-context-next ctx)
+     (fn-sn-config-history s))))
 
 (defun fn-sn-advance-identity-next (s)
   (declare (xargs :guard t))
-  (fn-sn-make-v2
+  (fn-sn-make-v3
    (fn-sn-groups s) (fn-sn-capacity s) (fn-sn-files s) (fn-sn-node s)
    (fn-sn-keyring s) (fn-sn-index s) (fn-sn-keyring-generation s)
    (fn-sn-verdicts s) (fn-sn-keyring-snapshots s)
-   (1+ (nfix (fn-sn-identity-next s)))))
+   (1+ (nfix (fn-sn-identity-next s))) (fn-sn-config-history s)))
 
 (defun fn-sn-finish (s)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
@@ -774,12 +859,12 @@
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (fn-prin-keyringp keyring))
-      (fn-sn-make-v2 (fn-sn-groups s) (fn-sn-capacity s) (fn-sn-files s)
+      (fn-sn-make-v3 (fn-sn-groups s) (fn-sn-capacity s) (fn-sn-files s)
                   (fn-sn-node s) keyring
                   (fn-stx-index-of-store (fn-stx-store (fn-sn-node s)) keyring)
                   (1+ (fn-sn-keyring-generation s))
                   (fn-sn-verdicts s) (fn-sn-keyring-snapshots s)
-                  (fn-sn-identity-next s))
+                  (fn-sn-identity-next s) (fn-sn-config-history s))
     s))
 
 (verify-guards fn-sn-set-keyring
