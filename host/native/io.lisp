@@ -854,10 +854,8 @@ round policy."
 (defun fnn-bridge-config-generation ()
   (fnn-nat (fnn-core-state 'fn-store-cfg-generation)))
 
-(defun fnn-bridge-config-names (wrapper)
-  "A replayed name table: the core joins the names with LF, which no group
-name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
-  (let ((octets (fnn-core-state wrapper)))
+(defun fnn-decode-joined-names (octets)
+  "Decode only the ACL2-owned LF join of a group-name table."
     (unless (fnn-octet-list-p octets) (fnn-fault "ACL2 returned a non-octet list"))
     (let ((names nil) (current nil))
       (dolist (octet octets)
@@ -866,7 +864,12 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
                    (setq current nil))
             (push octet current)))
       (when current (push (fnn-octets-string (fnn-octets (nreverse current))) names))
-      (nreverse names))))
+      (nreverse names)))
+
+(defun fnn-bridge-config-names (wrapper)
+  "A replayed name table: the core joins the names with LF, which no group
+name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
+  (fnn-decode-joined-names (fnn-core-state wrapper)))
 
 (defun fnn-bridge-config-initial (names)
   "Generation 1 of a fresh store, built and admitted by the core."
