@@ -484,7 +484,8 @@
         "Record native image/source/dependency identities and child-process executions; distinguish an external test harness from either deployed node.",
         "With two native owner clients already connected, inject uncertainty after publication on one client while the other attempts further input; then exercise shared-resource shutdown and independent recovery.",
         "Start two distinct Store roots with one control socket path; issue concurrent native control posts and then repeat SIGTERM while NNTP and partial control clients are connected.",
-        "Send control frames in one-byte fragments and stall them; exceed the active control-client ceiling while a valid client continues; drop a post reply after durable completion and reopen independently."
+        "Send control frames in one-byte fragments and stall them; exceed the active control-client ceiling while a valid client continues; drop a post reply after durable completion and reopen independently.",
+        "On production default and DTN images, invoke raw store ROOT post with fresh and existing Store roots and an observable payload path; attempt a runtime profile override. Repeat raw insertion on the developer image, then exercise ordinary operator/NNTP posting, inspection and recovery on production."
       ],
       "expected": [
         "Stale completions cannot publish another transaction.",
@@ -495,7 +496,8 @@
         "The uncertainty fence is established before releasing the shared mutex; no connected or newly arriving client mutates the stopped owner, workers finish before shared resources close, and the process reports uncertainty distinctly from a core fault.",
         "A live store prepare may omit repeated history replay only through a named equality to fn-sn-prepare whose invariant is established at observed open and preserved by every post-open mutator; the shared owner additionally requires a named equality to its actual configured-owner event and exact preservation of owner/configuration context.",
         "Only the endpoint lease holder receives control submissions; shutdown wakes clients without closing descriptors beneath their workers, joins before releasing resources, and permits independent reopen.",
-        "Control transport bounds active clients and total frame time, bounds allocation before consuming excess bytes, and accumulates input in linear work; a lost post reply is uncertain and a retry cannot duplicate durable acceptance."
+        "Control transport bounds active clients and total frame time, bounds allocation before consuming excess bytes, and accumulates input in linear work; a lost post reply is uncertain and a retry cannot duplicate durable acceptance.",
+        "Production raw insertion exits 5 as an unsupported entry before Store or payload I/O, regardless of a runtime profile override; no publication occurs. Developer raw insertion remains available. Ordinary production submission still injects and preserves its accepted/refused/uncertain contract, and production inspection/recovery remain available. This selected 2026-09-23 requirement is not yet implemented or witnessed by da5fd8cb."
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",

@@ -1,8 +1,10 @@
-Current task (2026-09-22): the step list in
-[the trajectory plan](plan-2026-09-22-trajectory.md) §3; the current step
-is T0, the green image and the hbox node. The phase schedule is §3.3; the
-loop a lane follows is [how we work](how-we-work.md). The decisions of
-2026-09-22 are the plan's §0.
+Current task (2026-09-23): T0 is complete and hbox runs the `da5fd8cb`
+image. Reconcile the final handoff and prepare qualification plus the next
+v0 batches under the [takeover plan](takeover-2026-09-23.md).
+[Current work](now.md) identifies the tested image and active/proposed work.
+Release scope and step contracts remain in
+[the trajectory plan](plan-2026-09-22-trajectory.md) §§2–3; the execution
+loop is [how we work](how-we-work.md).
 
 
 Earlier current task (2026-09-21): repair and qualify the wider native service batch

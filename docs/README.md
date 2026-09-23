@@ -1,7 +1,7 @@
 # Project guide
 
 fn now has executable ACL2 components and a native node exercised by agents.
-The [node record](../planning/evidence/node-hbox-dabebb84-2026-09-22.md) gives
+The [node record](../planning/evidence/node-hbox-da5fd8cb-2026-09-23.md) gives
 the tested image and its limits; [current work](../planning/now.md) tracks
 development beyond that image. The older [implementation inventory](implementation.md)
 is historical, not the current service status.

@@ -79,6 +79,19 @@ or remove any selected v0 feature. Keep Python tools for development/evidence,
 and carry the actual ACL2 machines into the native host rather than translating
 their decisions into a second implementation.
 
+### Production raw insertion (selected 2026-09-23)
+
+The user selected: raw `store ROOT post` is developer-only; production
+posting uses the normal submission path. This closes the policy question in
+the da5fd8cb campaign's N1 finding. A later import/repair interface needs its
+own explicit authority and provenance contract; raw insertion is not that
+interface. Inspection and recovery remain production operations.
+
+Implementation and image evidence are still owed. HST-001 and SCN-015 track
+rejection of raw insertion before opening or mutating the store, alongside
+successful ordinary production submission and developer diagnostic use.
+See [the native host contract](../specs/host.md#the-native-host).
+
 ### D01: source bytes and compatibility
 
 We need a concrete example containing native author data, generated injection
