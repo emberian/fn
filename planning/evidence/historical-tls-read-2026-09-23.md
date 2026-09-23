@@ -38,3 +38,16 @@ Preservation of the base `fn-ocl-relation` across ordinary read is still being
 proved in the config lane, so this packet does not yet claim unconditional
 preservation of the full `fn-ocri-relation`. The proof-only relation is not an
 executable per-command validation.
+
+`fn-own-finish-read` and its event-step sibling now require a surviving
+connection's selected group to be valid in both the existing current Store
+domain and that connection's pinned archive domain. The
+[owner invariant and test manifest](manifests/certify-20260923T210136Z-108821.json)
+certifies this actual called-path change with w25 on persvati. The second
+check can add one linear group-membership scan on a selected read; it does not
+walk the whole Store. Proving current/archive domain correspondence for the
+static owner relation would let a future implementation eliminate the
+duplicate check. The live old/new reader witness establishes that an old
+connection refuses a group created after it opened, while a new connection
+selects it; there is no claim that a valid old reader previously selected a
+new group.
