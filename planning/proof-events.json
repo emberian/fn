@@ -1975,6 +1975,12 @@
           "name": "fn-th-fresh-report-is-grounded-in-current-root",
           "pending_subject": "No native owner/Store path calls this selector yet; physical event preparation and completion/refinement remain open.",
           "note": "A successful fresh report proposal requires an actual T10-bound selected source, an active selected root policy, verified author-ref roster membership, every named parent admitted earlier in the same topic, and remaining quota. The root-only fixtures separate wrong author, missing parent and exhausted quota."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-th-topic-decode-accepted-is-canonical",
+          "pending_subject": "No Store union or native caller invokes this codec yet.",
+          "note": "A successfully decoded fnto event exactly re-encodes to its input octets; this is decoder canonicality, not a full constructor inverse."
         }
       ]
     }

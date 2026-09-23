@@ -99,10 +99,20 @@ or `fn-th-commit-report`, which recompute and compare the proposal against the
 bound source/context before changing bounded state. The report record retains
 its topic, policy, T10 source reference, parent list and committed sequence.
 
+`books/topic-history-store-events.lisp` assigns this experimental component a
+distinct `fnto` version-1 Store payload grammar for `:topic-anchor` and
+`:topic-admit` proposals. Coordinates share the Store's unsigned 32-bit
+sequence/transaction/generation shape. An event refers to a strictly earlier
+T10 accepted source, records its local source/authorship reference, and carries
+the root administrator/quota or report topic/policy/parent metadata. The codec
+prechecks 1,024 octets, uses at most 24 canonical CBOR items, and re-encodes
+decoded values exactly before accepting them. This grammar has not been joined
+to the Store event union yet.
+
 This is a certified executable component, not a durable Store or native owner
-path yet: no physical topic event codec, Store union/replay join, owner
-publication, historical administrator configuration lookup or retention pin has
-landed. It is root-only. No control successor, fork healing, automatic policy
+path yet: Store union/replay join, owner publication, historical administrator
+configuration lookup and retention pins have not landed. It is root-only.
+No control successor, fork healing, automatic policy
 adoption, alias rewrite or Mini application operation is inferred. PRF-066 and
 SCN-034 track the component and the remaining joined boundary.
 Store topic events, durable admission and current-policy status remain the
