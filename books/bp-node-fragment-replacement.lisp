@@ -29,7 +29,8 @@
     nil))
 
 (defun fn-bpnf-family-apply (st record expected-arrival)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
   (let* ((held (fn-bpnf-held-list st))
          (anchor-arrival (fn-bpn-nth 3 record))
          (anchor (fn-bpnf-find-arrival anchor-arrival held)))
@@ -40,7 +41,7 @@
                   (fn-bpnf-active-fragmentp anchor)))
         (list :fault :family-anchor)
       (let ((plan (fn-bpnf-family-plan st anchor)))
-        (if (not (and (equal (car plan) :ready)
+        (if (not (and (equal (fn-cbor-ag-car plan) :ready)
                       (equal (fn-bpn-nth 5 record) (fn-bpn-nth 2 plan))
                       (null (fn-bpnf-find-held
                              (fn-bpnf-held-key

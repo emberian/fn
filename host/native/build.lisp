@@ -73,6 +73,7 @@
 ; outbound fn-bpn-step base.  Certification alone does not put guard events
 ; into this saved image's ACL2 world.
 (include-book "books/bp-node-machine-guards")
+(include-book "books/bp-node-fragment-guards")
 (include-book "books/bp-node-receive-boundary")
 (include-book "books/bp-fnbs-replay")
 (include-book "books/bp-fnbs-inspect")

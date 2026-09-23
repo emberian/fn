@@ -284,6 +284,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-family-replay-tests \
 	books/bp-node-fragment-step \
 	tests/acl2/bp-node-fragment-step-tests \
+	books/bp-node-fragment-guards \
 	books/bp-node-report-step \
 	tests/acl2/bp-node-report-step-tests \
 	books/bp-report-outbox \

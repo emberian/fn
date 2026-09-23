@@ -9,7 +9,8 @@
   (equal (fn-bpn-nth 3 (fn-bpnf-issued st)) :family))
 
 (defun fn-bpnf-family-propose-step (st anchor-arrival)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
   (if (or (fn-bpnf-issued st)
           (fn-bpnf-waits st)
           (not (fn-frame-natp (fn-bpnf-epoch st)))
@@ -47,7 +48,8 @@
                      (fn-bpnf-next-op st) record)))))))
 
 (defun fn-bpnf-family-persist-step (st epoch op result)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
   (let ((issued (fn-bpnf-issued st)))
     (if (not (and (fn-bpnf-family-issuedp st)
                   (equal (fn-bpn-nth 5 issued) :pending)
@@ -58,10 +60,10 @@
         (let* ((record (fn-bpn-nth 4 issued))
                (arrival (fn-bpn-nth 4 record))
                (applied
-                (if (equal (fn-bpnf-next-arrival st) (1+ arrival))
+                (if (equal (fn-bpnf-next-arrival st) (1+ (fix arrival)))
                     (fn-bpnf-family-apply st record arrival)
                   (list :fault :family-frontier))))
-          (if (not (equal (car applied) :ready))
+          (if (not (equal (fn-cbor-ag-car applied) :ready))
               (fn-bpnf-answer
                (fn-bpnf-with-issued
                 st (fn-bpnf-operation epoch op :family record :uncertain))
@@ -112,20 +114,22 @@
    (t (fn-bpnf-step st event))))
 
 (defun fn-bpnf-family-next-aux (st held)
-  (declare (xargs :guard t :measure (acl2-count held)
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :measure (acl2-count held)
                   :verify-guards nil))
   (if (consp held)
       (let ((h (car held)))
         (if (and (fn-bpnf-active-fragmentp h)
                  (equal (fn-bpnf-arrival-count
                          (fn-bpn-nth 3 h) (fn-bpnf-held-list st)) 1)
-                 (equal (car (fn-bpnf-family-plan st h)) :ready))
+                 (equal (fn-cbor-ag-car (fn-bpnf-family-plan st h)) :ready))
             (list :ready (fn-bpn-nth 3 h))
           (fn-bpnf-family-next-aux st (cdr held))))
     nil))
 
 (defun fn-bpnf-family-next (st)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
   (if (or (fn-bpnf-issued st) (fn-bpnf-waits st)
           (not (fn-frame-natp (fn-bpnf-next-arrival st))))
       nil
