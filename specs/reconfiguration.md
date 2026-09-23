@@ -1079,11 +1079,14 @@ differences are deliberate:
   ACL2 `fn-ocl-complete`, which installs the Store transition and refreshes the
   committed view for future connections while retaining old reader archives
   and configuration pins. A failed install after a durable publication forces
-  recovery. The old `fn-snt-relation` and `fn-own-relation` still use static
-  final parameters and do not characterize valid historical decreases; a new
-  per-connection historical owner relation, transition proofs, checkpoint
-  suffix correspondence and native image test remain required before T8b
-  live adoption is complete.
+  recovery. `fn-ocl-conn-historyp` reconstructs each pinned archive at its
+  own configuration generation and Store-journal prefix;
+  `fn-ocl-complete-preserves-pinned-connection-histories` proves completion
+  retains that relation for all old connections. The old `fn-snt-relation` and
+  `fn-own-relation` still use static final parameters and do not characterize
+  valid historical decreases. Remaining phase-aware owner transition proofs,
+  checkpoint suffix correspondence and native image tests are required before
+  T8b live adoption is complete.
 - **The two-kind stream, earlier proposed (lane `w9/reconfig`).** The layout stays
   two directories -- article records in the transaction journal, configuration
   records under `config/` -- and the STREAM is one: every record of either
