@@ -113,10 +113,68 @@
           (push part chunks))))))
 
 (defun fnn-control-reply-octets (status)
-  (let ((reply (fnn-core 'fn-native-control-host-reply-encode status)))
+  (let ((reply (if (and (consp status) (eq (first status) :topic-reply))
+                   (fnn-core 'fn-native-control-host-topic-reply-encode
+                             (second status))
+                 (fnn-core 'fn-native-control-host-reply-encode status))))
     (unless (fnn-octet-list-p reply)
       (fnn-fault "ACL2 refused a local-control reply status"))
     (fnn-octets reply)))
+
+(defun fnn-control-peer-is-owner-p (socket)
+  "Bind the local-control principal to the process's effective UID.
+
+Darwin getpeereid and Linux SO_PEERCRED observe credentials on the connected
+Unix socket. A failed observation refuses. The first value preserves the E2
+same-owner gate; the second carries the authenticated numeric UID for ACL2's
+separate local topic administrator binding. The OS supplies that observation,
+not a topic or consumer authority decision."
+  #+darwin
+  (sb-alien:with-alien ((peer-uid sb-alien:unsigned-int)
+                        (peer-gid sb-alien:unsigned-int))
+    (let ((result
+            (sb-alien:alien-funcall
+             (sb-alien:extern-alien
+              "getpeereid"
+              (function sb-alien:int sb-alien:int
+                        (* sb-alien:unsigned-int)
+                        (* sb-alien:unsigned-int)))
+             (fnn-socket-fd socket)
+             (sb-alien:addr peer-uid) (sb-alien:addr peer-gid))))
+      (if (and (zerop result) (= peer-uid (sb-posix:geteuid)))
+          (values t peer-uid)
+        (values nil nil))))
+  #+linux
+  (handler-case
+      ;; Linux ucred is three 32-bit fields: pid, uid, gid.  SOL_SOCKET=1 and
+      ;; SO_PEERCRED=17 are the Linux socket ABI constants.  Check optlen so
+      ;; a short or failed observation cannot authenticate a caller.  Linux
+      ;; also returns the socket creator's own credentials on an unconnected
+      ;; listener; getpeername must establish a connected peer first.
+      (progn
+        (sb-bsd-sockets:socket-peername socket)
+        (sb-alien:with-alien ((credentials (sb-alien:array sb-alien:unsigned-int 3))
+                            (length sb-alien:unsigned-int 12))
+        (let ((result
+                (sb-alien:alien-funcall
+                 (sb-alien:extern-alien
+                  "getsockopt"
+                  (function sb-alien:int sb-alien:int sb-alien:int
+                            sb-alien:int (* sb-alien:unsigned-int)
+                            (* sb-alien:unsigned-int)))
+                 (fnn-socket-fd socket) 1 17
+                 (sb-alien:addr (sb-alien:deref credentials 0))
+                 (sb-alien:addr length))))
+          (if (and (zerop result) (= length 12))
+              (let ((uid (sb-alien:deref credentials 1)))
+                (if (= uid (sb-posix:geteuid))
+                    (values t uid)
+                  (values nil nil)))
+            (values nil nil)))))
+    (error () (values nil nil)))
+  #-(or darwin linux)
+  (let ((ignored socket)) (declare (ignore ignored))
+    (values nil nil)))
 
 (defun fnn-control-stop-cut-armed-p ()
   "Whether FN_NATIVE_CONTROL_TEST_STOP arms the developer stop cut.
@@ -206,10 +264,23 @@ joins it before the process exits."
                       (admin
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-control-host-admin-decode
+                                       (fnn-octet-list frame))))
+                      (topic
+                        (and (typep frame 'fnn-octets)
+                             (fnn-core 'fn-native-control-host-topic-request-decode
                                        (fnn-octet-list frame)))))
                  (cond
                    ((and *fnn-hybrid-control-handler*
                          (funcall *fnn-hybrid-control-handler* service frame)))
+                   ((and (consp topic) (eq (first topic) :topic))
+                    (multiple-value-bind (owner-p uid)
+                        (fnn-control-peer-is-owner-p socket)
+                      (if owner-p
+                          (list :topic-reply
+                                (fnn-owner-topic-local-serialized
+                                 service (second topic) (third topic)
+                                 (fourth topic) uid))
+                        (list :topic-reply :refused))))
                    ((and (consp request) (eq (car request) :request))
                     (let ((msgid (second request))
                          (groups (third request))
@@ -243,7 +314,9 @@ joins it before the process exits."
     ;; A peer that disappears here creates no uncertainty for the owner: the
     ;; status already records its durable observation.  The client, which did
     ;; not receive it, conservatively reports :uncertain.
-    (fnn-control-test-after-submit status)
+    (fnn-control-test-after-submit
+     (if (and (consp status) (eq (first status) :topic-reply))
+         (second status) status))
     (fnn-control-send-reply socket status)))
 
 (defun fnn-control-client-done (control socket)
@@ -456,6 +529,46 @@ joins it before the process exits."
                                         :uncertain :fault))
                        status
                      (fnn-control-transport-outcome stage)))))
+           (error () (fnn-control-transport-outcome stage)))
+      (when socket (fnn-socket-shut socket)))))
+
+(defun fnn-control-topic-local (path-octets operation sequence quota)
+  "Send an ACL2-framed local topic operation to the authenticated owner."
+  (let ((request-list
+          (fnn-core 'fn-native-control-host-topic-request-encode
+                    operation sequence quota))
+        (socket nil) (stage :before-submission))
+    (unless (fnn-octet-list-p request-list)
+      (fnn-fault "ACL2 refused local topic request"))
+    (unwind-protect
+         (handler-case
+             (progn
+               (setq socket (fnn-control-connect
+                             (fnn-octets-string path-octets)))
+               (let ((fd (fnn-socket-fd socket)))
+                 (setq stage :after-submission)
+                 (fnn-send-all fd (fnn-octets request-list)
+                               +fnn-control-io-seconds+)
+                 (sb-bsd-sockets:socket-shutdown socket :direction :output)
+                 (let* ((frame (fnn-control-read-frame
+                                socket (fnn-core
+                                        'fn-native-control-host-max-frame)))
+                        (reply (and (typep frame 'fnn-octets)
+                                    (fnn-core
+                                     'fn-native-control-host-topic-reply-decode
+                                     (fnn-octet-list frame))))
+                        (ordinary
+                          (and (typep frame 'fnn-octets)
+                               (fnn-core 'fn-native-control-host-reply-decode
+                                         (fnn-octet-list frame)))))
+                   (cond
+                    ((and (consp reply) (eq (first reply) :topic-reply)
+                          (member (second reply)
+                                  '(:accepted :refused :uncertain :fault)))
+                     (second reply))
+                    ((member ordinary '(:refused :uncertain :fault :busy))
+                     (if (eq ordinary :busy) :refused ordinary))
+                    (t (fnn-control-transport-outcome stage))))))
            (error () (fnn-control-transport-outcome stage)))
       (when socket (fnn-socket-shut socket)))))
 

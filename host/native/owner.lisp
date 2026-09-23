@@ -825,6 +825,28 @@ the current connection."
           (fnn-refuse "canonical Store refused topic event")))
       (fnn-owner-publish-prepared service "topic"))))
 
+(defun fnn-owner-topic-local-serialized
+    (service operation source-sequence quota observed-uid)
+  "Use the OS-observed UID only as input to ACL2's installed-ID decision."
+  (fnn-owner-serialized
+   service nil
+   (lambda ()
+     (let* ((entropy-id
+              (and (eq operation :install)
+                   (fnn-octet-list (fnn-anchor-csprng-nonce 32))))
+            (proposal
+              (fnn-owner-core 'fn-owner-topic-propose
+                              operation source-sequence observed-uid
+                              entropy-id quota)))
+       (if (not (and (consp proposal) (eq (first proposal) :ok)
+                     (consp (cdr proposal))))
+           :refused
+         (progn
+           (unless (eq (fnn-owner-topic-commit service (second proposal))
+                       :durable)
+             (fnn-fault "topic publication lacked durable completion"))
+           :accepted))))))
+
 (defun fnn-owner-drain-one (service)
   "Take and complete at most one queued served submission; return cid/reply."
   (let ((taken (fnn-owner-action 'fn-owner-take)))
