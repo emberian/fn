@@ -26,83 +26,6 @@
            (and (true-listp (nth 1 event))
                 (<= (len (nth 1 event)) *fn-bpn-machine-max-records*)))))
 
-(defthm fn-bpn-machine-statep-components
-  (implies
-   (fn-bpn-machine-statep st)
-   (and (fn-bpn-configp (fn-bpn-machine-state-config st))
-        (fn-bpn-job-listp (fn-bpn-machine-state-jobs st))
-        (fn-bpn-contact-listp (fn-bpn-machine-state-contacts st))
-        (fn-bpn-maybe-pendingp (fn-bpn-machine-state-pending st))
-        (fn-bpn-machine-boolp (fn-bpn-machine-state-fenced st))
-        (fn-bpn-machine-u64p (fn-bpn-machine-state-next-token st))
-        (fn-bpn-machine-limitp (fn-bpn-machine-state-max-jobs st))
-        (fn-bpn-machine-limitp (fn-bpn-machine-state-max-octets st))
-        (<= (len (fn-bpn-machine-state-jobs st))
-            (fn-bpn-machine-state-max-jobs st))
-        (<= (fn-bpn-jobs-octets (fn-bpn-machine-state-jobs st))
-            (fn-bpn-machine-state-max-octets st))
-        (or (null (fn-bpn-machine-state-pending st))
-            (equal (fn-bpn-pending-token
-                    (fn-bpn-machine-state-pending st))
-                   (fn-bpn-machine-state-next-token st)))))
-  :hints (("Goal"
-           :in-theory (e/d (fn-bpn-machine-statep)
-                           (fn-bpn-configp fn-bpn-job-listp
-                            fn-bpn-contact-listp fn-bpn-maybe-pendingp
-                            fn-bpn-machine-boolp fn-bpn-machine-u64p
-                            fn-bpn-machine-limitp))))
-  :rule-classes :forward-chaining)
-
-(defthm fn-bpn-machine-recordp-of-constructor
-  (equal
-   (fn-bpn-machine-recordp
-    (fn-bpn-make-machine-state config jobs contacts pending fenced
-                               next-token max-jobs max-octets))
-   (and (fn-bpn-configp config)
-        (fn-bpn-job-listp jobs)
-        (fn-bpn-contact-listp contacts)
-        (fn-bpn-maybe-pendingp pending)
-        (fn-bpn-machine-boolp fenced)
-        (fn-bpn-machine-u64p next-token)
-        (fn-bpn-machine-limitp max-jobs)
-        (fn-bpn-machine-limitp max-octets))))
-
-(defthm fn-bpn-machine-constructor-accessors
-  (let ((st (fn-bpn-make-machine-state config jobs contacts pending fenced
-                                        next-token max-jobs max-octets)))
-    (and (equal (fn-bpn-machine-state-config st) config)
-         (equal (fn-bpn-machine-state-jobs st) jobs)
-         (equal (fn-bpn-machine-state-contacts st) contacts)
-         (equal (fn-bpn-machine-state-pending st) pending)
-         (equal (fn-bpn-machine-state-fenced st) fenced)
-         (equal (fn-bpn-machine-state-next-token st) next-token)
-         (equal (fn-bpn-machine-state-max-jobs st) max-jobs)
-         (equal (fn-bpn-machine-state-max-octets st) max-octets))))
-
-(defthm fn-bpn-machine-statep-of-state-with
-  (implies
-   (and (fn-bpn-machine-statep st)
-        (fn-bpn-job-listp jobs)
-        (fn-bpn-contact-listp contacts)
-        (fn-bpn-maybe-pendingp pending)
-        (fn-bpn-machine-boolp fenced)
-        (fn-bpn-machine-u64p next-token)
-        (<= (len jobs) (fn-bpn-machine-state-max-jobs st))
-        (<= (fn-bpn-jobs-octets jobs)
-            (fn-bpn-machine-state-max-octets st))
-        (or (null pending)
-            (equal (fn-bpn-pending-token pending) next-token)))
-   (fn-bpn-machine-statep
-    (fn-bpn-state-with st jobs contacts pending fenced next-token)))
-  :hints (("Goal"
-           :use ((:instance fn-bpn-machine-statep-components))
-           :in-theory
-           (union-theories
-            '(fn-bpn-state-with fn-bpn-machine-statep
-              fn-bpn-machine-recordp-of-constructor
-              fn-bpn-machine-constructor-accessors)
-            (theory 'minimal-theory)))))
-
 (defthm fn-bpn-state-with-accessors
   (let ((next (fn-bpn-state-with st jobs contacts pending fenced next-token)))
     (and (equal (fn-bpn-machine-state-config next)
@@ -612,30 +535,6 @@
        fn-bpn-machine-limitp natp posp
        (:type-prescription len) (:type-prescription fn-bpn-jobs-octets))
      (theory 'minimal-theory)))))
-
-(defthm fn-bpn-open-contact-preserves-contact-listp
-  (implies (and (fn-bpn-contact-listp contacts)
-                (fn-bpp-eidp peer))
-           (fn-bpn-contact-listp (fn-bpn-open-contact peer contacts)))
-  :hints (("Goal"
-           :in-theory (enable fn-bpn-open-contact fn-bpn-contact-listp
-                              fn-bpn-contact-openp fn-bpn-member))))
-
-(defthm fn-bpn-member-of-close-contact
-  (implies (fn-bpn-member item (fn-bpn-close-contact peer contacts))
-           (fn-bpn-member item contacts))
-  :hints (("Goal"
-           :induct (fn-bpn-close-contact peer contacts)
-           :in-theory (enable fn-bpn-close-contact fn-bpn-member))))
-
-(defthm fn-bpn-close-contact-preserves-contact-listp
-  (implies (fn-bpn-contact-listp contacts)
-           (fn-bpn-contact-listp (fn-bpn-close-contact peer contacts)))
-  :hints (("Goal"
-           :induct (fn-bpn-close-contact peer contacts)
-           :in-theory (e/d (fn-bpn-close-contact fn-bpn-contact-listp
-                              fn-bpn-member)
-                            (fn-bpp-eidp)))))
 
 (defthm fn-bpn-contact-state-with-preserves-machine-invariant
   (implies

@@ -160,6 +160,31 @@
         (fn-bpn-close-contact peer (cdr contacts))
       (cons (car contacts) (fn-bpn-close-contact peer (cdr contacts))))))
 
+; Contact-list closure is needed by the contact step guard.
+(defthm fn-bpn-open-contact-preserves-contact-listp
+  (implies (and (fn-bpn-contact-listp contacts)
+                (fn-bpp-eidp peer))
+           (fn-bpn-contact-listp (fn-bpn-open-contact peer contacts)))
+  :hints (("Goal"
+           :in-theory (enable fn-bpn-open-contact fn-bpn-contact-listp
+                              fn-bpn-contact-openp fn-bpn-member))))
+
+(defthm fn-bpn-member-of-close-contact
+  (implies (fn-bpn-member item (fn-bpn-close-contact peer contacts))
+           (fn-bpn-member item contacts))
+  :hints (("Goal"
+           :induct (fn-bpn-close-contact peer contacts)
+           :in-theory (enable fn-bpn-close-contact fn-bpn-member))))
+
+(defthm fn-bpn-close-contact-preserves-contact-listp
+  (implies (fn-bpn-contact-listp contacts)
+           (fn-bpn-contact-listp (fn-bpn-close-contact peer contacts)))
+  :hints (("Goal"
+           :induct (fn-bpn-close-contact peer contacts)
+           :in-theory (e/d (fn-bpn-close-contact fn-bpn-contact-listp
+                              fn-bpn-member)
+                            (fn-bpp-eidp)))))
+
 (defun fn-bpn-effectp (effect)
   (declare (xargs :guard t))
   (and (true-listp effect)
@@ -307,6 +332,23 @@
 (verify-guards fn-bpn-machine-recordp)
 (verify-guards fn-bpn-machine-statep)
 
+; State shape is carried as a guard.  Extract just the three scalar facts
+; needed by the hot transition helpers, then keep the recognizer closed in
+; their guard proofs.  No helper revalidates the whole state in its body.
+(defthm fn-bpn-state-field-types-for-guard
+  (implies (fn-bpn-machine-statep st)
+           (and (fn-bpn-machine-u64p (fn-bpn-machine-state-next-token st))
+                (fn-bpn-machine-limitp (fn-bpn-machine-state-max-jobs st))
+                (fn-bpn-machine-limitp (fn-bpn-machine-state-max-octets st))))
+  :hints (("Goal" :in-theory (enable fn-bpn-machine-statep
+                                     fn-bpn-machine-recordp))))
+
+(defthm fn-bpn-state-config-for-guard
+  (implies (fn-bpn-machine-statep st)
+           (fn-bpn-configp (fn-bpn-machine-state-config st)))
+  :hints (("Goal" :in-theory (enable fn-bpn-machine-statep
+                                     fn-bpn-machine-recordp))))
+
 (defun fn-bpn-existing-sequence (st key)
   (declare (xargs :guard t :verify-guards nil))
   (let ((job (fn-bpn-find-job key (fn-bpn-machine-state-jobs st))))
@@ -346,14 +388,120 @@
       (fn-bpn-make-machine-state config nil nil nil nil 0 max-jobs max-octets)
     nil))
 
+(verify-guards fn-bpn-initial-machine-state)
+
 (defun fn-bpn-state-with (st jobs contacts pending fenced next-token)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
   (fn-bpn-make-machine-state
    (fn-bpn-machine-state-config st) jobs contacts pending fenced next-token
    (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st)))
 
+(verify-guards fn-bpn-state-with)
+
+; Core state constructor correspondence is needed by executable guards.
+(defthm fn-bpn-machine-statep-components
+  (implies
+   (fn-bpn-machine-statep st)
+   (and (fn-bpn-configp (fn-bpn-machine-state-config st))
+        (fn-bpn-job-listp (fn-bpn-machine-state-jobs st))
+        (fn-bpn-contact-listp (fn-bpn-machine-state-contacts st))
+        (fn-bpn-maybe-pendingp (fn-bpn-machine-state-pending st))
+        (fn-bpn-machine-boolp (fn-bpn-machine-state-fenced st))
+        (fn-bpn-machine-u64p (fn-bpn-machine-state-next-token st))
+        (fn-bpn-machine-limitp (fn-bpn-machine-state-max-jobs st))
+        (fn-bpn-machine-limitp (fn-bpn-machine-state-max-octets st))
+        (<= (len (fn-bpn-machine-state-jobs st))
+            (fn-bpn-machine-state-max-jobs st))
+        (<= (fn-bpn-jobs-octets (fn-bpn-machine-state-jobs st))
+            (fn-bpn-machine-state-max-octets st))
+        (or (null (fn-bpn-machine-state-pending st))
+            (equal (fn-bpn-pending-token
+                    (fn-bpn-machine-state-pending st))
+                   (fn-bpn-machine-state-next-token st)))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-bpn-machine-statep)
+                           (fn-bpn-configp fn-bpn-job-listp
+                            fn-bpn-contact-listp fn-bpn-maybe-pendingp
+                            fn-bpn-machine-boolp fn-bpn-machine-u64p
+                            fn-bpn-machine-limitp))))
+  :rule-classes :forward-chaining)
+
+(defthm fn-bpn-machine-recordp-of-constructor
+  (equal
+   (fn-bpn-machine-recordp
+    (fn-bpn-make-machine-state config jobs contacts pending fenced
+                               next-token max-jobs max-octets))
+   (and (fn-bpn-configp config)
+        (fn-bpn-job-listp jobs)
+        (fn-bpn-contact-listp contacts)
+        (fn-bpn-maybe-pendingp pending)
+        (fn-bpn-machine-boolp fenced)
+        (fn-bpn-machine-u64p next-token)
+        (fn-bpn-machine-limitp max-jobs)
+        (fn-bpn-machine-limitp max-octets))))
+
+(defthm fn-bpn-machine-constructor-accessors
+  (let ((st (fn-bpn-make-machine-state config jobs contacts pending fenced
+                                        next-token max-jobs max-octets)))
+    (and (equal (fn-bpn-machine-state-config st) config)
+         (equal (fn-bpn-machine-state-jobs st) jobs)
+         (equal (fn-bpn-machine-state-contacts st) contacts)
+         (equal (fn-bpn-machine-state-pending st) pending)
+         (equal (fn-bpn-machine-state-fenced st) fenced)
+         (equal (fn-bpn-machine-state-next-token st) next-token)
+         (equal (fn-bpn-machine-state-max-jobs st) max-jobs)
+         (equal (fn-bpn-machine-state-max-octets st) max-octets))))
+
+(defthm fn-bpn-machine-statep-of-state-with
+  (implies
+   (and (fn-bpn-machine-statep st)
+        (fn-bpn-job-listp jobs)
+        (fn-bpn-contact-listp contacts)
+        (fn-bpn-maybe-pendingp pending)
+        (fn-bpn-machine-boolp fenced)
+        (fn-bpn-machine-u64p next-token)
+        (<= (len jobs) (fn-bpn-machine-state-max-jobs st))
+        (<= (fn-bpn-jobs-octets jobs)
+            (fn-bpn-machine-state-max-octets st))
+        (or (null pending)
+            (equal (fn-bpn-pending-token pending) next-token)))
+   (fn-bpn-machine-statep
+    (fn-bpn-state-with st jobs contacts pending fenced next-token)))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-machine-statep-components))
+           :in-theory
+           (union-theories
+            '(fn-bpn-state-with fn-bpn-machine-statep
+              fn-bpn-machine-recordp-of-constructor
+              fn-bpn-machine-constructor-accessors)
+            (theory 'minimal-theory)))))
+
+(defthm fn-bpn-contact-state-with-preserves-statep-for-guard
+  (implies
+   (and (fn-bpn-machine-statep st)
+        (fn-bpn-contact-listp contacts))
+   (fn-bpn-machine-statep
+    (fn-bpn-state-with
+     st (fn-bpn-machine-state-jobs st) contacts
+     (fn-bpn-machine-state-pending st)
+     (fn-bpn-machine-state-fenced st)
+     (fn-bpn-machine-state-next-token st))))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-machine-statep-components)
+                 (:instance fn-bpn-machine-statep-of-state-with
+                  (jobs (fn-bpn-machine-state-jobs st))
+                  (pending (fn-bpn-machine-state-pending st))
+                  (fenced (fn-bpn-machine-state-fenced st))
+                  (next-token (fn-bpn-machine-state-next-token st))))
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpn-machine-statep-components
+              fn-bpn-machine-statep-of-state-with)))))
+
+
 (defun fn-bpn-record-applicablep (st record)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
   (let* ((kind (fn-cbor-ag-car record))
          (key (fn-bpn-record-key record))
          (job (fn-bpn-find-job key (fn-bpn-machine-state-jobs st))))
@@ -378,8 +526,13 @@
            (and job (fn-bpn-member (fn-bpn-job-status job) '(:queued :attempting))))
           (t nil)))))
 
+(verify-guards fn-bpn-record-applicablep
+  :hints (("Goal" :use fn-bpn-state-field-types-for-guard
+           :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
+                               fn-bpn-state-field-types-for-guard))))
+
 (defun fn-bpn-apply-record (st record)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
   (if (not (fn-bpn-record-applicablep st record))
       st
     (let* ((kind (fn-cbor-ag-car record))
@@ -399,8 +552,13 @@
       (fn-bpn-state-with st next-jobs (fn-bpn-machine-state-contacts st)
                          nil nil (1+ token)))))
 
+(verify-guards fn-bpn-apply-record
+  :hints (("Goal" :use fn-bpn-state-field-types-for-guard
+           :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
+                               fn-bpn-state-field-types-for-guard))))
+
 (defun fn-bpn-propose (st record success refusal uncertain)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
   (let ((token (fn-bpn-machine-state-next-token st)))
     (if (>= token *fn-bpn-machine-max-records*)
         (fn-bpn-answer st (list refusal))
@@ -410,6 +568,11 @@
                                       pending nil token)))
         (fn-bpn-answer next (list (list :persist token record)))))))
 
+(verify-guards fn-bpn-propose
+  :hints (("Goal" :use fn-bpn-state-field-types-for-guard
+           :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
+                               fn-bpn-state-field-types-for-guard))))
+
 (defun fn-bpn-job-exactp (job sequence route peer bundle wire)
   (declare (xargs :guard t))
   (and (equal (fn-bpn-job-sequence job) sequence)
@@ -418,8 +581,10 @@
        (equal (fn-bpn-job-bundle job) bundle)
        (equal (fn-bpn-job-wire job) wire)))
 
+(verify-guards fn-bpn-job-exactp)
+
 (defun fn-bpn-enqueue-step (st work attempt generation sequence route peer adu obs)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
   (let* ((key (list work attempt generation))
          (jobs (fn-bpn-machine-state-jobs st))
          (old (fn-bpn-find-job key jobs)))
@@ -463,6 +628,13 @@
              (list :bundle-queue-refused work attempt generation :persistence-refused)
              (list :bundle-queue-uncertain work attempt generation :persistence))))))))))
 
+(verify-guards fn-bpn-enqueue-step
+  :hints (("Goal" :use (fn-bpn-state-field-types-for-guard
+                         fn-bpn-state-config-for-guard)
+           :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
+                               fn-bpn-state-field-types-for-guard
+                               fn-bpn-state-config-for-guard))))
+
 (defun fn-bpn-find-queued-for-peer (peer jobs)
   (declare (xargs :guard t))
   (if (atom jobs)
@@ -471,6 +643,8 @@
              (equal (fn-bpn-job-peer (car jobs)) peer))
         (car jobs)
       (fn-bpn-find-queued-for-peer peer (cdr jobs)))))
+
+(verify-guards fn-bpn-find-queued-for-peer)
 
 (defun fn-bpn-ready-peers (jobs)
   (declare (xargs :guard t))
@@ -483,7 +657,7 @@
         rest))))
 
 (defun fn-bpn-start-one (st peer)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
   (let ((job (fn-bpn-find-queued-for-peer peer (fn-bpn-machine-state-jobs st))))
     (if (or (not job) (fn-bpn-machine-state-fenced st)
             (fn-bpn-machine-state-pending st)
@@ -501,8 +675,13 @@
          (list :bundle-queue-uncertain (nth 0 key) (nth 1 key) (nth 2 key)
                :attempt-persistence))))))
 
+(verify-guards fn-bpn-start-one
+  :hints (("Goal" :use fn-bpn-state-field-types-for-guard
+           :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
+                               fn-bpn-state-field-types-for-guard))))
+
 (defun fn-bpn-contact-step (st peer openp)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
   (if (or (fn-bpn-machine-state-fenced st)
           (fn-bpn-machine-state-pending st))
       (fn-bpn-answer st nil)
@@ -524,8 +703,21 @@
                             (fn-bpn-machine-state-next-token st))
          nil)))))
 
+(verify-guards fn-bpn-contact-step
+  :hints (("Goal"
+           :use ((:instance fn-bpn-contact-state-with-preserves-statep-for-guard
+                  (contacts (fn-bpn-open-contact
+                             peer (fn-bpn-machine-state-contacts st))))
+                 (:instance fn-bpn-contact-state-with-preserves-statep-for-guard
+                  (contacts (fn-bpn-close-contact
+                             peer (fn-bpn-machine-state-contacts st))))
+                 (:instance fn-bpn-machine-statep-components))
+           :in-theory
+           (disable fn-bpn-machine-statep fn-bpn-machine-recordp
+                    fn-bpn-contact-state-with-preserves-statep-for-guard))))
+
 (defun fn-bpn-persist-result-step (st token outcome)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
   (let ((pending (fn-bpn-machine-state-pending st)))
     (if (or (not pending) (not (equal token (fn-bpn-pending-token pending))))
         (fn-bpn-answer st nil)
@@ -552,8 +744,19 @@
                             (fn-bpn-machine-state-next-token st))
          (list (fn-bpn-pending-uncertainty-effect pending))))))))
 
+(verify-guards fn-bpn-persist-result-step)
+
+; A found key equals the constructor-produced three-element job key.  The
+; callback key need not be trusted by the guard just to read its fields.
+(defthm fn-bpn-found-key-true-list-for-guard
+  (implies (fn-bpn-find-job key jobs)
+           (true-listp key))
+  :hints (("Goal" :induct (fn-bpn-find-job key jobs)
+           :in-theory (enable fn-bpn-find-job fn-bpn-job-key)))
+  :rule-classes nil)
+
 (defun fn-bpn-forward-result-step (st key outcome)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
   (let ((job (fn-bpn-find-job key (fn-bpn-machine-state-jobs st))))
     (if (or (fn-bpn-machine-state-fenced st) (fn-bpn-machine-state-pending st)
             (not job) (not (equal (fn-bpn-job-status job) :attempting)))
@@ -575,6 +778,33 @@
              (list :bundle-queue-refused work attempt generation :result-persistence-refused)
              (list :bundle-queue-uncertain work attempt generation :result-persistence))))))))
 
+(verify-guards fn-bpn-forward-result-step
+  :hints (("Goal"
+           :use (fn-bpn-state-field-types-for-guard
+                 (:instance fn-bpn-found-key-true-list-for-guard
+                  (jobs (fn-bpn-machine-state-jobs st))))
+           :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
+                               fn-bpn-state-field-types-for-guard))))
+
+(defthm fn-bpn-bundle-primary-clock-fields-for-guard
+  (implies (fn-bpb-bundlep bundle)
+           (and (fn-clock-timep
+                 (fn-bpp-creation-time (fn-bpb-bundle-primary bundle)))
+                (fn-clock-timep
+                 (fn-bpp-lifetime (fn-bpb-bundle-primary bundle)))))
+  :hints (("Goal" :in-theory (enable fn-bpb-bundlep fn-bpp-blockp
+                                     fn-bpp-timep fn-clock-timep))))
+
+(defthm fn-bpn-job-bundle-for-guard
+  (implies (fn-bpn-jobp job)
+           (fn-bpb-bundlep (fn-bpn-job-bundle job)))
+  :hints (("Goal" :in-theory (enable fn-bpn-jobp))))
+
+(defthm fn-bpn-job-age-anchor-for-guard
+  (implies (fn-bpn-jobp job)
+           (fn-clock-age-anchorp (fn-bpn-job-age-anchor job)))
+  :hints (("Goal" :in-theory (enable fn-bpn-jobp))))
+
 (defun fn-bpn-job-expiry (job obs)
   (declare (xargs :guard t))
   (if (and (fn-bpn-jobp job) (fn-clock-observationp obs))
@@ -586,6 +816,17 @@
          obs))
     :uncertain))
 
+(verify-guards fn-bpn-job-expiry
+  :hints (("Goal"
+           :use ((:instance fn-bpn-job-bundle-for-guard)
+                 (:instance fn-bpn-job-age-anchor-for-guard)
+                 (:instance fn-bpn-bundle-primary-clock-fields-for-guard
+                  (bundle (fn-bpn-job-bundle job))))
+           :in-theory (disable fn-bpn-jobp fn-bpb-bundlep
+                               fn-bpn-job-bundle-for-guard
+                               fn-bpn-job-age-anchor-for-guard
+                               fn-bpn-bundle-primary-clock-fields-for-guard))))
+
 (defun fn-bpn-find-expired (jobs obs)
   (declare (xargs :guard t))
   (if (atom jobs)
@@ -595,8 +836,10 @@
         (car jobs)
       (fn-bpn-find-expired (cdr jobs) obs))))
 
+(verify-guards fn-bpn-find-expired)
+
 (defun fn-bpn-clock-step (st obs)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
   (let ((job (and (fn-clock-observationp obs)
                   (fn-bpn-find-expired (fn-bpn-machine-state-jobs st) obs))))
     (if (or (fn-bpn-machine-state-fenced st) (fn-bpn-machine-state-pending st)
@@ -612,6 +855,11 @@
          (list :bundle-queue-uncertain (nth 0 key) (nth 1 key) (nth 2 key)
                :expiry-persistence))))))
 
+(verify-guards fn-bpn-clock-step
+  :hints (("Goal" :use fn-bpn-state-field-types-for-guard
+           :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
+                               fn-bpn-state-field-types-for-guard))))
+
 (defun fn-bpn-resume-jobs (jobs)
   (declare (xargs :guard t))
   (if (atom jobs)
@@ -621,6 +869,8 @@
                                       (fn-bpn-job-last-token (car jobs)))
             (car jobs))
           (fn-bpn-resume-jobs (cdr jobs)))))
+
+(verify-guards fn-bpn-resume-jobs)
 
 (defun fn-bpn-replay-records (st records)
   (declare (xargs :guard t :measure (acl2-count records)))
