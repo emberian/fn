@@ -44,8 +44,11 @@
                 (signatures
                  (list (cons :ed25519 ed-signature)
                        (cons :ml-dsa-65 ml-signature)))
-                (received (fnn-core 'fn-hsig-host-render-carrier
-                                    source principal keys signatures)))
+                (post-config (fnn-owner-core 'fn-owner-live-post-config))
+                (observation (fnn-owner-core 'fn-owner-clock-observation))
+                (received (fnn-core 'fn-hsig-injected-carrier-octets
+                                    source principal keys signatures
+                                    post-config observation)))
            (unless received (return-from fnn-hybrid-control-author :refused))
            (let* (
                 (coordinates (fnn-owner-core 'fn-owner-next-store-coordinates))
@@ -64,7 +67,7 @@
                   (fnn-octets-string subject)
                   (fnn-octets-string release) charge
                   principal keys signatures (fnn-octets-string ml-path)
-                  (fnn-owner-core 'fn-owner-clock-observation))))
+                  post-config observation)))
            (if event
                (let* ((evidence (fnn-octets (fnn-owner-core 'fn-owner-prov-post)))
                       (generation

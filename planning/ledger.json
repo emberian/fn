@@ -453,6 +453,7 @@
     "tests/acl2/hybrid-signature-tests",
     "books/hybrid-carrier",
     "tests/acl2/hybrid-carrier-tests",
+    "books/hybrid-store-invariants",
     "tests/acl2/hybrid-store-tests",
     "books/crypto-attach",
     "books/auth-secret",
@@ -502,25 +503,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 503,
-    "books_in_root_closure": 502,
-    "roots": 498,
-    "theorems": 7688,
-    "functions": 5843,
+    "books": 504,
+    "books_in_root_closure": 503,
+    "roots": 499,
+    "theorems": 7693,
+    "functions": 5847,
     "assert_events": 8490,
-    "must_fails": 358,
+    "must_fails": 361,
     "encapsulates": 26,
     "guards": {
       "verified": 1892,
       "declared-off": 312,
-      "default-guarded": 2878,
+      "default-guarded": 2882,
       "default-unguarded": 761
     },
     "suspect_theorems": 71,
     "export_hygiene_warnings": 95,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 26,
-    "include_hygiene_warnings": 358,
+    "include_hygiene_warnings": 360,
     "host_names_warnings": 691,
     "hand_written_record_warnings": 18
   },
@@ -4547,15 +4548,41 @@
       "read_error": null
     },
     {
+      "book": "books/hybrid-store-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "hybrid-store",
+        "injection-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/hybrid-store.lisp",
       "in_root_closure": true,
       "is_root": false,
       "theorems": 0,
-      "functions": 14,
+      "functions": 18,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 14,
+        "default-guarded": 18,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -11383,17 +11410,18 @@
       },
       "verify_guards_events": 0,
       "assert_events": 0,
-      "must_fails": 0,
-      "defconsts": 10,
+      "must_fails": 3,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/crypto-attach",
-        "../../books/hybrid-store"
+        "../../books/hybrid-store-invariants"
       ],
       "system_includes": [
-        "std/testing/assert-equal"
+        "std/testing/assert-equal",
+        "std/testing/must-fail"
       ],
       "suspects": [],
       "read_error": null
@@ -16162,6 +16190,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/hybrid-store-invariants.lisp",
+        "line": 6,
+        "include": "injection-invariants",
+        "included": "books/injection-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/hybrid-store.lisp",
         "line": 8,
         "include": "records-stamp",
@@ -17468,6 +17503,13 @@
         "line": 2,
         "include": "../../books/hybrid-signature-invariants",
         "included": "books/hybrid-signature-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/hybrid-store-tests.lisp",
+        "line": 2,
+        "include": "../../books/hybrid-store-invariants",
+        "included": "books/hybrid-store-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -21513,91 +21555,91 @@
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 97,
+        "line": 100,
         "name": "*fnn-hybrid-control-handler*",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 99,
+        "line": 102,
         "name": "fnn-octet-list-p",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 99,
+        "line": 102,
         "name": "fnn-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 99,
+        "line": 102,
         "name": "fnn-control-connect",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 99,
+        "line": 102,
         "name": "fnn-socket-fd",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 99,
+        "line": 102,
         "name": "fnn-send-all",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 99,
+        "line": 102,
         "name": "fnn-control-read-frame",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 99,
+        "line": 102,
         "name": "fnn-control-transport-outcome",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 99,
+        "line": 102,
         "name": "fnn-socket-shut",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 121,
+        "line": 124,
         "name": "fnn-hsig-command-read-exact",
         "source": "host/native/signature-command.lisp",
         "reason": "defined in host/native/signature-command.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 121,
+        "line": 124,
         "name": "fnn-hsig-ml-dsa-65-public-key",
         "source": "host/native/signatures.lisp",
         "reason": "defined in host/native/signatures.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 138,
+        "line": 141,
         "name": "fnn-read-regular-bounded",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/hybrid-control.lisp",
-        "line": 159,
+        "line": 162,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -22892,28 +22934,28 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 780,
+        "line": 784,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1184,
+        "line": 1188,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1193,
+        "line": 1197,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1291,
+        "line": 1295,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

@@ -100,6 +100,10 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-ocfg-config (fn-owner-ocfg state)))
 
+(defun fn-owner-live-post-config (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-owner-post-config (fn-owner-config state))))
+
 (defun fn-owner-install-ocfg (oc state)
   (declare (xargs :stobjs state :mode :program))
   (f-put-global 'fn-owner oc state))
