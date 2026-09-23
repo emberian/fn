@@ -163,7 +163,8 @@
 (assert-event (fn-memberships-below-nextsp '(("x" . #c(0 -1))) nil))
 (assert-event (not (fn-memberships-below-nextsp '(("x" . #c(0 1))) nil)))
 (assert-event (fn-pendingp '("fn.test") '(("fn.test" . 1)) #c(0 1)
-                           '(0 0 "m" nil ("fn.test") (("fn.test" . 1)) t)))
+                           '(0 0 "m" nil ("fn.test") (("fn.test" . 1)) t
+                             :legacy)))
 
 ; The :logic bodies of the transitions are total: a non-state is returned
 ; unchanged.  These calls are outside the guard, so they run in the logic.
