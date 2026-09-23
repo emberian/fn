@@ -1908,37 +1908,7 @@
                                (* 1000 (ifix (fn-nntp-dt-nth 3 hmsz))))))))))))))
 
 ; -----------------------------------------------------------------------------
-; The article's own injection instant
-
-(defun fn-nntp-newnews-field-value (view name)
-  ; The first field of NAME, unfolded, or NIL when the view carries none.
-  (declare (xargs :guard (fn-article-syntax-p view) :verify-guards nil))
-  (let ((fields (fn-article-get-headers view name)))
-    (if (consp fields)
-        (fn-article-field-unfolded-value (car fields))
-      nil)))
-
-(defun fn-nntp-newnews-stamp (article)
-  ; (:ok ms) or (:error reason).  Injection-Date, then Date: RFC 5537
-  ; sections 3.6 and 3.7's order, the one books/path.lisp reads.
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((parsed (fn-article-parse (fn-article-payload article))))
-    (if (not (and (true-listp parsed)
-                  (fn-article-result-okp parsed)
-                  (fn-article-syntax-p (fn-article-result-article parsed))))
-        (list :error :unparsed)
-      (let* ((view (fn-article-result-article parsed))
-             (injection (fn-nntp-newnews-field-value
-                         view *fn-nntp-injection-date-name*)))
-        (if (consp injection)
-            (fn-nntp-dt-parse injection)
-          (let ((date (fn-nntp-newnews-field-value view *fn-nov-date-name*)))
-            (if (consp date)
-                (fn-nntp-dt-parse date)
-              (list :error :no-date))))))))
-
-; -----------------------------------------------------------------------------
-; The bounded scan
+; The acceptance-stamp scan
 
 (defun fn-nntp-newnews-candidatep (groups article)
   ; Available at a number in one of the matching groups.  This reads the
@@ -1949,29 +1919,34 @@
           (fn-nntp-newnews-candidatep (fn-ag-cdr groups) article))
     nil))
 
-(defun fn-nntp-newnews-scan (groups threshold articles fuel)
-  ; (:ok lines) or (:over-budget).  The fuel is spent on candidates only, and
-  ; the decision to refuse is taken on the way down, before any article is
-  ; parsed; a refused scan therefore parses nothing.
+(defun fn-nntp-newnews-newp (threshold stamp horizon)
+  (declare (xargs :guard t))
+  (let ((instant (if (natp stamp) stamp horizon)))
+    (or (not (natp instant))
+        (fn-ng-less-equal threshold (* 1000 instant)))))
+
+(defun fn-nntp-newnews-reader-horizon (env)
+  (declare (xargs :guard t))
+  (let ((obs (fn-nntp-env-observation env)))
+    (if (and (fn-clock-observationp obs) (fn-clock-has-wall obs))
+        (floor (fn-clock-wall obs) 1000)
+      :none)))
+
+(defun fn-nntp-newnews-scan (groups threshold articles horizon)
+  ; The committed list is newest first.  Every natural stamp advances the
+  ; legacy horizon, even when its article belongs to another group.
   (declare (xargs :guard t :verify-guards nil :measure (acl2-count articles)))
   (if (not (consp articles))
-      (list :ok nil)
-    (if (not (fn-nntp-newnews-candidatep groups (fn-ag-car articles)))
-        (fn-nntp-newnews-scan groups threshold (fn-ag-cdr articles) fuel)
-      (if (not (posp fuel))
-          (list :over-budget)
-        (let ((rest (fn-nntp-newnews-scan groups threshold
-                                          (fn-ag-cdr articles) (- fuel 1))))
-          (if (not (fn-nntp-parse-okp rest))
-              rest
-            (let ((stamp (fn-nntp-newnews-stamp (fn-ag-car articles))))
-              (if (and (fn-nntp-parse-okp stamp)
-                       (fn-ng-less-equal threshold (fn-nntp-parse-1 stamp)))
-                  (list :ok
-                        (cons (fn-nntp-string-octets
-                               (fn-article-msgid (fn-ag-car articles)))
-                              (fn-nntp-parse-1 rest)))
-                rest))))))))
+      nil
+    (let* ((article (fn-ag-car articles))
+           (stamp (fn-article-stamp article))
+           (rest (fn-nntp-newnews-scan
+                  groups threshold (fn-ag-cdr articles)
+                  (if (natp stamp) stamp horizon))))
+      (if (and (fn-nntp-newnews-candidatep groups article)
+               (fn-nntp-newnews-newp threshold stamp horizon))
+          (cons (fn-nntp-string-octets (fn-article-msgid article)) rest)
+        rest))))
 
 ; -----------------------------------------------------------------------------
 ; The command
@@ -2003,23 +1978,18 @@
                 (not (fn-nntp-parse-okp time))
                 (not (fn-wildmat-result-okp patterns)))
             (fn-nntp-single session "501 syntax error")
-          (let ((scan (fn-nntp-newnews-scan
-                       (fn-nntp-filter-groups-by-wildmat
-                        (fn-wildmat-result-value patterns)
-                        (fn-state-groups archive))
-                       (fn-nntp-civil-dtn-ms
-                        (fn-nntp-parse-1 date) (fn-nntp-parse-2 date)
-                        (fn-nntp-parse-3 date) (fn-nntp-parse-1 time)
-                        (fn-nntp-parse-2 time) (fn-nntp-parse-3 time))
-                       (fn-state-articles archive)
-                       *fn-nntp-newnews-parse-budget*)))
-            (if (not (fn-nntp-parse-okp scan))
-                (fn-nntp-single
-                 session
-                 "503 more matching articles than this command may read")
-              (fn-nntp-multi
-               session "230 list of new articles by message-id follows"
-               (fn-nntp-parse-1 scan)))))))))
+          (fn-nntp-multi
+           session "230 list of new articles by message-id follows"
+           (fn-nntp-newnews-scan
+            (fn-nntp-filter-groups-by-wildmat
+             (fn-wildmat-result-value patterns)
+             (fn-state-groups archive))
+            (fn-nntp-civil-dtn-ms
+             (fn-nntp-parse-1 date) (fn-nntp-parse-2 date)
+             (fn-nntp-parse-3 date) (fn-nntp-parse-1 time)
+             (fn-nntp-parse-2 time) (fn-nntp-parse-3 time))
+            (fn-state-articles archive)
+            (fn-nntp-newnews-reader-horizon env))))))))
 
 ; -----------------------------------------------------------------------------
 ; LIST ACTIVE.TIMES (RFC 3977 section 7.6.4, RFC 2980 section 2.1.3)
@@ -2157,12 +2127,8 @@
 (verify-guards fn-nntp-dt-date)
 (verify-guards fn-nntp-dt-time)
 (verify-guards fn-nntp-dt-parse)
-(verify-guards fn-nntp-newnews-field-value
-  :hints (("Goal" :in-theory (disable fn-article-get-headers
-                                      fn-article-syntax-p))))
-(verify-guards fn-nntp-newnews-stamp
-  :hints (("Goal" :in-theory (disable fn-article-get-headers
-                                      fn-article-syntax-p))))
+(verify-guards fn-nntp-newnews-newp)
+(verify-guards fn-nntp-newnews-reader-horizon)
 (verify-guards fn-nntp-newnews-candidatep)
 (verify-guards fn-nntp-newnews-scan)
 (verify-guards fn-nntp-newnews-response)
@@ -2227,7 +2193,7 @@
     fn-nntp-dt-month-index fn-nntp-dt-named-zone fn-nntp-dt-digits
     fn-nntp-dt-day fn-nntp-dt-drop-alpha fn-nntp-dt-skip-day-of-week
     fn-nntp-dt-zone fn-nntp-dt-date fn-nntp-dt-time fn-nntp-dt-parse
-    fn-nntp-newnews-field-value fn-nntp-newnews-stamp
+    fn-nntp-newnews-newp fn-nntp-newnews-reader-horizon
     fn-nntp-newnews-candidatep fn-nntp-newnews-scan
     fn-nntp-newnews-response))
 

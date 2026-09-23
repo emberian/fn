@@ -289,7 +289,7 @@
 
 ; NEWNEWS answers from the archive and the environment; RFC 3977 section
 ; 7.4.2 assigns it no state change, and it makes none -- not the selected
-; group, not the article cursor, and not on the 503 budget refusal either.
+; group or the article cursor.
 (defthm fn-nntp-newnews-response-preserves-session
   (equal (fn-nntp-result-session
           (fn-nntp-newnews-response session archive env args))

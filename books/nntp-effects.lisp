@@ -1190,28 +1190,22 @@
 
 ; NEWNEWS renders stored identifiers, which books/nntp-newnews.lisp proves
 ; clean with no hypothesis at all (every reported article is a candidate, and
-; a candidate is projectable).  The 503 budget refusal is a single line, so
-; the block obligation is the same one either way.
+; a candidate is projectable).
 (defthm fn-nntp-newnews-block-is-block-text
   (fn-nntp-block-textp
-   (fn-nntp-parse-1 (fn-nntp-newnews-scan groups threshold articles fuel)))
+   (fn-nntp-newnews-scan groups threshold articles horizon))
   :hints (("Goal" :use fn-nntp-newnews-lines-are-clean
            :in-theory (disable fn-nntp-newnews-lines-are-clean
-                               fn-nntp-newnews-scan fn-nntp-parse-1))))
+                               fn-nntp-newnews-scan))))
 
 (defthm fn-nntp-effects-newnews-response
   (fn-nntp-effectsp
    (fn-nntp-result-effects
     (fn-nntp-newnews-response session archive env args)))
-  ; The two result accessors stay closed, so that the block-text lemma above
-  ; matches the term the response builds; opened, its `parse-1` becomes a
-  ; `cadr` and the rule cannot fire.  The budget equivalence is withdrawn for
-  ; the same reason: left enabled it rewrites the branch test into a count
-  ; inequality that this theorem does not need and cannot use.
+  ; Keep the scan closed so the block-text lemma matches the served term.
   :hints (("Goal" :in-theory (e/d (fn-nntp-newnews-response)
                                   (fn-nntp-newnews-scan fn-nntp-single
                                    fn-nntp-parse-1 fn-nntp-parse-okp
-                                   fn-nntp-newnews-scan-answers-exactly-within-the-budget
                                    fn-nntp-filter-groups-by-wildmat
                                    fn-wildmat-parse
                                    fn-nntp-newgroups-date-parse
