@@ -73,6 +73,17 @@ accept such an entry wherever they find it.  A snapshot later overwritten
 with different books costs nothing either: ACL2 never opens the origin's
 files, and the closure key already names the bytes the target holds.
 
+**A cache entry commits as one pair.** Concurrent farm harvests can publish
+the same closure and origin. A per-entry file lock covers the certificate,
+portcullis and metadata replacement; every replacement uses its own temporary
+file, and metadata is written last. Cache readers take the shared lock while
+inspecting or copying the selected pair and retry if its metadata changed
+since selection. New metadata binds both certificate and port bytes; older
+entries without a port digest retain only their original presence check.
+Different closure entries remain independent. The destination worktree still
+requires its existing single-mutator discipline: its local `.cert`/`.port`
+copies are not locked against another installer in that same worktree.
+
 What this still does not establish: nothing here proves a book certifies.
 ``tools/certify_books.py`` does that, with a fresh success marker per book; the
 cache only moves its result to another worktree, where ACL2 checks it again.
@@ -87,8 +98,10 @@ cache only moves its result to another worktree, where ACL2 checks it again.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 import datetime as dt
+import fcntl
 import hashlib
 import json
 import os
@@ -96,6 +109,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 from typing import Iterable
 
 
@@ -403,6 +417,61 @@ def entry_directory(cache: Path, key: str, origin: str) -> Path:
     return cache / key / origin_token(origin)
 
 
+@contextmanager
+def entry_lock(directory: Path, exclusive: bool):
+    """Serialize one cache entry across harvest and install processes."""
+    directory.mkdir(parents=True, exist_ok=True)
+    with (directory / ".entry.lock").open("a+b") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+class EntryChanged(RuntimeError):
+    """The selected cache generation changed before it could be copied."""
+
+
+def entry_matches_meta(directory: Path, meta: dict) -> bool:
+    cert = directory / "book.cert"
+    if not cert.is_file():
+        return False
+    expected = meta.get("cert_sha256")
+    if expected and content_hash(cert) != expected:
+        return False
+    if "has_port" in meta and (directory / "book.port").is_file() != meta["has_port"]:
+        return False
+    # Older entries did not record this digest. They remain readable under
+    # their historical contract; new publications bind the port's bytes.
+    if "port_sha256" in meta and meta["port_sha256"] is not None:
+        port = directory / "book.port"
+        if not port.is_file() or content_hash(port) != meta["port_sha256"]:
+            return False
+    return True
+
+
+def install_entry(directory: Path, selected: dict, cert: Path, port: Path) -> bool:
+    """Copy one selected pair under its reader lock; return whether it moved."""
+    with entry_lock(directory, exclusive=False):
+        if read_meta(directory) != selected or not entry_matches_meta(directory, selected):
+            raise EntryChanged(str(directory))
+        cached = directory / "book.cert"
+        cert_same = cert.is_file() and content_hash(cert) == content_hash(cached)
+        cached_port = directory / "book.port"
+        port_same = (port.is_file() and cached_port.is_file()
+                     and content_hash(port) == content_hash(cached_port)) or (
+                         not port.is_file() and not cached_port.is_file())
+        if not cert_same:
+            place(cached, cert)
+        if cached_port.is_file():
+            if not port_same:
+                place(cached_port, port)
+        else:
+            port.unlink(missing_ok=True)
+        return not (cert_same and port_same)
+
+
 def cached_entries(cache: Path, key: str) -> list[tuple[Path, dict]]:
     """Every usable entry for one closure key, with its metadata.
 
@@ -417,9 +486,12 @@ def cached_entries(cache: Path, key: str) -> list[tuple[Path, dict]]:
         return []
     found = []
     for directory in sorted(base.iterdir()):
-        if not (directory / "book.cert").is_file():
+        if not directory.is_dir():
             continue
-        found.append((directory, read_meta(directory)))
+        with entry_lock(directory, exclusive=False):
+            meta = read_meta(directory)
+            if entry_matches_meta(directory, meta):
+                found.append((directory, meta))
     return found
 
 
@@ -624,7 +696,8 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                          reject: Iterable[str] = (),
                          require_origin: str | None = None,
                          purge_on_miss: bool = False,
-                         dependencies_only: bool = False) -> Report:
+                         dependencies_only: bool = False,
+                         _attempt: int = 0) -> Report:
     """Install one complete set: one origin when one suffices, else composed.
 
     A composed set draws each book's pair from the newest usable entry with
@@ -679,21 +752,22 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
     # Once a set is chosen, every local pair in its closure comes from that
     # set.  A pair left from a previous attempt may certify different bytes:
     # that, not its origin, is what ACL2 refuses.
-    for name in chosen.required:
-        source = root / f"{name}.lisp"
-        directory, _ = chosen.entries[name]
-        cached = directory / "book.cert"
-        cert = source.with_suffix(".cert")
-        if cert.is_file() and content_hash(cert) == content_hash(cached):
-            report.kept += 1
-        else:
-            place(cached, cert)
-            report.installed += 1
-        port = source.with_suffix(".port")
-        if (directory / "book.port").is_file():
-            place(directory / "book.port", port)
-        else:
-            port.unlink(missing_ok=True)
+    try:
+        for name in chosen.required:
+            source = root / f"{name}.lisp"
+            directory, meta = chosen.entries[name]
+            moved = install_entry(directory, meta, source.with_suffix(".cert"),
+                                  source.with_suffix(".port"))
+            if moved:
+                report.installed += 1
+            else:
+                report.kept += 1
+    except EntryChanged:
+        if _attempt >= 2:
+            raise
+        return install_artifact_set(root, cache, roots, toolchain_identity,
+                                    reject, require_origin, purge_on_miss,
+                                    dependencies_only, _attempt + 1)
     return report
 
 
@@ -743,17 +817,25 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
                     artifact.unlink()
                     report.removed_foreign += 1
             continue
-        directory, meta = chosen
-        cached = directory / "book.cert"
-        if cert.is_file() and content_hash(cert) == content_hash(cached):
-            report.kept += 1
-        else:
-            place(cached, cert)
+        for attempt in range(3):
+            directory, meta = chosen
+            try:
+                moved = install_entry(directory, meta, cert, port)
+                break
+            except EntryChanged:
+                if attempt == 2:
+                    raise
+                usable = [(directory, meta) for directory, meta in cached_entries(cache, key)
+                          if usable_origin(meta, target)
+                          and meta.get("toolchain_identity") == toolchain_identity]
+                own = [entry for entry in usable if entry[1].get("origin_root") == target]
+                chosen = own[0] if own else newest(usable)
+                if chosen is None:
+                    raise EntryChanged(f"cache entry vanished for {name}")
+        if moved:
             report.installed += 1
-        if (directory / "book.port").is_file():
-            place(directory / "book.port", port)
         else:
-            port.unlink(missing_ok=True)
+            report.kept += 1
         origin = str(meta.get("origin_root", ""))
         report.installed_from[name] = origin
         report.origins[origin] = report.origins.get(origin, 0) + 1
@@ -937,47 +1019,31 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
             continue
         where = origin or record.origin or str(root.resolve())
         directory = entry_directory(cache, key, where)
-        cached = directory / "book.cert"
         port = source.with_suffix(".port")
         port = port if port.is_file() else None
-        if cached.is_file() and content_hash(cached) == content_hash(cert):
+        outcome = write_entry(directory, name, key, listing, cert, port, record,
+                              where, origin_host, kind)
+        if outcome == "already":
             report.already += 1
-            old_meta = read_meta(directory)
-            if (old_meta.get("origin_kind", LIVE_ORIGIN) != kind
-                    or old_meta.get("toolchain") != record.compatibility
-                    or old_meta.get("certification_provenance")
-                    != record.certification_provenance):
-                # The same bytes, published again by a run that knows what its
-                # origin tree and toolchain are: these fields are metadata
-                # about the artifact, not its certificate bytes, so refresh
-                # them in place.
-                write_entry(directory, name, key, listing, cert, port, record,
-                            where, origin_host, kind)
-                report.relabelled += 1
-            continue
-        directory.mkdir(parents=True, exist_ok=True)
-        write_entry(directory, name, key, listing, cert, port, record, where,
-                    origin_host, kind)
-        report.published += 1
+        elif outcome == "relabelled":
+            report.already += 1
+            report.relabelled += 1
+        else:
+            report.published += 1
     return report
 
 
 def write_entry(directory: Path, name: str, key: str, listing: list[str],
                 cert: Path, port: Path | None, record: Certified,
                 origin: str, origin_host: str | None = None,
-                origin_kind: str = LIVE_ORIGIN) -> None:
-    """Write the pair and its metadata, each file renamed into place."""
-    place(cert, directory / "book.cert")
-    target_port = directory / "book.port"
-    if port is None:
-        target_port.unlink(missing_ok=True)
-    else:
-        place(port, target_port)
+                origin_kind: str = LIVE_ORIGIN) -> str:
+    """Commit a matched pair and provenance under one cache-entry lock."""
     meta = {
         "book": name,
         "closure_key": key,
         "closure": listing,
         "cert_sha256": record.cert,
+        "port_sha256": content_hash(port) if port is not None else None,
         "source_sha256": record.source,
         "evidence": record.evidence,
         # The worktree the pair was produced in.  A certificate's post-alist
@@ -996,17 +1062,64 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
         "published_from": str(cert.parent),
         "host": os.uname().nodename,
     }
-    temporary = directory / "meta.json.tmp"
-    temporary.write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n",
-                         encoding="utf-8")
-    temporary.replace(directory / "meta.json")
+    with entry_lock(directory, exclusive=True):
+        cached = directory / "book.cert"
+        target_port = directory / "book.port"
+        same_cert = cached.is_file() and content_hash(cached) == record.cert
+        same_port = ((port is None and not target_port.is_file()) or
+                     (port is not None and target_port.is_file() and
+                      content_hash(target_port) == content_hash(port)))
+        old_meta = read_meta(directory)
+        same_provenance = (
+            old_meta.get("origin_kind", LIVE_ORIGIN) == origin_kind
+            and old_meta.get("toolchain") == record.compatibility
+            and old_meta.get("certification_provenance")
+            == record.certification_provenance
+            and old_meta.get("cert_sha256") == record.cert
+            and old_meta.get("port_sha256") == meta["port_sha256"]
+            and old_meta.get("source_sha256") == record.source
+            and old_meta.get("closure_key") == key
+            and old_meta.get("origin_root") == origin)
+        if same_cert and same_port and same_provenance:
+            return "already"
+        if not same_cert:
+            place(cert, cached)
+        if port is None:
+            target_port.unlink(missing_ok=True)
+        elif not same_port:
+            place(port, target_port)
+        if not entry_matches_meta(directory, meta):
+            raise EntryChanged(f"source pair changed while publishing {directory}")
+        write_text_atomic(directory / "meta.json",
+                          json.dumps(meta, indent=2, sort_keys=True) + "\n")
+        return "relabelled" if same_cert else "published"
 
 
 def place(source: Path, target: Path) -> None:
-    temporary = target.with_suffix(target.suffix + ".tmp")
-    shutil.copyfile(source, temporary)
-    shutil.copystat(source, temporary)
-    temporary.replace(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, name = tempfile.mkstemp(prefix=target.name + ".", suffix=".tmp",
+                                       dir=target.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as output, source.open("rb") as input_file:
+            shutil.copyfileobj(input_file, output)
+        shutil.copystat(source, temporary)
+        temporary.replace(target)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def write_text_atomic(target: Path, value: str) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, name = tempfile.mkstemp(prefix=target.name + ".", suffix=".tmp",
+                                       dir=target.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+            output.write(value)
+        temporary.replace(target)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
@@ -1041,21 +1154,22 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
             else:
                 report.uncached.append(name)
             continue
-        directory, meta = chosen
-        cached = directory / "book.cert"
-        if cert.is_file() and content_hash(cert) == content_hash(cached):
-            # The same bytes are already here; a copy would change nothing.
-            report.kept += 1
-            continue
-        place(cached, cert)
         port = source.with_suffix(".port")
-        if (directory / "book.port").is_file():
-            place(directory / "book.port", port)
+        for attempt in range(3):
+            directory, meta = chosen
+            try:
+                moved = install_entry(directory, meta, cert, port)
+                break
+            except EntryChanged:
+                if attempt == 2:
+                    raise
+                chosen = choose_entry(cached_entries(cache, key), str(root.resolve()))
+                if chosen is None:
+                    raise EntryChanged(f"cache entry vanished for {name}")
+        if moved:
+            report.installed += 1
         else:
-            # A left-over .port from another certification would contradict
-            # the installed certificate's portcullis.
-            port.unlink(missing_ok=True)
-        report.installed += 1
+            report.kept += 1
     return report
 
 

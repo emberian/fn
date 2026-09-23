@@ -10,12 +10,14 @@ different key, not a cache hit ACL2 would then refuse.
 """
 
 import importlib.util
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
 import shutil
 import sys
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -143,6 +145,109 @@ class ClosureKeyTests(unittest.TestCase):
 
 
 class PublishTests(unittest.TestCase):
+    def test_interrupted_port_replacement_is_not_a_usable_entry(self):
+        """Old metadata cannot bless new port bytes after a process dies."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary, certified=["books/mid"])
+            cache = root / "cache"
+            manifest = manifest_for(root, ["books/mid"], write=False)
+            certs.publish(root, cache, [manifest], ["books/mid"])
+            key, _ = certs.closure_key(root, "books/mid")
+            directory, selected = certs.cached_entries(cache, key)[0]
+            self.assertEqual(selected["port_sha256"],
+                             certs.content_hash(directory / "book.port"))
+
+            # The writer replaced book.port but died before the metadata
+            # commit. The certificate bytes did not change.
+            (directory / "book.port").write_bytes(b"different port")
+            self.assertEqual(certs.cached_entries(cache, key), [])
+            with self.assertRaises(certs.EntryChanged):
+                certs.install_entry(directory, selected, root / "copy.cert",
+                                    root / "copy.port")
+
+    def test_reader_refuses_a_generation_replaced_after_selection(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = worktree(temporary, certified=["books/mid"])
+            cache = root / "cache"
+            origin = "/farm/same-origin"
+            first_manifest = manifest_for(root, ["books/mid"], write=False)
+            certs.publish(root, cache, [first_manifest], ["books/mid"], origin)
+            key, _ = certs.closure_key(root, "books/mid")
+            directory, selected = certs.cached_entries(cache, key)[0]
+
+            (root / "books/mid.cert").write_bytes(SERIALIZED + b"replacement")
+            (root / "books/mid.port").write_bytes(b"replacement port")
+            second_manifest = manifest_for(root, ["books/mid"], write=False)
+            certs.publish(root, cache, [second_manifest], ["books/mid"], origin)
+            target_cert = root / "copy.cert"
+            target_port = root / "copy.port"
+            with self.assertRaises(certs.EntryChanged):
+                certs.install_entry(directory, selected, target_cert, target_port)
+            self.assertFalse(target_cert.exists())
+            current = certs.cached_entries(cache, key)[0][1]
+            self.assertTrue(certs.install_entry(directory, current,
+                                                target_cert, target_port))
+            self.assertEqual(target_cert.read_bytes(), (directory / "book.cert").read_bytes())
+            self.assertEqual(target_port.read_bytes(), (directory / "book.port").read_bytes())
+
+    def test_concurrent_publishers_commit_one_matched_pair_and_metadata(self):
+        """Two harvests of the same origin cannot share a temp or mix pairs."""
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            first = worktree(str(base / "first"), certified=["books/mid"])
+            second = worktree(str(base / "second"), certified=["books/mid"])
+            for root, marker in ((first, b"first"), (second, b"second")):
+                (root / "books/mid.cert").write_bytes(SERIALIZED + marker)
+                (root / "books/mid.port").write_bytes(b"port-" + marker)
+            manifests = [manifest_for(root, ["books/mid"], write=False)
+                         for root in (first, second)]
+            cache = base / "cache"
+            origin = "/farm/same-origin"
+            first_copy = threading.Event()
+            release_first = threading.Event()
+            second_started = threading.Event()
+            second_copy = threading.Event()
+            real_copystat = shutil.copystat
+
+            def paused_copystat(source, target, *args, **kwargs):
+                if source == first / "books/mid.cert":
+                    first_copy.set()
+                    self.assertTrue(release_first.wait(5))
+                if source == second / "books/mid.cert":
+                    second_copy.set()
+                return real_copystat(source, target, *args, **kwargs)
+
+            def publish_second():
+                second_started.set()
+                return certs.publish(second, cache, [manifests[1]],
+                                     ["books/mid"], origin=origin)
+
+            with mock.patch.object(certs.shutil, "copystat", paused_copystat):
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    one = pool.submit(certs.publish, first, cache,
+                                      [manifests[0]], ["books/mid"], origin)
+                    self.assertTrue(first_copy.wait(5))
+                    two = pool.submit(publish_second)
+                    self.assertTrue(second_started.wait(5))
+                    try:
+                        self.assertFalse(second_copy.wait(0.1))
+                    finally:
+                        release_first.set()
+                    self.assertEqual(one.result(timeout=5).published, 1)
+                    self.assertEqual(two.result(timeout=5).published, 1)
+
+            directory = entry(cache, second, "books/mid", Path(origin))
+            meta = certs.read_meta(directory)
+            self.assertEqual((directory / "book.cert").read_bytes(),
+                             (second / "books/mid.cert").read_bytes())
+            self.assertEqual((directory / "book.port").read_bytes(),
+                             (second / "books/mid.port").read_bytes())
+            self.assertEqual(meta["cert_sha256"],
+                             certs.content_hash(directory / "book.cert"))
+            self.assertEqual(meta["published_from"], str(second / "books"))
+            self.assertEqual(len(certs.cached_entries(cache,
+                             certs.closure_key(second, "books/mid")[0])), 1)
+
     def test_a_manifest_verified_pair_is_stored_under_its_closure_key(self):
         with tempfile.TemporaryDirectory() as directory:
             root = worktree(directory, certified=["books/mid"])
