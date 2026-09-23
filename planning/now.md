@@ -89,9 +89,11 @@ BP clock-domain recovery and bounded P3 topic metadata inspection. Hbox run
 `/tank/fn/gates/integrate-reader-bp-topic-20260923` reuses compatible cache
 artifacts and certifies changed closure members at four jobs. The [run failed three proof roots and their dependent tests](evidence/reader-bp-topic-union-2026-09-23.md);
 finite reader-context and authentication-dispatch repairs now pass the full
-Makefile-root retry at `884e4816`. A source-matched native saved image is
-being built for reader/HDR, authored peering/restart, topic inspection and
-Mini portable-source verification. This is a test subject, not a live deployment.
+Makefile-root retry at `884e4816`. The [saved-image campaign](evidence/native-reader-884e4816-2026-09-23.md)
+passed reader/HDR, authored peering/restart and topic inspection on `884e4816`.
+Mini portable-source verification also passed against that same image; its
+separate evidence packet is being archived. Broader existing NNTP/configuration
+qualification now reuses that image. This is a test subject, not a live deployment.
 
 The TLS-prefix correspondence still requires a well-formed selected wire;
 carrying that premise through the historical owner relation is separate work.
