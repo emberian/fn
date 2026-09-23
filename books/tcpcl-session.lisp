@@ -332,8 +332,20 @@
 ; fn-tcl-drive's totality test wherever the session is known.  Every other
 ; cheap rule below is grouped into fn-tcl-cheap-rules so a book that reasons
 ; in fn-tcl-sessionp can put the whole family aside at once.
+; The seven field recognizers a session conjunct names, closed in the
+; proofs that only carry those conjuncts from one side to the other: open,
+; each unfolds its record, the goal splits on every field of every record
+; (190 ways at Goal', then again inside each case), and the time goes to
+; the split (the touch-rx lemma below took 22.4 s, the book 103 s:
+; planning/evidence/chain-remainder-cost-2026-09-23.md).
+(local (deftheory fn-tcl-field-recognizers
+         '(fn-tcl-inboundp fn-tcl-outboundp fn-tcl-inbound-cheapp
+           fn-tcl-outbound-cheapp fn-tcl-paramsp fn-tcl-negotiatedp
+           fn-tcl-peer-initp)))
+
 (defthm fn-tcl-sessionp-is-cheap
-  (implies (fn-tcl-sessionp s) (fn-tcl-session-cheapp s)))
+  (implies (fn-tcl-sessionp s) (fn-tcl-session-cheapp s))
+  :hints (("Goal" :in-theory (disable fn-tcl-field-recognizers))))
 
 (defun fn-tcl-initial-session (role local now)
   (declare (xargs :guard t))
@@ -1015,7 +1027,8 @@
 
 (defthm fn-tcl-touch-rx-preserves-sessionp
   (implies (and (fn-tcl-sessionp s) (fn-clock-timep now))
-           (fn-tcl-sessionp (fn-tcl-touch-rx s now))))
+           (fn-tcl-sessionp (fn-tcl-touch-rx s now)))
+  :hints (("Goal" :in-theory (disable fn-tcl-field-recognizers))))
 
 ; fn-tcl-step dispatches on the touched session; what touch-rx carries.
 (defthm fn-tcl-touch-rx-fields
@@ -1066,7 +1079,8 @@
                               (not (fn-tcl-session-outbound s))))
                 (implies (not (fn-tcl-session-negotiated s))
                          (and (not (fn-tcl-session-inbound s))
-                              (not (fn-tcl-session-outbound s)))))))
+                              (not (fn-tcl-session-outbound s))))))
+  :hints (("Goal" :in-theory (disable fn-tcl-field-recognizers))))
 
 ; The field facts of the sub-recognizers and the conditional fields of a
 ; session, as forward-chaining rules only (docs/proof-style.md section 1):
@@ -1256,7 +1270,7 @@
                 (case-split
                  (implies (not (fn-tcl-session-negotiated s)) (and (not inbound) (not outbound)))))
            (fn-tcl-sessionp (fn-tcl-next s phase inbound outbound term last-tx)))
-  :hints (("Goal" :in-theory (disable fn-tcl-inboundp fn-tcl-outboundp fn-tcl-paramsp
+  :hints (("Goal" :in-theory (disable fn-tcl-sessionp-facts fn-tcl-inboundp fn-tcl-outboundp fn-tcl-paramsp
                                       fn-tcl-negotiatedp fn-tcl-peer-initp))))
 
 (defthm fn-tcl-with-outbound-preserves-sessionp
@@ -1291,7 +1305,7 @@
   (implies (and (fn-tcl-sessionp s) (fn-clock-timep now)
                 (fn-tcl-pre-establishedp (fn-tcl-session-phase s)))
            (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-recv-contact s m now))))
-  :hints (("Goal" :in-theory (enable fn-tcl-sessionp))))
+  :hints (("Goal" :in-theory (e/d (fn-tcl-sessionp) (fn-tcl-field-recognizers fn-tcl-sessionp-facts)))))
 
 (defthm fn-tcl-negotiate-is-negotiated
   (implies (and (fn-tcl-paramsp local) (fn-tcl-peer-initp m)
@@ -1566,7 +1580,8 @@
                               (not (fn-tcl-session-outbound s))))
                 (implies (not (fn-tcl-session-negotiated s))
                          (and (not (fn-tcl-session-inbound s))
-                              (not (fn-tcl-session-outbound s)))))))
+                              (not (fn-tcl-session-outbound s))))))
+  :hints (("Goal" :in-theory (disable fn-tcl-field-recognizers))))
 
 (defthm fn-tcl-inbound-cheapp-forward-fields
   (implies (fn-tcl-inbound-cheapp i limit)
@@ -1708,7 +1723,9 @@
                 (case-split
                  (implies (not (fn-tcl-session-negotiated s)) (and (not inbound) (not outbound)))))
            (fn-tcl-session-cheapp (fn-tcl-next s phase inbound outbound term last-tx)))
-  :hints (("Goal" :in-theory (disable fn-tcl-inbound-cheapp fn-tcl-outbound-cheapp
+  :hints (("Goal" :in-theory (disable fn-tcl-field-recognizers fn-tcl-inboundp-is-cheap fn-tcl-outboundp-is-cheap
+                                      fn-tcl-sessionp-facts fn-tcl-session-cheapp-facts
+                                      fn-tcl-inbound-cheapp fn-tcl-outbound-cheapp
                                       fn-tcl-paramsp
                                       fn-tcl-negotiatedp fn-tcl-peer-initp))))
 
@@ -1727,7 +1744,7 @@
 (defthm fn-tcl-touch-rx-preserves-cheapp
   (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now))
            (fn-tcl-session-cheapp (fn-tcl-touch-rx s now)))
-  :hints (("Goal" :in-theory (enable fn-tcl-session-cheapp))))
+  :hints (("Goal" :in-theory (e/d (fn-tcl-session-cheapp) (fn-tcl-field-recognizers)))))
 
 (defthm fn-tcl-settle-preserves-cheapp
   (implies (fn-tcl-session-cheapp (fn-tcl-result-session r))
@@ -1741,7 +1758,8 @@
   (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now)
                 (fn-tcl-pre-establishedp (fn-tcl-session-phase s)))
            (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-recv-contact s m now))))
-  :hints (("Goal" :in-theory (enable fn-tcl-session-cheapp))))
+  :hints (("Goal" :in-theory (e/d (fn-tcl-session-cheapp)
+                                  (fn-tcl-field-recognizers fn-tcl-session-cheapp-facts)))))
 
 (defthm fn-tcl-recv-init-preserves-cheapp
   (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now)

@@ -1068,6 +1068,22 @@
                   (fn-tcl-parse-error :segment-exceeds-mru)))
   :hints (("Goal" :do-not-induct t)))
 
+; --- len stays closed from here to the end of the book.  Under
+; fn-tcl-has-is-len-bound a decoder's has-check is a len bound, and
+; fn-tcl-consp-by-len then reopens the definition of len on every cdr under
+; the decoder's case split: measured at 406 s and 2.6e8 prover steps for
+; fn-tcl-decode-term-yields-message (build/acl2/certify-20260919T234310Z-5770),
+; and the same unrolling took the SESS_INIT and XFER_SEGMENT blocks below to
+; 20 s and 135 s in a session of 2026-09-23
+; (planning/evidence/chain-remainder-cost-2026-09-23.md).  The two rules
+; below are the only way from a len bound to a cons fact, and each strips
+; one cdr, so the chain is bounded by the layout.
+(local (defthm fn-tcl-len-of-cons
+         (equal (len (cons a x)) (+ 1 (len x)))))
+(local (defthm fn-tcl-len-of-cdr
+         (implies (consp x) (equal (len (cdr x)) (+ -1 (len x))))))
+(local (in-theory (disable len)))
+
 ; --- :sess-init through fn-tcl-decode-init.
 
 (defthm fn-tcl-decode-init-of-encode-body
@@ -1137,6 +1153,13 @@
            (< (len body) 5144))
   :rule-classes (:rewrite :linear)
   :hints (("Goal" :do-not-induct t)))
+
+; The SESS_INIT need bound just proved is a :linear rule on (len body)
+; whose hypothesis is fn-tcl-decode-init itself, and every len term of the
+; XFER_SEGMENT goals below would try it and open that decoder to relieve it:
+; 4.8 million frames, none useful, in fn-tcl-decode-segment-append-error
+; (the evidence file above).  Withdrawn here, as it is for the later blocks.
+(local (in-theory (disable (:linear fn-tcl-decode-init-need-short))))
 
 ; --- :xfer-segment through fn-tcl-decode-segment.
 
@@ -1225,18 +1248,7 @@
                                               (fn-tcl-drop 4 (fn-tcl-drop 8 (cdr body))))))))))
 
 ; --- Fixed-layout decoders (ack, refuse, term, reject) read (car body) and
-; (car (cdr body)) raw.  Under fn-tcl-has-is-len-bound their has-check is a
-; len bound, and fn-tcl-consp-by-len then reopens the definition of len on
-; every cdr under the if-intro case split of fn-tcl-messagep: measured at
-; 406 s and 2.6e8 prover steps for fn-tcl-decode-term-yields-message
-; (build/acl2/certify-20260919T234310Z-5770).  For these four blocks len
-; stays closed; the two rules below are the only way from a len bound to a
-; cons fact, and each strips one cdr, so the chain is bounded by the layout.
-(local (defthm fn-tcl-len-of-cons
-         (equal (len (cons a x)) (+ 1 (len x)))))
-(local (defthm fn-tcl-len-of-cdr
-         (implies (consp x) (equal (len (cdr x)) (+ -1 (len x))))))
-(local (in-theory (disable len)))
+; (car (cdr body)) raw; len is closed for them since the SESS_INIT block.
 ; The need bounds of the decoders above are :linear rules on (len body)
 ; whose hypothesis is the decoder itself, still open in this section: on a
 ; goal with several len terms each is re-run per term (fn-tcl-decode-init

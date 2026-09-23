@@ -366,25 +366,84 @@
                             (n (fn-own-next-id o)))))))
 
 ; Every store transition keeps the fixed configuration.
+;
+; Each transition rebuilds the state through `fn-sn-make-v2' with the old
+; state's groups and capacity, or returns the state itself, so the fact is
+; one lemma per transition, each opening that transition alone in the
+; minimal theory: `fn-sn-groups-of-fn-sn-make-v2' and its capacity twin
+; answer every branch without looking at a test.  The step then dispatches
+; with every transition closed.  Stated over the whole step with the
+; transitions and `fn-sn-finish' open together, the tests of the finish arms
+; (the store-transaction recognizers, the identity step, the retention
+; applier) split the goal 734 ways and then again inside each case: 19 122
+; subgoals and 35.3 s on the seam run of 2026-09-23
+; (planning/evidence/chain-remainder-cost-2026-09-23.md).
+(local
+ (defthm fn-own-sn-constructors-keep-configuration
+   (and (equal (fn-sn-groups (fn-sn-update s files node)) (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-update s files node)) (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-update-indexed s files node index))
+               (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-update-indexed s files node index))
+               (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-update-accepted s files node index msgid verdict))
+               (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-update-accepted s files node index msgid verdict))
+               (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-update-replayed s files node index ctx))
+               (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-update-replayed s files node index ctx))
+               (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-advance-identity-next s)) (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-advance-identity-next s)) (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-finish-identity s files record node))
+               (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-finish-identity s files record node))
+               (fn-sn-capacity s)))
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-sn-update fn-sn-update-indexed
+                              fn-sn-update-accepted fn-sn-update-replayed
+                              fn-sn-advance-identity-next fn-sn-finish-identity
+                              fn-sn-groups-of-fn-sn-make-v2
+                              fn-sn-capacity-of-fn-sn-make-v2)
+                            (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-own-sn-transitions-keep-configuration
+   (and (equal (fn-sn-groups (fn-sn-prepare s record)) (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-prepare s record)) (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-io s operation result)) (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-io s operation result)) (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-finish s)) (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-finish s)) (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-crash s frontier-choice record-choice))
+               (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-crash s frontier-choice record-choice))
+               (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-recover s)) (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-recover s)) (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-prepare-retention s event)) (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-prepare-retention s event))
+               (fn-sn-capacity s))
+        (equal (fn-sn-groups (fn-sn-prepare-identity s event)) (fn-sn-groups s))
+        (equal (fn-sn-capacity (fn-sn-prepare-identity s event))
+               (fn-sn-capacity s)))
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-sn-prepare fn-sn-io fn-sn-finish fn-sn-crash
+                              fn-sn-recover fn-sn-prepare-retention
+                              fn-sn-prepare-identity
+                              fn-own-sn-constructors-keep-configuration)
+                            (theory 'minimal-theory))))))
+
 (defthm fn-own-snrt-step-keeps-configuration
   (and (equal (fn-sn-groups (fn-snrt-step s event)) (fn-sn-groups s))
        (equal (fn-sn-capacity (fn-snrt-step s event)) (fn-sn-capacity s)))
-  :hints (("Goal" :in-theory (e/d (fn-snrt-step fn-snt-step fn-sn-prepare fn-sn-io
-                                   fn-sn-finish fn-sn-crash fn-sn-recover
-                                   fn-sn-refuse-reservation fn-sn-known-abort
-                                   fn-sn-update)
-                                  (fn-sn-record-bindsp fn-sn-prepare-node
-                                   fn-sf-prepare-record fn-sn-file-step
-                                   fn-sf-core-completion fn-sf-emit-success
-                                   fn-sf-crash fn-sf-crash-choicep fn-sf-recover
-                                   fn-sn-refuse-reservation-enabledp
-                                   fn-sn-known-abort-enabledp
-                                   fn-sn-known-abort-files
-                                   fn-sn-fence-node fn-sn-resolve-node
-                                   fn-sf-refuse-reservation fn-replay-advance-txid
-                                   fn-replay-advance-okp fn-node-complete
-                                   fn-sf-record-candidate fn-record-txid
-                                   fn-record-generation)))))
+  :hints (("Goal" :in-theory
+           (union-theories '(fn-snrt-step fn-snt-step
+                             fn-own-sn-transitions-keep-configuration
+                             fn-sn-refuse-reservation-preserves-configuration
+                             fn-sn-known-abort-preserves-configuration)
+                           (theory 'minimal-theory)))))
 
 (defthm fn-own-snrt-step-preserves-relation
   (implies (fn-snt-relation s)

@@ -428,7 +428,7 @@
     "books": 423,
     "books_in_root_closure": 422,
     "roots": 421,
-    "theorems": 7123,
+    "theorems": 7126,
     "functions": 5428,
     "assert_events": 7843,
     "must_fails": 282,
@@ -528,7 +528,7 @@
       "book": "books/anchor-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 30,
+      "theorems": 31,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -4857,7 +4857,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 134,
+      "theorems": 136,
       "functions": 8,
       "guards": {
         "verified": 0,
@@ -12025,7 +12025,7 @@
     {
       "theorem": "fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session",
       "book": "books/owner-invariants.lisp",
-      "line": 590,
+      "line": 649,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value"
       ]
