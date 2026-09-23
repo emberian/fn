@@ -33,17 +33,17 @@ freeze. Preserve the live `da5fd8cb` node and existing shared compute pools.
 | Agent | Current substantive result and coordination |
 | --- | --- |
 | `acceptance_stamp` | Historical configuration replay, phase-aware Store/owner relation and actual live adoption; coordinate Store shape with consumer and authored records, reader pins with reader lanes. |
-| `authorship_carrier` | Versioned exact-source carrier/record/verdict binding and native submission/reopen; coordinate pinned verdict API with `stamp_review`. |
+| `authorship_carrier` | T10a and native295 qualification landed; now preservation/restore, selected-pack and consumer incarnation contracts with consumer/reader lanes. |
 | `stamp_review` | Historical recorded-verdict pin threaded through served NNTP and HDR; coordinate carried reader shape with index lane. |
 | `store_invariants` | Actual served Message-ID index and maintained correspondence; share reader view shape with verdict lane rather than waiting for all reader work. |
 | `consumer_contract` | Durable consumer bootstrap/events/Store projection, registration/ack/recovery and restore fencing; coordinate shared Store constructors with historical config and authored records. |
 | `bp_foundation` | One native FNBS service authority, typed receive/publish/recovery and actual caller switch; native A2/contact/TCPCL packet integrated at `66bf9e55`; qualify one coherent saved image. |
-| `feed_replay` | ACL2 TCPCL accepted/refused/uncertain completion so final ACK requires the matched durable receive result; coordinate callback contract with BP foundation. |
+| `feed_replay` | TCPCL drive correspondence landed; now durable clock-domain compatibility/codec/migration, coordinating native clock observations with foundation. |
 | `status_codec` | Native contact planning, interruption/expiry/backpressure and receipt progression through that same service; do not import the old scheduler's assumed durable completion. |
-| `crash_differential` | K8 directory-fence to exact crash scan bridge, then K6, with K0 prerequisites explicit; K5 conditional stable-prefix packet landed. |
-| `fragment_refinement` | Relocation and actual cross-host exchange passed; next isolated physical filesystem fault feasibility and campaign, coordinated with crash-model lane. |
+| `crash_differential` | Corrected K8 model crash-scan theorem landed; K6 actual framed-write trace provenance and K0 establishment next. |
+| `fragment_refinement` | Isolated device-EIO campaign and strict process/device ownership checks landed; ext4-only scope, no power-loss/ZFS claim. |
 | `store_semantics` | Reader/composer and exact retry handling integrated; browser and native POST/readback passed; bounded in-memory submission registry, no durable client spool. |
-| `mini_evidence_bridge` | Bounded native Mini evidence export and read-only verification, real public fixture and payload/work measurements; isolated Mini worktree, no shared-main edits. |
+| `mini_evidence_bridge` | P0 native export/verify and signed fixture complete; P1 durable operation binding, provenance/conflict evidence and immutable reply transaction in Mini. |
 
 Root integrates finite source commits, regenerates ledgers, checks concrete
 proof/runtime regressions and maintains evidence. No lane is a permanent file
@@ -80,3 +80,12 @@ Root integrated native A2/contact and the TCPCL coalesced-output repair at
 Foundation assembles one image with its exact kind-5 payload inspection
 regression, then exercises restart/integrity/contacts. Do not substitute
 file size or logged payload length for retained byte equality.
+
+The295 developer image qualifies T8 live configuration and T10a durable
+authorship/reopen; HDR/index joins remain pending. Current BP image passes
+its repaired native suite, while actual monotonic expiry exposed a persisted
+process-clock defect. Foundation and feed cooperate on a boot-domain record
+and restart/legacy compatibility decisions before claiming reboot support.
+E2 completion now needs an explicit carried projection/replay invariant,
+not merely an extra assumed recovery predicate; its lane is proving that
+while stamp_review builds the native publication adapter.
