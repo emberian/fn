@@ -22,7 +22,12 @@
                           fn-nntp-projection-vocabulary
                           fn-nntp-responses-vocabulary
                           fn-nntp-vocabulary)))
-(local (in-theory (enable fn-statep fn-articlep fn-pendingp)))
+; The node-state recognizers (`fn-statep', `fn-articlep', `fn-pendingp')
+; stay closed.  They used to be enabled here book-wide, and every theorem
+; whose hypothesis is `fn-nntp-projectionp' then opened the whole node
+; state before the lemma that needed only that hypothesis could match:
+; the GROUP, LISTGROUP and LISTGROUP-command effect theorems spent 1.1 s,
+; 1.1 s and 3.3 s (t1-seam certify-20260923T000250Z-1473169).
 
 ; The consp- and true-listp-backchaining rules that ran the -is-response-text
 ; theorems here past 40M prover steps on 2026-09-20 are no longer enabled on
@@ -247,6 +252,15 @@
 (defthm fn-nntp-decimal-field-first-is-digit
   (fn-nntp-decimal-digitp (car (fn-nntp-decimal-field number)))
   :hints (("Goal" :in-theory (enable fn-nntp-decimal-field))))
+
+; The field renderer stays closed below: the lemmas above are every fact a
+; response proof needs of a rendered number.  `fn-nntp-syntax-vocabulary',
+; enabled at the top, opened it, and ACL2 rewrites inside out, so each
+; initial-line proof expanded the digit renderer over a symbolic count
+; before the lemmas above could match: the GROUP and LISTGROUP initial-line
+; theorems took 36.2 s and 17.0 M prover steps together (t1-seam
+; certify-20260923T000250Z-1473169).
+(local (in-theory (disable fn-nntp-decimal-field)))
 
 ; -----------------------------------------------------------------------------
 ; Printable projected data is response text
@@ -603,17 +617,21 @@
 ; -----------------------------------------------------------------------------
 ; Every generated initial line fits inside RFC 3977 section 3.1's 512 octets
 
+; The group summary stays closed in these: the counts reach the line only
+; through `fn-nntp-decimal-field', whose lemmas need nothing of them.
 (defthm fn-nntp-group-initial-is-response-text
   (implies (fn-nntp-safe-group-namep group)
            (fn-nntp-response-textp (fn-nntp-group-initial archive group)))
-  :hints (("Goal" :in-theory (enable fn-nntp-group-initial
-                                     fn-nntp-append-pieces))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-group-initial
+                                   fn-nntp-append-pieces)
+                                  (fn-nntp-group-summary)))))
 
 (defthm fn-nntp-group-initial-is-a-status-line
   (fn-nntp-initial-status-linep (fn-nntp-group-initial archive group))
-  :hints (("Goal" :in-theory (enable fn-nntp-group-initial
-                                     fn-nntp-initial-status-linep
-                                     fn-nntp-append-pieces))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-group-initial
+                                   fn-nntp-initial-status-linep
+                                   fn-nntp-append-pieces)
+                                  (fn-nntp-group-summary)))))
 
 ; 4 status octets, three decimal fields of at most ten octets, three separating
 ; spaces, and a group name of at most 460 octets: 497, and 510 once LISTGROUP
@@ -623,13 +641,15 @@
            (<= (+ (len (fn-nntp-group-initial archive group)) 2)
                *fn-nntp-max-response-octets*))
   :rule-classes (:rewrite :linear)
-  :hints (("Goal" :in-theory (enable fn-nntp-group-initial
-                                     fn-nntp-append-pieces))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-group-initial
+                                   fn-nntp-append-pieces)
+                                  (fn-nntp-group-summary)))))
 
 (defthm fn-nntp-listgroup-initial-is-response-text
   (implies (fn-nntp-safe-group-namep group)
            (fn-nntp-response-textp (fn-nntp-listgroup-initial archive group)))
-  :hints (("Goal" :in-theory (enable fn-nntp-listgroup-initial))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-listgroup-initial)
+                                  (fn-nntp-group-initial)))))
 
 (defthm fn-nntp-listgroup-initial-is-a-status-line
   (fn-nntp-initial-status-linep (fn-nntp-listgroup-initial archive group))
@@ -637,7 +657,7 @@
                                    fn-nntp-group-initial
                                    fn-nntp-initial-status-linep
                                    fn-nntp-append-pieces)
-                                  ()))))
+                                  (fn-nntp-group-summary)))))
 
 (defthm fn-nntp-listgroup-initial-fits
   (implies (fn-nntp-safe-group-namep group)
@@ -1101,11 +1121,29 @@
                                    fn-nntp-initial-status-linep)
                                   (fn-nntp-pad2 fn-nntp-pad4)))))
 
+; A padded field's length does not depend on the number it renders, so the
+; digit table, the division and the remainder stay closed.  Opened (as the
+; DATE length theorem once did), the rewriter took floor and mod apart under
+; every digit lookup: 46.1 s and 25.8 M prover steps (t1-seam
+; certify-20260923T000250Z-1473169).
+(local
+ (defthm fn-nntp-pad2-length
+   (equal (len (fn-nntp-pad2 n)) 2)
+   :hints (("Goal" :in-theory (e/d (fn-nntp-pad2)
+                                   (fn-nntp-digit-octet fn-nntp-div
+                                    fn-nntp-mod))))))
+
+(local
+ (defthm fn-nntp-pad4-length
+   (equal (len (fn-nntp-pad4 n)) 4)
+   :hints (("Goal" :in-theory (e/d (fn-nntp-pad4)
+                                   (fn-nntp-pad2 fn-nntp-div fn-nntp-mod))))))
+
 (defthm fn-nntp-date-octets-length
   (equal (len (fn-nntp-date-octets civil)) 18)
   :rule-classes (:rewrite :linear)
-  :hints (("Goal" :in-theory (enable fn-nntp-date-octets fn-nntp-append-pieces
-                                     fn-nntp-pad2 fn-nntp-pad4))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-date-octets fn-nntp-append-pieces)
+                                  (fn-nntp-pad2 fn-nntp-pad4)))))
 
 (defthm fn-nntp-effects-date-response
   (fn-nntp-effectsp
@@ -1200,6 +1238,11 @@
                                fn-nntp-hdr-clean-fields-are-clean-lines
                                fn-nntp-xpat-lines-for-numbers))))
 
+; The legacy rule equating XPAT's block with XHDR's under a total filter
+; stays out: its hypothesis is a recursive recognizer over the article list,
+; and relieving it opened the header parser twice for a rule this proof
+; never uses, 2.5 s and 675 k prover steps of a 0.03 s proof
+; (session, 2026-09-23; `accumulated-persistence').
 (defthm fn-nntp-effects-xpat-range
   (fn-nntp-effectsp
    (fn-nntp-result-effects
@@ -1207,7 +1250,8 @@
   :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-range)
                                   (fn-nntp-xpat-lines-for-numbers
                                    fn-nntp-group-range-numbers
-                                   fn-nntp-parse-range fn-nntp-single)))))
+                                   fn-nntp-parse-range fn-nntp-single
+                                   fn-nntp-xpat-with-a-total-filter-is-the-hdr-block)))))
 
 ; The msgid form's block goes through the same clean-field-list route the
 ; range form uses, NOT through fn-nntp-hdr-labelled-line-is-block-text: that

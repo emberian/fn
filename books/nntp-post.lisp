@@ -363,6 +363,12 @@
 ; Each of these is about `fn-nntp-post-step`, the function the host calls at
 ; host/reader-host.lisp `fn-reader-chunk`.
 
+; These three dispatch on the step's arms and need nothing of the session
+; but whether it is one, so `fn-post-sessionp' stays closed as it already
+; does in the clock and disallowed-posting theorems below.  Opened, it
+; carried the reader session recognizer into the dispatch and the splitter
+; took 161, 76 and 60 cases at Goal: 3.4 s, 1.8 s and 1.0 s (t1-seam
+; certify-20260923T000250Z-1473169).
 (defthm fn-post-submission-is-an-injected-article
   (implies (fn-post-result-submission
             (fn-nntp-post-step ps archive config observation injection wire-event))
@@ -371,7 +377,8 @@
              (fn-nntp-post-step ps archive config observation injection wire-event))))
   :hints (("Goal" :in-theory (disable fn-inj-decide fn-inj-injectedp
                                       fn-nntp-step fn-post-offeredp
-                                      fn-post-refusal-line))))
+                                      fn-post-refusal-line
+                                      fn-post-sessionp))))
 
 (defthm fn-post-refused-body-submits-nothing
   (implies (not (fn-inj-injectedp
@@ -383,7 +390,8 @@
                   nil))
   :hints (("Goal" :in-theory (disable fn-inj-decide fn-inj-injectedp
                                       fn-nntp-step fn-post-offeredp
-                                      fn-post-refusal-line))))
+                                      fn-post-refusal-line
+                                      fn-post-sessionp))))
 
 ; A clock fault is not an article verdict (decision D10-a, specs/nntp.md).
 ; The reading `fn-own-read` supplies with the event is the owner's current
@@ -488,7 +496,8 @@
                   (fn-inj-decide (fn-post-body-octets body) config injection)))
   :hints (("Goal" :in-theory (disable fn-inj-decide fn-inj-injectedp
                                       fn-nntp-step fn-post-offeredp
-                                      fn-post-refusal-line)))
+                                      fn-post-refusal-line
+                                      fn-post-sessionp)))
   :rule-classes nil)
 
 ; The keystone the owner's POST seam rests on.  One connection is one
