@@ -107,6 +107,7 @@
 (ld "host/native-control-host.lisp" :ld-error-action :error)
 (ld "host/native-hybrid-control-host.lisp" :ld-error-action :error)
 (ld "host/hybrid-signature-host.lisp" :ld-error-action :error)
+(ld "host/topic-history-metadata-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
 (ld "host/workflow-host.lisp" :ld-error-action :error)

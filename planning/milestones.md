@@ -17,6 +17,8 @@ and corrected K8 issued-link crash-scan theorems have landed; K0/K6 and
 physical qualification retain their documented open scope. The295 native
 image passed historical live configuration and T10a author/reopen tests;
 the reader/index union and BP clock-domain repair are being qualified.
+The first P3 exact-source topic metadata codec and its ACL2 tests are certified;
+source-matched native inspection and durable topic events remain open.
 Release gates remain the [trajectory](plan-2026-09-22-trajectory.md), and
 image qualification proceeds alongside implementation under
 [how we work](how-we-work.md).
