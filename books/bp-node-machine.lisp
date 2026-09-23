@@ -179,6 +179,13 @@
   (declare (xargs :guard t))
   (fn-bpn-member x '(:queued :attempting :requeued :finished :expired)))
 
+; The queued lifecycle guard uses the primary destination accessor.  Its
+; true-list requirement follows from the admitted bundle shape.
+(defthm fn-bpn-bundle-primary-true-list-for-guard
+  (implies (fn-bpb-bundlep bundle)
+           (true-listp (fn-bpb-bundle-primary bundle)))
+  :hints (("Goal" :in-theory (enable fn-bpb-bundlep fn-bpp-blockp))))
+
 (defun fn-bpn-lifecycle-recordp (record)
   (declare (xargs :guard t :verify-guards nil))
   (let ((kind (fn-cbor-ag-car record)))
@@ -213,6 +220,8 @@
              (equal (nth 5 record) :none))
            (equal (nth 6 record) kind)))
      (t nil))))
+
+(verify-guards fn-bpn-lifecycle-recordp)
 
 (defun fn-bpn-record-token (record)
   (declare (xargs :guard t))
@@ -292,6 +301,11 @@
        (or (null (fn-bpn-machine-state-pending st))
            (equal (fn-bpn-pending-token (fn-bpn-machine-state-pending st))
                   (fn-bpn-machine-state-next-token st)))))
+
+(verify-guards fn-bpn-pendingp)
+(verify-guards fn-bpn-maybe-pendingp)
+(verify-guards fn-bpn-machine-recordp)
+(verify-guards fn-bpn-machine-statep)
 
 (defun fn-bpn-existing-sequence (st key)
   (declare (xargs :guard t :verify-guards nil))

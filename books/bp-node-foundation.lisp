@@ -13,8 +13,24 @@
   (if (and (true-listp ingress)
            (equal (len ingress) 6)
            (equal (car ingress) :cl))
-      (nth 4 ingress)
+      (fn-bpn-nth 4 ingress)
     nil))
+
+; A kind-5 FNBS image can name only this typed TCPCL provenance.  The
+; principal is the admitted configuration name, separate from peer-eid.
+; Admission itself is a host boundary and is not proved by this shape check.
+(defun fn-bpnf-cl-ingressp (ingress)
+  (declare (xargs :guard t))
+  (and (true-listp ingress) (equal (len ingress) 6)
+       (equal (car ingress) :cl)
+       (consp (fn-bpn-nth 1 ingress))
+       (fn-bpn-machine-u64p (car (fn-bpn-nth 1 ingress)))
+       (fn-bpn-machine-u64p (cdr (fn-bpn-nth 1 ingress)))
+       (fn-bpn-machine-u64p (fn-bpn-nth 2 ingress))
+       (fn-bpp-eidp (fn-bpn-nth 3 ingress))
+       (or (null (fn-bpn-nth 4 ingress))
+           (fn-bpn-machine-textp (fn-bpn-nth 4 ingress)))
+       (fn-bpn-machine-u64p (fn-bpn-nth 5 ingress))))
 
 (defun fn-bpnf-held-key (principal id)
   (declare (xargs :guard t))
@@ -26,15 +42,18 @@
   (declare (xargs :guard t))
   (if (atom blocks)
       nil
-    (if (member-equal (fn-bpb-block-type (car blocks)) '(6 7 10))
+    (if (and (fn-bpb-blockp (car blocks))
+             (member-equal (fn-bpb-block-type (car blocks)) '(6 7 10)))
         (fn-bpnf-immutable-blocks (cdr blocks))
       (cons (car blocks) (fn-bpnf-immutable-blocks (cdr blocks))))))
 
 (defun fn-bpnf-immutable (bundle)
   (declare (xargs :guard t))
-  (list (fn-bpb-bundle-primary bundle)
-        (fn-bpb-payload bundle)
-        (fn-bpnf-immutable-blocks (fn-bpb-bundle-blocks bundle))))
+  (if (fn-bpb-bundlep bundle)
+      (list (fn-bpb-bundle-primary bundle)
+            (fn-bpb-payload bundle)
+            (fn-bpnf-immutable-blocks (fn-bpb-bundle-blocks bundle)))
+    nil))
 
 ; The held row is intentionally explicit: bundle identity, arrival, ingress,
 ; submission, lineage, exact bundle/wire, anchor, dispatch, next hop,
@@ -45,25 +64,25 @@
   (list :bpnf-held principal id arrival ingress submission lineage bundle wire
         anchor dispatch next-hop constraints attempt deleted token))
 
-(defun fn-bpnf-held-principal (h) (declare (xargs :guard t)) (nth 1 h))
-(defun fn-bpnf-held-id (h) (declare (xargs :guard t)) (nth 2 h))
-(defun fn-bpnf-held-bundle (h) (declare (xargs :guard t)) (nth 7 h))
-(defun fn-bpnf-held-wire (h) (declare (xargs :guard t)) (nth 8 h))
+(defun fn-bpnf-held-principal (h) (declare (xargs :guard t)) (fn-bpn-nth 1 h))
+(defun fn-bpnf-held-id (h) (declare (xargs :guard t)) (fn-bpn-nth 2 h))
+(defun fn-bpnf-held-bundle (h) (declare (xargs :guard t)) (fn-bpn-nth 7 h))
+(defun fn-bpnf-held-wire (h) (declare (xargs :guard t)) (fn-bpn-nth 8 h))
 
 (defun fn-bpnf-heldp (h)
   (declare (xargs :guard t))
   (and (true-listp h) (equal (len h) 16)
        (equal (car h) :bpnf-held)
        (equal (fn-bpnf-held-principal h)
-              (fn-bpnf-ingress-principal (nth 4 h)))
-       (natp (nth 3 h))
+              (fn-bpnf-ingress-principal (fn-bpn-nth 4 h)))
+       (natp (fn-bpn-nth 3 h))
        (fn-bpb-bundlep (fn-bpnf-held-bundle h))
        (equal (fn-bpnf-held-id h)
               (fn-bpb-bundle-id (fn-bpnf-held-bundle h)))
        (fn-cbor-octet-listp (fn-bpnf-held-wire h))
        (equal (fn-bpnf-held-wire h)
               (fn-bpb-encode (fn-bpnf-held-bundle h)))
-       (natp (nth 15 h))))
+       (natp (fn-bpn-nth 15 h))))
 
 (defun fn-bpnf-find-held (key held)
   (declare (xargs :guard t))
@@ -82,7 +101,7 @@
        (fn-bpnf-held-octets (cdr held)))))
 
 (defun fn-bpnf-receive-decision (held ingress bundle)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpb-bundlep bundle)))
   (let* ((principal (fn-bpnf-ingress-principal ingress))
          (id (fn-bpb-bundle-id bundle))
          (old (fn-bpnf-find-held (fn-bpnf-held-key principal id) held)))
@@ -112,9 +131,9 @@
   (declare (xargs :guard t))
   (and (true-listp x) (equal (len x) 4)
        (equal (car x) :bpnf-handoff)
-       (or (equal (nth 3 x) :owed)
-           (and (consp (nth 3 x))
-                (equal (car (nth 3 x)) :handed-off)))))
+       (or (equal (fn-bpn-nth 3 x) :owed)
+           (and (consp (fn-bpn-nth 3 x))
+                (equal (car (fn-bpn-nth 3 x)) :handed-off)))))
 
 ; The operation id and process epoch jointly correlate every callback.
 ; The logical journal generation is a separate field of the record and is
@@ -127,16 +146,16 @@
   (declare (xargs :guard t))
   (and (true-listp x) (equal (len x) 6)
        (equal (car x) :bpnf-operation)
-       (natp (nth 1 x)) (natp (nth 2 x))
-       (member-equal (nth 3 x) '(:store :attempt :discard :handoff :family))
-       (member-equal (nth 5 x) '(:pending :uncertain))))
+       (natp (fn-bpn-nth 1 x)) (natp (fn-bpn-nth 2 x))
+       (member-equal (fn-bpn-nth 3 x) '(:store :attempt :discard :handoff :family))
+       (member-equal (fn-bpn-nth 5 x) '(:pending :uncertain))))
 
 (defun fn-bpnf-operation-matchp (issued epoch operation-id)
   (declare (xargs :guard t))
   (and (consp issued)
        (equal (car issued) :bpnf-operation)
-       (equal (nth 1 issued) epoch)
-       (equal (nth 2 issued) operation-id)))
+       (equal (fn-bpn-nth 1 issued) epoch)
+       (equal (fn-bpn-nth 2 issued) operation-id)))
 
 ; A wait names an obligation and action as well as dependency versions.  A
 ; version change makes that action eligible for re-evaluation; it does not
@@ -149,19 +168,23 @@
   (declare (xargs :guard t))
   (and (true-listp x) (equal (len x) 6)
        (equal (car x) :bpnf-wait)
-       (member-equal (nth 3 x)
+       (member-equal (fn-bpn-nth 3 x)
                      '(:route :session :fragments :credit :capacity
                        :history :after))))
 
 (defun fn-bpnf-version-of (dependency versions)
   (declare (xargs :guard t))
-  (cdr (assoc-equal dependency versions)))
+  (if (atom versions)
+      nil
+    (if (equal dependency (fn-cbor-ag-car (car versions)))
+        (fn-cbor-ag-cdr (car versions))
+      (fn-bpnf-version-of dependency (cdr versions)))))
 
 (defun fn-bpnf-wait-wakes-p (wait versions)
   (declare (xargs :guard t))
-  (and (equal (car wait) :bpnf-wait)
-       (not (equal (nth 4 wait)
-                   (fn-bpnf-version-of (nth 3 wait) versions)))))
+  (and (equal (fn-cbor-ag-car wait) :bpnf-wait)
+       (not (equal (fn-bpn-nth 4 wait)
+                   (fn-bpnf-version-of (fn-bpn-nth 3 wait) versions)))))
 
 ; The kernel state keeps the existing machine plus the new durable/volatile
 ; slots.  Next-op is allocated here, never supplied by a caller.  The host is
@@ -171,15 +194,15 @@
   (declare (xargs :guard t))
   (list :bpnf-state base held outcomes handoffs correlation issued waits epoch next-op))
 
-(defun fn-bpnf-base (st) (declare (xargs :guard t)) (nth 1 st))
-(defun fn-bpnf-held-list (st) (declare (xargs :guard t)) (nth 2 st))
-(defun fn-bpnf-outcomes (st) (declare (xargs :guard t)) (nth 3 st))
-(defun fn-bpnf-handoffs (st) (declare (xargs :guard t)) (nth 4 st))
-(defun fn-bpnf-correlation (st) (declare (xargs :guard t)) (nth 5 st))
-(defun fn-bpnf-issued (st) (declare (xargs :guard t)) (nth 6 st))
-(defun fn-bpnf-waits (st) (declare (xargs :guard t)) (nth 7 st))
-(defun fn-bpnf-epoch (st) (declare (xargs :guard t)) (nth 8 st))
-(defun fn-bpnf-next-op (st) (declare (xargs :guard t)) (nth 9 st))
+(defun fn-bpnf-base (st) (declare (xargs :guard t)) (fn-bpn-nth 1 st))
+(defun fn-bpnf-held-list (st) (declare (xargs :guard t)) (fn-bpn-nth 2 st))
+(defun fn-bpnf-outcomes (st) (declare (xargs :guard t)) (fn-bpn-nth 3 st))
+(defun fn-bpnf-handoffs (st) (declare (xargs :guard t)) (fn-bpn-nth 4 st))
+(defun fn-bpnf-correlation (st) (declare (xargs :guard t)) (fn-bpn-nth 5 st))
+(defun fn-bpnf-issued (st) (declare (xargs :guard t)) (fn-bpn-nth 6 st))
+(defun fn-bpnf-waits (st) (declare (xargs :guard t)) (fn-bpn-nth 7 st))
+(defun fn-bpnf-epoch (st) (declare (xargs :guard t)) (fn-bpn-nth 8 st))
+(defun fn-bpnf-next-op (st) (declare (xargs :guard t)) (fn-bpn-nth 9 st))
 
 (defun fn-bpnf-with-issued (st issued)
   (declare (xargs :guard t))
@@ -191,15 +214,15 @@
 (defun fn-bpnf-answer (st effects)
   (declare (xargs :guard t))
   (list :bpnf-answer st effects))
-(defun fn-bpnf-answer-state (ans) (declare (xargs :guard t)) (nth 1 ans))
-(defun fn-bpnf-answer-effects (ans) (declare (xargs :guard t)) (nth 2 ans))
+(defun fn-bpnf-answer-state (ans) (declare (xargs :guard t)) (fn-bpn-nth 1 ans))
+(defun fn-bpnf-answer-effects (ans) (declare (xargs :guard t)) (fn-bpn-nth 2 ans))
 
 (defun fn-bpnf-step (st event)
   (declare (xargs :guard t))
   (if (equal (car event) :base)
       (if (fn-bpnf-issued st)
           (fn-bpnf-answer st nil)
-        (let ((ans (fn-bpn-step (fn-bpnf-base st) (nth 1 event))))
+        (let ((ans (fn-bpn-step (fn-bpnf-base st) (fn-bpn-nth 1 event))))
         (fn-bpnf-answer
          (fn-bpnf-state (fn-bpn-answer-state ans) (fn-bpnf-held-list st)
                         (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
@@ -209,12 +232,12 @@
          (fn-bpn-answer-effects ans))))
     (if (equal (car event) :persist-result)
         (let ((issued (fn-bpnf-issued st)))
-          (if (or (equal (nth 5 issued) :uncertain)
-                  (not (fn-bpnf-operation-matchp issued (nth 1 event) (nth 2 event))))
+          (if (or (equal (fn-bpn-nth 5 issued) :uncertain)
+                  (not (fn-bpnf-operation-matchp issued (fn-bpn-nth 1 event) (fn-bpn-nth 2 event))))
               (fn-bpnf-answer st nil)
-            (if (equal (nth 3 event) :durable)
-                (if (equal (nth 5 issued) :pending)
-                    (let ((h (nth 4 issued)))
+            (if (equal (fn-bpn-nth 3 event) :durable)
+                (if (equal (fn-bpn-nth 5 issued) :pending)
+                    (let ((h (fn-bpn-nth 4 issued)))
                       (fn-bpnf-answer
                        (fn-bpnf-state (fn-bpnf-base st)
                                       (cons h (fn-bpnf-held-list st))
@@ -222,25 +245,26 @@
                                       (fn-bpnf-correlation st) nil
                                       (fn-bpnf-waits st) (fn-bpnf-epoch st)
                                       (fn-bpnf-next-op st))
-                       (list (list :receive-answer (nth 4 h) :stored))))
+                       (list (list :receive-answer (fn-bpn-nth 4 h) :stored))))
                   (fn-bpnf-answer st nil))
-              (if (equal (nth 3 event) :refused)
+              (if (equal (fn-bpn-nth 3 event) :refused)
                   (fn-bpnf-answer
                    (fn-bpnf-with-issued st nil)
-                   (list (list :receive-answer (nth 4 (nth 4 issued))
+                   (list (list :receive-answer (fn-bpn-nth 4 (fn-bpn-nth 4 issued))
                                '(:refused :persistence))))
                 (fn-bpnf-answer
                  (fn-bpnf-with-issued
-                  st (fn-bpnf-operation (nth 1 issued) (nth 2 issued)
-                                          (nth 3 issued) (nth 4 issued)
+                  st (fn-bpnf-operation (fn-bpn-nth 1 issued) (fn-bpn-nth 2 issued)
+                                          (fn-bpn-nth 3 issued) (fn-bpn-nth 4 issued)
                                           :uncertain))
-                 (list (list :receive-answer (nth 4 (nth 4 issued))
+                 (list (list :receive-answer (fn-bpn-nth 4 (fn-bpn-nth 4 issued))
                              '(:uncertain :persistence))))))))
       (if (equal (car event) :receive-bundle)
-        (let* ((bundle (nth 1 event))
-               (wire (nth 2 event))
-               (ingress (nth 3 event))
-               (decision (and (fn-bpb-bundlep bundle)
+        (let* ((bundle (fn-bpn-nth 1 event))
+               (wire (fn-bpn-nth 2 event))
+               (ingress (fn-bpn-nth 3 event))
+               (decision (and (fn-bpnf-cl-ingressp ingress)
+                              (fn-bpb-bundlep bundle)
                               (fn-cbor-octet-listp wire)
                               (equal wire (fn-bpb-encode bundle))
                               (fn-bpnf-receive-decision
@@ -301,14 +325,14 @@
                   :fresh)))
 
 (defthm fn-bpnf-stale-operation-cannot-match
-  (implies (or (not (equal (nth 1 issued) epoch))
-               (not (equal (nth 2 issued) operation-id)))
+  (implies (or (not (equal (fn-bpn-nth 1 issued) epoch))
+               (not (equal (fn-bpn-nth 2 issued) operation-id)))
            (not (fn-bpnf-operation-matchp issued epoch operation-id))))
 
 (defthm fn-bpnf-unchanged-dependency-does-not-wake
   (implies (and (equal (car wait) :bpnf-wait)
-                (equal (nth 4 wait)
-                       (fn-bpnf-version-of (nth 3 wait) versions)))
+                (equal (fn-bpn-nth 4 wait)
+                       (fn-bpnf-version-of (fn-bpn-nth 3 wait) versions)))
            (not (fn-bpnf-wait-wakes-p wait versions))))
 
 (defthm fn-bpnf-receive-proposal-does-not-install-held
@@ -333,14 +357,14 @@
                        (fn-bpnf-held-list st)))
            (and (equal result :durable)
                 (fn-bpnf-operation-matchp (fn-bpnf-issued st) epoch op)
-                (equal (nth 5 (fn-bpnf-issued st)) :pending)))
+                (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :pending)))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-bpn-step))))
 
 ; No ordinary callback can resolve an ambiguous publication.  Recovery will
 ; inspect the authoritative FNBS bytes and establish a new process epoch.
 (defthm fn-bpnf-uncertain-issued-fences-every-step
-  (implies (equal (nth 5 (fn-bpnf-issued st)) :uncertain)
+  (implies (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :uncertain)
            (equal (fn-bpnf-answer-state (fn-bpnf-step st event)) st))
   :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
                                      fn-bpb-bundlep fn-bpb-bundle-id)))
@@ -353,7 +377,7 @@
                              (fn-bpnf-step st
                                            (list :receive-bundle bundle wire ingress)))))
                   :persist)
-           (and (equal (nth 2 (car (fn-bpnf-answer-effects
+           (and (equal (fn-bpn-nth 2 (car (fn-bpnf-answer-effects
                                      (fn-bpnf-step st
                                                    (list :receive-bundle bundle wire ingress)))))
                        (fn-bpnf-next-op st))
@@ -373,3 +397,45 @@
   :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
                                      fn-bpb-bundlep fn-bpb-bundle-id)))
   :rule-classes nil)
+
+; Guard closure for the typed foundation helpers.  The served step remains
+; open until the inherited fn-bpn-step guard and FNBS caller are verified.
+(verify-guards fn-bpnf-ingress-principal)
+(verify-guards fn-bpnf-cl-ingressp)
+(verify-guards fn-bpnf-held-key)
+(verify-guards fn-bpnf-immutable-blocks)
+(verify-guards fn-bpnf-immutable)
+(verify-guards fn-bpnf-held)
+(verify-guards fn-bpnf-held-principal)
+(verify-guards fn-bpnf-held-id)
+(verify-guards fn-bpnf-held-bundle)
+(verify-guards fn-bpnf-held-wire)
+(verify-guards fn-bpnf-heldp)
+(verify-guards fn-bpnf-find-held)
+(verify-guards fn-bpnf-held-octets)
+(verify-guards fn-bpnf-receive-decision)
+(verify-guards fn-bpnf-outcome)
+(verify-guards fn-bpnf-outcomep)
+(verify-guards fn-bpnf-handoff)
+(verify-guards fn-bpnf-handoffp)
+(verify-guards fn-bpnf-operation)
+(verify-guards fn-bpnf-operationp)
+(verify-guards fn-bpnf-operation-matchp)
+(verify-guards fn-bpnf-wait)
+(verify-guards fn-bpnf-waitp)
+(verify-guards fn-bpnf-version-of)
+(verify-guards fn-bpnf-wait-wakes-p)
+(verify-guards fn-bpnf-state)
+(verify-guards fn-bpnf-base)
+(verify-guards fn-bpnf-held-list)
+(verify-guards fn-bpnf-outcomes)
+(verify-guards fn-bpnf-handoffs)
+(verify-guards fn-bpnf-correlation)
+(verify-guards fn-bpnf-issued)
+(verify-guards fn-bpnf-waits)
+(verify-guards fn-bpnf-epoch)
+(verify-guards fn-bpnf-next-op)
+(verify-guards fn-bpnf-with-issued)
+(verify-guards fn-bpnf-answer)
+(verify-guards fn-bpnf-answer-state)
+(verify-guards fn-bpnf-answer-effects)
