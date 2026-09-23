@@ -1336,7 +1336,10 @@ part of K0.
 ; ACL2 successor and a checked octet result. The actual arbitrary-history
 ; P-FRONTIER pair 5 is proved to contain the exact newly fenced frame and
 ; pair 6 to carry the file-result observation. The prior durable article is
-; exercised in the witness. The root rename/directory-fence relation and
+; exercised in the witness. The pair-5 byte state is well formed and its
+; directory table and all old inode contents are unchanged; this proves the
+; config and old frontier remain durable through the new file fence. The
+; root rename/directory-fence relation and
 ; successful reserved pair are still open; this packet does not claim them.
 
 ; K1. The scan never faults on a crash image of a related state.  No torn

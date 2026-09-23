@@ -42,3 +42,19 @@ staging lookup subgoal: it needs a named staged-file shape lemma before
 relation assembly. No all-cut K0 or physical power-loss guarantee follows
 from this packet. The native wrapper routing will be exercised in a later
 combined image, since the frozen image predates this source change.
+
+The next finite packet proves that allocator pair 5 is a well-formed byte
+state and has the same byte transition as P-RECORD's successful staging
+prefix. It then reuses the already certified old-authority lemmas to show
+that every prior inode except the fresh one retains exact durable content,
+the durable directory table is unchanged, and the old frontier and config
+authority are untouched. The second-allocation witness checks the carried
+first article's raw content as well as the config/frontier; a negative case
+at the newly allocated inode separates old-content preservation from the
+new file. These facts are prerequisites for the complete retained-record
+list and root-rename/fence relation, which remain unproved.
+
+Both selected roots passed on hbox under `run-20260923T232425Z-a748`;
+original requested-root results and exact source/closure/toolchain digests
+are archived in
+`planning/evidence/manifests/certify-20260923T232428Z-471521.json`.

@@ -849,6 +849,22 @@
                (bsk0-second-frontier-host-frame))
         (equal (fn-bs-lookup file :staging ".allocation-k0-2")
                (fn-bs-next-ino bs))
+        (fn-bs-statep file)
+        (equal (fn-bs-dirs file) (fn-bs-dirs bs))
+        (equal (fn-bs-durable-frontier file)
+               (fn-bs-durable-frontier bs))
+        (equal (fn-bs-durable-entry file :root *fn-bs-scan-config-name*)
+               (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*))
+        (equal (fn-bs-durable-content
+                file (fn-bs-durable-entry file :root *fn-bs-scan-config-name*))
+               (fn-bs-durable-content
+                bs (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*)))
+        (equal (fn-bs-durable-content
+                file (fn-bs-durable-entry bs :transactions
+                                           (fn-bs-txn-name 0)))
+               (fn-bs-durable-content
+                bs (fn-bs-durable-entry bs :transactions
+                                         (fn-bs-txn-name 0))))
         (equal (fn-bs-durable-records file) (list *bsk5-record*))
         (equal (fn-sf-phase (cdr (nth 6 (fn-bs-run
                                              bs ks
@@ -882,6 +898,15 @@
 (must-fail
  (assert-event
   (fn-bs-frontier-next *fn-cbor-max-uint*)))
+
+; The old-content theorem excludes the newly allocated inode.  That inode
+; changes from absent/empty to the exact host frame at file fsync.
+(must-fail
+ (assert-event
+  (let* ((entry (bsk5-finished)) (bs (car entry))
+         (file (car (bsk0-second-frontier-file-pair))))
+    (equal (fn-bs-durable-content file (fn-bs-next-ino bs))
+           (fn-bs-durable-content bs (fn-bs-next-ino bs))))))
 
 (must-fail
  (assert-event

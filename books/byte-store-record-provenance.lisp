@@ -2959,3 +2959,148 @@
                            (fn-bs-statep fn-bs-create fn-bs-write
                             fn-bs-fence-file fn-bs-lookup fn-bs-content
                             fn-bs-view)))))
+
+; The staged file cut is well formed.  Keeping this recognizer closed avoids
+; opening the whole relation on a half-reduced interpreter run.
+(defthm fn-bs-k0-frontier-file-cut-statep
+  (implies (and (fn-bs-statep bs)
+                (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage))
+                (fn-cbor-octet-listp octets))
+           (fn-bs-statep
+            (car (nth 5 (fn-bs-run bs ks
+              (fn-bs-frontier-program stage octets)
+              nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-frontier-file-cut-is-write-fence)
+                 (:instance fn-bs-create-preserves-statep
+                            (s bs) (dir :staging) (name stage) (outcome :ok))
+                 (:instance fn-bs-write-preserves-statep
+                            (s (mv-nth 1 (fn-bs-create bs :staging stage :ok)))
+                            (ino (fn-bs-next-ino bs)) (offset 0)
+                            (octets octets) (outcome :ok))
+                 (:instance fn-bs-fence-file-preserves-statep
+                            (s (mv-nth 1 (fn-bs-write
+                               (mv-nth 1 (fn-bs-create bs :staging stage :ok))
+                               (fn-bs-next-ino bs) 0 octets :ok)))
+                            (ino (fn-bs-next-ino bs))))
+           :in-theory (e/d (fn-bs-create fn-bs-write)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-statep fn-bs-fence-file)))))
+
+; P-FRONTIER and P-RECORD have the same successful staging prefix in the
+; byte interpreter.  The allocator's earlier :start-frontier observation
+; changes only the kernel state.  This by-definition bridge reuses existing
+; old-authority content lemmas without assuming a post-cut scan or relation.
+(local
+ (defthm fn-bs-k0-frontier-file-cut-is-record-file-cut
+   (implies (and (fn-bs-statep bs)
+                 (fn-bs-namep stage)
+                 (not (fn-bs-lookup bs :staging stage))
+                 (true-listp octets))
+            (equal (car (nth 5 (fn-bs-run bs ks
+                                    (fn-bs-frontier-program stage octets)
+                                    nil groups capacity)))
+                   (car (nth 5 (fn-bs-run bs ks
+                                    (fn-bs-record-program stage name octets)
+                                    nil groups capacity)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use (fn-bs-k0-frontier-file-cut-is-write-fence
+                  (:instance fn-bs-k6-interpreted-record-fence-is-write-fence
+                             (frame octets)))
+            :in-theory (disable fn-bs-run fn-bs-frontier-program
+                                fn-bs-record-program fn-bs-create
+                                fn-bs-write fn-bs-fence-file)))))
+
+(defthm fn-bs-k0-frontier-file-cut-keeps-dirs
+  (implies (and (fn-bs-statep bs)
+                (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage))
+                (true-listp octets))
+           (equal (fn-bs-dirs
+                   (car (nth 5 (fn-bs-run bs ks
+                     (fn-bs-frontier-program stage octets)
+                     nil groups capacity))))
+                  (fn-bs-dirs bs)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-k0-frontier-file-cut-is-record-file-cut
+                 (:instance fn-bs-k6-file-cut-dirs-are-input-dirs
+                            (frame octets)))
+           :in-theory (disable fn-bs-run fn-bs-frontier-program
+                               fn-bs-record-program fn-bs-dirs))))
+
+(defthm fn-bs-k0-frontier-file-cut-keeps-old-content
+  (implies (and (fn-bs-statep bs)
+                (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage))
+                (true-listp octets)
+                (not (equal other (fn-bs-next-ino bs))))
+           (equal (fn-bs-durable-content
+                   (car (nth 5 (fn-bs-run bs ks
+                     (fn-bs-frontier-program stage octets)
+                     nil groups capacity)))
+                   other)
+                  (fn-bs-durable-content bs other)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-k0-frontier-file-cut-is-record-file-cut
+                 (:instance fn-bs-k0-file-cut-keeps-other-durable-content
+                            (frame octets)))
+           :in-theory (disable fn-bs-run fn-bs-frontier-program
+                               fn-bs-record-program fn-bs-durable-content))))
+
+(defthm fn-bs-k0-frontier-file-cut-keeps-old-frontier
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal (fn-bs-durable-frontier
+                   (car (nth 5 (fn-bs-run bs ks
+                     (fn-bs-frontier-program stage octets)
+                     nil groups capacity))))
+                  (fn-bs-durable-frontier bs)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-related-allocation-is-not-frontier-target
+                 fn-bs-k0-frontier-file-cut-keeps-dirs
+                 (:instance fn-bs-k0-frontier-file-cut-keeps-old-content
+                            (other (fn-bs-durable-entry
+                                    bs :root *fn-bs-scan-frontier-name*))))
+           :in-theory (e/d (fn-bs-durable-frontier fn-bs-durable-entry
+                             fn-bs-frontier-inputp)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-store-relation fn-bs-durable-content
+                            fn-bs-statep)))))
+
+(defthm fn-bs-k0-frontier-file-cut-keeps-config
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (let ((file (car (nth 5 (fn-bs-run bs ks
+                     (fn-bs-frontier-program stage octets)
+                     nil groups capacity)))))
+             (and (equal (fn-bs-durable-entry
+                          file :root *fn-bs-scan-config-name*)
+                         (fn-bs-durable-entry
+                          bs :root *fn-bs-scan-config-name*))
+                  (equal (fn-bs-durable-content file
+                          (fn-bs-durable-entry
+                           file :root *fn-bs-scan-config-name*))
+                         (fn-bs-durable-content bs
+                          (fn-bs-durable-entry
+                           bs :root *fn-bs-scan-config-name*))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-related-allocation-is-not-config-target
+                 fn-bs-k0-frontier-file-cut-keeps-dirs
+                 (:instance fn-bs-k0-frontier-file-cut-keeps-old-content
+                            (other (fn-bs-durable-entry
+                                    bs :root *fn-bs-scan-config-name*))))
+           :in-theory (e/d (fn-bs-durable-entry fn-bs-frontier-inputp)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-store-relation fn-bs-durable-content
+                            fn-bs-statep)))))
