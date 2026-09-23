@@ -1,0 +1,57 @@
+[
+  {
+    "case": "valid",
+    "exit": 0,
+    "stderr": ""
+  },
+  {
+    "case": "wrong-source-id",
+    "exit": 1,
+    "stderr": "minidregg-host: fn portable identity differs from independent pin or claim"
+  },
+  {
+    "case": "wrong-message-id",
+    "exit": 1,
+    "stderr": "minidregg-host: fn source metadata differs from claimed exact report"
+  },
+  {
+    "case": "wrong-groups",
+    "exit": 1,
+    "stderr": "minidregg-host: fn source metadata differs from claimed exact report"
+  },
+  {
+    "case": "wrong-principal",
+    "exit": 1,
+    "stderr": "minidregg-host: fn portable identity differs from independent pin or claim"
+  },
+  {
+    "case": "wrong-ed-key",
+    "exit": 1,
+    "stderr": "minidregg-host: fn portable identity differs from independent pin or claim"
+  },
+  {
+    "case": "wrong-ml-key",
+    "exit": 1,
+    "stderr": "minidregg-host: fn portable identity differs from independent pin or claim"
+  },
+  {
+    "case": "wrong-ml-pem",
+    "exit": 1,
+    "stderr": "minidregg-host: fn native portable carrier verifier refused"
+  },
+  {
+    "case": "changed-authored-source",
+    "exit": 1,
+    "stderr": "minidregg-host: fn native portable carrier verifier refused"
+  },
+  {
+    "case": "wrong-mini-origin-pin",
+    "exit": 1,
+    "stderr": "minidregg-host: package domain, profile, or genesis differs from independent pin"
+  },
+  {
+    "case": "untrusted-store-claim",
+    "exit": 1,
+    "stderr": "minidregg-host: fn claim: unknown field storeAdmission"
+  }
+]
