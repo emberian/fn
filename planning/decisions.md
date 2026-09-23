@@ -901,6 +901,27 @@ iteration fast by reusing matching artifacts, sharing costly runs and
 investigating regressions instead of merely raising timeouts. These choices
 supersede the old width and exclusive-file rules; they do not relax assurance.
 
+### 2026-09-23: first application experiment and silo boundary
+
+After the [architectural reassessment](ambition-2026-09-23.md), the user selected:
+
+- First dregg exchange: an immutable report/receipt and reply between sleeping
+  agents. Application evidence stays in versioned payloads; this does not add a
+  dregg executor to fn or change the selected v0 gate.
+- Durable consumer progress: a consumer-owned durable inbox/outbox, with an
+  explicit fn cursor/acknowledgement contract. The existing printed-output
+  watermark does not establish durable processing. Cursor semantics and the
+  application transaction still need their specification and crash witnesses.
+- First cross-silo trust boundary: separate stores and administrators with
+  explicitly trusted transport peers. Untrusted relay receipt substitution and
+  hostile co-resident processes are later qualification targets, not properties
+  of this first deployment.
+
+These choices select the first experiment and its design direction. They do not
+claim an implemented consumer API or authenticated receipts through untrusted
+relays. Native authorship, retention receipts and application outcomes remain
+distinct evidence.
+
 ### 2026-09-22: the eight questions of the trajectory plan
 
 ember answered the eight questions in `plan-2026-09-22-trajectory.md` §0,
