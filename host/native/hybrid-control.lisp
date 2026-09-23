@@ -44,17 +44,21 @@
                 (signatures
                  (list (cons :ed25519 ed-signature)
                        (cons :ml-dsa-65 ml-signature)))
+                (received (fnn-core 'fn-hsig-host-render-carrier
+                                    source principal keys signatures)))
+           (unless received (return-from fnn-hybrid-control-author :refused))
+           (let* (
                 (coordinates (fnn-owner-core 'fn-owner-next-store-coordinates))
-                (charge (fnn-charge (length source)))
-                (metadata (multiple-value-list (fnn-metadata msgid (fnn-octets source))))
+                (charge (fnn-charge (length received)))
+                (metadata (multiple-value-list (fnn-metadata msgid (fnn-octets received))))
                 (obligation (first metadata))
                 (subject (second metadata))
                 (release (third metadata))
                 (event
-                 (fnn-hsig-authorized-submission-event
+                 (fnn-hsig-authorized-carried-submission-event
                   coordinates keyring-generation
                   (fnn-core 'fn-hsig-host-keyring-snapshot-octets snapshot)
-                  (fnn-octets-string msgid) source
+                  (fnn-octets-string msgid) source received
                   (mapcar #'fnn-octets-string groups)
                   (fnn-octets-string obligation)
                   (fnn-octets-string subject)
@@ -71,15 +75,15 @@
                   (lambda ()
                     (fnn-owner-action 'fn-owner-control-submit
                                       (fnn-octet-list msgid)
-                                      (mapcar #'fnn-octet-list groups) source))
-                  msgid (fnn-octets source) groups evidence generation txid
+                                      (mapcar #'fnn-octet-list groups) received))
+                  msgid (fnn-octets received) groups evidence generation txid
                   (lambda ()
                     (handler-case (fnn-owner-identity-commit service event)
                       (fnn-store-indeterminate () :uncertain)
                       (fnn-store-fault (e) (error e))
                       (fnn-store-error () :refused)
                       (fnn-os-error () :refused)))))
-             :refused))))))))
+             :refused)))))))))
 
 (defun fnn-hybrid-control-handle (service frame)
   (when (typep frame 'fnn-octets)

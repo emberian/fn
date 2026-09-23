@@ -32,11 +32,15 @@ only after verifying the newly produced pair through the ACL2 profile. It
 stores no keys and defines no custody or recovery authority.
 
 The live owner also accepts bounded `hybrid-enroll` and `hybrid-author`
-operations on its operator-authorized local-control socket. ACL2 parses the
-Message-ID and Newsgroups from the signed source, derives the charge and
-identities, and constructs the atomic article/verdict event. The owner writes
-that event between its durable feed intent and resolution. Missing, unknown,
-or substituted enrollment generations are refusals. This local operator path
+operations on its operator-authorized local-control socket. `hybrid-author`
+verifies both native signatures against the selected enrolled keyring, then
+asks ACL2 to render the portable received article and construct one atomic
+article/verdict event. The embedded Store article contains the received
+`FN-Authorship` carrier followed by exact authored source; the parent retains
+that source separately with its ACL2-derived identity. The Store content
+identity and charge apply to the received article. Its owner-observed
+acceptance stamp remains in the embedded record. Missing, unknown, or
+substituted enrollment generations are refusals. This local operator path
 is not yet the portable authenticated author transport.
 
 `fn-hsig-subject-body-injective` proves that equality of two valid authored
@@ -87,7 +91,16 @@ FN-Statement's content-id signature the semantics of exact-source authorship.
 `host/native/signatures.lisp` has a ready verification entry that calls the
 ACL2 projection and preimage, asks libsodium and OpenSSL for independent
 observations, and calls ACL2's both-required `fn-hsig-authorize`. The actual
-Store verdict and reader exposure join remains T10 work.
+The kind-4 accepted-event codec preserves version-0's eleven items and bytes.
+Version 1 has thirteen items: the original eleven followed by exact authored
+source and its versioned content identity. Replay accepts version 1 only when
+the received article projects to that exact source, its canonical carrier
+contains the enrolled principal and ordered key set plus both signature
+components, and its recorded `:verified` verdict names that principal.
+Replay retains the historical verdict without recomputing today's keyring
+capability or trusting a profile tag alone. Native acceptance and reader
+exposure require a combined image/runtime qualification; the reader projection
+is still pending.
 
 The native `hybrid-sign-carrier PRINCIPAL ED-PUBLIC ED-SECRET ML-PUBLIC-PEM
 ML-PRIVATE-PEM SOURCE OUTPUT` command writes an ACL2-rendered article with

@@ -83,7 +83,9 @@ class NativeHybridAuthorTest(unittest.TestCase):
     def test_enroll_author_refuse_tamper_and_restart_query(self):
         article = self.root / "article.eml"
         msgid = "<hybrid-native@example.invalid>"
-        article.write_bytes(b"From: author@example.invalid\r\nNewsgroups: fn.test\r\n"
+        article.write_bytes(b"From: author@example.invalid\r\n"
+                            b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+                            b"Newsgroups: fn.test\r\n"
                             b"Subject: hybrid\r\nMessage-ID: " + msgid.encode() +
                             b"\r\n\r\nexact bytes\r\n")
         owner = self.start_owner()
@@ -132,7 +134,13 @@ class NativeHybridAuthorTest(unittest.TestCase):
                         if line == b".\r\n":
                             break
                         returned.extend(line[1:] if line.startswith(b"..") else line)
-                    self.assertEqual(bytes(returned), article.read_bytes())
+                    self.assertIn(b"FN-Authorship: ", bytes(returned)[:200])
+                    self.assertTrue(bytes(returned).endswith(article.read_bytes()))
+                    received = self.root / "received.eml"
+                    received.write_bytes(bytes(returned))
+                    checked = self.invoke("hybrid-verify-carrier", str(received),
+                                          str(self.ml_public))
+                    self.assertEqual(checked.returncode, 0, checked.stderr.decode())
         finally:
             self.stop_owner(owner)
 
