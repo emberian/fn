@@ -29,6 +29,15 @@ content-matched dependencies, two certified roots). The witness uses a
 constructed signed-carrier composite and refuses a wrong cursor position,
 legacy parent, malformed parent, wrong authored identity and oversized
 cursor. `make check` passed at these bytes. `fn-cpj-project` was admitted as
-an executable definition in this source-matched run; its guard is a separate
-obligation. Current integrated `fn-cp-cursor-decode` has a verified guard.
+an executable definition in that earlier source-matched run; its guard was
+then a separate obligation. Current integrated `fn-cp-cursor-decode` has a verified guard.
 No native image containing this verb has yet been built or run.
+
+On the integrated cursor codec, `fn-cpj-project` now uses the verified
+`fn-cbor-at-mostp` preflight with ACL2-owned bound getters and has a verified
+guard. Local shape lemmas carry a successful decoded cursor as a list and a
+bound parent event's sequence as a number; no codec is opened book-wide.
+The [current-source book and witness](manifests/certify-20260923T231356Z-1459023.json)
+both passed with the qualified w25 ACL2 toolchain, identity
+`1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286`.
+Bounded dotted inputs still refuse with `:limit`, as the witness checks.

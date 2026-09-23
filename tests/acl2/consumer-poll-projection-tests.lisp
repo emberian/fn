@@ -54,3 +54,9 @@
  (equal (fn-cpj-project (make-list 347 :initial-element 0)
                         *cpj-event-bytes*)
         '(:refused :limit)))
+(assert-event
+ (equal (fn-cpj-project '(1 . 2) *cpj-event-bytes*)
+        '(:refused :limit)))
+(assert-event
+ (equal (fn-cpj-project *cpj-cursor-bytes* '(1 . 2))
+        '(:refused :limit)))
