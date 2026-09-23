@@ -68,6 +68,19 @@
                                         (fn-node-acceptance
                                          (fn-sn-node (fn-sn-finish *sn-completing*))))))
                      (fn-record-stamp (fn-sn-completion-record *sn-completing*))))
+(assert-event
+ (consp (fn-find-article
+         "<sn@example>"
+         (fn-state-articles
+          (fn-node-acceptance (fn-sn-node (fn-sn-finish *sn-completing*)))))))
+(must-fail
+ (defthm ast-article-finish-without-enabled-completion-fails
+   (consp
+    (fn-find-article
+     (fn-record-msgid (fn-sn-completion-record *sn-prepared*))
+     (fn-state-articles
+      (fn-node-acceptance (fn-sn-node (fn-sn-finish *sn-prepared*))))))
+   :rule-classes nil))
 
 ; The two exact grammars differ only in the schema octet and final stamp item.
 (defconst *ast-schema0* *fn-record-schema0-golden-octets*)
@@ -284,4 +297,67 @@
       (fn-replay-composite-record (fn-sn-completion-record *sn-completing*)))
      (fn-state-articles
       (fn-node-acceptance (fn-sn-node (fn-sn-finish *sn-completing*))))))
+   :rule-classes nil))
+
+; Each non-article finish arm is reachable, and its completion record is not
+; silently treated as a stamped article by the article-arm theorem.
+(make-event
+ `(defconst *ast-retention-completing*
+    ',(fn-sit-publish *sit-staged-retention*)))
+(make-event
+ `(defconst *ast-keyring-completing*
+    ',(fn-sit-publish *sit-staged-identity*)))
+(defconst *ast-verdict-event*
+  (fn-stxe-make 1 1 1 "<verdict-only@example.invalid>" :unverified
+                *fn-stx-token-signature* 1
+                (fn-stxk-profile *sit-enrollment*)))
+(make-event
+ `(defconst *ast-verdict-completing*
+    ',(fn-sit-publish
+       (fn-sn-prepare-identity
+        (fn-sit-reserve *sit-after-enrollment*)
+        *ast-verdict-event*))))
+(assert-event (fn-sn-completion-enabledp *ast-retention-completing*))
+(assert-event (fn-sn-completion-enabledp *ast-keyring-completing*))
+(assert-event (fn-sn-completion-enabledp *ast-verdict-completing*))
+(assert-event
+ (fn-store-retention-event-p
+  (fn-sn-completion-record *ast-retention-completing*)))
+(assert-event (fn-stxk-p (fn-sn-completion-record *ast-keyring-completing*)))
+(assert-event (fn-stxe-p (fn-sn-completion-record *ast-verdict-completing*)))
+(must-fail
+ (defthm ast-article-finish-without-retention-exclusion-fails
+   (consp
+    (fn-find-article
+     (fn-record-msgid (fn-sn-completion-record *ast-retention-completing*))
+     (fn-state-articles
+      (fn-node-acceptance
+       (fn-sn-node (fn-sn-finish *ast-retention-completing*))))))
+   :rule-classes nil))
+(must-fail
+ (defthm ast-article-finish-without-keyring-exclusion-fails
+   (consp
+    (fn-find-article
+     (fn-record-msgid (fn-sn-completion-record *ast-keyring-completing*))
+     (fn-state-articles
+      (fn-node-acceptance
+       (fn-sn-node (fn-sn-finish *ast-keyring-completing*))))))
+   :rule-classes nil))
+(must-fail
+ (defthm ast-article-finish-without-verdict-exclusion-fails
+   (consp
+    (fn-find-article
+     (fn-record-msgid (fn-sn-completion-record *ast-verdict-completing*))
+     (fn-state-articles
+      (fn-node-acceptance
+       (fn-sn-node (fn-sn-finish *ast-verdict-completing*))))))
+   :rule-classes nil))
+(must-fail
+ (defthm ast-article-finish-without-composite-exclusion-fails
+   (consp
+    (fn-find-article
+     (fn-record-msgid (fn-sn-completion-record *ast-composite-completing*))
+     (fn-state-articles
+      (fn-node-acceptance
+       (fn-sn-node (fn-sn-finish *ast-composite-completing*))))))
    :rule-classes nil))
