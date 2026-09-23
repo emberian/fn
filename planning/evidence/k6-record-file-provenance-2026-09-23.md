@@ -172,3 +172,20 @@ two-root hbox certification passed under `run-20260923T211220Z-bdef`,
 original manifest
 `planning/evidence/manifests/certify-20260923T211222Z-158686.json`.
 Full pair-10 relation preservation remains open as stated above.
+
+Local clause lemmas in the same book now prove the pair-10 pending shape and
+that the newly fenced target decodes to the candidate from the durable view.
+They use the input relation to exclude a simultaneous root operation and
+the exact physical link to identify the candidate target. These are
+components of the output relation, not a new general K0 keystone. The
+article and retention fixtures evaluate both. The book and test roots
+passed selected hbox certification under `run-20260923T211841Z-3e5c`,
+original manifest
+`planning/evidence/manifests/certify-20260923T211844Z-175171.json`.
+The outstanding byte-side proof is preservation of the old durable decoded
+record list through fresh inode allocation/write/fence for arbitrary
+retained history, then composition with state and authority-known/fenced
+invariants and the kernel crash-image clause. A source relation permits
+other durable authority inodes; the argument must use authority-known plus
+the next-inode allocation bound to exclude aliasing, rather than assuming
+old record bytes are unaffected.

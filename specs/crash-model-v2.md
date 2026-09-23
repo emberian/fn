@@ -1572,10 +1572,13 @@ pair-10 physical transaction-directory pending list: precisely one
 `:set-entry` for the typed next transaction name to the newly allocated,
 fenced inode. It excludes earlier transaction operations via the input
 relation and follows the real immutable-link step, with the same three
-hypothesis counterexamples. The remaining output-relation clauses include
-unchanged durable record bytes, root pending shape, state well-formedness,
-candidate decoding, and authority inode provenance; no one-link fact alone
-proves them.
+hypothesis counterexamples. Local clause lemmas now also establish that
+the actual pair-10 byte state satisfies `fn-bs-pending-shape-okp` and its
+new pending target decodes to the typed candidate from its complete fenced
+frame; tests exercise both clauses for article and retention events. The
+remaining output-relation clauses include unchanged durable record bytes,
+state well-formedness and authority inode provenance, and the corresponding
+file-kernel crash-image predicate; no one-link fact alone proves them.
 
 ; K7. Fence after uncertainty: after an error outcome of a :link, :rename or
 ; :fsync-dir step, the kernel is fenced and the byte store's pending list
