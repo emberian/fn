@@ -19,6 +19,21 @@
       (if (fn-cpe-eventp event) (list :write event)
         (list :refused :coordinates)))))
 
+; The host observes fresh entropy; ACL2 validates the two independent
+; 32-octet identities and constructs the one durable bootstrap operation.
+; No socket path, clock, configuration generation or endpoint names an
+; incarnation.  A retry after ambiguous publication is resolved by reopen.
+(defun fn-col-bootstrap (o history incarnation)
+  (let ((s (fn-sn-consumer (fn-own-store o))))
+    (if (or s (not (fn-cbor-octet-listp history))
+            (not (fn-cbor-octet-listp incarnation))
+            (not (equal (len history) 32))
+            (not (equal (len incarnation) 32))
+            (equal history incarnation))
+        (list :refused :identity)
+      (fn-col-result-event
+       o (list :write (list :bootstrap history incarnation))))))
+
 (defun fn-col-register (o consumer group)
   (let* ((store (fn-own-store o))
          (s (fn-sn-consumer store)))
@@ -57,6 +72,7 @@
        o (fn-cp-unregister s *fn-col-principal* consumer)))))
 
 (verify-guards fn-col-result-event)
+(verify-guards fn-col-bootstrap)
 (verify-guards fn-col-register)
 (verify-guards fn-col-ack)
 (verify-guards fn-col-position)

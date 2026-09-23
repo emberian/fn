@@ -19,6 +19,25 @@
 (defconst *colt-boot*
   (colt-commit (fn-sn-initial '("fn.test") 16)
                (fn-cpe-make 0 0 0 '(:bootstrap (1) (2)))))
+(defconst *colt-new-owner*
+  (fn-own-start (fn-sn-initial '("fn.test") 16) 2))
+(defconst *colt-history-id* (make-list 32 :initial-element 11))
+(defconst *colt-incarnation-id* (make-list 32 :initial-element 12))
+(defconst *colt-bootstrap-proposal*
+  (fn-col-bootstrap *colt-new-owner*
+                    *colt-history-id* *colt-incarnation-id*))
+(assert-event (eq (car *colt-bootstrap-proposal*) :write))
+(assert-event
+ (equal (fn-cpe-operation (cadr *colt-bootstrap-proposal*))
+        (list :bootstrap *colt-history-id* *colt-incarnation-id*)))
+(assert-event
+ (equal (fn-col-bootstrap *colt-new-owner*
+                          *colt-history-id* *colt-history-id*)
+        '(:refused :identity)))
+(assert-event
+ (equal (fn-col-bootstrap (fn-own-start *colt-boot* 2)
+                          *colt-history-id* *colt-incarnation-id*)
+        '(:refused :identity)))
 (defconst *colt-o0* (fn-own-start *colt-boot* 2))
 (defconst *colt-id* '(7))
 (defconst *colt-group* '(102 110 46 116 101 115 116)) ; fn.test

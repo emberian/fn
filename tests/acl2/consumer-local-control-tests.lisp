@@ -9,6 +9,13 @@
                 *ncl-group* 1 0 1 2))
 (defconst *ncl-token* (fn-cp-cursor-encode *ncl-cursor*))
 (assert-event
+ (equal (fn-ncl-request-decode (fn-ncl-request-encode :bootstrap nil nil))
+        '(:consumer :bootstrap nil nil)))
+(assert-event
+ (equal (fn-ncl-cli-plan '(98 111 111 116 115 116 114 97 112)
+                         (list '(47 116 109 112 47 99)))
+        '(:run :bootstrap (47 116 109 112 47 99) nil nil nil)))
+(assert-event
  (equal (fn-ncl-request-decode
          (fn-ncl-request-encode :register *ncl-id* *ncl-group*))
         (list :consumer :register *ncl-id* *ncl-group*)))

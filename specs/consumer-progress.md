@@ -228,7 +228,7 @@ publication path must exercise refusal and ambiguity around its
 `record-linked`, `record-attempted`, `record-durable`, `record-completing`,
 `record-staging-cleaned`, `finish-consumed` and `finish-durable` process-death
 cuts, plus recovery cuts. The first local owner command source now runs through
-`fn-owner-consumer-local-{register,ack,position,unregister}` in
+`fn-owner-consumer-local-{bootstrap,register,ack,position,unregister}` in
 `host/owner-host.lisp`, which calls `fn-col-*` over the live owner. The
 `FNCT` kind-4/5 codec and CLI plan in `books/consumer-local-control.lisp`
 carry bounded request/reply bytes over the existing mode-0600 Unix control
@@ -239,7 +239,11 @@ this profile until they supply an equivalent peer-credential observation. The na
 handler serializes each command with the owner, publishes
 the exact ACL2 event through `fnn-owner-consumer-commit` and the shared
 `fnn-owner-publish-prepared` gate, and returns a cursor only after durable
-completion. A lost post-submission reply is uncertain and `position` recovers
+completion. `consumer bootstrap CONTROL` reads two 32-octet OS entropy
+observations; ACL2 validates them, constructs the initial history/incarnation
+event, and refuses a duplicate or equal identity. The source of entropy and
+its uniqueness are host trust assumptions, not ACL2 theorems. A lost
+post-submission reply is uncertain and `position` recovers
 the recorded declaration. This source route still needs a combined saved
 image and process-death test before it can be claimed served.
 
