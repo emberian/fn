@@ -91,15 +91,15 @@
                                     (fn-sn-keyring *sni-composite-finished*))
                         (fn-stmt-id *sni-stmt*))))
 
-; The indexedp premise matters: a completing state with an already populated
-; but well-shaped index adds the same statement twice and remains stale.
+; The indexedp premise matters: a completing state with a well-shaped index
+; that already includes an unrelated second statement remains stale.
 (make-event
  `(defconst *sni-composite-stale*
     ',(fn-sn-update-indexed
        *sni-composite-completing*
        (fn-sn-files *sni-composite-completing*)
        (fn-sn-node *sni-composite-completing*)
-       (fn-sn-index *sni-finished*))))
+       (fn-sn-index *sni-forked*))))
 (assert-event (fn-sn-statep *sni-composite-stale*))
 (assert-event (not (fn-sn-indexedp *sni-composite-stale*)))
 (assert-event (not (fn-sn-indexedp (fn-sn-finish *sni-composite-stale*))))
