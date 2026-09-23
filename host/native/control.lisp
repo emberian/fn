@@ -126,8 +126,10 @@
   "Bind the local-control principal to the process's effective UID.
 
 Darwin getpeereid and Linux SO_PEERCRED observe credentials on the connected
-Unix socket. A failed observation refuses. The OS supplies the UID; it does
-not decide the ACL2 consumer operation or prove the peer's application work."
+Unix socket. A failed observation refuses. The first value preserves the E2
+same-owner gate; the second carries the authenticated numeric UID for ACL2's
+separate local topic administrator binding. The OS supplies that observation,
+not a topic or consumer authority decision."
   #+darwin
   (sb-alien:with-alien ((peer-uid sb-alien:unsigned-int)
                         (peer-gid sb-alien:unsigned-int))
@@ -140,7 +142,9 @@ not decide the ACL2 consumer operation or prove the peer's application work."
                         (* sb-alien:unsigned-int)))
              (fnn-socket-fd socket)
              (sb-alien:addr peer-uid) (sb-alien:addr peer-gid))))
-      (and (zerop result) (= peer-uid (sb-posix:geteuid)))))
+      (if (and (zerop result) (= peer-uid (sb-posix:geteuid)))
+          (values t peer-uid)
+        (values nil nil))))
   #+linux
   (handler-case
       ;; Linux ucred is three 32-bit fields: pid, uid, gid.  SOL_SOCKET=1 and
@@ -162,11 +166,15 @@ not decide the ACL2 consumer operation or prove the peer's application work."
                  (fnn-socket-fd socket) 1 17
                  (sb-alien:addr (sb-alien:deref credentials 0))
                  (sb-alien:addr length))))
-          (and (zerop result) (= length 12)
-               (= (sb-alien:deref credentials 1) (sb-posix:geteuid))))))
-    (error () nil))
+          (let ((uid (sb-alien:deref credentials 1)))
+            (if (and (zerop result) (= length 12)
+                     (= uid (sb-posix:geteuid)))
+                (values t uid)
+              (values nil nil))))))
+    (error () (values nil nil)))
   #-(or darwin linux)
-  (let ((ignored socket)) (declare (ignore ignored)) nil))
+  (let ((ignored socket)) (declare (ignore ignored))
+    (values nil nil)))
 
 (defun fnn-control-stop-cut-armed-p ()
   "Whether FN_NATIVE_CONTROL_TEST_STOP arms the developer stop cut.
