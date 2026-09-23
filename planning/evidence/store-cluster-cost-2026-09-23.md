@@ -205,4 +205,30 @@ a function body. They are left to the treewide run.
 
 ## Certification
 
-Submitted to persvati from this branch; the run id is recorded in the commit that follows.
+Not submitted. The farm refused the lane run before ACL2 started:
+`farm.py submit persvati books/store-node books/store-node-invariants
+books/store-node-traces tests/acl2/store-node-tests
+tests/acl2/store-node-index-tests tests/acl2/store-node-traces-tests --jobs
+4 --timeout-seconds 1800 --remote-root /home/ember/fn-gates/cost-store
+--acl2 /home/ember/fn-gates/toolchains/w25/acl2-literal --cache
+/home/ember/fn-certcache` answered "no origin/toolchain-coherent
+certificate set ... Re-run with --closure" (cache preflight: variants). Of
+this closure, 24 books have no pair in `/home/ember/fn-certcache` at these
+digests:
+
+- `records-seam`, `records-shape`, `replay`, `retention`,
+  `retention-invariants`;
+- `statement`, `statement-attach`, `statement-codec`,
+  `statement-invariants`, `statement-items`, `statement-seam`;
+- `store-events`, `store-files`, `store-files-invariants`,
+  `store-files-traces`;
+- `stx-accept-records`, `stx-carrier`, `stx-evidence-records`, `stx-index`,
+  `stx-keyring-records`, `stx-lace`, `stx-verify`, `wildmat`;
+- `tests/acl2/crypto-seam-tests`.
+
+These are the seam lane's converted books at `dev` 549c750a. Under
+`planning/how-we-work.md`, "Certification cost", a lane does not use
+`--closure`, so this lane stopped here. The gate is root's treewide
+certification of `dev`'s head. After it, the plain-roots submit above is the
+lane's whole run. Until then nothing in this file is certified. It is
+session evidence only.
