@@ -1577,7 +1577,8 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-062"
+        "PRF-062",
+        "PRF-065"
       ],
       "verification": [
         "proof",
@@ -1598,10 +1599,14 @@
         "tests/test_native_topic_metadata.py",
         "planning/evidence/manifests/certify-20260923T205409Z-107337.json",
         "planning/evidence/manifests/certify-20260923T205651Z-114702.json",
-        "planning/evidence/manifests/certify-20260923T210021Z-121875.json"
+        "planning/evidence/manifests/certify-20260923T210021Z-121875.json",
+        "books/topic-history-authorship.lisp",
+        "tests/acl2/topic-history-authorship-tests.lisp",
+        "planning/evidence/topic-history-authorship-p3-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T211422Z-167141.json"
       ],
-      "implementation_note": "The experimental root/control/report codec, ACL2-owned canonical folded field renderer, widened bounded article envelope and offline native carrier inspection are implemented. No durable topic admission, current policy or governance authority follows from projection.",
-      "note": "General constructor bound/inverse, host-called authored-field binding, physical-line bound and ACL2 max-profile/negative tests are certified. Source-matched native max-profile saved-image execution remains pending. The fixed-controller profile remains experimental."
+      "implementation_note": "The experimental root/control/report codec, ACL2-owned canonical folded field renderer, widened bounded article envelope and offline native carrier inspection are implemented. No durable topic admission, current policy or governance authority follows from projection. The offline inspector now emits verifier-derived principal/keyset author reference and explicit root-declaration binding status; the schema-1 historical selector requires T10 event/snapshot binding before reading exact source. Neither is topic admission.",
+      "note": "General constructor bound/inverse, host-called authored-field binding, physical-line bound and ACL2 max-profile/negative tests are certified. Source-matched native max-profile saved-image execution remains pending. The fixed-controller profile remains experimental. PRF-065 covers the candidate/authorship context in scoped ACL2 tests; its combined native image and durable admission remain open."
     },
     {
       "id": "CNS-001",

@@ -31,7 +31,10 @@ The P3 codec now has general constructor bounds/inverse and host-called
 authored-field binding proofs. Canonical folding and a bounded larger header
 envelope accommodate the maximum topic profile in ACL2; the exact maximum
 profile passed native inspection on frozen `86323c89`, while durable topic
-admission remains open. K6 now carries exact typed Store-event frames
+admission remains open. The candidate selector now binds controller/keyset to
+verified authorship; its historical route requires the exact schema-1 source
+and enrollment snapshot. This does not establish topic admission or governance.
+K6 now carries exact typed Store-event frames
 through the modeled surviving-link crash. The ordered whole-list scanner
 join now holds under the actual pair-10 byte/kernel relation; general K0 must
 establish that relation along every supported served trace.
