@@ -253,16 +253,16 @@
               evidence)))))
 
 ; -----------------------------------------------------------------------------
-; Journal records (proposed FNWF additions; see specs/retention.md).
+; Journal records (append-only FNWF additions; see specs/retention.md).
 ;
 ;   (:undertake work-id charge)
 ;   (:release receipt-id work-id subject issuer policy-id terms-id incarnation)
 ;
 ; fn-bp-journal-recordp does not know these kinds, so fn-bp-apply-journal-record
-; refuses them; this wrapper is a strict extension of the host-called function
+; refuses them; this wrapper is a strict extension of the earlier function
 ; and equals it on every record that function accepts
-; (fn-bprl-apply-journal-record-agrees-with-host-on-bp-records).  The host
-; switch (host/workflow-host.lisp:27 and :40) is an open item.
+; (fn-bprl-apply-journal-record-agrees-with-host-on-bp-records).  The native
+; host now calls this extension for FNWF preflight, apply and replay.
 
 (defun fn-bprl-undertake-recordp (r)
   (declare (xargs :guard t :verify-guards nil))

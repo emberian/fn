@@ -154,6 +154,19 @@ one Store, replays FNWF against that same Store image, asks
 intent and ordinary durable outcome as separate immutable records.  A later
 process obtains status only after replaying those records.
 
+`fn-workflow-undertake-record`, `fn-workflow-receipt-record`, and
+`fn-workflow-release-record` now project the installed workflow image into
+`books/bp-workflow-constructors.lisp`. The receipt constructor runs the
+bounded exact ADU decoder and tests the current ACL2 workflow transition;
+the host's `trusted-local-observation-v0` gate supplies the explicit local
+policy authorization boolean, not a signature-verification claim. The
+release constructor is the existing `fn-bprl-release-record` decision with
+exact-record preflight. `host/workflow-host.lisp` uses the `fn-bprl` replay,
+preflight and apply interpreter so the two new FNWF kinds survive a restart.
+The configured-owner `bp-obligation` command publishes the retention event
+through the canonical Store owner; an FNWF release record alone has no Store
+release authority.
+
 `fn-aj-authorize` is the admission function this path calls.  Its carried
 frontier owns the exact next filename, record count, aggregate byte count,
 configuration-first order, per-domain frame bound, and intent-resolution

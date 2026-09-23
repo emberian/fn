@@ -94,16 +94,22 @@ receipt, no release, and nothing for `fn-assume-peer-retainsp` to hold of);
 evidence shapes `fn-assume-policy-authorizedp` consumes; binding the verdict
 to that signature is D09).
 
-Workflow journal: `fn-bprl-apply-journal-record` extends the host-called
-`fn-bp-apply-journal-record` (`host/workflow-host.lisp:27`, `:40`) with two
-proposed FNWF records, `(:undertake work-id charge)` and
+Workflow journal: the host now calls `fn-bprl-apply-journal-record` and
+`fn-bprl-replay-journal` for preflight, durable apply and recovery. They
+extend the earlier `fn-bp-*` workflow interpreter with two append-only FNWF
+records, `(:undertake work-id charge)` and
 `(:release receipt-id work-id subject issuer policy-id terms-id incarnation)`;
 `fn-bprl-apply-journal-record-agrees-with-host-on-bp-records` says it equals
-the host-called function on every record that function accepts, and a release
+the earlier interpreter on every record that function accepts, and a release
 record whose evidence fields differ from the decision ACL2 recomputes is
-refused (`fn-bprl-release-record-replays-decision-by-definition`). The host
-wrapper. These records remain workflow history and are not Store release
-authority.
+refused (`fn-bprl-release-record-replays-decision-by-definition`). FNWF codes
+8 and 9 encode these records; codes 1 through 7 retain their existing wire
+values. `books/bp-workflow-constructors.lisp` parses the exact canonical
+receipt ADU, requires the explicitly selected trusted-local observation,
+and returns intent or release records only after ACL2 preflight in the current
+state. These records remain workflow history and are not Store release
+authority. The configured owner's separate Store release event remains the
+authoritative retention mutation.
 
 The authoritative retention mutation is a variant of the Store's single
 immutable transaction history (`books/store-events.lisp`). Existing article
