@@ -232,6 +232,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-foundation-tests \
 	books/bp-node-fragment-family \
 	tests/acl2/bp-node-fragment-family-tests \
+	books/bp-fnbs-codec \
+	tests/acl2/bp-fnbs-codec-tests \
+	tests/acl2/bp-fnbs-byte-counterexamples \
 	books/bp-sequence-fidelity \
 	tests/acl2/bp-sequence-fidelity-tests \
 	books/bp-receive-evidence \
