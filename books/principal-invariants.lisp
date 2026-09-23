@@ -194,11 +194,35 @@
 ; -----------------------------------------------------------------------------
 ; Succession: confinement to the prior key
 
+; The state preservation below takes one fact from the succession payload:
+; a key it yields is a public key.  It takes nothing else from the statement,
+; so it runs in a closed theory.  In the book's theory, with the codec and
+; record vocabularies it opens at the top, every `true-listp' and
+; `fn-cbor-octet-listp' term backchained through
+; `fn-record-cbor-octet-list-true-listp', `fn-cbor-octet-listp-implies-true-listp'
+; and `fn-stmt-decode-ok-implies-octets' into `fn-cbor-decode' (803 k frames,
+; none useful), and `fn-prin-succession-key' opened its decode test: 12.2 s
+; and 1.9 M steps on the dev head, 5 100 steps closed
+; (planning/evidence/misc-books-cost-2026-09-23.md).
+(local
+ (defthm fn-prin-succession-key-is-a-key
+   (implies (fn-prin-succession-key s)
+            (fn-sig-public-key-p (fn-prin-succession-key s)))
+   :hints (("Goal" :in-theory '(fn-prin-succession-key)))))
+
 (defthm fn-prin-apply-succession-preserves-statep
   (implies (fn-prin-statep st)
            (fn-prin-statep (fn-prin-apply-succession st s)))
-  :hints (("Goal" :in-theory (disable fn-stmt-verifiedp fn-stmt-p
-                                      fn-stmt-decode-items))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-prin-apply-succession
+                                fn-prin-succession-acceptablep
+                                fn-prin-statep fn-prin-make-state
+                                fn-prin-state-id fn-prin-state-key
+                                fn-prin-state-incarnation
+                                fn-prin-state-next fn-record-uint32p
+                                len true-listp natp car-cons cdr-cons
+                                fn-prin-succession-key-is-a-key)
+                              (theory 'minimal-theory)))))
 
 (defthm fn-prin-resolve-preserves-statep
   (implies (fn-prin-statep st)
