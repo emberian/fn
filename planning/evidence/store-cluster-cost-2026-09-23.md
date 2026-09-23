@@ -17,13 +17,14 @@ repair, and that measurement is in the table below.
 | `/home/ember/fn-gates/t1-seam/build/acl2/certify-20260923T000250Z-1473169/books--store-node.certify.log` | store-node | 306.6 s |
 | same run, `books--store-node-invariants.certify.log` | store-node-invariants | 311.3 s |
 | same run, `books--store-node-traces.certify.log` | store-node-traces | 109.0 s |
-| `/home/ember/fn-gates/dev-head/build/acl2/certify-20260923T003741Z-1790068/books--store-node.certify.log` | store-node, `dev` head | 372.7 s |
-| same run, `books--store-node-invariants.certify.log` | store-node-invariants, `dev` head | 307.6 s |
 
-The `dev`-head run did not reach store-node-traces. The seam run is the
-manifest `certify-20260923T000250Z-1473169`. The event times below come
-from its logs. In the `dev`-head logs the same events have the same step
-counts, so the proofs are the same and only the wall time differs.
+The seam run is the manifest `certify-20260923T000250Z-1473169`, and the
+event times below come from its logs. Root's treewide run of `dev`'s head
+was still in flight on persvati under `/home/ember/fn-gates/dev-head/` when
+this was written, and it has no manifest yet. Its logs give store-node
+372.7 s and store-node-invariants 307.6 s, with the same step counts for
+every slow event, so the proofs are the same and only the wall time
+differs. It had not reached store-node-traces.
 
 ## The slow events
 
