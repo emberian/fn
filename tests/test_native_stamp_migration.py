@@ -1,6 +1,7 @@
 """A real pre-T2 Store reopened and extended by a T2 native image.
 
-Set FN_PRE_T2_NATIVE_HOST and FN_T2_NATIVE_HOST to two executable images.
+Set FN_PRE_T2_NATIVE_DEVELOPER_HOST and FN_T2_NATIVE_DEVELOPER_HOST to two
+frozen executable developer images.  Store POST is developer-only.
 The old image writes schema 0; the new image must preserve those bytes while
 writing schema 1 for its next acceptance.  The temporary store is isolated.
 """
@@ -11,17 +12,33 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-OLD = Path(os.environ.get("FN_PRE_T2_NATIVE_HOST", "/nonexistent/fn-pre-t2"))
-NEW = Path(os.environ.get("FN_T2_NATIVE_HOST", "/nonexistent/fn-t2"))
+sys.path.insert(0, str(ROOT / "tools"))
+import frame_bridge  # noqa: E402
+
+OLD = Path(os.environ.get("FN_PRE_T2_NATIVE_DEVELOPER_HOST",
+                          "/nonexistent/fn-pre-t2-developer"))
+NEW = Path(os.environ.get("FN_T2_NATIVE_DEVELOPER_HOST",
+                          "/nonexistent/fn-t2-developer"))
+DTN_EPOCH_UNIX_SECONDS = 946684800
 
 
-@unittest.skipUnless(OLD.is_file() and NEW.is_file(),
-                     "FN_PRE_T2_NATIVE_HOST and FN_T2_NATIVE_HOST are required")
+@unittest.skipUnless(os.access(OLD, os.X_OK) and os.access(NEW, os.X_OK),
+                     "frozen pre-T2 and T2 developer images are required")
 class NativeStampMigrationTests(unittest.TestCase):
+    def stamp_of_frame(self, raw):
+        """Ask the ACL2 byte-store decoder for the exact persisted stamp."""
+        bridge = frame_bridge.session()
+        bridge.call('(include-book "books/byte-store-scan")')
+        literal = "(" + " ".join(str(octet) for octet in raw) + ")"
+        form = "(fn-bs-record-of-octets '" + literal + ")"
+        self.assertEqual(bridge.call("(fn-record-p " + form + ")"), True)
+        return bridge.call("(fn-record-stamp " + form + ")")
+
     def command(self, image, store, verb, *arguments):
         env = dict(os.environ)
         env["FN_HOST"] = "native"
@@ -49,7 +66,7 @@ class NativeStampMigrationTests(unittest.TestCase):
             old_record = store / "transactions" / "00000000000000000000.txn"
             before = old_record.read_bytes()
             before_hash = hashlib.sha256(before).hexdigest()
-            self.assertIn(b"\x44fn-r\x00", before)
+            self.assertEqual(self.stamp_of_frame(before), frame_bridge.Keyword("legacy"))
 
             status = self.command(NEW, store, "status")
             self.assertIn(b"articles=1", status)
@@ -59,10 +76,18 @@ class NativeStampMigrationTests(unittest.TestCase):
                              before_hash)
 
             payload.write_bytes(octets.replace(b"old", b"new"))
+            before_post = int(time.time()) - DTN_EPOCH_UNIX_SECONDS
             self.command(NEW, store, "post", "--message-id", new_id,
                          "--payload", payload, "--group", "fn.letters")
+            after_post = int(time.time()) - DTN_EPOCH_UNIX_SECONDS
             new_record = store / "transactions" / "00000000000000000001.txn"
-            self.assertIn(b"\x44fn-r\x01", new_record.read_bytes())
+            stamp = self.stamp_of_frame(new_record.read_bytes())
+            self.assertIsInstance(stamp, int)
+            self.assertNotIsInstance(stamp, bool)
+            self.assertLessEqual(before_post, stamp)
+            self.assertLessEqual(stamp, after_post)
+            self.assertEqual(self.command(NEW, store, "inspect", "--message-id", new_id),
+                             payload.read_bytes())
             self.assertEqual(self.command(NEW, store, "inspect", "--message-id", old_id),
                              octets)
             self.assertEqual(hashlib.sha256(old_record.read_bytes()).hexdigest(),
