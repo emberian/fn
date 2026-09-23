@@ -5,7 +5,7 @@ session. None of them is a gate or a claim; each says what it does at the top.
 
 - `hbox-image-build.sh <frozen-tree> <40-char-rev>`: after a farm closure
   certifies, acquire and validate the artifact set, build the production,
-  developer and DTN images under `swarm-build`, freeze them under
+  developer, DTN production and DTN developer images under `swarm-build`, freeze them under
   `build/images/<rev>/` with a source manifest and hashes.
 - `persvati-acl2p.sh build | measure <book> <mode> [cpus]`: build ACL2(p)
   8.7 into `/home/ember/fn-gates/toolchains/w25p` from the tarball w25 used,
@@ -38,3 +38,43 @@ they are waiting on a certificate. Measured on a 63-book closure: 337 s and
 four reds, against 691 s and one for an ordinary round. Its certificates are
 published nowhere and its output is evidence of nothing but the list of reds
 (docs/proofs.md, planning/evidence/triage-2026-09-22.md).
+
+## Frozen image and isolated upgrade
+
+`hbox-image-build.sh` now freezes each core beside its launcher, copied SBCL
+runtime/home, and the OpenSSL 3.5 pair plus libsodium used at runtime. The
+launchers resolve these from their own directory. Verify `image.sha256` with
+`(cd IMAGE && sha256sum -c image.sha256)` and exercise `IMAGE/fn-host --fn
+reader invalid-port 1 -` (production refusal 5) before installation. The
+source tree and original `build/*.core` are not runtime inputs. The initial
+`hbox-node-deploy.sh` takes the full frozen image directory as fourth argument.
+It still refuses an existing store.
+
+For a managed *isolated fixture* node, put the persistent `store/`, `fn.toml`,
+`tls/` and `credentials.txt` directly under NODE. Keep immutable installs in
+`NODE/releases/REV` and point `NODE/current` at the active release. Make the
+service's executable `NODE/current/bin/fn operator NODE/fn.toml run` before
+using `packaging/upgrade-native.sh`; its control hook receives `stop`, `start`
+and `check` with NODE as its second argument. The check must verify the actual
+service and a fresh read of a known article. Invoke:
+
+```sh
+FN_UPGRADE_STORE_COMPATIBLE=yes FN_UPGRADE_CONTROL=/path/to/fixture-control \
+  sh packaging/upgrade-native.sh NODE FROZEN_IMAGE_DIR REV
+```
+
+Before setting `FN_UPGRADE_STORE_COMPATIBLE=yes`, establish that the prior
+binary can read every Store change the candidate may commit before a health
+failure. A failed switch restores the executable and service, not prior Store
+bytes. The tool cannot infer schema compatibility. Staged service templates
+name the final release path, never the temporary stage path.
+
+The tool verifies and stages the candidate before stopping, switches the
+`current` symlink atomically, then starts/checks. A failed start/check restores
+the prior symlink and restarts/checks it. The persistent paths are never copied
+into a release; the tool checks their hashes and the store directory identity.
+The old release remains available. This is tested only on isolated fixture
+nodes. It has not been run on `/tank/fn/node`; that existing unit names a
+versioned executable and must first be migrated to `current` during a planned
+operator maintenance window. No automatic migration or live-node action is
+part of this runbook.
