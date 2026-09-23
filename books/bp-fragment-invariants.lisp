@@ -699,3 +699,41 @@
        (equal (fn-bpp-adu-key
                (fn-bpf-refragment-block parent local-offset))
               (fn-bpp-adu-key parent))))
+
+; The second-cut mapper tracks every local start, including a nonzero parent
+; offset.  This induction is the list-level step absent from the single-child
+; constructor equation above.
+(defthm fn-bpf-refragment-primaries-nth
+  (implies (and (natp i) (< i (len starts)))
+           (equal (nth i (fn-bpf-refragment-primaries parent starts))
+                  (fn-bpf-refragment-block parent (nth i starts))))
+  :hints (("Goal" :induct (nth i starts))))
+
+(defthm fn-bpf-refragment-primaries-compose-at
+  (implies (and (fn-bpp-blockp parent)
+                (fn-bpp-fragmentp (fn-bpp-flags parent))
+                (fn-bpf-fragmentablep parent)
+                (equal (car (fn-bpf-fragment payload boundaries)) :ok)
+                (<= (+ (fn-bpp-fragment-offset parent) (len payload))
+                    (fn-bpp-total-adu-length parent))
+                (natp i)
+                (< i (len (fn-bpf-starts boundaries))))
+           (let* ((starts (fn-bpf-starts boundaries))
+                  (child (nth i (fn-bpf-refragment-primaries parent starts))))
+             (and (equal (fn-bpp-fragment-offset child)
+                         (+ (fn-bpp-fragment-offset parent) (nth i starts)))
+                  (equal (fn-bpp-total-adu-length child)
+                         (fn-bpp-total-adu-length parent))
+                  (equal (fn-bpp-adu-key child)
+                         (fn-bpp-adu-key parent)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpf-refragment-primaries-nth
+                            (starts (fn-bpf-starts boundaries)))
+                 (:instance fn-bpf-refragment-block-unfolds
+                            (local-offset
+                             (nth i (fn-bpf-starts boundaries)))))
+           :in-theory (disable fn-bpf-refragment-primaries-nth
+                               fn-bpf-refragment-block-unfolds
+                               fn-bpf-refragment-primaries
+                               fn-bpf-refragment-block
+                               fn-bpf-fragment-block))))
