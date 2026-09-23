@@ -13,16 +13,7 @@
 
 (defun fn-bpnf-frame-ingressp (ingress)
   (declare (xargs :guard t))
-  (and (true-listp ingress) (equal (len ingress) 6)
-       (equal (car ingress) :cl)
-       (consp (nth 1 ingress))
-       (fn-frame-natp (car (nth 1 ingress)))
-       (fn-frame-natp (cdr (nth 1 ingress)))
-       (fn-frame-natp (nth 2 ingress))
-       (fn-bpp-eidp (nth 3 ingress))
-       (or (null (nth 4 ingress))
-           (fn-bpn-machine-textp (nth 4 ingress)))
-       (fn-frame-natp (nth 5 ingress))))
+  (fn-bpnf-cl-ingressp ingress))
 
 (defun fn-bpnf-frame-held (ingress arrival bundle wire)
   (declare (xargs :guard t))
