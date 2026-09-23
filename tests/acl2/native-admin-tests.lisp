@@ -474,6 +474,9 @@
                      :accepted))
 (assert-event
  (and (fn-cfg-delta-listp (fn-native-admin-plan-deltas *fn-na-bp-boundary*))
+      (fn-cfg-peer-find "dtn-peer"
+        (fn-cfg-delta-rows (car (fn-native-admin-plan-deltas
+                                 *fn-na-bp-boundary*))))
       (member-equal
        (fn-cfg-row-make "dtn-peer" "bp-boundary-originators"
                         "all-co-resident" 0)
