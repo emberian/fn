@@ -250,22 +250,37 @@
   (declare (xargs :guard t))
   (and (posp x) (<= x 16777216)))
 
-(fn-defrecord fn-bpn-machine-state
-  :tag :fn-bpn-machine-state
-  :constructor (fn-bpn-make-machine-state config jobs contacts pending fenced
-                                          next-token max-jobs max-octets)
-  :fields ((fn-bpn-machine-state-config fn-bpn-configp)
-           (fn-bpn-machine-state-jobs fn-bpn-job-listp)
-           (fn-bpn-machine-state-contacts fn-bpn-contact-listp)
-           (fn-bpn-machine-state-pending fn-bpn-maybe-pendingp)
-           (fn-bpn-machine-state-fenced fn-bpn-machine-boolp)
-           (fn-bpn-machine-state-next-token fn-bpn-machine-u64p)
-           (fn-bpn-machine-state-max-jobs fn-bpn-machine-limitp)
-           (fn-bpn-machine-state-max-octets fn-bpn-machine-limitp))
-  :recognizer fn-bpn-machine-recordp
-  :recognizer-verify-guards nil
-  :car-fn fn-cbor-ag-car
-  :cdr-fn fn-cbor-ag-cdr)
+; `fn-defrecord` proves `<recognizer>-forward-shape` (the recognizer implies
+; its shape predicate) with the recognizer open in the current theory, so
+; every field predicate that is enabled here opens with it.  The fact needs
+; only the recognizer's first conjunct.  With the field predicates open the
+; proof split 1 460 ways (120 s), and the answer record's, which opens
+; `fn-bpn-machine-statep` and so this recognizer again, 1 462 ways (128.6 s);
+; planning/evidence/bp-books-cost-2026-09-23.md.  Each record event closes
+; them inside its own `encapsulate`, so the rest of the book is unchanged.
+(encapsulate
+ ()
+ (local (in-theory (disable fn-bpn-job-listp
+                            fn-bpn-contact-listp fn-bpn-maybe-pendingp
+                            fn-bpn-machine-boolp fn-bpn-machine-u64p
+                            fn-bpn-machine-limitp)))
+
+ (fn-defrecord fn-bpn-machine-state
+   :tag :fn-bpn-machine-state
+   :constructor (fn-bpn-make-machine-state config jobs contacts pending fenced
+                                           next-token max-jobs max-octets)
+   :fields ((fn-bpn-machine-state-config fn-bpn-configp)
+            (fn-bpn-machine-state-jobs fn-bpn-job-listp)
+            (fn-bpn-machine-state-contacts fn-bpn-contact-listp)
+            (fn-bpn-machine-state-pending fn-bpn-maybe-pendingp)
+            (fn-bpn-machine-state-fenced fn-bpn-machine-boolp)
+            (fn-bpn-machine-state-next-token fn-bpn-machine-u64p)
+            (fn-bpn-machine-state-max-jobs fn-bpn-machine-limitp)
+            (fn-bpn-machine-state-max-octets fn-bpn-machine-limitp))
+   :recognizer fn-bpn-machine-recordp
+   :recognizer-verify-guards nil
+   :car-fn fn-cbor-ag-car
+   :cdr-fn fn-cbor-ag-cdr))
 
 (defun fn-bpn-machine-statep (st)
   (declare (xargs :guard t :verify-guards nil))
@@ -291,14 +306,18 @@
        (equal (car answer) :existing)
        (fn-bpp-timep (nth 1 answer))))
 
-(fn-defrecord fn-bpn-answer
-  :tag :fn-bpn-answer
-  :constructor (fn-bpn-answer st effects)
-  :fields ((fn-bpn-answer-state fn-bpn-machine-statep)
-           (fn-bpn-answer-effects fn-bpn-effect-listp))
-  :recognizer-verify-guards nil
-  :car-fn fn-cbor-ag-car
-  :cdr-fn fn-cbor-ag-cdr)
+(encapsulate
+ ()
+ (local (in-theory (disable fn-bpn-machine-statep fn-bpn-effect-listp)))
+
+ (fn-defrecord fn-bpn-answer
+   :tag :fn-bpn-answer
+   :constructor (fn-bpn-answer st effects)
+   :fields ((fn-bpn-answer-state fn-bpn-machine-statep)
+            (fn-bpn-answer-effects fn-bpn-effect-listp))
+   :recognizer-verify-guards nil
+   :car-fn fn-cbor-ag-car
+   :cdr-fn fn-cbor-ag-cdr))
 
 ; The transition layer is total and deliberately accepts malformed host events
 ; so it can refuse them in the logic.  Its raw execution is reached through
