@@ -8,9 +8,14 @@
   (fn-cnode-config
    (fn-replay-result-node
     (fn-cpr-replay *cpo-t-configs* *cpo-t-events*))))
+(defconst *ocl-t-open*
+  (cdr (fn-ocfg-open
+        (fn-ocfg-make (fn-own-start *cpo-t-ready* 3)
+                      *ocl-t-cfg* nil nil) nil)))
 (defconst *ocl-t-before*
-  (fn-ocfg-make (fn-own-start *cpo-t-ready* 3)
-                *ocl-t-cfg* nil *cpo-t-increase*))
+  (fn-ocfg-make (fn-ocfg-owner *ocl-t-open*)
+                *ocl-t-cfg* (fn-ocfg-pins *ocl-t-open*)
+                *cpo-t-increase*))
 (defconst *ocl-t-after* (fn-ocl-complete *ocl-t-before*))
 
 (assert-event (fn-cst-relation *cpo-t-ready*))
@@ -26,6 +31,45 @@
  (equal (fn-cfg-generation (fn-ocfg-config *ocl-t-after*)) 3))
 (assert-event
  (equal (fn-ocfg-pins *ocl-t-after*) (fn-ocfg-pins *ocl-t-before*)))
+(assert-event (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocl-t-after*))))
+(assert-event (equal (fn-ocfg-conn-generation *ocl-t-after* 0) 2))
+(assert-event (equal (fn-ocfg-served *ocl-t-after* 0)
+                     (fn-ocfg-served *ocl-t-before* 0)))
+
+; A second durable change creates a group in the Store allocation domain.
+; The old connection still serves its pinned generation, while a connection
+; opened afterwards pins the new served table and can name the new group.
+(defconst *ocl-t-create-before*
+  (fn-ocfg-make (fn-ocfg-owner *ocl-t-after*)
+                (fn-ocfg-config *ocl-t-after*)
+                (fn-ocfg-pins *ocl-t-after*) *cpo-t-create*))
+(defconst *ocl-t-created* (fn-ocl-complete *ocl-t-create-before*))
+(defconst *ocl-t-new-open* (cdr (fn-ocfg-open *ocl-t-created* nil)))
+(assert-event (null (fn-ocfg-staged *ocl-t-created*)))
+(assert-event
+ (member-equal "fn.live"
+               (fn-sn-groups (fn-own-store (fn-ocfg-owner *ocl-t-created*)))))
+(assert-event
+ (member-equal
+  "fn.live"
+  (fn-state-groups
+   (fn-own-view-archive (fn-own-view (fn-ocfg-owner *ocl-t-created*))))))
+(assert-event
+ (not (member-equal
+       "fn.live"
+       (fn-state-groups
+        (fn-own-conn-archive
+         (fn-own-find-conn 0
+          (fn-own-conns (fn-ocfg-owner *ocl-t-new-open*))))))))
+(assert-event (not (member-equal "fn.live" (fn-ocfg-served *ocl-t-new-open* 0))))
+(assert-event (member-equal "fn.live" (fn-ocfg-served *ocl-t-new-open* 1)))
+(assert-event
+ (member-equal
+  "fn.live"
+  (fn-state-groups
+   (fn-own-conn-archive
+    (fn-own-find-conn 1
+     (fn-own-conns (fn-ocfg-owner *ocl-t-new-open*)))))))
 
 ; A record below the live reservation total remains staged after durable
 ; publication; the host must fence and reopen rather than report acceptance.
