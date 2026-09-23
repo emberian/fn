@@ -23,7 +23,10 @@
            :in-theory (e/d (fn-own-feed-port-peer)
                             (fn-feed-live-port-step
                              fn-feed-live-port-step-refusal-preserves-work
-                             fn-frame-item fn-own-feed-entry-of)))))
+                             fn-frame-item fn-own-feed-entry-of
+                             fn-feed-live-records fn-feed-live-next
+                             fn-feed-live-effects fn-feed-records-portp
+                             fn-feedp)))))
 
 (defthm fn-own-feed-port-peer-ready-is-live-port-step
   (implies (and (fn-own-feed-entry-of peer tbl)
@@ -56,7 +59,10 @@
            :in-theory (e/d (fn-own-feed-port-peer)
                             (fn-feed-live-port-step
                              fn-feed-live-port-step-accepted-unfolds
-                             fn-frame-item fn-own-feed-entry-of)))))
+                             fn-frame-item fn-own-feed-entry-of
+                             fn-feed-live-records fn-feed-live-next
+                             fn-feed-live-effects fn-feed-records-portp
+                             fn-feedp)))))
 
 ; Named event projections identify the functions the owner adapters use for
 ; tick, reply, loss and restart; the event and returned records are not host
@@ -84,12 +90,33 @@
 ; The port wrapper has one result constructor on every branch, so its record
 ; projection is always a proper list.  This is also the exact type fact the
 ; restart fold needs before it may append two accepted peer batches.
+; The one fact the wrapper's accepted branch needs from the port step: its
+; record field is a proper list.  Proved over the step's two-arm `if' with the
+; live emitter closed; opening the emitter here split the wrapper 949 ways
+; over every event kind and reply code for a type fact none of them decides.
+(local
+ (defthm fn-own-feed-records-portp-is-true-listp
+   (implies (fn-feed-records-portp records) (true-listp records))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-feed-records-portp)))))
+
+(local
+ (defthm fn-own-feed-port-step-records-true-listp
+   (true-listp (fn-feed-port-step-records (fn-feed-live-port-step f event)))
+   :hints (("Goal" :in-theory (e/d (fn-feed-live-port-step
+                                    fn-feed-port-step-records)
+                                   (fn-feed-live-records fn-feed-live-next
+                                    fn-feed-live-effects fn-feed-records-portp
+                                    fn-feedp))))))
+
 (defthm fn-own-feed-port-peer-records-true-listp
   (true-listp (fn-own-feed-port-records
                (fn-own-feed-port-peer peer tbl event)))
-  :hints (("Goal" :in-theory (enable fn-own-feed-port-peer
-                                     fn-own-feed-port-result
-                                     fn-own-feed-port-records))))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-port-peer
+                                   fn-own-feed-port-result
+                                   fn-own-feed-port-records)
+                                  (fn-feed-live-port-step
+                                   fn-feed-port-step-records)))))
 
 ; Restart is an all-or-nothing port transaction across the configured peers.
 ; The original table is carried separately so a late refusal cannot expose an

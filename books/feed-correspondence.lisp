@@ -118,7 +118,12 @@
      fn-feed-lost-records fn-feed-retry-exhaustedp fn-feed-queue-set-state
      fn-feed-with-queue fn-feed-state-of fn-feed-state-inflightp
      fn-feed-offeredp fn-feed-droppedp fn-feed-state-attempt fn-feed-find
-     fn-feed-sent fn-feed-response-code fn-feed-response-msgid))
+     fn-feed-sent fn-feed-response-code fn-feed-response-msgid
+     ; The retry arm reaches the same `fn-feed-with-backoff' of the same
+     ; requeue and delay on both sides; opened, their `nfix' tests split
+     ; every retry case 226 ways (1686 subgoals, 17 s).
+     fn-feed-with-backoff fn-feed-backoff-delay fn-feed-queue-requeue
+     fn-feed-with-conn))
     :use ((:instance fn-feed-back-off-without-inflight-is-identity
                      (msgid (fn-feed-response-msgid response)))
           (:instance fn-feed-back-off-uses-only-monotonic-observation
@@ -248,8 +253,12 @@
            (equal (fn-feed-durable-projection
                    (fn-feed-replay (fn-feed-durable-projection f) records))
                   (fn-feed-durable-projection (fn-feed-replay f records))))
+  ; Idempotence and `fn-feedp-of-durable-projection' discharge the instance;
+  ; the projection, the recognizer and the fold stay closed (1.7 s open).
   :hints (("Goal" :use ((:instance fn-feed-replay-respects-projection
-                                     (g (fn-feed-durable-projection f)))))))
+                                     (g (fn-feed-durable-projection f))))
+           :in-theory (disable fn-feed-durable-projection fn-feedp
+                               fn-feed-replay))))
 
 (defthm fn-feed-live-batch-replay-tail
   (implies (fn-feedp f)

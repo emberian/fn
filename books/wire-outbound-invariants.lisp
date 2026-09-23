@@ -1034,6 +1034,10 @@
                   fn-wire-render-feed-command-article-arm-unfolds)
                  (:instance
                   fn-wire-nonempty-successful-render-block-needs-positive-body-limit))
+           ; The three prefix tests are carried to the arm lemma's instance
+           ; unchanged; opened against the constant prefixes they split
+           ; the goal 105 ways per test and cost 43 s.
            :in-theory
-           (disable fn-wire-served-article-profile-is-outbound-receiver-start)
+           (disable fn-wire-served-article-profile-is-outbound-receiver-start
+                    fn-wire-prefixp)
            :do-not '(generalize fertilize))))
