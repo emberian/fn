@@ -56,7 +56,8 @@ tree this busy most greens have one.  A handful of the archived manifests
 failed without per-book attribution and without usable success markers, so a
 failure inside one of those is invisible here and is counted as
 `unattributed`.  And a book absent from every manifest is unmeasured, not
-clean.
+clean. The `--changed-since` merge gate additionally rejects these stale
+dependency closures; its `stale` verdict is distinct from a failed proof.
 
 Deliberately generates no committed table: every archived manifest and every
 edited book would put one out of date, and both inputs are there to be read at
@@ -350,12 +351,18 @@ def gate(report: dict, changed: list[str], deps: dict[str, list[str]]) -> dict:
 
     def verdict(book: str) -> str:
         entry = verdicts.get(book)
-        return entry["verdict"] if entry else "unaudited"
+        if entry is None:
+            return "unaudited"
+        if entry["verdict"] == "green" and entry.get("deps_moved_since"):
+            return "stale"
+        return entry["verdict"]
 
     rows = [{"book": book, "role": "changed", "verdict": verdict(book), "via": []}
             for book in changed]
     rows += [{"book": book, "role": "dependent", "verdict": verdict(book), "via": via}
              for book, via in sorted(deps.items())]
+    for row in rows:
+        row["deps_moved_since"] = verdicts.get(row["book"], {}).get("deps_moved_since", [])
     not_green = [row["book"] for row in rows if row["verdict"] != "green"]
     return {"schema": "fn-green-gate-v1", "changed": changed,
             "dependents": len(deps), "rows": rows, "not_green": not_green}
@@ -368,7 +375,9 @@ def gate_lines(answer: dict) -> list[str]:
     width = max((len(row["book"]) for row in answer["rows"]), default=4)
     for row in answer["rows"]:
         via = (" <- " + " ".join(row["via"])) if row["via"] else ""
-        lines.append(f"  {row['verdict']:9} {row['role']:9} {row['book']:{width}}{via}")
+        drift = ("; changed or unrecorded dependency bytes: " +
+                 " ".join(row["deps_moved_since"])) if row.get("deps_moved_since") else ""
+        lines.append(f"  {row['verdict']:9} {row['role']:9} {row['book']:{width}}{via}{drift}")
     if not answer["rows"]:
         lines.append("  no book or test book differs from the merge base")
     return lines
