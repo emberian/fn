@@ -46,7 +46,8 @@ The BP ingress host tests passed 5/5. `python3 tools/run_simulator.py` passed
 Focused Store adapter tests passed 2/2 for pre-epoch and missing wall readings:
 both are passed to ACL2 with `has-wall` false, so the core can refuse them
 instead of writing a fabricated epoch-zero stamp. The native owner and Store
-adapters share the same wall reading and unusable flag.
+adapters share the same wall reading and unusable flag. The live Python Store
+prepare/finish lifecycle test passed again after this adapter change.
 
 The native carried-over-store witness remains open until a T2 native image is
 built and `tests/test_native_stamp_migration.py` runs against the frozen
