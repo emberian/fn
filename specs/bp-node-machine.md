@@ -692,7 +692,9 @@ reconstructs the initial held row after BP wire decoding and refuses malformed
 bytes. `books/bp-fnbs-byte-publisher.lisp` models private creation/write,
 file barrier, link and directory barrier with the actual `fn-bs-*` operations;
 an occupied damaged final name is a recovery fault. These are the first
-physical and codec parts of A2. The general `fn-bs-crash-imagep` to observed
+physical and codec parts of A2. `fn-bpnf-byte-crash-keeps-canonical-kind-five`
+proves exact recovery of one fenced canonical record in any admissible crash
+image that selects its final inode. The general `fn-bs-crash-imagep` to observed
 journal theorem, multi-record replay, restored epoch/frontier, and native
 publisher/recovery caller are still open. The present kind-5 subset has no
 submission or receipt handoff; the broader row below remains the target.
