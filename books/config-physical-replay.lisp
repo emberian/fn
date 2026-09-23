@@ -17,6 +17,34 @@
            (<= (nfix (fn-cfg-record-txid (car configs)))
                (nfix (fn-store-event-txid (car events)))))))
 
+(defun fn-cpr-event-servedp (cn event)
+  ; The served-domain check belongs only to events that create an article.
+  ; A retention or identity-neutral event has no selected group; applying
+  ; fn-cnode-apply-record to it would incorrectly refuse every such event.
+  (declare (xargs :guard t))
+  (cond ((fn-record-p event)
+         (fn-cnode-selection-servedp (fn-cnode-config cn)
+                                     (fn-record-groups event)))
+        ((fn-stxa-p event)
+         (fn-cnode-selection-servedp
+          (fn-cnode-config cn)
+          (fn-record-groups (fn-replay-composite-record event))))
+        (t t)))
+
+(defun fn-cpr-apply-event (cn event)
+  ; Replay uses the same Store-event interpreter as the standalone Store.
+  ; This is recovery-only, so checking the carried node recognizer here does
+  ; not put whole-state revalidation on a served command path.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (fn-cnode-statep cn)
+           (fn-store-event-p event)
+           (fn-cpr-event-servedp cn event))
+      (let ((next (fn-replay-apply-record (fn-cnode-node cn) event)))
+        (if (and (consp next) (fn-node-statep next))
+            (fn-cnode-make next (fn-cnode-config cn))
+          nil))
+    nil))
+
 (defun fn-cpr-loop (cn configs events config-sequence event-sequence)
   (declare (xargs :guard t :verify-guards nil
                   :measure (+ (len configs) (len events))))
@@ -50,8 +78,8 @@
                      (fn-replay-fault cn position :invalid-event))
                     ((not (equal (fn-store-event-sequence event) event-sequence))
                      (fn-replay-fault cn position :event-sequence))
-                    (t (let ((next (fn-cnode-apply-record cn event)))
-                         (if (not (consp next))
+                    (t (let ((next (fn-cpr-apply-event cn event)))
+                         (if (not (fn-cnode-statep next))
                              (fn-replay-fault cn position :event-refusal)
                            (fn-cpr-loop next configs (cdr events)
                                         config-sequence
@@ -80,7 +108,7 @@
                                      event-sequence)
            :in-theory (e/d (fn-cpr-loop)
                            (fn-cnode-statep fn-cnode-apply-config
-                            fn-cnode-apply-record fn-cnode-record-acceptablep
+                            fn-cpr-apply-event fn-cnode-record-acceptablep
                             fn-store-event-p fn-cfg-recordp)))))
 
 (defthm fn-cpr-replay-ok-is-configured
@@ -93,8 +121,10 @@
            :in-theory (disable fn-cpr-loop-ok-is-configured))))
 
 (verify-guards fn-cpr-loop)
+(verify-guards fn-cpr-apply-event)
 (verify-guards fn-cpr-replay)
 
 (deftheory fn-cpr-vocabulary
-  '(fn-cpr-config-firstp fn-cpr-loop fn-cpr-replay))
+  '(fn-cpr-config-firstp fn-cpr-event-servedp fn-cpr-apply-event
+    fn-cpr-loop fn-cpr-replay))
 (in-theory (disable fn-cpr-vocabulary))
