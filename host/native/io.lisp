@@ -1025,6 +1025,12 @@ resolves the names against `domain' and the host carries that list verbatim."
           ((eq (fnn-store-fault-class store) :fnn-test-kill)
            (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
            (fnn-fault "test SIGKILL did not terminate the process"))
+          ;; Developer-only physical-fault harness handoff.  The process is
+          ;; stopped at the existing :record-attempted model cut, after the
+          ;; final link and before the transactions directory barrier.  Its
+          ;; driver must resume or terminate the exact PID it started.
+          ((eq (fnn-store-fault-class store) :fnn-test-stop)
+           (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop))
           ;; A test-only setup action.  fnn-config-record-names invokes this
           ;; immediately before its real fnn-list-directory call, so that call
           ;; itself returns EACCES.  A handler that turned its error into NIL
@@ -1767,6 +1773,9 @@ in-process retry."
 (defun fnn-post-test-fault ()
   "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector.
 
+The record-attempted:stop variant parks the process for an isolated block
+fault test. It resumes at the same cut; it does not inject an ACL2 outcome.
+
 The point is one of fnn-advance-frontier/fnn-publish/fnn-finish's actual
 fnn-at boundaries.  SIGKILL cannot run unwind-protect, so the next command
 observes a genuine new-process image."
@@ -1783,6 +1792,8 @@ observes a genuine new-process image."
           (list point
                 (cond ((string= action "eio") 'fnn-os-error)
                       ((string= action "kill") :fnn-test-kill)
+                      ((and (string= action "stop")
+                            (eq point :record-attempted)) :fnn-test-stop)
                       (t (fnn-fault
                           "invalid FN_NATIVE_POST_FAULT action: ~a" action)))
                 "developer-only native post fault"))))))
