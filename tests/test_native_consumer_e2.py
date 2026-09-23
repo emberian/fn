@@ -331,10 +331,14 @@ class NativeConsumerE2Tests(unittest.TestCase):
                 "ed_public": str(ed_public),
                 "ml_public": str(ml_public),
             }
-            (handoff / "ready.json").write_text(
+            ready_tmp = handoff / "ready.json.tmp"
+            ready_tmp.write_text(
                 json.dumps(ready, sort_keys=True) + "\n", encoding="utf-8")
+            ready_tmp.replace(handoff / "ready.json")
             deadline = time.monotonic() + 600
             marker = handoff / "mini-finished.marker"
+            # The external driver publishes this marker by same-directory
+            # rename after its own evidence files are complete.
             while not marker.exists() and time.monotonic() < deadline:
                 self.assertIsNone(owner.poll(), "synthetic owner died during Mini join")
                 time.sleep(0.1)
