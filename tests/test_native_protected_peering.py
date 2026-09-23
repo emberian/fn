@@ -33,13 +33,16 @@ READY = peer.READY
 ROOT = peer.ROOT
 SOURCE = peer.SOURCE
 free_port = peer.free_port
+DEVELOPER_TEXT = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
+DEVELOPER = Path(DEVELOPER_TEXT) if DEVELOPER_TEXT else None
+DEVELOPER_CORE_SHA256 = os.environ.get("FN_NATIVE_DEVELOPER_CORE_SHA256")
+DEVELOPER_LAUNCHER_SHA256 = os.environ.get("FN_NATIVE_DEVELOPER_LAUNCHER_SHA256")
 
 
 @unittest.skipUnless(READY, "set explicit source-matched native image and hashes")
 class NativeProtectedPeeringTests(unittest.TestCase):
     command = peer.NativePeeringTests.command
     process_identity = peer.NativePeeringTests.process_identity
-    verify_process_identity = peer.NativePeeringTests.verify_process_identity
     stop_all = peer.NativePeeringTests.stop_all
     article = staticmethod(peer.NativePeeringTests.article)
     post = peer.NativePeeringTests.post
@@ -69,10 +72,12 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         # blocks the service itself.  Keep the diagnostic bytes in a regular
         # file so the harness cannot create that failure.
         stderr_path = node["root"] / "owner.stderr"
+        owner_image = node.get("owner_image", IMAGE)
+        owner_env = dict(self.env, **node.get("owner_env", {}))
         with stderr_path.open("ab") as stderr:
             process = subprocess.Popen(
-                [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
-                cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=stderr)
+                [str(owner_image), "--fn", "operator", str(node["config"]), "run"],
+                cwd=ROOT, env=owner_env, stdout=subprocess.PIPE, stderr=stderr)
         self.processes.append(process)
         node["process"] = process
         node["stderr_path"] = stderr_path
@@ -81,6 +86,16 @@ class NativeProtectedPeeringTests(unittest.TestCase):
                          "{} emitted an unexpected readiness line: {!r}".format(
                              node["name"], line))
         self.verify_process_identity(node)
+
+    def verify_process_identity(self, node):
+        found = self.process_identity(node["process"])
+        if found["status"] != "observed":
+            self.skipTest("cannot observe native runtime/core: {}".format(found["reason"]))
+        self.assertEqual(found["runtime_sha256"], peer.RUNTIME_SHA256, found)
+        self.assertEqual(found["core_sha256"],
+                         node.get("expected_core_sha256", peer.CORE_SHA256), found)
+        node.setdefault("identities", []).append(found)
+        return found
 
     def make_certificate(self, root, name):
         certificate = root / (name + "-certificate.pem")
@@ -221,6 +236,22 @@ class NativeProtectedPeeringTests(unittest.TestCase):
                             return bytes(article)
                         article.extend(line[1:] if line.startswith(b"..") else line)
 
+    def unauthenticated_offer(self, node, message_id):
+        """Probe the protected ingress after TLS, without AUTHINFO."""
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=15) as raw:
+            stream = raw.makefile("rwb", buffering=0)
+            greeting = stream.readline()
+            self.assertTrue(greeting.startswith((b"200 ", b"201 ")), greeting)
+            stream.write(b"STARTTLS\r\n")
+            response = stream.readline()
+            self.assertTrue(response.startswith(b"382 "), response)
+            stream.close()
+            context = ssl.create_default_context(cafile=str(node["certificate"]))
+            with context.wrap_socket(raw, server_hostname="localhost") as tls:
+                with tls.makefile("rwb", buffering=0) as protected:
+                    protected.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
+                    return protected.readline()
+
     @staticmethod
     def witness(record):
         print("NATIVE-PROTECTED-WITNESS " + json.dumps(record, sort_keys=True), flush=True)
@@ -241,10 +272,11 @@ class NativeProtectedPeeringTests(unittest.TestCase):
             identical = (self.await_article(target, message_id)
                          == self.await_article(source, message_id))
             self.assertTrue(identical)
-            # The same offer on a connection that did not log in is 480: the
-            # article above arrived on one that did.
-            reader_offer = self.duplicate_offer(target, message_id)
-            self.assertTrue(reader_offer.startswith(b"480 "))
+            # The same offer on a protected connection without the peer role
+            # is denied as transit; the article above arrived on one that
+            # completed AUTHINFO.
+            reader_offer = self.unauthenticated_offer(target, message_id)
+            self.assertTrue(reader_offer.startswith(b"502 "), reader_offer)
             transit[way] = {"identical": identical,
                             "unauthenticated_offer": reader_offer.decode(
                                 "ascii", "replace").strip()}
@@ -312,7 +344,6 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         source.kill()
         source.wait(timeout=30)
         source.stdout.close()
-        source.stderr.close()
         self.processes.remove(source)
         bridge = BookBridge(peer=b"once-b")
         try:
@@ -347,6 +378,84 @@ class NativeProtectedPeeringTests(unittest.TestCase):
                       "auth": "authinfo", "source_killed": True,
                       "source_restarted": True, "recipient_articles": 1,
                       "before": before, "after": after, "identity": identity})
+
+    def test_durable_sent_cut_requeues_on_protected_restart(self):
+        if not (DEVELOPER and DEVELOPER.is_file()
+                and os.access(DEVELOPER, os.X_OK)
+                and Path(str(DEVELOPER) + ".core").is_file()
+                and DEVELOPER_LAUNCHER_SHA256 == peer.digest(DEVELOPER)
+                and DEVELOPER_CORE_SHA256 == peer.digest(Path(str(DEVELOPER) + ".core"))):
+            self.skipTest("source-matched developer image and hashes required")
+        a = self.initialize("sent-a", free_port(), "b-at-a", "b-secret")
+        b = self.initialize("sent-b", free_port(), "a-at-b", "a-secret")
+        self.configure_peer(a, b, self.profile(a, b))
+        self.configure_peer(b, a, self.profile(b, a))
+        a["owner_image"] = DEVELOPER
+        a["expected_core_sha256"] = DEVELOPER_CORE_SHA256
+        a["owner_env"] = {"FN_NATIVE_FEED_TEST_STOP_AFTER_SENT": "1"}
+        self.start(a)
+        self.start(b)
+        message_id = "<protected-sent-restart@example.invalid>"
+        self.post(a, message_id, "sent-restart")
+
+        source = a["process"]
+        deadline = time.monotonic() + 45
+        stopped = False
+        while time.monotonic() < deadline and source.poll() is None:
+            try:
+                state = (Path("/proc") / str(source.pid) / "status").read_text()
+                stopped = any(line.startswith("State:") and "T (stopped)" in line
+                              for line in state.splitlines())
+            except OSError:
+                pass
+            if stopped:
+                break
+            time.sleep(0.05)
+        if not stopped:
+            self.capture_owner_failure((a, b), "feed-sent-cut-missing")
+            source.kill()
+            self.fail("developer source did not stop after durable :feed-sent")
+        self.assertIsNone(self.article_from(b, message_id))
+        source.kill()
+        self.assertEqual(source.wait(timeout=30), -9)
+        source.stdout.close()
+        self.processes.remove(source)
+        journal = a["store"] / "feed" / "sent-b.fnfd"
+        bridge = BookBridge(peer=b"sent-b")
+        try:
+            interrupted = bridge.inspect_file(journal, message_id)
+        finally:
+            bridge.close()
+        self.assertEqual(interrupted["sent_before_restart"], "t", interrupted)
+        self.assertEqual(interrupted["state_after_restart"], "queued", interrupted)
+        self.assertGreaterEqual(interrupted["records"].get("feed-sent", 0), 1)
+        self.assertEqual(interrupted["records"].get("feed-outcome", 0), 0)
+
+        a["owner_image"] = IMAGE
+        a["expected_core_sha256"] = peer.CORE_SHA256
+        a["owner_env"] = {}
+        self.start(a)
+        self.assertEqual(self.await_article(b, message_id),
+                         self.await_article(a, message_id))
+        identity = {"a": self.verify_process_identity(a),
+                    "b": self.verify_process_identity(b)}
+        self.stop_all()
+        bridge = BookBridge(peer=b"sent-b")
+        try:
+            settled = bridge.inspect_file(journal, message_id)
+        finally:
+            bridge.close()
+        self.assertEqual(settled["state_after_restart"], "done", settled)
+        self.assertGreater(settled["records"].get("feed-offer", 0),
+                           interrupted["records"].get("feed-offer", 0))
+        status = self.command([IMAGE, "--fn", "operator", b["config"], "status"])
+        self.assertIn(b"articles=1", status.stdout, status.stdout)
+        self.witness({"kind": "feed-sent-restart", "security": "starttls",
+                      "auth": "authinfo", "sender_stopped_after_sent": True,
+                      "sender_killed": True, "sender_restarted": True,
+                      "recipient_articles": 1, "interrupted": interrupted,
+                      "settled": settled, "identity": identity,
+                      "developer_identity": a["identities"][0]})
 
     def test_untrusted_certificate_yields_430_and_feed_journal_evidence(self):
         a = self.initialize("bad-cert-a", free_port(), "b-at-a", "b-secret")
