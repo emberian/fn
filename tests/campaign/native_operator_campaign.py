@@ -51,6 +51,9 @@ from tests.campaign import native_cuts  # noqa: E402
 GROUP = "fn.letters"
 PRIOR_ID = "<prior@campaign.invalid>"
 CANDIDATE_ID = "<candidate@campaign.invalid>"
+# One more than the staging observation bound (`*fn-sn-max-staging-observation*'
+# = 64, books/store-sweep.lisp), the count campaign dabebb84 F2 measured.
+ALLOCATION_DEATHS = 65
 RECOVER_LINE = re.compile(
     rb"recovered transactions=(\d+) articles=(\d+) staging-orphans=(\d+)")
 
@@ -68,6 +71,45 @@ def parse_recover(stdout: bytes) -> dict | None:
         return None
     return {"transactions": int(match.group(1)), "articles": int(match.group(2)),
             "staging_orphans": int(match.group(3))}
+
+
+# The fields the owner's injection adds ahead of a proto-article's own header
+# (books/owner.lisp fn-own-operator-submit, host/native/owner.lisp
+# fnn-owner-control-submit-serialized; Date only when the proto-article has
+# none).  Since a0b6d41f `operator CFG post` stores the injected article, not
+# the payload, so its bytes carry the owner's clock and cannot be predicted.
+INJECTED_FIELDS = (b"path", b"injection-date", b"injection-info", b"date")
+
+
+def split_article(octets: bytes) -> tuple[list[bytes], bytes] | None:
+    head, sep, body = octets.partition(b"\r\n\r\n")
+    if not sep:
+        return None
+    return head.split(b"\r\n"), body
+
+
+def injected_from(stored: bytes, payload: bytes) -> bool:
+    """`stored` is `payload` with only injection fields added ahead of its header.
+
+    The body and every header line of the payload are kept, in order, as the
+    tail of the stored header; each added line is one of INJECTED_FIELDS, at
+    most once, and none of them duplicates a field the payload already had.
+    """
+    got, want = split_article(stored), split_article(payload)
+    if got is None or want is None or got[1] != want[1]:
+        return False
+    stored_head, payload_head = got[0], want[0]
+    added = len(stored_head) - len(payload_head)
+    if added < 0 or stored_head[added:] != payload_head:
+        return False
+    names = [line.partition(b":")[0].strip().lower() for line in stored_head[:added]]
+    present = {line.partition(b":")[0].strip().lower() for line in payload_head}
+    return (all(name in INJECTED_FIELDS for name in names)
+            and len(set(names)) == len(names) and not present & set(names))
+
+
+def matches(stored: bytes, reference: bytes, injected: bool) -> bool:
+    return injected_from(stored, reference) if injected else stored == reference
 
 
 def undot(lines: list[bytes]) -> bytes:
@@ -110,6 +152,7 @@ class Node:
             '[control]\npath = "{}"\n'.format(self.store, self.port, self.control),
             encoding="ascii")
         self.owners: list[dict] = []
+        self.prior_stored: bytes | None = None
 
     def env(self, extra=None):
         env = {k: v for k, v in os.environ.items()
@@ -186,6 +229,7 @@ class Node:
             os.kill(owner["pid"], signal.SIGKILL)
             rc = ("timeout", proc.wait(timeout=30))
         rest = proc.stdout.read() or b""
+        proc.stdout.close()
         owner["lines"] += rest.decode("utf-8", "replace").split("\n")
         owner["log"].close()
         owner["stopped_by"] = signal.Signals(sig).name
@@ -200,6 +244,8 @@ class Node:
                 os.kill(owner["pid"], signal.SIGKILL)
                 os.kill(owner["pid"], signal.SIGCONT)
                 owner["proc"].wait(timeout=30)
+            if not owner["proc"].stdout.closed:
+                owner["proc"].stdout.close()
 
     def nntp_article(self, msgid) -> dict:
         with socket.create_connection(("127.0.0.1", self.port), timeout=60) as conn:
@@ -232,36 +278,68 @@ def seed(node: Node, prior: Path, out: dict):
     out["seed_post"] = public(node.post(PRIOR_ID, prior))
     out["seed_owner"] = node.stop_owner(owner)
     out["seeded"] = snapshot(node.store)
+    # The prior's durable bytes, the reference every later reread must equal.
+    stored = node.inspect(PRIOR_ID)
+    out["seed_inspect_prior"] = {"rc": stored["rc"],
+                                 "sha256": sha(stored["_out"]),
+                                 "injected": injected_from(
+                                     stored["_out"], node.dir.parent.joinpath(
+                                         "prior.art").read_bytes())}
+    node.prior_stored = stored["_out"]
 
 
-def reread(node: Node, prior: bytes, candidate: bytes, out: dict):
-    for label, msgid, want in (("prior", PRIOR_ID, prior),
-                               ("candidate", CANDIDATE_ID, candidate)):
+def reread(node: Node, candidate: bytes, out: dict, injected: bool):
+    """Both articles through `store ROOT inspect` and a restarted owner's ARTICLE.
+
+    The prior must equal the bytes `seed` read back when it was durable.  The
+    candidate must equal its payload when `store ROOT post` wrote it, and be
+    the payload's injected form when the owner did (`injected`); the two
+    readers must also return the same octets.
+
+    The candidate is resubmitted through the entry that first submitted it:
+    `operator CFG post` to the restarted owner when the owner injected it,
+    `store ROOT post` after the owner stops otherwise.  The two entries store
+    different octets for one payload, so a retry through the other entry
+    meets a conflict, not a duplicate (the `cross-entry-retry` fault row).
+    """
+    checks = (("prior", PRIOR_ID, node.prior_stored, False),
+              ("candidate", CANDIDATE_ID, candidate, injected))
+    read = {}
+    for label, msgid, want, inj in checks:
         got = node.inspect(msgid)
+        read[label] = got["_out"] if got["rc"] == 0 else None
         out["inspect_" + label] = {"rc": got["rc"],
-                                   "identical": got["_out"] == want,
+                                   "identical": matches(got["_out"], want, inj),
+                                   "sha256": sha(got["_out"]),
                                    "stderr": got["stderr"][-300:]}
+    out["candidate_injected"] = injected
     owner = node.start_owner()
     out["reread_owner_ready"] = owner["ready"]
     if owner["ready"]:
-        for label, msgid, want in (("prior", PRIOR_ID, prior),
-                                   ("candidate", CANDIDATE_ID, candidate)):
+        for label, msgid, want, inj in checks:
             got = node.nntp_article(msgid)
-            out["nntp_" + label] = {"status": got["status"],
-                                    "identical": got["octets"] == want}
-        out["resubmit"] = public(node.post(CANDIDATE_ID, node.dir.parent / "candidate.art"))
-        out["after_resubmit"] = snapshot(node.store)
+            out["nntp_" + label] = {
+                "status": got["status"],
+                "identical": matches(got["octets"], want, inj),
+                "same_as_inspect": (read[label] == got["octets"]
+                                    if read[label] is not None else None)}
+        if injected:
+            out["resubmit"] = public(node.post(CANDIDATE_ID, node.dir.parent / "candidate.art"))
+            out["after_resubmit"] = snapshot(node.store)
     out["reread_owner"] = node.stop_owner(owner)
+    if not injected:
+        out["resubmit"] = public(node.store_post(CANDIDATE_ID, node.dir.parent / "candidate.art"))
+        out["after_resubmit"] = snapshot(node.store)
 
 
-def settle(node: Node, prior: Path, candidate: Path, out: dict):
+def settle(node: Node, candidate: Path, out: dict, injected: bool):
     """After a death: the image, recovery, and every reread of both articles."""
     out["killed"] = snapshot(node.store)
     recovered = node.operator("recover")
     out["recover"] = public(recovered)
     out["recover_counts"] = parse_recover(recovered["_out"])
     out["recovered"] = snapshot(node.store)
-    reread(node, prior.read_bytes(), candidate.read_bytes(), out)
+    reread(node, candidate.read_bytes(), out, injected)
 
 
 def orphan(node: Node, candidate: Path, out: dict):
@@ -290,7 +368,7 @@ def run_cut(image: Path, base: Path, cut, prior: Path, candidate: Path) -> dict:
             served["post"] = public(node.post(CANDIDATE_ID, candidate))
             served["owner_alive_after_post"] = owner["proc"].poll() is None
         served["owner"] = node.stop_owner(owner)
-        settle(node, prior, candidate, served)
+        settle(node, candidate, served, injected=not recovery)
     finally:
         node.reap()
     cutrow = row["cut_run"] = {}
@@ -302,7 +380,7 @@ def run_cut(image: Path, base: Path, cut, prior: Path, candidate: Path) -> dict:
             cutrow["killed_recover"] = public(node.operator("recover", extra=selector))
         else:
             cutrow["killed_post"] = public(node.store_post(CANDIDATE_ID, candidate, selector))
-        settle(node, prior, candidate, cutrow)
+        settle(node, candidate, cutrow, injected=False)
     finally:
         node.reap()
     return row
@@ -323,7 +401,7 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
     try:
         row["post"] = public(node.store_post(
             CANDIDATE_ID, candidate, {"FN_NATIVE_POST_FAULT": "record-attempted:eio"}))
-        settle(node, prior, candidate, row)
+        settle(node, candidate, row, injected=False)
     finally:
         node.reap()
     rows.append(row)
@@ -334,7 +412,7 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
         row["post"] = public(node.post(CANDIDATE_ID, candidate))
         row["owner_alive_after_post"] = owner["proc"].poll() is None
         row["owner"] = node.stop_owner(owner)
-        settle(node, prior, candidate, row)
+        settle(node, candidate, row, injected=True)
     finally:
         node.reap()
     rows.append(row)
@@ -347,7 +425,7 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
         row["post"] = public(node.post(CANDIDATE_ID, candidate))
         row["owner_alive_after_post"] = owner["proc"].poll() is None
         row["owner"] = node.stop_owner(owner)
-        settle(node, prior, candidate, row)
+        settle(node, candidate, row, injected=True)
     finally:
         node.reap()
     rows.append(row)
@@ -379,7 +457,59 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
             out, err = client.communicate(timeout=300)
             row["post"] = {"rc": client.returncode, "stdout": out.decode()[-500:],
                            "stderr": err.decode()[-500:]}
-            settle(node, prior, candidate, row)
+            settle(node, candidate, row, injected=True)
+        finally:
+            node.reap()
+        rows.append(row)
+
+    # Since a0b6d41f the owner injects what `operator CFG post` hands it and
+    # `store ROOT post` stores the payload as read, so one payload through
+    # the two entries is two different articles under one Message-ID.  Each
+    # order, with no fault: the second submission meets the first.
+    for first, second in (("store", "operator"), ("operator", "store")):
+        node, row = fresh(dev, "cross-entry-retry-{}-then-{}".format(first, second))
+        try:
+            owner = None
+            for entry, label in ((first, "first"), (second, "second")):
+                if entry == "operator":
+                    owner = node.start_owner()
+                    row[label] = public(node.post(CANDIDATE_ID, candidate))
+                    row[label + "_owner"] = node.stop_owner(owner)
+                else:
+                    row[label] = public(node.store_post(CANDIDATE_ID, candidate))
+                row["after_" + label] = snapshot(node.store)
+        finally:
+            node.reap()
+        rows.append(row)
+
+    # Campaign dabebb84 F2: deaths at `frontier-staged-durable` each leave an
+    # `.allocation-` stage; 65 of them passed the 64-name observation bound and
+    # the store could not be opened.  Since the sweep of 2026-09-22 recovery
+    # removes every orphan in bounded rounds.  Two stores: the next open after
+    # the deaths is `operator CFG recover` in one and a plain `store ROOT post`
+    # in the other; then an owner starts and the candidate is posted.
+    for opener in ("recover", "store-post"):
+        node, row = fresh(dev, "dev-allocation-orphans-{}".format(opener))
+        try:
+            row["deaths"] = [public(node.store_post(
+                CANDIDATE_ID, candidate,
+                {"FN_NATIVE_POST_FAULT": "frontier-staged-durable:kill"}))["rc"]
+                for _ in range(ALLOCATION_DEATHS)]
+            row["killed"] = snapshot(node.store)
+            row["status"] = public(node.operator("status"))
+            if opener == "recover":
+                recovered = node.operator("recover")
+                row["recover"] = public(recovered)
+                row["recover_counts"] = parse_recover(recovered["_out"])
+            else:
+                row["open_post"] = public(node.store_post(CANDIDATE_ID, candidate))
+            row["opened"] = snapshot(node.store)
+            owner = node.start_owner()
+            row["owner_ready"] = owner["ready"]
+            if owner["ready"]:
+                row["post"] = public(node.post(CANDIDATE_ID, candidate))
+            row["owner"] = node.stop_owner(owner)
+            row["after"] = snapshot(node.store)
         finally:
             node.reap()
         rows.append(row)
