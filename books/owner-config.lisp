@@ -461,9 +461,10 @@
 
 (defun fn-ocfg-advance (oc id)
   (declare (xargs :guard t))
-  (let ((o (fn-own-advance (fn-ocfg-owner oc) id)))
+  (let* ((advanced (fn-own-advance-result (fn-ocfg-owner oc) id))
+         (o (cdr advanced)))
     (fn-ocfg-make o (fn-ocfg-config oc)
-                  (if (fn-own-find-conn id (fn-own-conns o))
+                  (if (equal (car advanced) :advanced)
                       (fn-ocfg-pin-set id (fn-ocfg-config oc) (fn-ocfg-pins oc))
                     (fn-ocfg-pins oc))
                   (fn-ocfg-staged oc))))
@@ -776,7 +777,7 @@
                            (fn-ocfg-step)))))
 
 ; KEYSTONE.  Advancing observes the live configuration: under
-; `fn-ocfg-statep', a connection that survives its advance is re-pinned to
+; `fn-ocfg-statep', a connection whose advance is accepted is re-pinned to
 ; the owner's live configuration.  This is application liveness under the
 ; owner's own scheduling, not a timing claim.  Two hypotheses and no others:
 ; the state relation, and that the advance kept the connection.
@@ -791,9 +792,9 @@
 ; connection present after the advance was present before it
 ; (`fn-own-advance-finds-only-what-it-had', books/owner-invariants.lisp),
 ; and an open connection has a pin.  The hypothesis cannot be moved to the
-; pre-state: `fn-own-advance' DROPS a connection whose re-pinned session
-; leaves `fn-own-conn-boundedp', and then `fn-ocfg-advance' leaves the table
-; alone and the old pin stands.  Teeth: tests/acl2/owner-config-tests.lisp.
+; pre-state: `fn-own-advance-result' reports :refused when its rebuilt session
+; leaves `fn-own-conn-boundedp'; then `fn-ocfg-advance' leaves the pin alone.
+; Teeth: tests/acl2/owner-config-tests.lisp.
 (local
  (defthm fn-ocfg-an-open-connection-has-a-pin
    (implies (and (fn-ocfg-conns-pinnedp conns pins)
@@ -805,8 +806,8 @@
 
 (defthm fn-ocfg-advance-observes-the-live-configuration
   (implies (and (fn-ocfg-statep oc)
-                (fn-own-find-conn id (fn-own-conns
-                                      (fn-own-advance (fn-ocfg-owner oc) id))))
+                (equal (car (fn-own-advance-result
+                             (fn-ocfg-owner oc) id)) :advanced))
            (equal (fn-ocfg-conn-config (fn-ocfg-advance oc id) id)
                   (fn-ocfg-config oc)))
   :hints (("Goal" :in-theory (e/d ((:d fn-ocfg-advance) (:d fn-ocfg-conn-config)
