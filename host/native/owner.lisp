@@ -919,7 +919,7 @@ Every other caller submits exact authored octets and names them."
           (let ((result (fnn-owner-action 'fn-owner-control-outcome word)))
             (fnn-owner-log)
             (unless (member result
-                            '(:accepted :duplicate :refused :uncertain))
+                            '(:accepted :duplicate :refused :clock-unusable :uncertain))
               (fnn-fault "owner bound completion returned ~a" result))
             (when (eq result :uncertain)
               (fnn-indeterminate "owner bound Store outcome is uncertain"))

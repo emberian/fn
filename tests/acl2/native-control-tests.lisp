@@ -53,6 +53,7 @@
         :uncertain))
 (assert-event (equal (fn-native-control-status-exit-code :accepted) 0))
 (assert-event (equal (fn-native-control-status-exit-code :refused) 1))
+(assert-event (equal (fn-native-control-status-exit-code :clock-unusable) 1))
 (assert-event (equal (fn-native-control-status-exit-code :uncertain) 3))
 (assert-event (equal (fn-native-control-status-exit-code :fault) 4))
 (assert-event (equal (fn-native-control-max-active-clients) 16))
@@ -73,6 +74,7 @@
 (assert-event (equal (fn-native-control-status-exit-code :duplicate) 0))
 (assert-event (equal (fn-native-control-status-class :busy) :refused))
 (assert-event (equal (fn-native-control-status-exit-code :busy) 1))
+(assert-event (equal (fn-native-control-status-class :clock-unusable) :refused))
 
 ; The word has to survive the sealed reply or the operator cannot print it.
 (assert-event
@@ -83,6 +85,10 @@
  (equal (fn-native-control-reply-decode
          (fn-native-control-reply-encode :refused))
         :refused))
+(assert-event
+ (equal (fn-native-control-reply-decode
+         (fn-native-control-reply-encode :clock-unusable))
+        :clock-unusable))
 
 ; Teeth.  Exit 0 is not this function's default: it needs the status to be
 ; in the accepted class.  Drop that hypothesis -- ask for any other word in

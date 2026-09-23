@@ -1654,7 +1654,7 @@
         :duplicate
       (case (fn-own-outcome-completion o word)
         (:durable :accepted)
-        (:clock-unusable :refused)
+        (:clock-unusable :clock-unusable)
         (:refused :refused)
         (otherwise :uncertain)))))
 

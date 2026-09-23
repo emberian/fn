@@ -799,6 +799,9 @@
                      :refused))
 (assert-event (equal (fn-own-control-outcome-result *own-control-taken* :refused)
                      :refused))
+(assert-event (equal (fn-own-control-outcome-result *own-control-taken*
+                                                   :clock-unusable)
+                     :clock-unusable))
 
 ; Teeth: without a control submission in flight there is no outcome; without
 ; exact valid boundary values nothing is queued; without a consumed
