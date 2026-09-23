@@ -325,30 +325,32 @@
 ; verdicts, its keyring snapshots and its identity sequence, and the equation
 ; was false for any state that carries them; books/store-node-traces has not
 ; certified since 2026-09-21 01:20, so it was never proved in the widened
-; shape.  The reconstruction is `fn-sn-make-v2' over all ten fields.
+; shape.  The reconstruction is `fn-sn-make-v3' over all eleven fields.
 (defthm fn-snt-state-reconstruction
   (implies (fn-sn-statep s)
-           (equal (fn-sn-make-v2 (fn-sn-groups s) (fn-sn-capacity s)
+           (equal (fn-sn-make-v3 (fn-sn-groups s) (fn-sn-capacity s)
                                  (fn-sn-files s) (fn-sn-node s)
                                  (fn-sn-keyring s) (fn-sn-index s)
                                  (fn-sn-keyring-generation s)
                                  (fn-sn-verdicts s)
                                  (fn-sn-keyring-snapshots s)
-                                 (fn-sn-identity-next s))
+                                 (fn-sn-identity-next s)
+                                 (fn-sn-config-history s))
                   s))
   :hints (("Goal" :in-theory (enable len fn-sn-statep fn-sn-shapep
-                                     fn-sn-make-v2 fn-sn-groups
+                                     fn-sn-make-v3 fn-sn-groups
                                      fn-sn-capacity fn-sn-files fn-sn-node
                                      fn-sn-keyring fn-sn-index
                                      fn-sn-keyring-generation fn-sn-verdicts
                                      fn-sn-keyring-snapshots
-                                     fn-sn-identity-next)
+                                     fn-sn-identity-next fn-sn-config-history)
            :expand ((len s) (len (cdr s)) (len (cddr s))
                     (len (cdddr s)) (len (cddddr s))
                     (len (cdr (cddddr s))) (len (cddr (cddddr s)))
                     (len (cdddr (cddddr s))) (len (cddddr (cddddr s)))
                     (len (cdr (cddddr (cddddr s))))
-                    (len (cddr (cddddr (cddddr s)))))
+                    (len (cddr (cddddr (cddddr s))))
+                    (len (cdddr (cddddr (cddddr s)))))
            :do-not-induct t)))
 
 (defthm fn-snt-typed-store-components
