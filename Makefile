@@ -368,6 +368,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/config-stream-tests \
 	books/config-physical-replay \
 	tests/acl2/config-physical-replay-tests \
+	books/config-observed \
+	tests/acl2/config-observed-tests \
 	books/owner-config \
 	books/ideal \
 	books/nntp-index \
