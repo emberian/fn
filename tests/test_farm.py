@@ -122,7 +122,8 @@ class SubmitTests(unittest.TestCase):
             self.assertIn("tools/certify_books.py", script)
             self.assertIn("--jobs 12", script)
             self.assertIn("books/alpha", script)
-            self.assertIn("FN_ACL2=$HOME/fn-tools/acl2-8.7/saved_acl2", script)
+            self.assertIn("FN_ACL2=/home/ember/fn-gates/toolchains/w25/acl2-literal",
+                          script)
             self.assertIn("FN_ACL2_TIMEOUT_SECONDS=900", script)
             self.assertIn(f"build/farm/{identifier}.log", script)
             self.assertIn(f"echo $? > build/farm/{identifier}.status", script)
@@ -140,8 +141,18 @@ class SubmitTests(unittest.TestCase):
             script = fake.runner_script()
             self.assertIn("swarm-build python3 tools/certify_books.py", script)
             self.assertIn("--affected-by books/wire.lisp", script)
-            self.assertIn("FN_ACL2=/tank/fn/acl2-8.7/saved_acl2", script)
+            self.assertIn("FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g", script)
             self.assertIn("FN_CERT_CACHE=/tank/fn/certcache", script)
+
+    def test_default_toolchain_paths_reach_cache_preflight(self):
+        self.assertIn(
+            'acl2=/home/ember/fn-gates/toolchains/w25/acl2-literal;',
+            farm.cache_preflight_script("persvati", Path("/home/ember/fn-lanes/x"),
+                                        ["books/base"], [], False))
+        self.assertIn(
+            'acl2=/tank/fn/toolchains/w28/acl2-literal-4g;',
+            farm.cache_preflight_script("hbox", Path("/tank/fn/lanes/x"),
+                                        ["books/base"], [], False))
 
 
 class RemoteRootTests(unittest.TestCase):

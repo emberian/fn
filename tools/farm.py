@@ -70,12 +70,12 @@ import evidence_manifests
 
 HOSTS = {
     "persvati": {
-        "acl2": "$HOME/fn-tools/acl2-8.7/saved_acl2",
+        "acl2": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
         "cache": "~/fn-certcache",
         "wrap": "",
     },
     "hbox": {
-        "acl2": "/tank/fn/acl2-8.7/saved_acl2",
+        "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g",
         "cache": "/tank/fn/certcache",
         # hbox is shared with another project's build; swarm-build is the
         # cgroup with the enforced memory cap.
