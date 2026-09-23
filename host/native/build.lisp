@@ -83,6 +83,7 @@
 (include-book "books/bp-fnbs-delivery-publication")
 (include-book "books/bp-app-handoff")
 (include-book "books/bp-receive-evidence")
+(include-book "books/bp-app-handoff-time")
 (include-book "books/bp-handoff-status")
 (include-book "books/anchor-wire")
 (include-book "books/anchor-servers")

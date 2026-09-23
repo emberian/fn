@@ -124,11 +124,20 @@
 (defun fnn-bpnode-dispatch-one
     (bp owner receipt-root workflow-root destination policy issuer node-id
      configured-peer)
-  (let* ((view (fnn-core 'fn-bpah-pending-view
-                         (fnn-bps-state bp) (fnn-bp-eid node-id)))
+  (let* ((tally (fnn-bps-tally bp))
+         (observation
+           (fnn-bp-observation (fnn-bp-tally-wall tally)
+                                (fnn-bp-tally-wall-error tally)))
+         (decision (fnn-core 'fn-bpah-pending-decision-at
+                             (fnn-bps-state bp) (fnn-bp-eid node-id)
+                             observation))
+         (view (and (eq (first decision) :ready) (second decision)))
          (key (and view (second view))))
     (when (eq (fnn-bps-outcome bp) :uncertain)
       (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
+    (when (eq (first decision) :uncertain)
+      (fnn-indeterminate
+       "BP node held carrier expiry is uncertain; recovery or clock evidence required"))
     (unless view (return-from fnn-bpnode-dispatch-one nil))
     (unless (member (third view) '(:request :receipt))
       (fnn-out "BP node held ADU has unsupported application class")
@@ -273,13 +282,13 @@
     (unwind-protect
          (progn
            (setq owner (fnn-owner-install store-root 1))
+           (fnn-bpc-advance-clock bp (fnn-bp-observation wall wall-error))
            (fnn-bpnode-dispatch-pending
             bp owner receipt-root workflow-root destination policy issuer
             node-id peer-id)
            (fnn-bpnode-queue-outboxes
             bp owner receipt-root destination policy issuer node-id peer-id
             contact-host contact-port transfer-mru wall wall-error)
-           (fnn-bpc-advance-clock bp (fnn-bp-observation wall wall-error))
            (when listen-port
              (multiple-value-bind (bound bound-port)
                  (fnn-tcl-listen listen-port)
@@ -314,14 +323,17 @@
                 (when (eq (fnn-bps-outcome bp) :uncertain)
                   (fnn-indeterminate
                    "BP node custody publication uncertain; recovery required"))
+                (fnn-bpnode-pause-at-durable-cut
+                 "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE"
+                 "BP NODE KIND5 DURABLE")
+                (fnn-bpc-advance-clock
+                 bp (fnn-bp-observation wall wall-error))
                 (fnn-bpnode-dispatch-pending
                  bp owner receipt-root workflow-root destination policy issuer
                  node-id peer-id)
                 (fnn-bpnode-queue-outboxes
                  bp owner receipt-root destination policy issuer node-id peer-id
-                 contact-host contact-port transfer-mru wall wall-error)
-                (fnn-bpc-advance-clock
-                 bp (fnn-bp-observation wall wall-error)))
+                 contact-host contact-port transfer-mru wall wall-error))
               once))
            (if (eq (fnn-bps-outcome bp) :uncertain)
                +fnn-exit-uncertain+

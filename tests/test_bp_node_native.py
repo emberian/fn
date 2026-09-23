@@ -186,12 +186,12 @@ class NativeBpNodeTests(unittest.TestCase):
         process.stdout.close()
         process.stderr.close()
 
-    def send_request(self, port, work):
+    def send_request(self, port, work, *, lifetime=3600000):
         return self.invoke(
             "bp-service", "run", "127.0.0.1", port,
             self.request_path, self.sender_journal,
             "dtn://sender/", "dtn://receiver/", work, work + "-attempt", 0,
-            3600000, 2, 32, 1048576, 0, 0,
+            lifetime, 2, 32, 1048576, 0, 0,
         )
 
     def tick_receiver(self):
@@ -466,6 +466,23 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP application handoff durable", restarted.stdout)
         self.assertIn(b"BP node receipt queued", restarted.stdout)
         self.assertEqual(self.receiver_counts()[1], 1)
+
+    def test_expired_recovered_kind_five_never_enters_store(self):
+        receiver, port = self.start_node(
+            True,
+            extra_env={"FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE": "1"},
+        )
+        sent = self.send_request(port, "short-lived", lifetime=1500)
+        self.assertEqual(sent.returncode, 0, sent.stderr)
+        self.wait_for_output(receiver, b"BP NODE KIND5 DURABLE", timeout=120)
+        receiver.kill()
+        receiver.wait(timeout=15)
+        time.sleep(1.8)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertNotIn(b"BP application handoff durable", restarted.stdout)
+        self.assertNotIn(b"BP node receipt queued", restarted.stdout)
+        self.assertEqual(self.receiver_counts()[1], 0)
 
 
 if __name__ == "__main__":
