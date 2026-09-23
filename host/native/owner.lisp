@@ -1005,15 +1005,16 @@ refused, not injected under a stale time (D10-a)."
                   (generation
                     (fnn-nat (fnn-owner-core 'fn-owner-config-generation)))
                   (txid (fnn-nat (fnn-owner-core 'fn-owner-next-txid))))
-              (fnn-owner-advance-clock)
-              (fnn-owner-complete-bound-submission
-               service
-               (lambda ()
-                 (fnn-owner-action 'fn-owner-operator-submit
-                                   (fnn-octet-list msgid)
-                                   (mapcar #'fnn-octet-list groups)
-                                   (fnn-octet-list payload)))
-               msgid :injected groups evidence generation txid))
+              (if (eq (fnn-owner-advance-clock) :observed)
+                  (fnn-owner-complete-bound-submission
+                   service
+                   (lambda ()
+                     (fnn-owner-action 'fn-owner-operator-submit
+                                       (fnn-octet-list msgid)
+                                       (mapcar #'fnn-octet-list groups)
+                                       (fnn-octet-list payload)))
+                   msgid :injected groups evidence generation txid)
+                :clock-unusable))
          (when armed (fnn-owner-control-disarm-fault store armed)))))))
 
 (defun fnn-owner-handle-chunk (service cid incoming)

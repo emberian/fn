@@ -14,7 +14,7 @@
 (defconst *fn-reader-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *fn-reader-groups*) 1 *fn-reader-id*
-                      *fn-reader-payload* *fn-reader-groups*)
+                      *fn-reader-payload* *fn-reader-groups* :legacy)
    0 1 :durable))
 
 (defun fn-reader-group-octets (names)
