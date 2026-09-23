@@ -467,16 +467,16 @@
     "books": 465,
     "books_in_root_closure": 464,
     "roots": 460,
-    "theorems": 7428,
-    "functions": 5676,
-    "assert_events": 8225,
-    "must_fails": 329,
+    "theorems": 7444,
+    "functions": 5677,
+    "assert_events": 8227,
+    "must_fails": 330,
     "encapsulates": 26,
     "guards": {
       "verified": 1850,
       "declared-off": 307,
       "default-guarded": 2778,
-      "default-unguarded": 741
+      "default-unguarded": 742
     },
     "suspect_theorems": 70,
     "export_hygiene_warnings": 93,
@@ -2876,7 +2876,7 @@
       "book": "books/byte-store-record-fence.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
+      "theorems": 29,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -9473,16 +9473,16 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 2,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 1,
-      "must_fails": 1,
+      "assert_events": 3,
+      "must_fails": 2,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
