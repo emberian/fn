@@ -13,12 +13,16 @@ cache.
     python3 tools/farm.py status hbox
 
 ``submit`` mirrors this worktree to the requested absolute path on the host,
-installs one origin/toolchain-coherent certificate set for the selected
-closure into the mirrored tree, starts the runner detached with its own log and status file,
-and returns a run id.  The installer first computes the runner's exact selected
-roots and requires a complete cache set from that same absolute origin and ACL2
-executable.  A miss refuses before ACL2 starts unless ``--closure`` explicitly
-requests dependency-ordered recertification at the new origin.  The install is
+installs one complete certificate set for the selected roots' dependencies
+into the mirrored tree, starts the runner detached with its own log and status
+file, and returns a run id.  The installer first computes the runner's exact
+selected roots, then takes every dependency from the box's cache with the
+same ACL2 toolchain: from one origin when one holds them all, otherwise
+composed from every snapshot origin, the newest pair per book
+(``tools/certs.py``; the measurement that ACL2 accepts a composed closure is
+``planning/evidence/certificate-cache-2026-09-23.md``).  A miss refuses before
+ACL2 starts unless ``--closure`` explicitly requests dependency-ordered
+recertification at the new origin.  The install is
 the difference between certifying what changed and certifying a whole dependency closure: on 2026-09-20 a lane's
 ``--closure`` run on an empty remote root spent 30 minutes re-certifying the
 substrate for four new books.  ``wait`` blocks on that id, printing progress
@@ -84,7 +88,8 @@ EVIDENCE = re.compile(r"Certification evidence: (build/acl2/[A-Za-z0-9._-]+)")
 # selected.  A missing identity means there was no coherent input set.
 INSTALLED_SET = re.compile(
     r"artifact-set (\S+) origin (\S+) source (\S+) toolchain (\S+); "
-    r"installed (\d+), kept (\d+), missing (\d+), removed (\d+)")
+    r"installed (\d+), kept (\d+), missing (\d+), removed (\d+)"
+    r"(?:; origins (\S+))?")
 
 # Seams: the tests drive the real command construction through these.
 RUN = subprocess.run
@@ -187,8 +192,8 @@ def parse_installed(output: str) -> dict[str, object]:
     found = INSTALLED_SET.search(output)
     if not found:
         return {}
-    artifact_set, origin, source, toolchain, *numbers = found.groups()
-    return {
+    artifact_set, origin, source, toolchain, *numbers, origins = found.groups()
+    parsed: dict[str, object] = {
         "artifact_set": None if artifact_set == "NONE" else artifact_set,
         "origin": None if origin == "NONE" else origin,
         "source_identity": None if source == "NONE" else source,
@@ -196,6 +201,12 @@ def parse_installed(output: str) -> dict[str, object]:
         **dict(zip(("installed", "kept", "missing", "removed"),
                    (int(number) for number in numbers))),
     }
+    if origins:
+        # `/a=3,/b=5`: which origins a composed (or single) set drew from.
+        parsed["origins"] = {
+            where: int(count) for where, _, count in
+            (word.rpartition("=") for word in origins.split(","))}
+    return parsed
 
 
 def selection_words(books: list[str], affected_by: list[str],
@@ -214,18 +225,23 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
                            affected_by: list[str], closure: bool,
                            cache: str | None = None,
                            acl2: str | None = None) -> str:
-    """Select and install one exact-origin dependency set before ACL2 starts.
+    """Select and install one complete dependency set before ACL2 starts.
 
-    Incremental certification extends certificates at ``remote``.  It may
-    therefore reuse only a complete set already authored at that same absolute
-    root with the same ACL2 executable.  A relocatable set from another origin
-    is valid for loading a native image, but extending it would create a parent
-    at ``remote`` whose children retain the other origin's full-book-names.
+    An incremental run installs the selected roots' dependencies from any
+    usable origin with this ACL2 toolchain, composing several snapshot origins
+    when no one origin holds them all.  Measured 2026-09-23: a parent
+    certified over a closure from three origins includes cleanly with all
+    three removed, because ACL2 compares sub-books by familiar name,
+    annotations and book-hash, never by full-book-name
+    (``planning/evidence/certificate-cache-2026-09-23.md``).  ``--closure`` is
+    root's explicit recertification plan and keeps the single-origin rule:
+    it purges the closure on a miss and certifies it under ``remote``.
     """
     settings = host_settings(host, cache, acl2)
     select = " ".join(shlex.quote(word) for word in
                       selection_words(books, affected_by, closure))
-    mode = "--purge-on-miss " if closure else "--dependencies-only "
+    mode = (f"--require-origin {remote_quote(remote)} --purge-on-miss "
+            if closure else "--dependencies-only ")
     return (
         f"cd {remote_quote(remote)} || exit 9; "
         f"roots=$({select}) || exit 13; "
@@ -237,7 +253,7 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
         "|| exit 14; "
         f"python3 tools/certs.py --cache {remote_quote(settings['cache'])} "
         f"--toolchain-identity \"$toolchain\" "
-        f"--require-origin {remote_quote(remote)} {mode}install-set $roots")
+        f"{mode}install-set $roots")
 
 
 def install_from_cache(host: str, remote: Path, books: list[str],
@@ -258,9 +274,11 @@ def install_from_cache(host: str, remote: Path, books: list[str],
     detail = (answer.stdout.strip() or
               f"ssh exited {answer.returncode}")[-800:]
     raise FarmError(
-        f"{host}: no origin/toolchain-coherent certificate set at {remote}; "
-        f"ACL2 was not started. Re-run with --closure to recertify the selected "
-        f"dependency closure at that root. Cache preflight: {detail}")
+        f"{host}: the cache holds no complete certificate set for the selected "
+        f"roots' dependencies with this ACL2 toolchain, from one origin or "
+        f"composed from several; ACL2 was not started under {remote}. The "
+        f"missing books need a run that certifies them (name them as roots, or "
+        f"--closure for root's full recertification). Cache preflight: {detail}")
 
 
 def run_id() -> str:
@@ -417,7 +435,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
     cached = install_from_cache(
         host, remote, books, affected_by, closure, cache, acl2)
     print(f"{identifier}: from {host}'s cache, "
-          + ", ".join(f"{name} {value}" for name, value in cached.items()),
+          + ", ".join(f"{name} {len(value)}" if name == "origins"
+                      else f"{name} {value}" for name, value in cached.items()),
           file=sys.stderr)
     script = remote_script(host, remote, identifier, books, jobs,
                            timeout_seconds, affected_by, closure, cache, acl2,
@@ -641,9 +660,26 @@ def status(host: str, root: Path) -> int:
     )
     result = ssh(host, script, check=False)
     print(f"{host}:{root}")
-    print("run-id status books-certified")
-    print(result.stdout.rstrip())
+    print("run-id status books-certified from-cache")
+    for line in result.stdout.rstrip().splitlines():
+        identifier = line.split(" ", 1)[0]
+        print(f"{line} {cache_summary(run_record(root, identifier))}".rstrip())
     return 0
+
+
+def cache_summary(record: dict) -> str:
+    """What `submit` installed for a run, from its local record, in one word.
+
+    ``installed+kept/origins`` -- e.g. ``230+4/3`` is 234 dependency pairs
+    taken from the cache, composed from three origins.  A run with no local
+    record (another worktree submitted it) prints nothing.
+    """
+    found = record.get("cache_install")
+    if not isinstance(found, dict):
+        return ""
+    origins = found.get("origins")
+    count = len(origins) if isinstance(origins, dict) else (1 if found.get("origin") else 0)
+    return f"{found.get('installed', 0)}+{found.get('kept', 0)}/{count}"
 
 
 def main(argv: list[str] | None = None) -> int:
