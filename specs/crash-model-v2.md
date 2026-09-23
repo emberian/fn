@@ -1567,6 +1567,15 @@ plus counterexamples when each of its three hypotheses is dropped. K0 still
 must prove the byte component satisfies the full output relation and that
 every served caller supplies its input hypotheses; this trace lemma alone
 does not discharge the conditional scanner bridge's output-relation premise.
+`fn-bs-k0-attempted-cut-has-one-issued-transaction-link` also derives the
+pair-10 physical transaction-directory pending list: precisely one
+`:set-entry` for the typed next transaction name to the newly allocated,
+fenced inode. It excludes earlier transaction operations via the input
+relation and follows the real immutable-link step, with the same three
+hypothesis counterexamples. The remaining output-relation clauses include
+unchanged durable record bytes, root pending shape, state well-formedness,
+candidate decoding, and authority inode provenance; no one-link fact alone
+proves them.
 
 ; K7. Fence after uncertainty: after an error outcome of a :link, :rename or
 ; :fsync-dir step, the kernel is fenced and the byte store's pending list
