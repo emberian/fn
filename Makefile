@@ -507,7 +507,8 @@ check:
 # test that would have failed had a skip keyed on a failure message.
 # `signatures` binds every resolvable Python call against the definition it
 # names and fails on a disagreement; `acl2-arity` does the same for the `ld`ed
-# host files, which no certification reads, and reports; `waivers` fails on a
+# host files, which no certification reads, and fails on unwaived defects;
+# `waivers` fails on a
 # skip keyed on a failure that carries no `waiver-ok:` declaration.  All three
 # are static, need no ACL2 and take about a second.
 	$(PYTHON) tools/harness_check.py

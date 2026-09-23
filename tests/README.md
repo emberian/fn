@@ -198,7 +198,7 @@ resolved 3195 of 22719 call sites with 19 undecidable (`f(*rest)`,
 definition. It fails on any finding.
 
 `acl2-arity` asks the same question of two corpora that no certification
-reads, and reports: the 25 `ld`ed files under `host/`, and **ACL2 forms
+reads, and fails on unwaived mismatches: the `ld`ed files under `host/`, and **ACL2 forms
 spelled inside Python string literals**. The second is the sharper target and
 the one neither language can see. `d484e9a` gave `fn-served-open` a seventh
 formal and updated both Lisp callers; `tests/test_served_differential.py:57`
@@ -221,12 +221,10 @@ authenticated principal's allowance (fn-auth-postingp, RFC 3977 section
 6.3.1.1). The feed was never reached."` parses, so a string counts only when
 every top-level item in it is a form, which prose never is. A form holding a
 `{}` or a `%s` is not decided at all, because a `" ".join(...)` in that slot
-stands for any number of arguments. 918 applications over 25 host files and
-371 readable Python strings, 262 undecided, and three findings left:
-`fn-sched-pos` twice and `fn-feed-observe` once in
-`tests/test_teeth_check.py`, which are synthetic fixtures for the teeth
-checker rather than calls anything makes, and are another lane's to spell
-correctly.
+stands for any number of arguments. Synthetic forms that deliberately use a
+mismatched arity declare the exact callee and a reason in a same-line
+`# acl2-arity-fixture:` comment. The gate counts these declarations, and a
+declaration for one callee never waives a different call on that line.
 
 `waivers` flags a skip whose predicate reads a **failure** rather than a
 dependency: a substring of an exception, a non-zero return code, an NNTP

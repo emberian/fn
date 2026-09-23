@@ -55,9 +55,9 @@ class Rendering(unittest.TestCase):
         # The ledger's reader keeps `1/2` as the plain string "1/2", which is
         # what a Lisp string literal also reads as, so rendering it back
         # would hand ACL2 a STRING.  `renderable` must decline.
-        form = teeth_check.ledger.read_forms("(< (fn-sched-pos x) 1/2)")[0]
+        form = teeth_check.ledger.read_forms("(< (fn-sched-pos x) 1/2)")[0]  # acl2-arity-fixture: fn-sched-pos parser probe
         self.assertIsNone(teeth_check.renderable(form))
-        keep = teeth_check.ledger.read_forms("(< (fn-sched-pos x) 2)")[0]
+        keep = teeth_check.ledger.read_forms("(< (fn-sched-pos x) 2)")[0]  # acl2-arity-fixture: fn-sched-pos parser probe
         self.assertIsNotNone(teeth_check.renderable(keep))
 
 
@@ -277,7 +277,7 @@ class MultiValued(unittest.TestCase):
 
     def test_a_real_multi_value_context_is_clean(self):
         self.assertEqual(
-            self.flagged("(mv-let (g fx) (fn-feed-observe a b) (list g fx))"),
+            self.flagged("(mv-let (g fx) (fn-feed-observe a b) (list g fx))"),  # acl2-arity-fixture: fn-feed-observe mv probe
             [])
 
     def test_a_macro_wrapper_is_not_flagged(self):
