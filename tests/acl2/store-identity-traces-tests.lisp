@@ -205,12 +205,12 @@
                ',(fn-id-subject-of-payload *sit-carried-received*)))
 (defconst *sit-carried-subject*
   (fn-record-octets-string (fn-id-text *sit-carried-subject-id*)))
-(defconst *sit-carried-obligation*
-  (fn-record-octets-string
-   (fn-id-text
-    (fn-id-obligation-of
-     (fn-record-string-octets "<carried@example.invalid>")
-     *sit-carried-subject-id*))))
+(make-event `(defconst *sit-carried-obligation*
+               ',(fn-record-octets-string
+                  (fn-id-text
+                   (fn-id-obligation-of
+                    (fn-record-string-octets "<carried@example.invalid>")
+                    *sit-carried-subject-id*)))))
 (make-event `(defconst *sit-carried-composite*
                ',(fn-hsig-authorized-carried-submission-event
                   1 1 1 1 *sit-snapshot* "<carried@example.invalid>"
