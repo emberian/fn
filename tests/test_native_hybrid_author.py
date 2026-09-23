@@ -141,6 +141,14 @@ class NativeHybridAuthorTest(unittest.TestCase):
                     checked = self.invoke("hybrid-verify-carrier", str(received),
                                           str(self.ml_public))
                     self.assertEqual(checked.returncode, 0, checked.stderr.decode())
+                    stream.write(("HDR :fn-verified {}\r\n".format(msgid)).encode())
+                    self.assertEqual(stream.readline(), b"225 headers follow\r\n")
+                    # Generation 2 has replaced the enrolled key set, but
+                    # the recovered schema-1 verdict keeps its original pin.
+                    self.assertEqual(stream.readline(),
+                                     b"0 verified " + b"55" * 32 +
+                                     b" keyring 1\r\n")
+                    self.assertEqual(stream.readline(), b".\r\n")
         finally:
             self.stop_owner(owner)
 
