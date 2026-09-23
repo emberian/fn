@@ -457,6 +457,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/stx-keyring-records-tests \
 	tests/acl2/stx-accept-records-tests \
 	tests/acl2/store-node-index-tests \
+	tests/acl2/store-node-composite-index-tests \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
 

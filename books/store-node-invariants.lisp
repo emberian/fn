@@ -1104,27 +1104,201 @@
    (equal (fn-stx-index-add index nil) index)
    :hints (("Goal" :in-theory (enable fn-stx-index-add)))))
 
-; NOT PROVED FOR THE ACCEPTED-STATEMENT ARM.  `4bb7bb3d' (2026-09-21 13:24)
-; gave `fn-sn-finish' an identity arm, and on the `fn-stxa-p' branch of that
-; arm the store grows by the article the event carries while the index grows
-; by `fn-sn-composite-delta' of the same event; that those two are the same
-; growth is a real obligation and it is open.  The hypothesis below names the
-; arm that is excluded rather than leaving a statement the book cannot admit:
-; this theorem has not certified since 2026-09-21 01:20, so no ACL2 run has
-; ever established the unrestricted form either.  The three arms it does
-; cover are the retention arm, the verdict/snapshot identity arm (neither
-; publishes an article, so the carried index is still the index of the store)
-; and the durable acceptance arm (the keystone under it is
-; `fn-stx-index-invariant-preserved-by-accept', whose hypothesis
-; `fn-stx-durable-completion-is-an-acceptance' discharges).
-;
-; What the open arm needs, for whoever takes it: the store equation for
-; `fn-node-prepare' (the arm inlines it rather than calling
-; `fn-sn-prepare-node'), `fn-stx-durable-completion-is-an-acceptance'
-; instantiated at that prepared node, and the equality between the payload of
-; the article `fn-install-pending' publishes and `(fn-record-payload
-; (fn-replay-composite-record record))', which is the octet string
-; `fn-sn-composite-delta' hands to `fn-stx-delta'.
+; The composite acceptance arm replays a decoded article.  Its prepared
+; article must be exactly the head added to the Store and exactly the source
+; of the carried index delta; the following local facts state those two
+; equations without opening the record codec in the final arm dispatch.
+(local
+ (defthm fn-sn-cbor-octets-are-octets
+   (implies (fn-cbor-octet-listp xs) (fn-octet-listp xs))
+   :hints (("Goal" :induct (fn-cbor-octet-listp xs)
+            :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp
+                               fn-octet-listp fn-octetp)))))
+
+(local
+ (defthm fn-sn-record-payload-is-octets
+   (implies (fn-record-p record)
+            (fn-octet-listp (fn-record-payload record)))
+   :hints (("Goal" :in-theory (enable fn-record-p fn-record-payloadp
+                                      fn-record-shape-vocabulary)))))
+
+(local
+ (defthm fn-sn-composite-kind-disjoint
+   (implies (fn-stxa-p record)
+            (and (not (fn-store-retention-event-p record))
+                 (not (fn-stxe-p record))
+                 (not (fn-stxk-p record))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-stxa-p fn-stxa-shapep fn-stxa-keyring-generation
+                             fn-stxe-p fn-stxe-shapep fn-stxe-msgid
+                             fn-stxk-p fn-stxk-shapep
+                             fn-store-retention-event-p fn-record-msgidp)
+                            (fn-stxe-bounded-octetsp
+                             fn-record-metadata-bytes-p))))))
+
+(local
+ (defthm fn-sn-composite-idle-has-no-pending
+   (implies (and (fn-node-statep node) (null (fn-node-stage node)))
+            (null (fn-state-pending (fn-node-acceptance node))))
+   :hints (("Goal" :in-theory (enable fn-node-statep)))))
+
+(local
+ (defthm fn-sn-composite-stage-of-advance
+   (equal (fn-node-stage (fn-replay-advance-txid node txid))
+          (fn-node-stage node))
+   :hints (("Goal" :in-theory (enable fn-replay-advance-txid)))))
+
+(local
+ (defthm fn-sn-composite-replay-article-typed
+   (implies (and (fn-stxa-p event)
+                 (consp (fn-replay-apply-record node event)))
+            (fn-record-p (fn-replay-composite-record event)))
+   :hints (("Goal" :in-theory (e/d (fn-replay-apply-record)
+                                   (fn-stxa-p fn-stxe-p fn-stxk-p
+                                    fn-store-retention-event-p
+                                    fn-replay-advance-txid fn-node-prepare
+                                    fn-node-complete fn-record-shape-vocabulary
+                                    fn-record-record-vocabulary))))))
+
+(local
+ (defthm fn-sn-composite-replay-installs-decoded-payload
+   (implies (and (fn-node-statep node)
+                 (null (fn-node-stage node))
+                 (fn-stxa-p event)
+                 (consp (fn-replay-apply-record node event)))
+            (equal (fn-article-payload
+                    (car (fn-stx-store (fn-replay-apply-record node event))))
+                   (fn-record-payload (fn-replay-composite-record event))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-replay-apply-record fn-node-complete
+                             fn-accept-complete fn-install-pending
+                             fn-article-from-pending fn-node-prepare
+                             fn-accept-prepare fn-stx-store fn-node-statep
+                             fn-node-pending-matchesp fn-pending-matchesp)
+                            (fn-statep fn-record-shape-vocabulary
+                             fn-record-record-vocabulary fn-stxa-p fn-stxe-p
+                             fn-stxk-p fn-store-retention-event-p
+                             fn-replay-composite-record
+                             fn-replay-advance-txid))))))
+
+(local
+ (defthm fn-sn-composite-replay-installs-one-article
+   (implies (and (fn-node-statep node)
+                 (null (fn-node-stage node))
+                 (fn-stxa-p event)
+                 (consp (fn-replay-apply-record node event)))
+            (and (consp (fn-stx-store (fn-replay-apply-record node event)))
+                 (equal (cdr (fn-stx-store (fn-replay-apply-record node event)))
+                        (fn-stx-store node))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-replay-apply-record fn-node-complete
+                             fn-accept-complete fn-install-pending
+                             fn-article-from-pending fn-node-prepare
+                             fn-accept-prepare fn-stx-store fn-node-statep
+                             fn-node-pending-matchesp fn-pending-matchesp)
+                            (fn-statep fn-record-shape-vocabulary
+                             fn-record-record-vocabulary fn-stxa-p fn-stxe-p
+                             fn-stxk-p fn-store-retention-event-p
+                             fn-replay-composite-record
+                             fn-replay-advance-txid))))))
+
+(local
+ (defthm fn-sn-composite-delta-of-typed-article
+   (implies (and (fn-prin-keyringp keyring)
+                 (fn-record-p (fn-replay-composite-record event)))
+            (equal (fn-sn-composite-delta event keyring)
+                   (fn-stx-delta
+                    (fn-record-payload (fn-replay-composite-record event))
+                    keyring)))
+   :hints (("Goal" :in-theory (enable fn-sn-composite-delta)))))
+
+(local
+ (defthm fn-sn-composite-replay-preserves-index-invariant
+   (implies (and (fn-node-statep node)
+                 (null (fn-node-stage node))
+                 (fn-stxa-p event)
+                 (consp (fn-replay-apply-record node event))
+                 (fn-prin-keyringp keyring)
+                 (fn-stx-index-invariantp index node keyring))
+            (fn-stx-index-invariantp
+             (fn-stx-index-add index (fn-sn-composite-delta event keyring))
+             (fn-replay-apply-record node event) keyring))
+   :hints (("Goal" :in-theory (e/d (fn-stx-index-invariantp
+                                    fn-stx-index-of-store)
+                                   (fn-stx-index-add fn-stx-store fn-stx-delta
+                                    fn-sn-composite-delta
+                                    fn-replay-composite-record
+                                    fn-replay-apply-record fn-stxa-p
+                                    fn-record-shape-vocabulary
+                                    fn-record-record-vocabulary))))))
+
+(local
+ (defthm fn-sn-composite-completion-is-idle
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-stxa-p (fn-sn-completion-record s)))
+            (null (fn-node-stage (fn-sn-node s))))
+   :hints (("Goal" :in-theory (e/d (fn-sn-completion-enabledp
+                                    fn-replay-apply-record)
+                                   (fn-sn-statep fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-sn-completion-record
+                                    fn-replay-composite-record
+                                    fn-record-shape-vocabulary
+                                    fn-record-record-vocabulary))))))
+
+(local
+ (defthm fn-sn-composite-completion-has-replay
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-stxa-p (fn-sn-completion-record s)))
+            (consp (fn-replay-apply-record
+                    (fn-sn-node s) (fn-sn-completion-record s))))
+   :hints (("Goal" :in-theory (e/d (fn-sn-completion-enabledp)
+                                   (fn-sn-statep fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-sn-completion-record
+                                    fn-replay-apply-record fn-replay-identity-step
+                                    fn-record-shape-vocabulary
+                                    fn-record-record-vocabulary))))))
+
+(local
+ (defthm fn-sn-composite-completion-is-bound
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-stxa-p (fn-sn-completion-record s)))
+            (fn-stxa-bindsp (fn-sn-completion-record s)))
+   :hints (("Goal" :in-theory (e/d (fn-sn-completion-enabledp
+                                    fn-replay-apply-record
+                                    fn-replay-composite-record)
+                                   (fn-sn-statep fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-sn-completion-record fn-stxa-bindsp
+                                    fn-replay-identity-step
+                                    fn-record-shape-vocabulary
+                                    fn-record-record-vocabulary))))))
+
+(local
+ (defthmd fn-sn-finish-composite-arm-fields
+   (implies (and (fn-sn-completion-enabledp s)
+                 (fn-stxa-p (fn-sn-completion-record s)))
+            (and (equal (fn-sn-index (fn-sn-finish s))
+                        (fn-stx-index-add
+                         (fn-sn-index s)
+                         (fn-sn-composite-delta (fn-sn-completion-record s)
+                                                (fn-sn-keyring s))))
+                 (equal (fn-sn-node (fn-sn-finish s))
+                        (fn-replay-apply-record
+                         (fn-sn-node s) (fn-sn-completion-record s)))
+                 (equal (fn-sn-keyring (fn-sn-finish s))
+                        (fn-sn-keyring s))))
+   :hints (("Goal" :in-theory (e/d (fn-sn-finish fn-sn-finish-identity)
+                                   (fn-sn-completion-enabledp fn-sn-statep
+                                    fn-sn-completion-record
+                                    fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-replay-apply-record fn-replay-identity-step
+                                    fn-sn-identity-context fn-sf-core-completion
+                                    fn-sf-emit-success fn-sn-composite-delta
+                                    fn-record-shape-vocabulary
+                                    fn-record-record-vocabulary))))))
 ;; fn-sn-finish-preserves-indexedp, one arm at a time.  The theorem below
 ;; dispatches on the finish arm; with `fn-sn-finish', `fn-sn-completion-
 ;; enabledp' and `fn-sn-record-bindsp' open it split 5249 ways at Goal'' on
@@ -1217,8 +1391,7 @@
                                     fn-record-record-vocabulary))))))
 
 (defthm fn-sn-finish-preserves-indexedp
-  (implies (and (fn-sn-indexedp s)
-                (not (fn-stxa-p (fn-sn-completion-record s))))
+  (implies (fn-sn-indexedp s)
            (fn-sn-indexedp (fn-sn-finish s)))
   :hints (("Goal"
            ; One case per arm of `fn-sn-finish'; each closes by its arm lemma
@@ -1232,15 +1405,20 @@
                         (not (fn-store-retention-event-p
                               (fn-sn-completion-record s)))
                         (or (fn-stxe-p (fn-sn-completion-record s))
-                            (fn-stxk-p (fn-sn-completion-record s))))
+                            (fn-stxk-p (fn-sn-completion-record s)))
+                        (not (fn-stxa-p (fn-sn-completion-record s))))
+                   (and (fn-sn-completion-enabledp s)
+                        (fn-stxa-p (fn-sn-completion-record s)))
                    (and (fn-sn-completion-enabledp s)
                         (not (fn-store-retention-event-p
                               (fn-sn-completion-record s)))
                         (not (fn-stxe-p (fn-sn-completion-record s)))
-                        (not (fn-stxk-p (fn-sn-completion-record s)))))
+                        (not (fn-stxk-p (fn-sn-completion-record s)))
+                        (not (fn-stxa-p (fn-sn-completion-record s)))))
            :in-theory (e/d (fn-stx-index-invariantp
                             fn-sn-finish-retention-arm-keeps-the-store-and-index
                             fn-sn-finish-identity-arm-keeps-the-store-and-index
+                            fn-sn-finish-composite-arm-fields
                             fn-sn-finish-acceptance-arm-fields)
                            (fn-sn-finish fn-sn-completion-enabledp
                             fn-sn-completion-record fn-sn-record-bindsp
@@ -1257,6 +1435,13 @@
                             fn-record-record-vocabulary))
            :use ((:instance fn-sn-finish-preserves-state)
                  (:instance fn-sn-finish-disabled-is-no-op)
+                 (:instance fn-sn-composite-completion-is-idle)
+                 (:instance fn-sn-composite-completion-has-replay)
+                 (:instance fn-sn-composite-replay-preserves-index-invariant
+                            (node (fn-sn-node s))
+                            (event (fn-sn-completion-record s))
+                            (keyring (fn-sn-keyring s))
+                            (index (fn-sn-index s)))
                  (:instance fn-stx-durable-completion-is-an-acceptance
                             (s (fn-sn-node s))
                             (txid (fn-record-txid (fn-sn-completion-record s)))
