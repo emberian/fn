@@ -559,3 +559,106 @@
         (new (fn-bs-next-ino (bsk6-start))))
    (and (consp (assoc-equal new (fn-bs-inodes article)))
         (consp (assoc-equal new (fn-bs-inodes retention))))))
+
+; The old article's inode survives the actual served cut.  The authority
+; lists gain exactly the new target, and both are known and file-fenced.
+(assert-event
+ (let* ((bs (bsk6-start))
+        (article (car (nth 10 (bsk5-record-2-run))))
+        (retention (car (nth 10 (bsk6-retention-run))))
+        (old (fn-bs-durable-entry bs :transactions (fn-bs-txn-name 0))))
+   (and (fn-bs-store-relation bs (bsk6-prepared))
+        (consp (assoc-equal old (fn-bs-inodes bs)))
+        (equal (assoc-equal old (fn-bs-inodes article))
+               (assoc-equal old (fn-bs-inodes bs)))
+        (equal (fn-bs-authority-inode-list article)
+               (append (fn-bs-authority-inode-list bs)
+                       (list (fn-bs-next-ino bs))))
+        (fn-bs-authority-knownp article)
+        (fn-bs-authority-fencedp article)
+        (fn-bs-authority-knownp retention)
+        (fn-bs-authority-fencedp retention))))
+
+; A state with a valid pending write to the old article is not a related
+; input.  The P-RECORD file fence drains only the new inode, so the old
+; authority target remains unfenced at the attempted cut.
+(defun bsk0-unfenced-old-authority ()
+  (let* ((bs (bsk6-start))
+         (old (fn-bs-durable-entry bs :transactions (fn-bs-txn-name 0))))
+    (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs) (fn-bs-dirs bs)
+                (append (fn-bs-pending bs)
+                        (list (list :write old 0 '(65))))
+                (fn-bs-next-ino bs))))
+(assert-event
+ (let ((bs (bsk0-unfenced-old-authority)))
+   (and (fn-bs-statep bs)
+        (not (fn-bs-store-relation bs (bsk6-prepared)))
+        (fn-bs-record-inputp (bsk6-prepared) ".stage-k5-2"
+                             (fn-bs-txn-name 1) (bsk5-frame-2))
+        (not (fn-bs-lookup bs :staging ".stage-k5-2")))))
+(must-fail
+ (assert-event
+  (let* ((bs (bsk0-unfenced-old-authority))
+         (cut (car (nth 10 (fn-bs-run bs (bsk6-prepared)
+                                       (fn-bs-record-program
+                                        ".stage-k5-2" (fn-bs-txn-name 1)
+                                        (bsk5-frame-2))
+                                       nil *bsk5-groups* *bsk5-capacity*)))))
+    (fn-bs-authority-fencedp cut))))
+
+; The byte-state grammar permits a dangling durable directory entry.  A
+; fresh P-RECORD cannot repair the missing old inode; known-authority is a
+; genuine input-relation obligation.
+(defun bsk0-missing-old-authority ()
+  (let* ((bs (bsk6-start))
+         (old (fn-bs-durable-entry bs :transactions (fn-bs-txn-name 0))))
+    (fn-bs-make (fn-bs-unit bs)
+                (remove-assoc-equal old (fn-bs-inodes bs))
+                (fn-bs-dirs bs) (fn-bs-pending bs) (fn-bs-next-ino bs))))
+(assert-event
+ (let ((bs (bsk0-missing-old-authority)))
+   (and (fn-bs-statep bs)
+        (not (fn-bs-store-relation bs (bsk6-prepared)))
+        (fn-bs-record-inputp (bsk6-prepared) ".stage-k5-2"
+                             (fn-bs-txn-name 1) (bsk5-frame-2))
+        (not (fn-bs-lookup bs :staging ".stage-k5-2")))))
+(must-fail
+ (assert-event
+  (let* ((bs (bsk0-missing-old-authority))
+         (cut (car (nth 10 (fn-bs-run bs (bsk6-prepared)
+                                       (fn-bs-record-program
+                                        ".stage-k5-2" (fn-bs-txn-name 1)
+                                        (bsk5-frame-2))
+                                       nil *bsk5-groups* *bsk5-capacity*)))))
+    (fn-bs-authority-knownp cut))))
+
+; The complete K0 relation is regained by the actual interpreter pair,
+; after the old durable article and for both article/retention Store events.
+(defun bsk0-attempted-cut-relatedp (bs ks stage name frame)
+  (let ((cut (nth 10 (fn-bs-run bs ks
+                                (fn-bs-record-program stage name frame)
+                                nil *bsk5-groups* *bsk5-capacity*))))
+    (fn-bs-store-relation (car cut) (cdr cut))))
+(assert-event
+ (and (bsk0-attempted-cut-relatedp
+       (bsk6-start) (bsk6-prepared) ".stage-k5-2"
+       (fn-bs-txn-name 1) (bsk5-frame-2))
+      (bsk0-attempted-cut-relatedp
+       (bsk6-start) (bsk6-retention-prepared)
+       ".stage-k6-retention" (fn-bs-txn-name 1)
+       (bsk6-retention-frame))))
+(must-fail
+ (assert-event
+  (bsk0-attempted-cut-relatedp
+   (bsk6-occupied-final-start) (bsk6-prepared)
+   ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
+(must-fail
+ (assert-event
+  (bsk0-attempted-cut-relatedp
+   (bsk6-start) (bsk6-prepared)
+   ".stage-k5-2" (fn-bs-txn-name 0) (bsk5-frame-2))))
+(must-fail
+ (assert-event
+  (bsk0-attempted-cut-relatedp
+   (bsk0-occupied-stage) (bsk6-prepared)
+   ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
