@@ -87,6 +87,9 @@
                 nil))
 (assert-event (not (fn-ocl-relation *ocl-t-stale-next-pin*)))
 (assert-event
+ (not (fn-ocl-relation
+       (cdr (fn-ocfg-open *ocl-t-stale-next-pin* nil)))))
+(assert-event
  (not (equal (fn-ocfg-conn-config
               (cdr (fn-ocfg-open *ocl-t-stale-next-pin* nil)) 1)
              (fn-ocfg-config *ocl-t-stale-next-pin*))))
