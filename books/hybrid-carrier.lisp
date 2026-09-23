@@ -331,7 +331,7 @@
              (consp received)
              (fn-cbor-at-mostp received max-octets)) received nil)))
 
-(defthm fn-hc-render-at-most-emitted-bound
+(defthm fn-hc-render-at-most-emitted-bound-by-definition
   (implies (fn-hc-render-at-most max-octets source principal keys signatures)
            (fn-cbor-at-mostp
             (fn-hc-render-at-most max-octets source principal keys signatures)
