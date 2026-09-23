@@ -1130,6 +1130,7 @@
                      fn-record-shape-vocabulary
                                fn-store-event-p fn-store-retention-event-p
                                fn-stxe-p fn-stxk-p fn-stxa-p
+                               fn-th-topic-eventp fn-th-local-admin-eventp
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
                                fn-replay-apply-identity-neutral
@@ -1236,6 +1237,7 @@
                                fn-record-shape-vocabulary
                                fn-store-event-p fn-store-retention-event-p
                                fn-stxe-p fn-stxk-p fn-stxa-p
+                               fn-th-topic-eventp fn-th-local-admin-eventp
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
                                fn-replay-apply-identity-neutral
@@ -1301,6 +1303,7 @@
                                fn-record-shape-vocabulary
                                fn-store-event-p fn-store-retention-event-p
                                fn-stxe-p fn-stxk-p fn-stxa-p
+                               fn-th-topic-eventp fn-th-local-admin-eventp
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
                                fn-replay-apply-identity-neutral
@@ -1409,6 +1412,25 @@
            (fn-snt-relation (fn-snt-run (fn-sn-initial groups capacity) events)))
   :hints (("Goal" :in-theory (disable fn-snt-relation fn-snt-run fn-sn-initial))))
 
+; Isolate the one relation arm used by the public exact-replay claim.  The
+; other arms contain record codecs and replay steps irrelevant to an idle
+; phase; opening them in the final theorem makes a simple projection costly.
+(local
+ (defthm fn-snt-ready-or-recovered-phase-is-idle
+   (implies (member-equal phase '(:ready :recovering :fenced-recovery))
+            (fn-snt-idle-phasep phase))
+   :hints (("Goal" :in-theory (enable fn-snt-idle-phasep)))))
+
+(local
+ (defthm fn-snt-idle-relation-node-is-exact-replay
+   (implies (and (fn-snt-relation s)
+                 (fn-snt-idle-phasep (fn-sf-phase (fn-sn-files s))))
+            (equal (fn-sn-node s)
+                   (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                                      (fn-sf-records (fn-sn-files s))
+                                      (fn-sf-frontier (fn-sn-files s)))))
+   :hints (("Goal" :in-theory '(fn-snt-relation)))))
+
 (defthm fn-snt-ready-or-recovered-node-is-exact-replay
   (implies (and (fn-snt-relation s)
                 (member-equal (fn-sf-phase (fn-sn-files s))
@@ -1417,8 +1439,10 @@
                   (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                      (fn-sf-records (fn-sn-files s))
                                      (fn-sf-frontier (fn-sn-files s)))))
-  :hints (("Goal" :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
-                                      fn-sn-completion-enabledp fn-snt-pending-linkp fn-snt-deferred-linkp fn-snt-completion-linkp))))
+  :hints (("Goal" :use ((:instance fn-snt-ready-or-recovered-phase-is-idle
+                        (phase (fn-sf-phase (fn-sn-files s))))
+                         fn-snt-idle-relation-node-is-exact-replay)
+           :in-theory nil)))
 
 (defthm fn-snt-mixed-trace-ready-node-is-exact-replay
   (let ((final (fn-snt-run s events)))
@@ -1555,24 +1579,48 @@
 ; file state on, so this is still one equation; the recognizers and the
 ; identity step stay closed so the dispatch does not unfold the codec under
 ; it.
+(local
+ (defthm fn-snt-files-of-with-topic
+   (equal (fn-sn-files (fn-sn-with-topic s topic)) (fn-sn-files s))
+   :hints (("Goal" :in-theory
+            '(fn-sn-with-topic fn-sn-files-of-fn-sn-make-v5)))))
+(local
+ (defthm fn-snt-files-of-with-consumer
+   (equal (fn-sn-files (fn-sn-with-consumer s consumer)) (fn-sn-files s))
+   :hints (("Goal" :in-theory
+            '(fn-sn-with-consumer fn-sn-files-of-fn-sn-make-v5)))))
+(local
+ (defthm fn-snt-files-of-advance-identity-next
+   (equal (fn-sn-files (fn-sn-advance-identity-next s)) (fn-sn-files s))
+   :hints (("Goal" :in-theory
+            '(fn-sn-advance-identity-next fn-sn-files-of-fn-sn-make-v5)))))
+(local
+ (defthm fn-snt-files-of-update-indexed
+   (equal (fn-sn-files (fn-sn-update-indexed s files node index)) files)
+   :hints (("Goal" :in-theory
+            '(fn-sn-update-indexed fn-sn-files-of-fn-sn-make-v5)))))
+(local
+ (defthm fn-snt-files-of-update-accepted
+   (equal (fn-sn-files (fn-sn-update-accepted
+                         s files node index msgid verdict)) files)
+   :hints (("Goal" :in-theory
+            '(fn-sn-update-accepted fn-sn-files-of-fn-sn-make-v5)))))
+(local
+ (defthm fn-snt-files-of-finish-identity
+   (equal (fn-sn-files (fn-sn-finish-identity s files record node)) files)
+   :hints (("Goal" :in-theory
+            '(fn-sn-finish-identity fn-sn-files-of-fn-sn-make-v5)))))
+
 (defthm fn-snt-finish-keeps-records
   (equal (fn-sf-records (fn-sn-files (fn-sn-finish s)))
          (fn-sf-records (fn-sn-files s)))
-  :hints (("Goal" :in-theory (e/d (fn-sn-finish fn-sn-update )
-                                  (fn-sn-completion-enabledp fn-sn-completion-record
-                                    fn-sf-core-completion
-                                   fn-sf-emit-success
-                                   fn-record-shape-vocabulary
-                                   fn-store-event-p fn-store-retention-event-p
-                                   fn-stxe-p fn-stxk-p fn-stxa-p
-                                   fn-replay-apply-record
-                                   fn-replay-apply-retention-event
-                                   fn-replay-apply-identity-neutral
-                                   fn-replay-composite-record
-                                   fn-sn-identity-context
-                                   fn-replay-identity-step
-                                   fn-sn-accepted-delta
-                                   fn-sn-composite-delta)))))
+  :hints (("Goal" :in-theory
+           '(fn-sn-finish
+             fn-snt-files-of-with-topic fn-snt-files-of-with-consumer
+             fn-snt-files-of-advance-identity-next
+             fn-snt-files-of-update-indexed fn-snt-files-of-update-accepted
+             fn-snt-files-of-finish-identity
+             fn-sf-records-of-core-completion fn-sf-records-of-emit-success))))
 
 (defthm fn-snt-crash-records-prefix
   (implies (fn-sn-statep s)
