@@ -1,9 +1,9 @@
 # Experimental consumer position, version 1
 
 Status: **selected experiment contract; ACL2 decision, durable Store projection,
-and bounded local-owner poll source implemented; prior native
-bootstrap/register/position/equal-ack checks passed, while positive poll and
-advancing ack await a repaired source-matched image**, 2026-09-23. This
+and bounded local-owner poll implemented; native signed poll, advancing ACK
+with reply loss/reopen and fenced clone recovery passed in the scoped
+`1d26e01f` campaign**, 2026-09-23. This
 specifies E2 of [the sleeping-agent exchange](../planning/experiments/e1-e2-agent-exchange.md).
 It is an fn design guarantee, not an NNTP or BP requirement and not a v0 release
 gate. The selected E1 payload remains opaque to fn. The executable traces to
@@ -221,8 +221,9 @@ but an already-unlinked fence can permit safe ordinary opens. The original
 `bc9be7ec` saved image passed independent canonical-path refusal and
 historical authored-verdict clone/reopen tests, as recorded in
 [the frozen image evidence](../planning/evidence/native-reader-clone-bc9-2026-09-23.md).
-The consumer advancing-ack clone and process-death path still await a
-source-matched run with a working poll caller. Arbitrary filesystem copying
+The subsequent `1d26e01f` image passed advancing-ack selected-pack and
+fenced-clone process-death/cursor checks; [its exact scope](../planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md)
+does not establish arbitrary physical power-loss safety. Arbitrary filesystem copying
 is not a supported writable clone. The
 selected exact-prefix pack retains every original event byte and reconstructs
 the entire dense Store stream before open; its prefix reclaim may preserve
@@ -285,8 +286,9 @@ the recorded declaration. An earlier production image passed bootstrap,
 register, position, equal-position ack, epoch refusal, independent Store
 scope refusal, replay, and a killed-owner-after-durable-register case;
 [its exact scope](../planning/evidence/native-e2-bp-4f66-2026-09-23.md)
-does not include poll or advancing ack. The complete local command route
-still needs source-matched positive poll and later process-death qualification.
+does not include poll or advancing ack. The `1d26e01f` campaign subsequently passed signed poll, advancing ACK with
+a killed reply, and recovered position; the broader two-store application
+transaction crash trace remains open.
 
 The local `consumer poll CONTROL ID CURSOR_OUT REPORT_OUT` source selector
 examines at most 16 consecutive committed Store events and stops at the first
@@ -308,9 +310,9 @@ installed or called here; it does not reduce that served cost. The original
 `bc9be7ec` image's signed poll attempt failed before submission because the
 CLI supplied the cursor output path as an extra ACL2 request argument,
 as recorded in [the original failure](../planning/evidence/native-e2-poll-bc9-original.md).
-The caller repair awaits a source-matched image. Positive native fetch,
-advancing ack, and the Mini durable inbox/outbox join remain separate
-evidence obligations.
+The repaired `1d26e01f` image passed signed poll and advancing-ack recovery,
+as recorded in [the native campaign](../planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md).
+The Mini durable inbox/outbox-to-ACK join remains an open evidence obligation.
 
 The read-only `consumer-project CURSOR.fncu ACCEPTED.fn-e` command calls
 `fn-cpj-project` to check a supplied v1 cursor against a schema-1 accepted
@@ -318,8 +320,8 @@ event, its bound article and historical verified verdict. The current ACL2
 projection has a [verified guard and scoped witness](../planning/evidence/mini-e2-consumer-project-2026-09-23.md),
 but supplied files alone do not prove that a particular authenticated Store
 poll returned them. It does not perform Mini's source verification or durable
-inbox/outbox transaction, and no saved native image of this command is yet
-recorded.
+inbox/outbox transaction. The `1d26e01f` native command projected the exact
+event and cursor exported by the signed poll campaign.
 
 That **local-owner profile** pins one OS owner principal inside ACL2; its
 query is exact historical membership in one group that is configured at
@@ -344,6 +346,7 @@ bind source-inclusive inbox evidence, a separate unique application operation
 index, and a reply outbox before acknowledging. The logical Store model,
 cursor decision kernel, durable local declarations and bounded one-group poll
 source are implemented. Prior native declaration and independent clone checks
-passed in their stated scopes; positive poll/advancing ack on the repaired
-image, general authenticated multi-group selection, consumer database, and
-the two-store trace remain open.
+passed in their stated scopes, followed by native signed poll, advancing
+ACK/reopen and fenced-clone cursor checks on `1d26e01f`. General authenticated
+multi-group selection, the consumer application transaction/ACK join, and the
+two-store trace remain open.
