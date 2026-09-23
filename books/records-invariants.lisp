@@ -212,6 +212,26 @@
                                ; steps took 39 s, all of it in type-set.
                                (:type-prescription true-listp-append)))))
 
+(defthm fn-record-with-stamp-preserves-record
+  (implies (and (fn-record-p record) (fn-record-stampp stamp))
+           (fn-record-p (fn-record-with-stamp record stamp)))
+  :hints (("Goal" :in-theory (enable fn-record-with-stamp
+                                     fn-record-shape-vocabulary))))
+
+(defthm fn-record-schema-0-bytes-decode-as-legacy
+  (implies (fn-record-p record)
+           (equal (fn-record-decode-exact-impl
+                   (fn-record-schema0-encode record))
+                  (fn-record-result-ok
+                   (fn-record-with-stamp record :legacy))))
+  :hints (("Goal" :use ((:instance fn-record-impl-round-trip
+                                    (record (fn-record-with-stamp record :legacy))))
+           :in-theory (e/d (fn-record-schema0-encode)
+                           (fn-record-impl-round-trip
+                            fn-record-decode-exact-impl
+                            fn-record-encode-impl))))
+  :rule-classes nil)
+
 ; -----------------------------------------------------------------------------
 ; Export theory.  `fn-record-round-trip' is the keystone; everything else here
 ; is arithmetic, list and prefix vocabulary, including every rule that

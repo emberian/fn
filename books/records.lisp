@@ -573,6 +573,23 @@
               (fn-record-parse-error :unknown-version)))
   :rule-classes nil)
 
+; Schema 1 preserves every schema-0 field byte and appends one canonical uint.
+(defconst *fn-record-schema1-golden-octets*
+  '(68 102 110 45 114 1 1 2 3 67 60 97 62 66 9 8 1 65 103
+    65 111 65 115 65 101 4 5))
+
+(defthm fn-record-schema1-golden-octets-are-the-encoding
+  (equal (fn-record-encode-impl
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5))
+         *fn-record-schema1-golden-octets*)
+  :rule-classes nil)
+
+(defthm fn-record-schema1-golden-octets-decode
+  (equal (fn-record-decode-exact-impl *fn-record-schema1-golden-octets*)
+         (fn-record-result-ok
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5)))
+  :rule-classes nil)
+
 
 
 

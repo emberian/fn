@@ -20,11 +20,15 @@ prepares a post. An aborted or refused attempt may leave a gap; reopening cannot
 reuse the reservation. This is local transaction identity, not a portable origin
 sequence or an author identity. Exhaustion refuses new attempts.
 
-Local transaction records use an experimental schema 0. Their codec is a bounded
+Local transaction records use experimental schema 0 and schema 1. Their codec is a bounded
 fixed sequence of deterministic CBOR primitives: a magic byte string, schema
 version, journal sequence, acceptance transaction ID, generation, Message-ID,
 payload, group count and groups, obligation identity, content subject, release
-evidence, and charge. The source book defines the exact field domains and golden
+evidence, and charge. Schema 1 appends one canonical uint32 acceptance stamp,
+the owner's wall reading at prepare in whole seconds since 2000-01-01 UTC.
+Schema-0 records decode with `:legacy` and re-encode to identical bytes; a live
+prepare refuses a `:legacy` record or an unusable clock before writing a record.
+The source book defines the exact field domains and golden
 vectors. This format is local and provisional; it is not D01/D09's signed native
 article envelope. Source bytes never enter a Lisp reader as executable forms.
 
