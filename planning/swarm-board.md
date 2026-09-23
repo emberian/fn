@@ -38,12 +38,13 @@ freeze. Preserve the live `da5fd8cb` node and existing shared compute pools.
 | `store_invariants` | Actual served Message-ID index and maintained correspondence; share reader view shape with verdict lane rather than waiting for all reader work. |
 | `consumer_contract` | Durable consumer bootstrap/events/Store projection, registration/ack/recovery and restore fencing; coordinate shared Store constructors with historical config and authored records. |
 | `bp_foundation` | One native FNBS service authority, typed receive/publish/recovery and actual caller switch; native A2/contact/TCPCL packet integrated at `66bf9e55`; qualify one coherent saved image. |
-| `feed_replay` | TCPCL drive correspondence landed; now durable clock-domain compatibility/codec/migration, coordinating native clock observations with foundation. |
+| `feed_replay` | TCPCL drive and clock-domain codec/gate certified; foundation qualifies native clock join. Now repairs missing authored NNTP injection projection found by actual carrier peering. |
 | `status_codec` | Native contact planning, interruption/expiry/backpressure and receipt progression through that same service; do not import the old scheduler's assumed durable completion. |
 | `crash_differential` | Corrected K8 model crash-scan theorem landed; K6 actual framed-write trace provenance and K0 establishment next. |
-| `fragment_refinement` | Isolated device-EIO campaign and strict process/device ownership checks landed; ext4-only scope, no power-loss/ZFS claim. |
+| `fragment_refinement` | Device-EIO campaign landed. Now fixes cache composition using actual ACL2 certificate hash compatibility: same source/toolchain can carry different portcullis/expansion hashes. |
 | `store_semantics` | Reader/composer and exact retry handling integrated; browser and native POST/readback passed; bounded in-memory submission registry, no durable client spool. |
 | `mini_evidence_bridge` | P0 native export/verify and signed fixture complete; P1 durable operation binding, provenance/conflict evidence and immutable reply transaction in Mini. |
+| `topic_metadata` | P3 bounded canonical metadata codec, exact-authored-source field projection and native inspection; coordinate T10 binding without claiming topic admission or Mini action authority. |
 
 Root integrates finite source commits, regenerates ledgers, checks concrete
 proof/runtime regressions and maintains evidence. No lane is a permanent file

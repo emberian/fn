@@ -1,0 +1,17 @@
+test_authored_carrier_survives_native_peering_and_receiver_restart (__main__.NativeHybridAuthorTest.test_authored_carrier_survives_native_peering_and_receiver_restart)
+Real owner/feed/receiver path; portable verification is independent. ... ERROR
+
+======================================================================
+ERROR: test_authored_carrier_survives_native_peering_and_receiver_restart (__main__.NativeHybridAuthorTest.test_authored_carrier_survives_native_peering_and_receiver_restart)
+Real owner/feed/receiver path; portable verification is independent.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/fn-hybrid-peering-ea15bafa.py", line 321, in test_authored_carrier_survives_native_peering_and_receiver_restart
+    original_path = next(line for line in original.split(b"\r\n")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+StopIteration
+
+----------------------------------------------------------------------
+Ran 1 test in 1.106s
+
+FAILED (errors=1)

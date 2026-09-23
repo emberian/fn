@@ -31,3 +31,5 @@ packet proves the raw frame at the file-fence inode, not yet that every
 surviving transaction name in a crash image points to it. General K0
 relation preservation and physical successful-directory-fence qualification
 remain separate obligations.
+
+Root integrated both the initial packet and redundant-premise removal as `a2c1a407`/`51d64f50`. The current T10a dependency union passed hbox `run-20260923T195023Z-3a05` in 4.711 seconds with two jobs, 69 cached dependencies and two certified roots. [The exact manifest](manifests/certify-20260923T195032Z-4192209.json) and the changed-root gate cover this combined source, not physical storage hardware.
