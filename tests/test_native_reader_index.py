@@ -128,7 +128,9 @@ class NativeReaderIndexTest(unittest.TestCase):
         middle = self.reader()
         self.assertEqual(self.command(old, "STAT " + first)[0],
                          b"430 no article with that message-id\r\n")
-        self.assertIn(first.encode(), self.command(middle, "STAT " + first)[0])
+        status = self.command(middle, "STAT " + first)[0]
+        self.assertTrue(status.startswith(b"223 "), status)
+        self.assertIn(first.encode(), status)
         self.assertEqual(self.command(middle, "STAT " + second)[0],
                          b"430 no article with that message-id\r\n")
         second_source = self.post(second, 2)
@@ -137,7 +139,9 @@ class NativeReaderIndexTest(unittest.TestCase):
                          b"430 no article with that message-id\r\n")
         self.assertEqual(self.command(middle, "STAT " + second)[0],
                          b"430 no article with that message-id\r\n")
-        self.assertIn(second.encode(), self.command(fresh, "STAT " + second)[0])
+        status = self.command(fresh, "STAT " + second)[0]
+        self.assertTrue(status.startswith(b"223 "), status)
+        self.assertIn(second.encode(), status)
         self.assertEqual(self.command(fresh, "STAT " + absent)[0],
                          b"430 no article with that message-id\r\n")
 
@@ -177,6 +181,7 @@ class NativeReaderIndexTest(unittest.TestCase):
                 self.assertEqual(len(observations), 24)
                 for index, status in enumerate(observations):
                     if index % 2 == 0:
+                        self.assertTrue(status.startswith(b"223 "), status)
                         self.assertIn(first.encode(), status)
                     else:
                         self.assertEqual(status,
