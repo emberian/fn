@@ -193,7 +193,13 @@
                                fn-record-generation fn-record-msgid fn-record-payload
                                fn-record-groups fn-record-obligation-id
                                fn-record-content-subject fn-record-release-evidence
-                               fn-record-charge floor mod))))
+                               fn-record-charge floor mod
+                               ; The encoder is a thirteen-deep right-nested
+                               ; `append'.  With this rule on, every type-set
+                               ; of it backchains through each level's
+                               ; `true-listp' hypothesis again: 27 290 prover
+                               ; steps took 39 s, all of it in type-set.
+                               (:type-prescription true-listp-append)))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory.  `fn-record-round-trip' is the keystone; everything else here

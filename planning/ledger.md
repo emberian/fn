@@ -13,12 +13,12 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 423 |
 | Certification roots in the Makefile | 421 |
 | Books inside the root closure | 422 |
-| `defthm` and `defthmd` events | 7074 |
-| `defun` events | 5421 |
+| `defthm` and `defthmd` events | 7087 |
+| `defun` events | 5426 |
 | Functions with verified guards | 1746 |
 | Functions declared `:verify-guards nil` and never verified | 288 |
 | Functions left at the default with an explicit guard | 2721 |
-| Functions left at the default with no guard | 666 |
+| Functions left at the default with no guard | 671 |
 | `assert-event` checks | 7833 |
 | `must-fail` checks | 280 |
 | `encapsulate` events | 26 |
@@ -195,8 +195,8 @@ that `make certify` requests.
 | `books/feed-totality.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/feed-wire-input.lisp` | root | 3 | 23 | 23/0/0/0 | 0 | 0 | 0 |
 | `books/frame-fields.lisp` | root | 23 | 38 | 13/0/25/0 | 0 | 0 | 0 |
-| `books/frame-invariants.lisp` | root | 80 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/frame-journal.lisp` | root | 3 | 14 | 11/0/3/0 | 0 | 0 | 0 |
+| `books/frame-invariants.lisp` | root | 81 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/frame-journal.lisp` | root | 8 | 14 | 11/0/3/0 | 0 | 0 | 0 |
 | `books/frame-octets.lisp` | root | 27 | 7 | 2/0/4/1 | 0 | 0 | 0 |
 | `books/frame-trailer.lisp` | root | 7 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/frame.lisp` | root | 0 | 5 | 5/0/0/0 | 0 | 0 | 0 |
@@ -257,7 +257,7 @@ that `make certify` requests.
 | `books/owner.lisp` | root | 46 | 126 | 0/3/123/0 | 0 | 0 | 0 |
 | `books/path-update.lisp` | root | 77 | 29 | 2/0/26/1 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
-| `books/peer-config.lisp` | root | 29 | 30 | 0/0/30/0 | 0 | 0 | 0 |
+| `books/peer-config.lisp` | root | 36 | 35 | 0/0/30/5 | 0 | 0 | 0 |
 | `books/peer-feed-invariants.lisp` | root | 127 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/peer-feed.lisp` | root | 35 | 100 | 3/0/97/0 | 0 | 0 | 0 |
 | `books/peer-inbound-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -566,8 +566,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 239 | branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
 | `fn-prov-transit-kindp-forward` | `books/provenance.lisp` | 56 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-prov-transit-kindp |
 | `fn-prov-wire-of-a-string-is-itself-by-definition` | `books/provenance-codec.lisp` | 563 | branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value |
-| `fn-record-impl-encode-domain` | `books/records-canonicality.lisp` | 772 | branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value |
-| `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 600 | reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-record-impl-encode-domain` | `books/records-canonicality.lisp` | 790 | branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value |
+| `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 618 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-retain-admission-refusal-is-no-op` | `books/retention.lisp` | 287 | branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value |
 | `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 327 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
 | `fn-sf-frontier-rollback-visiblep-unfolds` | `books/store-files-invariants.lisp` | 411 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep |
