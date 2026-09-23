@@ -83,7 +83,7 @@ itself):
 | --- | --- | --- | --- |
 | leaf: edit `books/peer-inbound`, plain run | rsync, cache install, one book and its test books | 8.7 s certify, about a minute with the rsync; the third incremental run of dev's head (2026-09-23 02:17Z, `certify-20260923T021717Z`) certified 54 books against 371 installed in 29 s from submit to status, none over ten seconds; the fourth (02:41Z, `certify-20260923T024141Z`) certified 62 against 363 in 63 s with the image closure entirely green | under 1 min |
 | deep: edit `books/records-shape`, plain run | the incremental mode certifying every dependent, the chain | 3 min 19 s at 16 jobs for 362 of 425 books (the second incremental run of dev's head, 2026-09-23 01:53Z, `certify-20260923T015324Z`), down from 27 min; 15 books still over ten seconds in it, most repaired since | under 3 min |
-| freeze: `--closure` over the image roots at 16 jobs | the whole tree from scratch | 31 min at 8 jobs before tonight's repairs | under 3 min, or pcert |
+| freeze: `--closure` over the image roots at 16 jobs | the whole tree from scratch | 1 min 44 s on hbox at 16 jobs, every book green (`certify-20260923T024230Z`, dev 2e53fae2); 31 min at 8 jobs before the repairs | under 3 min, or pcert |
 
 What gets there, in order: every book under ten seconds (the COST package
 below, six lanes landed or in flight tonight), the incremental mode
