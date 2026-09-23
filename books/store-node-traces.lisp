@@ -750,16 +750,19 @@
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-prepare s record)))
   :hints (("Goal"
-    :use (fn-sn-prepare-preserves-state fn-snt-record-counters-natural
-          (:instance fn-snt-candidate-is-frontier-predecessor
-            (records (fn-sf-records (fn-sn-files s)))
-            (frontier (fn-sf-frontier (fn-sn-files s))))
-          (:instance fn-snt-bound-record-is-matching-proposal
-            (node (fn-sn-prepare-node (fn-sn-node s) record)))
-          (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
-          (:instance fn-snt-canonical-preparation-outcomes
-            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
-            (history (fn-sf-records (fn-sn-files s)))))
+    ; Split on the transition's own gate; the instances about the staged
+    ; proposal go to Subgoal 1, the case in which it holds, as in the two
+    ; deferred preparations below.
+    :use (fn-sn-prepare-preserves-state)
+    :cases ((and (fn-sn-statep s)
+                 (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                 (null (fn-node-stage (fn-sn-node s)))
+                 (fn-record-p record)
+                 (fn-sn-record-bindsp (fn-sn-prepare-node (fn-sn-node s) record) record)
+                 (equal (fn-sf-phase (fn-sf-prepare-record
+                                      (fn-sn-files s) record
+                                      (fn-sn-groups s) (fn-sn-capacity s)))
+                        :record-staged)))
     ; The candidate this stages IS an article record -- that is the branch
     ; test of `fn-sn-prepare' -- so the deferred arm `6ab2c783' and
     ; `4bb7bb3d' made necessary is not the one taken, and it stays closed
@@ -779,7 +782,18 @@
                      fn-replay-apply-retention-event
                      fn-replay-apply-identity-neutral
                      fn-replay-composite-record
-                     fn-sn-identity-context fn-replay-identity-step)))))
+                     fn-sn-identity-context fn-replay-identity-step)))
+          ("Subgoal 1"
+    :use (fn-snt-record-counters-natural
+          (:instance fn-snt-candidate-is-frontier-predecessor
+            (records (fn-sf-records (fn-sn-files s)))
+            (frontier (fn-sf-frontier (fn-sn-files s))))
+          (:instance fn-snt-bound-record-is-matching-proposal
+            (node (fn-sn-prepare-node (fn-sn-node s) record)))
+          (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
+          (:instance fn-snt-canonical-preparation-outcomes
+            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
+            (history (fn-sf-records (fn-sn-files s))))))))
 
 ; The other two preparations.  Both stage their event through the same
 ; `fn-sf-prepare-record' -- whose own gate is where the extended history's
@@ -816,6 +830,37 @@
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-prepare-retention s event)))
   :hints (("Goal"
+    ; The transition changes the state only on its staging arm, and every
+    ; instance below is about that arm.  Given to the whole goal they were
+    ; also carried into each arm where the transition is the identity, and
+    ; there the relation's own expansion rewrote them over again: 12 cases
+    ; at 3.2 million steps each, 50.6 s on the seam run of 2026-09-23
+    ; (planning/evidence/chain-remainder-cost-2026-09-23.md).  So the goal is
+    ; split on the transition's own gate, and the instances go to the
+    ; staging case alone.
+    :cases ((and (fn-sn-statep s)
+                 (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                 (fn-store-retention-event-p event)
+                 (consp (fn-replay-apply-retention-event (fn-sn-node s) event))
+                 (equal (fn-sf-phase (fn-sf-prepare-record
+                                      (fn-sn-files s) event
+                                      (fn-sn-groups s) (fn-sn-capacity s)))
+                        :record-staged)))
+    :in-theory (e/d (fn-sf-prepare-record fn-replay-apply-record
+                     fn-sn-prepare-retention)
+                    (fn-sn-statep fn-sn-record-bindsp fn-sf-history-recoverablep
+                     fn-sn-completion-enabledp fn-sn-completion-record
+                     fn-sf-recover fn-sf-record-listp
+                     fn-replay-apply-retention-event
+                     fn-replay-apply-identity-neutral
+                     fn-replay-composite-record
+                     fn-replay-identity-step fn-sn-identity-context
+                     fn-snt-completion-linkp
+                     fn-record-shape-vocabulary fn-record-record-vocabulary
+                     fn-store-event-p fn-store-retention-event-p
+                     fn-stxe-p fn-stxk-p fn-stxa-p)))
+          ; Subgoal 1 is the case in which the gate above holds.
+          ("Subgoal 1"
     :use (fn-sn-prepare-retention-preserves-state
           (:instance fn-snt-an-article-record-is-no-other-store-event
             (record event))
@@ -833,37 +878,27 @@
           (:instance fn-snt-deferred-preparation-outcome
             (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
             (history (fn-sf-records (fn-sn-files s)))
-            (txid (+ -1 (fn-sf-frontier (fn-sn-files s))))))
-    :in-theory (e/d (fn-sf-prepare-record fn-replay-apply-record
-                     fn-sn-prepare-retention)
-                    (fn-sn-statep fn-sn-record-bindsp fn-sf-history-recoverablep
-                     fn-sn-completion-enabledp fn-sn-completion-record
-                     fn-sf-recover fn-sf-record-listp
-                     fn-replay-apply-retention-event
-                     fn-replay-apply-identity-neutral
-                     fn-replay-composite-record
-                     fn-replay-identity-step fn-sn-identity-context
-                     fn-snt-completion-linkp
-                     fn-record-shape-vocabulary fn-record-record-vocabulary
-                     fn-store-event-p fn-store-retention-event-p
-                     fn-stxe-p fn-stxk-p fn-stxa-p)))))
+            (txid (+ -1 (fn-sf-frontier (fn-sn-files s)))))))))
 
 (defthm fn-snt-prepare-identity-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-prepare-identity s event)))
   :hints (("Goal"
-    :use (fn-sn-prepare-identity-preserves-state
-          (:instance fn-snt-an-article-record-is-no-other-store-event
-            (record event))
-          (:instance fn-snt-candidate-is-frontier-predecessor
-            (record event)
-            (records (fn-sf-records (fn-sn-files s)))
-            (frontier (fn-sf-frontier (fn-sn-files s))))
-          (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
-          (:instance fn-snt-deferred-preparation-outcome
-            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
-            (history (fn-sf-records (fn-sn-files s)))
-            (txid (+ -1 (fn-sf-frontier (fn-sn-files s))))))
+    ; As for the retention arm above: split on the transition's own gate,
+    ; and the instances about the staged event go to the staging case alone
+    ; (115 subgoals and 10.9 s on the seam run of 2026-09-23 when they went
+    ; to every case; planning/evidence/chain-remainder-cost-2026-09-23.md).
+    :cases ((and (fn-sn-statep s)
+                 (equal (fn-sf-phase (fn-sn-files s)) :reserved)
+                 (or (fn-stxe-p event) (fn-stxk-p event) (fn-stxa-p event))
+                 (consp (fn-replay-apply-record (fn-sn-node s) event))
+                 (equal (fn-stxk-context-kind
+                         (fn-replay-identity-step (fn-sn-identity-context s) event))
+                        :ok)
+                 (equal (fn-sf-phase (fn-sf-prepare-record
+                                      (fn-sn-files s) event
+                                      (fn-sn-groups s) (fn-sn-capacity s)))
+                        :record-staged)))
     :in-theory (e/d (fn-sf-prepare-record fn-sn-prepare-identity)
                     (fn-sn-statep fn-sn-record-bindsp fn-sf-history-recoverablep
                      fn-sn-completion-enabledp fn-sn-completion-record
@@ -890,7 +925,21 @@
                      fn-snt-completion-linkp
                      fn-record-shape-vocabulary fn-record-record-vocabulary
                      fn-store-event-p fn-store-retention-event-p
-                     fn-stxe-p fn-stxk-p fn-stxa-p)))))
+                     fn-stxe-p fn-stxk-p fn-stxa-p)))
+          ; Subgoal 1 is the case in which the gate above holds.
+          ("Subgoal 1"
+    :use (fn-sn-prepare-identity-preserves-state
+          (:instance fn-snt-an-article-record-is-no-other-store-event
+            (record event))
+          (:instance fn-snt-candidate-is-frontier-predecessor
+            (record event)
+            (records (fn-sf-records (fn-sn-files s)))
+            (frontier (fn-sf-frontier (fn-sn-files s))))
+          (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
+          (:instance fn-snt-deferred-preparation-outcome
+            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
+            (history (fn-sf-records (fn-sn-files s)))
+            (txid (+ -1 (fn-sf-frontier (fn-sn-files s)))))))))
 
 ; File stages that do not publish a record retain the same live proposal.
 (defthm fn-snt-start-frontier-preserves-relation
@@ -989,18 +1038,19 @@
 (defthm fn-snt-record-directory-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-io s :record-directory result)))
+  ; Only the observed durable directory in :record-attempted publishes
+  ; anything; every other case leaves the files, history and node as they
+  ; were, or fences the record.  The instances about the published
+  ; candidate belong to that one case, and given to the whole goal they
+  ; were carried through all 286 cases of its first split (9110 subgoals,
+  ; 34.2 s on the seam run of 2026-09-23;
+  ; planning/evidence/chain-remainder-cost-2026-09-23.md).  So the goal is
+  ; split on that case, and Subgoal 1, where it holds, alone gets them.
   :hints (("Goal" :use ((:instance fn-sn-io-preserves-state
-                                     (operation :record-directory))
-                        (:instance fn-snt-typed-record-phase (files (fn-sn-files s)))
-                        (:instance fn-snt-advance-that-lands-was-not-past-it
-                          (node (fn-sn-node s))
-                          (k (fn-store-event-txid
-                              (fn-sf-record-candidate (fn-sn-files s)))))
-                        (:instance fn-snt-an-article-record-is-no-other-store-event
-                          (record (fn-sf-record-candidate (fn-sn-files s))))
-                        (:instance fn-snt-find-published-candidate
-                          (files (fn-sn-files s))
-                          (record (fn-sf-record-candidate (fn-sn-files s)))))
+                                   (operation :record-directory)))
+           :cases ((and (fn-sn-statep s)
+                       (equal (fn-sf-phase (fn-sn-files s)) :record-attempted)
+                       (equal result :ok)))
            ; The five event recognizers and the three appliers stay closed,
            ; as they do in books/replay and books/store-node-invariants for
            ; the same reason: this goal DISPATCHES on the candidate's kind and
@@ -1021,7 +1071,17 @@
                                fn-replay-apply-retention-event
                                fn-replay-apply-identity-neutral
                                fn-replay-composite-record
-                                                              fn-replay-identity-step))))
+                               fn-replay-identity-step))
+          ("Subgoal 1" :use ((:instance fn-snt-typed-record-phase (files (fn-sn-files s)))
+                        (:instance fn-snt-advance-that-lands-was-not-past-it
+                          (node (fn-sn-node s))
+                          (k (fn-store-event-txid
+                              (fn-sf-record-candidate (fn-sn-files s)))))
+                        (:instance fn-snt-an-article-record-is-no-other-store-event
+                          (record (fn-sf-record-candidate (fn-sn-files s))))
+                        (:instance fn-snt-find-published-candidate
+                          (files (fn-sn-files s))
+                          (record (fn-sf-record-candidate (fn-sn-files s))))))))
 
 (defthm fn-snt-recovery-barrier-preserves-relation
   (implies (fn-snt-relation s)
