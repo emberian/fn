@@ -1,0 +1,23 @@
+{"template": {"ownerBudget": "100000", "lifetime": "10000", "issuer": "5"},
+ "tariff":
+ {"perInitialPayloadByte": "0",
+  "perGrant": "1",
+  "perBirth": "2",
+  "collector": "99",
+  "base": "3",
+  "asset": "0"},
+ "succinctProofDeployment": false,
+ "semantics":
+ "6456933337608925423598368074884932038023287379680363841814784262278780659180",
+ "runtimeParameters":
+ "44524547472e4e41544956452d484f53542e504152414d45544552532f76310cff5621ff0aff0bff0cff09ff0aff03ff02ff01ffff63ffff",
+ "runtime": "minidregg-native",
+ "resourceBookId": "11",
+ "orderDifferenceWidth": "29",
+ "nativeChecked": true,
+ "genesisHeight": "10",
+ "fieldModulus": "2013265921",
+ "federation": "9",
+ "factoryId": "10",
+ "domain": "8501",
+ "authorityCatalogueId": "12"}
