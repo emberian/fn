@@ -152,7 +152,7 @@ revision; the commit each run was submitted at is named here.
 | Run | Manifest | Tree | Books | Result |
 | --- | --- | --- | --- | --- |
 | mini-closure | `certify-20260922T222952Z-613137` | `a46a2269` | 36 (roots `records`, `records-seam`, `records-attach`, `statement-seam`, `statement-attach`, `codec-attach`, `principal`, `stx-accept-records`, `store-events`, `codec-seam-tests`, `records-teeth-tests`, `records-tests`) | passed, 125 s wall |
-| store cluster | `certify-20260922T232746Z-1148619` | `252becce` | 139 (the 19 cluster books and `feed-connection-invariants`, 30 test books, closure) | passed, 2025 s wall |
+| store cluster | `certify-20260922T232746Z-1148619` | `252becce` | 139 (roots: the 18 cluster books, `feed-connection-invariants` and 31 test books; with their closure) | passed, 2025 s wall |
 | before-measure | `certify-20260922T223400Z-651836` | `dev` `097c3274`, root `/home/ember/fn-gates/t1-before` | 64 (roots `store-node-invariants`, `feed-connection-invariants`) | passed, 984 s wall |
 | every root the seams affect | `run-20260923T000240Z-e993` | `c41c48ac` (books as `252becce`) | 231 roots, 310 books | submitted 20:02 persvati time; root harvests |
 
