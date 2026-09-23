@@ -628,10 +628,67 @@
           groups))
   :hints (("Goal" :in-theory (enable fn-own-conn-boundedp))))
 
+; Owner open now supplies its already-built view trie and verdict projection
+; to served open.  The session's initial selected group and cursor are still
+; nil, independently of those pins and the archive's historical domain.
+(defthm fn-own-open-indexed-session-boundedp
+  (fn-own-conn-boundedp
+   (fn-own-conn-make-indexed
+    id version frontier wire
+    (fn-served-conn-session
+     (fn-served-result-conn
+      (fn-served-open-indexed archive index verdicts line-limit body-limit
+                              config observation injection acfg)))
+    archive config observation verdicts index)
+   groups)
+  :hints (("Goal"
+           :in-theory (e/d (fn-own-conn-boundedp fn-served-open-indexed
+                            fn-auth-open-session fn-peer-open-session
+                            fn-post-open-session fn-nntp-open-session
+                            fn-nntp-make-session fn-nntp-session-openp
+                            fn-nntp-session-group fn-nntp-session-current
+                            fn-nntp-session-projected)
+                           (fn-auth-sessionp fn-auth-configp
+                            fn-peer-sessionp fn-post-sessionp
+                            fn-nntp-sessionp fn-nntp-projectionp
+                            fn-auth-open-session-is-consistent
+                            fn-auth-open-config))
+           :use ((:instance fn-auth-open-session-is-consistent
+                            (peer nil) (node nil) (cfg nil) (tlsp nil))))))
+
+(defthm fn-own-open-peer-indexed-session-boundedp
+  (fn-own-conn-boundedp
+   (fn-own-conn-make-indexed
+    id version frontier wire
+    (fn-served-conn-session
+     (fn-served-result-conn
+      (fn-served-open-peer-indexed
+       archive index verdicts line-limit body-limit config observation
+       injection peer node cfg acfg)))
+    archive config observation verdicts index)
+   groups)
+  :hints (("Goal"
+           :in-theory (e/d (fn-own-conn-boundedp fn-served-open-peer-indexed
+                            fn-auth-open-session fn-peer-open-session
+                            fn-post-open-session fn-nntp-open-session
+                            fn-nntp-make-session fn-nntp-session-openp
+                            fn-nntp-session-group fn-nntp-session-current
+                            fn-nntp-session-projected)
+                           (fn-auth-sessionp fn-auth-configp
+                            fn-peer-sessionp fn-post-sessionp
+                            fn-nntp-sessionp fn-nntp-projectionp
+                            fn-node-statep fn-cfgp
+                            fn-auth-open-session-is-consistent
+                            fn-auth-open-config))
+           :use ((:instance fn-auth-open-session-is-consistent
+                            (tlsp nil))))))
+
 (defthm fn-own-open-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (cdr (fn-own-open o acfg))))
-  :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conn-boundedp)))))
+  :hints (("Goal" :in-theory (e/d (fn-own-relation)
+                                  (fn-own-conn-boundedp
+                                   fn-served-open-indexed)))))
 
 ; -----------------------------------------------------------------------------
 ; The re-pinned node of a peer connection (books/owner.lisp
@@ -764,7 +821,9 @@
 (defthm fn-own-open-peer-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (cdr (fn-own-open-peer o peer cfg acfg))))
-  :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conn-boundedp)))))
+  :hints (("Goal" :in-theory (e/d (fn-own-relation)
+                                  (fn-own-conn-boundedp
+                                   fn-served-open-peer-indexed)))))
 
 (defthm fn-own-read-preserves-relation
   (implies (fn-own-relation o)

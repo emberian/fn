@@ -509,15 +509,15 @@
     "books": 507,
     "books_in_root_closure": 506,
     "roots": 502,
-    "theorems": 7704,
-    "functions": 5870,
+    "theorems": 7708,
+    "functions": 5872,
     "assert_events": 8515,
     "must_fails": 363,
     "encapsulates": 26,
     "guards": {
       "verified": 1892,
       "declared-off": 312,
-      "default-guarded": 2905,
+      "default-guarded": 2907,
       "default-unguarded": 761
     },
     "suspect_theorems": 72,
@@ -5930,7 +5930,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 137,
+      "theorems": 139,
       "functions": 8,
       "guards": {
         "verified": 0,
@@ -6897,12 +6897,12 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 94,
-      "functions": 43,
+      "theorems": 96,
+      "functions": 45,
       "guards": {
         "verified": 2,
         "declared-off": 4,
-        "default-guarded": 37,
+        "default-guarded": 39,
         "default-unguarded": 0
       },
       "verify_guards_events": 2,
@@ -14388,7 +14388,7 @@
     {
       "theorem": "fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session",
       "book": "books/owner-invariants.lisp",
-      "line": 668,
+      "line": 725,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value"
       ]

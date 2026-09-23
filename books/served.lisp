@@ -1189,14 +1189,31 @@
 ; written before this book carried authentication means.  `tlsp' is nil: a
 ; connection that is already inside TLS is the implicit-TLS listener and the
 ; host says so with the (:tls-established) event, never this entry.
-(defun fn-served-open (archive line-limit body-limit config observation
-                               injection acfg)
+(defun fn-served-open-indexed (archive index verdicts line-limit body-limit
+                                      config observation injection acfg)
   (declare (xargs :guard t))
   (let ((session (fn-auth-open-session archive nil nil nil acfg nil)))
     (fn-served-make-result
-     (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
-                          session archive config observation injection)
+     (fn-served-make-conn-indexed
+      (fn-wire-initial-state line-limit body-limit)
+      session archive config observation injection verdicts index)
      (list (fn-nntp-reply-effect (fn-served-greeting config session))))))
+
+(defthm fn-served-open-indexed-pins
+  (let ((conn (fn-served-result-conn
+               (fn-served-open-indexed
+                archive index verdicts line-limit body-limit config
+                observation injection acfg))))
+    (and (equal (fn-served-conn-index conn) index)
+         (equal (fn-served-conn-verdicts conn) verdicts)))
+  :hints (("Goal" :in-theory (enable fn-served-open-indexed))))
+
+(defun fn-served-open (archive line-limit body-limit config observation
+                               injection acfg)
+  (declare (xargs :guard t))
+  (fn-served-open-indexed
+   archive (fn-midx-build (fn-state-articles archive)) nil
+   line-limit body-limit config observation injection acfg))
 
 ; A peer connection (specs/peering.md section 1.1): the host resolved the
 ; source to a peer name at :open and hands the node and configuration the
@@ -1217,14 +1234,32 @@
 ; before any login answered 340.  With the record removed and nothing else
 ; changed, the same node advertised `AUTHINFO USER' and the login succeeded.
 ; The evidence is planning/evidence/auth-live-2026-09-21.md.
-(defun fn-served-open-peer (archive line-limit body-limit config observation
-                                    injection peer node cfg acfg)
+(defun fn-served-open-peer-indexed
+    (archive index verdicts line-limit body-limit config observation
+             injection peer node cfg acfg)
   (declare (xargs :guard t))
   (let ((session (fn-auth-open-session archive peer node cfg acfg nil)))
     (fn-served-make-result
-     (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
-                          session archive config observation injection)
+     (fn-served-make-conn-indexed
+      (fn-wire-initial-state line-limit body-limit)
+      session archive config observation injection verdicts index)
      (list (fn-nntp-reply-effect (fn-served-greeting config session))))))
+
+(defthm fn-served-open-peer-indexed-pins
+  (let ((conn (fn-served-result-conn
+               (fn-served-open-peer-indexed
+                archive index verdicts line-limit body-limit config
+                observation injection peer node cfg acfg))))
+    (and (equal (fn-served-conn-index conn) index)
+         (equal (fn-served-conn-verdicts conn) verdicts)))
+  :hints (("Goal" :in-theory (enable fn-served-open-peer-indexed))))
+
+(defun fn-served-open-peer (archive line-limit body-limit config observation
+                                    injection peer node cfg acfg)
+  (declare (xargs :guard t))
+  (fn-served-open-peer-indexed
+   archive (fn-midx-build (fn-state-articles archive)) nil
+   line-limit body-limit config observation injection peer node cfg acfg))
 
 (defthm fn-served-open-is-a-connection
   (implies (and (posp line-limit) (posp body-limit))
