@@ -47,9 +47,14 @@
                (fnn-owner-serialized
                 owner nil
                 (lambda ()
-                  (fnn-bpapp-accept-locked
-                   owner journal inbound-id request node-id identity
-                   source dest))))
+                  ;; Config can change after preflight and before this lock.
+                  ;; Authorize the fresh Store decision against the live
+                  ;; owner configuration under serialization.
+                  (if (eq (fnn-owner-core 'fn-owner-bp-request-trustedp view) t)
+                      (fnn-bpapp-accept-locked
+                       owner journal inbound-id request node-id identity
+                       source dest)
+                    (values :refused nil)))))
              (case result
                ((:accepted :duplicate)
                 (unless receipt
@@ -74,6 +79,9 @@
   (fnn-owner-serialized
    owner nil
    (lambda ()
+     (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-trustedp view) t)
+       (return-from fnn-bpnode-receipt-result
+         (values :receipt-refused '(0))))
      (let ((journal nil))
        (unwind-protect
             (progn
