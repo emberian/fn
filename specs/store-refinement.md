@@ -431,9 +431,10 @@ The served-owner process-death differential now compares selected actual
 visible names, exact octets and the hard-link alias partition in `:root`,
 `:transactions` and `:staging`. The host importer supplies physical inode
 identities only to preserve alias equality; ACL2 computes the comparison and
-the all-issued-operation SIGKILL image. The six post cuts cover an allocator
-replacement, prepublication stage, link uncertainty, durable directory
-barrier and both finish cuts. The five recovery barriers have distinct host
+the all-issued-operation SIGKILL image. All thirteen declared post cuts now
+cover allocator staging, replacement, observation and reservation; record
+staging, link, observation, durable directory barrier, completion and cleanup;
+and both finish cuts. The five recovery barriers have distinct host
 selectors and distinct occurrences of `fn-bs-recover-program`'s barrier cut;
 they preserve the prior acknowledged article through reopen. See the
 [runtime record](../tests/evidence/2026-09-23-served-crash-observation.md).
@@ -444,8 +445,9 @@ ordered transaction names agree and the model scan succeeds. The name-order
 premise matters because the visible directory relation compares name sets,
 while the scanner checks canonical order. The valid-scan premise excludes
 malformed duplicate-name roots that can conceal an extra physical key. The
-served post and recovery tests evaluate both premises and exact scan equality
-at their observed cuts. The test book uses two valid decoded transactions
+served post and recovery tests evaluate both premises, exact scan equality,
+and exact `fn-sn-open-observed` equality at their observed cuts. The test book
+uses two valid decoded transactions
 under inode renaming and a failing witness for each premise.
 `fn-bso-served-agreement-preserves-open-by-scan` records the resulting
 `fn-sn-open-observed` equality with identical groups and capacity; this is a
@@ -454,9 +456,9 @@ simulation.
 This is visible-image and scanner correspondence for process death. It does
 not establish literal `fn-bs-crash-imagep` equality of a physical inode table,
 torn or lost dirty writes, power loss, or a theorem for all recovery behaviors
-beyond the scanner. The other served post cuts, replay and staging
-cleanup cuts, uncertain error callbacks, and repeated recovery deaths remain
-runtime differential obligations.
+beyond the scanner. `recover-replayed`, recovery staging cleanup, uncertain
+error callbacks, repeated recovery deaths, and combined-image verification
+after the acceptance stamp remain runtime differential obligations.
 
 For a rejected or lost durable completion, the adapter must close its mutation
 gate before calling the core and clear it only after the exact matching success.

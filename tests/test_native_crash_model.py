@@ -148,7 +148,11 @@ class NativeCampaignMixin:
                 "(observed {})".format(model_images.import_image(store)),
                 "(choices (fn-native-visible-choices (fn-bs-pending cut-bs) (fn-bs-unit cut-bs)))",
                 "(model-image (fn-bs-crash cut-bs choices))",
+                "(model-scan (fn-bs-scan-store model-image))",
                 "(scan (fn-bs-scan-store observed))",
+                "(model-opened (fn-sn-open-observed '(\"fn.letters\" \"fn.test\")"
+                " 10000000 (fn-bs-scan-frontier model-scan)"
+                " (fn-bs-scan-records model-scan)))",
                 "(opened (fn-sn-open-observed '(\"fn.letters\" \"fn.test\")"
                 " 10000000 (fn-bs-scan-frontier scan) (fn-bs-scan-records scan)))",
             ])
@@ -159,15 +163,16 @@ class NativeCampaignMixin:
                 " (fn-bso-served-image-agree model-image observed)"
                 " (equal (fn-bs-names model-image :transactions)"
                 "        (fn-bs-names observed :transactions))"
-                " (fn-bs-scan-okp (fn-bs-scan-store model-image))"
-                " (equal (fn-bs-scan-store model-image) scan)"
+                " (fn-bs-scan-okp model-scan)"
+                " (equal model-scan scan)"
+                " (equal model-opened opened)"
                 " (list (fn-bso-directory-agree model-image observed :root)"
                 "       (fn-bso-directory-agree model-image observed :transactions)"
                 "       (fn-bso-directory-agree model-image observed :staging)"
                 "       (fn-bs-names model-image :staging)"
                 "       (fn-bs-names observed :staging))))".format(
                     " ".join(bindings)))
-            self.assertRegex(observed, r"\(T\s+T\s+T\s+T\s+T\s+T\s+T\s+\(T\s+T\s+T",
+            self.assertRegex(observed, r"\(T\s+T\s+T\s+T\s+T\s+T\s+T\s+T\s+\(T\s+T\s+T",
                              "{}: {}".format(cut.name, observed))
         finally:
             bridge.close()
