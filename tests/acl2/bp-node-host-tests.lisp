@@ -1,6 +1,7 @@
 ; The native BP command's exact mixed article/transport result policy.
 (in-package "ACL2")
 (include-book "../../host/bp-node-host")
+(include-book "../../books/codec-attach")
 
 ; Reachable mixed evidence: one complete article was refused while the TCPCL
 ; session ended uncertain.  The process result is uncertain, not refused.

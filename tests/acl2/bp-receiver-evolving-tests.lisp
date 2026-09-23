@@ -12,6 +12,7 @@
 (include-book "../../books/bp-receiver-evolving-store-invariants")
 (include-book "bp-receipt-records-tests")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
@@ -33,8 +34,7 @@
                       "archive:receiver-2" "subject:receiver-2"
                       "unsigned-ingress-v0" 1 "receiver-policy" "terms-1"
                       "dtn://fn.lab/issuer"))
-(defconst *bpre-prepared2*
-  (fn-bpi-ingress-prepare (bpr-reserve *bpr-store*) *bpre-policy2* *bpre-context2* *bpre-adu2*))
+(make-event `(defconst *bpre-prepared2* ',(fn-bpi-ingress-prepare (bpr-reserve *bpr-store*) *bpre-policy2* *bpre-context2* *bpre-adu2*)))
 (assert-event (equal (fn-bpi-result-kind *bpre-prepared2*) :prepared))
 (defconst *bpre-record2* (fn-bpi-result-record *bpre-prepared2*))
 (assert-event (fn-record-p *bpre-record2*))
@@ -87,8 +87,8 @@
       (cons (fn-bprv-phase (car (car lives))) (bpre-phases (cdr lives)))
     nil))
 
-(defconst *bpre-lives* (bpre-run-prefixes *bpre-live0* *bpre-events*))
-(defconst *bpre-final* (fn-bpr-live-run *bpre-live0* *bpre-events*))
+(make-event `(defconst *bpre-lives* ',(bpre-run-prefixes *bpre-live0* *bpre-events*)))
+(make-event `(defconst *bpre-final* ',(fn-bpr-live-run *bpre-live0* *bpre-events*)))
 (assert-event (equal (car (last *bpre-lives*)) *bpre-final*))
 
 ; Every intermediate state satisfies the restated invariant.
@@ -140,18 +140,17 @@
 (defconst *bpre-frontier* (fn-sf-frontier (fn-sn-files *bpre-final-store*)))
 (defconst *bpre-records* (fn-sf-records (fn-sn-files *bpre-final-store*)))
 (assert-event (fn-sf-crash-imagep (fn-sn-files *bpre-final-store*) *bpre-frontier* *bpre-records*))
-(defconst *bpre-opened*
-  (fn-sn-open-observed (fn-sn-groups *bpre-final-store*) (fn-sn-capacity *bpre-final-store*)
-                       *bpre-frontier* *bpre-records*))
+(make-event `(defconst *bpre-opened* ',(fn-sn-open-observed (fn-sn-groups *bpre-final-store*) (fn-sn-capacity *bpre-final-store*)
+                       *bpre-frontier* *bpre-records*)))
 (assert-event (fn-sn-open-okp *bpre-opened*))
 (assert-event (equal (fn-bprv-phase (fn-sn-open-state *bpre-opened*)) :recovering))
 (defconst *bpre-barriers*
   '((:io :recovery-barrier :ok) (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
     (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)))
-(defconst *bpre-probe* (fn-snrt-run (fn-sn-open-state *bpre-opened*) *bpre-barriers*))
+(make-event `(defconst *bpre-probe* ',(fn-snrt-run (fn-sn-open-state *bpre-opened*) *bpre-barriers*)))
 (assert-event (equal (fn-bprv-phase *bpre-probe*) :ready))
 (assert-event (fn-snt-relation *bpre-probe*))
-(defconst *bpre-installed* (fn-bpr-live-install *bpre-probe* *bpre-journal*))
+(make-event `(defconst *bpre-installed* ',(fn-bpr-live-install *bpre-probe* *bpre-journal*)))
 (assert-event (equal (cadr *bpre-installed*) *bpre-final-state*))
 (assert-event (equal (fn-bpr-receipt-adu (cadr *bpre-installed*) *bpr-request*) *bpr-receipt-adu*))
 (assert-event (fn-bprv-system-invariantp *bpre-probe* *bpre-final-state* *bpre-journal*))
@@ -165,7 +164,7 @@
                 '(:store (:io :recovery-barrier :ok)) '(:store (:io :recovery-barrier :ok))
                 '(:store (:io :recovery-barrier :ok)) '(:store (:io :recovery-barrier :ok))
                 '(:store (:io :recovery-barrier :ok)))))
-(defconst *bpre-crash-lives* (bpre-run-prefixes *bpre-live0* *bpre-crash-events*))
+(make-event `(defconst *bpre-crash-lives* ',(bpre-run-prefixes *bpre-live0* *bpre-crash-events*)))
 (assert-event (bpre-all-system-invariant *bpre-crash-lives*))
 (defconst *bpre-replaying* (nth 13 *bpre-crash-lives*))
 (assert-event (equal (fn-bprv-phase (car *bpre-replaying*)) :replaying))
@@ -205,8 +204,7 @@
 ; journal breaks fn-bprv-entries-decidedp.
 (defconst *bpre-intent-journal*
   (list *bprr-config-record* *bprr-request-record* *bprr-intent-record*))
-(defconst *bpre-intent-state*
-  (cadr (fn-bprr-replay *bpr-store* *bpre-intent-journal*)))
+(make-event `(defconst *bpre-intent-state* ',(cadr (fn-bprr-replay *bpr-store* *bpre-intent-journal*))))
 (assert-event (fn-bprv-system-invariantp *bpr-store* *bpre-intent-state* *bpre-intent-journal*))
 (assert-event (not (member-equal *bprr-decision-record* *bpre-intent-journal*)))
 (local
@@ -296,8 +294,7 @@
                                     (caddr (fn-bpr-live-run *bpre-live0* *bpre-events*)))
                     (list t (cadr (fn-bpr-live-run *bpre-live0* *bpre-events*))))))))
 ; Without history extension: a ready related Store that never held the record.
-(defconst *bpre-empty-probe*
-  (fn-snrt-run (fn-sn-open-state (fn-sn-open-observed *bpr-groups* 20 0 nil)) *bpre-barriers*))
+(make-event `(defconst *bpre-empty-probe* ',(fn-snrt-run (fn-sn-open-state (fn-sn-open-observed *bpr-groups* 20 0 nil)) *bpre-barriers*)))
 (assert-event (fn-snt-relation *bpre-empty-probe*))
 (assert-event (equal (fn-bprv-phase *bpre-empty-probe*) :ready))
 (assert-event (not (fn-bprv-extendsp *bpre-final-store* *bpre-empty-probe*)))

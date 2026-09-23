@@ -179,9 +179,9 @@
            :use ((:instance fn-record-read-uint-encoded (rest nil)))
            :in-theory (disable fn-record-read-uint fn-cbor-encode))))
 
-(defthm fn-record-round-trip
+(defthm fn-record-impl-round-trip
   (implies (fn-record-p record)
-           (equal (fn-record-decode-exact (fn-record-encode record))
+           (equal (fn-record-decode-exact-impl (fn-record-encode-impl record))
                   (list :ok record)))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-cbor-encode fn-cbor-decode

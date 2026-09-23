@@ -236,7 +236,6 @@
  fn-record-make
  fn-record-p
  fn-record-encode-groups
- fn-record-encode
  fn-record-parse-ok
  fn-record-parse-error
  fn-record-parse-okp
@@ -248,8 +247,7 @@
  fn-record-read-bytes
  fn-record-parse-groups
  fn-record-decode-tail
- fn-record-decode-after-header
- fn-record-decode-exact)))
+ fn-record-decode-after-header)))
 
 (local (in-theory (enable fn-bpa-car fn-bpa-cdr)))
 ; A finite witness search grounds every retained context in the actual Store.

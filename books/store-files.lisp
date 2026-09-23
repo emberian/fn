@@ -26,9 +26,10 @@
 
 (in-package "ACL2")
 (include-book "replay")
+(include-book "records-seam")
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-store-event-p and the record accessors.
-(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
+(local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
 
 (defconst *fn-sf-max-uint* 4294967295)
 (defconst *fn-sf-recovery-barrier-count* 5)

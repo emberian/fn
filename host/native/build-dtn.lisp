@@ -23,6 +23,10 @@
 ;                 FN_NATIVE_IMAGE=build/fn-host-dtn sh tools/build_native_host.sh
 
 (include-book "books/replay")
+; Every codec seam's attachment (books/codec-attach.lisp): the books above
+; the seams call the constrained encoders and decoders, and this is what makes
+; them evaluate here.  It changes no theorem.
+(include-book "books/codec-attach")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")

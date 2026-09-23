@@ -1,6 +1,7 @@
 ; Executable live-node/file-kernel composition and spoofed-completion checks.
 (in-package "ACL2")
 (include-book "../../books/store-node-invariants")
+(include-book "../../books/codec-attach")
 
 (defconst *sn-groups* '("fn.letters" "fn.test"))
 (defconst *sn-record*

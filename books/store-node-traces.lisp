@@ -2,10 +2,11 @@
 (in-package "ACL2")
 (include-book "store-node-invariants")
 (include-book "store-files-traces")
+(include-book "records-seam")
 (local (include-book "arithmetic/top" :dir :system))
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
-(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
+(local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
 
 ; The core definitions these correspondence proofs open (the core exports
 ; keystones only, docs/proof-style.md s2); local, named once.
@@ -400,7 +401,7 @@
    :hints (("Goal" :induct (fn-sf-record-listp records sequence lower frontier)
             :in-theory (e/d (fn-sn-find-record fn-sf-record-listp)
                             (fn-store-event-p fn-sf-record-pair
-                             fn-record-codec-vocabulary
+                             fn-record-shape-vocabulary
                              fn-record-record-vocabulary))))))
 
 (local
@@ -417,7 +418,7 @@
                             (fn-sf-record-listp fn-sf-success-listp
                              fn-sf-phase-shapep fn-sn-find-record
                              fn-snt-found-record-is-a-true-list
-                             fn-record-codec-vocabulary
+                             fn-record-shape-vocabulary
                              fn-record-record-vocabulary))))))
 
 ; The deferred link and the relation are verified here rather than beside
@@ -537,8 +538,7 @@
                              (:d fn-stxe-p) (:d fn-stxe-shapep)
                              (:d fn-stxk-p) (:d fn-stxk-shapep)
                              (:d fn-stxa-p) (:d fn-stxa-shapep))
-                            ((:d fn-record-encode) (:d fn-record-decode-exact)
-                             (:d fn-stxe-bounded-octetsp)
+                            ((:d fn-stxe-bounded-octetsp)
                              (:d fn-record-uint32p) (:d fn-record-msgidp)
                              (:d fn-record-payloadp)
                              (:d fn-record-groups-validp)
@@ -603,7 +603,7 @@
    :hints (("Goal" :in-theory (e/d (fn-store-event-p)
                                    (fn-record-p fn-store-retention-event-p
                                     fn-stxe-p fn-stxk-p fn-stxa-p
-                                    fn-record-codec-vocabulary
+                                    fn-record-shape-vocabulary
                                     fn-record-record-vocabulary))))))
 
 ; `fn-replay-apply-record' IS the retention applier and the identity-neutral
@@ -620,7 +620,7 @@
                                     fn-replay-apply-identity-neutral
                                     fn-replay-composite-record
                                     fn-replay-advance-txid
-                                    fn-record-codec-vocabulary
+                                    fn-record-shape-vocabulary
                                     fn-record-record-vocabulary
                                     fn-store-event-p fn-store-retention-event-p
                                     fn-stxe-p fn-stxk-p fn-stxa-p))))))
@@ -680,7 +680,7 @@
                              fn-node-pending-matchesp
                              fn-replay-complete-retention
                              fn-replay-composite-record
-                             fn-record-codec-vocabulary
+                             fn-record-shape-vocabulary
                              fn-record-record-vocabulary
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
@@ -729,7 +729,7 @@
                             fn-sf-history-recoverablep)
                            (fn-replay fn-replay-loop fn-replay-apply-record
                             fn-replay-advance-txid fn-node-statep
-                            fn-record-codec-vocabulary
+                            fn-record-shape-vocabulary
                             fn-record-record-vocabulary
                             fn-store-event-p fn-store-retention-event-p
                             fn-stxe-p fn-stxk-p fn-stxa-p
@@ -768,14 +768,13 @@
                      fn-sf-recover fn-sf-record-listp
                      fn-snt-deferred-linkp
                      fn-snt-completion-linkp
-                     fn-record-codec-vocabulary
+                     fn-record-shape-vocabulary
                      fn-store-event-p fn-store-retention-event-p
                      fn-stxe-p fn-stxk-p fn-stxa-p
                      fn-replay-apply-record
                      fn-replay-apply-retention-event
                      fn-replay-apply-identity-neutral
                      fn-replay-composite-record
-                     fn-record-decode-exact
                      fn-sn-identity-context fn-replay-identity-step)))))
 
 ; The other two preparations.  Both stage their event through the same
@@ -792,7 +791,7 @@
                                   (fn-sf-statep fn-node-statep
                                    fn-sf-prepare-record
                                    fn-replay-apply-retention-event
-                                   fn-record-codec-vocabulary
+                                   fn-record-shape-vocabulary
                                    fn-store-event-p fn-store-retention-event-p
                                    fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
@@ -805,7 +804,7 @@
                                    fn-replay-apply-record
                                    fn-replay-identity-step
                                    fn-sn-identity-context
-                                   fn-record-codec-vocabulary
+                                   fn-record-shape-vocabulary
                                    fn-store-event-p fn-store-retention-event-p
                                    fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
@@ -840,7 +839,7 @@
                      fn-replay-composite-record
                      fn-replay-identity-step fn-sn-identity-context
                      fn-snt-completion-linkp
-                     fn-record-codec-vocabulary fn-record-record-vocabulary
+                     fn-record-shape-vocabulary fn-record-record-vocabulary
                      fn-store-event-p fn-store-retention-event-p
                      fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
@@ -884,7 +883,7 @@
                      ; unable to meet.
                      fn-snt-apply-record-of-a-retention-event
                      fn-snt-completion-linkp
-                     fn-record-codec-vocabulary fn-record-record-vocabulary
+                     fn-record-shape-vocabulary fn-record-record-vocabulary
                      fn-store-event-p fn-store-retention-event-p
                      fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
@@ -939,14 +938,13 @@
            :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
                                fn-sn-record-bindsp fn-sn-completion-enabledp
                                fn-snt-completion-linkp
-                     fn-record-codec-vocabulary
+                     fn-record-shape-vocabulary
                                fn-store-event-p fn-store-retention-event-p
                                fn-stxe-p fn-stxk-p fn-stxa-p
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
                                fn-replay-apply-identity-neutral
                                fn-replay-composite-record
-                               fn-record-decode-exact
                                fn-replay-identity-step))))
 
 (defthm fn-snt-record-link-preserves-relation
@@ -960,14 +958,13 @@
            :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
                                fn-sn-record-bindsp fn-sn-completion-enabledp
                                fn-snt-completion-linkp
-                     fn-record-codec-vocabulary
+                     fn-record-shape-vocabulary
                                fn-store-event-p fn-store-retention-event-p
                                fn-stxe-p fn-stxk-p fn-stxa-p
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
                                fn-replay-apply-identity-neutral
                                fn-replay-composite-record
-                               fn-record-decode-exact
                                fn-replay-identity-step))))
 
 ; This is the step that publishes the candidate and enters `:completing', so
@@ -1012,14 +1009,13 @@
            ; the closed terms.
            :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
                                fn-sn-record-bindsp fn-sn-find-record
-                               fn-record-codec-vocabulary
+                               fn-record-shape-vocabulary
                                fn-store-event-p fn-store-retention-event-p
                                fn-stxe-p fn-stxk-p fn-stxa-p
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
                                fn-replay-apply-identity-neutral
                                fn-replay-composite-record
-                               fn-record-decode-exact
                                                               fn-replay-identity-step))))
 
 (defthm fn-snt-recovery-barrier-preserves-relation
@@ -1055,14 +1051,13 @@
                     (sequence (fn-store-event-sequence (fn-sn-completion-record s)))
                     (txid (fn-store-event-txid (fn-sn-completion-record s)))))
            :in-theory (disable fn-sn-record-bindsp fn-sn-completion-record
-                               fn-record-codec-vocabulary
+                               fn-record-shape-vocabulary
                                fn-store-event-p fn-store-retention-event-p
                                fn-stxe-p fn-stxk-p fn-stxa-p
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
                                fn-replay-apply-identity-neutral
                                fn-replay-composite-record
-                               fn-record-decode-exact
                                fn-sn-identity-context
                                fn-replay-identity-step))))
 
@@ -1085,7 +1080,7 @@
                    (record (fn-sn-completion-record s))))
            :in-theory (e/d (fn-sn-finish fn-sn-completion-enabledp)
                            (fn-sn-completion-record fn-sn-record-bindsp
-                            fn-record-codec-vocabulary
+                            fn-record-shape-vocabulary
                             fn-record-record-vocabulary
                             fn-store-event-p fn-store-retention-event-p
                             fn-stxe-p fn-stxk-p fn-stxa-p
@@ -1120,14 +1115,13 @@
            :in-theory (disable fn-sn-finish fn-sn-statep fn-sn-record-bindsp
                                fn-sf-history-recoverablep fn-snt-pending-linkp fn-snt-deferred-linkp
                                fn-sn-completion-record
-                               fn-record-codec-vocabulary
+                               fn-record-shape-vocabulary
                                fn-store-event-p fn-store-retention-event-p
                                fn-stxe-p fn-stxk-p fn-stxa-p
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
                                fn-replay-apply-identity-neutral
                                fn-replay-composite-record
-                               fn-record-decode-exact
                                fn-sn-identity-context
                                fn-replay-identity-step))))
 
@@ -1146,14 +1140,13 @@
     :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
                         fn-sn-record-bindsp fn-sn-completion-enabledp
                         fn-snt-completion-linkp
-                     fn-record-codec-vocabulary
+                     fn-record-shape-vocabulary
                         fn-store-event-p fn-store-retention-event-p
                         fn-stxe-p fn-stxk-p fn-stxa-p
                         fn-replay-apply-record
                         fn-replay-apply-retention-event
                         fn-replay-apply-identity-neutral
                         fn-replay-composite-record
-                        fn-record-decode-exact
                         fn-replay-identity-step))))
 
 ; Two arms since `40bb3f74', and the relation now has a case for each.  A
@@ -1169,14 +1162,13 @@
            :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
                                fn-sn-record-bindsp fn-sn-completion-enabledp
                                fn-snt-pending-linkp fn-snt-deferred-linkp fn-snt-completion-linkp
-                               fn-record-codec-vocabulary
+                               fn-record-shape-vocabulary
                                fn-store-event-p fn-store-retention-event-p
                                fn-stxe-p fn-stxk-p fn-stxa-p
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
                                fn-replay-apply-identity-neutral
                                fn-replay-composite-record
-                               fn-record-decode-exact
                                fn-sn-identity-context fn-replay-identity-step))))
 
 ; -by-definition: the otherwise branch of fn-sn-file-step.
@@ -1335,7 +1327,7 @@
   :hints (("Goal" :in-theory (e/d (fn-sn-prepare-retention fn-sn-update)
                                   (fn-sn-statep fn-sf-prepare-record
                                    fn-replay-apply-retention-event
-                                   fn-record-codec-vocabulary
+                                   fn-record-shape-vocabulary
                                    fn-store-event-p fn-store-retention-event-p
                                    fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
@@ -1347,7 +1339,7 @@
                                    fn-replay-apply-record
                                    fn-replay-identity-step
                                    fn-sn-identity-context
-                                   fn-record-codec-vocabulary
+                                   fn-record-shape-vocabulary
                                    fn-store-event-p fn-store-retention-event-p
                                    fn-stxe-p fn-stxk-p fn-stxa-p)))))
 
@@ -1377,14 +1369,13 @@
                                   (fn-sn-completion-enabledp fn-sn-completion-record
                                     fn-sf-core-completion
                                    fn-sf-emit-success
-                                   fn-record-codec-vocabulary
+                                   fn-record-shape-vocabulary
                                    fn-store-event-p fn-store-retention-event-p
                                    fn-stxe-p fn-stxk-p fn-stxa-p
                                    fn-replay-apply-record
                                    fn-replay-apply-retention-event
                                    fn-replay-apply-identity-neutral
                                    fn-replay-composite-record
-                                   fn-record-decode-exact
                                    fn-sn-identity-context
                                    fn-replay-identity-step
                                    fn-sn-accepted-delta

@@ -2,6 +2,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/store-prepare-correspondence")
+(include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
 
 ; A reachable, non-degenerate witness with one durable record already in the

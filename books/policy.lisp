@@ -329,7 +329,7 @@
                   (("Goal" :do-not-induct t
                     :use ((:instance fn-stmt-encoding-bound))
                     :in-theory (disable fn-stmt-p fn-stmt-items
-                                        fn-stmt-encode-items
+                                        fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp
                                         fn-stmt-encoding-bound
                                         fn-prin-key-for fn-stmt-creator
                                         fn-cbor-octet-listp)))))
@@ -344,7 +344,7 @@
 ; Everything below treats the codec, the seam and the parsed statement as
 ; opaque: the shapes come from the lemmas above and in statement-invariants.
 (local (in-theory (disable fn-stmt-verifiedp fn-prin-verifiedp
-                           fn-stmt-encode-items fn-stmt-decode-items
+                           fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp fn-stmt-decode-items
                            fn-stmt-items fn-stmt-decode-exact
                            fn-cbor-encode fn-cbor-decode
                            fn-digest-tagged fn-digest-tagged-preimage
@@ -362,7 +362,7 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-stmt-encoding-bound))
            :in-theory (e/d (fn-pol-evidence)
-                           (fn-stmt-p fn-stmt-items fn-stmt-encode-items
+                           (fn-stmt-p fn-stmt-items fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp
                             fn-stmt-encoding-bound fn-prin-key-for
                             fn-stmt-creator fn-cbor-octet-listp)))))
 
@@ -429,7 +429,7 @@
                                  :in-theory (e/d (fn-stmt-receipt-encode)
                                                  (fn-stmt-receipt-p
                                                   fn-stmt-receipt-items
-                                                  fn-stmt-encode-items
+                                                  fn-stmt-encode-items-of-cons fn-stmt-encode-items-of-atom fn-stmt-encode-items-when-consp
                                                   fn-stmt-receipt-items-are-items))))))
   (fn-stmt-sign sk receiver incarnation sequence preds :receipt
                 (fn-stmt-receipt-encode receipt)))

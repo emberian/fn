@@ -191,12 +191,14 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open.",
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
         "fn-record-round-trip",
         "fn-record-accepted-input-is-canonical",
+        "fn-record-impl-round-trip",
+        "fn-record-impl-accepted-input-is-canonical",
         "fn-bpa-round-trip",
         "fn-bpa-success-is-canonical"
       ],

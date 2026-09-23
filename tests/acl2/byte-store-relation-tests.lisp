@@ -5,6 +5,7 @@
 (include-book "../../books/byte-store-relation")
 (include-book "../../books/byte-store-frame")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 (defun fn-bs-test-config () (fn-bs-initial-config-octets))
 (defun fn-bs-test-frontier () (fn-bs-initial-frontier-octets))

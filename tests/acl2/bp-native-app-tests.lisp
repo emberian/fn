@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/bp-native-app")
+(include-book "../../books/codec-attach")
 (include-book "bp-receipt-records-tests")
 
 (defconst *bpaj-request*
@@ -14,15 +15,14 @@
         (fn-record-txid *bpr-record*) :duplicate))
 (defconst *bpaj-context*
   (list :request-context-v2 "bundle-original" *bpaj-request-octets*
-        (fn-record-encode *bpr-record*) 7 (fn-record-txid *bpr-record*)
+        (fn-record-encode-impl *bpr-record*) 7 (fn-record-txid *bpr-record*)
         (fn-record-generation *bpr-record*) t :duplicate))
 
 (assert-event (fn-bpaj-intentp *bpaj-intent*))
 (assert-event (fn-bpaj-context-v2p *bpaj-context*))
 
 ; Intent alone is not acceptance and produces no receipt.
-(defconst *bpaj-intent-replay*
-  (fn-bpaj-replay *bpr-store* (list *bpaj-config* *bpaj-intent*)))
+(make-event `(defconst *bpaj-intent-replay* ',(fn-bpaj-replay *bpr-store* (list *bpaj-config* *bpaj-intent*))))
 (assert-event (car *bpaj-intent-replay*))
 (assert-event
  (equal (fn-bpaj-request-status (fn-bpaj-nth 1 *bpaj-intent-replay*)
@@ -33,9 +33,8 @@
                            *bpr-store* *bpaj-request-octets* 7)
         (list :bind *bpr-record*)))
 
-(defconst *bpaj-context-replay*
-  (fn-bpaj-replay *bpr-store*
-                   (list *bpaj-config* *bpaj-intent* *bpaj-context*)))
+(make-event `(defconst *bpaj-context-replay* ',(fn-bpaj-replay *bpr-store*
+                   (list *bpaj-config* *bpaj-intent* *bpaj-context*))))
 (assert-event (car *bpaj-context-replay*))
 (assert-event
  (equal (fn-bpaj-request-status (fn-bpaj-nth 1 *bpaj-context-replay*)
@@ -74,9 +73,8 @@
 (defconst *bpaj-fresh-store* (fn-sn-initial *bpr-groups* 20))
 (defconst *bpaj-accept-intent*
   (list :request-intent "bundle-new" *bpaj-request-octets* 9 0 :accepted))
-(defconst *bpaj-accept-replay*
-  (fn-bpaj-replay *bpaj-fresh-store*
-                   (list *bpaj-config* *bpaj-accept-intent*)))
+(make-event `(defconst *bpaj-accept-replay* ',(fn-bpaj-replay *bpaj-fresh-store*
+                   (list *bpaj-config* *bpaj-accept-intent*))))
 (assert-event (car *bpaj-accept-replay*))
 (assert-event
  (equal (fn-bpaj-dispatch (fn-bpaj-nth 1 *bpaj-accept-replay*)

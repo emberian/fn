@@ -11,6 +11,7 @@
 (include-book "../../books/bp-receiver-retention-invariants")
 (include-book "bp-receipt-records-tests")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
@@ -28,8 +29,7 @@
 (defconst *bprt-journal*
   (list *bprr-config-record* *bprr-request-record*
         *bprr-intent-record* *bprr-decision-record*))
-(defconst *bprt-state*
-  (cadr (fn-bprr-replay *bpr-recovered-ready-store* *bprt-journal*)))
+(make-event `(defconst *bprt-state* ',(cadr (fn-bprr-replay *bpr-recovered-ready-store* *bprt-journal*))))
 
 (assert-event (car (fn-bprr-replay *bpr-recovered-ready-store* *bprt-journal*)))
 (assert-event (fn-sn-statep *bpr-recovered-ready-store*))

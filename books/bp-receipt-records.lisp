@@ -2,6 +2,7 @@
 ; all request, Store, policy, and receipt decisions are made by fn-bpr.
 (in-package "ACL2")
 (include-book "bp-receipt")
+(include-book "records-seam")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary

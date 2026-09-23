@@ -17,6 +17,7 @@
 (include-book "../../books/byte-store-keystones")
 (include-book "../../books/byte-store-programs")
 (include-book "../../books/byte-store-txn-name")
+(include-book "../../books/codec-attach")
 
 ; The byte scanner consumes the shared Store-event dispatcher, so one
 ; immutable namespace may contain a legacy article followed by retention
@@ -28,10 +29,11 @@
   (fn-store-retention-event-make :undertake 1 1 1
                                  "obligation-1" "article-0" "local" 1))
 ; The frames and the stores that hold them are functions, not constants:
-; fn-frame-digest is a constrained function with an executable attachment
-; (books/crypto-attach), and ACL2 ignores attachments while it evaluates a
-; defconst (the same reason tests/acl2/byte-store-relation-tests.lisp builds
-; its witnesses as functions).  This book was red on that since the digest
+; fn-frame-digest and the Store-event record codec are constrained functions
+; with executable attachments (books/crypto-attach, books/codec-attach), and
+; ACL2 ignores attachments while it evaluates a defconst (the same reason
+; tests/acl2/byte-store-relation-tests.lisp builds its witnesses as
+; functions).  This book was red on that since the digest
 ; became constrained.
 (defun bsk-event-article-frame ()
   (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*

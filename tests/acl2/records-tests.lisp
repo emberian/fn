@@ -1,6 +1,6 @@
 ; Golden vectors for the experimental local schema-0 transaction record.
 (in-package "ACL2")
-(include-book "../../books/records")
+(include-book "../../books/records-attach")
 
 (defconst *fn-record-test-record*
   (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4))

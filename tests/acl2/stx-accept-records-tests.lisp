@@ -1,6 +1,7 @@
 ; Evaluated binding witnesses for atomic article/verdict acceptance.
 (in-package "ACL2")
 (include-book "../../books/store-events")
+(include-book "../../books/codec-attach")
 
 (defconst *stxa-payload* '(70 78 45 83 116 97 116 101 109 101 110 116 58 32 49 13 10))
 (defconst *stxa-msgid* "<atomic@example.invalid>")
@@ -15,7 +16,7 @@
 (defconst *stxa-event*
   (fn-stxa-make 4 9 12 3 *stxa-profile*
                 (fn-record-string-octets *stxa-subject*)
-                (fn-record-encode *stxa-record*)
+                (fn-record-encode-impl *stxa-record*)
                 (fn-stxe-encode *stxa-verdict*)))
 
 (assert-event (fn-stxa-p *stxa-event*))

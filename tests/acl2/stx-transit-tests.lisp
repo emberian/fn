@@ -16,6 +16,7 @@
 (include-book "crypto-seam-tests")
 (include-book "../../books/stx-epochs")
 (include-book "../../books/stx-authority")
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; Two principals, one keyring, and a store made of article records
@@ -476,10 +477,12 @@
                                              (fn-stx-commit-encode *stxt-commit*)))))
 ; The carrier article's body is the base64 of THIS statement's payload --
 ; the commit encoding, not the policy encoding of the section above.
-(defconst *stxt-src-c*
-  (fn-stxt-authored-octets "Subject: commit"
-                           (fn-stx-b64-encode
-                            (fn-stx-commit-encode *stxt-commit*))))
+(make-event (list 'defconst '*stxt-src-c*
+                  (list 'quote
+                        (fn-stxt-authored-octets
+                         "Subject: commit"
+                         (fn-stx-b64-encode
+                          (fn-stx-commit-encode *stxt-commit*))))))
 (make-event (list 'defconst '*stxt-rc-ok*
                   (list 'quote (fn-stxt-policy-record "<c1>" *stxt-commit-stmt-a*
                                                       *stxt-src-c*))))

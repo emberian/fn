@@ -1,6 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-native-app-fast")
 (include-book "bp-native-app-tests")
+(include-book "../../books/codec-attach")
 
 ; Recovery is the one deep validation boundary.  Its successful result carries
 ; the invariant used by every subsequent served projection.
@@ -40,10 +41,9 @@
          (pending (fn-bpr-state-pending next)))
     (list :receipt-intent "work-native" "receipt:work-native"
           (fn-bpa-encode (fn-bpr-receipt-entry-receipt pending)) t)))
-(defconst *bpaj-fast-receipt-answer*
-  (fn-bpaj-apply-record-fast
+(make-event `(defconst *bpaj-fast-receipt-answer* ',(fn-bpaj-apply-record-fast
    (fn-bpaj-nth 1 *bpaj-context-replay*)
-   *bpr-store* *bpaj-fast-receipt-intent*))
+   *bpr-store* *bpaj-fast-receipt-intent*)))
 (assert-event (car *bpaj-fast-receipt-answer*))
 (assert-event
  (fn-bpaj-statep (fn-bpaj-nth 1 *bpaj-fast-receipt-answer*)))

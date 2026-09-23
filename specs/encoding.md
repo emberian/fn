@@ -13,7 +13,29 @@ grammar described in the [storage experiment](store-experiment.md); its invarian
 book proves the full variable-record round trip, and
 [record canonicality](../books/records-canonicality.lisp) proves every successful
 exact decode re-encodes the same octets. All 21 CBOR and 45 record functions have
-verified guards; public encode/decode boundaries retain guard T. The independent
+verified guards; public encode/decode boundaries retain guard T.
+
+The record codec is behind a seam (plan 2026-09-22 §4.1, step T1).
+`books/records.lisp` defines the implementation, `fn-record-encode-impl` and
+`fn-record-decode-exact-impl`; `books/records-seam.lisp` constrains
+`fn-record-encode` and `fn-record-decode-exact` by six properties (a
+non-record encodes to nil, the round trip, accepted-input canonicality, the
+accepted-input bounds, the five magic octets, and the sixth octet as the
+schema octet the decoded record needs, `fn-record-schema-octet`, 0 at schema
+0) whose local witnesses are the implementation;
+`books/records-attach.lisp` attaches the implementation with `defattach`,
+which re-proves the six and adds no axiom. The header is two constraints so
+that the acceptance stamp's schema 1 ([acceptance stamp](acceptance-stamp.md)
+§2.1) widens the grammar behind the seam without moving a statement above
+it. The exact octets are concrete facts of the implementation,
+`fn-record-schema0-golden-octets-are-the-encoding` in `books/records.lisp`:
+a round trip and canonicality hold of any length-preserving permutation of
+the encodings, so they do not identify the wire language. Every book above the
+codec, and the host, calls the constrained names; the image and the test
+books that evaluate ground vectors include the attachment, so the octets are
+the implementation's (`tools/codec_golden.py` compares them before and after).
+The record itself -- domains, accessors, `fn-record-p`, result shapes -- is
+`books/records-shape.lisp` and is not a codec. The independent
 [CBOR probe](../docs/cbor-interop.md) covers 38 cases with cbor2. Native/signature
 schemas remain open. The
 primitive limits are local experiment bounds, not a permanent format decision.

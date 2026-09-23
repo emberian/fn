@@ -13,6 +13,7 @@
 (in-package "ACL2")
 (include-book "crypto-seam-tests")
 (include-book "../../books/stx-invariants")
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; Golden base64 vectors, RFC 4648 section 10.  These depend on no digest, no

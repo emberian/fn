@@ -1,6 +1,7 @@
 ; Witnesses and teeth for the durable statement-verdict Store event.
 (in-package "ACL2")
 (include-book "../../books/stx-evidence-records")
+(include-book "../../books/codec-attach")
 
 (defconst *stxe-profile-unknown* '(117 110 107 110 111 119 110 45 118 49))
 (defconst *stxe-evidence*

@@ -65,9 +65,12 @@
     "books/node-retention-transitions",
     "tests/acl2/node-tests",
     "books/node-traces",
+    "books/records-shape",
     "books/records",
     "books/records-invariants",
     "books/records-canonicality",
+    "books/records-seam",
+    "books/records-attach",
     "books/store-events",
     "tests/acl2/store-events-tests",
     "tests/acl2/records-tests",
@@ -383,6 +386,12 @@
     "books/crypto-attach",
     "books/auth-secret",
     "tests/acl2/auth-secret-tests",
+    "books/statement-items",
+    "books/statement-codec",
+    "books/statement-seam",
+    "books/statement-attach",
+    "books/codec-attach",
+    "tests/acl2/codec-seam-tests",
     "books/statement",
     "books/statement-invariants",
     "tests/acl2/statement-tests",
@@ -416,25 +425,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 414,
-    "books_in_root_closure": 413,
-    "roots": 412,
-    "theorems": 6998,
-    "functions": 5410,
-    "assert_events": 7804,
-    "must_fails": 276,
-    "encapsulates": 22,
+    "books": 423,
+    "books_in_root_closure": 422,
+    "roots": 421,
+    "theorems": 7054,
+    "functions": 5421,
+    "assert_events": 7828,
+    "must_fails": 282,
+    "encapsulates": 24,
     "guards": {
       "verified": 1746,
       "declared-off": 288,
-      "default-guarded": 2714,
-      "default-unguarded": 662
+      "default-guarded": 2721,
+      "default-unguarded": 666
     },
-    "suspect_theorems": 63,
+    "suspect_theorems": 65,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 23,
-    "include_hygiene_warnings": 159,
+    "include_hygiene_warnings": 263,
     "host_names_warnings": 654,
     "hand_written_record_warnings": 18
   },
@@ -1560,7 +1569,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "bp-receipt"
+        "bp-receipt",
+        "records-seam"
       ],
       "system_includes": [],
       "suspects": [],
@@ -2694,6 +2704,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "records-seam",
         "store-node-invariants"
       ],
       "system_includes": [],
@@ -2753,6 +2764,32 @@
       "read_error": null
     },
     {
+      "book": "books/codec-attach.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "records-attach",
+        "statement-attach"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/config-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2797,6 +2834,7 @@
       "encapsulates": 0,
       "includes": [
         "config",
+        "records-seam",
         "replay"
       ],
       "system_includes": [],
@@ -4551,7 +4589,8 @@
         "config-invariants",
         "config-records",
         "nntp-syntax",
-        "node-invariants"
+        "node-invariants",
+        "records-seam"
       ],
       "system_includes": [],
       "suspects": [
@@ -5305,10 +5344,36 @@
       "read_error": null
     },
     {
+      "book": "books/records-attach.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "records-canonicality",
+        "records-seam"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/records-canonicality.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 24,
+      "theorems": 29,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -5327,6 +5392,7 @@
       ],
       "system_includes": [],
       "suspects": [
+        "fn-record-impl-encode-domain",
         "fn-record-result-okp-is-parse-okp"
       ],
       "read_error": null
@@ -5358,26 +5424,77 @@
       "read_error": null
     },
     {
-      "book": "books/records.lisp",
+      "book": "books/records-seam.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 44,
-      "functions": 48,
+      "theorems": 18,
+      "functions": 2,
       "guards": {
-        "verified": 46,
+        "verified": 0,
         "declared-off": 0,
         "default-guarded": 2,
         "default-unguarded": 0
       },
-      "verify_guards_events": 46,
+      "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 8,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "records-canonicality",
+        "records-shape"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/records-shape.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 31,
+      "functions": 41,
+      "guards": {
+        "verified": 38,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 38,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "cbor",
         "defrecord"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/records.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 8,
+      "guards": {
+        "verified": 8,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 8,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "records-shape"
       ],
       "system_includes": [],
       "suspects": [],
@@ -5507,6 +5624,7 @@
         "hybrid-store",
         "node-invariants",
         "node-retention-transitions",
+        "records-seam",
         "store-events"
       ],
       "system_includes": [],
@@ -5727,10 +5845,63 @@
       "read_error": null
     },
     {
+      "book": "books/statement-attach.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "statement-codec",
+        "statement-seam"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-codec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 38,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "statement-items"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-stmt-impl-encode-items-of-atom"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/statement-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 69,
+      "theorems": 57,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -5752,15 +5923,66 @@
       "read_error": null
     },
     {
-      "book": "books/statement.lisp",
+      "book": "books/statement-items.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 34,
-      "functions": 69,
+      "theorems": 2,
+      "functions": 7,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 69,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "crypto-seam"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-seam.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "statement-codec",
+        "statement-items"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/statement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 24,
+      "functions": 56,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 56,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -5770,7 +5992,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "crypto-seam"
+        "crypto-seam",
+        "statement-seam"
       ],
       "system_includes": [],
       "suspects": [],
@@ -5820,7 +6043,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "records",
+        "records-seam",
         "stx-accept-records"
       ],
       "system_includes": [],
@@ -5846,6 +6069,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "records-seam",
         "store-files"
       ],
       "system_includes": [
@@ -5876,6 +6100,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "records-seam",
         "store-files-invariants"
       ],
       "system_includes": [],
@@ -5901,6 +6126,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "records-seam",
         "replay"
       ],
       "system_includes": [],
@@ -5926,6 +6152,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "records-seam",
         "store-node"
       ],
       "system_includes": [
@@ -5955,6 +6182,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "records-seam",
         "store-node-traces"
       ],
       "system_includes": [],
@@ -5983,6 +6211,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "records-seam",
         "store-files-traces",
         "store-node-invariants"
       ],
@@ -6013,6 +6242,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "records-seam",
         "store-files-invariants",
         "stx-index"
       ],
@@ -6064,6 +6294,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "records-seam",
         "store-node-resolution"
       ],
       "system_includes": [],
@@ -6091,6 +6322,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "records-seam",
         "store-observed",
         "store-sweep"
       ],
@@ -6142,6 +6374,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "records-seam",
         "stx-keyring-records"
       ],
       "system_includes": [],
@@ -7363,7 +7596,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-authored-wire"
+        "../../books/bp-authored-wire",
+        "../../books/codec-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -7442,7 +7676,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-ingress"
+        "../../books/bp-ingress",
+        "../../books/codec-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7467,7 +7702,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-ingress"
+        "../../books/bp-ingress",
+        "../../books/codec-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7488,11 +7724,12 @@
       "verify_guards_events": 0,
       "assert_events": 18,
       "must_fails": 0,
-      "defconsts": 5,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-native-app-fast",
+        "../../books/codec-attach",
         "bp-native-app-tests"
       ],
       "system_includes": [],
@@ -7514,11 +7751,12 @@
       "verify_guards_events": 0,
       "assert_events": 18,
       "must_fails": 0,
-      "defconsts": 10,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-native-app",
+        "../../books/codec-attach",
         "bp-receipt-records-tests"
       ],
       "system_includes": [],
@@ -7544,6 +7782,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../host/bp-node-host"
       ],
       "system_includes": [],
@@ -7596,7 +7835,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-node-machine-codec"
+        "../../books/bp-node-machine-codec",
+        "../../books/codec-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -7746,11 +7986,12 @@
       "verify_guards_events": 0,
       "assert_events": 8,
       "must_fails": 0,
-      "defconsts": 9,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-receipt-records",
+        "../../books/codec-attach",
         "bp-receipt-tests"
       ],
       "system_includes": [],
@@ -7776,7 +8017,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-receipt"
+        "../../books/bp-receipt",
+        "../../books/codec-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7801,7 +8043,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-receive-evidence"
+        "../../books/bp-receive-evidence",
+        "../../books/codec-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -7824,11 +8067,12 @@
       "verify_guards_events": 0,
       "assert_events": 70,
       "must_fails": 12,
-      "defconsts": 33,
+      "defconsts": 24,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-receiver-evolving-store-invariants",
+        "../../books/codec-attach",
         "bp-receipt-records-tests"
       ],
       "system_includes": [
@@ -7852,11 +8096,12 @@
       "verify_guards_events": 0,
       "assert_events": 18,
       "must_fails": 0,
-      "defconsts": 7,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-receiver-trace-invariants",
+        "../../books/codec-attach",
         "bp-receipt-records-tests"
       ],
       "system_includes": [],
@@ -7878,11 +8123,12 @@
       "verify_guards_events": 0,
       "assert_events": 15,
       "must_fails": 2,
-      "defconsts": 5,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-receiver-retention-invariants",
+        "../../books/codec-attach",
         "bp-receipt-records-tests"
       ],
       "system_includes": [
@@ -8125,7 +8371,8 @@
       "encapsulates": 0,
       "includes": [
         "../../books/byte-store-compaction-correspondence",
-        "../../books/byte-store-frame"
+        "../../books/byte-store-frame",
+        "../../books/codec-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -8153,7 +8400,8 @@
       "encapsulates": 0,
       "includes": [
         "../../books/byte-store-fault-keystones",
-        "../../books/byte-store-frame"
+        "../../books/byte-store-frame",
+        "../../books/codec-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -8180,7 +8428,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/byte-store-frame"
+        "../../books/byte-store-frame",
+        "../../books/codec-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8206,7 +8455,8 @@
       "encapsulates": 0,
       "includes": [
         "../../books/byte-store-frame",
-        "../../books/byte-store-initializer"
+        "../../books/byte-store-initializer",
+        "../../books/codec-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -8233,7 +8483,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/byte-store-native-correspondence"
+        "../../books/byte-store-native-correspondence",
+        "../../books/codec-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -8261,6 +8512,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/byte-store-program-invariants",
+        "../../books/codec-attach",
         "byte-store-relation-tests"
       ],
       "system_includes": [],
@@ -8287,7 +8539,8 @@
       "encapsulates": 0,
       "includes": [
         "../../books/byte-store-frame",
-        "../../books/byte-store-relation"
+        "../../books/byte-store-relation",
+        "../../books/codec-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -8316,7 +8569,8 @@
       "includes": [
         "../../books/byte-store-keystones",
         "../../books/byte-store-programs",
-        "../../books/byte-store-txn-name"
+        "../../books/byte-store-txn-name",
+        "../../books/codec-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8369,7 +8623,8 @@
       "encapsulates": 0,
       "includes": [
         "../../books/byte-store-invariants",
-        "../../books/byte-store-programs"
+        "../../books/byte-store-programs",
+        "../../books/codec-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8394,7 +8649,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/byte-store-txn-name"
+        "../../books/byte-store-txn-name",
+        "../../books/codec-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -8471,7 +8727,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/checkpoint-codec"
+        "../../books/checkpoint-codec",
+        "../../books/codec-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8492,11 +8749,12 @@
       "verify_guards_events": 0,
       "assert_events": 15,
       "must_fails": 4,
-      "defconsts": 19,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/checkpoint-compaction"
+        "../../books/checkpoint-compaction",
+        "../../books/codec-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -8523,7 +8781,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/checkpoint-publish"
+        "../../books/checkpoint-publish",
+        "../../books/codec-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8548,7 +8807,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/checkpoint"
+        "../../books/checkpoint",
+        "../../books/codec-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8580,6 +8840,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/codec-seam-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/records-canonicality",
+        "../../books/statement-codec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/config-stream-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8598,6 +8885,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/config-stream",
         "../../books/store-config"
       ],
@@ -8624,6 +8912,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/config-invariants",
         "../../books/config-records",
         "../../books/node-config",
@@ -9092,10 +9381,11 @@
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 11,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/hybrid-store"
       ],
       "system_includes": [
@@ -9201,6 +9491,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/app-journal",
+        "../../books/codec-attach",
         "../../books/journal-publish"
       ],
       "system_includes": [
@@ -9253,6 +9544,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/lace-invariants",
         "crypto-seam-tests"
       ],
@@ -9331,6 +9623,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/native-admin"
       ],
       "system_includes": [
@@ -9358,6 +9651,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../host/native-auth-admin-host"
       ],
       "system_includes": [],
@@ -9383,6 +9677,7 @@
       "defmacros": 6,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/native-auth-admin"
       ],
       "system_includes": [],
@@ -9408,6 +9703,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../host/native-auth-host"
       ],
       "system_includes": [],
@@ -9433,6 +9729,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/native-auth-profile"
       ],
       "system_includes": [],
@@ -9458,6 +9755,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/native-config-observation"
       ],
       "system_includes": [],
@@ -9509,6 +9807,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../host/native-control-host"
       ],
       "system_includes": [],
@@ -9534,6 +9833,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/native-control"
       ],
       "system_includes": [],
@@ -9559,6 +9859,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/native-hybrid-control"
       ],
       "system_includes": [
@@ -9586,6 +9887,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../host/native-operator-host"
       ],
       "system_includes": [],
@@ -9611,6 +9913,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/native-operator"
       ],
       "system_includes": [],
@@ -9636,6 +9939,7 @@
       "defmacros": 13,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/nntp-auth-invariants"
       ],
       "system_includes": [
@@ -9663,6 +9967,7 @@
       "defmacros": 9,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/nntp-auth"
       ],
       "system_includes": [],
@@ -9927,6 +10232,7 @@
       "defmacros": 4,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/owner-config"
       ],
       "system_includes": [
@@ -10061,6 +10367,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/owner-prepare-correspondence"
       ],
       "system_includes": [
@@ -10088,6 +10395,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/crypto-attach",
         "../../books/owner-fault",
         "../../books/owner-invariants"
@@ -10140,6 +10448,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/peer-inbound-invariants"
       ],
       "system_includes": [
@@ -10167,6 +10476,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/policy-invariants",
         "crypto-seam-tests"
       ],
@@ -10193,6 +10503,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/principal-invariants",
         "crypto-seam-tests"
       ],
@@ -10238,12 +10549,13 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 11,
-      "must_fails": 3,
-      "defconsts": 5,
+      "assert_events": 20,
+      "must_fails": 9,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/records-attach",
         "../../books/records-canonicality"
       ],
       "system_includes": [
@@ -10271,7 +10583,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/records"
+        "../../books/records-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -10296,6 +10608,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/relay-crash-invariants"
       ],
       "system_includes": [
@@ -10323,6 +10636,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/replay"
       ],
       "system_includes": [],
@@ -10423,6 +10737,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/served"
       ],
       "system_includes": [],
@@ -10448,6 +10763,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/served-tls-prefix"
       ],
       "system_includes": [
@@ -10500,6 +10816,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/statement-invariants",
         "crypto-seam-tests"
       ],
@@ -10526,6 +10843,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/replay"
       ],
       "system_includes": [],
@@ -10547,10 +10865,11 @@
       "verify_guards_events": 0,
       "assert_events": 11,
       "must_fails": 0,
-      "defconsts": 3,
+      "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-events"
       ],
       "system_includes": [],
@@ -10576,6 +10895,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-files"
       ],
       "system_includes": [],
@@ -10601,6 +10921,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-files-invariants"
       ],
       "system_includes": [
@@ -10628,6 +10949,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-files-invariants"
       ],
       "system_includes": [],
@@ -10653,6 +10975,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-files-traces"
       ],
       "system_includes": [],
@@ -10674,10 +10997,11 @@
       "verify_guards_events": 0,
       "assert_events": 8,
       "must_fails": 0,
-      "defconsts": 14,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/hybrid-store",
         "../../books/replay"
       ],
@@ -10700,10 +11024,11 @@
       "verify_guards_events": 0,
       "assert_events": 51,
       "must_fails": 0,
-      "defconsts": 34,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/hybrid-store",
         "../../books/store-observed"
       ],
@@ -10730,6 +11055,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-node-resolution",
         "../../books/store-observed"
       ],
@@ -10756,6 +11082,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-node-invariants",
         "crypto-seam-tests"
       ],
@@ -10782,6 +11109,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-node-resolution"
       ],
       "system_includes": [],
@@ -10807,6 +11135,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-node-resolution"
       ],
       "system_includes": [],
@@ -10832,6 +11161,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-observed"
       ],
       "system_includes": [],
@@ -10857,6 +11187,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-node-invariants"
       ],
       "system_includes": [],
@@ -10882,6 +11213,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-node-traces"
       ],
       "system_includes": [],
@@ -10907,6 +11239,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-observed"
       ],
       "system_includes": [],
@@ -10932,6 +11265,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-observed"
       ],
       "system_includes": [],
@@ -10957,6 +11291,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-prepare-correspondence"
       ],
       "system_includes": [
@@ -10984,6 +11319,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-sweep"
       ],
       "system_includes": [],
@@ -11009,6 +11345,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-events"
       ],
       "system_includes": [],
@@ -11034,6 +11371,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/stx-evidence-records"
       ],
       "system_includes": [],
@@ -11059,6 +11397,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-events"
       ],
       "system_includes": [],
@@ -11084,6 +11423,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/stx-invariants",
         "crypto-seam-tests"
       ],
@@ -11106,10 +11446,11 @@
       "verify_guards_events": 0,
       "assert_events": 84,
       "must_fails": 0,
-      "defconsts": 10,
+      "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/stx-authority",
         "../../books/stx-epochs",
         "crypto-seam-tests"
@@ -11543,7 +11884,7 @@
     {
       "theorem": "fn-cnode-inadmissible-config-changes-nothing",
       "book": "books/node-config.lisp",
-      "line": 423,
+      "line": 424,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value"
       ]
@@ -11748,6 +12089,14 @@
       ]
     },
     {
+      "theorem": "fn-record-impl-encode-domain",
+      "book": "books/records-canonicality.lisp",
+      "line": 772,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-record-encode-impl and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-record-result-okp-is-parse-okp",
       "book": "books/records-canonicality.lisp",
       "line": 600,
@@ -11774,7 +12123,7 @@
     {
       "theorem": "fn-sf-frontier-rollback-visiblep-unfolds",
       "book": "books/store-files-invariants.lisp",
-      "line": 410,
+      "line": 411,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep"
       ]
@@ -11782,7 +12131,7 @@
     {
       "theorem": "fn-sf-stable-records-outside-the-window",
       "book": "books/store-files-invariants.lisp",
-      "line": 90,
+      "line": 91,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value"
       ]
@@ -11790,7 +12139,7 @@
     {
       "theorem": "fn-sn-finish-disabled-is-no-op",
       "book": "books/store-node-invariants.lisp",
-      "line": 429,
+      "line": 430,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value"
       ]
@@ -11798,7 +12147,7 @@
     {
       "theorem": "fn-sn-known-abort-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 151,
+      "line": 152,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value"
       ]
@@ -11806,7 +12155,7 @@
     {
       "theorem": "fn-sn-open-observed-invalid-history-refuses",
       "book": "books/store-observed.lisp",
-      "line": 471,
+      "line": 472,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value"
       ]
@@ -11814,7 +12163,7 @@
     {
       "theorem": "fn-sn-refuse-reservation-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 145,
+      "line": 146,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value"
       ]
@@ -11825,6 +12174,14 @@
       "line": 613,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-stmt-impl-encode-items-of-atom",
+      "book": "books/statement-codec.lisp",
+      "line": 394,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-stmt-encode-items-impl and the conclusion is that branch's value"
       ]
     },
     {
@@ -12090,37 +12447,37 @@
       {
         "theorem": "fn-cpp-crash-marker-is-authority-before-selection-attempted",
         "book": "books/checkpoint-publish.lisp",
-        "line": 774,
+        "line": 776,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-checkpoint-groups-of-fn-checkpoint-make",
         "book": "books/checkpoint.lisp",
-        "line": 68,
+        "line": 69,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-checkpoint-capacity-of-fn-checkpoint-make",
         "book": "books/checkpoint.lisp",
-        "line": 71,
+        "line": 72,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-jrec-article-sequence-agrees",
         "book": "books/config-records.lisp",
-        "line": 99,
+        "line": 100,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-jrec-article-store-event-sequence-agrees",
         "book": "books/config-records.lisp",
-        "line": 104,
+        "line": 105,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-jrec-config-sequence-agrees",
         "book": "books/config-records.lisp",
-        "line": 112,
+        "line": 113,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -12222,19 +12579,19 @@
       {
         "theorem": "fn-stmt-header-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 434,
+        "line": 255,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stmt-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 529,
+        "line": 350,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stmt-receipt-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 648,
+        "line": 469,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -12246,7 +12603,7 @@
       {
         "theorem": "fn-sf-completed-frontier-barrier-removes-old-choice",
         "book": "books/store-files-invariants.lisp",
-        "line": 316,
+        "line": 317,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -12711,19 +13068,19 @@
       {
         "check": "fn-bs-txn-name-injective-without-left-natp",
         "book": "tests/acl2/byte-store-txn-name-tests.lisp",
-        "line": 46,
+        "line": 47,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-bs-txn-name-injective-without-right-natp",
         "book": "tests/acl2/byte-store-txn-name-tests.lisp",
-        "line": 54,
+        "line": 55,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-bs-txn-name-injective-without-name-equality",
         "book": "tests/acl2/byte-store-txn-name-tests.lisp",
-        "line": 62,
+        "line": 63,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -12777,31 +13134,31 @@
       {
         "check": "fn-na-lock-without-acceptance",
         "book": "tests/acl2/native-admin-tests.lisp",
-        "line": 221,
+        "line": 222,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-na-lock-without-a-publication-state",
         "book": "tests/acl2/native-admin-tests.lisp",
-        "line": 234,
+        "line": 235,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-peer-open-pins-the-open-config",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1071,
+        "line": 1072,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-not-posting",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1175,
+        "line": 1176,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-the-post-command-event",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1216,
+        "line": 1217,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -12819,25 +13176,25 @@
       {
         "check": "pt-relay-changes-nothing",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 651,
+        "line": 652,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "pt-relay-by-another-node-changes-nothing",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 670,
+        "line": 671,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "pt-every-article-is-xref-free",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 682,
+        "line": 683,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "pt-relay-names-a-node-without-an-identity",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 692,
+        "line": 693,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       }
     ],
@@ -12945,6 +13302,13 @@
         "line": 7,
         "include": "bp-workflow-records",
         "included": "books/bp-workflow-records.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-receipt-records.lisp",
+        "line": 5,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13151,6 +13515,34 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/checkpoint.lisp",
+        "line": 7,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/codec-attach.lisp",
+        "line": 12,
+        "include": "records-attach",
+        "included": "books/records-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/codec-attach.lisp",
+        "line": 13,
+        "include": "statement-attach",
+        "included": "books/statement-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/config-records.lisp",
+        "line": 19,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/exchange.lisp",
         "line": 14,
         "include": "acceptance-alloc",
@@ -13263,6 +13655,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/node-config.lisp",
+        "line": 34,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/owner-agent.lisp",
         "line": 38,
         "include": "injection-invariants",
@@ -13298,6 +13697,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/records-attach.lisp",
+        "line": 23,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/relay-invariants.lisp",
         "line": 18,
         "include": "relay",
@@ -13309,6 +13715,13 @@
         "line": 29,
         "include": "bp-workflow-binding-invariants",
         "included": "books/bp-workflow-binding-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/replay.lisp",
+        "line": 20,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13330,6 +13743,90 @@
         "line": 47,
         "include": "bp-workflow",
         "included": "books/bp-workflow.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/statement-attach.lisp",
+        "line": 16,
+        "include": "statement-codec",
+        "included": "books/statement-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-events.lisp",
+        "line": 9,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-files-invariants.lisp",
+        "line": 9,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-files-traces.lisp",
+        "line": 21,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-files.lisp",
+        "line": 29,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-node-invariants.lisp",
+        "line": 4,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-node-resolution.lisp",
+        "line": 4,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-node-traces.lisp",
+        "line": 5,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-node.lisp",
+        "line": 16,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-observed.lisp",
+        "line": 21,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-prepare-correspondence.lisp",
+        "line": 17,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/stx-accept-records.lisp",
+        "line": 10,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13445,10 +13942,31 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bp-authored-wire-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bp-fragment-tests.lisp",
         "line": 10,
         "include": "../../books/bp-fragment-invariants",
         "included": "books/bp-fragment-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-ingress-guards-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-ingress-tests.lisp",
+        "line": 3,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13459,10 +13977,31 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bp-native-app-fast-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bp-native-app-tests.lisp",
         "line": 3,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-native-app-tests.lisp",
+        "line": 4,
         "include": "bp-receipt-records-tests",
         "included": "tests/acl2/bp-receipt-records-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-host-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13477,6 +14016,13 @@
         "line": 3,
         "include": "../../books/bp-node-machine-codec",
         "included": "books/bp-node-machine-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-machine-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13496,8 +14042,22 @@
       {
         "book": "tests/acl2/bp-receipt-records-tests.lisp",
         "line": 3,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-receipt-records-tests.lisp",
+        "line": 4,
         "include": "bp-receipt-tests",
         "included": "tests/acl2/bp-receipt-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-receipt-tests.lisp",
+        "line": 3,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13505,6 +14065,13 @@
         "line": 2,
         "include": "../../books/bp-receive-evidence",
         "included": "books/bp-receive-evidence.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-receive-evidence-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13522,6 +14089,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bp-receiver-evolving-tests.lisp",
+        "line": 15,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bp-receiver-invariants-tests.lisp",
         "line": 2,
         "include": "../../books/bp-receiver-trace-invariants",
@@ -13536,6 +14110,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bp-receiver-invariants-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bp-receiver-teeth-tests.lisp",
         "line": 11,
         "include": "../../books/bp-receiver-retention-invariants",
@@ -13547,6 +14128,13 @@
         "line": 12,
         "include": "bp-receipt-records-tests",
         "included": "tests/acl2/bp-receipt-records-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-receiver-teeth-tests.lisp",
+        "line": 14,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13592,6 +14180,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-compaction-correspondence-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-fault-keystones-tests.lisp",
         "line": 2,
         "include": "../../books/byte-store-fault-keystones",
@@ -13606,10 +14201,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-fault-keystones-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-frame-tests.lisp",
         "line": 3,
         "include": "../../books/byte-store-frame",
         "included": "books/byte-store-frame.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-frame-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13627,10 +14236,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-initializer-tests.lisp",
+        "line": 6,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-native-correspondence-tests.lisp",
         "line": 2,
         "include": "../../books/byte-store-native-correspondence",
         "included": "books/byte-store-native-correspondence.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-native-correspondence-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13648,6 +14271,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-program-invariants-tests.lisp",
+        "line": 6,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-relation-tests.lisp",
         "line": 5,
         "include": "../../books/byte-store-relation",
@@ -13662,6 +14292,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-relation-tests.lisp",
+        "line": 8,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-scan-tests.lisp",
         "line": 17,
         "include": "../../books/byte-store-keystones",
@@ -13673,6 +14310,13 @@
         "line": 19,
         "include": "../../books/byte-store-txn-name",
         "included": "books/byte-store-txn-name.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-scan-tests.lisp",
+        "line": 20,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13697,6 +14341,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-tests.lisp",
+        "line": 14,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-txn-name-tests.lisp",
         "line": 3,
         "include": "../../books/byte-store-txn-name",
@@ -13704,10 +14355,73 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-txn-name-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/checkpoint-codec-tests.lisp",
+        "line": 10,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/checkpoint-compaction-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/checkpoint-publish-tests.lisp",
+        "line": 9,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/checkpoint-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/clock-tests.lisp",
         "line": 9,
         "include": "../../books/clock-invariants",
         "included": "books/clock-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/codec-seam-tests.lisp",
+        "line": 25,
+        "include": "../../books/statement-codec",
+        "included": "books/statement-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/codec-seam-tests.lisp",
+        "line": 26,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-stream-tests.lisp",
+        "line": 13,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-tests.lisp",
+        "line": 20,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13781,6 +14495,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/hybrid-store-tests.lisp",
+        "line": 3,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/injection-tests.lisp",
         "line": 11,
         "include": "../../books/injection-invariants",
@@ -13795,10 +14516,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/journal-publish-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/lace-tests.lisp",
         "line": 5,
         "include": "crypto-seam-tests",
         "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/lace-tests.lisp",
+        "line": 7,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13816,10 +14551,45 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/native-admin-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-auth-admin-host-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-auth-admin-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-auth-host-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/native-auth-profile-tests.lisp",
         "line": 3,
         "include": "../../books/native-auth-profile",
         "included": "books/native-auth-profile.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-auth-profile-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13830,6 +14600,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/native-config-observation-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-control-host-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-control-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/native-hybrid-control-tests.lisp",
         "line": 2,
         "include": "../../books/native-hybrid-control",
@@ -13837,10 +14628,52 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/native-hybrid-control-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-operator-host-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-operator-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
+        "line": 49,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-auth-tests.lisp",
+        "line": 12,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-agent-tests.lisp",
         "line": 24,
         "include": "../../books/owner-agent",
         "included": "books/owner-agent.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-config-tests.lisp",
+        "line": 18,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13858,10 +14691,31 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-prepare-correspondence-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-tests.lisp",
+        "line": 18,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/peer-inbound-tests.lisp",
         "line": 8,
         "include": "../../books/peer-inbound-invariants",
         "included": "books/peer-inbound-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-inbound-tests.lisp",
+        "line": 9,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13872,10 +14726,38 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/policy-tests.lisp",
+        "line": 7,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/principal-tests.lisp",
         "line": 3,
         "include": "crypto-seam-tests",
         "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/principal-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/records-teeth-tests.lisp",
+        "line": 17,
+        "include": "../../books/records-attach",
+        "included": "books/records-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/records-tests.lisp",
+        "line": 3,
+        "include": "../../books/records-attach",
+        "included": "books/records-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13886,10 +14768,108 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/relay-tests.lisp",
+        "line": 13,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/replay-tests.lisp",
+        "line": 9,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-tests.lisp",
+        "line": 15,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-tls-prefix-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/statement-tests.lisp",
         "line": 3,
         "include": "crypto-seam-tests",
         "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/statement-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-event-replay-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-events-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-files-exploration-tests.lisp",
+        "line": 18,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-files-teeth-tests.lisp",
+        "line": 23,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-files-tests.lisp",
+        "line": 10,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-files-traces-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-identity-replay-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-identity-traces-tests.lisp",
+        "line": 8,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-node-guards-tests.lisp",
+        "line": 11,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -13900,6 +14880,97 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-node-index-tests.lisp",
+        "line": 27,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-node-resolution-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-node-resolution-traces-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-node-teeth-tests.lisp",
+        "line": 20,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-node-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-node-traces-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-observed-tests.lisp",
+        "line": 7,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-observed-traces-tests.lisp",
+        "line": 7,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-prepare-correspondence-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-sweep-tests.lisp",
+        "line": 10,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/stx-accept-records-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/stx-evidence-records-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/stx-keyring-records-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/stx-tests.lisp",
         "line": 14,
         "include": "crypto-seam-tests",
@@ -13907,10 +14978,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/stx-tests.lisp",
+        "line": 16,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/stx-transit-tests.lisp",
         "line": 16,
         "include": "crypto-seam-tests",
         "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/stx-transit-tests.lisp",
+        "line": 19,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -18566,7 +19651,7 @@
       },
       {
         "book": "books/checkpoint.lisp",
-        "line": 18,
+        "line": 19,
         "shape": "fn-checkpoint-shapep",
         "shapes": 1,
         "accessors": 5,
@@ -18646,8 +19731,8 @@
         "reason": "hand-written record: 3 shape predicate(s) (fn-peer-decision-shapep, fn-peer-session-shapep, fn-peer-submission-shapep) and 10 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
-        "book": "books/records.lisp",
-        "line": 218,
+        "book": "books/records-shape.lisp",
+        "line": 188,
         "shape": "fn-record-parse-shapep",
         "shapes": 1,
         "accessors": 3,
@@ -18656,7 +19741,7 @@
       },
       {
         "book": "books/replay.lisp",
-        "line": 114,
+        "line": 115,
         "shape": "fn-replay-fault-shapep",
         "shapes": 2,
         "accessors": 4,
@@ -18674,7 +19759,7 @@
       },
       {
         "book": "books/store-files.lisp",
-        "line": 277,
+        "line": 278,
         "shape": "fn-sf-phase-shapep",
         "shapes": 1,
         "accessors": 8,

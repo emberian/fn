@@ -432,6 +432,9 @@ class Acl2Store:
                                          stderr=subprocess.STDOUT, env=env)
             read_prompt(self.proc, ACL2_START_TIMEOUT_SECONDS)
             self.call('(include-book "books/replay")')
+            # Every codec seam's attachment: the books call the constrained
+            # encoders and decoders; this makes them evaluate.
+            self.call('(include-book "books/codec-attach")')
             self.call('(ld "host/store-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.call('(ld "host/store-node-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.call('(ld "host/checkpoint-host.lisp" :ld-error-action :return :ld-error-triples t)')

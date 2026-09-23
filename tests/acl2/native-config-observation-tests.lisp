@@ -1,6 +1,7 @@
 ; Executable witnesses and teeth for configuration-history namespace recovery.
 (in-package "ACL2")
 (include-book "../../books/native-config-observation")
+(include-book "../../books/codec-attach")
 
 (defconst *fn-nco-test-record-1*
   (fn-cfg-encode (fn-cfg-record-make 0 0 1 (list (fn-cfg-set-capacity 1)) (fn-clock-observation 0 0 0 t))))

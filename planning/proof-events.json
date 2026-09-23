@@ -235,6 +235,26 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-record-impl-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-impl-accepted-input-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-accepted-input-magic"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-accepted-schema-is-the-stamp-kind"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-schema0-golden-octets-are-the-encoding"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-bpa-round-trip"
         },
         {

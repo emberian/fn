@@ -1,6 +1,7 @@
 ; Teeth for the bounded native operator grammar and its config gate.
 (in-package "ACL2")
 (include-book "../../books/native-operator")
+(include-book "../../books/codec-attach")
 
 (defun fn-nop-test-argv (words)
   (if (consp words)

@@ -6,6 +6,7 @@
 ; configuration record, then the transcripts, then the teeth.
 (in-package "ACL2")
 (include-book "../../books/peer-inbound-invariants")
+(include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------

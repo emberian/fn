@@ -1,6 +1,7 @@
 ; Executable cases and theorem teeth for native AUTHINFO administration.
 (in-package "ACL2")
 (include-book "../../books/native-auth-admin")
+(include-book "../../books/codec-attach")
 
 (assert-event
  (equal (symbol-class 'fn-native-auth-admin-set-password (w state))
