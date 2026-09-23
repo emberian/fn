@@ -49,6 +49,13 @@ instead of writing a fabricated epoch-zero stamp. The native owner and Store
 adapters share the same wall reading and unusable flag. The live Python Store
 prepare/finish lifecycle test passed again after this adapter change.
 
+An optional broader Python Store fault-matrix run was stopped after 25 minutes.
+Its completed live Store-node cases passed, but several corruption cases were
+red before the matrix finished: their JSON checksum/config fixtures and
+diagnostics predate framed metadata. The same JSON expectations and explicit
+legacy-JSON refusal are both present in the `24a5df6b` base, so this run is
+not evidence of a T2-specific failure or of a passing corruption matrix.
+
 The native carried-over-store witness remains open until a T2 native image is
 built and `tests/test_native_stamp_migration.py` runs against the frozen
 pre-T2 image and that new image on hbox. The old image is already frozen at
