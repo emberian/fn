@@ -2229,6 +2229,37 @@
         "planning/evidence/manifests/certify-20260923T211422Z-167141.json"
       ],
       "progress_note": "The selector and accepted-event wrapper plus matching/mismatching principal, changed-key, From, relay and unbound historical event witnesses certify on hbox at the lane source. A source-matched saved-image CLI run and integrated reverse closure remain pending. The native command keeps generic candidate output and explicitly reports admission=unestablished."
+    },
+    {
+      "id": "PRF-067",
+      "title": "Pinned LISTGROUP group buckets refine the committed archive",
+      "statement": "For a projection-consistent accepted archive, fn-gidx-listgroup-command-of-build equates the complete indexed LISTGROUP answer and session with the archive command when buckets are built from that archive. fn-gidx-bucket-of-build identifies the selected bucket with the exact membership filter of the existing index. The actual fn-own-read caller reaches fn-nntp-archive-command-pinned through served dispatch; fn-own-relation and fn-served-connp maintain the archive, trie, and bucket pin correspondence across view refresh, open, feed and read. The claim excludes arbitrary tagged indexes, unindexed GROUP/NEXT/LAST/NEWNEWS, disk indexing, and elapsed-time performance.",
+      "milestone": "M3",
+      "requirements": [
+        "STO-001",
+        "NNT-006"
+      ],
+      "depends_on": [
+        "PRF-010"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/group-bucket-index.lisp",
+        "books/group-bucket-invariants.lisp",
+        "books/owner-invariants.lisp",
+        "books/served.lisp",
+        "tests/acl2/group-bucket-index-tests.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "planning/evidence/t17-group-bucket-served-2026-09-23.md"
+      ],
+      "events": [
+        "fn-gidx-bucket-of-build",
+        "fn-gidx-listgroup-command-of-build",
+        "fn-own-run-preserves-relation",
+        "fn-own-read-is-served-step-on-pinned-prefix"
+      ],
+      "progress_note": "Scoped ACL2 certification and a called-owner sparse/historical witness are recorded in the evidence note. A malformed tagged pin changes LISTGROUP, demonstrating the correspondence premise. Combined-image qualification and full dependent closure at integrated source remain open."
     }
   ]
 }

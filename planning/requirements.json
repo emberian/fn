@@ -301,7 +301,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-010"
+        "PRF-010",
+        "PRF-067"
       ],
       "verification": [
         "proof",
@@ -312,7 +313,7 @@
         "tests/evidence/2026-09-18-storage.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Immutable local transaction files are replayed by ACL2 into complete node articles, memberships, and pins. Format-7 profiles derive a 196608-octet payload ceiling from persisted aggregate/count metadata; format-6 remains readable at 65538 and must refuse larger publication before mutation. The served Message-ID trie is in memory and corresponds to each connection's pinned accepted archive; no disk index is authoritative. The per-group number/range index is not yet served.",
+      "implementation_note": "Immutable local transaction files are replayed by ACL2 into complete node articles, memberships, and pins. Format-7 profiles derive a 196608-octet payload ceiling from persisted aggregate/count metadata; format-6 remains readable at 65538 and must refuse larger publication before mutation. In-memory Message-ID and LISTGROUP group-bucket indexes correspond to each connection's pinned accepted archive; no disk index is authoritative. GROUP, NEXT, LAST and NEWNEWS remain archive folds.",
       "keystones": [
         "fn-index-rebuild-correspondence",
         "fn-index-range-query-correct",
@@ -321,7 +322,7 @@
         "fn-own-run-preserves-relation",
         "fn-own-read-is-served-step-on-pinned-prefix"
       ],
-      "note": "The derived group/local-number index is sound and complete against committed memberships, but no host adopts it yet. T17's in-memory Message-ID trie is different: the actual owner/served ARTICLE, HEAD, BODY and STAT Message-ID call path uses it, with exact per-view/per-connection archive correspondence in fn-own-relation and a scan-refinement theorem. Lane w25 certification passed books/owner-invariants (run-20260923T194237Z-ac04) and tests/acl2/owner-tests (run-20260923T194435Z-da6e); integrated T10a closure and measured read cost remain pending."
+      "note": "The T17 in-memory Message-ID trie serves exact-ID ARTICLE, HEAD, BODY and STAT. The separate per-group bucket now serves LISTGROUP through the actual owner/served dispatcher under exact per-view/per-connection archive correspondence. Scoped ACL2 proof and historical owner-call tests are recorded in planning/evidence/t17-group-bucket-served-2026-09-23.md. The structural 24-group cost fixture is not elapsed-time qualification; integrated native image and combined closure remain pending."
     },
     {
       "id": "STO-002",
@@ -1205,7 +1206,8 @@
         "PRF-002",
         "PRF-010",
         "PRF-015",
-        "PRF-028"
+        "PRF-028",
+        "PRF-067"
       ],
       "verification": [
         "proof",

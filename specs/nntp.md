@@ -150,8 +150,8 @@ are gone. `fn-nntp-newnews-scan-is-the-acceptance-filter` equates the one-pass
 scan with an independent quadratic specification, establishing soundness and
 completeness. `fn-nntp-newnews-lines-are-clean` and
 `fn-nntp-newnews-scan-lines-at-most-candidates` establish block hygiene and
-the output bound. The per-group index of `books/nntp-index.lisp` is not on the
-served path; replacing the whole-list walk remains open.
+the output bound. The LISTGROUP group buckets do not index NEWNEWS; replacing
+this whole-list walk remains open.
 
 Message-ID forms of `ARTICLE`, `HEAD`, `BODY`, and `STAT` use the connection's
 pinned trie rather than scanning its accepted article list. The owner refreshes
@@ -165,8 +165,13 @@ and carried by `fn-own-run-preserves-relation`. Under that premise,
 the original list lookup. The host-called `fn-own-read` is tied to the pinned
 served step by `fn-own-read-is-served-step-on-pinned-prefix`. These are in-memory
 indexes, reconstructed from committed acceptance on recovery; they do not
-change acceptance authority or add disk index files. Per-group number/range
-reads and `NEWNEWS` still walk the pinned archive.
+change acceptance authority or add disk index files. LISTGROUP range reads
+select from immutable per-group buckets pinned with that archive, and the
+owner/served invariant maintains exact bucket-to-archive correspondence.
+GROUP, NEXT, LAST and NEWNEWS still use their current archive folds. The
+LISTGROUP selection cost is at most G + S inspected headers and selected
+entries, for G retained groups and S entries in the chosen group; this excludes
+number sorting, reply rendering, and index construction.
 
 230 is a complete answer. 501 is the syntax refusal for malformed arguments,
 date/time or wildmat. 503 remains only for a two-digit year when the pinned
