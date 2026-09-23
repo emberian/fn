@@ -204,3 +204,21 @@ of book and test roots passed under `run-20260923T212653Z-31d7`, original
 manifest `planning/evidence/manifests/certify-20260923T212655Z-195160.json`.
 Whole pair-10 relation composition still needs state and root authority
 provenance, plus the file-kernel crash-image and phase clauses.
+
+The next bounded source packet closes three of those clauses for the actual
+pair-10 P-RECORD interpreter cut, without asserting the whole relation.
+`fn-bs-k0-attempted-cut-statep` derives byte-state well-formedness from the
+real create/write/file-fence/link prefix. The fresh allocation cannot alias
+the durable frontier or config target, so their exact durable values survive
+the write and link. Together with the old decoded record-prefix theorem and
+the exact logical callbacks, `fn-bs-k0-attempted-cut-kernel-admits-durable-image`
+proves that the byte cut's durable frontier and records are a valid
+`fn-sf-crash-imagep` of the pair's logical file state. These are clauses of
+the output `fn-bs-store-relation`; they do not presuppose scanner equality.
+Selected hbox certification of the book and its existing K6/K0 test root
+passed under `run-20260923T220552Z-97a8`, original manifest
+`planning/evidence/manifests/certify-20260923T220600Z-285204.json`.
+Authority-known and authority-fenced over the *new* pending inode, plus
+composition of the pending phase and config/record clauses into the full
+pair-10 relation, remain open. The existing K0 input relation is still a
+proof premise rather than an established fact for every served call trace.

@@ -1917,3 +1917,160 @@
                            (fn-bs-run fn-bs-record-program fn-bs-store-relation
                             fn-bs-record-inputp fn-bs-read-records
                             fn-bs-txn-prefix-agreesp)))))
+
+; K0 actual pair-10 authority-state and kernel-admissibility clauses.
+(defthm fn-bs-k0-record-file-cut-statep
+  (implies (and (fn-bs-statep bs)
+                (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage))
+                (fn-cbor-octet-listp frame))
+           (fn-bs-statep
+            (car (nth 5 (fn-bs-run bs ks
+                                        (fn-bs-record-program stage name frame)
+                                        nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k6-interpreted-record-fence-is-write-fence)
+                 (:instance fn-bs-create-preserves-statep
+                            (s bs) (dir :staging) (name stage) (outcome :ok))
+                 (:instance fn-bs-write-preserves-statep
+                            (s (mv-nth 1 (fn-bs-create bs :staging stage :ok)))
+                            (ino (fn-bs-next-ino bs)) (offset 0)
+                            (octets frame) (outcome :ok))
+                 (:instance fn-bs-fence-file-preserves-statep
+                            (s (mv-nth 1 (fn-bs-write
+                                           (mv-nth 1 (fn-bs-create bs :staging stage :ok))
+                                           (fn-bs-next-ino bs) 0 frame :ok)))
+                            (ino (fn-bs-next-ino bs))))
+           :in-theory (e/d (fn-bs-create fn-bs-write)
+                           (fn-bs-run fn-bs-record-program fn-bs-statep
+                            fn-bs-fence-file fn-bs-lookup)))))
+
+(defthm fn-bs-k0-attempted-cut-statep
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-bs-statep
+            (car (nth 10 (fn-bs-run bs ks
+                                         (fn-bs-record-program stage name frame)
+                                         nil groups capacity)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-store-relation-unfolds)
+                 (:instance fn-bs-k0-record-file-cut-statep)
+                 (:instance fn-bs-k6-state-next-ino-is-inop)
+                 (:instance fn-bs-txn-name-is-a-name
+                            (n (fn-store-event-sequence (fn-sf-record-candidate ks))))
+                 (:instance fn-bs-k6-file-cut-source-is-fenced-frame)
+                 (:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                 (:instance fn-bs-k6-actual-link-cut-is-file-cut-link)
+                 (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state)
+                 (:instance fn-bs-link-preserves-statep
+                            (s (car (nth 5 (fn-bs-run bs ks
+                                                           (fn-bs-record-program stage name frame)
+                                                           nil groups capacity))))
+                            (sdir :staging) (sname stage)
+                            (ddir :transactions) (dname name) (outcome :ok)))
+           :in-theory (e/d (fn-bs-record-inputp)
+                           (fn-bs-run fn-bs-record-program fn-bs-statep
+                            fn-bs-link fn-bs-lookup fn-bs-store-relation
+                            fn-bs-k6-lookup-is-entry-after)))))
+
+(defthm fn-bs-k0-related-allocation-is-not-frontier-target
+  (implies (fn-bs-store-relation bs ks)
+           (not (equal (fn-bs-next-ino bs)
+                       (fn-bs-durable-entry bs :root *fn-bs-scan-frontier-name*))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-bs-related-allocation-is-fresh)
+           :in-theory (e/d (fn-bs-authority-inode-list fn-bs-durable-entry
+                            fn-bs-member-of-append)
+                           (fn-bs-store-relation fn-bs-authority-knownp)))))
+
+(defthm fn-bs-k0-attempted-cut-keeps-durable-frontier
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal
+            (fn-bs-durable-frontier
+             (car (nth 10 (fn-bs-run bs ks
+                                           (fn-bs-record-program stage name frame)
+                                           nil groups capacity))))
+            (fn-bs-durable-frontier bs)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-related-allocation-is-not-frontier-target)
+                 (:instance fn-bs-k0-attempted-cut-keeps-other-durable-content
+                            (other (fn-bs-durable-entry bs :root *fn-bs-scan-frontier-name*)))
+                 (:instance fn-bs-k6-related-attempt-durable-namespace-is-input-namespace))
+           :in-theory (e/d (fn-bs-durable-frontier fn-bs-durable-entry)
+                           (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                            fn-bs-record-inputp fn-bs-durable-content)))))
+
+(defthm fn-bs-k0-attempted-cut-kernel-admits-durable-image
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (fn-sf-crash-imagep
+            (cdr (nth 10 (fn-bs-run bs ks
+                                         (fn-bs-record-program stage name frame)
+                                         nil groups capacity)))
+            (fn-bs-durable-frontier
+             (car (nth 10 (fn-bs-run bs ks
+                                          (fn-bs-record-program stage name frame)
+                                          nil groups capacity))))
+            (fn-bs-durable-records
+             (car (nth 10 (fn-bs-run bs ks
+                                          (fn-bs-record-program stage name frame)
+                                          nil groups capacity))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-record-attempted-cut-kernel-is-link-observation)
+                 (:instance fn-bs-k0-attempted-cut-keeps-old-durable-record-prefix)
+                 (:instance fn-bs-k0-attempted-cut-keeps-durable-frontier)
+                 (:instance fn-bs-store-relation-window-unfolds)
+                 (:instance fn-bs-store-relation-unfolds)
+                 (:instance fn-sf-record-file-result-preserves-state
+                            (s ks) (result :ok))
+                 (:instance fn-sf-record-link-result-preserves-state
+                            (s (fn-sf-record-file-result ks :ok))
+                            (result :ok)))
+           :in-theory (e/d (fn-bs-record-inputp fn-bs-replay-visiblep
+                            fn-sf-crash-imagep fn-sf-frontier-new-visiblep
+                            fn-sf-record-present-visiblep
+                            fn-sf-record-file-result fn-sf-record-link-result)
+                           (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                            fn-bs-durable-records fn-bs-durable-frontier
+                            fn-sf-statep)))))
+
+(defthm fn-bs-k0-related-allocation-is-not-config-target
+  (implies (fn-bs-store-relation bs ks)
+           (not (equal (fn-bs-next-ino bs)
+                       (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-bs-related-allocation-is-fresh)
+           :in-theory (e/d (fn-bs-authority-inode-list fn-bs-durable-entry
+                            fn-bs-member-of-append)
+                           (fn-bs-store-relation fn-bs-authority-knownp)))))
+
+(defthm fn-bs-k0-attempted-cut-keeps-durable-config
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (let ((at (car (nth 10 (fn-bs-run bs ks
+                                              (fn-bs-record-program stage name frame)
+                                              nil groups capacity)))))
+             (and (equal (fn-bs-durable-entry at :root *fn-bs-scan-config-name*)
+                         (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*))
+                  (equal (fn-bs-durable-content
+                          at (fn-bs-durable-entry at :root *fn-bs-scan-config-name*))
+                         (fn-bs-durable-content
+                          bs (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-related-allocation-is-not-config-target)
+                 (:instance fn-bs-k0-attempted-cut-keeps-other-durable-content
+                            (other (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*)))
+                 (:instance fn-bs-k6-related-attempt-durable-namespace-is-input-namespace))
+           :in-theory (e/d (fn-bs-durable-entry)
+                           (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                            fn-bs-record-inputp fn-bs-durable-content)))))
