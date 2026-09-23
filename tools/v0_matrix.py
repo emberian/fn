@@ -514,14 +514,14 @@ PLAN = (
       "verified against the record's anchor and server name",
       ("REP-005", "HST-004"), ("SCN-024",), ACCEPTED, "direction",
       "the article's arrival under a target that refuses AUTHINFO before TLS and "
-      "answers an unauthenticated IHAVE 480 is what shows the channel; the matrix "
+      "denies unauthenticated transit with 502 is what shows the channel; the matrix "
       "does not see the feed's own socket, and OpenSSL's chain and hostname checks "
       "are trusted integration (PRF-047)"),
     S("V0-TRANSIT-AUTHINFO", "F-TRANSIT",
       "the owner's feed logs in with AUTHINFO as the principal the peer's record "
       "binds before it offers, and the peer takes the offer in that role",
       ("REP-005", "HST-004"), ("SCN-024",), ACCEPTED, "direction",
-      "the same arrival: an unauthenticated offer of the same article is 480 on "
+      "the same arrival: an unauthenticated offer of the same article is 502 on "
       "the target, so the feed's offer came on a connection that logged in; "
       "PRF-051's keystones are what say the feed sends no offer before the 281"),
     S("V0-TRANSIT-TLS-WRONG-ANCHOR", "F-TRANSIT",
@@ -4094,7 +4094,9 @@ exit "$rc"
         "tests.test_native_protected_peering.NativeProtectedPeeringTests."
         "test_untrusted_certificate_yields_430_and_feed_journal_evidence",
         "tests.test_native_protected_peering.NativeProtectedPeeringTests."
-        "test_acknowledged_protected_feed_does_not_reoffer_after_source_death")
+        "test_acknowledged_protected_feed_does_not_reoffer_after_source_death",
+        "tests.test_native_protected_peering.NativeProtectedPeeringTests."
+        "test_durable_sent_cut_requeues_on_protected_restart")
 
     def native_protected_peering_suite(self):
         """The owner's feed over STARTTLS and AUTHINFO, both ways, and its refusals.
@@ -4117,21 +4119,35 @@ runtime_path={runtime}
 test -x "$runtime_path" || exit 4
 runtime_expected=$(digest "$runtime_path")
 core_before=$(digest "$image.core")
+dev={developer}
+dev_launcher=""
+dev_core=""
+if [ -n "$dev" ] && [ -x "$dev" ] && [ -s "$dev.core" ]; then
+  dev_launcher=$(digest "$dev")
+  dev_core=$(digest "$dev.core")
+fi
 echo "NATIVE-PROTECTED-EXPECTED-RUNTIME $runtime_expected"
 echo "NATIVE-PROTECTED-EXPECTED-CORE $core_before"
+echo "NATIVE-PROTECTED-EXPECTED-DEVELOPER-CORE $dev_core"
 FN_ACL2={acl2} FN_NATIVE_HOST="$image" FN_NATIVE_IMAGE_SOURCE_SHA={source} \
 FN_NATIVE_LAUNCHER_SHA256="$(digest "$image")" FN_NATIVE_CORE_SHA256="$core_before" \
-FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
+FN_NATIVE_RUNTIME_SHA256="$runtime_expected" FN_NATIVE_DEVELOPER_HOST="$dev" \
+FN_NATIVE_DEVELOPER_LAUNCHER_SHA256="$dev_launcher" \
+FN_NATIVE_DEVELOPER_CORE_SHA256="$dev_core" \
   python3 -m unittest {tests} -v
 """.format(image=image, source=shlex.quote(self.native_image_source or ""),
              runtime=shlex.quote(self.native_runtime or ""),
              acl2=shlex.quote(self.acl2),
+             developer=shlex.quote(self.native_developer_image or ""),
              tests=" ".join(self.PROTECTED_TESTS))), timeout=900, expect=None)
         expected, witnesses = {}, []
         for line in step.output.splitlines():
             if line.startswith("NATIVE-PROTECTED-EXPECTED-") and " " in line:
                 key, value = line.split(" ", 1)
-                expected[key.rsplit("-", 1)[-1].lower()] = value.strip()
+                if key == "NATIVE-PROTECTED-EXPECTED-DEVELOPER-CORE":
+                    expected["developer_core"] = value.strip()
+                else:
+                    expected[key.rsplit("-", 1)[-1].lower()] = value.strip()
             elif line.startswith("NATIVE-PROTECTED-WITNESS "):
                 try:
                     witnesses.append(json.loads(line.split(" ", 1)[1]))
@@ -4177,7 +4193,7 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                 fact = feed.get("transit", {}).get(way, {})
                 again = feed.get("reconnect", {}).get(way, {})
                 if not (fact.get("identical") is True and again.get("identical") is True
-                        and str(fact.get("unauthenticated_offer", "")).startswith("480")):
+                        and str(fact.get("unauthenticated_offer", "")).startswith("502")):
                     self.blocked(("V0-TRANSIT-TLS", "V0-TRANSIT-AUTHINFO"),
                                  "malformed protected-feed {} observation {} {}"
                                  .format(way, fact, again), directions=(way,),
@@ -4192,7 +4208,7 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                                      "chain and hostname check is OpenSSL's")
                 self.emit_once("V0-TRANSIT-AUTHINFO", ACCEPTED, step.command, evidence,
                                direction=way, client=CLIENT_DRIVER,
-                               limit="the target answered the same offer 480 on a "
+                               limit="the target answered the same offer 502 on a "
                                      "connection that did not log in")
         for key, case in (("V0-TRANSIT-TLS-WRONG-ANCHOR", "wrong-anchor"),
                           ("V0-TRANSIT-AUTHINFO-WRONG", "wrong-password")):
@@ -4213,14 +4229,26 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                 self.blocked((key,), "malformed {} observation {}".format(case, fact),
                              invocation=step.command)
         once = next((w for w in witnesses if w.get("kind") == "feed-once"), None)
-        if once is None or not owners_are_the_image(once):
+        cut = next((w for w in witnesses if w.get("kind") == "feed-sent-restart"), None)
+        developer = cut.get("developer_identity", {}) if isinstance(cut, dict) else {}
+        developer_core = expected.get("developer_core")
+        cut_image_ok = (cut is not None and owners_are_the_image(cut)
+                        and isinstance(developer_core, str)
+                        and digest.fullmatch(developer_core) is not None
+                        and developer.get("status") == "observed"
+                        and developer.get("runtime_sha256") == runtime
+                        and developer.get("core_sha256") == developer_core)
+        if once is None or not owners_are_the_image(once) or not cut_image_ok:
             self.blocked(("V0-FEED-ONCE",),
-                         "no protected restart witness tied the durable owner "
-                         "queue to this run's live image ({})".format(observed),
+                         "the acknowledged and durable-sent protected restart "
+                         "witnesses did not tie their live owners to this run's "
+                         "production/developer images ({})".format(observed),
                          invocation=step.command)
         else:
             before, after = once.get("before", {}), once.get("after", {})
             first, last = before.get("records", {}), after.get("records", {})
+            interrupted, settled = cut.get("interrupted", {}), cut.get("settled", {})
+            pending, recovered = interrupted.get("records", {}), settled.get("records", {})
             if (once.get("security") == "starttls" and once.get("auth") == "authinfo"
                     and once.get("source_killed") is True
                     and once.get("source_restarted") is True
@@ -4231,19 +4259,36 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                     and first.get("feed-outcome", 0) >= 1
                     and first.get("feed-offer", 0) >= 1
                     and first.get("feed-offer") == last.get("feed-offer")
-                    and first.get("feed-sent") == last.get("feed-sent")):
+                    and first.get("feed-sent") == last.get("feed-sent")
+                    and cut.get("security") == "starttls"
+                    and cut.get("auth") == "authinfo"
+                    and cut.get("sender_stopped_after_sent") is True
+                    and cut.get("sender_killed") is True
+                    and cut.get("sender_restarted") is True
+                    and cut.get("recipient_articles") == 1
+                    and interrupted.get("sent_before_restart") == "t"
+                    and interrupted.get("state_after_restart") == "queued"
+                    and pending.get("feed-sent", 0) >= 1
+                    and pending.get("feed-outcome", 0) == 0
+                    and settled.get("state_after_restart") == "done"
+                    and recovered.get("feed-offer", 0) > pending.get("feed-offer", 0)
+                    and recovered.get("feed-outcome", 0) >= 1):
                 self.emit_once("V0-FEED-ONCE", ACCEPTED, step.command,
-                               json.dumps(once, sort_keys=True),
+                               json.dumps({"acknowledged": once, "interrupted": cut},
+                                          sort_keys=True),
                                client=CLIENT_DRIVER,
                                limit="the ACL2 FNFD scanner/replay found :done before "
                                      "and after sender SIGKILL/restart; offer/sent "
-                                     "record counts did not grow over two seconds, and "
-                                     "the recipient's public status reported one article")
+                                     "record counts did not grow over two seconds; "
+                                     "a developer cut killed the sender after durable "
+                                     ":feed-sent, and a fresh protected owner settled "
+                                     "its requeued attempt with one recipient article")
             else:
                 self.blocked(("V0-FEED-ONCE",),
-                             "protected restart lacked a settled owner queue and "
-                             "one-copy recipient observation: {}".format(
-                                 json.dumps(once, sort_keys=True)),
+                             "protected restarts lacked a settled owner queue, "
+                             "durable sent cut, or one-copy recipient: {}".format(
+                                 json.dumps({"acknowledged": once,
+                                             "interrupted": cut}, sort_keys=True)),
                              invocation=step.command)
 
     def native_config_status(self, node):

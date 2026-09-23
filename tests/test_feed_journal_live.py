@@ -96,11 +96,15 @@ class BookBridge(Acl2Owner):
         mid = self.literal(list(msgid.encode("ascii")))
         before = self._symbol_any(
             "(fn-feed-state-of '{} (fn-feed-queue (@ fn-test-feed)))".format(mid))
+        sent_before = self._symbol_any(
+            "(fn-feed-sentp (fn-feed-state-of '{} "
+            "(fn-feed-queue (@ fn-test-feed))))".format(mid))
         self.call("(f-put-global 'fn-test-feed "
                   "(fn-feed-restart (@ fn-test-feed)) state)")
         after = self._symbol_any(
             "(fn-feed-state-of '{} (fn-feed-queue (@ fn-test-feed)))".format(mid))
         return {"records": counts, "state_before_restart": before,
+                "sent_before_restart": sent_before,
                 "state_after_restart": after,
                 "queue_length": self._nat("(len (fn-feed-queue (@ fn-test-feed)))"),
                 "attempts": self._nat(
