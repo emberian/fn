@@ -427,9 +427,14 @@ persistence is currently one-step only.
 (defthm fn-bprv-history-record-is-node-committed-when-idle
   (implies (and (fn-snt-relation store)
                 (member-equal (fn-bprv-phase store) '(:ready :recovering :fenced-recovery))
+                (fn-record-p record)
                 (member-equal record (fn-bprv-history store)))
            (fn-bpi-node-record-committedp (fn-sn-node store) record)))
 ```
+
+(`fn-record-p record` restated 2026-09-23: since `6ab2c783` and `346a8f99`
+the history carries retention and statement events too, and those install no
+article under their own name; see `specs/bp-receiver-proofs.md`.)
 
 Proof plan: `fn-snt-ready-or-recovered-node-is-exact-replay` reduces the node
 to `fn-sf-replay-node` of the history; then

@@ -428,10 +428,10 @@
     "books": 423,
     "books_in_root_closure": 422,
     "roots": 421,
-    "theorems": 7067,
+    "theorems": 7073,
     "functions": 5421,
-    "assert_events": 7833,
-    "must_fails": 280,
+    "assert_events": 7841,
+    "must_fails": 281,
     "encapsulates": 26,
     "guards": {
       "verified": 1746,
@@ -1683,7 +1683,7 @@
       "book": "books/bp-receiver-evolving-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 31,
+      "theorems": 37,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -8065,8 +8065,8 @@
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 70,
-      "must_fails": 12,
+      "assert_events": 78,
+      "must_fails": 13,
       "defconsts": 24,
       "defmacros": 0,
       "encapsulates": 0,
@@ -13334,14 +13334,14 @@
       },
       {
         "book": "books/bp-receiver-evolving-node-invariants.lisp",
-        "line": 7,
+        "line": 13,
         "include": "bp-receiver-evolving-history-invariants",
         "included": "books/bp-receiver-evolving-history-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/bp-receiver-evolving-store-invariants.lisp",
-        "line": 6,
+        "line": 10,
         "include": "bp-receiver-evolving-node-invariants",
         "included": "books/bp-receiver-evolving-node-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

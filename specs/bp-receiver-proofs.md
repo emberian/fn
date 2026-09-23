@@ -48,7 +48,9 @@ Monotonicity under the Store (`books/bp-receiver-evolving-store-invariants.lisp`
 - `fn-bprv-system-run-preserves-invariant`: any finite alternation of Store
   events and journaled receiver records preserves `fn-bprv-system-invariantp`.
 - `fn-bprv-evolving-invariant-survives-observed-reopen`: with A-DURABILITY as
-  the hypothesis `fn-sf-crash-imagep`, the host's reopen entry succeeds and the
+  the hypothesis `fn-sf-crash-imagep`, and the image's identity replay
+  succeeding (`fn-sn-observed-identity-okp`, the hypothesis every kernel reopen
+  guarantee carries since `4857c648`), the host's reopen entry succeeds and the
   invariant holds against the reopened Store.
 
 Preservation under the receiver
@@ -74,10 +76,15 @@ Grounded receipt:
 - `fn-bprv-history-record-is-node-committed-when-idle`
   (`books/bp-receiver-evolving-node-invariants.lisp`): under `fn-snt-relation`
   and an idle phase (`:ready`, `:recovering`, `:fenced-recovery`), every
-  history record is node-committed, because the idle node is the replay of the
-  history and replay installs each record's article and binding
-  (`fn-bprv-apply-record-installs-record`) which every later record preserves
-  (`fn-bprv-apply-record-keeps-committed`).
+  article record (`fn-record-p`) of the history is node-committed, because the
+  idle node is the replay of the history and replay installs each record's
+  article and binding (`fn-bprv-apply-record-installs-record`) which every
+  later Store event preserves (`fn-bprv-apply-store-event-keeps-committed`:
+  retention and identity events leave articles and bindings alone, the article
+  arm is a durable completion).  The history also carries retention and
+  statement events (`6ab2c783`, `346a8f99`), which install nothing under their
+  own name; the test book commits a retention undertake on a related `:ready`
+  Store and shows the conclusion false of it without `fn-record-p`.
 - `fn-bprv-evolving-output-is-node-grounded-when-idle`: the node conclusion of
   the original `fn-bprv-replayed-receipt-is-grounded`, under the relation the
   Store maintains instead of a `:ready` hypothesis on a positional argument.
@@ -91,7 +98,7 @@ The live receiver trace (`fn-bpr-live-step`, `fn-bpr-live-run`,
 - `fn-bpr-live-state-is-replay-of-journal`: the live receiver state is the
   replay of its journal against every such Store.
 - `fn-bpr-live-receipt-regenerated-after-restart`: after any live trace, any
-  admissible crash image, the host's reopen and any recovery trace reaching
+  admissible crash image whose identity replay succeeds, the host's reopen and any recovery trace reaching
   `:ready`, `fn-bprj-install` reconstructs the live state and
   `fn-bprj-receipt-adu` regenerates the same bytes.
 

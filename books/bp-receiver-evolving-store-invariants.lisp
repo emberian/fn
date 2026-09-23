@@ -2,6 +2,10 @@
 ; any interleaving with receiver steps, process restart through the observed
 ; reopen entry, and the live receiver trace the host runs
 ; (tools/run_bp_receive.py), whose state is the replay of its journal.
+;
+; Restated 2026-09-23 (PRF-007): the reopen theorems carry
+; `(fn-sn-observed-identity-okp records)', the kernel's own reopen hypothesis
+; since 4857c648 (see fn-bprv-observed-reopen-facts below).
 (in-package "ACL2")
 (include-book "bp-receiver-evolving-node-invariants")
 (include-book "store-observed")
@@ -393,9 +397,18 @@
                             fn-sf-statep fn-sf-frontier-new-visiblep
                             fn-sf-record-present-visiblep)))))
 
+; The identity hypothesis is the kernel's own (commit 4857c648): since
+; `40bb3f74' fn-sn-recover publishes :fault when the article replay succeeds
+; and the identity replay does not, every reopen guarantee of
+; books/store-observed carries fn-sn-observed-identity-okp beside the image
+; predicate, and a history that fails it is reachable
+; (tests/acl2/store-identity-traces-tests).  These two theorems stated the
+; reopen without it and went red at that commit; they carry the same
+; condition over the same records, no weaker and no stronger.
 (defthm fn-bprv-observed-reopen-facts
   (implies (and (fn-snt-relation s)
-                (fn-sf-crash-imagep (fn-sn-files s) frontier records))
+                (fn-sf-crash-imagep (fn-sn-files s) frontier records)
+                (fn-sn-observed-identity-okp records))
            (let ((opened (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
                                               frontier records)))
              (and (fn-sn-open-okp opened)
@@ -425,7 +438,8 @@
 
 (defthm fn-bprv-evolving-invariant-survives-observed-reopen
   (implies (and (fn-bprv-system-invariantp store st journal)
-                (fn-sf-crash-imagep (fn-sn-files store) frontier records))
+                (fn-sf-crash-imagep (fn-sn-files store) frontier records)
+                (fn-sn-observed-identity-okp records))
            (let ((opened (fn-sn-open-observed (fn-sn-groups store) (fn-sn-capacity store)
                                               frontier records)))
              (and (fn-sn-open-okp opened)
@@ -631,6 +645,7 @@
     (implies (and (fn-snt-relation (car live))
                   (equal (fn-bprr-replay (car live) (caddr live)) (list t (cadr live)))
                   (fn-sf-crash-imagep (fn-sn-files (car final)) frontier records)
+                  (fn-sn-observed-identity-okp records)
                   (equal (fn-bprv-phase probe) :ready))
              (and (fn-sn-open-okp opened)
                   (equal (cadr installed) (cadr final))
