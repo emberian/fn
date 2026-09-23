@@ -9,14 +9,22 @@
 (verify-guards fn-bpnf-delete-values)
 (verify-guards fn-bpnf-delete-frame)
 (local
+ (defthm fn-bpnrg-pending-has-heldp
+   (implies (fn-bpn-report-held-delete-pendingp held)
+            (fn-bpnf-heldp held))
+   :hints (("Goal" :in-theory (e/d (fn-bpn-report-held-delete-pendingp)
+                                       (fn-bpnf-heldp))))))
+(local
  (defthm fn-bpn-report-expired-held-shape-for-guard
    (implies (fn-bpn-report-find-expired-held held-list observation)
             (fn-bpnf-heldp
              (fn-bpn-report-find-expired-held held-list observation)))
    :hints (("Goal" :induct (fn-bpn-report-find-expired-held
                             held-list observation)
-            :in-theory (enable fn-bpn-report-find-expired-held
-                               fn-bpn-report-held-delete-pendingp)))))
+            :in-theory (e/d (fn-bpn-report-find-expired-held
+                             fn-bpnrg-pending-has-heldp)
+                            (fn-bpn-report-held-delete-pendingp
+                             fn-bpah-held-expiry fn-bpnf-heldp))))))
 (verify-guards fn-bpn-report-delete-propose-step
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bpn-report-expired-held-shape-for-guard
