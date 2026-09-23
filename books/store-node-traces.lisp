@@ -887,6 +887,16 @@
                                    fn-record-shape-vocabulary
                                    fn-store-event-p fn-cpe-eventp)))))
 
+(defthm fn-sn-prepare-topic-preserves-state
+  (implies (fn-sn-statep s)
+           (fn-sn-statep (fn-sn-prepare-topic s event)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep fn-sn-prepare-topic)
+                                  (fn-sf-statep fn-node-statep
+                                   fn-sf-prepare-record
+                                   fn-replay-apply-record fn-th-prefix-step
+                                   fn-record-shape-vocabulary
+                                   fn-store-event-p fn-th-topic-eventp)))))
+
 (defthm fn-snt-prepare-retention-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-prepare-retention s event)))

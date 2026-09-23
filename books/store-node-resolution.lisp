@@ -519,6 +519,7 @@
     (:prepare-retention (fn-sn-prepare-retention s (cadr event)))
     (:prepare-identity (fn-sn-prepare-identity s (cadr event)))
     (:prepare-consumer (fn-sn-prepare-consumer s (cadr event)))
+    (:prepare-topic (fn-sn-prepare-topic s (cadr event)))
     (otherwise (fn-snt-step s event))))
 
 (defun fn-snrt-run (s events)
@@ -537,7 +538,7 @@
   :hints (("Goal" :in-theory (disable fn-snt-relation fn-sn-prepare fn-sn-io
                       fn-sn-finish fn-sn-crash fn-sn-recover
                       fn-sn-prepare-retention fn-sn-prepare-identity
-                      fn-sn-prepare-consumer))))
+                      fn-sn-prepare-consumer fn-sn-prepare-topic))))
 
 (defthm fn-snrt-mixed-trace-preserves-live-history-relation
   (implies (fn-snt-relation s)

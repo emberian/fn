@@ -397,6 +397,17 @@
                     (list :store (list :prepare-consumer event)) state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
 
+; ACL2 constructs the exact topic event before this host boundary. Store's
+; carried historical projection decides whether it may be staged.
+(defun fn-owner-prepare-topic (event state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((s (fn-owner-store state)))
+    (if (not (fn-th-topic-eventp event))
+        (value :invalid)
+      (let ((state (fn-owner-step
+                    (list :store (list :prepare-topic event)) state)))
+        (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+
 (defun fn-owner-known-abort (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-store state))

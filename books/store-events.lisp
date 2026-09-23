@@ -29,7 +29,7 @@
         ((equal kind :keyring-snapshot) *fn-stxk-max-octets*)
         ((equal kind :accepted-statement) *fn-stxa-max-octets*)
         ((equal kind :consumer) *fn-cpe-max-octets*)
-        ((member-eq kind '(:topic-anchor :topic-admit))
+        ((member-eq kind '(:topic-admin-install :topic-anchor :topic-admit))
          *fn-th-topic-max-octets*)
         (t 0)))
 

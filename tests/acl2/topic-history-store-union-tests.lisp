@@ -3,6 +3,13 @@
 (include-book "topic-history-store-events-tests")
 
 (assert-event (fn-store-event-p *thad-anchor-event*))
+(assert-event (fn-store-event-p *thla-install*))
+(assert-event (equal (fn-store-event-kind *thla-install*)
+                     :topic-admin-install))
+(assert-event (equal (fn-store-publication-ceiling :topic-admin-install)
+                     1024))
+(assert-event (equal (fn-store-event-decode-exact *thae-admin-octets*)
+                     (fn-stmt-ok *thla-install*)))
 (assert-event (fn-store-event-p *thad-report-event*))
 (assert-event (equal (fn-store-event-kind *thad-anchor-event*) :topic-anchor))
 (assert-event (equal (fn-store-event-kind *thad-report-event*) :topic-admit))
