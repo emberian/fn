@@ -373,25 +373,23 @@ may or may not be durable."
        (setf (fnn-bp-tally-last-adu tally) adu)
          (fnn-out "BP accepted xfer=~d adu=~d path=~a"
                   xfer-id (length adu) path)
-         path))
+         (list :accepted path)))
       (:refused
-       (let ((path
-              (fnn-bp-evidence-publish
-               tally outcome octets
-               (fnn-octet-list
-                (fnn-string-octets (format nil "~(~a~)~%" reason))))))
-         (incf (fnn-bp-tally-refused tally))
-         (fnn-out "BP refused xfer=~d reason=~(~a~)" xfer-id reason)
-         path))
+       (fnn-bp-evidence-publish
+        tally outcome octets
+        (fnn-octet-list
+         (fnn-string-octets (format nil "~(~a~)~%" reason))))
+       (incf (fnn-bp-tally-refused tally))
+       (fnn-out "BP refused xfer=~d reason=~(~a~)" xfer-id reason)
+       (list :refused reason))
       (:uncertain
-       (let ((path
-              (fnn-bp-evidence-publish
-               tally outcome octets
-               (fnn-octet-list
-                (fnn-string-octets (format nil "~(~a~)~%" reason))))))
-         (incf (fnn-bp-tally-uncertain tally))
-         (fnn-out "BP uncertain xfer=~d reason=~(~a~)" xfer-id reason)
-         path)))))
+       (fnn-bp-evidence-publish
+        tally outcome octets
+        (fnn-octet-list
+         (fnn-string-octets (format nil "~(~a~)~%" reason))))
+       (incf (fnn-bp-tally-uncertain tally))
+       (fnn-out "BP uncertain xfer=~d reason=~(~a~)" xfer-id reason)
+       (list :uncertain reason)))))
 
 (defun fnn-bp-exit-code (tally conn)
   "Three outcomes, three codes.  Uncertain dominates a refusal, and a refusal

@@ -1820,6 +1820,21 @@
           "name": "fn-olog-connection-line-is-one-line"
         }
       ]
+    },
+    {
+      "id": "PRF-060",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-late-refusal-gets-no-final-ack",
+          "note": "Subject is the exact ACL2 fn-tcl-delivery-plan called from host/native/tcpcl.lisp fnn-tcl-act. Held-list premise permits prior machine controls and partial ACKs for other transfer IDs, but forbids prior END ACKs; final refusal preserves prior output and replaces only the matching final ACK."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-uncertain-delivery-withholds-final-ack",
+          "note": "The same host-called plan returns no held messages for an uncertain durability callback, under the validated held-final prefix premise."
+        }
+      ]
     }
   ]
 }

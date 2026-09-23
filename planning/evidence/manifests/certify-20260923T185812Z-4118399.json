@@ -1,0 +1,268 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+    "launcher_chain_sha256": [
+      "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g",
+  "acl2_executable_sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+  "acl2_exit_codes": {
+    "books/tcpcl-delivery": 0,
+    "books/tcpcl-delivery-invariants": 0,
+    "tests/acl2/tcpcl-delivery-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "launcher_chain_sha256": [
+        "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+      "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "size": 233686912
+    },
+    "launchers": [
+      {
+        "path": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        "sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+        "size": 279
+      }
+    ],
+    "runtime": {
+      "path": "/tank/fn/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "book_failures": {},
+  "book_provenance": {
+    "books/cbor": "installed",
+    "books/clock": "installed",
+    "books/deftransition": "installed",
+    "books/tcpcl-delivery": "certified",
+    "books/tcpcl-delivery-invariants": "certified",
+    "books/tcpcl-invariants": "installed",
+    "books/tcpcl-octets": "installed",
+    "books/tcpcl-records": "installed",
+    "books/tcpcl-session": "installed",
+    "tests/acl2/tcpcl-delivery-tests": "certified",
+    "tests/acl2/tcpcl-tests": "installed"
+  },
+  "book_results": {
+    "books/tcpcl-delivery": "passed",
+    "books/tcpcl-delivery-invariants": "passed",
+    "tests/acl2/tcpcl-delivery-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/tcpcl-delivery": 0.439,
+    "books/tcpcl-delivery-invariants": 0.458,
+    "tests/acl2/tcpcl-delivery-tests": 0.753
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 300,
+  "cache_install": {
+    "directory": "/tank/fn/certcache",
+    "installed": 0,
+    "kept": 8,
+    "origins": {
+      "/tank/fn/gates/takeover-v0-image-329a51a2": 8
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0"
+  },
+  "cert_cache": {
+    "already_cached": 3,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/tcpcl-delivery",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/tcpcl-delivery-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/tcpcl-delivery-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 3,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/tcpcl-delivery": "4d4acd2771a8c1580ca8aac8e5adaecc065080b9ad83876dfe48efa1bb8fc3dc",
+    "books/tcpcl-delivery-invariants": "e642347cce1a1c27d2ae647a8ce3a35b133a17eab7462f9342ee1457194c51af",
+    "tests/acl2/tcpcl-delivery-tests": "b38dee403343925ef6b715ec01cc5498baa7cb26aa3672b4687af9ab29ba6099"
+  },
+  "certify_wall_seconds": 1.668,
+  "closure": false,
+  "command": [
+    "/tank/fn/toolchains/w28/acl2-literal-4g"
+  ],
+  "driver_digests_sha256": {
+    "books/tcpcl-delivery": "da4fa9cb002d43bd08d1628e890b043bd11dcc7e1685dbb20037ee3a8fb89e79",
+    "books/tcpcl-delivery-invariants": "97c5250a50a73135ad05b22ea7c0c80e869d5d9b12eacfe585be797ee97635a4",
+    "tests/acl2/tcpcl-delivery-tests": "41e8e3d07bbc06748b5c05396f3c78fddfa7f832f7ee030b274578605ac21b65"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS dc2b36fd44b33b982134207751570b45 a60b96a1c8bd",
+    "FN_CERTIFY_SUCCESS dc2b36fd44b33b982134207751570b45 2a6acf89e77e",
+    "FN_CERTIFY_SUCCESS dc2b36fd44b33b982134207751570b45 fa52f132c3b1"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T18:58:14+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "incremental": true,
+  "installed_books": {
+    "books/cbor": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/clock": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/deftransition": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/tcpcl-invariants": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/tcpcl-octets": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/tcpcl-records": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "books/tcpcl-session": "/tank/fn/gates/takeover-v0-image-329a51a2",
+    "tests/acl2/tcpcl-tests": "/tank/fn/gates/takeover-v0-image-329a51a2"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS dc2b36fd44b33b982134207751570b45 a60b96a1c8bd",
+    "FN_CERTIFY_SUCCESS dc2b36fd44b33b982134207751570b45 2a6acf89e77e",
+    "FN_CERTIFY_SUCCESS dc2b36fd44b33b982134207751570b45 fa52f132c3b1"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/tcpcl-delivery",
+    "books/tcpcl-delivery-invariants",
+    "tests/acl2/tcpcl-delivery-tests"
+  ],
+  "requested_books": [
+    "books/tcpcl-delivery",
+    "books/tcpcl-delivery-invariants",
+    "tests/acl2/tcpcl-delivery-tests"
+  ],
+  "roots": [
+    "books/tcpcl-delivery",
+    "books/tcpcl-delivery-invariants",
+    "tests/acl2/tcpcl-delivery-tests"
+  ],
+  "run_id": "certify-20260923T185812Z-4118399",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "books_with_archived_wall": 3,
+    "policy": "critical-path-first",
+    "predicted_critical_path_seconds": 1.655
+  },
+  "slot_wait_seconds": {
+    "books/tcpcl-delivery": 0.0,
+    "books/tcpcl-delivery-invariants": 0.0,
+    "tests/acl2/tcpcl-delivery-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/deftransition.lisp": "daf77eff163662a24cbd5e66bc728ab507b1934804ffb5c2675c6a9ffa1f4f00",
+    "books/tcpcl-delivery-invariants.lisp": "7a3d24c424927658080eff2fbb0475eb63f6801dc5770c6a39b971b749a32204",
+    "books/tcpcl-delivery.lisp": "de710829578d60c37ae89e9dfd3177dd022478566efe09a87425b77535590c8c",
+    "books/tcpcl-invariants.lisp": "6b5fccbcd979d5909982136499552e57ad88a92925b69480ad1f4e18afa2285e",
+    "books/tcpcl-octets.lisp": "fca4af06920f2e221e095c509b3147beae626ec981f787bbf50b4b47b624a125",
+    "books/tcpcl-records.lisp": "b2cdde11d1269f63e334525b61393ef30cc4157377b16a6b10b00864c064a215",
+    "books/tcpcl-session.lisp": "647cb162ac3657fe75a05eee84e268cfe65454ddcdb13460afcf3f4b19436f2a",
+    "tests/acl2/tcpcl-delivery-tests.lisp": "eed0d6cb115e6259daf16dafdf05f852456b651c3f7a50e8f077bb34fb0eabc7",
+    "tests/acl2/tcpcl-tests.lisp": "df496215ac04dc0b3f1f2402454ab204f359fe131750c8f9589add7f7a4a6934"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/deftransition.lisp": "daf77eff163662a24cbd5e66bc728ab507b1934804ffb5c2675c6a9ffa1f4f00",
+    "books/tcpcl-delivery-invariants.lisp": "7a3d24c424927658080eff2fbb0475eb63f6801dc5770c6a39b971b749a32204",
+    "books/tcpcl-delivery.lisp": "de710829578d60c37ae89e9dfd3177dd022478566efe09a87425b77535590c8c",
+    "books/tcpcl-invariants.lisp": "6b5fccbcd979d5909982136499552e57ad88a92925b69480ad1f4e18afa2285e",
+    "books/tcpcl-octets.lisp": "fca4af06920f2e221e095c509b3147beae626ec981f787bbf50b4b47b624a125",
+    "books/tcpcl-records.lisp": "b2cdde11d1269f63e334525b61393ef30cc4157377b16a6b10b00864c064a215",
+    "books/tcpcl-session.lisp": "647cb162ac3657fe75a05eee84e268cfe65454ddcdb13460afcf3f4b19436f2a",
+    "tests/acl2/tcpcl-delivery-tests.lisp": "eed0d6cb115e6259daf16dafdf05f852456b651c3f7a50e8f077bb34fb0eabc7",
+    "tests/acl2/tcpcl-tests.lisp": "df496215ac04dc0b3f1f2402454ab204f359fe131750c8f9589add7f7a4a6934"
+  },
+  "start_order": [
+    "books/tcpcl-delivery",
+    "books/tcpcl-delivery-invariants",
+    "tests/acl2/tcpcl-delivery-tests"
+  ],
+  "started_utc": "2026-09-23T18:58:12+00:00",
+  "status": "passed",
+  "timeout_seconds": 300,
+  "tree": "/tank/fn/gates/lane-bp-tcpcl-delivery-0b9400e3"
+}

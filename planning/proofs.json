@@ -2004,6 +2004,34 @@
         "planning/evidence/bp-status-report-d1a-2026-09-23.md"
       ],
       "note": "D1a codec source and its tests have ACL2 certification, including a maximal-profile witness and rejected malformed/noncanonical vectors. No native node path calls this codec yet. These component theorems are therefore not credited as requirement keystone events under the actual-caller rule; D1b/D2 generation and consumption remain open. The evidence records the component claims without implying a served implementation."
+    },
+    {
+      "id": "PRF-060",
+      "title": "TCPCL final acknowledgement follows the durable delivery disposition",
+      "statement": "For the host-called fn-tcl-delivery-plan, a held matching END XFER_ACK from fn-tcl-complete is released only for (:accepted path-or-nil). A definitive (:refused reason) preserves any prior partial ACKs, replaces the END ACK with RFC 9174 XFER_REFUSE, and emits no final ACK; (:uncertain reason) emits no held ACK. The conditional theorem requires fn-tcl-held-final-ackp; it does not prove every native callback result or physical FNBS barrier.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-046"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/tcpcl-delivery.lisp",
+        "books/tcpcl-delivery-invariants.lisp",
+        "tests/acl2/tcpcl-delivery-tests.lisp",
+        "host/native/tcpcl.lisp",
+        "tests/test_bp_receive_integrity_native.py",
+        "planning/evidence/tcpcl-late-disposition-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T185812Z-4118399.json"
+      ],
+      "progress_note": "ACL2 8.7 certified the exact host-called planner and conditional refusal/uncertainty keystones with a reachable coalesced batch containing a partial ACK and refusal for transfer 0 followed by a completed transfer 1, plus a missing-held negative tooth. Native host source executes its selected message list; the updated live refusal test awaits a combined image with the A2 receive callback. The proof does not establish socket delivery, all callback dispositions, or publisher durability.",
+      "events": [
+        "fn-tcl-late-refusal-gets-no-final-ack",
+        "fn-tcl-uncertain-delivery-withholds-final-ack"
+      ]
     }
   ]
 }

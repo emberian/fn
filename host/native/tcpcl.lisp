@@ -90,11 +90,10 @@
 
 (defvar *fnn-tcl-deliver* nil
   "When non-nil, a function (conn xfer-id octets) that takes custody of one
-completed inbound transfer in place of the plain spool file.  It runs inside
-the same barrier: the XFER_ACK for that transfer is already held and is
-released only after this returns, so nothing is acknowledged before the
-record under it is durable, and an `fnn-store-indeterminate' from it drops
-the ack exactly as a failed staging does.
+completed inbound transfer in place of the plain spool file.  It returns
+(:accepted path-or-nil), (:refused reason), or (:uncertain reason).  The
+XFER_ACK for that transfer is already held; fn-tcl-delivery-plan decides
+which message, if any, may be released after this callback.
 
 host/native/bp.lisp installs `fn-bpn-receive' here, which is what makes the
 `bp' verb a BPv7 node rather than a spool: the octets become a decoded
@@ -207,7 +206,7 @@ and faults without following or deleting anything."
           (fnn-tcl-test-pause-after-stage-data stage)
           (fnn-replace stage final)
           (fnn-fsync-dir dir)
-          final)
+          (list :accepted final))
       (fnn-os-error (e)
         (ignore-errors (fnn-unlink stage))
         (fnn-indeterminate "inbound transfer ~d: staging did not complete: ~a"
@@ -222,8 +221,10 @@ and faults without following or deleting anything."
 (defun fnn-tcl-flush (conn)
   (let ((queued (nreverse (fnn-tclc-held conn))))
     (setf (fnn-tclc-held conn) nil)
-    (dolist (octets queued)
-      (fnn-send-all (fnn-tclc-fd conn) octets +fnn-tcl-write-timeout+))))
+    (dolist (message queued)
+      (fnn-send-all (fnn-tclc-fd conn)
+                    (fnn-octets (fnn-core 'fn-tcl-host-encode message))
+                    +fnn-tcl-write-timeout+))))
 
 (defun fnn-tcl-drop (conn)
   "Discard unreleased octets: an acknowledgement whose bundle is not durable."
@@ -244,25 +245,54 @@ and faults without following or deleting anything."
     (let ((tag (and (consp event) (first event))))
       (case tag
         (:send
-         (push (fnn-octets (fnn-core 'fn-tcl-host-encode (second event)))
-               (fnn-tclc-held conn)))
+         (push (second event) (fnn-tclc-held conn)))
         (:bundle-received
-         ;; The ack for this transfer is already in `held'.  Stage first; only
-         ;; a completed barrier releases it.
-         (let ((path (handler-case (if *fnn-tcl-deliver*
-                                       (funcall *fnn-tcl-deliver*
-                                                conn (second event) (third event))
-                                     (fnn-tcl-stage conn (second event) (third event)))
-                       (fnn-store-indeterminate (e)
-                         (fnn-tcl-drop conn)
-                         (incf (fnn-tclc-uncertain conn))
-                         (setf (fnn-tclc-outcome conn) :uncertain)
-                         (fnn-tcl-log conn "uncertain" "~a" e)
-                         (error e)))))
-           (incf (fnn-tclc-accepted conn))
-           (incf (fnn-tclc-inbound conn))
-           (fnn-tcl-log conn "accepted" "xfer=~d path=~a" (second event) path)
-           (fnn-tcl-flush conn)))
+         ;; The held list ends with fn-tcl-complete's final END ACK and may
+         ;; contain earlier machine output from the same drive batch. ACL2
+         ;; selects the entire outbound message list after the callback.
+         (let* ((result (handler-case
+                            (if *fnn-tcl-deliver*
+                                (funcall *fnn-tcl-deliver*
+                                         conn (second event) (third event))
+                              (fnn-tcl-stage conn (second event) (third event)))
+                          (fnn-store-indeterminate (e)
+                            (fnn-tcl-drop conn)
+                            (incf (fnn-tclc-uncertain conn))
+                            (setf (fnn-tclc-outcome conn) :uncertain)
+                            (fnn-tcl-log conn "uncertain" "~a" e)
+                            (error e))))
+                (plan (fnn-core 'fn-tcl-delivery-plan
+                                (reverse (fnn-tclc-held conn))
+                                (second event) result))
+                (status (fnn-core 'fn-tcl-delivery-plan-status plan)))
+           (setf (fnn-tclc-held conn)
+                 (reverse (fnn-core 'fn-tcl-delivery-plan-messages plan)))
+           (case status
+             (:accepted
+              (incf (fnn-tclc-accepted conn))
+              (incf (fnn-tclc-inbound conn))
+              (fnn-tcl-log conn "accepted" "xfer=~d path=~a"
+                           (second event)
+                           (fnn-core 'fn-tcl-delivery-plan-detail plan))
+              (fnn-tcl-flush conn))
+             (:refused
+              (incf (fnn-tclc-refused conn))
+              (setf (fnn-tclc-outcome conn) :refused)
+              (fnn-tcl-log conn "refused" "inbound xfer=~d reason=~a"
+                           (second event)
+                           (fnn-core 'fn-tcl-delivery-plan-detail plan))
+              (fnn-tcl-flush conn))
+             (:uncertain
+              (incf (fnn-tclc-uncertain conn))
+              (setf (fnn-tclc-outcome conn) :uncertain)
+              (fnn-tcl-log conn "uncertain" "inbound xfer=~d reason=~a"
+                           (second event)
+                           (fnn-core 'fn-tcl-delivery-plan-detail plan))
+              (fnn-indeterminate "inbound transfer ~d: durable disposition uncertain"
+                                 (second event)))
+             (otherwise
+              (fnn-tcl-drop conn)
+              (fnn-fault "TCPCL delivery result did not match held final ACK")))))
         (:inbound-refused
          (incf (fnn-tclc-refused conn))
          (fnn-tcl-log conn "refused" "inbound xfer=~d reason=~a" (second event) (third event)))

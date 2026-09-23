@@ -1,5 +1,22 @@
 # TCPCLv4 convergence layer
 
+Current received-transfer disposition contract (2026-09-23): the native
+`fnn-tcl-act` buffers ACL2 message objects through `:bundle-received` and
+calls `fn-tcl-delivery-plan` on the held messages, transfer ID, and the
+durability callback result. The callback returns exactly
+`(:accepted path-or-nil)`, `(:refused reason)`, or `(:uncertain reason)`.
+An accepted result releases the matching END XFER_ACK; a definitive refusal
+preserves earlier partial ACKs and replaces the END ACK with the RFC 9174
+§5.2.4 XFER_REFUSE selected by ACL2; earlier control outputs and partial
+ACKs for other transfers in the same read batch remain in order. Uncertainty
+emits no held ACK and
+fails the session. A malformed callback result or a held queue without the
+matching END ACK is a fault, never an acceptance. `:busy`, `:capacity`, and
+`:persistence` map to Table 6 No Resources; other definitive refusals map
+to Not Acceptable. This local mapping does not turn a transport ACK into an
+application receipt. The foundation's actual FNBS receive callback and the
+combined native image are separate integration gates.
+
 Status: all five roots certify on the w6/tcpcl-tests tree (dev 1c5b950):
 `books/tcpcl-records`, `books/tcpcl-octets` (146 s), `books/tcpcl-session`
 (31 s), `books/tcpcl-invariants` (840 s) in
