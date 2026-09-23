@@ -8,6 +8,7 @@ import os
 import re
 from pathlib import Path
 import subprocess
+import tempfile
 import unittest
 
 
@@ -16,6 +17,9 @@ PRODUCTION = Path(os.environ.get(
     "FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 DEVELOPER = Path(os.environ.get(
     "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
+DTN = Path(os.environ.get("FN_NATIVE_DTN_HOST", ROOT / "build" / "fn-host-dtn"))
+DTN_DEVELOPER = Path(os.environ.get(
+    "FN_NATIVE_DTN_DEVELOPER_HOST", ROOT / "build" / "fn-host-dtn-developer"))
 
 
 def invoke(image, *words):
@@ -31,6 +35,36 @@ def invoke(image, *words):
 
 
 class NativeImageProfileSourceTests(unittest.TestCase):
+    def test_dtn_build_selects_serialized_profile_and_separate_output(self):
+        build = (ROOT / "host/native/build-dtn.lisp").read_text()
+        io = build.index('(load "host/native/io.lisp")')
+        profile = build.index("(fnn-select-image-profile)", io)
+        modules = build.index('(load "host/native/immutable-publish.lisp")', profile)
+        self.assertLess(io, profile)
+        self.assertLess(profile, modules)
+        self.assertIn('(sb-ext:posix-getenv "FN_NATIVE_IMAGE")', build)
+        script = (ROOT / "tools/build_native_host.sh").read_text()
+        self.assertIn("production) DEFAULT_IMAGE=build/fn-host-dtn", script)
+        self.assertIn("developer) DEFAULT_IMAGE=build/fn-host-dtn-developer", script)
+
+    def test_dtn_fault_readers_use_the_same_startup_gate(self):
+        source = (ROOT / "host/native/io.lisp").read_text()
+        selectors = set(re.findall(r'"(FN_[A-Z_]+)"', source[
+            source.index('(defparameter +fnn-developer-selectors+'):
+            source.index('(defun fnn-developer-selector (')]))
+        prefixes = ("FN_BP_", "FN_TCPCL_TEST_", "FN_CHECKPOINT_TEST_",
+                    "FN_APP_JOURNAL_TEST_")
+        for path in (ROOT / "host/native").glob("*.lisp"):
+            if path.name == "io.lisp":
+                continue
+            text = path.read_text()
+            for name in re.findall(r'"(FN_[A-Z_]+)"', text):
+                if name.startswith(prefixes) or name == "FN_IMMUTABLE_PUBLISH_TEST_FAIL":
+                    with self.subTest(path=path.name, name=name):
+                        self.assertIn(name, selectors)
+                        self.assertNotRegex(
+                            text, r'posix-getenv\s+"' + name + r'"')
+
     def test_literal_build_inputs_exist(self):
         # Check the actual saved-image driver, not only Makefile proof roots.
         # A removed join book previously survived here and blocked every image.
@@ -114,6 +148,52 @@ class NativeImageProfileSavedImageTests(unittest.TestCase):
         self.assertNotIn(b"unknown verb owner", owner.stderr)
         reader = invoke(DEVELOPER, "reader", "not-a-port", "1", "-")
         self.assertNotIn(b"available only in the developer image", reader.stderr)
+
+
+class RawPostEntryWitnesses(unittest.TestCase):
+    def test_production_images_refuse_raw_post_before_store_or_payload_io(self):
+        for image in (PRODUCTION, DTN):
+            if not (image.is_file() and os.access(image, os.X_OK)):
+                self.skipTest(f"build {image} for the saved-image witness")
+            with self.subTest(image=image), tempfile.TemporaryDirectory() as tmp:
+                fresh = Path(tmp) / "fresh"
+                payload = Path(tmp) / "absent-payload"
+                args = ("store", str(fresh), "post", "<entry@test>",
+                        str(payload), "-", "-", "fn.test")
+                rejected = invoke(image, *args)
+                self.assertEqual(rejected.returncode, 5, rejected.stderr.decode())
+                self.assertIn(b"store post", rejected.stderr)
+                self.assertFalse(fresh.exists())
+                store = Path(tmp) / "existing"
+                initialized = invoke(image, "store", str(store), "init", "fn.test")
+                self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+                before = {p.relative_to(store): (p.stat().st_size, p.stat().st_mtime_ns)
+                          for p in store.rglob("*")}
+                rejected = invoke(image, "store", str(store), "post", "<entry@test>",
+                                  str(payload), "-", "-", "fn.test")
+                self.assertEqual(rejected.returncode, 5, rejected.stderr.decode())
+                self.assertIn(b"store post", rejected.stderr)
+                after = {p.relative_to(store): (p.stat().st_size, p.stat().st_mtime_ns)
+                         for p in store.rglob("*")}
+                self.assertEqual(after, before)
+                self.assertFalse(payload.exists())
+                recovered = invoke(image, "store", str(store), "recover")
+                self.assertEqual(recovered.returncode, 0, recovered.stderr.decode())
+
+    def test_developer_images_keep_raw_post(self):
+        for image in (DEVELOPER, DTN_DEVELOPER):
+            if not (image.is_file() and os.access(image, os.X_OK)):
+                self.skipTest(f"build {image} for the saved-image witness")
+            with self.subTest(image=image), tempfile.TemporaryDirectory() as tmp:
+                store = Path(tmp) / "store"
+                payload = Path(tmp) / "payload"
+                payload.write_bytes(b"entry-profile developer diagnostic\r\n")
+                initialized = invoke(image, "store", str(store), "init", "fn.test")
+                self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+                posted = invoke(image, "store", str(store), "post", "<entry@test>",
+                                str(payload), "-", "-", "fn.test")
+                self.assertEqual(posted.returncode, 0, posted.stderr.decode())
+                self.assertIn(b"committed sequence=", posted.stdout)
 
 
 if __name__ == "__main__":

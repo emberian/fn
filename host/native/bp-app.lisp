@@ -143,8 +143,7 @@ The caller holds SERVICE's mutex for this whole function."
 (defun fnn-bpapp-pause-after-decision ()
   ;; Test-only process-death cut named by books/bp-native-app's replay states:
   ;; decision is durable, no receipt bundle has yet been authored or offered.
-  (when (string= (or (sb-ext:posix-getenv
-                      "FN_BP_APP_TEST_PAUSE_AFTER_DECISION") "") "1")
+  (when (string= (or (fnn-developer-selector "FN_BP_APP_TEST_PAUSE_AFTER_DECISION") "") "1")
     (fnn-out "BP APP DECISION DURABLE")
     (finish-output)
     (loop (sleep 1))))

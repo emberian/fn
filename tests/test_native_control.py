@@ -23,7 +23,7 @@ DEVELOPER_REASON = (
     "build/fn-host-developer (or FN_NATIVE_DEVELOPER_HOST) is required: {} is "
     "a developer-image selector and a production image refuses to start with it")
 # The registered developer selectors, as host/native/io.lisp declares them.
-SELECTORS = tuple(re.findall(r'"(FN_NATIVE_[A-Z_]+)"', re.search(
+SELECTORS = tuple(re.findall(r'"(FN_[A-Z_]+)"', re.search(
     r"\(defparameter \+fnn-developer-selectors\+\s+'\((.*?)\)\)",
     (ROOT / "host/native/io.lisp").read_text(encoding="ascii"), re.S).group(1)))
 EXIT_USAGE = 5
@@ -81,13 +81,17 @@ class NativeControlCutGateTests(unittest.TestCase):
         # startup gate; the accessor faults on a name the table lacks.
         for path in sorted((ROOT / "host/native").glob("*.lisp")):
             source = path.read_text(encoding="utf-8")
-            direct = re.findall(r'posix-getenv\s+"(FN_NATIVE_[A-Z_]+)"', source)
+            direct = re.findall(r'posix-getenv\s+"(FN_[A-Z_]+)"', source)
+            guarded = {name for name in direct if name.startswith((
+                "FN_NATIVE_", "FN_BP_", "FN_TCPCL_TEST_",
+                "FN_CHECKPOINT_TEST_", "FN_APP_JOURNAL_TEST_")) or
+                name == "FN_IMMUTABLE_PUBLISH_TEST_FAIL"}
             self.assertEqual(
-                sorted(set(direct) - {"FN_NATIVE_PROFILE", "FN_NATIVE_IMAGE"}), [],
+                sorted(guarded - {"FN_NATIVE_PROFILE", "FN_NATIVE_IMAGE"}), [],
                 "{} reads a selector around the gate".format(path.name))
             for name in re.findall(r'\(fnn-developer-selector\s+"([A-Z_]+)"\)', source):
                 self.assertIn(name, SELECTORS, path.name)
-        self.assertEqual(len(SELECTORS), 8)
+        self.assertGreaterEqual(len(SELECTORS), 8)
 
     def test_the_gate_runs_before_dispatch(self):
         source = (ROOT / "host/native/io.lisp").read_text(encoding="ascii")
