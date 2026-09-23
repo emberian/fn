@@ -33,6 +33,8 @@ def main(argv=None) -> int:
                         help="immutable native image to execute")
     parser.add_argument("--runtime", required=True,
                         help="expected executable runtime path")
+    parser.add_argument("--native-openssl-prefix", default=None,
+                        help="OpenSSL prefix required by the saved native image")
     parser.add_argument("--source", required=True,
                         help="declared image source/content identity; recorded separately")
     parser.add_argument("--commit", required=True,
@@ -51,11 +53,13 @@ def main(argv=None) -> int:
 
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
+    stopped = None
     with tempfile.TemporaryDirectory(prefix="fn-native-matrix-home-") as home:
         gate = v0_matrix.V0Matrix(
             LocalHost(Path(home)), worktree, args.commit, args.commit[:12], args.tree,
             backend=v0_matrix.NATIVE_BACKEND, native_image=args.image,
             native_image_source=args.source, native_runtime=args.runtime,
+            native_openssl_prefix=args.native_openssl_prefix,
             campaign=False)
         # native_peering_suite runs its exact command through `cd deploy`; this
         # staged directory is the subject and is never rewritten by this tool.
@@ -66,7 +70,11 @@ def main(argv=None) -> int:
             gate.probe_native_subject()
             gate.native_peering_suite()
         except v0_matrix.GateError as error:
-            gate.limitation(None, "native peering accounting stopped: {}".format(error))
+            stopped = "native peering accounting stopped: {}".format(error)
+            gate.blocked(
+                tuple(spec.key for spec in v0_matrix.PLAN
+                      if spec.feature in ("F-TRANSIT", "F-FEED")),
+                stopped, invocation="packaging/fn-native operator /not-opened help run")
         finally:
             gate.backfill()
         doc = gate.document(started, time.monotonic() - clock)
@@ -79,6 +87,9 @@ def main(argv=None) -> int:
     selected = [row for row in doc["rows"] if row["feature"] in ("F-TRANSIT", "F-FEED")]
     print(json.dumps({"summary": doc["summary"], "rows_digest": doc["rows_digest"],
                       "selected_rows": selected}, sort_keys=True))
+    if stopped:
+        print(stopped, file=sys.stderr)
+        return 2
     return 0
 
 
