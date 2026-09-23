@@ -11,16 +11,24 @@ The default artifact acquire loaded composed set
 image roots. The pinned toolchain was w28 ACL2
 `/tank/fn/toolchains/w28/acl2-literal-4g` (identity
 `d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0`)
-and OpenSSL 3.5.8. `swarm-build` produced production core SHA-256
+and OpenSSL 3.5.8. The w28 ACL2 executable SHA-256 was
+`9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8`;
+`/tank/fn/toolchains/openssl-3.5.8/bin/openssl` SHA-256 was
+`dd70d8ae49ca0c08541c01ced7c74e310b49692e8a312185824e5ce06bdfd115`.
+`swarm-build` produced production launcher `build/fn-host` SHA-256
 `f120c0201baad1fb77b71b03568189a134b6d6be00606a202bb838f2279ec618`
-and developer core SHA-256
-`177c47f453e9d65c126a62bee664fe77a80a624fcdd0c4c2fe0a0a82810a48a7`.
+with `build/fn-host.core` SHA-256
+`192a7922956b58459a978a37e15bd0e956f3fa3d5918cc2a38de163f513f9781`,
+and developer launcher `build/fn-host-developer` SHA-256
+`177c47f453e9d65c126a62bee664fe77a80a624fcdd0c4c2fe0a0a82810a48a7`
+with `build/fn-host-developer.core` SHA-256
+`12e223e3207341f8456a8d8d09d1a281b8efed56a5159f4cff9c223f9fd4d75f`.
 These synthetic local images were not deployed.
 
 The exact source driver `tests/test_native_reader_index.py` SHA-256
 `62da466617897a76e36b7cc9e761ec9518bd608f16232672ae15431457b043d3`
 passed all three saved-image tests with `FN_RUN_NATIVE_READER_INDEX=1` and the
-production core in 5.684 s. It includes live group creation, historical
+production launcher/core pair in 5.684 s. It includes live group creation, historical
 LISTGROUP pins across posts/restart, 24 groups and 96 LISTGROUP commands, and
 96 concurrent Message-ID STAT reads. The socket workload reported 0.066 s
 for the 96 LISTGROUP commands and 0.022 s for the STAT reads; these are
@@ -30,7 +38,7 @@ measurements, not a latency bound. Exact log:
 
 The signed E1 source poll, ACL2 exact `fn-e`/source binding, repeated read-only
 poll, durable advancing ACK with killed reply, and reopened position/no-repeat
-passed in 14.835 s with the developer core, `FN_RUN_CONSUMER_E2E=1`,
+passed in 14.835 s with the developer launcher/core pair, `FN_RUN_CONSUMER_E2E=1`,
 `FN_RUN_CONSUMER_POLL_E2E=1`, w28 ACL2 and pinned OpenSSL. The first run using
 the frozen source driver SHA-256
 `3ae5005836eebecbe586e12ccc8dfdaff9d05c20615618dcb068d4297afbe92f`
@@ -42,7 +50,7 @@ The test-only driver at commit `956199e4` has SHA-256
 `d7769e8ad28a23567dc0303427e09a2d4bd5223c744b786fcf93cff032972a4a`;
 it closes that `let` and exports the registration cursor captured before the
 post. It ran as `tests/test_native_consumer_e2_scope_followup.py` with the
-unchanged core; exact passing log `native-1d26-e2-scope-pass.log` SHA-256
+unchanged launcher/core pair; exact passing log `native-1d26-e2-scope-pass.log` SHA-256
 `8ced9963404d835c123a83bcb68e43ba80f3c7d15c7ccb5ca8cd2e76d78ef159`.
 
 The public synthetic E1 fixture is at
@@ -66,7 +74,7 @@ local poll is the Store admission observation. The synthetic owner and Store
 were cleaned after the test, so this fixture is for offline downstream joins,
 not a live control endpoint or deployment pin.
 
-The same core and test-only driver also admitted the public
+The same launcher/core pair and test-only driver also admitted the public
 `tests/fixtures/dregg-e1/portable-consumer-p2/changed-source.eml` source in a
 *separate* synthetic Store. It differs from the first authored source at one
 Message-ID byte; this establishes a second exact source/poll/ACK/reopen trace,
@@ -98,7 +106,7 @@ ACK is durable. Original log `native-1d26-clone-original-driver.log` SHA-256
 The test-only correction at commit `1d086655` changed those three count
 assertions to six; its driver SHA-256
 `775cec4850024e6c9fa593d160d606b50d4539bf93b79c7230bb131f5b76cb5c`.
-With unchanged developer core, the advancing-ACK selected-pack/reclaim and
+With unchanged developer launcher/core pair, the advancing-ACK selected-pack/reclaim and
 fenced clone death cuts plus the two independent cases all passed (3/3,
 4.561 s); exact log `native-1d26-clone-pass.log` SHA-256
 `c7fc810ce0e2d597f1ce454b28720c9a020a92dfecd1574507112b214f2a547d`.
