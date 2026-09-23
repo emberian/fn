@@ -24,7 +24,7 @@ later explicit durable declaration.
 The projection book and its witness book certified on hbox with ACL2
 toolchain identity `d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0`
 in incremental run `run-20260923T225942Z-cb54`, manifest
-`build/acl2/certify-20260923T225949Z-405350/manifest.json` (59 installed
+`planning/evidence/manifests/certify-20260923T225949Z-405350.json` (59 installed
 content-matched dependencies, two certified roots). The witness uses a
 constructed signed-carrier composite and refuses a wrong cursor position,
 legacy parent, malformed parent, wrong authored identity and oversized
