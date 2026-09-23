@@ -15,9 +15,9 @@ stale. Counts describe artifacts, not coverage; see
 | Books inside the root closure | 534 |
 | `defthm` and `defthmd` events | 8068 |
 | `defun` events | 6044 |
-| Functions with verified guards | 1982 |
+| Functions with verified guards | 1985 |
 | Functions declared `:verify-guards nil` and never verified | 324 |
-| Functions left at the default with an explicit guard | 2962 |
+| Functions left at the default with an explicit guard | 2959 |
 | Functions left at the default with no guard | 776 |
 | `assert-event` checks | 8802 |
 | `must-fail` checks | 416 |
@@ -167,7 +167,7 @@ that `make certify` requests.
 | `books/bp-release.lisp` | root | 0 | 37 | 0/16/21/0 | 0 | 0 | 0 |
 | `books/bp-sequence-fidelity.lisp` | root | 24 | 31 | 2/0/29/0 | 0 | 0 | 3 |
 | `books/bp-sequence-persistence.lisp` | root | 10 | 20 | 1/0/19/0 | 0 | 0 | 0 |
-| `books/bp-session-admission.lisp` | root | 2 | 9 | 5/0/4/0 | 0 | 0 | 0 |
+| `books/bp-session-admission.lisp` | root | 2 | 9 | 8/0/1/0 | 0 | 0 | 0 |
 | `books/bp-status-report-invariants.lisp` | root | 53 | 5 | 0/5/0/0 | 0 | 0 | 0 |
 | `books/bp-status-report.lisp` | root | 12 | 26 | 25/0/1/0 | 0 | 0 | 0 |
 | `books/bp-workflow-binding-core.lisp` | root | 27 | 2 | 0/0/2/0 | 0 | 0 | 0 |
