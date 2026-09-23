@@ -69,3 +69,19 @@ cut. Eight targeted source/gate tests passed locally. The raw Lisp selector
 script did not run to completion on this macOS SBCL: its existing
 `FNN-OS-ERROR` handler type was undefined in the script's stubs. No native
 image or protected two-node runtime result is claimed for this new hook.
+
+The first protected reciprocal fixture on the older `da5fd8cb` image did
+not reach an offer. A fresh ACL2 scan/replay of the source FNFD showed one
+`:feed-restart`, one `:feed-intent`, one `:feed-commit`, and one `:queued`
+entry; there was no `:feed-offer` or `:feed-sent`. The nodes had an
+established TCP connection, so the failure was after dial and before an
+ACL2-ready feed phase. At that boundary, `fnn-feed-recv` called
+`fnn-tls-read` with zero seconds. The TLS reader returned `:timeout`
+before any fd readiness poll whenever `SSL_pending` was zero, so protected
+AUTHINFO/MODE replies could not reach the ACL2 connection transition.
+Commit `75fbd01c` makes that first poll with a zero timeout, matching
+`fnn-recv`. A coordinated real OpenSSL test sends `CAPABILITIES` only after
+TLS handshake and observes that zero-time reads receive it; both TLS tests,
+the raw feed sequencing test, and the peer-octet test pass locally. This
+diagnoses and tests the host-boundary defect; the protected two-node result
+still needs the exact-source rebuilt image.

@@ -72,6 +72,7 @@
 (defun fnn-tls-close-channel (&rest ignored) (declare (ignore ignored)) nil)
 (defun fnn-tls-send-all (&rest ignored) (declare (ignore ignored)) nil)
 (defun fnn-tls-read (&rest ignored) (declare (ignore ignored)) :timeout)
+(defun fnn-developer-selector (&rest ignored) (declare (ignore ignored)) nil)
 
 ;;; Only read here; worker/lifecycle functions are not entered until the final
 ;;; no-offer-before-ready check below.
