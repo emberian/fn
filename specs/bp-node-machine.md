@@ -2082,6 +2082,11 @@ kind-5 rows and compare the wire byte for byte before applying replacement;
 the record alone is not authority to retire fragments. The codec currently
 has round-trip/corruption witnesses, while frontier, replay, publisher,
 and the actual service step remain open.
+`fn-bpnf-family-apply` is the pure replacement rule shared by the planned
+live completion and replay: it rejects repeated anchor arrivals and wrong
+whole arrival or bytes, recomputes the principal/coherence active set, and
+copies the offset-zero source's ingress and retained age anchor. It is not
+yet called by either path.
 
 - `(:ok bytes)`: propose kind 18 `(fn-bpn-rec-reassembled token family held
   ids)`. Applied atomically: the fragment entries leave the live list (their
