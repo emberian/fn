@@ -553,6 +553,24 @@
 (defvar *fnn-clone-copy-count* 0)
 (defvar *fnn-clone-copy-bytes* 0)
 
+(defun fnn-clone-path-bound ()
+  (let ((bound (fnn-core 'fn-store-checkpoint-clone-path-bound)))
+    (unless (and (integerp bound) (> bound 0))
+      (fnn-fault "ACL2 returned an invalid clone path bound"))
+    bound))
+
+(defun fnn-clone-checked-path (path bound &optional inputp)
+  "Bound an argument or derived canonical path before filesystem traversal."
+  (unless (and (stringp path) (<= (length path) bound))
+    (fnn-refuse "clone path exceeds ACL2-owned path bound"))
+  (let ((octets (fnn-string-octets path)))
+    (unless (and (<= (length octets) bound)
+                 (or (not inputp)
+                     (eq (fnn-core 'fn-store-checkpoint-clone-input-pathp
+                                   (fnn-octet-list octets)) t)))
+      (fnn-refuse "clone path is not an admitted absolute path")))
+  path)
+
 #+linux
 (sb-alien:define-alien-routine ("renameat2" fnn-%clone-renameat2)
     sb-alien:int
@@ -604,9 +622,11 @@
       (when input (fnn-close input)))))
 
 (defun fnn-clone-copy-tree (source destination depth max-depth max-entries
-                            max-bytes)
+                            max-bytes path-bound)
   (when (> depth max-depth)
     (fnn-refuse "clone exceeds ACL2-owned directory depth bound"))
+  (fnn-clone-checked-path source path-bound)
+  (fnn-clone-checked-path destination path-bound)
   (fnn-safe-directory source)
   (fnn-safe-directory destination)
   (let ((dir (fnn-posix (source) (sb-posix:opendir source))))
@@ -621,12 +641,16 @@
                    (fnn-refuse "clone exceeds ACL2-owned entry bound"))
                  (let* ((from (fnn-join source name))
                         (to (fnn-join destination name))
-                        (info (fnn-lstat from)))
+                        (info (progn
+                                (fnn-clone-checked-path from path-bound)
+                                (fnn-clone-checked-path to path-bound)
+                                (fnn-lstat from))))
                    (cond ((and info (fnn-directory-p info)
                                (not (fnn-symlink-p info)))
                           (fnn-mkdir to #o700)
                           (fnn-clone-copy-tree from to (1+ depth)
-                                               max-depth max-entries max-bytes))
+                                               max-depth max-entries max-bytes
+                                               path-bound))
                          ((and info (fnn-regular-p info)
                                (not (fnn-symlink-p info)))
                           (fnn-clone-copy-regular from to max-bytes))
@@ -637,8 +661,11 @@
   (fnn-fsync-dir destination))
 
 (defun fnn-clone-canonical-paths (source destination)
-  (fnn-safe-directory source)
-  (let* ((source-real (string-right-trim "/" (namestring (truename source))))
+  (let ((path-bound (fnn-clone-path-bound)))
+   (fnn-clone-checked-path source path-bound t)
+   (fnn-clone-checked-path destination path-bound t)
+   (fnn-safe-directory source)
+   (let* ((source-real (string-right-trim "/" (namestring (truename source))))
          (source-parent
            (string-right-trim "/" (namestring (truename (fnn-parent source-real)))))
          (destination-parent
@@ -651,20 +678,36 @@
                  (not (member name '("." "..") :test #'string=)))
       (fnn-refuse "clone destination must be a distinct sibling of source"))
     (let ((target (fnn-join destination-parent name)))
+      (fnn-clone-checked-path source-real path-bound t)
+      (fnn-clone-checked-path target path-bound t)
       (when (or (string= source-real target) (fnn-lstat target))
         (fnn-refuse "clone destination already exists"))
-      (values source-real target destination-parent))))
+      (values source-real target destination-parent path-bound)))))
 
 (defun fnn-clone-read-marker (destination)
-  (let* ((store (make-fnn-store destination :writable nil))
+  (let* ((path-bound (fnn-clone-path-bound))
+         (_ (fnn-clone-checked-path destination path-bound t))
+         (store (make-fnn-store destination :writable nil))
          (path (fnn-clone-fence-path store))
          (bound (fnn-nat (fnn-core 'fn-store-checkpoint-clone-fence-read-bound))))
+    (declare (ignore _))
+    (fnn-clone-checked-path path path-bound)
     (unless (fnn-check-regular path)
       (fnn-refuse "clone activation requires its durable fence"))
     (fnn-read-regular-bounded path bound)))
 
+(defun fnn-clone-canonical-target (destination)
+  "A short parent alias cannot bypass the ACL2 clone path width."
+  (let ((path-bound (fnn-clone-path-bound)))
+    (fnn-clone-checked-path destination path-bound t)
+    (fnn-safe-directory destination)
+    (fnn-clone-checked-path
+     (string-right-trim "/" (namestring (truename destination)))
+     path-bound t)))
+
 (defun fnn-clone-activate (destination)
-  (let* ((marker (fnn-clone-read-marker destination))
+  (let* ((destination (fnn-clone-canonical-target destination))
+         (marker (fnn-clone-read-marker destination))
          (octets (fnn-octet-list marker))
          (decoded (fnn-core 'fn-cpe-decode-exact octets))
          (service nil))
@@ -709,7 +752,7 @@
     +fnn-exit-ok+))
 
 (defun fnn-checkpoint-command-clone (source destination)
-  (multiple-value-bind (source-real target parent)
+  (multiple-value-bind (source-real target parent path-bound)
       (fnn-clone-canonical-paths source destination)
     (multiple-value-bind (store records) (fnn-open-live-store source-real t)
       (declare (ignore records))
@@ -738,6 +781,10 @@
                       (fnn-nat (fnn-core 'fn-store-checkpoint-clone-max-bytes))))
                (unless (fnn-octet-list-p frame)
                  (fnn-fault "ACL2 returned a malformed clone fence"))
+               (fnn-clone-checked-path stage path-bound)
+               (fnn-clone-checked-path
+                (fnn-clone-fence-path (make-fnn-store stage :writable nil))
+                path-bound)
                (fnn-mkdir stage #o700)
                (fnn-write-staged
                 (fnn-clone-fence-path (make-fnn-store stage :writable nil))
@@ -748,7 +795,7 @@
                (let ((*fnn-clone-copy-count* 0)
                      (*fnn-clone-copy-bytes* 0))
                  (fnn-clone-copy-tree source-real stage 0
-                                      max-depth max-entries max-bytes))
+                                      max-depth max-entries max-bytes path-bound))
                (fnn-fsync-dir stage)
                (when (fnn-lstat target)
                  (fnn-refuse "clone destination appeared during copy"))

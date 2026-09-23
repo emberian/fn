@@ -150,6 +150,17 @@ class NativeCheckpointTests(unittest.TestCase):
         self.native("checkpoint", "pack", source, "select")
         self.native("checkpoint", "pack-reclaim", source)
 
+        # ACL2's native Store path width is enforced before an oversized or
+        # relative destination reaches filesystem traversal.
+        oversized = self.base / ("x" * 500)
+        refused = self.native("checkpoint", "clone", source, oversized,
+                              expected=run_store.EXIT_REFUSED)
+        self.assertIn("clone path", refused.stderr)
+        refused = self.native("checkpoint", "clone", source,
+                              "relative-target",
+                              expected=run_store.EXIT_REFUSED)
+        self.assertIn("clone path", refused.stderr)
+
         # A nonempty destination is refused without touching its contents.
         occupied = self.base / "occupied"
         occupied.mkdir()
@@ -238,6 +249,23 @@ class NativeCheckpointTests(unittest.TestCase):
                       self.native("store", unlinked, "recover").stdout)
         self.assertIn("records=7",
                       self.native("checkpoint", "pack", unlinked).stdout)
+
+    @unittest.skipUnless(sys.platform.startswith("linux") and
+                         os.environ.get("FN_RUN_NATIVE_CLONE") == "1",
+                         "run only against a combined E2/checkpoint developer image")
+    def test_clone_refuses_canonical_parent_alias_above_path_bound(self):
+        long_parent = (self.base / ("a" * 180) / ("b" * 180) /
+                       ("c" * 180))
+        long_parent.mkdir(parents=True)
+        alias = self.base / "short-parent"
+        alias.symlink_to(long_parent, target_is_directory=True)
+        source = alias / "source"
+        self.native("store", source, "init", "fn.letters")
+        target = alias / "target"
+        refused = self.native("checkpoint", "clone", source, target,
+                              expected=run_store.EXIT_REFUSED)
+        self.assertIn("clone path", refused.stderr)
+        self.assertFalse(target.exists())
 
     @unittest.skipUnless(sys.platform.startswith("linux") and
                          os.environ.get("FN_RUN_NATIVE_CLONE") == "1",
