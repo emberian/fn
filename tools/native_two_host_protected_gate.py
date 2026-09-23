@@ -368,7 +368,18 @@ def main():
             while time.monotonic()<deadline and observed is None:
                 observed=nntp_article(local_ports[n["side"]],n["local_cert"],n["login"],n["password"],mid)
                 if observed is None: time.sleep(.2)
-            if observed != article: raise RuntimeError("protected transfer mismatch "+mid)
+            if observed != article:
+                label="transfer-mismatch-{}-{}".format(n["side"],len(observations))
+                Path(local.name,label+".expected").write_bytes(article)
+                if observed is not None:
+                    Path(local.name,label+".observed").write_bytes(observed)
+                observations.append(dict(event="transfer-mismatch",message_id=mid,
+                    expected_sha256=hashlib.sha256(article).hexdigest(),
+                    expected_bytes=len(article),
+                    observed_sha256=(hashlib.sha256(observed).hexdigest()
+                                     if observed is not None else None),
+                    observed_bytes=(len(observed) if observed is not None else None)))
+                raise RuntimeError("protected transfer mismatch "+mid)
 
         def assert_absent(n, mid, seconds=4):
             deadline=time.monotonic()+seconds
