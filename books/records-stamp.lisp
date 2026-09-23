@@ -4,7 +4,9 @@
 (include-book "clock")
 
 (defun fn-record-stamp-of-observation (obs)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (enable fn-clock-observationp
+                                                           fn-clock-timep)))))
   (if (and (fn-clock-observationp obs)
            (fn-clock-has-wall obs)
            (< (floor (fn-clock-wall obs) 1000) 4294967296))
