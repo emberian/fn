@@ -2078,13 +2078,15 @@ fragment whose payload bytes themselves decode as a valid request ADU. Its
 host-facing theorem `fn-bpah-host-pending-view-excludes-fragment` and a
 reachable partial-ADU witness cover this safety gate. A complete C2 query
 still requires durable family replacement before Store may see a whole ADU.
-`fn-bpnf-family-plan` in `bp-node-fragment-plan.lisp` now projects a bounded
+`fn-bpnf-family-plan` in `bp-node-fragment-plan.lisp` projects a bounded
 candidate from the C2 active set: it takes the offset-zero primary and
 extension blocks, replaces the payload with the fast reassembly result,
 names the consumed principal/identity/arrival rows, and checks the exact
-post-replacement slot and octet budgets. It is read-only and not yet a
-native caller or durable kind-18 transition. Guard verification and the
-publication/replay step remain open before it can authorize dispatch.
+post-replacement slot and octet budgets. The served
+`fn-bpnf-fragment-step` asks for that plan; proposal retains every source
+fragment, and only a matching durable kind-18 publication invokes the same
+`fn-bpnf-family-apply` rule used by ordered byte replay. Refusal leaves the
+source rows intact; uncertainty fences ordinary events until recovery.
 The first kind-18 byte component, `bp-fnbs-family-codec.lisp`, encodes
 `(epoch, operation-id, anchor-arrival, whole-arrival, exact-whole-wire)`
 under the protected FNBS frame. The anchor is a previously durable kind-5
@@ -2092,13 +2094,19 @@ arrival, and the whole arrival must be allocated by the node's durable
 arrival frontier. Replay must recompute the active family from earlier
 kind-5 rows and compare the wire byte for byte before applying replacement;
 the record alone is not authority to retire fragments. The codec currently
-has round-trip/corruption witnesses, while frontier, replay, publisher,
-and the actual service step remain open.
-`fn-bpnf-family-apply` is the pure replacement rule shared by the planned
-live completion and replay: it rejects repeated anchor arrivals and wrong
+has round-trip/corruption witnesses. The state-owned `next-arrival` frontier
+allocates the whole's arrival independently of live held-list length and is
+reconstructed from ordered kind-5/7/18 replay.
+`fn-bpnf-family-apply` is the pure replacement rule shared by live
+completion and replay: it rejects repeated anchor arrivals and wrong
 whole arrival or bytes, recomputes the principal/coherence active set, and
-copies the offset-zero source's ingress and retained age anchor. It is not
-yet called by either path.
+copies the offset-zero source's ingress and retained age anchor. The native
+service calls the fragment wrapper and ACL2 publisher authorization for kind
+18, then advances the family selector after durable kind-5 reception and
+cold recovery. The native interrupted-contact fixture and fragment-step
+guard closure remain to be qualified. This finite slice does not yet provide
+kind-10 conflict deletion, retransmission correlation after replacement,
+or proactive forwarding fragmentation.
 
 - `(:ok bytes)`: propose kind 18 `(fn-bpn-rec-reassembled token family held
   ids)`. Applied atomically: the fragment entries leave the live list (their

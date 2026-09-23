@@ -22,7 +22,7 @@
 (defun fn-bpnf-family-retain-other-rows (held consumed)
   (declare (xargs :guard t :measure (acl2-count held)))
   (if (consp held)
-      (if (member-equal (car held) consumed)
+      (if (fn-ag-member (car held) consumed)
           (fn-bpnf-family-retain-other-rows (cdr held) consumed)
         (cons (car held)
               (fn-bpnf-family-retain-other-rows (cdr held) consumed)))

@@ -276,6 +276,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-family-codec-tests \
 	books/bp-node-fragment-replacement \
 	tests/acl2/bp-node-fragment-replacement-tests \
+	books/bp-fnbs-family-replay \
+	tests/acl2/bp-fnbs-family-replay-tests \
+	books/bp-node-fragment-step \
+	tests/acl2/bp-node-fragment-step-tests \
+	books/bp-fnbs-family-publication \
+	tests/acl2/bp-fnbs-family-publication-tests \
 	books/bp-node-receive-boundary \
 	tests/acl2/bp-node-receive-boundary-tests \
 	books/bp-fnbs-codec \
