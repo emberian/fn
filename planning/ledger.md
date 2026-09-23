@@ -19,8 +19,8 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 324 |
 | Functions left at the default with an explicit guard | 2962 |
 | Functions left at the default with no guard | 771 |
-| `assert-event` checks | 8789 |
-| `must-fail` checks | 406 |
+| `assert-event` checks | 8793 |
+| `must-fail` checks | 407 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 73 |
 | Export-hygiene warnings | 101 |
@@ -541,7 +541,7 @@ that `make certify` requests.
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
 | `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 98 | 0 | 0 |
-| `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 18 | 1 | 0 |
+| `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/nntp-auth-teeth-tests.lisp` | root | 0 | 20 | 0/0/0/20 | 238 | 39 | 0 |
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 145 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |

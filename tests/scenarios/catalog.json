@@ -731,7 +731,8 @@
         "A gated command before the login is refused and not performed.",
         "The posting allowance is the authenticated principal's, not the connection's.",
         "A wrong password is refused and grants nothing; the refusal is distinct from a fault.",
-        "The no-posters served-read invariant excludes every local injected submission, but the independently authorized principal-bound transit path may emit a typed peer submission; removing the no-posters premise allows a complete accepted local POST."
+        "The no-posters served-read invariant excludes every local injected submission, but the independently authorized principal-bound transit path may emit a typed peer submission; removing the no-posters premise allows a complete accepted local POST.",
+        "A policy-switched pending POST state can submit despite a no-posters credential policy, but cannot arise from an initial no-posters connection under the proved fold invariant."
       ],
       "evidence": [
         "planning/evidence/native-auth-runtime-2026-09-21/README.md",
