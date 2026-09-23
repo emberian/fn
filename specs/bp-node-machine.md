@@ -698,6 +698,18 @@ image that selects its final inode. The general `fn-bs-crash-imagep` to observed
 journal theorem, multi-record replay, restored epoch/frontier, and native
 publisher/recovery caller are still open. The present kind-5 subset has no
 submission or receipt handoff; the broader row below remains the target.
+`books/bp-fnbs-replay.lisp` is the bounded kind-5 byte-row scanner over
+canonical final names: it decodes exact frames, rejects damaged/duplicate or
+out-of-order rows and capacity overflow, and reconstructs the held list and
+last `(epoch . operation-id)` pair. `fn-bpnf-recover-event` constructs the
+recovery-only `fn-bpnf-step` event from those exact row bytes. The step
+atomically requires successful inherited base restart and ready FNBS replay,
+installs both projections, clears volatile issued work, and advances to a
+fresh epoch with operation ID zero. A fault leaves the uncertain state
+fenced. This does not yet establish the byte-store publisher's whole-history
+crash relation or a native caller; an epoch distinct from the old process is
+a recovery input, and process-death callbacks cannot survive to the new
+process.
 
 Every record is built by its constructor and read by selectors; no book and
 no theorem matches a record by list shape. `fn-bpn-rec-kind`,

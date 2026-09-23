@@ -224,6 +224,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-codec-tests \
 	books/bp-fnbs-byte-publisher \
 	books/bp-fnbs-byte-invariants \
+	books/bp-fnbs-replay \
+	books/bp-fnbs-replay-invariants \
+	tests/acl2/bp-fnbs-replay-tests \
 	tests/acl2/bp-fnbs-byte-publisher-tests \
 	tests/acl2/bp-fnbs-byte-counterexamples \
 	books/bp-sequence-fidelity \
