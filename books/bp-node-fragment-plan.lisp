@@ -33,7 +33,8 @@
         bytes)))))
 
 (defun fn-bpnf-family-plan (st anchor)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+                  :verify-guards nil))
   (let* ((rows (fn-bpnf-active-set st anchor))
          (query (fn-bpnf-fragment-query st anchor)))
     (if (not (equal (car query) :ok))

@@ -281,6 +281,7 @@
     "tests/acl2/bp-fnbs-family-replay-tests",
     "books/bp-node-fragment-step",
     "tests/acl2/bp-node-fragment-step-tests",
+    "books/bp-node-fragment-guards",
     "books/bp-node-report-step",
     "tests/acl2/bp-node-report-step-tests",
     "books/bp-report-outbox",
@@ -572,25 +573,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 574,
-    "books_in_root_closure": 573,
-    "roots": 568,
-    "theorems": 8280,
-    "functions": 6228,
+    "books": 575,
+    "books_in_root_closure": 574,
+    "roots": 569,
+    "theorems": 8286,
+    "functions": 6229,
     "assert_events": 9050,
     "must_fails": 450,
     "encapsulates": 26,
     "guards": {
       "verified": 2019,
-      "declared-off": 366,
-      "default-guarded": 3053,
+      "declared-off": 369,
+      "default-guarded": 3051,
       "default-unguarded": 790
     },
     "suspect_theorems": 75,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 35,
-    "include_hygiene_warnings": 482,
+    "include_hygiene_warnings": 484,
     "host_names_warnings": 786,
     "hand_written_record_warnings": 18
   },
@@ -2106,11 +2107,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 9,
-      "functions": 8,
+      "functions": 9,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 8,
+        "declared-off": 3,
+        "default-guarded": 6,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -2123,6 +2124,32 @@
         "bp-fragment-fast",
         "bp-fragment-invariants",
         "bp-node-foundation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-node-fragment-guards.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 21,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-node-fragment-step",
+        "bp-node-machine-guards"
       ],
       "system_includes": [],
       "suspects": [],
@@ -18085,6 +18112,20 @@
         "line": 7,
         "include": "bp-fragment-invariants",
         "included": "books/bp-fragment-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-fragment-guards.lisp",
+        "line": 5,
+        "include": "bp-node-fragment-step",
+        "included": "books/bp-node-fragment-step.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-fragment-guards.lisp",
+        "line": 6,
+        "include": "bp-node-machine-guards",
+        "included": "books/bp-node-machine-guards.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
