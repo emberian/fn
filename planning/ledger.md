@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 488 |
-| Certification roots in the Makefile | 483 |
-| Books inside the root closure | 487 |
-| `defthm` and `defthmd` events | 7510 |
-| `defun` events | 5772 |
+| Books read | 489 |
+| Certification roots in the Makefile | 484 |
+| Books inside the root closure | 488 |
+| `defthm` and `defthmd` events | 7519 |
+| `defun` events | 5778 |
 | Functions with verified guards | 1876 |
-| Functions declared `:verify-guards nil` and never verified | 307 |
+| Functions declared `:verify-guards nil` and never verified | 311 |
 | Functions left at the default with an explicit guard | 2839 |
-| Functions left at the default with no guard | 750 |
-| `assert-event` checks | 8398 |
-| `must-fail` checks | 339 |
+| Functions left at the default with no guard | 752 |
+| `assert-event` checks | 8410 |
+| `must-fail` checks | 342 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 70 |
 | Export-hygiene warnings | 93 |
 | Enabled-projection warnings | 35 |
-| Teeth-form warnings | 24 |
-| Include-hygiene warnings | 337 |
+| Teeth-form warnings | 26 |
+| Include-hygiene warnings | 338 |
 | Host-names warnings | 691 |
 | Hand-written-record warnings | 18 |
 
@@ -351,8 +351,9 @@ that `make certify` requests.
 | `books/stx-lace.lisp` | root | 22 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/stx-policy.lisp` | root | 16 | 3 | 0/0/3/0 | 0 | 0 | 1 |
 | `books/stx-verify.lisp` | root | 15 | 15 | 0/0/15/0 | 0 | 0 | 0 |
-| `books/tcpcl-delivery-invariants.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/tcpcl-delivery-invariants.lisp` | root | 15 | 4 | 0/4/0/0 | 0 | 0 | 0 |
 | `books/tcpcl-delivery.lisp` | root | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
+| `books/tcpcl-host-drive.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/tcpcl-invariants.lisp` | root | 62 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/tcpcl-octets.lisp` | root | 172 | 36 | 14/0/22/0 | 0 | 0 | 1 |
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
@@ -411,7 +412,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-node-machine-authorization-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 21 | 4 | 0 |
 | `tests/acl2/bp-node-machine-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 47 | 4 | 0 |
-| `tests/acl2/bp-node-receive-boundary-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 1 | 0 |
+| `tests/acl2/bp-node-receive-boundary-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 1 | 0 |
 | `tests/acl2/bp-node-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 2 | 0 |
 | `tests/acl2/bp-node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 44 | 0 | 0 |
 | `tests/acl2/bp-outbound-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
@@ -563,7 +564,7 @@ that `make certify` requests.
 | `tests/acl2/stx-keyring-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 0 | 0 |
 | `tests/acl2/stx-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 42 | 0 | 0 |
 | `tests/acl2/stx-transit-tests.lisp` | root | 0 | 7 | 0/0/7/0 | 84 | 0 | 0 |
-| `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 1 | 0 |
+| `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 4 | 0 |
 | `tests/acl2/tcpcl-spool-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 139 | 0 | 0 |
 | `tests/acl2/transfer-journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 59 | 0 | 0 |

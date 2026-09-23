@@ -276,6 +276,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/tcpcl-octets \
 	books/tcpcl-session \
 	books/tcpcl-invariants \
+	books/tcpcl-host-drive \
 	books/tcpcl-delivery \
 	books/tcpcl-delivery-invariants \
 	tests/acl2/tcpcl-tests \

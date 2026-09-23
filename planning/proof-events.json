@@ -1833,6 +1833,16 @@
           "kind": "theorem",
           "name": "fn-tcl-uncertain-delivery-withholds-final-ack",
           "note": "The same host-called plan returns no held messages for an uncertain durability callback, under the validated held-final prefix premise."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-drive-delivery-events",
+          "note": "Keystone over actual recursive fn-tcl-drive: every emitted final ACK is immediately followed by the matching delivery event, including coalesced frame, control, denial, and decode-error arms. The host-call wrapper identity is fn-tcl-host-drive-bundle-has-held-final."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-delivery-events-imply-held-final",
+          "note": "Keystone relating the event grammar to the native ordered :send collection and the exact fn-tcl-held-final-ackp planner premise. fn-tcl-delivery-eventsp-after-first-bundle preserves the grammar for each later completed transfer in the same batch."
         }
       ]
     }

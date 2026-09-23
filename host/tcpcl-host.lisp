@@ -14,6 +14,7 @@
 
 (in-package "ACL2")
 (include-book "../books/tcpcl-session")
+(include-book "../books/tcpcl-host-drive")
 (include-book "../books/tcpcl-delivery")
 (include-book "../books/tcpcl-spool")
 
@@ -22,11 +23,6 @@
 ; the :remove actions selected here.
 (defun fn-tcl-host-spool-recovery-plan (entries)
   (fn-tcl-spool-recovery-plan entries))
-
-(defun fn-tcl-host-triple (r)
-  (list (fn-tcl-result-session r)
-        (fn-tcl-result-events r)
-        (fn-tcl-result-unconsumed r)))
 
 ; -----------------------------------------------------------------------------
 ; Opening a session.  The operator's configuration becomes params here; the
@@ -53,9 +49,6 @@
 
 (defun fn-tcl-host-open (s now)
   (fn-tcl-host-triple (fn-tcl-open s now)))
-
-(defun fn-tcl-host-drive (s buf now)
-  (fn-tcl-host-triple (fn-tcl-drive s buf now)))
 
 ; The host has a monotonic millisecond reading and no trusted wall clock; the
 ; observation is built here so that its shape is the books' and not the host's.
