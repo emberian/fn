@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 423 |
 | Certification roots in the Makefile | 421 |
 | Books inside the root closure | 422 |
-| `defthm` and `defthmd` events | 7058 |
+| `defthm` and `defthmd` events | 7062 |
 | `defun` events | 5421 |
 | Functions with verified guards | 1746 |
 | Functions declared `:verify-guards nil` and never verified | 288 |
