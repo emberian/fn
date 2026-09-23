@@ -106,11 +106,14 @@ sequence/transaction/generation shape. An event refers to a strictly earlier
 T10 accepted source, records its local source/authorship reference, and carries
 the root administrator/quota or report topic/policy/parent metadata. The codec
 prechecks 1,024 octets, uses at most 24 canonical CBOR items, and re-encodes
-decoded values exactly before accepting them. This grammar has not been joined
-to the Store event union yet.
+decoded values exactly before accepting them. The Store event union now
+recognizes this distinct grammar and assigns its sequence, transaction,
+generation and publication-size fields. Replay still refuses a topic event:
+the prior T10 source and installed local administrator have no joined
+historical projection yet, so decoded bytes alone cannot confer authority.
 
 This is a certified executable component, not a durable Store or native owner
-path yet: Store union/replay join, owner publication, historical administrator
+path yet: Store replay join, owner publication, historical administrator
 configuration lookup and retention pins have not landed. It is root-only.
 No control successor, fork healing, automatic policy
 adoption, alias rewrite or Mini application operation is inferred. PRF-066 and
