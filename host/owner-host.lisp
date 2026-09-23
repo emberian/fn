@@ -386,6 +386,17 @@
                     (list :store (list :prepare-identity event)) state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
 
+; The consumer proposal is constructed by ACL2.  The host carries this exact
+; bounded event into Store; it does not rebuild the scope, epoch or cursor.
+(defun fn-owner-prepare-consumer (event state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((s (fn-owner-store state)))
+    (if (not (fn-cpe-eventp event))
+        (value :invalid)
+      (let ((state (fn-owner-step
+                    (list :store (list :prepare-consumer event)) state)))
+        (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+
 (defun fn-owner-known-abort (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-store state))
