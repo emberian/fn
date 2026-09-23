@@ -318,12 +318,17 @@ class NativeHybridAuthorTest(unittest.TestCase):
                 time.sleep(0.1)
             self.assertIsNotNone(received, "native feed did not deliver authored article")
             self.assertTrue(received.endswith(source.read_bytes()))
-            original_path = next(line for line in original.split(b"\r\n")
-                                 if line.startswith(b"Path: "))
-            received_path = next(line for line in received.split(b"\r\n")
-                                 if line.startswith(b"Path: "))
+            original_paths = [line for line in original.split(b"\r\n")
+                              if line.startswith(b"Path: ")]
+            received_paths = [line for line in received.split(b"\r\n")
+                              if line.startswith(b"Path: ")]
+            self.assertEqual(len(original_paths), 1,
+                             "native authored article lacks one injected Path")
+            self.assertEqual(len(received_paths), 1,
+                             "native relayed article lacks one Path")
+            original_path, received_path = original_paths[0], received_paths[0]
             self.assertEqual(received_path,
-                             b"Path: relay.example.invalid!" + original_path[6:])
+                             b"Path: relay.example.invalid!!" + original_path[6:])
             self.assertEqual(received.replace(received_path + b"\r\n", b"", 1),
                              original.replace(original_path + b"\r\n", b"", 1))
             carried = self.root / "peer-received.eml"
