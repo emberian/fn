@@ -1,5 +1,5 @@
-;;; The shipped TCPCL boundary must pass ACL2's parsed EID to the durable
-;;; channel admission selector, while retaining the observed channel tuple.
+;;; The shipped TCPCL boundary passes raw announced bytes and observed socket
+;;; facts once to ACL2, which supplies the complete typed FNBS ingress.
 (require :sb-posix)
 (require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "CL"))
@@ -15,14 +15,9 @@
      (assert (equal arguments '(:session))) :negotiated)
     (fn-tcl-negotiated-peer-node-id
      (assert (equal arguments '(:negotiated))) '(100 116 110))
-    (fn-bpn-host-eid
-     (assert (equal arguments '((100 116 110))))
-     '(:dtn 47 47 115 101 110 100 101 114 47))
-    (fn-bpnf-tcpcl-ingress
-     (push (cons :ingress arguments) *calls*) :ingress)
     (otherwise (error "unexpected core call ~s" name))))
 (defun fnn-owner-core (name &rest arguments)
-  (assert (eq name 'fn-owner-bp-session-principal))
+  (assert (eq name 'fn-owner-bp-tcpcl-ingress))
   (push (cons :admission arguments) *calls*)
   *admission-answer*)
 (defun fnn-out (format-string &rest arguments)
@@ -37,21 +32,26 @@
     (unless found (error "TCPCL ingress caller not found"))))
 
 (let ((channel '(:tcp4 (127 0 0 1) 4556 (127 0 0 1)))
-      (eid '(:dtn 47 47 115 101 110 100 101 114 47)))
-  (setq *admission-answer* '(:admitted (112 101 101 114) 9)
+      (ingress '(:cl (1 . 3) 4 (:dtn 47 47 115 101 110 100 101 114 47)
+                 (112 101 101 114) 9)))
+  (setq *admission-answer* (list :admitted nil ingress)
         *calls* nil)
-  (assert (eq (fnn-bps-tcpcl-ingress :service :conn 3 4 :owner channel)
-              :ingress))
+  (assert (equal (fnn-bps-tcpcl-ingress :service :conn 3 4 :owner channel)
+                 ingress))
   (assert (equal (reverse *calls*)
-                 (list (cons :admission (list channel eid))
-                       (cons :ingress
-                             (list :fnbs 3 4 eid '(112 101 101 114) 9)))))
-  (setq *admission-answer* '(:refused :eid-mismatch) *calls* nil)
-  (fnn-bps-tcpcl-ingress :service :conn 3 4 :owner channel)
+                 (list (cons :admission
+                             (list :fnbs 3 4 channel '(100 116 110))))))
+  (setq *admission-answer* (list :refused :eid-mismatch
+                                 (list :cl '(1 . 3) 4
+                                       '(:dtn 47 47 111 116 104 101 114 47)
+                                       nil 0))
+        *calls* nil)
+  (assert (equal (fnn-bps-tcpcl-ingress :service :conn 3 4 :owner channel)
+                 (third *admission-answer*)))
   (assert (equal (reverse *calls*)
-                 (list (cons :admission (list channel eid))
+                 (list (cons :admission
+                             (list :fnbs 3 4 channel '(100 116 110)))
                        (list :log "BP channel admission refused reason=~(~a~)"
-                             '(:eid-mismatch))
-                       (cons :ingress (list :fnbs 3 4 eid nil 0))))))
+                             '(:eid-mismatch))))))
 
 (format t "native BP parsed channel admission: PASS~%")

@@ -257,6 +257,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-handoff-status-tests \
 	books/bp-session-admission \
 	tests/acl2/bp-session-admission-tests \
+	books/bp-channel-ingress \
+	tests/acl2/bp-channel-ingress-tests \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
