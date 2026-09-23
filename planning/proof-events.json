@@ -1946,6 +1946,26 @@
           "pending_subject": "Logical fn-snrt-step is the decoded Store dispatcher used in model traces; the native owner consumer command/poll path has not yet been joined to this theorem subject."
         }
       ]
+    },
+    {
+      "id": "PRF-065",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-th-selected-root-matches-verified-context",
+          "note": "The host-called verified-source selector marks a root controller-matched only when both its controller principal and keyset ID equal the author reference derived from the verified principal and ordered key snapshot."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-th-selected-report-author-is-verified-context",
+          "note": "The host-called selector emits a report author reference derived solely from verifier-supplied principal and ordered keys, independent of report metadata, From and relay headers."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-th-accepted-root-author-is-historical-enrollment",
+          "note": "The historical selector first requires the T10 schema-1 event/snapshot binder, then any matched root declaration equals the author reference of that enrolled snapshot. Candidate selection remains separate from admission."
+        }
+      ]
     }
   ]
 }

@@ -48,14 +48,29 @@ requirements or a topic authority decision.
 
 The native `topic-inspect-carrier ARTICLE ML-PUBLIC-PEM` command checks both
 hybrid signature suites through the existing carrier verifier, then passes the
-returned exact source to `fn-th-host-inspect-source`. Its output distinguishes
+returned exact source, verified principal and ordered keys to
+`fn-th-select-verified-source`. The selector uses `fn-th-host-inspect-source`
+for the metadata, then derives an author reference from that verified principal
+and the ACL2 subject identity of its canonical keyring snapshot. A root's
+declared controller and keyset identity are marked matched only if both equal
+that verified reference. A control or report carries no self-authorizing
+controller claim; its candidate author comes from the verified context,
+regardless of `From`. The historical `fn-th-select-accepted-event` first calls
+the schema-1 Store event/snapshot binding predicate, then selects from the
+event's retained exact source and the enrolled historical principal and keys.
+An unbound event is refused. The selector does not adopt a roster, resolve a
+fork, or commit an admission. The native output distinguishes
 `carrier=authenticated` and `topic=candidate` from
-`admission=unestablished`. This is an offline inspection path. A carrier
+`binding=controller-matched|controller-mismatch|not-root` and
+`admission=unestablished`. The existing candidate output remains available
+even for a mismatching root; a mismatch never asserts root authority. This is
+an offline inspection path. A carrier
 signature is not an anchor, adopted policy, current roster membership, Store
 topic event or application authorization. No parser examines Mini application
 bytes, and no external data is passed to a Lisp reader.
 
-The source and host-called projection are covered by PRF-062 and SCN-030.
+The source and host-called projection are covered by PRF-062 and SCN-030;
+the verified and historical authorship binding is PRF-065 and SCN-032.
 Store topic events, durable admission and current-policy status remain the
 next P3 composition steps and need their own host-called theorems and physical
 evidence. RFC 5536 header syntax comes from the article parser. The one-field,

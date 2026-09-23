@@ -477,7 +477,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/hybrid-store-invariants \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
+	books/topic-history-authorship \
 	tests/acl2/topic-history-metadata-tests \
+	tests/acl2/topic-history-authorship-tests \
 	tests/acl2/hybrid-store-tests \
 	books/crypto-attach \
 	books/auth-secret \

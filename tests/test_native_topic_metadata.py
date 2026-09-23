@@ -81,6 +81,8 @@ class NativeTopicMetadataTest(unittest.TestCase):
         inspected = self.invoke("topic-inspect-carrier", str(carried), str(self.ml_public))
         self.assertEqual(inspected.returncode, 0, inspected.stderr.decode("utf-8", "replace"))
         self.assertIn(b"topic=candidate carrier=authenticated kind=root", inspected.stdout)
+        self.assertIn(b"author-principal=" + b"55" * 32, inspected.stdout)
+        self.assertIn(b"binding=controller-mismatch", inspected.stdout)
         self.assertIn(b"admission=unestablished", inspected.stdout)
         relayed = self.root / "relayed.eml"
         relayed.write_bytes(b"Path: relay.example!fn\r\n"
