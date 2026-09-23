@@ -91,7 +91,7 @@ class NativeControlCutGateTests(unittest.TestCase):
                 "{} reads a selector around the gate".format(path.name))
             for name in re.findall(r'\(fnn-developer-selector\s+"([A-Z_]+)"\)', source):
                 self.assertIn(name, SELECTORS, path.name)
-        self.assertGreaterEqual(len(SELECTORS), 8)
+        self.assertGreaterEqual(len(SELECTORS), 9)
 
     def test_the_gate_runs_before_dispatch(self):
         source = (ROOT / "host/native/io.lisp").read_text(encoding="ascii")
@@ -113,6 +113,19 @@ class NativeControlCutGateTests(unittest.TestCase):
         self.assertIn('"pthread_kill"', body)
         self.assertIn('"pthread_self"', body)
         self.assertNotIn("sb-posix:getpid", body)
+
+    def test_feed_stop_follows_fnfd_flush_and_precedes_socket_send(self):
+        source = (ROOT / "host/native/feed-service.lisp").read_text(encoding="ascii")
+        reply = source[source.index("(defun fnn-feed-reply-step"):
+                       source.index("(defun fnn-feed-lost")]
+        self.assertLess(reply.index("(fnn-owner-feed-flush service)"),
+                        reply.index("(values word"))
+        consume = source[source.index("(defun fnn-feed-consume"):
+                         source.index("(defun fnn-feed-pump-link")]
+        self.assertLess(consume.index("(fnn-feed-reply-step service"),
+                        consume.index("(fnn-control-stop-calling-thread)"))
+        self.assertLess(consume.index("(fnn-control-stop-calling-thread)"),
+                        consume.index("(fnn-feed-send link command)"))
 
 
 @unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
