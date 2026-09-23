@@ -65,3 +65,12 @@ The protected feed and served crash lanes were given these exact image paths
 and hashes for independent source-matched fixtures. Their results belong in
 their own records. No live node upgrade, schema migration or power-failure
 qualification was run here.
+
+The entry-profile lane subsequently ran the full `tests.test_native_admin` suite:
+**9/9 passed in 2.744 seconds** on this `f0b8b166` production/developer pair.
+Its test-only harness revisions were `e5c2ff5f`, `1ae58422` and `277f7e4f`,
+copied to `/tmp` outside the frozen checkout. Ordinary admin/post operations
+used the production image; only the explicit
+`FN_IMMUTABLE_PUBLISH_TEST_FAIL` fault witnesses used the developer image.
+This is a runtime result for the saved `f0b8b166` cores with a later, separately
+identified test harness.
