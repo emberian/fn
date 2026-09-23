@@ -309,31 +309,46 @@
       (fnn-refuse "workflow forwarding obligation is not admissible"))
     (fnn-app-publish journal record)))
 
-(defun fnn-workflow-accept-receipt
-    (journal receipt-path txid generation authorization-profile
-     &optional canonical-release-callback)
+(defun fnn-workflow-commit-receipt-intent
+    (journal intent canonical-release-callback)
+  (unless (and (consp intent) (eq (first intent) :receipt-intent))
+    (fnn-refuse "ACL2 refused application receipt"))
+  (fnn-app-publish journal intent :reserve-resolution t)
+  (fnn-app-publish journal
+                   (list :outcome (second intent) (third intent)
+                         :ordinary :durable))
+  (let* ((receipt-id (fourth intent))
+         (release (fnn-core-state 'fn-workflow-release-record receipt-id)))
+    (unless (and (consp release) (eq (first release) :release))
+      (fnn-fault "committed receipt did not authorize its exact release"))
+    (if canonical-release-callback
+        (funcall canonical-release-callback release)
+      (fnn-app-publish journal release))
+    receipt-id))
+
+(defun fnn-workflow-accept-receipt-octets
+    (journal octets authorization-profile canonical-release-callback)
   ;; D09 is open.  Only this explicitly named local trust boundary may supply
   ;; the policy-authorized observation; arbitrary receipt bytes cannot.
   (unless (string= authorization-profile "trusted-local-observation-v0")
     (fnn-refuse "workflow receipt authentication profile is unsupported"))
-  (let* ((octets (fnn-octet-list
-                  (fnn-read-regular-bounded receipt-path 131072)))
-         (intent (fnn-core-state 'fn-workflow-receipt-record
-                                 octets txid generation t)))
-    (unless (and (consp intent) (eq (first intent) :receipt-intent))
-      (fnn-refuse "ACL2 refused application receipt"))
-    (fnn-app-publish journal intent :reserve-resolution t)
-    (fnn-app-publish journal
-                     (list :outcome (second intent) (third intent)
-                           :ordinary :durable))
-    (let* ((receipt-id (fourth intent))
-           (release (fnn-core-state 'fn-workflow-release-record receipt-id)))
-      (unless (and (consp release) (eq (first release) :release))
-        (fnn-fault "committed receipt did not authorize its exact release"))
-      (if canonical-release-callback
-          (funcall canonical-release-callback release)
-        (fnn-app-publish journal release))
-      receipt-id)))
+  (unless (and (fnn-octet-list-p octets) (<= (length octets) 131072))
+    (fnn-refuse "application receipt exceeds the input bound"))
+  (fnn-workflow-commit-receipt-intent
+   journal (fnn-core-state 'fn-workflow-receipt-auto-record octets t)
+   canonical-release-callback))
+
+(defun fnn-workflow-accept-receipt
+    (journal receipt-path txid generation authorization-profile
+     &optional canonical-release-callback)
+  (unless (string= authorization-profile "trusted-local-observation-v0")
+    (fnn-refuse "workflow receipt authentication profile is unsupported"))
+  (let ((octets (fnn-octet-list
+                 (fnn-read-regular-bounded receipt-path 131072))))
+    (fnn-workflow-commit-receipt-intent
+     journal (fnn-core-state 'fn-workflow-receipt-record
+                              octets txid generation t)
+     canonical-release-callback)))
 
 ;;; Receiver operations.  Request context and receipt intent are separate
 ;;; durable facts; only a committed decision makes receipt bytes available

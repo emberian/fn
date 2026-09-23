@@ -271,6 +271,17 @@
                        "terms-1"))
 (defconst *rl-receipt-octets* (fn-bpa-encode *rl-receipt-adu*))
 (assert-event (fn-bpa-receiptp *rl-receipt-adu*))
+(assert-event (equal (fn-bprl-max-used-txid
+                      (fn-bp-state-used-txs *rl-delivered*) 0)
+                     11))
+(assert-event (equal (fn-bprl-receipt-auto-record
+                      *rl-delivered* *rl-receipt-octets* t)
+                     '(:receipt-intent 12 0 "receipt-1" "work-1" "subject-rl"
+                       "receipt-authority" "dtn://peer/fn" "policy-1"
+                       "home-incarnation-1" "authorization-context-1"
+                       "terms-1")))
+(assert-event (null (fn-bprl-receipt-auto-record
+                     *rl-delivered* *rl-receipt-octets* nil)))
 (assert-event (equal (fn-bprl-receipt-intent-record
                       *rl-delivered* *rl-receipt-octets* 12 0 t)
                      '(:receipt-intent 12 0 "receipt-1" "work-1" "subject-rl"

@@ -1,6 +1,6 @@
 ; One physical FNBS directory carries legacy outbound rows and received
-; kind-5 rows.  ACL2, not the host, partitions bounded final names before
-; the legacy contiguous planner and kind-5 byte replay validate each subset.
+; kind-5 and kind-7 rows.  ACL2, not the host, partitions bounded final names
+; before the legacy contiguous planner and mixed received byte replay.
 (in-package "ACL2")
 (include-book "bp-fnbs-codec")
 
@@ -8,7 +8,7 @@
 
 (defun fn-bpnf-namespace-max-entries ()
   (declare (xargs :guard t))
-  (+ (* 2 *fn-bpn-machine-max-records*)
+  (+ (* 3 *fn-bpn-machine-max-records*)
      *fn-bpn-lifecycle-max-hidden-stages*))
 
 (defun fn-bpnf-legacy-name-candidatep (name)
@@ -56,7 +56,7 @@
              (cdr names) (cons name legacy) received hidden)
           (list :fault :legacy-record-bound)))
        ((fn-bpnf-kind-five-name-candidatep name)
-        (if (< (len received) *fn-bpn-machine-max-records*)
+        (if (< (len received) (* 2 *fn-bpn-machine-max-records*))
             (fn-bpnf-namespace-plan-aux
              (cdr names) legacy (cons name received) hidden)
           (list :fault :received-record-bound)))

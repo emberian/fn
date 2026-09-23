@@ -3,6 +3,7 @@
 ; Reception here is a validated-bundle kernel, not a TCPCL or FNBS publisher.
 (in-package "ACL2")
 (include-book "bp-node-machine")
+(include-book "bp-adu")
 (set-verify-guards-eagerness 0)
 (defconst *fn-bpnf-max-held-image* 131072)
 
@@ -135,6 +136,130 @@
            (and (consp (fn-bpn-nth 3 x))
                 (equal (car (fn-bpn-nth 3 x)) :handed-off)))))
 
+; A3 application result vocabulary shared by live publication and replay.
+; The byte codec follows in a separate book; this pure rule owns the change
+; to a held row, so the two paths cannot assign different delivery authority.
+(defun fn-bpah-disposition-code (status)
+  (declare (xargs :guard t))
+  (case status
+    (:request-accepted 0) (:request-duplicate 1) (:request-returned 2)
+    (:request-refused 3) (:receipt-accepted 4) (:receipt-duplicate 5)
+    (:receipt-refused 6) (otherwise nil)))
+
+(defun fn-bpah-code-disposition (code)
+  (declare (xargs :guard t))
+  (case code
+    (0 :request-accepted) (1 :request-duplicate) (2 :request-returned)
+    (3 :request-refused) (4 :receipt-accepted) (5 :receipt-duplicate)
+    (6 :receipt-refused) (otherwise nil)))
+
+(defun fn-bpah-delivery-record (epoch op arrival identity status detail)
+  (declare (xargs :guard t))
+  (list :bpnf-delivered epoch op arrival identity status detail))
+
+(defun fn-bpah-delivery-recordp (row)
+  (declare (xargs :guard t))
+  (and (true-listp row) (equal (len row) 7)
+       (equal (car row) :bpnf-delivered)
+       (fn-frame-natp (fn-bpn-nth 1 row))
+       (fn-frame-natp (fn-bpn-nth 2 row))
+       (fn-frame-natp (fn-bpn-nth 3 row))
+       (fn-cbor-octet-listp (fn-bpn-nth 4 row))
+       (consp (fn-bpn-nth 4 row))
+       (<= (len (fn-bpn-nth 4 row)) 1024)
+       (fn-bpah-disposition-code (fn-bpn-nth 5 row))
+       (fn-cbor-octet-listp (fn-bpn-nth 6 row))
+       (consp (fn-bpn-nth 6 row))
+       (<= (len (fn-bpn-nth 6 row)) 256)
+       (if (member-equal (fn-bpn-nth 5 row)
+                         '(:request-accepted :request-duplicate
+                           :request-returned))
+           (not (equal (fn-bpn-nth 6 row) '(0)))
+         t)))
+
+(defun fn-bpah-held-adu-result (held)
+  (declare (xargs :guard t))
+  (if (fn-bpnf-heldp held)
+      (fn-bpa-decode-exact (fn-bpb-payload (fn-bpnf-held-bundle held)))
+    nil))
+
+(defun fn-bpah-held-class (held)
+  (declare (xargs :guard t))
+  (let ((result (fn-bpah-held-adu-result held)))
+    (if (fn-bpa-result-okp result)
+        (let ((message (fn-bpa-result-message result)))
+          (cond ((fn-bpa-requestp message) :request)
+                ((fn-bpa-receiptp message) :receipt)
+                (t :unsupported)))
+      :unsupported)))
+
+(defun fn-bpah-held-delivery-pendingp (h)
+  (declare (xargs :guard t))
+  (and (fn-bpnf-heldp h)
+       (null (fn-bpn-nth 10 h))
+       (equal (fn-bpn-nth 12 h) '(:dispatch-pending))
+       (null (fn-bpn-nth 14 h))))
+
+(defun fn-bpah-delivery-matches-heldp (record h)
+  (declare (xargs :guard t))
+  (and (fn-bpah-delivery-recordp record)
+       (fn-bpah-held-delivery-pendingp h)
+       (fn-bpb-bundlep (fn-bpnf-held-bundle h))
+       (fn-bpp-blockp
+        (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))
+       (equal (fn-bpn-nth 3 record) (fn-bpn-nth 3 h))
+       (equal (fn-bpn-nth 4 record)
+              (fn-bpp-primary-identity
+               (fn-bpb-bundle-primary (fn-bpnf-held-bundle h))))
+       (if (member-equal (fn-bpn-nth 5 record)
+                         '(:request-accepted :request-duplicate
+                           :request-returned :request-refused))
+           (equal (fn-bpah-held-class h) :request)
+         (equal (fn-bpah-held-class h) :receipt))))
+
+(defun fn-bpah-delivered-held (h record)
+  (declare (xargs :guard t))
+  (fn-bpnf-held (fn-bpn-nth 1 h) (fn-bpn-nth 2 h) (fn-bpn-nth 3 h)
+                (fn-bpn-nth 4 h) (fn-bpn-nth 5 h) (fn-bpn-nth 6 h)
+                (fn-bpn-nth 7 h) (fn-bpn-nth 8 h) (fn-bpn-nth 9 h)
+                (list :delivered (fn-bpn-nth 5 record) (fn-bpn-nth 6 record))
+                (fn-bpn-nth 11 h) '(:dispatch-done)
+                (fn-bpn-nth 13 h) (fn-bpn-nth 14 h) (fn-bpn-nth 15 h)))
+
+(defun fn-bpah-apply-delivery (record held)
+  (declare (xargs :guard t :measure (acl2-count held)))
+  (if (atom held)
+      (mv nil held nil)
+    (if (equal (fn-bpn-nth 3 record) (fn-bpn-nth 3 (car held)))
+        (if (fn-bpah-delivery-matches-heldp record (car held))
+            (let* ((h (car held))
+                   (status (fn-bpn-nth 5 record))
+                   (handoff
+                    (if (member-equal status
+                                      '(:request-accepted :request-duplicate
+                                        :request-returned))
+                        (fn-bpnf-handoff
+                         (fn-bpn-nth 6 record)
+                         (fn-bpnf-held-key (fn-bpnf-held-principal h)
+                                            (fn-bpnf-held-id h))
+                         :owed)
+                      nil)))
+              (mv t (cons (fn-bpah-delivered-held h record) (cdr held)) handoff))
+          (mv nil held nil))
+      (mv-let (ok tail handoff)
+        (fn-bpah-apply-delivery record (cdr held))
+        (mv ok (cons (car held) tail) handoff)))))
+
+(defun fn-bpah-held-primary-identity (h)
+  (declare (xargs :guard t))
+  (let ((bundle (fn-bpnf-held-bundle h)))
+    (if (and (fn-bpb-bundlep bundle)
+             (fn-bpp-blockp (fn-bpb-bundle-primary bundle)))
+        (fn-bpp-primary-identity (fn-bpb-bundle-primary bundle))
+      nil)))
+
+
+
 ; The operation id and process epoch jointly correlate every callback.
 ; The logical journal generation is a separate field of the record and is
 ; deliberately absent from this volatile callback identity.
@@ -147,7 +272,8 @@
   (and (true-listp x) (equal (len x) 6)
        (equal (car x) :bpnf-operation)
        (natp (fn-bpn-nth 1 x)) (natp (fn-bpn-nth 2 x))
-       (member-equal (fn-bpn-nth 3 x) '(:store :attempt :discard :handoff :family))
+       (member-equal (fn-bpn-nth 3 x)
+                     '(:store :deliver :attempt :discard :handoff :family))
        (member-equal (fn-bpn-nth 5 x) '(:pending :uncertain))))
 
 (defun fn-bpnf-operation-matchp (issued epoch operation-id)
@@ -201,6 +327,9 @@
 (defun fn-bpnf-correlation (st) (declare (xargs :guard t)) (fn-bpn-nth 5 st))
 (defun fn-bpnf-issued (st) (declare (xargs :guard t)) (fn-bpn-nth 6 st))
 (defun fn-bpnf-waits (st) (declare (xargs :guard t)) (fn-bpn-nth 7 st))
+(defun fn-bpah-delivery-uncertainp (st)
+  (declare (xargs :guard t))
+  (equal (fn-cbor-ag-car (fn-bpnf-waits st)) :delivery-uncertain))
 (defun fn-bpnf-epoch (st) (declare (xargs :guard t)) (fn-bpn-nth 8 st))
 (defun fn-bpnf-next-op (st) (declare (xargs :guard t)) (fn-bpn-nth 9 st))
 
@@ -216,6 +345,98 @@
   (list :bpnf-answer st effects))
 (defun fn-bpnf-answer-state (ans) (declare (xargs :guard t)) (fn-bpn-nth 1 ans))
 (defun fn-bpnf-answer-effects (ans) (declare (xargs :guard t)) (fn-bpn-nth 2 ans))
+
+(defun fn-bpah-deliver-step (st key node)
+  (declare (xargs :guard t))
+  (let ((h (fn-bpnf-find-held key (fn-bpnf-held-list st))))
+    (if (not (and (null (fn-bpnf-issued st))
+                  (null (fn-bpnf-waits st))
+                  (fn-frame-natp (fn-bpnf-epoch st))
+                  (fn-frame-natp (fn-bpnf-next-op st))
+                  (< (fn-bpnf-next-op st) *fn-frame-max-nat*)
+                  (fn-bpp-eidp node)
+                  (fn-bpah-held-delivery-pendingp h)
+                  (fn-bpb-bundlep (fn-bpnf-held-bundle h))
+                  (fn-bpp-blockp
+                   (fn-bpb-bundle-primary (fn-bpnf-held-bundle h)))
+                  (equal node
+                         (fn-bpp-destination
+                          (fn-bpb-bundle-primary (fn-bpnf-held-bundle h))))))
+        (fn-bpnf-answer st (list (list :delivery-answer :refused)))
+      (let ((marker (list :delivery (fn-bpnf-epoch st)
+                          (fn-bpnf-next-op st) key)))
+        (fn-bpnf-answer
+         (fn-bpnf-state (fn-bpnf-base st) (fn-bpnf-held-list st)
+                        (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+                        (fn-bpnf-correlation st) nil marker
+                        (fn-bpnf-epoch st) (1+ (fn-bpnf-next-op st)))
+         (list (list :deliver (fn-bpnf-epoch st)
+                     (fn-bpnf-next-op st) key h)))))))
+
+(defun fn-bpah-deliver-result-step (st epoch marker-id key status detail)
+  (declare (xargs :guard t))
+  (let* ((marker (list :delivery epoch marker-id key))
+         (h (fn-bpnf-find-held key (fn-bpnf-held-list st)))
+         (record (fn-bpah-delivery-record
+                  (fn-bpnf-epoch st) (fn-bpnf-next-op st)
+                  (fn-bpn-nth 3 h)
+                  (fn-bpah-held-primary-identity h)
+                  status detail)))
+    (cond
+     ((not (and (equal marker (fn-bpnf-waits st))
+                (equal epoch (fn-bpnf-epoch st))
+                (null (fn-bpnf-issued st))))
+      (fn-bpnf-answer st (list (list :delivery-answer :refused))))
+     ((equal status :uncertain)
+      (fn-bpnf-answer
+       (fn-bpnf-state (fn-bpnf-base st) (fn-bpnf-held-list st)
+                      (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+                      (fn-bpnf-correlation st) (fn-bpnf-issued st)
+                      (list :delivery-uncertain epoch marker-id key)
+                      (fn-bpnf-epoch st) (fn-bpnf-next-op st))
+       (list (list :delivery-answer :uncertain))))
+     ((not (and (fn-frame-natp (fn-bpnf-next-op st))
+                (< (fn-bpnf-next-op st) *fn-frame-max-nat*)
+                (fn-bpah-delivery-matches-heldp record h)))
+      (fn-bpnf-answer st (list (list :delivery-answer :refused))))
+     (t
+      (fn-bpnf-answer
+       (fn-bpnf-state (fn-bpnf-base st) (fn-bpnf-held-list st)
+                      (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
+                      (fn-bpnf-correlation st)
+                      (fn-bpnf-operation (fn-bpnf-epoch st)
+                                         (fn-bpnf-next-op st)
+                                         :deliver record :pending)
+                      (fn-bpnf-waits st) (fn-bpnf-epoch st)
+                      (1+ (fn-bpnf-next-op st)))
+       (list (list :persist-delivery (fn-bpnf-epoch st)
+                   (fn-bpnf-next-op st) record)))))))
+
+(defun fn-bpah-persist-delivery-step (st epoch operation-id result)
+  (declare (xargs :guard t))
+  (let* ((issued (fn-bpnf-issued st))
+         (record (fn-bpn-nth 4 issued)))
+    (if (not (and (fn-bpnf-operation-matchp issued epoch operation-id)
+                  (equal (fn-bpn-nth 3 issued) :deliver)
+                  (equal (fn-bpn-nth 5 issued) :pending)))
+        (fn-bpnf-answer st nil)
+      (if (equal result :durable)
+          (mv-let (ok updated handoff)
+            (fn-bpah-apply-delivery record (fn-bpnf-held-list st))
+            (if (not ok)
+                (fn-bpnf-answer st (list (list :delivery-answer :uncertain)))
+              (fn-bpnf-answer
+               (fn-bpnf-state
+                (fn-bpnf-base st) updated (fn-bpnf-outcomes st)
+                (if handoff (cons handoff (fn-bpnf-handoffs st))
+                  (fn-bpnf-handoffs st))
+                (fn-bpnf-correlation st) nil nil
+                (fn-bpnf-epoch st) (fn-bpnf-next-op st))
+               (list (list :delivery-answer :durable)))))
+        (fn-bpnf-answer
+         (fn-bpnf-with-issued
+          st (fn-bpnf-operation epoch operation-id :deliver record :uncertain))
+         (list (list :delivery-answer :uncertain)))))))
 
 ; Recovery is cold-path validation of the ACL2 byte replay result.  The host
 ; obtains that result from fn-bpnf-replay-rows on observed FNBS name/bytes;
@@ -238,9 +459,12 @@
                        (<= (len base-records) *fn-bpn-machine-max-records*))))
   (let ((base-answer
          (fn-bpn-restart-step (fn-bpnf-base st) base-records sequence-ready))
-        (prior (fn-bpn-nth 2 replay-result)))
+        (prior (if (equal (len replay-result) 4)
+                   (fn-bpn-nth 3 replay-result)
+                 (fn-bpn-nth 2 replay-result))))
     (if (not (and (true-listp replay-result)
-                  (equal (len replay-result) 3)
+                  (or (equal (len replay-result) 3)
+                      (equal (len replay-result) 4))
                   (equal (car replay-result) :ready)
                   (or (null prior)
                       (and (consp prior) (natp (car prior))
@@ -263,7 +487,9 @@
       (fn-bpnf-answer
        (fn-bpnf-state (fn-bpn-answer-state base-answer)
                       (fn-bpn-nth 1 replay-result)
-                      nil nil nil nil nil new-epoch 0)
+                      nil (if (equal (len replay-result) 4)
+                              (fn-bpn-nth 2 replay-result) nil)
+                      nil nil nil new-epoch 0)
        (list (list :restart-ready
                    (len (fn-bpn-nth 1 replay-result))))))))
 
@@ -276,6 +502,16 @@
                            (and (true-listp (fn-bpn-nth 2 event))
                                 (<= (len (fn-bpn-nth 2 event))
                                     *fn-bpn-machine-max-records*))))))
+  (if (and (fn-bpah-delivery-uncertainp st)
+           (not (equal (fn-cbor-ag-car event) :recover-fnbs)))
+      (fn-bpnf-answer st nil)
+  (if (equal (fn-cbor-ag-car event) :deliver)
+      (fn-bpah-deliver-step st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event))
+    (if (equal (fn-cbor-ag-car event) :deliver-result)
+      (fn-bpah-deliver-result-step
+       st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+       (fn-bpn-nth 3 event) (fn-bpn-nth 4 event)
+       (fn-bpn-nth 5 event))
   (if (equal (fn-cbor-ag-car event) :recover-fnbs)
       (fn-bpnf-recover-fnbs-step
        st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
@@ -296,6 +532,10 @@
           (if (or (equal (fn-bpn-nth 5 issued) :uncertain)
                   (not (fn-bpnf-operation-matchp issued (fn-bpn-nth 1 event) (fn-bpn-nth 2 event))))
               (fn-bpnf-answer st nil)
+            (if (equal (fn-bpn-nth 3 issued) :deliver)
+                (fn-bpah-persist-delivery-step
+                 st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+                 (fn-bpn-nth 3 event))
             (if (equal (fn-bpn-nth 3 event) :durable)
                 (if (equal (fn-bpn-nth 5 issued) :pending)
                     (let ((h (fn-bpn-nth 4 issued)))
@@ -319,7 +559,7 @@
                                           (fn-bpn-nth 3 issued) (fn-bpn-nth 4 issued)
                                           :uncertain))
                  (list (list :receive-answer (fn-bpn-nth 4 (fn-bpn-nth 4 issued))
-                             '(:uncertain :persistence))))))))
+                             '(:uncertain :persistence)))))))))
       (if (equal (fn-cbor-ag-car event) :receive-bundle)
         (let* ((bundle (fn-bpn-nth 1 event))
                (wire (fn-bpn-nth 2 event))
@@ -367,14 +607,22 @@
                                 (1+ (fn-bpnf-next-op st)))
                  (list (list :persist (fn-bpnf-epoch st)
                              (fn-bpnf-next-op st) h))))))))))
-        (fn-bpnf-answer st nil))))))
+        (fn-bpnf-answer st nil)))))))))
 
 ; This is a precise bridge to the current host-called outbound subject.
 (defthm fn-bpnf-base-step-is-fn-bpn-step
-  (implies (not (fn-bpnf-issued st))
+  (implies (and (not (fn-bpnf-issued st))
+                (not (fn-bpah-delivery-uncertainp st)))
            (equal (fn-bpnf-base (fn-bpnf-answer-state
                                   (fn-bpnf-step st (list :base event))))
                   (fn-bpn-answer-state (fn-bpn-step (fn-bpnf-base st) event))))
+  :hints (("Goal" :in-theory (disable fn-bpn-step)))
+  :rule-classes nil)
+
+(defthm fn-bpah-uncertain-delivery-fences-step-by-definition
+  (implies (and (fn-bpah-delivery-uncertainp st)
+                (not (equal (fn-cbor-ag-car event) :recover-fnbs)))
+           (equal (fn-bpnf-answer-state (fn-bpnf-step st event)) st))
   :hints (("Goal" :in-theory (disable fn-bpn-step)))
   :rule-classes nil)
 
@@ -412,6 +660,19 @@
                   (fn-bpnf-held-list st)))
   :hints (("Goal" :in-theory (disable fn-bpn-step))))
 
+(defthm fn-bpah-delivery-held-change-requires-matched-durable
+  (implies (not (equal (fn-bpnf-held-list
+                        (fn-bpnf-answer-state
+                         (fn-bpah-persist-delivery-step st epoch op result)))
+                       (fn-bpnf-held-list st)))
+           (and (equal result :durable)
+                (fn-bpnf-operation-matchp (fn-bpnf-issued st) epoch op)
+                (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :pending)))
+  :hints (("Goal" :in-theory
+           (disable fn-bpah-apply-delivery fn-bpah-delivery-matches-heldp
+                    fn-bpah-delivered-held)))
+  :rule-classes nil)
+
 (defthm fn-bpnf-install-requires-matched-durable-publication
   (implies (not (equal (fn-bpnf-held-list
                         (fn-bpnf-answer-state
@@ -421,16 +682,59 @@
                 (fn-bpnf-operation-matchp (fn-bpnf-issued st) epoch op)
                 (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :pending)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-bpn-step))))
+  :hints (("Goal" :use ((:instance
+                         fn-bpah-delivery-held-change-requires-matched-durable
+                         (op op)))
+           :in-theory (disable fn-bpn-step fn-bpah-persist-delivery-step
+                               fn-bpah-apply-delivery))))
 
 ; No ordinary callback can resolve an ambiguous publication.  Recovery will
 ; inspect the authoritative FNBS bytes and establish a new process epoch.
+(defthm fn-bpah-deliver-step-issued-fence-by-definition
+  (implies (fn-bpnf-issued st)
+           (equal (fn-bpnf-answer-state
+                   (fn-bpah-deliver-step st key node)) st))
+  :hints (("Goal" :in-theory
+           (disable fn-bpah-held-delivery-pendingp fn-bpp-eidp
+                    fn-bpb-bundlep fn-bpp-blockp)))
+  :rule-classes nil)
+
+(defthm fn-bpah-deliver-result-step-issued-fence-by-definition
+  (implies (fn-bpnf-issued st)
+           (equal (fn-bpnf-answer-state
+                   (fn-bpah-deliver-result-step
+                    st epoch marker-id key status detail)) st))
+  :hints (("Goal" :in-theory
+           (disable fn-bpah-delivery-recordp
+                    fn-bpah-delivery-matches-heldp
+                    fn-bpah-delivery-record
+                    fn-bpah-held-primary-identity
+                    fn-bpp-primary-identity fn-bpb-bundle-primary
+                    fn-bpb-bundlep fn-bpp-blockp)))
+  :rule-classes nil)
+
 (defthm fn-bpnf-uncertain-issued-fences-every-step
   (implies (and (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :uncertain)
                 (not (equal (car event) :recover-fnbs)))
            (equal (fn-bpnf-answer-state (fn-bpnf-step st event)) st))
-  :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
-                                     fn-bpb-bundlep fn-bpb-bundle-id)))
+  :hints (("Goal"
+           :cases ((equal (car event) :deliver)
+                   (equal (car event) :deliver-result))
+           :use ((:instance fn-bpah-deliver-step-issued-fence-by-definition
+                            (key (fn-bpn-nth 1 event))
+                            (node (fn-bpn-nth 2 event)))
+                 (:instance
+                  fn-bpah-deliver-result-step-issued-fence-by-definition
+                  (epoch (fn-bpn-nth 1 event))
+                  (marker-id (fn-bpn-nth 2 event))
+                  (key (fn-bpn-nth 3 event))
+                  (status (fn-bpn-nth 4 event))
+                  (detail (fn-bpn-nth 5 event))))
+           :in-theory
+           (disable fn-bpn-step fn-bpb-encode fn-bpb-bundlep
+                    fn-bpb-bundle-id fn-bpah-deliver-step
+                    fn-bpah-deliver-result-step
+                    fn-bpah-persist-delivery-step)))
   :rule-classes nil)
 
 ; The issued publication consumes a fresh id from this state, irrespective
@@ -450,7 +754,45 @@
                                        (list :receive-bundle bundle wire ingress))))
                        (1+ (fn-bpnf-next-op st)))))
   :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
-                                     fn-bpb-bundlep fn-bpb-bundle-id)))
+                                     fn-bpb-bundlep fn-bpb-bundle-id
+                                     fn-bpnf-cl-ingressp
+                                     fn-bpnf-receive-decision fn-bpp-eidp
+                                     fn-bpn-machine-u64p
+                                     fn-bpn-machine-textp)))
+  :rule-classes nil)
+
+(defthm fn-bpah-deliver-step-next-op-by-definition
+  (<= (fn-bpnf-next-op st)
+      (fn-bpnf-next-op
+       (fn-bpnf-answer-state (fn-bpah-deliver-step st key node))))
+  :hints (("Goal" :in-theory
+           (disable fn-bpah-held-delivery-pendingp fn-bpp-eidp
+                    fn-bpb-bundlep fn-bpp-blockp)))
+  :rule-classes nil)
+
+(defthm fn-bpah-deliver-result-step-next-op-by-definition
+  (<= (fn-bpnf-next-op st)
+      (fn-bpnf-next-op
+       (fn-bpnf-answer-state
+        (fn-bpah-deliver-result-step
+         st epoch marker-id key status detail))))
+  :hints (("Goal" :in-theory
+           (disable fn-bpah-delivery-recordp
+                    fn-bpah-delivery-matches-heldp
+                    fn-bpah-delivery-record
+                    fn-bpah-held-primary-identity
+                    fn-bpp-primary-identity fn-bpb-bundle-primary
+                    fn-bpb-bundlep fn-bpp-blockp)))
+  :rule-classes nil)
+
+(defthm fn-bpah-persist-delivery-step-next-op-by-definition
+  (equal (fn-bpnf-next-op
+          (fn-bpnf-answer-state
+           (fn-bpah-persist-delivery-step st epoch op result)))
+         (fn-bpnf-next-op st))
+  :hints (("Goal" :in-theory
+           (disable fn-bpah-apply-delivery
+                    fn-bpah-delivery-matches-heldp)))
   :rule-classes nil)
 
 (defthm fn-bpnf-next-operation-id-never-decreases
@@ -458,8 +800,30 @@
            (<= (fn-bpnf-next-op st)
                (fn-bpnf-next-op
                 (fn-bpnf-answer-state (fn-bpnf-step st event)))))
-  :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
-                                     fn-bpb-bundlep fn-bpb-bundle-id)))
+  :hints (("Goal"
+           :cases ((equal (car event) :deliver)
+                   (equal (car event) :deliver-result))
+           :use ((:instance fn-bpah-deliver-step-next-op-by-definition
+                            (key (fn-bpn-nth 1 event))
+                            (node (fn-bpn-nth 2 event)))
+                 (:instance fn-bpah-deliver-result-step-next-op-by-definition
+                            (epoch (fn-bpn-nth 1 event))
+                            (marker-id (fn-bpn-nth 2 event))
+                            (key (fn-bpn-nth 3 event))
+                            (status (fn-bpn-nth 4 event))
+                            (detail (fn-bpn-nth 5 event)))
+                 (:instance fn-bpah-persist-delivery-step-next-op-by-definition
+                            (epoch (fn-bpn-nth 1 event))
+                            (op (fn-bpn-nth 2 event))
+                            (result (fn-bpn-nth 3 event))))
+           :in-theory
+           (disable fn-bpn-step fn-bpb-encode fn-bpb-bundlep
+                    fn-bpb-bundle-id fn-bpah-deliver-step
+                    fn-bpah-deliver-result-step
+                    fn-bpah-persist-delivery-step
+                    fn-bpnf-cl-ingressp fn-bpnf-receive-decision
+                    fn-bpp-eidp fn-bpn-machine-u64p
+                    fn-bpn-machine-textp)))
   :rule-classes nil)
 
 ; Guard closure for the typed foundation helpers.  The served step remains
@@ -497,9 +861,24 @@
 (verify-guards fn-bpnf-correlation)
 (verify-guards fn-bpnf-issued)
 (verify-guards fn-bpnf-waits)
+(verify-guards fn-bpah-delivery-uncertainp)
 (verify-guards fn-bpnf-epoch)
 (verify-guards fn-bpnf-next-op)
 (verify-guards fn-bpnf-with-issued)
 (verify-guards fn-bpnf-answer)
 (verify-guards fn-bpnf-answer-state)
 (verify-guards fn-bpnf-answer-effects)
+(verify-guards fn-bpah-disposition-code)
+(verify-guards fn-bpah-code-disposition)
+(verify-guards fn-bpah-delivery-record)
+(verify-guards fn-bpah-delivery-recordp)
+(verify-guards fn-bpah-held-adu-result)
+(verify-guards fn-bpah-held-class)
+(verify-guards fn-bpah-held-delivery-pendingp)
+(verify-guards fn-bpah-delivery-matches-heldp)
+(verify-guards fn-bpah-delivered-held)
+(verify-guards fn-bpah-apply-delivery)
+(verify-guards fn-bpah-held-primary-identity)
+(verify-guards fn-bpah-deliver-step)
+(verify-guards fn-bpah-deliver-result-step)
+(verify-guards fn-bpah-persist-delivery-step)

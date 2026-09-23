@@ -1,0 +1,9 @@
+test_application_receipt_releases_forward_pin_only_after_durable_record (tests.test_bp_app_native.NativeBpApplicationTests.test_application_receipt_releases_forward_pin_only_after_durable_record) ... ok
+test_lost_receipt_restart_replays_without_second_acceptance (tests.test_bp_app_native.NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance) ... ok
+test_unsupported_receipt_profile_refuses_before_file_read (tests.test_bp_app_native.NativeBpApplicationTests.test_unsupported_receipt_profile_refuses_before_file_read) ... ok
+test_visible_decision_namespace_eio_fences_before_receipt (tests.test_bp_app_native.NativeBpApplicationTests.test_visible_decision_namespace_eio_fences_before_receipt) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 48.750s
+
+OK

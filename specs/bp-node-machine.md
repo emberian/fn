@@ -99,23 +99,37 @@ provenance. `session` is a pair of unsigned 64-bit counters, `xfer` and
 nil or bounded canonical text octets. This checks replayable provenance shape;
 the host must still establish that the principal was admitted by the current
 session configuration. The foundation delegates outbound events to
-`fn-bpn-step` and is not the native service caller yet. The inherited
+`fn-bpn-step`; the native BP service calls `fn-bpnf-step` for durable kind-5
+reception and outbound events. The inherited
 `fn-bpn-step`, its bounded restart replay, `fn-bpnf-recover-fnbs-step`, and
 `fn-bpnf-step` have verified guards in `bp-node-machine-guards.lisp`.
 Recovery validates whole held rows on the cold path; ordinary steps do not.
 Reception issues an FNBS operation only when its epoch and operation ID fit
 the 64-bit frame field; the maximum operation ID is a terminal frontier and
 is refused so the incremented state frontier remains representable.
-The ACL2 mixed FNBS namespace plan partitions legacy and kind-5 final names
-before their respective byte decoders and rejects unknown names. A native
-caller of the foundation
-must carry the base-state invariant and validate delegated outbound events
-at the boundary; guard verification alone does not establish those facts for
-the current service adapter.
+The ACL2 mixed FNBS namespace plan partitions legacy and received kind-5/7 final names
+before their respective byte decoders and rejects unknown names. The native
+caller carries the base-state invariant and validates delegated outbound
+events at the boundary; guard verification alone does not establish those
+facts for the service adapter.
 If the FNBS kind-5 encoder refuses a proposed record as non-frameable, the
 native effect driver must return the matching `:persist-result` with
 `:refused`; it cannot issue a stored receive answer or leave a pending
 operation waiting for a callback that will never arrive.
+
+The A3 application extension selects a locally addressed pending held row
+from the same foundation list. `:deliver` allocates a volatile epoch/marker
+pair; `:deliver-result` must echo that pair and exact held key before issuing
+a kind-7 FNBS publication. The kind-7 row binds the earlier kind-5 arrival
+and primary identity, application disposition, and bounded detail. Only its
+durable publication changes the held dispatch and creates an owed receipt
+handoff for a successful request. Mixed replay folds kind-5 and kind-7 rows
+in one ordered epoch/operation stream and rejects an orphan, mismatched,
+repeated or reversed delivery. An ambiguous Store/FNRJ result fences all
+non-recovery foundation events. This logical join is not yet a native article
+and return-receipt service: its publisher, replay and application caller must
+be connected through one native `fnn-bps` handle, then tested after process
+death. TCPCL custody remains independent of application commitment.
 
 ### 0.3 The absences this design closes
 
@@ -2537,6 +2551,21 @@ repair.
   durable.
 
 ### 9.4 The receipt outbox: FNRJ to FNBS (F-C, §12 D-12)
+
+The first native A3 caller is `host/native/bp-node.lisp` in the full image.
+It opens the clock-gated single FNBS owner, then the Store owner. `serve`
+returns the TCPCL custody disposition after kind-5 durability and separately
+drives the ACL2 `:deliver` marker through Store/FNRJ or FNWF/Store, followed
+by kind-7 publication. `dispatch` repeats that work after a process restart.
+The ACL2 `fn-bpah-outbox-view` binds each owed handoff to its delivered held
+request and a return job key containing its state-owned arrival index, so a
+new retry carrier with the same receipt ID cannot alias the first. The native
+caller obtains the receipt ADU from recovered FNRJ, compares any existing
+job's exact ADU and peer through ACL2, queues it in FNBS, and leaves transport to a later
+explicit contact tick. The stored handoff's transition from `:owed` to
+`:handed-off` is not yet implemented; the durable base job currently prevents
+duplicate queueing through an ACL2 selector. This is an open A3 assurance
+obligation, as is the native article/receipt process-death scenario.
 
 A receipt is owed output while its handoff is `:owed` (§2.4): created by
 the kind-7 record of the request delivery that named it, ended by the

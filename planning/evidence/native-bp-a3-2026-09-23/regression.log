@@ -1,0 +1,103 @@
+test_append_uses_recovered_frontier_without_namespace_rescan (tests.test_bp_service_native.NativeBpServiceTests.test_append_uses_recovered_frontier_without_namespace_rescan) ... ok
+test_cleanup_barrier_failure_does_not_retract_durable_record (tests.test_bp_service_native.NativeBpServiceTests.test_cleanup_barrier_failure_does_not_retract_durable_record) ... ok
+test_corrupt_clock_domain_fences_before_replay (tests.test_bp_service_native.NativeBpServiceTests.test_corrupt_clock_domain_fences_before_replay) ... ok
+test_hidden_stage_is_bounded_recovery_evidence (tests.test_bp_service_native.NativeBpServiceTests.test_hidden_stage_is_bounded_recovery_evidence) ... ok
+test_legacy_durable_records_without_clock_domain_fence (tests.test_bp_service_native.NativeBpServiceTests.test_legacy_durable_records_without_clock_domain_fence) ... ok
+test_monotonic_age_expires_interrupted_work (tests.test_bp_service_native.NativeBpServiceTests.test_monotonic_age_expires_interrupted_work) ... ok
+test_namespace_bound_is_applied_during_directory_enumeration (tests.test_bp_service_native.NativeBpServiceTests.test_namespace_bound_is_applied_during_directory_enumeration) ... ok
+test_outage_restart_duplicate_and_conflict (tests.test_bp_service_native.NativeBpServiceTests.test_outage_restart_duplicate_and_conflict) ... ok
+test_prelink_publication_failure_is_refused (tests.test_bp_service_native.NativeBpServiceTests.test_prelink_publication_failure_is_refused) ... ok
+test_recovery_rejects_corrupt_name_gap_and_token_binding (tests.test_bp_service_native.NativeBpServiceTests.test_recovery_rejects_corrupt_name_gap_and_token_binding) ... ok
+test_send_core_fault_remains_exit_four (tests.test_bp_service_native.NativeBpServiceTests.test_send_core_fault_remains_exit_four) ... ok
+test_shared_spool_owner_precedes_lifecycle_mutation (tests.test_bp_service_native.NativeBpServiceTests.test_shared_spool_owner_precedes_lifecycle_mutation) ... ok
+test_transport_uncertain_dominates_refused_article (tests.test_bp_service_native.NativeBpServiceTests.test_transport_uncertain_dominates_refused_article) ... ok
+test_visible_clock_domain_after_barrier_error_recovers_without_work (tests.test_bp_service_native.NativeBpServiceTests.test_visible_clock_domain_after_barrier_error_recovers_without_work) ... ok
+test_visible_final_never_converts_failed_authority_barrier_to_durable (tests.test_bp_service_native.NativeBpServiceTests.test_visible_final_never_converts_failed_authority_barrier_to_durable) ... ok
+test_wall_jump_after_interrupted_contact_retains_anchored_work (tests.test_bp_service_native.NativeBpServiceTests.test_wall_jump_after_interrupted_contact_retains_anchored_work) ... ok
+test_bad_window_and_decimal_bound (tests.test_bp_contact_native.NativeBpContactTests.test_bad_window_and_decimal_bound) ... ok
+test_closed_window_interruption_and_anchored_wall_jump (tests.test_bp_contact_native.NativeBpContactTests.test_closed_window_interruption_and_anchored_wall_jump) ... ok
+test_receive_core_fault_remains_exit_four (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_receive_core_fault_remains_exit_four) ... ok
+test_refusal_after_partial_segments_has_no_successful_end_ack (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_refusal_after_partial_segments_has_no_successful_end_ack) ... ok
+test_two_sessions_reusing_transfer_zero_keep_both_exact_wires (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_two_sessions_reusing_transfer_zero_keep_both_exact_wires) ... ok
+test_uncertain_publication_exits_and_prevents_next_session_mutation (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_uncertain_publication_exits_and_prevents_next_session_mutation) ... ok
+test_application_receipt_releases_forward_pin_only_after_durable_record (tests.test_bp_app_native.NativeBpApplicationTests.test_application_receipt_releases_forward_pin_only_after_durable_record) ... ERROR
+test_lost_receipt_restart_replays_without_second_acceptance (tests.test_bp_app_native.NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance) ... ERROR
+test_unsupported_receipt_profile_refuses_before_file_read (tests.test_bp_app_native.NativeBpApplicationTests.test_unsupported_receipt_profile_refuses_before_file_read) ... ERROR
+test_visible_decision_namespace_eio_fences_before_receipt (tests.test_bp_app_native.NativeBpApplicationTests.test_visible_decision_namespace_eio_fences_before_receipt) ... ERROR
+
+======================================================================
+ERROR: test_application_receipt_releases_forward_pin_only_after_durable_record (tests.test_bp_app_native.NativeBpApplicationTests.test_application_receipt_releases_forward_pin_only_after_durable_record)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/bp-a3-5930f4f2/tests/test_bp_app_native.py", line 55, in setUp
+    bridge = run_bp_ingress.Acl2BpIngress()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/gates/bp-a3-5930f4f2/tools/run_bp_ingress.py", line 83, in __init__
+    super().__init__()
+  File "/tank/fn/gates/bp-a3-5930f4f2/tools/run_store.py", line 430, in __init__
+    self.proc = subprocess.Popen([env.get("FN_ACL2", "acl2")], cwd=ROOT,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'acl2'
+
+======================================================================
+ERROR: test_lost_receipt_restart_replays_without_second_acceptance (tests.test_bp_app_native.NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/bp-a3-5930f4f2/tests/test_bp_app_native.py", line 55, in setUp
+    bridge = run_bp_ingress.Acl2BpIngress()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/gates/bp-a3-5930f4f2/tools/run_bp_ingress.py", line 83, in __init__
+    super().__init__()
+  File "/tank/fn/gates/bp-a3-5930f4f2/tools/run_store.py", line 430, in __init__
+    self.proc = subprocess.Popen([env.get("FN_ACL2", "acl2")], cwd=ROOT,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'acl2'
+
+======================================================================
+ERROR: test_unsupported_receipt_profile_refuses_before_file_read (tests.test_bp_app_native.NativeBpApplicationTests.test_unsupported_receipt_profile_refuses_before_file_read)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/bp-a3-5930f4f2/tests/test_bp_app_native.py", line 55, in setUp
+    bridge = run_bp_ingress.Acl2BpIngress()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/gates/bp-a3-5930f4f2/tools/run_bp_ingress.py", line 83, in __init__
+    super().__init__()
+  File "/tank/fn/gates/bp-a3-5930f4f2/tools/run_store.py", line 430, in __init__
+    self.proc = subprocess.Popen([env.get("FN_ACL2", "acl2")], cwd=ROOT,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'acl2'
+
+======================================================================
+ERROR: test_visible_decision_namespace_eio_fences_before_receipt (tests.test_bp_app_native.NativeBpApplicationTests.test_visible_decision_namespace_eio_fences_before_receipt)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/bp-a3-5930f4f2/tests/test_bp_app_native.py", line 55, in setUp
+    bridge = run_bp_ingress.Acl2BpIngress()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/gates/bp-a3-5930f4f2/tools/run_bp_ingress.py", line 83, in __init__
+    super().__init__()
+  File "/tank/fn/gates/bp-a3-5930f4f2/tools/run_store.py", line 430, in __init__
+    self.proc = subprocess.Popen([env.get("FN_ACL2", "acl2")], cwd=ROOT,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'acl2'
+
+----------------------------------------------------------------------
+Ran 26 tests in 15.608s
+
+FAILED (errors=4)

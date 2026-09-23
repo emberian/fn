@@ -49,6 +49,30 @@
               record
             nil))))))
 
+; A native inbound receipt has no operator-supplied transaction pair.  The
+; recovered FNWF image owns the entire used-pair history, including aborted
+; preparations, so choose above every previously used transaction id.
+(defun fn-bprl-max-used-txid (used maximum)
+  (declare (xargs :guard t))
+  (if (atom used)
+      (nfix maximum)
+    (max (nfix (fn-bp-nth 0 (car used)))
+         (fn-bprl-max-used-txid (cdr used) maximum))))
+
+(defun fn-bprl-receipt-auto-record (s octets authorizedp)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (fn-bp-statep s))
+      nil
+    (fn-bprl-receipt-intent-record
+     s octets (1+ (fn-bprl-max-used-txid (fn-bp-state-used-txs s) 0))
+     0 authorizedp)))
+
+(defthm fn-bprl-max-used-txid-bounds-members
+  (implies (member-equal pair used)
+           (<= (nfix (fn-bp-nth 0 pair))
+               (fn-bprl-max-used-txid used maximum)))
+  :hints (("Goal" :in-theory (enable fn-bprl-max-used-txid))))
+
 (defun fn-bprl-release-record-for-journal (s receipt-id)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((record (fn-bprl-release-record s receipt-id))
