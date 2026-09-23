@@ -39,12 +39,14 @@ output file and successful owner-UID `position` distinguish `SO_PEERCRED`
 authorization from a missing registration or socket permission failure.
 Ordinary non-root runs explicitly skip this credential case.
 
-There is no native poll/fetch command in `8d3175fd`, so the driver cannot
-obtain an ACL2-owned advancing cursor or assert positive nonzero ack, inbox
-processing, or signed-source references. The follow-on endpoint test should
-register, post a signed source and an unrelated article, call the planned
-bounded ACL2 poll to obtain its cursor and references, prove polling alone
-leaves `position` unchanged, persist the consumer's own processing record,
-then `ack` the exact returned cursor and check its durable position after
-owner death/reopen. A lost reply after that `ack` must be settled by
-`position`, with accepted, refused, and uncertain outcomes kept distinct.
+There is no native poll/fetch command in `8d3175fd`. The separate
+`FN_RUN_CONSUMER_POLL_E2E=1` method is gated for the later ACL2-owned
+`consumer poll` command. It registers, signs and submits an authored source,
+checks the returned exact composite Store event using ACL2's decoder and
+binding predicate, verifies repeated polls do not change durable `position`,
+and acknowledges the returned cursor. A developer stop after durable ack but
+before reply makes the client report uncertain; reopening and querying
+`position` must resolve it. The test does not construct a cursor or Store
+event in Python. A consumer-owned inbox transaction and signed-source
+reference-only API are still separate work: poll currently returns the full
+encoded accepted event, not a consumer inbox commitment.
