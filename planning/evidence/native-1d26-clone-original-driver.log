@@ -1,0 +1,16 @@
+test_fenced_clone_rollover_after_selected_pack_reclaim (tests.test_native_checkpoint.NativeCheckpointTests.test_fenced_clone_rollover_after_selected_pack_reclaim) ... FAIL
+test_clone_refuses_canonical_parent_alias_above_path_bound (tests.test_native_checkpoint.NativeCheckpointTests.test_clone_refuses_canonical_parent_alias_above_path_bound) ... ok
+test_clone_reopens_historical_authorship_verdict (tests.test_native_checkpoint.NativeCheckpointTests.test_clone_reopens_historical_authorship_verdict) ... ok
+
+======================================================================
+FAIL: test_fenced_clone_rollover_after_selected_pack_reclaim (tests.test_native_checkpoint.NativeCheckpointTests.test_fenced_clone_rollover_after_selected_pack_reclaim)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/poll-live-group-native-1d26-20260923/tests/test_native_checkpoint.py", line 182, in test_fenced_clone_rollover_after_selected_pack_reclaim
+    self.assertIn("records=7", packed.stdout)
+AssertionError: 'records=7' not found in 'packed generation=1 records=6 selected=no\n'
+
+----------------------------------------------------------------------
+Ran 3 tests in 3.336s
+
+FAILED (failures=1)

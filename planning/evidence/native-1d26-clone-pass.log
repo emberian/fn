@@ -1,0 +1,8 @@
+test_fenced_clone_rollover_after_selected_pack_reclaim (tests.test_native_checkpoint_followup.NativeCheckpointTests.test_fenced_clone_rollover_after_selected_pack_reclaim) ... ok
+test_clone_refuses_canonical_parent_alias_above_path_bound (tests.test_native_checkpoint_followup.NativeCheckpointTests.test_clone_refuses_canonical_parent_alias_above_path_bound) ... ok
+test_clone_reopens_historical_authorship_verdict (tests.test_native_checkpoint_followup.NativeCheckpointTests.test_clone_reopens_historical_authorship_verdict) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 4.561s
+
+OK
