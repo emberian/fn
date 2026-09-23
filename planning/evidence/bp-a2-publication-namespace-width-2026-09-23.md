@@ -54,3 +54,15 @@ fact. Run `run-20260923T182620Z-a9ff`, manifest
 `planning/evidence/manifests/certify-20260923T182649Z-4077654.json`,
 certified the replay book, invariant book, and reachable tests at the final
 source bytes. The strict changed/dependent check again found zero ungreen.
+
+`fn-bpnf-publication-success-binds-pending-echo` now proves that an
+authorized operation binds the pending issued epoch, operation ID, held row,
+lock/name observations, and the ACL2-derived final name, frame and publisher.
+The theorem keeps codec recognizers closed in its local hint. An additional
+proposed universal implication from successful authorization to the full
+operation recognizer opened the codec into 92 subgoals and was removed after
+a bounded interrupted attempt; only the reachable positive recognizer test
+is claimed. Final book and test bytes passed on hbox in
+`run-20260923T183235Z-60d1`, manifest
+`planning/evidence/manifests/certify-20260923T183237Z-4085734.json`.
+The strict changed/dependent check again found zero ungreen.
