@@ -201,10 +201,38 @@
       (fn-id-subject-of-payload source)
     nil))
 
+; Replay must not let a structurally valid record relabel a signed article
+; with another Message-ID, group set, or received-content identity.  These
+; are the same ACL2 derivations the native metadata bridge calls before
+; publication; the source identity above remains separate from this received
+; article identity.
+(defun fn-hsig-carried-record-metadatap (source received record)
+  (declare (xargs :guard t))
+  (if (not (and (fn-record-p record)
+                (fn-cbor-octet-listp received)
+                (<= (len received) *fn-cbor-max-uint*)))
+      nil
+    (let* ((fields (fn-hsig-authored-source-fields source))
+           (subject (fn-id-subject-of-payload received))
+           (msgid (fn-record-msgid record))
+           (msgid-octets (fn-record-string-octets msgid)))
+      (and fields
+           (fn-cbor-octet-listp subject)
+           (equal msgid (car fields))
+           (equal (fn-record-groups record) (cadr fields))
+           (equal (fn-record-payload record) received)
+           (equal (fn-record-charge record)
+                  (fn-charge-for-payload (len received)))
+           (equal (fn-record-content-subject record)
+                  (fn-record-octets-string (fn-id-text subject)))
+           (equal (fn-record-obligation-id record)
+                  (fn-record-octets-string
+                   (fn-id-text (fn-id-obligation-of msgid-octets subject))))))))
+
 ; Native construction stores the received carrier article as the transport
 ; payload, while the version-1 parent separately retains the exact signed
 ; source and its ACL2-derived identity.  The Store content subject and charge
-; supplied by the caller are over RECEIVED; Store prepare rechecks them.
+; supplied by the caller are over RECEIVED and are rederived here.
 (defun fn-hsig-authorized-carried-submission-event
     (sequence txid generation keyring-generation enrolled-snapshot
               msgid source received groups obligation-id content-subject
@@ -224,7 +252,7 @@
              (equal msgid (car fields))
              (equal groups (cadr fields))
              (equal charge (fn-charge-for-payload (len received)))
-             (fn-record-p record)
+             (fn-hsig-carried-record-metadatap source received record)
              (equal enrolled-snapshot
                     (fn-hsig-keyring-snapshot principal keys))
              (fn-hsig-authorize principal keys source signatures
@@ -317,6 +345,10 @@
                           (fn-record-payload (fn-record-result-record article))))
            (plan (fn-hc-received-plan received)))
       (and (fn-stxa-bindsp event)
+           (fn-record-result-okp article)
+           (fn-hsig-carried-record-metadatap
+            (fn-stxa-authored-source event) received
+            (fn-record-result-record article))
            (true-listp enrolled) (equal (len enrolled) 2)
            (fn-hc-okp plan)
            (true-listp (fn-hc-value plan))
@@ -351,6 +383,7 @@
                     (:d fn-hsig-authorized-article-event)
                     (:d fn-hsig-authorized-submission-event)
                     (:d fn-hsig-authored-source-id)
+                    (:d fn-hsig-carried-record-metadatap)
                     (:d fn-hsig-authorized-carried-submission-event)
                     (:d fn-hsig-article-event-snapshot-bindsp-v0)
                     (:d fn-hsig-article-event-snapshot-bindsp-v1)
