@@ -1,6 +1,6 @@
 # Current work — 2026-09-23
 
-## Current integration checkpoint — 21:33 UTC
+## Current integration checkpoint — 22:14 UTC
 
 The frozen `86323c89` developer and production images passed the targeted
 [topic, indexed-reader and live-configuration checks](evidence/native-topic-handoff-86323c89-2026-09-23.md);
@@ -20,18 +20,32 @@ Exact reopen and a separately signed conflicting source are tested. fn polling,
 acknowledgement and reply publication remain separate open joins.
 
 Consumer Store integration `98996532` and native publisher `944916e6` add the
-maintained consumer projection and strict replay to the current Store. Their
-combined full certification at snapshot `38d4905c` finished with 194 newly
-passed books and 24 failed books/dependents in 195.125 seconds. The five
-source failures are optimized prepare's missing consumer gate, owner field
-projection hints, stamp event classification, BP replay event disjointness,
-and physical crash recovery's consumer-prefix premise. These are the batch's
-repair obligations; no successful combined result is claimed. The
-[optimized-prepare repair](evidence/consumer-store-convergence-2026-09-23.md)
-now passes its unchanged correspondence theorem and new stale-prefix witness. Consumer
-scenario **SCN-033** avoids the existing SCN-031 native authorship scenario;
-CNS-001 and PRF-064 retain their IDs. The actual publisher-to-physical-recovery
-composition and complete authenticated poll/ack workflow remain open.
+maintained consumer projection and strict replay. The five source failures
+found by the first combined run are repaired. The full retry at `22418c27`
+passed all implementation and invariant books; one obsolete owner counterexample
+fixture failed, was corrected without changing the theorem, and passed the
+scoped retry archived at `8e4b9e77`. The nonempty byte-reopen witness and
+premise counterexamples are integrated at `2669760e`; general K0 establishment
+of the physical byte/kernel relation remains open.
+
+Source `0143f87e` now combines OS-authenticated local consumer commands and
+production entropy-observed bootstrap with topic authorship binding and durable
+BP observed-channel admission. Its full incremental hbox run is
+`run-20260923T221336Z-48f3`, gate
+`/tank/fn/gates/consumer-topic-bp-20260923`, four jobs using the shared cache.
+No passing result or native-image result is yet claimed for this source cut.
+The BP profile is explicit IPv4 loopback trust in all co-resident originators,
+not cryptographic peer authentication. A configuration-check/owner-lock seam
+is being repaired before a wider BP assurance claim. Topic inspection still
+reports a candidate, not durable admission.
+
+The local consumer source route supplies bootstrap, register, zero/nonzero
+cursor validation for ack, position and unregister through the normal Store
+publisher. Darwin/Linux peer credentials bind it to the process owner. The
+native tests are prepared; bounded article poll/fetch and the end-to-end
+consumer transaction/ack/reply workflow remain active implementation work.
+CNS-001, PRF-064 and SCN-033 track this scope. Consumer metadata does not
+release article retention obligations.
 
 The active goal is concurrent v0/v1 development of fn as high-assurance
 communication infrastructure for humans, agents and the systems in

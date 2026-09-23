@@ -30,23 +30,25 @@ The user replaced the goal with concurrent v0/v1 development grounded in
 identify reproducible experiments; they are not a project-wide implementation
 freeze. Preserve the live `da5fd8cb` node and existing shared compute pools.
 
-Current coordination snapshot after the `86323c89` native qualification and
-E2 Store integration. The later dated notes retain earlier evidence.
+Current coordination snapshot at source `0143f87e`; the later notes retain
+earlier evidence. Root's full incremental run is `run-20260923T221336Z-48f3`
+on hbox at `/tank/fn/gates/consumer-topic-bp-20260923`, four shared-pool jobs.
+Do not duplicate it; image preparation follows its result.
 
 | Agent | Current substantive result and coordination |
 | --- | --- |
-| `acceptance_stamp` | Composes historical reader survivor relation with actual owner read; shares archive-bound and immutable-field lemmas with `store_invariants`. |
-| `store_invariants` | Repairs the E2 Store constructor projections in owner proofs, then completes the historical reader helper packet with `acceptance_stamp`. |
-| `consumer_contract` | Store consumer projection and publisher integrated; repairs stamp/BP recovery composition; local control commands checkpointed, Linux peer credentials and real poll/fetch remain next. |
-| `crash_differential` | Certified K0 issued-link and old-prefix clauses; joins maintained consumer relation to physical crash reopen before resuming full K0 composition. |
-| `authorship_carrier` | Proves composed authentication/POST behavior and prepares preservation/restore packet against the integrated consumer Store. |
-| `feed_replay` | Carries actual group-bucket index through served reader and owner views; historical view invariants shared with reader lanes. |
-| `bp_foundation` | Certified fragment exclusion, bounded family plan and kind-18 codec; implements atomic reassembly/replay with a persistent arrival frontier. |
-| `status_codec` | Persists held-bundle receive-time age anchors; repairs codec invariants and qualifies expiry decisions before application dispatch. |
-| `fragment_refinement` | Durable channel admission packet certified; joins shared NNTP transit policy to raw-request/projected-Store FNRJ intent and context. |
-| `stamp_review` | Frozen native image qualified; combined topic-authorship/BP-admission packet certified; prepares actual native consumer control and crash tests with consumer lane. |
-| `mini_evidence_bridge` | Real signed fn report produces durable Mini reply/conflict evidence; adds exact-carrier inbox in the same signed atomic transaction. |
-| `topic_metadata` | Verified-source topic candidate binding certified; implements experimental fixed-controller root anchoring and report admission through the shared Store. |
+| `acceptance_stamp` | Composes the full historical reader relation using certified survivor/pin lemmas from `store_invariants`. |
+| `store_invariants` | E2 constructor repair integrated; historical helper packet qualified on E2, final full relation shared with `acceptance_stamp`. |
+| `consumer_contract` | Production local commands, peer credentials and bootstrap integrated; implements actual bounded poll/fetch without advancing ack or skipping omitted matches. |
+| `crash_differential` | Nonempty physical consumer-reopen teeth integrated; continues K0 actual new-inode known/fenced provenance. |
+| `authorship_carrier` | Actual served auth-fold proof ready; ports preservation/restore/clone to current E2/T10 and prepares four-cut image witnesses. |
+| `feed_replay` | Actual per-group LISTGROUP bucket packet qualified on lane source; reconciles E2/current owner constructors and historical-reader overlap. |
+| `bp_foundation` | Functional kind-18 atomic fragment service/replay qualified; closes actual wrapper guards before combined image. |
+| `status_codec` | Held-bundle expiry packet qualified; joins durable deletion/status reporting to foundation's single ordered replay. |
+| `fragment_refinement` | Channel admission integrated; fixes live config-check/lock gap and joins shared transit policy to raw-request/projected-Store v3 intent. |
+| `stamp_review` | Prepares the root-qualified combined developer/production image and native consumer/BP/topic tests; no duplicate certification. |
+| `mini_evidence_bridge` | Exact-carrier inbox shares the real Mini signed transaction; profiles costly native replay and proves optimizations against existing semantics. |
+| `topic_metadata` | Topic authorship integrated; Store envelope component qualified; adds explicit durable local administrator binding before actual anchor/admission. |
 
 Root integrates finite source commits, regenerates ledgers, checks concrete
 proof/runtime regressions and maintains evidence. No lane is a permanent file
