@@ -47,3 +47,18 @@ while including `store-node` from `store-node-index-tests`; the source book
 had already certified at these bytes. No test assertion or test theorem was
 executed by those runs. A coherent cached origin or bounded recertification
 of the conflicting include frontier is the next certification step.
+
+## Integrated test qualification
+
+Root's coherent selected-closure run on persvati,
+`run-20260923T173810Z-2a02`, certified the composite index test and all its
+dependencies at source `586b275a` in
+`/home/ember/fn-gates/takeover-cohesive-store-config-586b275a`.
+The [manifest](manifests/certify-20260923T173817Z-2301915.json) records
+71.753 seconds for the shared run. The run as a whole failed because the
+independent experimental configuration replay book called an unverified
+helper; the Store index book and its positive statement-lookup/payload and
+negative stale-index tests passed. This was one deliberate coherent closure
+qualification after mixed certificate origins prevented earlier tests from
+reaching their forms, not an ordinary incremental rerun. The later FNWF
+frame extension still requires qualification of the combined current source.

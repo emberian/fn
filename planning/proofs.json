@@ -1236,7 +1236,6 @@
       "events": [
         "fn-bp-work-status-of-restart",
         "fn-bp-replay-work-status-is-the-pre-crash-status-restarted",
-        "fn-bprl-replay-work-status-is-durable-status-restarted",
         "fn-bp-work-origin-at-open-is-recovered-or-absent",
         "fn-bp-durable-enqueue-after-open-reads-enqueued",
         "fn-bp-journal-events-is-durable-events-then-restart",

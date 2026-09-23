@@ -376,6 +376,7 @@
     "books/bp-release",
     "books/bp-release-invariants",
     "books/bp-workflow-constructors",
+    "books/bp-release-replay-status",
     "tests/acl2/bp-release-tests",
     "books/scheduler",
     "books/scheduler-invariants",
@@ -454,29 +455,30 @@
     "tests/acl2/stx-keyring-records-tests",
     "tests/acl2/stx-accept-records-tests",
     "tests/acl2/store-node-index-tests",
+    "tests/acl2/store-node-composite-index-tests",
     "books/scheduler-peers",
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 459,
-    "books_in_root_closure": 458,
-    "roots": 454,
-    "theorems": 7385,
-    "functions": 5661,
-    "assert_events": 8199,
-    "must_fails": 324,
+    "books": 461,
+    "books_in_root_closure": 460,
+    "roots": 456,
+    "theorems": 7411,
+    "functions": 5663,
+    "assert_events": 8220,
+    "must_fails": 326,
     "encapsulates": 26,
     "guards": {
       "verified": 1850,
-      "declared-off": 306,
+      "declared-off": 307,
       "default-guarded": 2778,
-      "default-unguarded": 727
+      "default-unguarded": 728
     },
-    "suspect_theorems": 69,
+    "suspect_theorems": 70,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 24,
-    "include_hygiene_warnings": 306,
+    "include_hygiene_warnings": 307,
     "host_names_warnings": 667,
     "hand_written_record_warnings": 18
   },
@@ -2178,6 +2180,32 @@
         "bp-release",
         "bp-workflow-binding-core",
         "retention-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-release-replay-status.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-release-invariants",
+        "bp-workflow-replay-status"
       ],
       "system_includes": [],
       "suspects": [],
@@ -6697,7 +6725,7 @@
       "book": "books/store-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 116,
+      "theorems": 130,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -6719,6 +6747,7 @@
         "arithmetic/top"
       ],
       "suspects": [
+        "fn-sn-composite-delta-of-typed-article",
         "fn-sn-finish-disabled-is-no-op"
       ],
       "read_error": null
@@ -8932,13 +8961,14 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 78,
-      "must_fails": 4,
-      "defconsts": 29,
+      "assert_events": 83,
+      "must_fails": 5,
+      "defconsts": 35,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-release-invariants",
+        "../../books/bp-release-replay-status",
         "../../books/bp-workflow-constructors"
       ],
       "system_includes": [
@@ -12020,6 +12050,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-node-composite-index-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 16,
+      "must_fails": 1,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/hybrid-store",
+        "store-node-index-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-node-existing-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -13177,6 +13235,14 @@
       "line": 372,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-sn-composite-delta-of-typed-article",
+      "book": "books/store-node-invariants.lisp",
+      "line": 1205,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-sn-composite-delta and the conclusion is that branch's value"
       ]
     },
     {
@@ -16276,6 +16342,13 @@
         "line": 8,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-node-composite-index-tests.lisp",
+        "line": 6,
+        "include": "store-node-index-tests",
+        "included": "tests/acl2/store-node-index-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
