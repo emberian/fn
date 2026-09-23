@@ -56,6 +56,36 @@
 (assert-event (null (fn-bpnf-held-list *bpnf-pending*)))
 (assert-event (fn-bpnf-operation-matchp (fn-bpnf-issued *bpnf-pending*) 3 0))
 (assert-event (equal (fn-bpnf-next-op *bpnf-pending*) 1))
+; The last encodable operation id is reserved as a terminal frontier.  A
+; proposed publication always leaves an encodable next-op in state.
+(defconst *bpnf-last-issuable*
+  (fn-bpnf-state *bpnf-base* nil nil nil nil nil nil
+                 *fn-frame-max-nat* (1- *fn-frame-max-nat*)))
+(defconst *bpnf-terminal-frontier*
+  (fn-bpnf-state *bpnf-base* nil nil nil nil nil nil
+                 *fn-frame-max-nat* *fn-frame-max-nat*))
+(defconst *bpnf-overwide-epoch*
+  (fn-bpnf-state *bpnf-base* nil nil nil nil nil nil
+                 (1+ *fn-frame-max-nat*) 0))
+(assert-event
+ (equal (fn-bpnf-next-op
+         (fn-bpnf-answer-state
+          (fn-bpnf-step *bpnf-last-issuable*
+                         (list :receive-bundle *bpnf-bundle* *bpnf-wire*
+                               *bpnf-ingress-p*))))
+        *fn-frame-max-nat*))
+(assert-event
+ (equal (third (car (fn-bpnf-answer-effects
+                     (fn-bpnf-step *bpnf-terminal-frontier*
+                                    (list :receive-bundle *bpnf-bundle*
+                                          *bpnf-wire* *bpnf-ingress-p*)))))
+        '(:refused :arguments)))
+(assert-event
+ (equal (third (car (fn-bpnf-answer-effects
+                     (fn-bpnf-step *bpnf-overwide-epoch*
+                                    (list :receive-bundle *bpnf-bundle*
+                                          *bpnf-wire* *bpnf-ingress-p*)))))
+        '(:refused :arguments)))
 (assert-event (equal (nth 2 (car (fn-bpnf-answer-effects *bpnf-proposal*))) 0))
 (assert-event (fn-bpnf-operationp (fn-bpnf-issued *bpnf-pending*)))
 (assert-event (equal (fn-bpnf-answer-state

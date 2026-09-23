@@ -57,6 +57,8 @@
 (include-book "books/bp-authored-wire")
 (include-book "books/bp-node-machine")
 (include-book "books/bp-node-machine-codec")
+; Carry the verified step guards into this image as well as the default one.
+(include-book "books/bp-node-machine-guards")
 (include-book "books/bp-receive-evidence")
 
 (ld "host/store-host.lisp" :ld-error-action :error)

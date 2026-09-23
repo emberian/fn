@@ -217,9 +217,70 @@
 (defun fn-bpnf-answer-state (ans) (declare (xargs :guard t)) (fn-bpn-nth 1 ans))
 (defun fn-bpnf-answer-effects (ans) (declare (xargs :guard t)) (fn-bpn-nth 2 ans))
 
-(defun fn-bpnf-step (st event)
+; Recovery is cold-path validation of the ACL2 byte replay result.  The host
+; obtains that result from fn-bpnf-replay-rows on observed FNBS name/bytes;
+; the composition book binds the event argument to that exact call.
+(defun fn-bpnf-recovery-heldp (held max-held max-octets)
   (declare (xargs :guard t))
-  (if (equal (car event) :base)
+  (and (natp max-held)
+       (natp max-octets)
+       (true-listp held)
+       (<= (len held) max-held)
+       (<= (fn-bpnf-held-octets held) max-octets)
+       (if (atom held) t
+         (and (fn-bpnf-heldp (car held))
+              (fn-bpnf-recovery-heldp (cdr held) max-held max-octets)))))
+
+(defun fn-bpnf-recover-fnbs-step (st new-epoch base-records sequence-ready replay-result)
+  (declare (xargs :guard
+                  (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                       (true-listp base-records)
+                       (<= (len base-records) *fn-bpn-machine-max-records*))))
+  (let ((base-answer
+         (fn-bpn-restart-step (fn-bpnf-base st) base-records sequence-ready))
+        (prior (fn-bpn-nth 2 replay-result)))
+    (if (not (and (true-listp replay-result)
+                  (equal (len replay-result) 3)
+                  (equal (car replay-result) :ready)
+                  (or (null prior)
+                      (and (consp prior) (natp (car prior))
+                           (natp (cdr prior))))
+                  (fn-frame-natp new-epoch)
+                  (natp (fn-bpnf-epoch st))
+                  (< (fn-bpnf-epoch st) new-epoch)
+                  (or (null prior) (< (car prior) new-epoch))
+                  (fn-bpnf-recovery-heldp
+                   (fn-bpn-nth 1 replay-result)
+                   (fn-bpn-machine-state-max-jobs
+                    (fn-bpn-answer-state base-answer))
+                   (fn-bpn-machine-state-max-octets
+                    (fn-bpn-answer-state base-answer)))
+                  (equal (car (fn-bpn-answer-effects base-answer))
+                         (list :restart-ready
+                               (len (fn-bpn-machine-state-jobs
+                                     (fn-bpn-answer-state base-answer)))))))
+        (fn-bpnf-answer st (list (list :restart-fault :fnbs-or-base)))
+      (fn-bpnf-answer
+       (fn-bpnf-state (fn-bpn-answer-state base-answer)
+                      (fn-bpn-nth 1 replay-result)
+                      nil nil nil nil nil new-epoch 0)
+       (list (list :restart-ready
+                   (len (fn-bpn-nth 1 replay-result))))))))
+
+(defun fn-bpnf-step (st event)
+  (declare (xargs :guard
+                  (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                       (or (not (equal (fn-cbor-ag-car event) :base))
+                           (fn-bpn-machine-eventp (fn-bpn-nth 1 event)))
+                       (or (not (equal (fn-cbor-ag-car event) :recover-fnbs))
+                           (and (true-listp (fn-bpn-nth 2 event))
+                                (<= (len (fn-bpn-nth 2 event))
+                                    *fn-bpn-machine-max-records*))))))
+  (if (equal (fn-cbor-ag-car event) :recover-fnbs)
+      (fn-bpnf-recover-fnbs-step
+       st (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+       (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))
+    (if (equal (fn-cbor-ag-car event) :base)
       (if (fn-bpnf-issued st)
           (fn-bpnf-answer st nil)
         (let ((ans (fn-bpn-step (fn-bpnf-base st) (fn-bpn-nth 1 event))))
@@ -230,7 +291,7 @@
                         (fn-bpnf-waits st) (fn-bpnf-epoch st)
                         (fn-bpnf-next-op st))
          (fn-bpn-answer-effects ans))))
-    (if (equal (car event) :persist-result)
+    (if (equal (fn-cbor-ag-car event) :persist-result)
         (let ((issued (fn-bpnf-issued st)))
           (if (or (equal (fn-bpn-nth 5 issued) :uncertain)
                   (not (fn-bpnf-operation-matchp issued (fn-bpn-nth 1 event) (fn-bpn-nth 2 event))))
@@ -259,7 +320,7 @@
                                           :uncertain))
                  (list (list :receive-answer (fn-bpn-nth 4 (fn-bpn-nth 4 issued))
                              '(:uncertain :persistence))))))))
-      (if (equal (car event) :receive-bundle)
+      (if (equal (fn-cbor-ag-car event) :receive-bundle)
         (let* ((bundle (fn-bpn-nth 1 event))
                (wire (fn-bpn-nth 2 event))
                (ingress (fn-bpn-nth 3 event))
@@ -272,8 +333,9 @@
           (if (fn-bpnf-issued st)
               (fn-bpnf-answer st (list (list :receive-answer ingress
                                                 '(:refused :busy))))
-            (if (or (not (natp (fn-bpnf-next-op st)))
-                    (not (natp (fn-bpnf-epoch st))))
+            (if (or (not (fn-frame-natp (fn-bpnf-epoch st)))
+                    (not (fn-frame-natp (fn-bpnf-next-op st)))
+                    (equal (fn-bpnf-next-op st) *fn-frame-max-nat*))
               (fn-bpnf-answer st (list (list :receive-answer ingress
                                                 '(:refused :arguments))))
             (if (not decision)
@@ -305,7 +367,7 @@
                                 (1+ (fn-bpnf-next-op st)))
                  (list (list :persist (fn-bpnf-epoch st)
                              (fn-bpnf-next-op st) h))))))))))
-        (fn-bpnf-answer st nil)))))
+        (fn-bpnf-answer st nil))))))
 
 ; This is a precise bridge to the current host-called outbound subject.
 (defthm fn-bpnf-base-step-is-fn-bpn-step
@@ -364,7 +426,8 @@
 ; No ordinary callback can resolve an ambiguous publication.  Recovery will
 ; inspect the authoritative FNBS bytes and establish a new process epoch.
 (defthm fn-bpnf-uncertain-issued-fences-every-step
-  (implies (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :uncertain)
+  (implies (and (equal (fn-bpn-nth 5 (fn-bpnf-issued st)) :uncertain)
+                (not (equal (car event) :recover-fnbs)))
            (equal (fn-bpnf-answer-state (fn-bpnf-step st event)) st))
   :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
                                      fn-bpb-bundlep fn-bpb-bundle-id)))
@@ -391,9 +454,10 @@
   :rule-classes nil)
 
 (defthm fn-bpnf-next-operation-id-never-decreases
-  (<= (fn-bpnf-next-op st)
-      (fn-bpnf-next-op
-       (fn-bpnf-answer-state (fn-bpnf-step st event))))
+  (implies (not (equal (car event) :recover-fnbs))
+           (<= (fn-bpnf-next-op st)
+               (fn-bpnf-next-op
+                (fn-bpnf-answer-state (fn-bpnf-step st event)))))
   :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
                                      fn-bpb-bundlep fn-bpb-bundle-id)))
   :rule-classes nil)

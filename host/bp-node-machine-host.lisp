@@ -14,9 +14,9 @@
   (fn-bpn-answer-effects answer))
 
 (defun fn-bpn-host-ready-peers (st)
-  (if (fn-bpn-machine-statep st)
-      (fn-bpn-ready-peers (fn-bpn-machine-state-jobs st))
-    nil))
+  ; fnn-bps-open checks the initial invariant once.  Its only later state
+  ; writes are fn-bpn-step answers, whose transition preserves it.
+  (fn-bpn-ready-peers (fn-bpn-machine-state-jobs st)))
 
 (defun fn-bpn-host-existing-sequence (st work attempt generation)
   (fn-bpn-existing-sequence st (list work attempt generation)))

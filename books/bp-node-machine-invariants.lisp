@@ -17,15 +17,6 @@
            (< (fn-bpn-machine-state-next-token st)
               *fn-bpn-machine-max-records*))))
 
-; The native adapter bounds the lifecycle namespace before constructing a
-; restart event.  Other event arms validate their operands inside fn-bpn-step.
-(defun fn-bpn-machine-eventp (event)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (fn-bpn-eventp event)
-       (or (not (equal (car event) :restart))
-           (and (true-listp (nth 1 event))
-                (<= (len (nth 1 event)) *fn-bpn-machine-max-records*)))))
-
 (defthm fn-bpn-state-with-accessors
   (let ((next (fn-bpn-state-with st jobs contacts pending fenced next-token)))
     (and (equal (fn-bpn-machine-state-config next)
@@ -1237,7 +1228,7 @@
   :hints (("Goal"
            :in-theory
            (union-theories
-            '(fn-bpn-step
+            '(fn-bpn-step fn-bpn-dispatch
               fn-bpn-enqueue-step-effects-are-typed
               fn-bpn-contact-step-effects-are-typed
               fn-bpn-start-one-effects-are-typed
@@ -1295,7 +1286,7 @@
   (("Goal"
     :in-theory
     (union-theories
-     '(fn-bpn-machine-eventp fn-bpn-eventp fn-bpn-step
+     '(fn-bpn-machine-eventp fn-bpn-eventp fn-bpn-step fn-bpn-dispatch
        fn-bpn-enqueue-step-preserves-machine-invariant
        fn-bpn-contact-step-preserves-machine-invariant
        fn-bpn-start-one-preserves-machine-invariant

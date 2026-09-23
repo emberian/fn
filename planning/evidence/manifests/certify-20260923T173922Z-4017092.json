@@ -1,0 +1,304 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+    "launcher_chain_sha256": [
+      "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g",
+  "acl2_executable_sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+  "acl2_exit_codes": {
+    "books/bp-node-foundation": 0,
+    "books/bp-node-machine": 0,
+    "books/bp-node-machine-guards": 0,
+    "books/bp-node-machine-invariants": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "launcher_chain_sha256": [
+        "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+      "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "size": 233686912
+    },
+    "launchers": [
+      {
+        "path": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        "sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+        "size": 279
+      }
+    ],
+    "runtime": {
+      "path": "/tank/fn/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/tank/fn/gates/takeover-bp-machine-guards/build/acl2/certify-20260923T173922Z-4017092",
+  "book_failures": {},
+  "book_provenance": {
+    "books/bp-bundle": "installed",
+    "books/bp-bundle-invariants": "installed",
+    "books/bp-node": "installed",
+    "books/bp-node-foundation": "certified",
+    "books/bp-node-machine": "certified",
+    "books/bp-node-machine-guards": "certified",
+    "books/bp-node-machine-invariants": "certified",
+    "books/bp-primary": "installed",
+    "books/bp-primary-cbor": "installed",
+    "books/bp-primary-invariants": "installed",
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/clock": "installed",
+    "books/defrecord": "installed",
+    "books/frame-fields": "installed",
+    "books/frame-octets": "installed",
+    "books/wildmat": "installed"
+  },
+  "book_results": {
+    "books/bp-node-foundation": "passed",
+    "books/bp-node-machine": "passed",
+    "books/bp-node-machine-guards": "passed",
+    "books/bp-node-machine-invariants": "passed"
+  },
+  "book_wall_seconds": {
+    "books/bp-node-foundation": 25.623,
+    "books/bp-node-machine": 2.713,
+    "books/bp-node-machine-guards": 2.025,
+    "books/bp-node-machine-invariants": 5.271
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 1800,
+  "cache_install": {
+    "directory": "/tank/fn/certcache",
+    "installed": 0,
+    "kept": 13,
+    "origins": {
+      "/tank/fn/gates/freeze-dev-2e53fae2": 13
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0"
+  },
+  "cert_cache": {
+    "already_cached": 4,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/bp-node-machine",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-node-machine-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-node-foundation",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-node-machine-guards",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 4,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/bp-node-foundation": "ff0dbb4fd7ffaa125992a167a8be22f3993ab8f93f225926367b99f1d69cc29f",
+    "books/bp-node-machine": "a05b117c3de14b204ca7bbcbee8bdfa2b56226efdbe83dea9dbf3b4b1a33f927",
+    "books/bp-node-machine-guards": "4b3940d470a5f22dda5c657054e97c8d493acfb5c55a7eef1769b01077ea0717",
+    "books/bp-node-machine-invariants": "8ec49b9b43754583e7d258a85567aace89ab88ab134591823872b52b0dd568ed"
+  },
+  "certify_wall_seconds": 30.373,
+  "closure": false,
+  "command": [
+    "/tank/fn/toolchains/w28/acl2-literal-4g"
+  ],
+  "driver_digests_sha256": {
+    "books/bp-node-foundation": "44ef2e551201bfca0a1c953dff2e98f31c395b2e9d828c9b4b1545cc15b8df47",
+    "books/bp-node-machine": "12c937bbc0bcb2d147b18dc9439e40a1df9b485b8d0aafee1dfb1624e43e79f7",
+    "books/bp-node-machine-guards": "10006f4a44fb6a79e229856698f1aee7d12400cee2c25594c7e68e1743ddc73f",
+    "books/bp-node-machine-invariants": "edd4454f5f58a6b390f4a6b49000e124f52c0eeb37e5417e9cb9201746695237"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 167682ca367a1a6e1485782d724f52a9 db8ad90fc2ea",
+    "FN_CERTIFY_SUCCESS 167682ca367a1a6e1485782d724f52a9 629c12070415",
+    "FN_CERTIFY_SUCCESS 167682ca367a1a6e1485782d724f52a9 383c900c2895",
+    "FN_CERTIFY_SUCCESS 167682ca367a1a6e1485782d724f52a9 857fa6dba664"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T17:39:53+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "incremental": true,
+  "installed_books": {
+    "books/bp-bundle": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/bp-bundle-invariants": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/bp-node": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/bp-primary": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/bp-primary-cbor": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/bp-primary-invariants": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/cbor": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/cbor-invariants": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/clock": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/defrecord": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/frame-fields": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/frame-octets": "/tank/fn/gates/freeze-dev-2e53fae2",
+    "books/wildmat": "/tank/fn/gates/freeze-dev-2e53fae2"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 167682ca367a1a6e1485782d724f52a9 db8ad90fc2ea",
+    "FN_CERTIFY_SUCCESS 167682ca367a1a6e1485782d724f52a9 629c12070415",
+    "FN_CERTIFY_SUCCESS 167682ca367a1a6e1485782d724f52a9 383c900c2895",
+    "FN_CERTIFY_SUCCESS 167682ca367a1a6e1485782d724f52a9 857fa6dba664"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/bp-node-machine-guards"
+  ],
+  "requested_books": [
+    "books/bp-node-machine",
+    "books/bp-node-foundation",
+    "books/bp-node-machine-invariants",
+    "books/bp-node-machine-guards"
+  ],
+  "roots": [
+    "books/bp-node-machine-guards"
+  ],
+  "run_id": "certify-20260923T173922Z-4017092",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "books_with_archived_wall": 4,
+    "policy": "critical-path-first",
+    "predicted_critical_path_seconds": 30.471
+  },
+  "slot_wait_seconds": {
+    "books/bp-node-foundation": 0.0,
+    "books/bp-node-machine": 0.0,
+    "books/bp-node-machine-guards": 0.0,
+    "books/bp-node-machine-invariants": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/bp-bundle-invariants.lisp": "b0a67117f56e674bc95675019ebb3de17b30473f1b01e3a50cd874d6ccef3352",
+    "books/bp-bundle.lisp": "b209f5b465ea008d313deb02ac3a056d5f2716af86a3e4151a6111f4854f4505",
+    "books/bp-node-foundation.lisp": "97b4ae86eb542ccb182f66d1b23038c0076e42056f68570fddb4018d8b073307",
+    "books/bp-node-machine-guards.lisp": "80a3754e5d833f90c28b56e9b8ddbfc002eb7f73609717d2c955d759d15b129f",
+    "books/bp-node-machine-invariants.lisp": "b707c880c4974f32930d5320e36f11768d49e654bf83919e186c12731b815a1e",
+    "books/bp-node-machine.lisp": "0a5421c905a7114db07fc39855cdf93307c05db2d278cb3428d67aac10d8370b",
+    "books/bp-node.lisp": "bfadba9ee9100787fd16a533d4386b1190b5e273bcb097a33b74dbc6a6c4ca95",
+    "books/bp-primary-cbor.lisp": "6391e304623c67447b21b998228d0ec55d1e0b652ba2d3f32cedfdca6f888095",
+    "books/bp-primary-invariants.lisp": "2480d733e28328f76c6d406c46b0cb55aff09450973143a7c2d8a702eb90d141",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0"
+  },
+  "source_digests_sha256_after": {
+    "books/bp-bundle-invariants.lisp": "b0a67117f56e674bc95675019ebb3de17b30473f1b01e3a50cd874d6ccef3352",
+    "books/bp-bundle.lisp": "b209f5b465ea008d313deb02ac3a056d5f2716af86a3e4151a6111f4854f4505",
+    "books/bp-node-foundation.lisp": "97b4ae86eb542ccb182f66d1b23038c0076e42056f68570fddb4018d8b073307",
+    "books/bp-node-machine-guards.lisp": "80a3754e5d833f90c28b56e9b8ddbfc002eb7f73609717d2c955d759d15b129f",
+    "books/bp-node-machine-invariants.lisp": "b707c880c4974f32930d5320e36f11768d49e654bf83919e186c12731b815a1e",
+    "books/bp-node-machine.lisp": "0a5421c905a7114db07fc39855cdf93307c05db2d278cb3428d67aac10d8370b",
+    "books/bp-node.lisp": "bfadba9ee9100787fd16a533d4386b1190b5e273bcb097a33b74dbc6a6c4ca95",
+    "books/bp-primary-cbor.lisp": "6391e304623c67447b21b998228d0ec55d1e0b652ba2d3f32cedfdca6f888095",
+    "books/bp-primary-invariants.lisp": "2480d733e28328f76c6d406c46b0cb55aff09450973143a7c2d8a702eb90d141",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0"
+  },
+  "start_order": [
+    "books/bp-node-machine",
+    "books/bp-node-foundation",
+    "books/bp-node-machine-invariants",
+    "books/bp-node-machine-guards"
+  ],
+  "started_utc": "2026-09-23T17:39:22+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/tank/fn/gates/takeover-bp-machine-guards"
+}

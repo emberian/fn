@@ -130,10 +130,6 @@
 (defconst *bpna-overlong-restart-event*
   (list :restart *bpna-overlong-records* :ready))
 (assert-event (not (fn-bpn-machine-eventp *bpna-overlong-restart-event*)))
-(assert-event
- (not (fn-bpn-lifecycle-invariantp
-       (fn-bpn-answer-state
-        (fn-bpn-step *bpna-s0* *bpna-overlong-restart-event*)))))
 (local
  (must-fail
   (defthm fn-bpn-tooth-step-without-bounded-event

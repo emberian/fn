@@ -744,7 +744,7 @@
   (("Goal"
     :in-theory
     (union-theories
-     '(fn-bpn-machine-eventp fn-bpn-eventp fn-bpn-step
+     '(fn-bpn-machine-eventp fn-bpn-eventp fn-bpn-step fn-bpn-dispatch
        fn-bpn-enqueue-step-preserves-lifecycle-invariant
        fn-bpn-contact-step-preserves-lifecycle-invariant
        fn-bpn-start-one-preserves-lifecycle-invariant
@@ -824,7 +824,7 @@
     :use ((:instance fn-bpn-lifecycle-invariant-authorizes-pending))
     :in-theory
     (union-theories
-     '(fn-bpn-step fn-bpn-enqueue-step fn-bpn-contact-step
+     '(fn-bpn-step fn-bpn-dispatch fn-bpn-enqueue-step fn-bpn-contact-step
        fn-bpn-start-one fn-bpn-persist-result-step
        fn-bpn-forward-result-step fn-bpn-clock-step fn-bpn-restart-step
        fn-bpn-propose fn-bpn-apply-record fn-bpn-proposal-effectsp
@@ -886,7 +886,7 @@
     :use ((:instance fn-bpn-lifecycle-invariant-authorizes-pending))
     :in-theory
     (union-theories
-     '(fn-bpn-step fn-bpn-enqueue-step fn-bpn-contact-step
+     '(fn-bpn-step fn-bpn-dispatch fn-bpn-enqueue-step fn-bpn-contact-step
        fn-bpn-start-one fn-bpn-persist-result-step
        fn-bpn-forward-result-step fn-bpn-clock-step fn-bpn-restart-step
        fn-bpn-propose fn-bpn-apply-record fn-bpn-proposal-effectsp

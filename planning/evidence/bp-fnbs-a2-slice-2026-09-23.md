@@ -34,6 +34,15 @@ digests:
 - `manifests/certify-20260923T171907Z-3991674.json`: the completed codec-invariant root passed.
 - `manifests/certify-20260923T172808Z-4003205.json`: the codec-invariant root passed with the canonical frame-decode/held-value inverse at the later bytes.
 - `manifests/certify-20260923T172854Z-4004558.json`: the new physical crash lemma book and its dependent byte-publisher test book passed.
+- `manifests/certify-20260923T173231Z-4010248.json`: `bp-fnbs-replay` passed; the first test attempt in this exploratory run failed because ACL2 cannot evaluate the constrained digest in a `defconst`.
+- `manifests/certify-20260923T173320Z-4011208.json`: the corrected byte-replay test book passed with its frame construction in functions.
+- `manifests/certify-20260923T173616Z-4013704.json`: the revised foundation transition and its test book passed.
+- `manifests/certify-20260923T173842Z-4015926.json`: byte replay, byte-to-recovery composition theorems, and replay tests passed at the revised foundation bytes.
+- `manifests/certify-20260923T173915Z-4016748.json`: replay tests passed after including the composition invariant book.
+- `manifests/certify-20260923T174029Z-4018611.json`: the four remaining changed dependent FNBS byte/invariant/test roots passed at the combined foundation and replay bytes; five of nine requested roots were already installed at those exact bytes.
+- `manifests/certify-20260923T174953Z-4030296.json`: the byte-invariant book and its dependent test book passed with link and directory-barrier crash cases.
+- `manifests/certify-20260923T175130Z-4032082.json`: the test book passed after its reachable-cut assertions were strengthened.
+- `manifests/certify-20260923T175939Z-4041719.json`: kind-5 exact payload arithmetic, EID/optional-principal bounds, and conditional encoder non-`:bad` theorem passed.
 
 `fn-bpnf-stored-unframe-of-canonical-frame` connects the actual decoder to
 the canonical frame and held record under valid fields, a fitting frame,
@@ -45,8 +54,40 @@ recovery slot is the identical kind-5 record. The name-selection premise is
 material: before the directory barrier, the tests witness both an absent
 and a present crash image. This theorem does not yet derive the name
 selection from a publisher trace or cover a whole replayed history.
+The payload length is exactly `76 + peer-CBOR + principal-blob + wire`:
+8 fixed u64 fields and 3 u32 blob lengths account for 76 octets. A typed
+EID's CBOR is at most 2048 octets, the optional principal blob at most 512,
+and received wire at most 131072, so the derived ceiling is 133708 octets,
+436 below the configured 134144-octet FNBS payload limit.
+`fn-bpnf-valid-kind-five-encodes` proves the frame builder is not `:bad`
+under `fn-bpnf-stored-recordp` **and** valid frame field values. The latter
+conjunct is not yet derived universally from the record predicate, so the
+host must still handle a codec refusal as a matched refused publication.
+`fn-bpnf-actual-link-crash-is-absent-or-exact` composes the actual `fn-bs-link`
+pending entry with `fn-bs-crash-imagep`: if the final name was absent, the
+staged inode was file-fenced and canonical, and no earlier operation targeted
+the final name, every admissible post-link crash reads either absence or the
+identical record. `fn-bpnf-directory-barrier-quiet` and
+`fn-bpnf-durable-cut-recovers-exact-record` cover the post-barrier cut when
+the final name is durable. The tests show both link choices and the durable
+record with a nonempty inherited FNBS entry. Establishing these preconditions
+for every call in the native publisher is still open.
+`fn-bpnf-replay-rows` reads canonical `(name octets)` rows in strictly
+increasing `(epoch, operation-id)` order, checks each kind-5 held arrival and
+freshness, and enforces held count/octet budgets. A two-row witness restores
+nonempty inherited held state; malformed name/frame, reversed order and
+capacity overflow fault. `fn-bpnf-recover-event` computes its event argument
+from those exact bytes, and `fn-bpnf-step` is the sole transition that
+atomically installs the held projection with a successful outbound base
+restart. `fn-bpnf-recover-ready-bytes-install-held` is the composition check under a
+ready byte result, valid cold held/budgets, a successful base restart, and a
+fresh epoch; `fn-bpnf-recover-fault-bytes-keep-state` says a failed byte
+replay leaves the prior uncertain state unchanged. Tests exercise both paths
+and a stale prior-epoch callback after recovery. The event-builder result is
+the byte binding; a raw recovery event supplied by an arbitrary caller would
+not have that binding.
 
 Open A2 work is a full noncircular `fn-bs-crash-imagep` relation for inherited
-history and a new kind-5 publication, multi-record replay with epoch/frontier restoration, and the
-native publisher and recovery join. No FNBS-to-observed-journal or T6
+history and a new kind-5 publication, multi-kind replay with durable
+frontier restoration, and the native publisher and recovery join. No FNBS-to-observed-journal or T6
 crash-recovery claim is made yet.
