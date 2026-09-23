@@ -481,8 +481,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-index-tests \
 	books/nntp-index-runtime \
 	books/group-bucket-index \
+	books/group-bucket-article \
+	books/group-bucket-article-invariants \
 	books/group-bucket-invariants \
+	books/nntp-range-indexed \
+	books/nntp-range-indexed-invariants \
 	tests/acl2/group-bucket-index-tests \
+	tests/acl2/nntp-range-indexed-tests \
 	tests/acl2/nntp-reader-profile-tests \
 	tests/acl2/nntp-legacy-tests \
 	tests/acl2/nntp-newnews-tests \

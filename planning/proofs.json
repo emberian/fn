@@ -2247,8 +2247,8 @@
     },
     {
       "id": "PRF-067",
-      "title": "Pinned LISTGROUP group buckets refine the committed archive",
-      "statement": "For a projection-consistent accepted archive, fn-gidx-listgroup-command-of-build equates the complete indexed LISTGROUP answer and session with the archive command when buckets are built from that archive. fn-gidx-bucket-of-build identifies the selected bucket with the exact membership filter of the existing index. The actual fn-own-read caller reaches fn-nntp-archive-command-pinned through served dispatch; fn-own-relation and fn-served-connp maintain the archive, trie, and bucket pin correspondence across view refresh, open, feed and read. The claim excludes arbitrary tagged indexes, unindexed GROUP/NEXT/LAST/NEWNEWS, disk indexing, and elapsed-time performance.",
+      "title": "Pinned group buckets and OVER ranges refine the committed archive",
+      "statement": "For a projection-consistent accepted archive, fn-gidx-listgroup-command-of-build equates indexed LISTGROUP with the archive command. For valid OVER/XOVER range tokens, fn-nntp-carried-over-range-equals-archive-command equates the actual pinned archive dispatcher with the original response under its maintained bucket and trie correspondence; fn-gidx-number-article-of-build proves that a bucket entry resolves through the trie to the same first article as the archive scan, including the identifier and number availability gates. fn-own-read reaches that dispatcher through served dispatch; fn-own-relation and fn-served-connp maintain the pins across view refresh, open, feed and read. The claim excludes arbitrary tagged indexes, unindexed HDR/GROUP/NEXT/LAST/NEWNEWS, disk indexing, and elapsed-time performance.",
       "milestone": "M3",
       "requirements": [
         "STO-001",
@@ -2261,13 +2261,22 @@
       "status": "in-progress",
       "evidence": [
         "books/group-bucket-index.lisp",
+        "books/group-bucket-article.lisp",
+        "books/group-bucket-article-invariants.lisp",
         "books/group-bucket-invariants.lisp",
+        "books/nntp-range-indexed.lisp",
+        "books/nntp-range-indexed-invariants.lisp",
         "books/owner-invariants.lisp",
         "books/served.lisp",
         "tests/acl2/group-bucket-index-tests.lisp",
+        "tests/acl2/nntp-range-indexed-tests.lisp",
         "tests/acl2/owner-tests.lisp",
         "planning/evidence/t17-group-bucket-served-2026-09-23.md",
         "planning/evidence/t17-group-bucket-e2-integration-2026-09-23.md",
+        "planning/evidence/t17-over-range-indexed-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T232820Z-480447.json",
+        "planning/evidence/manifests/certify-20260923T232942Z-484654.json",
+        "planning/evidence/manifests/certify-20260923T233149Z-493160.json",
         "planning/evidence/manifests/certify-20260923T221217Z-297353.json",
         "planning/evidence/manifests/certify-20260923T221548Z-309869.json"
       ],
@@ -2277,7 +2286,7 @@
         "fn-own-run-preserves-relation",
         "fn-own-read-is-served-step-on-pinned-prefix"
       ],
-      "progress_note": "Scoped ACL2 certification and a called-owner sparse/historical witness are recorded in the evidence note. A malformed tagged pin changes LISTGROUP, demonstrating the correspondence premise. Combined-image qualification and full dependent closure at integrated source remain open."
+      "progress_note": "Scoped ACL2 certification and called-owner sparse/historical LISTGROUP witnesses are recorded in the group-bucket evidence. Indexed OVER/XOVER now resolve selected-group bucket entries through the pinned trie; the called pinned dispatcher equality and malformed bucket/trie counterexamples certify in the range evidence. HDR remains on the archive fold. Combined-image qualification and full dependent closure at integrated source remain open."
     }
   ]
 }

@@ -168,7 +168,15 @@ indexes, reconstructed from committed acceptance on recovery; they do not
 change acceptance authority or add disk index files. LISTGROUP range reads
 select from immutable per-group buckets pinned with that archive, and the
 owner/served invariant maintains exact bucket-to-archive correspondence.
-GROUP, NEXT, LAST and NEWNEWS still use their current archive folds. The
+OVER and XOVER numeric ranges select numbers from that bucket and resolve each
+entry through the same pinned Message-ID trie. The carried bucket/trie relation
+proves their complete replies equal the archive fold; XOVER retains its 420
+empty-range code and OVER its 423. For G bucket headers, M selected-group
+memberships, S output numbers and maximum Message-ID length L, the structural
+work is O(G + M + S·M + S·L + S²), plus article rendering. This replaces the
+former O(A + S·A + S²) archive search for A retained articles; neither bound
+claims elapsed-time performance. HDR/XHDR, GROUP, NEXT, LAST and NEWNEWS still
+use their current archive folds. The
 LISTGROUP selection cost is at most G + S inspected headers and selected
 entries, for G retained groups and S entries in the chosen group; this excludes
 number sorting, reply rendering, and index construction.

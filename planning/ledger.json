@@ -465,6 +465,10 @@
     "books/config-store-traces",
     "tests/acl2/config-store-traces-tests",
     "books/config-owner-live",
+    "books/config-owner-advance-invariants",
+    "tests/acl2/config-owner-advance-invariants-tests",
+    "books/config-owner-advance-reader-invariants",
+    "tests/acl2/config-owner-advance-reader-invariants-tests",
     "books/config-owner-read-invariants",
     "tests/acl2/config-owner-read-invariants-tests",
     "tests/acl2/config-owner-live-tests",
@@ -474,8 +478,13 @@
     "tests/acl2/nntp-index-tests",
     "books/nntp-index-runtime",
     "books/group-bucket-index",
+    "books/group-bucket-article",
+    "books/group-bucket-article-invariants",
     "books/group-bucket-invariants",
+    "books/nntp-range-indexed",
+    "books/nntp-range-indexed-invariants",
     "tests/acl2/group-bucket-index-tests",
+    "tests/acl2/nntp-range-indexed-tests",
     "tests/acl2/nntp-reader-profile-tests",
     "tests/acl2/nntp-legacy-tests",
     "tests/acl2/nntp-newnews-tests",
@@ -578,25 +587,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 580,
-    "books_in_root_closure": 579,
-    "roots": 574,
-    "theorems": 8313,
-    "functions": 6239,
-    "assert_events": 9088,
-    "must_fails": 465,
+    "books": 589,
+    "books_in_root_closure": 588,
+    "roots": 583,
+    "theorems": 8367,
+    "functions": 6247,
+    "assert_events": 9116,
+    "must_fails": 469,
     "encapsulates": 26,
     "guards": {
       "verified": 2022,
       "declared-off": 369,
-      "default-guarded": 3053,
-      "default-unguarded": 795
+      "default-guarded": 3060,
+      "default-unguarded": 796
     },
     "suspect_theorems": 76,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
-    "teeth_form_warnings": 35,
-    "include_hygiene_warnings": 493,
+    "teeth_form_warnings": 37,
+    "include_hygiene_warnings": 504,
     "host_names_warnings": 788,
     "hand_written_record_warnings": 18
   },
@@ -4351,15 +4360,66 @@
       "read_error": null
     },
     {
-      "book": "books/config-owner-live.lisp",
+      "book": "books/config-owner-advance-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 102,
-      "functions": 9,
+      "theorems": 21,
+      "functions": 0,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 9,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-live"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-owner-advance-reader-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-advance-invariants",
+        "config-owner-read-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-owner-live.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 106,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 10,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -5352,6 +5412,57 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/group-bucket-article-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-bucket-article",
+        "nntp-index"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/group-bucket-article.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-bucket-index"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -6453,7 +6564,7 @@
       "book": "books/nntp-pinned-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 7,
+      "theorems": 10,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -6523,6 +6634,59 @@
       "encapsulates": 0,
       "includes": [
         "nntp-session"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-range-indexed-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-bucket-article-invariants",
+        "group-bucket-invariants",
+        "nntp-range-indexed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-range-indexed.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-bucket-article",
+        "nntp-responses"
       ],
       "system_includes": [],
       "suspects": [],
@@ -6679,7 +6843,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "group-bucket-index",
+        "nntp-range-indexed",
         "nntp-responses",
         "nntp-verdict"
       ],
@@ -7085,11 +7249,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 81,
-      "functions": 144,
+      "functions": 145,
       "guards": {
         "verified": 0,
         "declared-off": 5,
-        "default-guarded": 139,
+        "default-guarded": 140,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -12537,6 +12701,62 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/config-owner-advance-invariants-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 1,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-owner-advance-invariants",
+        "config-owner-live-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/config-owner-advance-reader-invariants-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 1,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-owner-advance-reader-invariants",
+        "config-owner-advance-invariants-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/config-owner-live-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -14214,6 +14434,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/nntp-range-indexed-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 2,
+      "defconsts": 16,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-range-indexed-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-reader-profile-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -14384,7 +14631,7 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 146,
+      "assert_events": 149,
       "must_fails": 1,
       "defconsts": 63,
       "defmacros": 4,
@@ -16468,7 +16715,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 843,
+      "line": 844,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]
@@ -16967,7 +17214,7 @@
       {
         "theorem": "fn-ocl-connection-archive-has-pinned-domain",
         "book": "books/config-owner-live.lisp",
-        "line": 1293,
+        "line": 1320,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -17722,6 +17969,18 @@
         "check": "fn-bs-txn-name-injective-without-name-equality",
         "book": "tests/acl2/byte-store-txn-name-tests.lisp",
         "line": 63,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-ocl-advance-without-historical-relation",
+        "book": "tests/acl2/config-owner-advance-invariants-tests.lisp",
+        "line": 54,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-ocari-advance-without-reader-relation",
+        "book": "tests/acl2/config-owner-advance-reader-invariants-tests.lisp",
+        "line": 26,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -18732,6 +18991,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/config-owner-advance-reader-invariants.lisp",
+        "line": 5,
+        "include": "config-owner-read-invariants",
+        "included": "books/config-owner-read-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/config-records.lisp",
         "line": 19,
         "include": "records-seam",
@@ -18771,6 +19037,20 @@
         "line": 4,
         "include": "feed-correspondence",
         "included": "books/feed-correspondence.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/group-bucket-article-invariants.lisp",
+        "line": 4,
+        "include": "group-bucket-article",
+        "included": "books/group-bucket-article.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/group-bucket-article.lisp",
+        "line": 5,
+        "include": "group-bucket-index",
+        "included": "books/group-bucket-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -18921,6 +19201,34 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/nntp-range-indexed-invariants.lisp",
+        "line": 5,
+        "include": "nntp-range-indexed",
+        "included": "books/nntp-range-indexed.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/nntp-range-indexed-invariants.lisp",
+        "line": 6,
+        "include": "group-bucket-article-invariants",
+        "included": "books/group-bucket-article-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/nntp-range-indexed-invariants.lisp",
+        "line": 7,
+        "include": "group-bucket-invariants",
+        "included": "books/group-bucket-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/nntp-range-indexed.lisp",
+        "line": 6,
+        "include": "group-bucket-article",
+        "included": "books/group-bucket-article.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/nntp-responses.lisp",
         "line": 7,
         "include": "article-fields",
@@ -18958,8 +19266,8 @@
       {
         "book": "books/nntp.lisp",
         "line": 195,
-        "include": "group-bucket-index",
-        "included": "books/group-bucket-index.lisp",
+        "include": "nntp-range-indexed",
+        "included": "books/nntp-range-indexed.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -20531,6 +20839,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/config-owner-advance-invariants-tests.lisp",
+        "line": 3,
+        "include": "config-owner-live-tests",
+        "included": "tests/acl2/config-owner-live-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-owner-advance-reader-invariants-tests.lisp",
+        "line": 2,
+        "include": "../../books/config-owner-advance-reader-invariants",
+        "included": "books/config-owner-advance-reader-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-owner-advance-reader-invariants-tests.lisp",
+        "line": 3,
+        "include": "config-owner-advance-invariants-tests",
+        "included": "tests/acl2/config-owner-advance-invariants-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/config-owner-live-tests.lisp",
         "line": 6,
         "include": "config-observed-tests",
@@ -20878,6 +21207,13 @@
         "line": 12,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-range-indexed-tests.lisp",
+        "line": 3,
+        "include": "../../books/nntp-range-indexed-invariants",
+        "included": "books/nntp-range-indexed-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
