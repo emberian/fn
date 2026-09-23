@@ -113,11 +113,15 @@ acceptance or historical-verdict statement."
                      (fnn-octet-list-p principal) (= (length principal) 32)
                      (fnn-octet-list-p source-id) (= (length source-id) 48)
                      (equal (caar keys) :ed25519)
-                     (fnn-octet-list-p (cdar keys)) (= (length (cdar keys)) 32))
+                     (fnn-octet-list-p (cdar keys)) (= (length (cdar keys)) 32)
+                     (equal (caadr keys) :ml-dsa-65)
+                     (fnn-octet-list-p (cdadr keys))
+                     (= (length (cdadr keys)) +fnn-hsig-ml-public-key-octets+))
           (fnn-fault "verified carrier has an invalid portable source projection"))
-        (fnn-out "fn-portable-v1 ~a ~a ~a ~a"
+        (fnn-out "fn-portable-v1 ~a ~a ~a ~a ~a"
                  (fnn-hex principal) (fnn-hex source-id)
-                 (fnn-hex (cdar keys)) (fnn-hex source))
+                 (fnn-hex (cdar keys)) (fnn-hex (cdadr keys))
+                 (fnn-hex source))
         0))))
 
 (defun fnn-command-topic-inspect-carrier (args)
