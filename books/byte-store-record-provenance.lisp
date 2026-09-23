@@ -4,6 +4,7 @@
 (include-book "byte-store-relation")
 (include-book "byte-store-program-invariants")
 (include-book "frame-trailer")
+(include-book "byte-store-frame")
 
 (local (defthm fn-bs-k6-take-all
          (implies (true-listp xs)
@@ -2829,3 +2830,132 @@
                  (:instance fn-bs-k0-article-host-arguments-reach-related-attempted-cut
                             (ks (fn-sn-files (fn-sn-prepare s record)))))
            :in-theory (theory 'minimal-theory))))
+
+; K0 allocator entry.  host/native/io.lisp:fnn-advance-frontier calls
+; fn-store-metadata-frontier-next and fn-store-metadata-frontier-frame.
+; host/store-host.lisp routes the frame/decode wrappers through the public
+; constrained functions, whose checked defattach is the concrete codec.
+; This theorem checks the attached implementation's separate byte grammar.
+(defthm fn-bs-k0-host-frontier-frame-is-concrete-codec
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+           (and (fn-cbor-octet-listp (fn-bs-frontier-encode-impl n))
+                (equal (fn-bs-frontier-decode-impl
+                        (fn-bs-frontier-encode-impl n)) n)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-bs-frontier-seal-octet-listp)
+                 (:instance fn-bs-frontier-impl-round-trip))
+           :in-theory (e/d (fn-bs-frontier-encode-impl)
+                           (fn-bs-frontier-decode-impl
+                            fn-bs-frontier-seal-octet-listp
+                            fn-bs-frontier-impl-round-trip)))))
+
+(defthm fn-bs-k0-host-frontier-arguments-are-typed-input
+  (implies
+   (and (fn-sf-statep ks)
+        (equal (fn-sf-phase ks) :ready)
+        (fn-bs-namep stage)
+        (equal current (fn-sf-frontier ks))
+        (equal next (fn-bs-frontier-next current))
+        next
+        ; fnn-metadata-frontier-frame checks this before I/O.  The abstract
+        ; encoder constraint provides round-trip but no octet-list theorem.
+        (fn-cbor-octet-listp (fn-bs-frontier-encode next)))
+   (fn-bs-frontier-inputp
+    ks stage (fn-bs-frontier-encode next)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-bs-frontier-round-trip (n next))
+                 (:instance fn-bs-frontier-next-is-successor (n current)))
+           :in-theory (e/d (fn-bs-frontier-inputp fn-bs-frontier-next
+                             fn-sf-statep)
+                           (fn-bs-frontier-round-trip
+                            fn-bs-frontier-next-is-successor)))))
+
+; Actual P-FRONTIER pair 5 is after create/write/fsync(fd), before the
+; namespace replacement.  This applies to retained transaction histories:
+; it mentions only the fresh staging name and the state invariant.
+(defthm fn-bs-k0-frontier-file-cut-is-write-fence
+  (implies (and (fn-bs-statep bs)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal
+            (car (nth 5 (fn-bs-run bs ks
+                      (fn-bs-frontier-program stage octets)
+                      nil groups capacity)))
+            (let* ((ino (fn-bs-next-ino bs))
+                   (created (mv-nth 1 (fn-bs-create bs :staging stage :ok)))
+                   (written (mv-nth 1 (fn-bs-write created ino 0 octets :ok))))
+              (fn-bs-fence-file written ino))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-frontier-program fn-bs-run fn-bs-step
+                             fn-bs-fsync-file)
+                           (fn-bs-statep fn-bs-create fn-bs-write
+                            fn-bs-fence-file fn-bs-lookup)))))
+
+(defthm fn-bs-k0-frontier-file-cut-has-exact-frame
+  (implies (and (fn-bs-statep bs)
+                (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage))
+                (true-listp octets))
+           (equal (fn-bs-durable-content
+                   (car (nth 5 (fn-bs-run bs ks
+                     (fn-bs-frontier-program stage octets)
+                     nil groups capacity)))
+                   (fn-bs-next-ino bs))
+                  octets))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-k0-frontier-file-cut-is-write-fence
+                 (:instance fn-bs-k6-create-write-fence-exact-frame
+                            (frame octets)))
+           :in-theory (disable fn-bs-run fn-bs-frontier-program
+                               fn-bs-durable-content fn-bs-create
+                               fn-bs-write fn-bs-fence-file))))
+
+(defthm fn-bs-k0-frontier-file-cut-source-is-new-inode
+  (implies (and (fn-bs-statep bs)
+                (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage))
+                (true-listp octets))
+           (equal (fn-bs-lookup
+                   (car (nth 5 (fn-bs-run bs ks
+                                  (fn-bs-frontier-program stage octets)
+                                  nil groups capacity)))
+                   :staging stage)
+                  (fn-bs-next-ino bs)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-k0-frontier-file-cut-is-write-fence
+                 (:instance fn-bs-k6-created-stage-lookup)
+                 (:instance fn-bs-k6-write-keeps-lookup
+                            (bs (mv-nth 1
+                                 (fn-bs-create bs :staging stage :ok)))
+                            (ino (fn-bs-next-ino bs)) (offset 0)
+                            (octets octets) (dir :staging) (name stage))
+                 (:instance fn-bs-k6-file-fence-keeps-valid-name-lookup
+                            (bs (mv-nth 1
+                             (fn-bs-write
+                              (mv-nth 1 (fn-bs-create bs :staging stage :ok))
+                              (fn-bs-next-ino bs) 0 octets :ok)))
+                            (ino (fn-bs-next-ino bs))
+                            (dir :staging) (name stage)))
+           :in-theory (disable fn-bs-lookup fn-bs-run
+                               fn-bs-frontier-program fn-bs-create
+                               fn-bs-write fn-bs-fence-file))))
+
+(defthm fn-bs-k0-frontier-file-cut-kernel-is-file-observation
+  (implies (and (fn-bs-statep bs)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal (cdr (nth 6 (fn-bs-run bs ks
+                         (fn-bs-frontier-program stage octets)
+                         nil groups capacity)))
+                  (fn-sf-frontier-file-result
+                   (fn-sf-start-frontier ks) :ok)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-frontier-program fn-bs-run fn-bs-step
+                             fn-sf-dispatch fn-bs-fsync-file)
+                           (fn-bs-statep fn-bs-create fn-bs-write
+                            fn-bs-fence-file fn-bs-lookup fn-bs-content
+                            fn-bs-view)))))

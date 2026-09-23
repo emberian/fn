@@ -1329,6 +1329,15 @@ part of K0.
 ; joins that handoff, ACL2 host frame/name and actual P-RECORD pair 10.
 ; The *physical relation at reserved entry* still needs a maintained
 ; whole-trace proof from initialization/frontier/prior finish or recovery.
+; The next allocator packet routes host/store-host.lisp's frontier frame and
+; decode wrappers through the constrained fn-bs-frontier-encode/decode
+; functions with certified concrete attachments. Its host argument theorem
+; derives fn-bs-frontier-inputp from a ready state, matching current txid,
+; ACL2 successor and a checked octet result. The actual arbitrary-history
+; P-FRONTIER pair 5 is proved to contain the exact newly fenced frame and
+; pair 6 to carry the file-result observation. The prior durable article is
+; exercised in the witness. The root rename/directory-fence relation and
+; successful reserved pair are still open; this packet does not claim them.
 
 ; K1. The scan never faults on a crash image of a related state.  No torn
 ; unit is ever under an authority name, because links and renames are
