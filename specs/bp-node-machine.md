@@ -410,23 +410,27 @@ observed channel -> configured peer -> allowed-EID check -> admitted principal
 
 never `announced EID -> peer lookup`. The decision is ACL2's,
 `fn-bpaj-session-principal cfg channel announced-eid` (in
-`books/bp-session-admission.lisp`), which the finite host calls at each
-completed inbound transfer after TCPCL negotiation; `channel` is what the host
+`books/bp-session-admission.lisp`), composed with raw announced-EID parsing
+and typed FNBS ingress construction by `fn-bpaj-tcpcl-ingress-result` (in
+`books/bp-channel-ingress.lisp`). The native host calls that one result at
+each completed inbound transfer after TCPCL negotiation; `channel` is what it
 observed (listener, network namespace, peer address), never what the peer
-said. The intended answers are `(:admitted peer-name generation)`,
+said. The inner selector answers `(:admitted peer-name generation)`,
 `(:refused :no-configured-peer)` (no peer row's boundary matches the channel),
 `(:refused :no-trust-profile)` (the matched peer has no BP trust row), and
 `(:refused :eid-mismatch)` (the announced node ID is not one of that
 peer's `(:bp eid)` rows). The finite loopback selector currently also reports
 `:channel` and `:ambiguous-peer`, and combines missing boundary and trust as
-`:no-trust-profile`. A refused session carries principal nil; it may
+`:no-trust-profile`. The outer result retains the ACL2 refusal reason and
+returns a typed anonymous ingress for a valid announced EID; malformed or
+overlong raw EID bytes return no ingress. A refused session carries principal nil; it may
 still hand the node transit bundles if the operator's policy allows
 unauthenticated transit, but nothing it delivers is admitted by K6.
 
 The finite native slice observes IPv4 local listener and remote address from
 the accepted socket. A durable `bp-boundary add` peer row declares loopback,
 no translation, and `all-co-resident`; the selector first requires one peer
-for that channel and only then checks its configured BP EID. The host stamps
+for that channel and only then checks its configured BP EID. ACL2 stamps
 the selected peer name and configuration generation on ingress. Application
 request and receipt handoff require that name, generation, and configured EID
 still agree with the live owner configuration; a nil principal refuses the

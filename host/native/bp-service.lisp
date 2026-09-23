@@ -543,20 +543,17 @@
            (fnn-core 'fn-tcl-session-negotiated (fnn-tclc-session conn)))
          (announced
            (fnn-core 'fn-tcl-negotiated-peer-node-id negotiated))
-         (peer-eid (fnn-core 'fn-bpn-host-eid announced))
          (answer (and owner channel
-                      (fnn-owner-core 'fn-owner-bp-session-principal
-                                      channel peer-eid)))
-         (principal (and (eq (first answer) :admitted) (second answer)))
-         (generation (if principal (third answer) 0)))
+                      (fnn-owner-core 'fn-owner-bp-tcpcl-ingress
+                                      (fnn-bps-state service)
+                                      session-counter xfer-id channel
+                                      announced))))
     (when (and answer (eq (first answer) :refused))
       ;; The reason is ACL2's admission result.  Keep it visible at the
       ;; channel boundary without logging an identity or article octets.
       (fnn-out "BP channel admission refused reason=~(~a~)"
                (second answer)))
-    (fnn-core 'fn-bpnf-tcpcl-ingress
-              (fnn-bps-state service) session-counter xfer-id peer-eid
-              principal generation)))
+    (third answer)))
 
 (defun fnn-bps-open (journal config wall wall-error)
   (let* ((root (fnn-bp-journal-dir journal))

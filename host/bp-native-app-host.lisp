@@ -5,11 +5,14 @@
 ; image.  Every call below reads the canonical configured owner installed by
 ; host/owner-host.lisp.
 (in-package "ACL2")
+(include-book "../books/bp-channel-ingress")
 
-(defun fn-owner-bp-session-principal (channel announced state)
+(defun fn-owner-bp-tcpcl-ingress
+    (fnbs-state session-counter xfer-id channel announced-uri state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-bpaj-session-principal
-          (fn-owner-config state) channel announced)))
+  (value (fn-bpaj-tcpcl-ingress-result
+          (fn-owner-config state) fnbs-state channel announced-uri
+          session-counter xfer-id)))
 
 (defun fn-owner-bp-receipt-trustedp (view state)
   (declare (xargs :stobjs state :mode :program))

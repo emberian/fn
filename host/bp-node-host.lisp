@@ -15,6 +15,7 @@
 (include-book "../books/bp-node")
 (include-book "../books/bp-node-records")
 (include-book "../books/bp-authored-wire")
+(include-book "../books/bp-channel-ingress")
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs from the command line.
@@ -25,14 +26,7 @@
 ; the four octets of "dtn:".
 
 (defun fn-bpn-host-eid (uri)
-  (if (and (fn-cbor-octet-listp uri)
-           (equal (nth 0 uri) 100)      ; d
-           (equal (nth 1 uri) 116)      ; t
-           (equal (nth 2 uri) 110)      ; n
-           (equal (nth 3 uri) 58))      ; :
-      (let ((e (cons :dtn (nthcdr 4 uri))))
-        (if (fn-bpp-eidp e) e nil))
-    nil))
+  (fn-bpaj-raw-announced-eid uri))
 
 (defun fn-bpn-host-eidp (e)
   (and (fn-bpp-eidp e) t))
