@@ -164,11 +164,12 @@
                    (fn-bpnf-version-of (nth 3 wait) versions)))))
 
 ; The kernel state keeps the existing machine plus the new durable/volatile
-; slots.  The host is not yet a caller: A2 must prove the FNBS publisher and
-; replay relation before replacing the outbound-only host path.
-(defun fn-bpnf-state (base held outcomes handoffs correlation issued waits epoch)
+; slots.  Next-op is allocated here, never supplied by a caller.  The host is
+; not yet a caller: A2 must prove the FNBS publisher and replay relation
+; before replacing the outbound-only host path.
+(defun fn-bpnf-state (base held outcomes handoffs correlation issued waits epoch next-op)
   (declare (xargs :guard t))
-  (list :bpnf-state base held outcomes handoffs correlation issued waits epoch))
+  (list :bpnf-state base held outcomes handoffs correlation issued waits epoch next-op))
 
 (defun fn-bpnf-base (st) (declare (xargs :guard t)) (nth 1 st))
 (defun fn-bpnf-held-list (st) (declare (xargs :guard t)) (nth 2 st))
@@ -178,13 +179,14 @@
 (defun fn-bpnf-issued (st) (declare (xargs :guard t)) (nth 6 st))
 (defun fn-bpnf-waits (st) (declare (xargs :guard t)) (nth 7 st))
 (defun fn-bpnf-epoch (st) (declare (xargs :guard t)) (nth 8 st))
+(defun fn-bpnf-next-op (st) (declare (xargs :guard t)) (nth 9 st))
 
 (defun fn-bpnf-with-issued (st issued)
   (declare (xargs :guard t))
   (fn-bpnf-state (fn-bpnf-base st) (fn-bpnf-held-list st)
                  (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
                  (fn-bpnf-correlation st) issued (fn-bpnf-waits st)
-                 (fn-bpnf-epoch st)))
+                 (fn-bpnf-epoch st) (fn-bpnf-next-op st)))
 
 (defun fn-bpnf-answer (st effects)
   (declare (xargs :guard t))
@@ -202,11 +204,13 @@
          (fn-bpnf-state (fn-bpn-answer-state ans) (fn-bpnf-held-list st)
                         (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
                         (fn-bpnf-correlation st) (fn-bpnf-issued st)
-                        (fn-bpnf-waits st) (fn-bpnf-epoch st))
+                        (fn-bpnf-waits st) (fn-bpnf-epoch st)
+                        (fn-bpnf-next-op st))
          (fn-bpn-answer-effects ans))))
     (if (equal (car event) :persist-result)
         (let ((issued (fn-bpnf-issued st)))
-          (if (not (fn-bpnf-operation-matchp issued (nth 1 event) (nth 2 event)))
+          (if (or (equal (nth 5 issued) :uncertain)
+                  (not (fn-bpnf-operation-matchp issued (nth 1 event) (nth 2 event))))
               (fn-bpnf-answer st nil)
             (if (equal (nth 3 event) :durable)
                 (if (equal (nth 5 issued) :pending)
@@ -216,7 +220,8 @@
                                       (cons h (fn-bpnf-held-list st))
                                       (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
                                       (fn-bpnf-correlation st) nil
-                                      (fn-bpnf-waits st) (fn-bpnf-epoch st))
+                                      (fn-bpnf-waits st) (fn-bpnf-epoch st)
+                                      (fn-bpnf-next-op st))
                        (list (list :receive-answer (nth 4 h) :stored))))
                   (fn-bpnf-answer st nil))
               (if (equal (nth 3 event) :refused)
@@ -243,7 +248,7 @@
           (if (fn-bpnf-issued st)
               (fn-bpnf-answer st (list (list :receive-answer ingress
                                                 '(:refused :busy))))
-            (if (or (not (natp (nth 4 event)))
+            (if (or (not (natp (fn-bpnf-next-op st)))
                     (not (natp (fn-bpnf-epoch st))))
               (fn-bpnf-answer st (list (list :receive-answer ingress
                                                 '(:refused :arguments))))
@@ -271,10 +276,11 @@
                                 (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
                                 (fn-bpnf-correlation st)
                                 (fn-bpnf-operation (fn-bpnf-epoch st)
-                                                   (nth 4 event) :store h :pending)
-                                (fn-bpnf-waits st) (fn-bpnf-epoch st))
+                                                   (fn-bpnf-next-op st) :store h :pending)
+                                (fn-bpnf-waits st) (fn-bpnf-epoch st)
+                                (1+ (fn-bpnf-next-op st)))
                  (list (list :persist (fn-bpnf-epoch st)
-                             (nth 4 event) h))))))))))
+                             (fn-bpnf-next-op st) h))))))))))
         (fn-bpnf-answer st nil)))))
 
 ; This is a precise bridge to the current host-called outbound subject.
@@ -307,7 +313,7 @@
 
 (defthm fn-bpnf-receive-proposal-does-not-install-held
   (equal (fn-bpnf-held-list
-          (fn-bpnf-answer-state (fn-bpnf-step st (list :receive-bundle bundle wire ingress op))))
+          (fn-bpnf-answer-state (fn-bpnf-step st (list :receive-bundle bundle wire ingress))))
          (fn-bpnf-held-list st))
   :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
                                      fn-bpb-bundlep fn-bpb-bundle-id))))
@@ -330,3 +336,40 @@
                 (equal (nth 5 (fn-bpnf-issued st)) :pending)))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-bpn-step))))
+
+; No ordinary callback can resolve an ambiguous publication.  Recovery will
+; inspect the authoritative FNBS bytes and establish a new process epoch.
+(defthm fn-bpnf-uncertain-issued-fences-every-step
+  (implies (equal (nth 5 (fn-bpnf-issued st)) :uncertain)
+           (equal (fn-bpnf-answer-state (fn-bpnf-step st event)) st))
+  :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
+                                     fn-bpb-bundlep fn-bpb-bundle-id)))
+  :rule-classes nil)
+
+; The issued publication consumes a fresh id from this state, irrespective
+; of caller input.  Refusal does not decrement the frontier.
+(defthm fn-bpnf-receive-proposal-consumes-next-operation-id
+  (implies (equal (car (car (fn-bpnf-answer-effects
+                             (fn-bpnf-step st
+                                           (list :receive-bundle bundle wire ingress)))))
+                  :persist)
+           (and (equal (nth 2 (car (fn-bpnf-answer-effects
+                                     (fn-bpnf-step st
+                                                   (list :receive-bundle bundle wire ingress)))))
+                       (fn-bpnf-next-op st))
+                (equal (fn-bpnf-next-op
+                        (fn-bpnf-answer-state
+                         (fn-bpnf-step st
+                                       (list :receive-bundle bundle wire ingress))))
+                       (1+ (fn-bpnf-next-op st)))))
+  :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
+                                     fn-bpb-bundlep fn-bpb-bundle-id)))
+  :rule-classes nil)
+
+(defthm fn-bpnf-step-never-reuses-operation-id
+  (<= (fn-bpnf-next-op st)
+      (fn-bpnf-next-op
+       (fn-bpnf-answer-state (fn-bpnf-step st event))))
+  :hints (("Goal" :in-theory (disable fn-bpn-step fn-bpb-encode
+                                     fn-bpb-bundlep fn-bpb-bundle-id)))
+  :rule-classes nil)
