@@ -224,8 +224,28 @@ certificate.
 
 ## Certification
 
-See the report of this lane for the run id or the refusal. Until a
-manifest is filed, everything above is session evidence only.
+Not submitted. The farm refused the lane run before ACL2 started:
+`farm.py submit persvati books/peer-feed-invariants
+books/wire-outbound-invariants books/feed-correspondence books/feed-totality
+books/owner-feed-port books/transfer-journal-invariants
+tests/acl2/peer-feed-tests tests/acl2/wire-outbound-tests
+tests/acl2/feed-correspondence-tests tests/acl2/feed-totality-tests
+tests/acl2/owner-feed-port-tests tests/acl2/transfer-journal-tests --jobs 4
+--timeout-seconds 1800 --remote-root /home/ember/fn-gates/cost-feed --acl2
+/home/ember/fn-gates/toolchains/w25/acl2-literal --cache
+/home/ember/fn-certcache` answered "no origin/toolchain-coherent certificate
+set ... Re-run with --closure". Of the closure, 26 books have no pair in
+`/home/ember/fn-certcache` at the digests of `dev` 5c549e6c: `frame-fields`,
+`frame-invariants`, `frame-journal`, `frame-octets`, `identity`,
+`identity-invariants`, `node`, `node-invariants`, `owner-feed`, `path`,
+`peer-config`, `peer-feed`, `provenance`, `records`, `records-invariants`,
+`records-shape`, `retention`, `scheduler`, `transfer`,
+`transfer-invariants`, `transfer-journal`, `transfer-reservation`,
+`transfer-union`, `wildmat`, `wire` and `wire-invariants`. A lane does not
+use `--closure` (`planning/how-we-work.md`, "Certification cost"), so the
+gate is root's treewide certification of `dev`'s head, and after it the
+plain-roots submit above is this lane's whole run. Until then nothing in
+this file is certified; it is session evidence only.
 
 ## What remains open
 
