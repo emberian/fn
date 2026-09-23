@@ -1012,6 +1012,17 @@
   (value (fn-store-cfg-join-names
           (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
 
+(defun fn-owner-group-codes (name-octets state)
+  ; Resolve submitted names against the owner's current allocation domain.
+  ; The separate Store bridge's replayed global does not follow live owner
+  ; reconfiguration.  This is the same ACL2 resolver as fn-store-group-codes.
+  (declare (xargs :stobjs state :mode :program))
+  (let ((names (fn-store-octet-lists->strings name-octets)))
+    (value (if (equal names :bad) :bad
+             (fn-store-codes-from-groups
+              names (fn-state-groups
+                     (fn-node-acceptance (fn-owner-node state))))))))
+
 (defun fn-owner-next-txid (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-state-next-txid (fn-node-acceptance (fn-owner-node state)))))
