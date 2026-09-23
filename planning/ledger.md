@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 406 |
-| Certification roots in the Makefile | 404 |
-| Books inside the root closure | 405 |
-| `defthm` and `defthmd` events | 6786 |
-| `defun` events | 5282 |
+| Books read | 407 |
+| Certification roots in the Makefile | 405 |
+| Books inside the root closure | 406 |
+| `defthm` and `defthmd` events | 6839 |
+| `defun` events | 5300 |
 | Functions with verified guards | 1737 |
-| Functions declared `:verify-guards nil` and never verified | 284 |
-| Functions left at the default with an explicit guard | 2627 |
-| Functions left at the default with no guard | 634 |
-| `assert-event` checks | 7618 |
+| Functions declared `:verify-guards nil` and never verified | 288 |
+| Functions left at the default with an explicit guard | 2633 |
+| Functions left at the default with no guard | 642 |
+| `assert-event` checks | 7643 |
 | `must-fail` checks | 253 |
-| `encapsulate` events | 21 |
+| `encapsulate` events | 22 |
 | Theorems flagged SUSPECT by shape | 63 |
 | Export-hygiene warnings | 90 |
 | Enabled-projection warnings | 27 |
 | Teeth-form warnings | 13 |
-| Include-hygiene warnings | 151 |
+| Include-hygiene warnings | 154 |
 | Host-names warnings | 645 |
 | Hand-written-record warnings | 18 |
 
@@ -156,10 +156,10 @@ that `make certify` requests.
 | `books/byte-store-frame.lisp` | root | 11 | 16 | 1/0/13/2 | 0 | 0 | 0 |
 | `books/byte-store-initializer.lisp` | root | 8 | 10 | 0/8/0/2 | 0 | 0 | 0 |
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
-| `books/byte-store-keystones.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/byte-store-keystones.lisp` | root | 29 | 3 | 0/3/0/0 | 0 | 0 | 0 |
 | `books/byte-store-native-correspondence.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/byte-store-program-invariants.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
-| `books/byte-store-programs.lisp` | root | 1 | 30 | 0/30/0/0 | 33 | 0 | 0 |
+| `books/byte-store-programs.lisp` | root | 1 | 31 | 0/31/0/0 | 33 | 0 | 0 |
 | `books/byte-store-relation.lisp` | root | 12 | 7 | 0/5/0/2 | 0 | 0 | 0 |
 | `books/byte-store-scan.lisp` | root | 134 | 35 | 1/29/0/5 | 0 | 0 | 1 |
 | `books/byte-store-txn-name.lisp` | root | 30 | 13 | 3/0/10/0 | 0 | 0 | 0 |
@@ -293,7 +293,7 @@ that `make certify` requests.
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 39 | 14 | 13/0/1/0 | 0 | 0 | 1 |
 | `books/store-prepare-correspondence.lisp` | root | 19 | 4 | 2/0/0/2 | 0 | 0 | 0 |
-| `books/store-sweep.lisp` | root | 9 | 9 | 0/0/9/0 | 0 | 0 | 0 |
+| `books/store-sweep.lisp` | root | 36 | 16 | 0/0/15/1 | 0 | 0 | 0 |
 | `books/stx-accept-records.lisp` | root | 14 | 17 | 8/0/9/0 | 0 | 0 | 0 |
 | `books/stx-authority.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/stx-carrier.lisp` | root | 49 | 26 | 1/0/25/0 | 0 | 0 | 0 |
@@ -378,6 +378,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-program-invariants-tests.lisp` | root | 0 | 3 | 0/1/0/2 | 9 | 8 | 0 |
 | `tests/acl2/byte-store-relation-tests.lisp` | root | 1 | 5 | 0/0/0/5 | 12 | 12 | 0 |
 | `tests/acl2/byte-store-scan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
+| `tests/acl2/byte-store-sweep-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 8 | 0 | 0 |
 | `tests/acl2/byte-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
 | `tests/acl2/byte-store-txn-name-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
 | `tests/acl2/cbor-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
@@ -476,7 +477,7 @@ that `make certify` requests.
 | `tests/acl2/store-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/store-observed-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 137 | 0 | 0 |
 | `tests/acl2/store-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 1 | 0 |
-| `tests/acl2/store-sweep-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 0 | 0 |
+| `tests/acl2/store-sweep-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 33 | 0 | 0 |
 | `tests/acl2/stx-accept-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 0 | 0 |
 | `tests/acl2/stx-evidence-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/stx-keyring-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 0 | 0 |

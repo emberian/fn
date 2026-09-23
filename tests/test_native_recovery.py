@@ -59,9 +59,33 @@ class NativeRecoverySourceMapTests(unittest.TestCase):
         self.assertIsNotNone(recover)
         self.assertLess(recover.group(0).index("(fnn-sweep-staging store)"),
                         recover.group(0).index("(setf (fnn-store-fenced store) nil)"))
-        self.assertIn("(fnn-bridge-sweep-staging observed)", source)
-        self.assertIn("fn-store-sn-sweep-staging-list", source)
+        self.assertIn("(fnn-bridge-sweep-round observed more)", source)
+        self.assertIn("fn-store-sn-sweep-round", source)
+        sweep = re.search(r"\(defun fnn-sweep-staging .*?\n\n\(defun ", source, re.S)
+        self.assertIsNotNone(sweep)
+        # The round loop refuses on :refused; it never faults on the bound.
+        self.assertIn("(:refused", sweep.group(0))
+        self.assertIn("fnn-refuse", sweep.group(0))
+        self.assertNotIn("observation bound", sweep.group(0))
         self.assertIn("FN_NATIVE_RECOVERY_FAULT", source)
+
+    def test_every_prefix_the_host_stages_under_is_an_acl2_staging_prefix(self):
+        """A stage kind added without a sweep entry would orphan like F2."""
+        model = (ROOT / "books" / "store-sweep.lisp").read_text()
+        block = model[model.index("(defconst *fn-sn-staging-prefixes*"):]
+        block = block[:block.index("\n\n")]
+        prefixes = {bytes(int(n) for n in group.split()).decode()
+                    for group in re.findall(r"\(([0-9 ]+)\)", block)}
+        staged = set()
+        for path in sorted((ROOT / "host" / "native").glob("*.lisp")):
+            source = path.read_text()
+            for match in re.finditer(r"\(fnn-join \(fnn-staging store\)\s*"
+                                     r"\(format nil \"(\.[a-z-]+-)~d", source):
+                staged.add(match.group(1))
+        self.assertGreaterEqual(len(staged), 7, staged)
+        for prefix in staged:
+            self.assertTrue(any(prefix.startswith(p) for p in prefixes),
+                            "{} is staged but not swept".format(prefix))
 
     def test_missing_enrollment_fixture_is_acl2_encoded_and_nonempty(self):
         try:
@@ -73,8 +97,39 @@ class NativeRecoverySourceMapTests(unittest.TestCase):
             frame_bridge.close()
 
 
+class StagingSweepDecisionTests(unittest.TestCase):
+    """The ACL2 sweep decision itself, evaluated without a native image."""
+
+    @staticmethod
+    def octets(name):
+        return "(" + " ".join(str(octet) for octet in name.encode()) + ")"
+
+    def names(self, names):
+        return "(list " + " ".join("'" + self.octets(name) for name in names) + ")"
+
+    def test_sweep_rounds_collect_sixty_five_allocation_orphans(self):
+        orphans = [".allocation-4242-{:024x}".format(number) for number in range(65)]
+        try:
+            bridge = frame_bridge.session()
+            bridge.store.call('(include-book "books/store-sweep")')
+            ready = "(fn-sn-initial nil 0)"
+            rounds = bridge.call("(fn-sn-sweep-rounds {} {} nil (fn-sn-staging-observation-limit))"
+                                 .format(ready, self.names(orphans)))
+            self.assertEqual(rounds, [frame_bridge.Keyword("done"), []])
+            first = bridge.call("(car (fn-sn-sweep-round {} {} t nil))"
+                                .format(ready, self.names(orphans[:64])))
+            self.assertEqual(first, frame_bridge.Keyword("again"))
+            foreign = [".operator-{:02d}".format(number) for number in range(65)]
+            refused = bridge.call("(car (fn-sn-sweep-rounds {} {} nil 64))"
+                                  .format(ready, self.names(foreign)))
+            self.assertEqual(refused, frame_bridge.Keyword("refused"))
+        finally:
+            frame_bridge.close()
+
+
 @unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "build/fn-host is required")
+                     "the developer image {} is absent; build it with "
+                     "tools/runbooks/hbox-image-build.sh or set FN_NATIVE_HOST".format(IMAGE))
 class NativeRecoveryFidelityTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-recovery-")
@@ -119,14 +174,64 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         self.assertTrue(unknown.exists())
         self.assertIn(b"staging-orphans=1 [.operator-evidence]", recovered.stdout)
 
-    def test_over_limit_staging_namespace_faults_without_partial_sweep(self):
+    def test_sixty_five_allocation_orphans_are_swept_in_rounds(self):
+        """Finding F2 of planning/evidence/campaign-dabebb84-2026-09-22.md.
+
+        65 deaths at frontier-staged-durable leave 65 `.allocation-' files.
+        The store is built from files alone: the names are what
+        fnn-advance-frontier stages, the content what a staged frontier holds.
+        """
+        store = self.initialized("allocation-orphans")
+        frontier = (store / "allocation-frontier.json").read_bytes()
+        for number in range(65):
+            (store / "staging" / ".allocation-4242-{:024x}".format(number)).write_bytes(frontier)
+        # A reader does not sweep; it reports one bounded observation and
+        # says there is more.  It still opens.
+        status = self.invoke(store, "status")
+        self.assertEqual(status.returncode, run_store.EXIT_OK, status.stderr)
+        self.assertIn(b"staging-orphans=64+ [", status.stdout)
+        self.assertEqual(len(list((store / "staging").iterdir())), 65)
+        # The writer's recovery sweeps them all, in two rounds.
+        recovered = self.invoke(store, "recover")
+        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertIn(b"staging-orphans=0", recovered.stdout)
+        self.assertEqual(list((store / "staging").iterdir()), [])
+        self.assertEqual((store / "allocation-frontier.json").read_bytes(), frontier)
+        again = self.invoke(store, "status")
+        self.assertEqual(again.returncode, run_store.EXIT_OK, again.stderr)
+        self.assertIn(b"staging-orphans=0", again.stdout)
+
+    def test_every_host_staging_prefix_is_swept(self):
+        store = self.initialized("every-prefix")
+        names = [".allocation-1-00", ".init-1-00", ".anchor-1-00", ".checkpoint-1-00",
+                 ".selection-1-00", ".pack-1-00", ".pack-selection-1-00", ".stage-1-00"]
+        for name in names:
+            (store / "staging" / name).write_bytes(b"staged, never committed")
+        recovered = self.invoke(store, "recover")
+        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertEqual(list((store / "staging").iterdir()), [])
+
+    def test_over_limit_unrecognized_names_refuse_without_removing_them(self):
         store = self.initialized("over-limit")
         for number in range(65):
-            (store / "staging" / ".stage-{:02d}".format(number)).write_bytes(b"x")
+            (store / "staging" / ".operator-{:02d}".format(number)).write_bytes(b"x")
         result = self.invoke(store, "recover")
-        self.assertEqual(result.returncode, run_store.EXIT_FAULT, result.stderr)
-        self.assertIn(b"staging namespace exceeds ACL2 observation bound", result.stderr)
+        self.assertEqual(result.returncode, run_store.EXIT_REFUSED, result.stderr)
+        self.assertIn(b"staging namespace holds more than 64 names recovery may not remove",
+                      result.stderr)
         self.assertEqual(len(list((store / "staging").iterdir())), 65)
+
+    def test_orphans_beyond_one_observation_go_with_foreign_names_kept(self):
+        store = self.initialized("mixed")
+        for number in range(100):
+            (store / "staging" / ".allocation-7-{:04d}".format(number)).write_bytes(b"x")
+        for number in range(10):
+            (store / "staging" / ".operator-{:02d}".format(number)).write_bytes(b"x")
+        result = self.invoke(store, "recover")
+        self.assertEqual(result.returncode, run_store.EXIT_OK, result.stderr)
+        self.assertEqual(sorted(path.name for path in (store / "staging").iterdir()),
+                         [".operator-{:02d}".format(number) for number in range(10)])
+        self.assertIn(b"staging-orphans=10 [", result.stdout)
 
     def test_post_unlink_eio_is_uncertain_then_a_new_process_recovers(self):
         store = self.initialized("post-unlink-eio")
