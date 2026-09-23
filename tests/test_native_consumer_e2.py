@@ -288,7 +288,7 @@ class NativeConsumerE2Tests(unittest.TestCase):
         bridge = run_store.Acl2Store()
         try:
             form = ("(let ((decoded (fn-stxa-decode-exact '" +
-                    bridge.literal(report) + ")) "
+                    bridge.literal(report) + "))) "
                     "(and (fn-stmt-okp decoded) "
                     "(let* ((event (fn-stmt-value decoded)) "
                     "(record-result (fn-record-decode-exact "
