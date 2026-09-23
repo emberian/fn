@@ -87,9 +87,10 @@ projection, actual TLS-prefix reader pin repair, native authored injection,
 BP clock-domain recovery and bounded P3 topic metadata inspection. Hbox run
 `run-20260923T201700Z-0e13` at
 `/tank/fn/gates/integrate-reader-bp-topic-20260923` reuses compatible cache
-artifacts and certifies changed closure members at four jobs. Its result and
-subsequent native saved-image reader/HDR, authored peering/restart and topic
-inspection tests are pending. This is a test subject, not a live deployment.
+artifacts and certifies changed closure members at four jobs. The [run failed three proof roots and their dependent tests](evidence/reader-bp-topic-union-2026-09-23.md);
+finite reader-context and authentication-dispatch repairs are underway.
+Subsequent native saved-image reader/HDR, authored peering/restart and topic
+inspection tests await those repairs. This is a test subject, not a live deployment.
 
 The TLS-prefix correspondence still requires a well-formed selected wire;
 carrying that premise through the historical owner relation is separate work.
