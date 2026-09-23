@@ -106,6 +106,13 @@ that `fn-clock-later-observationp` is **non-strict**, so a reading equal to the
 one held is a later observation of the same clock and is admitted; the owner's
 clock is a high-water mark, not a counter.
 
+The article acceptance stamp consumes the owner's observation at prepare.
+`fn-record-stamp-of-observation` takes the whole second of its DTN epoch wall
+reading; an absent or out-of-range reading yields `:clock-unusable`, so the
+owner refuses the submission and consumes its durable allocation reservation.
+This is the node's local wall reading, not a verified true time or a comparison
+between nodes. A schema-0 article has the fixed stamp `:legacy`.
+
 `tests/acl2/clock-tests.lisp` exhibits two nodes whose clocks differ by 200
 seconds reaching opposite verdicts on one bundle, together with the fact that
 their admissible intervals are disjoint -- so at most one of them is honest, and
