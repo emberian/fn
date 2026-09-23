@@ -482,16 +482,15 @@
 (defun fn-replay-apply-record (node record)
   (declare (xargs :guard (and (fn-node-statep node) (true-listp record))
                   :verify-guards nil))
-  ; Unreachable-in-composition: journal replay enters with no pending transaction.
-  ; Refuse a standalone
-  ; call on a staged node too: otherwise a record sharing the pending txid and
-  ; generation could complete that different article, including its stamp.
-  (if (consp (fn-node-stage node))
-      nil
-    (if (fn-store-retention-event-p record)
+  (if (fn-store-retention-event-p record)
       (fn-replay-apply-retention-event node record)
     (if (or (fn-stxe-p record) (fn-stxk-p record))
         (fn-replay-apply-identity-neutral node record)
+      ; Unreachable-in-composition: journal replay enters with no pending
+      ; transaction.  A standalone article step refuses a staged node, lest a
+      ; record with matching coordinates complete that different article.
+      (if (consp (fn-node-stage node))
+          nil
       (let* ((article (if (fn-stxa-p record)
                           (fn-replay-composite-record record)
                         record))
