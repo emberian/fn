@@ -5,3 +5,13 @@ Scope: `books/hybrid-carrier.lisp`, `books/stx-evidence-records.lisp`, and their
 `fn-hc-native-plan-preserves-source` says a successful admission returns the exact supplied authored source as its first value; its test book has a reachable successful source and a `must-fail` case with the success premise removed. `fn-hc-encode-is-bounded-when-emitted` and `fn-hc-field-encode-is-bounded-when-emitted` state the executable emission caps of 5405 binary and 8192 field octets. The decoder checks those caps before the nine-item parse and base64 decode. Ground vectors fix the emitted binary/base64 lengths at 5405/7208 for the selected component widths, and exercise round trip, mutable Path/Xref/gateway projection, reserved-field refusal, missing Date, malformed carrier, unsupported version, nonminimal CBOR, overlimit input, changed source/keyset preimages, and missing or refused signature components. The existing `fn-hsig-subject-body-injective` remains the subject framing keystone; this run does not re-certify its unchanged source closure.
 
 `fn-stxe-profile-supportedp` recognizes exactly `fn-hybrid-v1`; unknown tags remain opaque and unsupported. The known tag alone returns `:requires-binding` from `fn-stxe-authority-verdict`, since arbitrary persisted detail bytes cannot be promoted to a verified author. `host/native/signatures.lisp` now offers a verification entry that obtains ACL2's received plan and canonical preimage, observes both actual primitives, then calls ACL2's both-required authorization function. It has no Store or reader caller yet and was not exercised in this certification. The later T10 join must bind the kind-4 event, keyring snapshot, dual primitive observations and reader verdict to the actual accepted article. No primitive unforgeability, host library correctness, Date syntax, or full article size guarantee is claimed here.
+
+The native component harness `tests/native_hybrid_signatures.lisp` was run
+locally on macOS with SBCL 2.6.8 and OpenSSL 3.6.4, after generating two
+independent temporary ML-DSA-65 PEM keypairs with `openssl genpkey` and
+`openssl pkey -pubout`. It exited 0 and printed
+`FN_NATIVE_HYBRID_SIGNATURE_TEST passed`. The added cases exercise the new
+received-carrier entry with real Ed25519 and ML-DSA-65 verification, a
+substituted ML key/signature, and a malformed carrier plan. This component
+test stubs `fnn-core` using the production scalar convention, so it does not
+test the saved image's ACL2-to-native bridge or the Store integration.
