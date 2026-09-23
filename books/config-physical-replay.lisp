@@ -17,6 +17,10 @@
            (<= (nfix (fn-cfg-record-txid (car configs)))
                (nfix (fn-store-event-txid (car events)))))))
 
+(defthm fn-cpr-config-firstp-has-config
+  (implies (fn-cpr-config-firstp configs events) (consp configs))
+  :hints (("Goal" :in-theory (enable fn-cpr-config-firstp))))
+
 (defun fn-cpr-event-servedp (cn event)
   ; The served-domain check belongs only to events that create an article.
   ; A retention or identity-neutral event has no selected group; applying
@@ -45,6 +49,11 @@
           nil))
     nil))
 
+(verify-guards fn-cpr-apply-event
+  :hints (("Goal" :in-theory (e/d (fn-cnode-statep)
+                                  (fn-cpr-event-servedp fn-record-p fn-stxa-p
+                                   fn-store-event-p)))))
+
 (defun fn-cpr-loop (cn configs events config-sequence event-sequence)
   (declare (xargs :guard t :verify-guards nil
                   :measure (+ (len configs) (len events))))
@@ -64,14 +73,16 @@
                   (t (let ((at (fn-cnode-make
                                 (fn-replay-advance-txid node txid)
                                 (fn-cnode-config cn))))
-                       (if (not (fn-cnode-record-acceptablep
-                                 at record (fn-cnode-line-ceiling)))
-                           (fn-replay-fault cn position :config-refusal)
-                         (fn-cpr-loop
-                          (fn-cnode-apply-config
-                           at record (fn-cnode-line-ceiling))
-                          (cdr configs) events
-                          (+ 1 (nfix config-sequence)) event-sequence))))))
+                       (if (not (fn-cnode-statep at))
+                           (fn-replay-fault cn position :invalid-node)
+                         (if (not (fn-cnode-record-acceptablep
+                                   at record (fn-cnode-line-ceiling)))
+                             (fn-replay-fault cn position :config-refusal)
+                           (fn-cpr-loop
+                            (fn-cnode-apply-config
+                             at record (fn-cnode-line-ceiling))
+                            (cdr configs) events
+                            (+ 1 (nfix config-sequence)) event-sequence)))))))
         (if (consp events)
             (let ((event (car events)))
               (cond ((not (fn-store-event-p event))
@@ -120,8 +131,10 @@
                             (config-sequence 0) (event-sequence 0)))
            :in-theory (disable fn-cpr-loop-ok-is-configured))))
 
-(verify-guards fn-cpr-loop)
-(verify-guards fn-cpr-apply-event)
+(verify-guards fn-cpr-loop
+  :hints (("Goal" :in-theory (e/d (fn-cnode-statep)
+                                  (fn-cpr-config-firstp fn-cpr-apply-event
+                                   fn-cfg-recordp fn-store-event-p)))))
 (verify-guards fn-cpr-replay)
 
 (deftheory fn-cpr-vocabulary

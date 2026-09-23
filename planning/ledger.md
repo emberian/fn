@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 455 |
-| Certification roots in the Makefile | 450 |
-| Books inside the root closure | 454 |
-| `defthm` and `defthmd` events | 7367 |
-| `defun` events | 5628 |
-| Functions with verified guards | 1850 |
+| Books read | 457 |
+| Certification roots in the Makefile | 452 |
+| Books inside the root closure | 456 |
+| `defthm` and `defthmd` events | 7370 |
+| `defun` events | 5633 |
+| Functions with verified guards | 1853 |
 | Functions declared `:verify-guards nil` and never verified | 302 |
-| Functions left at the default with an explicit guard | 2777 |
+| Functions left at the default with an explicit guard | 2779 |
 | Functions left at the default with no guard | 699 |
-| `assert-event` checks | 8150 |
+| `assert-event` checks | 8162 |
 | `must-fail` checks | 320 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 69 |
 | Export-hygiene warnings | 93 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 24 |
-| Include-hygiene warnings | 302 |
+| Include-hygiene warnings | 303 |
 | Host-names warnings | 664 |
 | Hand-written-record warnings | 18 |
 
@@ -186,6 +186,7 @@ that `make certify` requests.
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 0 |
 | `books/codec-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-invariants.lisp` | root | 34 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/config-physical-replay.lisp` | root | 3 | 5 | 3/0/2/0 | 0 | 0 | 0 |
 | `books/config-records.lisp` | root | 15 | 15 | 2/0/13/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 42 | 133 | 1/0/132/0 | 0 | 0 | 0 |
@@ -429,6 +430,7 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/codec-seam-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 15 | 0 | 0 |
+| `tests/acl2/config-physical-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/config-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 0 | 0 |
 | `tests/acl2/config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 95 | 0 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
