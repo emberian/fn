@@ -10,6 +10,7 @@
 (defparameter *bound-inflight* nil)
 (defparameter *bound-resolutions* nil)
 (defparameter *bound-flushes* 0)
+(defparameter *bound-logs* 0)
 (defparameter *bound-msgid* #(1 2))
 (defparameter *bound-payload* #(3 4))
 (defparameter *bound-groups* (list #(5)))
@@ -25,6 +26,9 @@
 (defun fnn-owner-submit-groups () *bound-groups*)
 (defun fnn-owner-feed-flush (service)
   (declare (ignore service)) (incf *bound-flushes*))
+; Operator logging is a side effect after the ACL2 outcome. It does not make
+; or persist the decision; count the deployed call without replacing either.
+(defun fnn-owner-log () (incf *bound-logs*))
 (defun fnn-owner-attempt (&rest ignored)
   (declare (ignore ignored)) (error "default commit unexpectedly called"))
 (defun fnn-owner-action (name &rest args)
@@ -62,7 +66,7 @@
               :accepted)
     (error "valid custom commit after refusal was not accepted")))
 
-(unless (and (not *bound-inflight*) (= *bound-flushes* 4)
+(unless (and (not *bound-inflight*) (= *bound-flushes* 4) (= *bound-logs* 2)
              (equal (reverse *bound-resolutions*) '(:refused :durable)))
   (error "bound submission cleanup/resolution mismatch"))
 
