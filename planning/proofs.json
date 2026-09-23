@@ -2227,6 +2227,31 @@
         "planning/evidence/manifests/certify-20260923T211422Z-167141.json"
       ],
       "progress_note": "The selector and accepted-event wrapper plus matching/mismatching principal, changed-key, From, relay and unbound historical event witnesses certify on hbox at the lane source. A source-matched saved-image CLI run and integrated reverse closure remain pending. The native command keeps generic candidate output and explicitly reports admission=unestablished."
+    },
+    {
+      "id": "PRF-066",
+      "title": "Experimental root-only topic admission is grounded in historical authorship and finite local policy",
+      "statement": "The executable root-only P3 component proposes an anchor only from an already accepted T10-bound root matching its verified controller/keyset and installed local administrator. A fresh report proposal requires the selected active root policy, verified author-ref roster membership, earlier same-topic parent admissions and finite remaining quota. Completed projection updates require the topic event to equal the recomputed proposal. Physical Store event/replay and owner publication correspondence are still required before a durable-admission claim.",
+      "milestone": "M3",
+      "requirements": [
+        "TOP-002"
+      ],
+      "depends_on": [
+        "PRF-065"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "events": [
+        "fn-th-fresh-report-is-grounded-in-current-root"
+      ],
+      "evidence": [
+        "books/topic-history-admission.lisp",
+        "tests/acl2/topic-history-admission-tests.lisp",
+        "planning/evidence/topic-history-admission-component-p3-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T214858Z-589315.json",
+        "planning/evidence/manifests/certify-20260923T215046Z-608772.json"
+      ],
+      "progress_note": "ACL2 root-only prepare/commit component and substantive negative fixtures certify at exact bytes on persvati. The theorem has no native Store caller yet; codec, same-journal publication, replay, administrator history and retention pins are open, so durable report admission is not established."
     }
   ]
 }

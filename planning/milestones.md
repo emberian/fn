@@ -26,6 +26,10 @@ witness and durable topic admission remain open. The new candidate selector
 compares a root's controller and keyset declaration against the verified
 principal and ordered keyset, while the historical selector first checks the
 schema-1 event/snapshot binding. It does not select governance or admission.
+An experimental root-only ACL2 component now prepares an administrator-installed
+anchor and roster/parent/quota-gated report admission from those bound T10
+events. Its physical Store event, replay and native owner publication are the
+next P3 join; no durable admission claim follows from the component alone.
 K6 now carries exact typed Store-event frames
 through the modeled surviving-link crash. The ordered whole-list scanner
 join now holds under the actual pair-10 byte/kernel relation; general K0 must
