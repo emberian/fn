@@ -24,6 +24,12 @@
         *bpnm-peer* *bpnm-adu* *bpnm-obs*))
 (defconst *bpnm-a0* (fn-bpn-step *bpnm-s0* *bpnm-enqueue*))
 
+; The logical function remains total for a malformed state even though its
+; guarded executable arm dispatches directly on maintained machine state.
+(assert-event
+ (equal (fn-bpn-step :malformed *bpnm-enqueue*)
+        (fn-bpn-answer :malformed nil)))
+
 ; Queue acceptance is withheld until the queued record is durable.
 (assert-event (equal (car (car (fn-bpn-answer-effects *bpnm-a0*))) :persist))
 (assert-event (not (fn-bpn-effect-kind-memberp

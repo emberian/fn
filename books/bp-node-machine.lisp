@@ -873,7 +873,13 @@
 (verify-guards fn-bpn-resume-jobs)
 
 (defun fn-bpn-replay-records (st records)
-  (declare (xargs :guard t :measure (acl2-count records)))
+  (declare (xargs :guard
+                  (and (fn-bpn-machine-statep st)
+                       (true-listp records)
+                       (<= (+ (fn-bpn-machine-state-next-token st)
+                              (len records))
+                           *fn-bpn-machine-max-records*))
+                  :measure (acl2-count records)))
   (if (atom records)
       (if (null records) (list :ready st) (list :fault st :improper-record-list))
     (if (not (fn-bpn-record-applicablep st (car records)))
@@ -881,7 +887,10 @@
       (fn-bpn-replay-records (fn-bpn-apply-record st (car records)) (cdr records)))))
 
 (defun fn-bpn-restart-step (st records sequence-ready)
-  (declare (xargs :guard t))
+  (declare (xargs :guard
+                  (and (fn-bpn-machine-statep st)
+                       (true-listp records)
+                       (<= (len records) *fn-bpn-machine-max-records*))))
   (let ((base (fn-bpn-initial-machine-state
                (fn-bpn-machine-state-config st)
                (fn-bpn-machine-state-max-jobs st)
@@ -920,22 +929,42 @@
     (and (fn-bpn-eventp (car events))
          (fn-bpn-event-listp (cdr events)))))
 
+; Native restart enumerates a bounded lifecycle namespace before invoking
+; the interpreter.  Other event operands are validated in their own arms.
+(defun fn-bpn-machine-eventp (event)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-bpn-eventp event)
+       (or (not (equal (car event) :restart))
+           (and (true-listp (nth 1 event))
+                (<= (len (nth 1 event)) *fn-bpn-machine-max-records*)))))
+
+(defun fn-bpn-dispatch (st event)
+  (declare (xargs :guard (and (fn-bpn-machine-statep st)
+                              (fn-bpn-machine-eventp event))))
+  (case (car event)
+    (:enqueue
+     (fn-bpn-enqueue-step st (nth 1 event) (nth 2 event) (nth 3 event)
+                          (nth 4 event) (nth 5 event) (nth 6 event)
+                          (nth 7 event) (nth 8 event)))
+    (:contact (fn-bpn-contact-step st (nth 1 event) (nth 2 event)))
+    (:resume (fn-bpn-start-one st (nth 1 event)))
+    (:persist-result (fn-bpn-persist-result-step st (nth 1 event) (nth 2 event)))
+    (:forward-result (fn-bpn-forward-result-step st (nth 1 event) (nth 2 event)))
+    (:clock (fn-bpn-clock-step st (nth 1 event)))
+    (:restart (fn-bpn-restart-step st (nth 1 event) (nth 2 event)))
+    (otherwise (fn-bpn-answer st nil))))
+
+; The logic retains its total malformed-state response.  The executable
+; arm relies on the verified guard carried by the native service and skips
+; a whole-state recognizer on every served event.  MBE guard verification
+; establishes that the two arms agree under that guard.
 (defun fn-bpn-step (st event)
-  (declare (xargs :guard t))
-  (if (not (fn-bpn-machine-statep st))
-      (fn-bpn-answer st nil)
-    (case (car event)
-      (:enqueue
-       (fn-bpn-enqueue-step st (nth 1 event) (nth 2 event) (nth 3 event)
-                            (nth 4 event) (nth 5 event) (nth 6 event)
-                            (nth 7 event) (nth 8 event)))
-      (:contact (fn-bpn-contact-step st (nth 1 event) (nth 2 event)))
-      (:resume (fn-bpn-start-one st (nth 1 event)))
-      (:persist-result (fn-bpn-persist-result-step st (nth 1 event) (nth 2 event)))
-      (:forward-result (fn-bpn-forward-result-step st (nth 1 event) (nth 2 event)))
-      (:clock (fn-bpn-clock-step st (nth 1 event)))
-      (:restart (fn-bpn-restart-step st (nth 1 event) (nth 2 event)))
-      (otherwise (fn-bpn-answer st nil)))))
+  (declare (xargs :guard (and (fn-bpn-machine-statep st)
+                              (fn-bpn-machine-eventp event))))
+  (mbe :logic (if (not (fn-bpn-machine-statep st))
+                  (fn-bpn-answer st nil)
+                (fn-bpn-dispatch st event))
+       :exec (fn-bpn-dispatch st event)))
 
 (defun fn-bpn-trace (st events)
   (declare (xargs :guard t))

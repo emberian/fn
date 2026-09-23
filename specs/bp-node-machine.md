@@ -99,8 +99,12 @@ provenance. `session` is a pair of unsigned 64-bit counters, `xfer` and
 nil or bounded canonical text octets. This checks replayable provenance shape;
 the host must still establish that the principal was admitted by the current
 session configuration. The foundation delegates outbound events to
-`fn-bpn-step` and is not the native service caller yet. Its helper guards are
-verified, but the top-level step inherits open guards from `fn-bpn-step`.
+`fn-bpn-step` and is not the native service caller yet. The inherited
+`fn-bpn-step`, its bounded restart replay, and `fn-bpnf-step` have verified
+guards in `bp-node-machine-guards.lisp`. A native caller of the foundation
+must carry the base-state invariant and validate delegated outbound events
+at the boundary; guard verification alone does not establish those facts for
+the current service adapter.
 If the FNBS kind-5 encoder refuses a proposed record as non-frameable, the
 native effect driver must return the matching `:persist-result` with
 `:refused`; it cannot issue a stored receive answer or leave a pending
@@ -616,19 +620,13 @@ re-anchoring. These three are the vocabulary of T6.
 
 ### 2.7 No whole-state revalidation on the served path
 
-`fn-bpn-step` evaluates `fn-bpn-machine-statep` on entry
-(`bp-node-machine.lisp:642`): `fn-bpb-bundlep` over every held bundle on
-every event (D7). `fn-bpn-step-fast` is the same dispatcher validating only
-the event's operands, and
-
-```lisp
-(defthm fn-bpn-step-fast-is-step
-  (implies (fn-bpn-lifecycle-invariantp st)
-           (equal (fn-bpn-step-fast st event) (fn-bpn-step st event))))
-```
-
-is the equation under which every theorem of §5 is about the function
-`fnn-bps-step` calls. The audit extends past `fn-bpn-step`:
+`fn-bpn-step` retains its total logical malformed-state response but its
+verified `mbe` executable arm calls `fn-bpn-dispatch` directly. The guard is
+`fn-bpn-machine-statep` together with `fn-bpn-machine-eventp`; ACL2 guard
+verification proves agreement of the logical and executable arms under that
+guard. The current native adapter calls this exact `fn-bpn-step` subject;
+before relying on the fast arm, the host must establish and carry those guard
+premises across calls. The audit extends past `fn-bpn-step`:
 `fn-bpn-existing-sequence` (`bp-node-machine.lisp:284`) also evaluates
 `fn-bpn-machine-statep` (D8) and is replaced by the carrier lookup of §4.4;
 slice A lists every `fnn-core` call in `host/native/bp-service.lisp`,
