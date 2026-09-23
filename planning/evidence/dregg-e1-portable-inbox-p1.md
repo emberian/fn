@@ -71,6 +71,31 @@ resulting binary. Four-event conflict inbox export, run at the intermediate
 intermediate repeat found its active stacks under
 `NativeHostReplay.derive → DeclaredResourceController.physicalShapeCheck →
 writes → ResourceBirthCodec.physicalRoot → Sp800185Cshake256.absorbPadded`.
+The final binary's `consumer-export-reply` separately re-admitted all four
+events in 78.47 s wall and returned the exact original Q bytes. A 5-second
+sample during that final replay had 2,635 of 3,599 stacks under
+`NativeHostReplay.derive → DeclaredResourceController.prepare/collect →
+prepareTarget/computeTarget`, including repeated
+`HyperdocumentContentPageMaterializer.rootBytes → Sp800185Cshake256`.
+`Materialized.root` re-encodes and re-hashes its complete logical content
+page by definition; no cross-call cached root representation is yet proved.
+
+The final repeat timing invoked the exact native host with
+`/usr/bin/time -lp minidregg-fn-portable-inbox-context CONSUMER-CONFIG.json
+portable-consumer-decide ORIGIN-PIN.json FN-PIN.json CLAIM.json POLICY.json
+CARRIER.eml INTENT.bin DECISION.json`. The synthetic consumer configuration
+at `/tmp/mini-fn-portable-inbox-native-20260923/deployment/pinned-config.json`
+had SHA-256 `a5deb16b0e5cb03becf5a2b2c2d8efbb632fd56a56cb635a0606f5a3678eec67`;
+the original Mini origin pin and fn keyset pin had SHA-256
+`259b821fb87d2728a4d07a039509cc5763d7a40d17583dd82ed7a6d67eca324b`
+and `f7640d305ae1a6c02fb2800f8aa36c258a2027384ead980eb7711e570d221cdd`.
+The original carrier is the fixture's `first-carrier.eml`, SHA-256
+`dc5c8b864227ad808f8feef7b574bce6d8be2f1798ca1a3db8c14a7e63872e1e`.
+The final four-event SQLite byte image was 461,188 bytes, SHA-256
+`9cd1a733e7ad00370428fc6b376009b4eda0f5795f80b416059b3fe2f2829880`.
+These scratch pins and image are not published in the fixture, so the public
+packet preserves the exact signed calls and exports but is not a turnkey
+recreation of the native process run.
 The bounds are 32,768 carrier octets, 36,864 typed inbox octets, 18,432
 binding octets and 16 accepted consumer events; these timings cover two
 about-30 KB retained carrier atoms, not a scaling study. This remaining

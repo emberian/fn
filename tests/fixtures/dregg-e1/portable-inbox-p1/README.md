@@ -30,3 +30,5 @@ The full test scope, native image and Mini source hashes, timing, trust
 boundary and command results are in
 `planning/evidence/dregg-e1-portable-inbox-p1.md`. Portable fn authorship is
 not local fn Store acceptance, and Mini confirmation is not an E2 ack.
+`hash-benchmark.lean` is the exact standalone timing driver for the existing
+Mini Lean cSHAKE implementation; it makes no semantic decision.
