@@ -258,8 +258,10 @@ PLAN = (
     # -- F-NODE ----------------------------------------------------------
     S("V0-NODE-INIT", "F-NODE", "fn init creates the store and writes fn.toml",
       ("HST-003",), ("SCN-021",), ACCEPTED, "node"),
-    S("V0-NODE-CONFIG", "F-NODE", "fn.toml carries [store] path and [acl2] path",
-      ("HST-004",), ("SCN-021",), ACCEPTED, "node"),
+    S("V0-NODE-CONFIG", "F-NODE",
+      "the native operator initializes the store named by fn.toml [store] path",
+      ("HST-003",), ("SCN-021",), ACCEPTED, "node",
+      "the native image embeds ACL2; its configuration has no [acl2] path"),
     S("V0-NODE-REINIT", "F-NODE",
       "what a second fn init over a store that already holds articles does",
       ("HST-003",), ("SCN-021",), None, "node",
@@ -3952,6 +3954,7 @@ FN_NATIVE_HOST="$image" packaging/fn-native operator /not-opened help run
 
     def native_peering_suite(self):
         """Run the existing public two-node witness and map only its observations."""
+        public_feed_keys = ("V0-FEED-QUEUE", "V0-FEED-OFFER", "V0-FEED-JOURNAL")
         image = shlex.quote(self.native_image)
         source = shlex.quote(self.native_image_source or "")
         step = self.sh("native public peering/restart witness", self.cd(r"""
@@ -3999,7 +4002,7 @@ exit "$rc"
                 expected[key.rsplit("-", 1)[-1].lower()] = value.strip()
         observed = "witnesses={} rc={}".format(len(witnesses), step.rc)
         if step.rc != 0 or transit is None or restart is None:
-            self.blocked(self.TRANSIT_KEYS + self.FEED_KEYS,
+            self.blocked(self.TRANSIT_KEYS + public_feed_keys,
                          "the native public witness did not produce both structured "
                          "transit/feed and requeue/restart observations ({})"
                          .format(observed), invocation=step.command)
@@ -4029,7 +4032,7 @@ exit "$rc"
                 if not identities_valid:
                     break
         if not identities_valid:
-            self.blocked(self.TRANSIT_KEYS + self.FEED_KEYS,
+            self.blocked(self.TRANSIT_KEYS + public_feed_keys,
                          "the native witness did not confirm each required live owner "
                          "runtime/core against nonempty SHA-256 expected digests ({})"
                          .format(observed),
@@ -4078,9 +4081,8 @@ exit "$rc"
             self.blocked(("V0-FEED-QUEUE", "V0-FEED-OFFER", "V0-FEED-JOURNAL"),
                          "malformed native feed/restart witness {} {}".format(feed, restart),
                          invocation=step.command)
-        self.blocked(("V0-FEED-ONCE",),
-                     "435 answers a manually opened inbound IHAVE; this witness does not "
-                     "observe the owner queue after acknowledgement", invocation=step.command)
+        # V0-FEED-ONCE is owned by the protected restart witness below: the
+        # manual 435 above says nothing about the outbound owner's queue.
 
     PROTECTED_KEYS = ("V0-TRANSIT-TLS", "V0-TRANSIT-AUTHINFO",
                       "V0-TRANSIT-TLS-WRONG-ANCHOR", "V0-TRANSIT-AUTHINFO-WRONG")
@@ -4090,7 +4092,9 @@ exit "$rc"
         "tests.test_native_protected_peering.NativeProtectedPeeringTests."
         "test_bad_outbound_password_yields_authenticated_430_observation",
         "tests.test_native_protected_peering.NativeProtectedPeeringTests."
-        "test_untrusted_certificate_yields_430_and_feed_journal_evidence")
+        "test_untrusted_certificate_yields_430_and_feed_journal_evidence",
+        "tests.test_native_protected_peering.NativeProtectedPeeringTests."
+        "test_acknowledged_protected_feed_does_not_reoffer_after_source_death")
 
     def native_protected_peering_suite(self):
         """The owner's feed over STARTTLS and AUTHINFO, both ways, and its refusals.
@@ -4115,12 +4119,13 @@ runtime_expected=$(digest "$runtime_path")
 core_before=$(digest "$image.core")
 echo "NATIVE-PROTECTED-EXPECTED-RUNTIME $runtime_expected"
 echo "NATIVE-PROTECTED-EXPECTED-CORE $core_before"
-FN_NATIVE_HOST="$image" FN_NATIVE_IMAGE_SOURCE_SHA={source} \
+FN_ACL2={acl2} FN_NATIVE_HOST="$image" FN_NATIVE_IMAGE_SOURCE_SHA={source} \
 FN_NATIVE_LAUNCHER_SHA256="$(digest "$image")" FN_NATIVE_CORE_SHA256="$core_before" \
 FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
   python3 -m unittest {tests} -v
 """.format(image=image, source=shlex.quote(self.native_image_source or ""),
              runtime=shlex.quote(self.native_runtime or ""),
+             acl2=shlex.quote(self.acl2),
              tests=" ".join(self.PROTECTED_TESTS))), timeout=900, expect=None)
         expected, witnesses = {}, []
         for line in step.output.splitlines():
@@ -4148,6 +4153,11 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                             for role in ("a", "b")))
 
         observed = "witnesses={} rc={}".format(len(witnesses), step.rc)
+        if step.rc != 0:
+            self.blocked(self.PROTECTED_KEYS + ("V0-FEED-ONCE",),
+                         "the protected native test suite did not finish cleanly ({})"
+                         .format(observed), invocation=step.command)
+            return
         feed = next((w for w in witnesses if w.get("kind") == "protected-feed"), None)
         if feed is None or not owners_are_the_image(feed):
             self.blocked(("V0-TRANSIT-TLS", "V0-TRANSIT-AUTHINFO"),
@@ -4201,6 +4211,39 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                                      "excluded")
             else:
                 self.blocked((key,), "malformed {} observation {}".format(case, fact),
+                             invocation=step.command)
+        once = next((w for w in witnesses if w.get("kind") == "feed-once"), None)
+        if once is None or not owners_are_the_image(once):
+            self.blocked(("V0-FEED-ONCE",),
+                         "no protected restart witness tied the durable owner "
+                         "queue to this run's live image ({})".format(observed),
+                         invocation=step.command)
+        else:
+            before, after = once.get("before", {}), once.get("after", {})
+            first, last = before.get("records", {}), after.get("records", {})
+            if (once.get("security") == "starttls" and once.get("auth") == "authinfo"
+                    and once.get("source_killed") is True
+                    and once.get("source_restarted") is True
+                    and once.get("recipient_articles") == 1
+                    and before.get("state_before_restart") == "done"
+                    and before.get("state_after_restart") == "done"
+                    and after.get("state_after_restart") == "done"
+                    and first.get("feed-outcome", 0) >= 1
+                    and first.get("feed-offer", 0) >= 1
+                    and first.get("feed-offer") == last.get("feed-offer")
+                    and first.get("feed-sent") == last.get("feed-sent")):
+                self.emit_once("V0-FEED-ONCE", ACCEPTED, step.command,
+                               json.dumps(once, sort_keys=True),
+                               client=CLIENT_DRIVER,
+                               limit="the ACL2 FNFD scanner/replay found :done before "
+                                     "and after sender SIGKILL/restart; offer/sent "
+                                     "record counts did not grow over two seconds, and "
+                                     "the recipient's public status reported one article")
+            else:
+                self.blocked(("V0-FEED-ONCE",),
+                             "protected restart lacked a settled owner queue and "
+                             "one-copy recipient observation: {}".format(
+                                 json.dumps(once, sort_keys=True)),
                              invocation=step.command)
 
     def native_config_status(self, node):
@@ -4299,10 +4342,11 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
         port = self.INIT_OWNER_PORTS[node.name]
         # Every path here is a `$HOME/...` shell expression by construction
         # (see `Raw`), so none of them is quoted.
-        self.sh("node {} init scratch configuration".format(node.upper), self.cd(
+        configured = self.sh("node {} init scratch configuration".format(node.upper), self.cd(
             "mkdir -p {scratch} && printf '[store]\\npath = \"%s\"\\n[listener]\\n"
             "host = \"127.0.0.1\"\\nport = {port}\\n[control]\\npath = \"%s\"\\n' "
-            "\"{store}\" \"{scratch}/control.sock\" > {config}".format(
+            "\"{store}\" \"{scratch}/control.sock\" > {config} && "
+            "printf 'MATRIX-CONFIG-STORE %s\\n' \"{store}\"".format(
                 scratch=scratch, store=store, port=port, config=config)),
             timeout=900, expect=None)
         created = self.sh("node {} operator init".format(node.upper), self.cd(
@@ -4316,14 +4360,25 @@ FN_NATIVE_RUNTIME_SHA256="$runtime_expected" \
                              "`init` with no group is a usage error and not a store "
                              "nobody chose the contents of. A scratch node beside the "
                              "served one: nothing here changes what the node serves")
-        self.emit("V0-NODE-CONFIG", NOT_BUILT,
-                  self.native_command(self.Raw(config), "init", self.native_group),
-                  "(not run)", node=node.name,
-                  blocker="the native configuration has no `[acl2] path`: ACL2 is "
-                          "inside the image, so half of this row has no native "
-                          "subject. The `[store] path` half is what the row above "
-                          "consumed, and no native verb writes an fn.toml",
-                  owner="native configuration schema")
+        # This is the native configuration contract.  The operator consumes
+        # the supplied [store] path; ACL2 is embedded in the saved image.
+        # An accepted init alone is insufficient if it names another store.
+        configured_paths = [line.split(" ", 1)[1] for line in configured.output.splitlines()
+                            if line.startswith("MATRIX-CONFIG-STORE ")]
+        config_observed = ("initialized {}".format(configured_paths[0])
+                           if configured.rc == 0 and len(configured_paths) == 1 else "")
+        if config_observed and created.rc == EXIT_OK and config_observed in created.output.splitlines():
+            self.emit("V0-NODE-CONFIG", ACCEPTED, created.command,
+                      config_observed, node=node.name, exit_code=created.rc,
+                      limit="the scratch fn.toml named this store and the native "
+                            "operator reported initializing that exact path; "
+                            "this does not test an obsolete [acl2] path")
+        else:
+            self.emit("V0-NODE-CONFIG", NOT_EXERCISED, created.command,
+                      created.first_line or "(no output)", node=node.name,
+                      blocker="native init did not report the exact configured "
+                              "store path, so configuration-to-store binding "
+                              "was not observed", exit_code=created.rc)
         if created.rc != EXIT_OK:
             self.blocked(("V0-NODE-REINIT", "V0-NODE-REINIT-SAFE"),
                          "the operator could not create the scratch store (rc={} {}), "
