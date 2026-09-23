@@ -41,6 +41,25 @@
  (fn-ocri-conns-p
   (fn-own-conns (fn-ocfg-owner
                  (cdr (fn-ocfg-read *ocri-live* 0 *ocri-new-group*))))))
+(assert-event
+ (fn-ocri-relation
+  (cdr (fn-ocfg-read *ocri-live* 0 *ocri-new-group*))))
+(assert-event
+ (fn-ocri-relation
+  (cdr (fn-ocfg-read *ocri-live* 1 *ocri-new-group*))))
+; The full read theorem needs the incoming historical reader relation.  A
+; forged old pin survives a read as a forged pin; the result is still outside
+; that relation.
+(assert-event (not (fn-ocri-relation *ocl-t-forged-old-pin*)))
+(assert-event
+ (not (fn-ocri-relation
+       (cdr (fn-ocfg-read *ocl-t-forged-old-pin*
+                          0 *ocri-new-group*)))))
+(local
+ (must-fail
+  (defthm ocri-read-without-relation-is-not-preserved
+    (fn-ocri-relation (cdr (fn-ocfg-read oc id octets)))
+    :rule-classes nil)))
 
 ; The selected wire hypothesis has a real separator.  The forged wire has
 ; the fast spine but an invalid retained octet; the full read refuses it.
