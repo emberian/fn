@@ -18,3 +18,9 @@
            (fn-record-stampp (fn-record-stamp-of-observation obs)))
   :hints (("Goal" :in-theory (enable fn-record-stamp-of-observation
                                      fn-record-stampp fn-record-uint32p))))
+
+(defthm fn-record-stamp-of-observation-is-natural-or-unusable
+  (or (natp (fn-record-stamp-of-observation obs))
+      (equal (fn-record-stamp-of-observation obs) :clock-unusable))
+  :hints (("Goal" :in-theory (enable fn-record-stamp-of-observation
+                                     fn-clock-observationp fn-clock-timep))))

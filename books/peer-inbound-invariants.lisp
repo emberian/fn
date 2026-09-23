@@ -15,11 +15,36 @@
 ; -----------------------------------------------------------------------------
 ; K1. Peering refines acceptance
 
+; An unusable observation makes the peer transfer defer before prepare; the
+; same invalid stamp makes the post path's prepare an identity transition.
+(local
+ (defthm fn-peer-invalid-stamp-prepare-is-no-op
+   (implies (not (fn-record-stampp stamp))
+            (equal (fn-node-prepare node generation msgid payload groups
+                                    obligation-id subject evidence charge stamp)
+                   node))
+   :hints (("Goal" :in-theory (enable fn-node-prepare fn-accept-prepare)))))
+
+(local
+ (defthm fn-peer-unusable-observation-gives-invalid-stamp
+   (implies (not (natp (fn-record-stamp-of-observation clock)))
+            (not (fn-record-stampp (fn-record-stamp-of-observation clock))))
+   :hints (("Goal" :use ((:instance
+                            fn-record-stamp-of-observation-is-natural-or-unusable
+                            (obs clock)))
+            :in-theory (enable fn-record-stampp)))))
+
+(local
+ (defthm fn-peer-injection-stamp-is-owner-observation
+   (equal (nth 8 (fn-peer-injection-arguments
+                  node cfg peer msgid octets generation id subject clock))
+          (fn-record-stamp-of-observation clock))
+   :hints (("Goal" :in-theory (e/d (fn-peer-injection-arguments)
+                                   (fn-article-parse
+                                    fn-af-relayed-article-check))))))
+
 ; The node a transit transfer produces is the node the post path produces on
-; the arguments ACL2 computes from the same octets.  No hypothesis: the
-; function is that call by construction, so the statement carries none, and
-; fn-node-statep enters only through fn-node-prepare's own refusal of a
-; non-state (fn-node-prepare-preserves-state, books/node-invariants.lisp).
+; the arguments ACL2 computes from the same octets, including clock refusal.
 (defthm fn-peer-transfer-is-the-post-path
   (implies (equal (fn-peer-decision-kind
                    (fn-peer-decide-transfer node cfg peer msgid octets clock
@@ -29,10 +54,11 @@
                   (let ((a (fn-peer-injection-arguments node cfg peer msgid octets generation id subject clock)))
                     (fn-node-prepare node (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a)
                                      (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a)))))
-  :hints (("Goal" :in-theory (e/d (fn-peer-transfer)
-                                  (fn-peer-decide-transfer
-                                   fn-peer-injection-arguments
-                                   fn-node-prepare)))))
+  :hints (("Goal" :cases ((natp (fn-record-stamp-of-observation clock)))
+           :in-theory (e/d (fn-peer-transfer)
+                           (fn-peer-decide-transfer fn-node-prepare
+                            fn-peer-injection-arguments
+                            fn-record-stamp-of-observation)))))
 
 ; A transfer the decision refuses, defers or already has leaves the node
 ; exactly as it was.  -by-definition: the branch test is the hypothesis.
