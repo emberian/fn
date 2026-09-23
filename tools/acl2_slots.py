@@ -12,7 +12,7 @@ for any reason, including a kill: a crashed run leaks no slot.  The pool is
 per-machine, not per-worktree, so lanes running in different worktrees and
 different shells still share one cap.
 
-``FN_ACL2_SLOTS`` sets the pool size (default 4 on darwin, 16 elsewhere);
+``FN_ACL2_SLOTS`` sets the pool size (default 8 on darwin, 16 elsewhere);
 ``FN_ACL2_SLOT_DIR`` relocates the lock files, which tests use to get a private
 pool.  Waiting is the point: a tool blocks until a slot frees rather than
 starting an ACL2 the machine cannot afford, and logs that it is waiting once a
@@ -31,7 +31,10 @@ import time
 from typing import Callable, Iterator
 
 
-DEFAULT_SLOTS = {"darwin": 4}
+# 2026-09-23: this Mac has 12 cores and 96 GB, and six lanes' sessions
+# starved on four slots (an eleven-minute wait to start one); seven live
+# sessions used 5.2 GB between them.  Eight leaves four cores for the rest.
+DEFAULT_SLOTS = {"darwin": 8}
 FALLBACK_SLOTS = 16
 DEFAULT_SLOT_DIR = "~/.cache/fn-acl2-slots"
 REPORT_SECONDS = 60.0
