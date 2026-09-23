@@ -5,8 +5,11 @@ communication infrastructure for humans, agents and the systems in
 `/Users/ember/dev/breadstuffs` and `/Users/ember/dev/minidregg`. The completed
 [Astra repository study](dregg-os-integration-2026-09-23.md) grounds OS
 integration in those repositories' actual execution, persistence and authority
-models. A Sol lane now implements bounded native Mini evidence export and
-read-only verification in an isolated Mini worktree using a public fixture. The [swarm board](swarm-board.md) names the
+models. Mini P0 now exports and independently verifies a bounded public native
+receipt/prefix package. The exact hybrid carrier is 29,918 bytes;
+[the measured fixture](evidence/dregg-e1-payload-budget.md) is committed.
+The Mini lane proceeds to native durable operation binding and reply outbox
+transactions in its isolated worktree. The [swarm board](swarm-board.md) names the
 active implementation lanes and coordination boundaries. Image cuts identify
 reproducible experiments and do not stop project-wide development.
 
@@ -34,19 +37,27 @@ changed-root certification. The combined native image is the next test subject.
 A3 application handoff and separately queued return receipts are being implemented. Kind-5 persistence
 proofs alone are not a native receive or end-to-end receipt guarantee.
 
-Historical live configuration and recovery, durable exact-source author
-bindings, pinned reader verdicts, served Message-ID indexing and durable
-consumer Store events advance concurrently. Their shared data shapes are
-coordinated directly. Consumer-owned inbox/outbox transactions remain distinct
+Historical live configuration/recovery and durable exact-source author
+bindings are integrated. The frozen `295bbe35` developer image passed live
+configuration and T10a author/reopen/independent-carrier tests;
+[that scope](evidence/native-t8-t10a-295bbe35-2026-09-23.md) excludes the
+pending HDR verdict path. Pinned reader verdicts, served Message-ID indexing
+and durable consumer Store events advance concurrently. The consumer
+completed-prefix relation is being strengthened before its native CLI joins. Consumer-owned inbox/outbox transactions remain distinct
 from fn cursor acknowledgements, transport-attempt ACKs and retention receipts.
 The separate bounded human web reader/composer is integrated and exercised
 through native NNTP and a browser. Repeated form submissions preserve exact
 source and Message-ID in bounded process memory; they are not a durable client
 spool. See [the client contract](../docs/human-web-client.md).
 
-The K5 conditional byte-crash prefix result has landed; the durability lane
-continues the K8 fence bridge and K6 provenance obligations. General K0 and
-physical platform qualification remain open. Release scope still follows
+The K5 prefix result and corrected K8 issued-link post-fence crash-scan
+theorem are integrated with explicit hypotheses and negative witnesses.
+K6 raw-write provenance and general K0 call-trace establishment remain open.
+An isolated ext4 device-EIO campaign observed actual directory-fsync failure,
+native uncertainty and successful recovery; this does not qualify physical
+power loss or production ZFS. The BP native campaign also exposed process-
+relative persisted age timestamps. A clock-domain/boot recovery contract and
+actual monotonic expiry tests are in progress. Release scope still follows
 [the trajectory](plan-2026-09-22-trajectory.md) and
 [takeover contracts](takeover-2026-09-23.md), with wider concurrent execution
 under [how we work](how-we-work.md). Independently governed topic histories
