@@ -10,17 +10,17 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 455 |
-| Certification roots in the Makefile | 450 |
-| Books inside the root closure | 454 |
-| `defthm` and `defthmd` events | 7367 |
-| `defun` events | 5628 |
+| Books read | 457 |
+| Certification roots in the Makefile | 452 |
+| Books inside the root closure | 456 |
+| `defthm` and `defthmd` events | 7376 |
+| `defun` events | 5656 |
 | Functions with verified guards | 1850 |
 | Functions declared `:verify-guards nil` and never verified | 302 |
 | Functions left at the default with an explicit guard | 2777 |
-| Functions left at the default with no guard | 699 |
-| `assert-event` checks | 8150 |
-| `must-fail` checks | 320 |
+| Functions left at the default with no guard | 727 |
+| `assert-event` checks | 8182 |
+| `must-fail` checks | 324 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 69 |
 | Export-hygiene warnings | 93 |
@@ -189,6 +189,7 @@ that `make certify` requests.
 | `books/config-records.lisp` | root | 15 | 15 | 2/0/13/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 42 | 133 | 1/0/132/0 | 0 | 0 | 0 |
+| `books/consumer-position.lisp` | root | 9 | 27 | 0/0/0/27 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
 | `books/crypto-attach.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -431,6 +432,7 @@ that `make certify` requests.
 | `tests/acl2/codec-seam-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 15 | 0 | 0 |
 | `tests/acl2/config-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 41 | 0 | 0 |
 | `tests/acl2/config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 95 | 0 | 0 |
+| `tests/acl2/consumer-position-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 32 | 4 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/defrecord-tests.lisp` | root | 37 | 20 | 9/0/11/0 | 39 | 1 | 2 |
