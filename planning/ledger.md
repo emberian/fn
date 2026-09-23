@@ -13,20 +13,20 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 525 |
 | Certification roots in the Makefile | 520 |
 | Books inside the root closure | 524 |
-| `defthm` and `defthmd` events | 7970 |
+| `defthm` and `defthmd` events | 7973 |
 | `defun` events | 5988 |
 | Functions with verified guards | 1961 |
 | Functions declared `:verify-guards nil` and never verified | 321 |
 | Functions left at the default with an explicit guard | 2948 |
 | Functions left at the default with no guard | 758 |
-| `assert-event` checks | 8694 |
+| `assert-event` checks | 8698 |
 | `must-fail` checks | 396 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 72 |
 | Export-hygiene warnings | 101 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 28 |
-| Include-hygiene warnings | 390 |
+| Include-hygiene warnings | 391 |
 | Host-names warnings | 750 |
 | Hand-written-record warnings | 18 |
 
@@ -154,8 +154,8 @@ that `make certify` requests.
 | `books/bp-receive-evidence.lisp` | root | 4 | 25 | 0/6/0/19 | 0 | 0 | 0 |
 | `books/bp-receiver-context-invariants.lisp` | root | 20 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/bp-receiver-evolving-history-invariants.lisp` | root | 34 | 8 | 0/0/0/8 | 0 | 0 | 0 |
-| `books/bp-receiver-evolving-node-invariants.lisp` | root | 37 | 1 | 0/0/0/1 | 0 | 0 | 0 |
-| `books/bp-receiver-evolving-store-invariants.lisp` | root | 28 | 11 | 0/0/0/11 | 0 | 0 | 0 |
+| `books/bp-receiver-evolving-node-invariants.lisp` | root | 38 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/bp-receiver-evolving-store-invariants.lisp` | root | 30 | 11 | 0/0/0/11 | 0 | 0 | 0 |
 | `books/bp-receiver-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-receiver-journal-invariants.lisp` | root | 10 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/bp-receiver-retention-invariants.lisp` | root | 15 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -395,7 +395,7 @@ that `make certify` requests.
 | `books/wire-invariants.lisp` | root | 53 | 5 | 1/1/1/2 | 0 | 0 | 0 |
 | `books/wire-outbound-invariants.lisp` | root | 66 | 6 | 0/2/4/0 | 0 | 0 | 0 |
 | `books/wire.lisp` | root | 50 | 69 | 49/0/20/0 | 0 | 0 | 1 |
-| `tests/acl2/acceptance-stamp-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 51 | 14 | 0 |
+| `tests/acl2/acceptance-stamp-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 55 | 14 | 0 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 246 | 0 | 0 |
 | `tests/acl2/anchor-replace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/anchor-server-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
