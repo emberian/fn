@@ -110,35 +110,41 @@ class NativeHybridAuthorTest(unittest.TestCase):
             refused = self.invoke("hybrid-author", *(common + [str(bad), str(self.ml_public)]))
             self.assertEqual(refused.returncode, 1, refused.stderr.decode())
 
-            # Signed source and carrier are well formed, but the group is
-            # outside the current Store domain.  This reaches the bound
-            # identity commit after :take; its known refusal must produce a
-            # control outcome so the next valid request is not :busy.
-            unknown = self.root / "unknown-group.eml"
-            unknown_id = "<hybrid-unknown-group@example.invalid>"
-            unknown.write_bytes(article.read_bytes().replace(
-                b"Newsgroups: fn.test", b"Newsgroups: fn.unknown").replace(
-                msgid.encode(), unknown_id.encode()))
-            unknown_signed = self.invoke(
-                "hybrid-sign", str(self.principal), str(self.ed_public),
-                str(self.ed_secret), str(self.ml_public), str(self.ml_private),
-                str(unknown))
-            self.assertEqual(unknown_signed.returncode, 0,
-                             unknown_signed.stderr.decode())
-            unknown_parts = dict(line.split() for line in
-                                 unknown_signed.stdout.decode().splitlines())
-            unknown_ed, unknown_ml = self.root / "unknown-ed.sig", self.root / "unknown-ml.sig"
-            unknown_ed.write_bytes(bytes.fromhex(unknown_parts["ed25519"]))
-            unknown_ml.write_bytes(bytes.fromhex(unknown_parts["ml-dsa-65"]))
-            unknown_refused = self.invoke(
-                "hybrid-author", str(self.control), "1", str(unknown),
-                str(unknown_ed), str(unknown_ml), str(self.ml_public))
-            self.assertEqual(unknown_refused.returncode, 1,
-                             unknown_refused.stderr.decode())
-            self.assertIn("refused post path=control message-id=" + unknown_id,
-                          self.service_log.read_text())
             accepted = self.invoke("hybrid-author", *(common + [str(ml_sig), str(self.ml_public)]))
             self.assertEqual(accepted.returncode, 0, accepted.stderr.decode())
+
+            # The same Message-ID with a different, correctly signed source
+            # passes admission but must be refused by the bound Store commit.
+            # A distinct signed request then proves the control slot cleared.
+            def signed_variant(source, stem):
+                result = self.invoke(
+                    "hybrid-sign", str(self.principal), str(self.ed_public),
+                    str(self.ed_secret), str(self.ml_public), str(self.ml_private),
+                    str(source))
+                self.assertEqual(result.returncode, 0, result.stderr.decode())
+                values = dict(line.split() for line in result.stdout.decode().splitlines())
+                ed_path = self.root / (stem + "-ed.sig")
+                ml_path = self.root / (stem + "-ml.sig")
+                ed_path.write_bytes(bytes.fromhex(values["ed25519"]))
+                ml_path.write_bytes(bytes.fromhex(values["ml-dsa-65"]))
+                return [str(self.control), "1", str(source), str(ed_path),
+                        str(ml_path), str(self.ml_public)]
+
+            conflict = self.root / "conflict.eml"
+            conflict.write_bytes(article.read_bytes().replace(
+                b"exact bytes", b"conflicting bytes"))
+            conflicting = self.invoke("hybrid-author", *signed_variant(conflict, "conflict"))
+            self.assertEqual(conflicting.returncode, 1, conflicting.stderr.decode())
+            self.assertIn("refused post path=control message-id=" + msgid,
+                          self.service_log.read_text(),
+                          conflicting.stdout.decode() + "\n"
+                          + conflicting.stderr.decode())
+            fresh = self.root / "fresh.eml"
+            fresh.write_bytes(article.read_bytes().replace(
+                msgid.encode(), b"<hybrid-next-after-refusal@example.invalid>"))
+            next_result = self.invoke("hybrid-author", *signed_variant(fresh, "fresh"))
+            self.assertEqual(next_result.returncode, 0,
+                             next_result.stderr.decode() or next_result.stdout.decode())
             wrong_ed = self.root / "wrong-ed-public.bin"
             wrong_ed.write_bytes(bytes([99]) * 32)
             enrolled_b = self.invoke("hybrid-enroll", str(self.control), "2",
