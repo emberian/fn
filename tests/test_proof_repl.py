@@ -11,6 +11,7 @@ import json
 import os
 import pathlib
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -125,6 +126,37 @@ class CacheStartupTests(unittest.TestCase):
             self.assertFalse((sessions / "bad-cache").exists())
             self.assertFalse((target / "books/base.cert").exists())
             self.assertFalse((target / "books/mid.cert").exists())
+
+
+class ProcessLifetimeTests(unittest.TestCase):
+    def test_stopping_busy_session_stops_descendants_and_releases_output(self):
+        # A busy prover can have its own child holding the output pipe open.
+        # The old wrapper-only kill left both alive until their sleep ended.
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = base / "busy-acl2"
+            child = "import time; print('DESCENDANT_READY', flush=True); time.sleep(60)"
+            fake.write_text("#!" + sys.executable + "\nimport subprocess, sys, time\n"
+                            + "subprocess.Popen([sys.executable, '-c', " + repr(child) + "])\n"
+                            + "time.sleep(60)\n")
+            fake.chmod(0o755)
+            with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                    "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}):
+                session = proof_repl.Acl2("busy-test", base / "log")
+                try:
+                    self.assertEqual(session.lines.get(timeout=10).strip(), "DESCENDANT_READY")
+                    session.kill()
+                    self.assertIsNotNone(session.process.returncode)
+                    self.assertFalse(session.reader.is_alive())
+                    self.assertTrue(session.log.closed)
+                    # Stop is idempotent after the owned process group is gone.
+                    session.kill()
+                finally:
+                    try:
+                        os.killpg(session.process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    session.process.wait(timeout=5)
 
 
 class SessionTests(unittest.TestCase):

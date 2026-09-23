@@ -36,12 +36,14 @@ proof is found, put the event in the book and certify the book.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 from pathlib import Path
 import queue
 import re
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -131,10 +133,12 @@ class Acl2:
         self.process = subprocess.Popen(
             [sys.executable, str(ROOT / "tools" / "acl2"), "--label", label],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, bufsize=1, cwd=ROOT)
+            text=True, bufsize=1, cwd=ROOT, start_new_session=True)
+        self._terminated = False
         self.lines: queue.Queue = queue.Queue()
         self.counter = 0
-        threading.Thread(target=self._pump, daemon=True).start()
+        self.reader = threading.Thread(target=self._pump, daemon=True)
+        self.reader.start()
 
     def _pump(self) -> None:
         assert self.process.stdout is not None
@@ -175,11 +179,37 @@ class Acl2:
             collected.append(line)
 
     def kill(self) -> None:
+        if self._terminated:
+            return
+        # The immediate child is the slot wrapper, not ACL2. Killing only
+        # that wrapper releases its slot while a busy prover can keep running.
+        # This session owns a fresh process group containing both processes.
         try:
-            if self.alive():
-                self.process.kill()
-        finally:
-            self.log.close()
+            os.killpg(self.process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            # Darwin can report EPERM for a group containing only an exited
+            # child. Accept that case only after reaping the wrapper and
+            # observing EOF from every inherited output descriptor.
+            if self.process.poll() is None:
+                raise
+            self.reader.join(timeout=5)
+            if self.reader.is_alive():
+                raise
+        self.process.wait(timeout=5)
+        self.reader.join(timeout=5)
+        if self.reader.is_alive():
+            raise RuntimeError("proof-repl: output remains open after session termination")
+        self._terminated = True
+        self.log.close()
+        if self.process.stdin is not None:
+            # A graceful good-bye may leave a buffered sentinel whose reader
+            # has already exited. Closing that pipe is still successful cleanup.
+            with contextlib.suppress(BrokenPipeError):
+                self.process.stdin.close()
+        if self.process.stdout is not None:
+            self.process.stdout.close()
 
 
 def errored(output: str) -> bool:
@@ -239,6 +269,8 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
             break
         output, timed_out = acl2.send(form, load_timeout)
         if timed_out or errored(output):
+            if timed_out:
+                acl2.kill()
             state["stopped_at"] = event or head
             state["error"] = ("load timed out" if timed_out else brief(output))
             break
@@ -259,11 +291,18 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
             with connection:
                 request = json.loads(read_all(connection))
                 answer = handle(request, acl2, state, limit)
+                if request.get("op") == "stop":
+                    # A successful stop reply means the process group and
+                    # endpoint are gone, not merely that a request was read.
+                    acl2.kill()
+                    state["ready"] = False
+                    sock_path.unlink(missing_ok=True)
                 save()
                 connection.sendall(json.dumps(answer).encode("utf-8"))
                 if request.get("op") == "stop":
                     break
     finally:
+        server.close()
         acl2.kill()
         state["ready"] = False
         save()
