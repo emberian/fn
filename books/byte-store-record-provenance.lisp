@@ -1583,3 +1583,136 @@
                            (fn-bs-run fn-bs-record-program fn-bs-store-relation
                             fn-bs-statep fn-bs-lookup
                             fn-bs-k6-lookup-is-entry-after)))))
+
+; Local clause helpers for the still-open whole output relation.  The
+; staged input cannot carry a root operation (a pending frontier candidate
+; would contradict :record-staged), and P-RECORD only touches staging and
+; transactions through the attempted cut.
+(local
+ (defthm fn-bs-k0-record-staged-input-has-no-root-pending
+   (implies (and (fn-bs-store-relation bs ks)
+                 (equal (fn-sf-phase ks) :record-staged))
+            (not (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root))))
+   :rule-classes nil
+   :hints (("Goal" :use (fn-bs-store-relation-window-unfolds
+                          fn-bs-pending-matches-phase-unfolds)
+            :in-theory (enable fn-bs-replay-visiblep
+                               fn-sf-frontier-new-visiblep)))))
+
+(local
+ (defthm fn-bs-k0-related-input-file-cut-has-no-root-pending
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-record-inputp ks stage name frame)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (not (consp
+                  (fn-bs-ops-for-dir
+                   (fn-bs-pending
+                    (car (nth 5 (fn-bs-run bs ks
+                                           (fn-bs-record-program stage name frame)
+                                           nil groups capacity))))
+                   :root))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k0-record-staged-input-has-no-root-pending)
+                  (:instance fn-bs-k6-interpreted-record-fence-is-write-fence)
+                  (:instance fn-bs-store-relation-unfolds))
+            :in-theory (e/d (fn-bs-record-inputp fn-bs-create fn-bs-write
+                             fn-bs-fence-file fn-bs-ops-for-dir
+                             fn-bs-ops-for-dir-of-append)
+                            (fn-bs-run fn-bs-record-program fn-bs-statep
+                             fn-bs-store-relation fn-bs-lookup
+                             fn-bs-ops-not-for-ino))))))
+
+(local
+ (defthm fn-bs-k0-attempted-cut-has-no-root-pending
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-record-inputp ks stage name frame)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (not (consp
+                  (fn-bs-ops-for-dir
+                   (fn-bs-pending
+                    (car (nth 10 (fn-bs-run bs ks
+                                            (fn-bs-record-program stage name frame)
+                                            nil groups capacity))))
+                   :root))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k0-related-input-file-cut-has-no-root-pending)
+                  (:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                  (:instance fn-bs-k6-file-cut-source-is-fenced-frame)
+                  (:instance fn-bs-k6-state-next-ino-is-inop)
+                  (:instance fn-bs-k6-actual-link-cut-is-file-cut-link)
+                  (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state)
+                  (:instance fn-bs-store-relation-unfolds))
+            :in-theory (e/d (fn-bs-link fn-bs-ops-for-dir-of-append
+                             fn-bs-ops-for-dir fn-bs-record-inputp)
+                            (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                             fn-bs-statep fn-bs-lookup
+                             fn-bs-k6-lookup-is-entry-after))))))
+
+(local
+ (defthm fn-bs-k0-attempted-cut-has-pending-shape
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-record-inputp ks stage name frame)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (fn-bs-pending-shape-okp
+             (car (nth 10 (fn-bs-run bs ks
+                                          (fn-bs-record-program stage name frame)
+                                          nil groups capacity)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k0-attempted-cut-has-one-issued-transaction-link)
+                  (:instance fn-bs-k0-attempted-cut-has-no-root-pending)
+                  (:instance fn-bs-k6-related-attempt-durable-namespace-is-input-namespace)
+                  (:instance fn-bs-k6-related-attempt-name-is-next-scanner-name)
+                  (:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                  (:instance fn-bs-k6-actual-record-linked-input-has-exact-frame)
+                  (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state)
+                  (:instance fn-bs-k6-state-next-ino-is-inop)
+                  (:instance fn-bs-store-relation-unfolds))
+            :in-theory (e/d (fn-bs-pending-shape-okp fn-bs-record-inputp)
+                            (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                             fn-bs-statep fn-bs-ops-for-dir fn-bs-lookup
+                             fn-bs-k6-lookup-is-entry-after
+                             fn-bs-fencedp fn-bs-durable-names))))))
+
+(local
+ (defthm fn-bs-k0-durable-state-content-is-durable-content
+   (equal (fn-bs-content (fn-bs-durable bs) ino)
+          (fn-bs-durable-content bs ino))
+   :hints (("Goal" :use ((:instance fn-bs-quiet-content-is-durable-content
+                                     (s (fn-bs-durable bs))))
+            :in-theory (e/d (fn-bs-durable fn-bs-durable-content)
+                            (fn-bs-content fn-bs-view))))))
+
+(local
+ (defthm fn-bs-k0-attempted-cut-pending-target-decodes-candidate
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-record-inputp ks stage name frame)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (equal
+             (fn-bs-record-of
+              (fn-bs-durable
+               (car (nth 10 (fn-bs-run bs ks
+                                            (fn-bs-record-program stage name frame)
+                                            nil groups capacity))))
+              (fn-bs-next-ino bs))
+             (fn-sf-record-candidate ks)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                  (:instance fn-bs-k6-actual-record-linked-input-has-exact-frame)
+                  (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state)
+                  (:instance fn-bs-store-relation-unfolds)
+                  (:instance fn-bs-k0-durable-state-content-is-durable-content
+                             (bs (car (nth 10 (fn-bs-run bs ks
+                                                            (fn-bs-record-program stage name frame)
+                                                            nil groups capacity))))
+                             (ino (fn-bs-next-ino bs))))
+            :in-theory (e/d (fn-bs-record-inputp fn-bs-record-of)
+                            (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                             fn-bs-statep fn-bs-record-of-octets
+                             fn-bs-fencedp fn-bs-lookup
+                             fn-bs-k6-lookup-is-entry-after
+                             fn-bs-durable fn-bs-content
+                             fn-bs-durable-content))))))

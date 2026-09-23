@@ -479,6 +479,17 @@
       (bsk0-issued-link-equalp (bsk6-start) (bsk6-retention-prepared)
                                      ".stage-k6-retention" (fn-bs-txn-name 1)
                                      (bsk6-retention-frame))))
+(assert-event
+ (let ((article (car (nth 10 (bsk5-record-2-run))))
+       (retention (car (nth 10 (bsk6-retention-run)))))
+   (and (fn-bs-pending-shape-okp article)
+        (fn-bs-pending-shape-okp retention)
+        (equal (fn-bs-record-of (fn-bs-durable article)
+                                (fn-bs-next-ino (bsk6-start)))
+               *bsk5-record-2*)
+        (equal (fn-bs-record-of (fn-bs-durable retention)
+                                (fn-bs-next-ino (bsk6-start)))
+               (bsk6-retention-candidate)))))
 (must-fail
  (assert-event
   (bsk0-issued-link-equalp (bsk6-occupied-final-start)
