@@ -2046,6 +2046,13 @@ publication. The query is read-only and has no host caller or machine
 replacement event yet, so it does not establish the later T4 conservation,
 retirement, or final-delivery claims.
 
+The A3 native Store dispatcher calls `fn-bpah-pending-view`. That selector
+now excludes every fragment before classifying its payload, including a
+fragment whose payload bytes themselves decode as a valid request ADU. Its
+host-facing theorem `fn-bpah-host-pending-view-excludes-fragment` and a
+reachable partial-ADU witness cover this safety gate. A complete C2 query
+still requires durable family replacement before Store may see a whole ADU.
+
 - `(:ok bytes)`: propose kind 18 `(fn-bpn-rec-reassembled token family held
   ids)`. Applied atomically: the fragment entries leave the live list (their
   kind-5 records stay in the journal as provenance, their dispatch and
