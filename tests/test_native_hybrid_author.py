@@ -6,6 +6,7 @@ from pathlib import Path
 import socket
 import subprocess
 import tempfile
+import time
 import unittest
 from tests.native_process import wait_for_announcement, stop_and_diagnostics
 
@@ -225,6 +226,119 @@ class NativeHybridAuthorTest(unittest.TestCase):
             str(large_source), str(refused_output))
         self.assertEqual(refused.returncode, 1, refused.stderr.decode())
         self.assertFalse(refused_output.exists())
+
+    def test_authored_carrier_survives_native_peering_and_receiver_restart(self):
+        """Real owner/feed/receiver path; portable verification is independent.
+
+        This does not claim a receiver-local enrolled verdict or protected
+        transport. Those have separate gates. Both peers are loopback fixtures.
+        """
+        other_store = self.root / "receiver"
+        other_control = self.root / "receiver.sock"
+        other_port = free_port()
+        self.assertNotEqual(self.port, other_port)
+        other_config = self.root / "receiver.toml"
+        other_config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            '[control]\npath = "{}"\n'.format(
+                other_store, other_port, other_control), encoding="ascii")
+
+        def ok(*args):
+            result = self.invoke(*map(str, args), timeout=180)
+            self.assertEqual(result.returncode, 0,
+                             result.stderr.decode("utf-8", "replace"))
+            return result
+
+        ok("store", other_store, "init", "fn.test")
+        for config, identity, peer, peer_port in (
+                (self.config, "author.example.invalid", "relay.example.invalid", other_port),
+                (other_config, "relay.example.invalid", "author.example.invalid", self.port)):
+            ok("operator", config, "policy", "set", "path-identity", identity)
+            ok("operator", config, "peer", "add", "other", peer,
+               "127.0.0.1", peer_port, "fn.*", "fn.*", "127.0.0.1", "true")
+
+        msgid = "<hybrid-native-relay@example.invalid>"
+        source = self.root / "peer-source.eml"
+        source.write_bytes(
+            b"From: author@example.invalid\r\n"
+            b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+            b"Newsgroups: fn.test\r\nSubject: signed relay\r\n"
+            b"Message-ID: " + msgid.encode() + b"\r\n"
+            b"X-Unknown: preserve these authored bytes\r\n\r\n"
+            b".dot-prefixed body\r\nexact relay source\r\n")
+        signed = ok("hybrid-sign", self.principal, self.ed_public,
+                    self.ed_secret, self.ml_public, self.ml_private, source)
+        parts = dict(line.split() for line in signed.stdout.decode().splitlines())
+        ed_sig, ml_sig = self.root / "peer-ed.sig", self.root / "peer-ml.sig"
+        ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+        ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+
+        def read_article(port):
+            with socket.create_connection(("127.0.0.1", port), timeout=15) as sock:
+                with sock.makefile("rwb", buffering=0) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+                    stream.write(b"ARTICLE " + msgid.encode() + b"\r\n")
+                    status = stream.readline()
+                    if status.startswith(b"430 "):
+                        return None
+                    self.assertTrue(status.startswith(b"220 "), status)
+                    article = bytearray()
+                    while True:
+                        line = stream.readline(32769)
+                        self.assertTrue(line, "unterminated ARTICLE")
+                        if line == b".\r\n":
+                            return bytes(article)
+                        article.extend(line[1:] if line.startswith(b"..") else line)
+                        self.assertLessEqual(len(article), 32768)
+
+        owners = []
+
+        def start(config):
+            proc = subprocess.Popen(
+                [str(IMAGE), "--fn", "operator", str(config), "run"],
+                cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            owners.append(proc)
+            wait_for_announcement(proc, b"LISTENING ")
+            return proc
+
+        try:
+            start(self.config)
+            receiver = start(other_config)
+            ok("hybrid-enroll", self.control, "1", self.principal,
+               self.ed_public, self.ml_public)
+            ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
+            original = read_article(self.port)
+            self.assertIsNotNone(original)
+            deadline = time.monotonic() + 45
+            received = None
+            while time.monotonic() < deadline:
+                received = read_article(other_port)
+                if received is not None:
+                    break
+                time.sleep(0.1)
+            self.assertIsNotNone(received, "native feed did not deliver authored article")
+            self.assertTrue(received.endswith(source.read_bytes()))
+            original_path = next(line for line in original.split(b"\r\n")
+                                 if line.startswith(b"Path: "))
+            received_path = next(line for line in received.split(b"\r\n")
+                                 if line.startswith(b"Path: "))
+            self.assertEqual(received_path,
+                             b"Path: relay.example.invalid!" + original_path[6:])
+            self.assertEqual(received.replace(received_path + b"\r\n", b"", 1),
+                             original.replace(original_path + b"\r\n", b"", 1))
+            carried = self.root / "peer-received.eml"
+            carried.write_bytes(received)
+            ok("hybrid-verify-carrier", carried, self.ml_public)
+            owners.remove(receiver)
+            self.stop_owner(receiver)
+            start(other_config)
+            self.assertEqual(read_article(other_port), received)
+            # Verify the recovered bytes, rather than reusing a sender verdict.
+            carried.write_bytes(read_article(other_port))
+            ok("hybrid-verify-carrier", carried, self.ml_public)
+        finally:
+            for owner in reversed(owners):
+                self.stop_owner(owner)
 
 
 if __name__ == "__main__":
