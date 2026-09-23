@@ -1,6 +1,6 @@
 """Real local-owner E2 cursor declarations through one saved native image.
 
-Requires the combined consumer-local command and developer bootstrap fixture.
+Requires the combined consumer-local command and production bootstrap.
 The cursor files are ACL2 output; this test never constructs or edits fncu bytes.
 There is no served poll endpoint yet, so these cases exercise a zero-position
 ack and do not claim nonzero scan progress or consumer inbox processing.
@@ -68,8 +68,6 @@ class NativeConsumerE2Tests(unittest.TestCase):
             'port = {}\n[control]\npath = "{}"\n'.format(
                 store, free_port(), control), encoding="ascii")
         self.accepted("store", store, "init", "fn.test")
-        self.accepted("consumer-bootstrap-fixture", store,
-                      name + "-history", name + "-incarnation")
         return {"base": base, "store": store, "control": control,
                 "config": config}
 
@@ -104,6 +102,10 @@ class NativeConsumerE2Tests(unittest.TestCase):
                          result.stderr.decode("utf-8", "replace"))
         return result
 
+    def bootstrap(self, node):
+        self.assertIn(b"consumer accepted",
+                      self.consumer("bootstrap", node).stdout)
+
     def register(self, node, name, target):
         result = self.consumer("register", node, name, "fn.test", target)
         self.assertIn(b"consumer accepted", result.stdout)
@@ -124,6 +126,11 @@ class NativeConsumerE2Tests(unittest.TestCase):
     def test_durable_scope_ack_and_unrelated_article(self):
         first = self.node("first")
         owner = self.start_owner(first)
+        unbootstrapped = first["base"] / "unbootstrapped.fncu"
+        self.consumer("register", first, "worker", "fn.test",
+                      unbootstrapped, expected=1)
+        self.assertFalse(unbootstrapped.exists())
+        self.bootstrap(first)
         token_path = first["base"] / "initial.fncu"
         initial = self.register(first, "worker", token_path)
         self.assertEqual(self.position(first, "worker",
@@ -151,6 +158,7 @@ class NativeConsumerE2Tests(unittest.TestCase):
         # The same ID in an independent history cannot use this cursor.
         other = self.node("other")
         other_owner = self.start_owner(other)
+        self.bootstrap(other)
         other_token = self.register(other, "worker", other["base"] / "other.fncu")
         self.assertNotEqual(other_token, initial)
         self.consumer("ack", other, token_path, expected=1)
@@ -177,6 +185,9 @@ class NativeConsumerE2Tests(unittest.TestCase):
 
     def test_lost_register_reply_resolves_by_reopened_position(self):
         node = self.node("uncertain")
+        bootstrap_owner = self.start_owner(node)
+        self.bootstrap(node)
+        self.stop_owner(bootstrap_owner)
         owner = self.start_owner(node, stop_after_submit=True)
         token_path = node["base"] / "lost-reply.fncu"
         client = subprocess.Popen(
@@ -210,6 +221,7 @@ class NativeConsumerE2Tests(unittest.TestCase):
     def test_different_local_uid_is_refused_by_owner(self):
         node = self.node("foreign-uid")
         owner = self.start_owner(node)
+        self.bootstrap(node)
         self.register(node, "worker", node["base"] / "owner.fncu")
         self.root.chmod(0o755)
         node["base"].chmod(0o755)
