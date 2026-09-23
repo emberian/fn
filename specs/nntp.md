@@ -121,79 +121,49 @@ local limitation and not a claim that fn has descriptions.
 
 ## Polling: NEWNEWS
 
-RFC 3977 §7.4 answers `NEWNEWS wildmat date time [GMT]` with 230 and the
-Message-IDs of the articles in matching groups that arrived since the given
-instant. `fn-nntp-newnews-response` (`books/nntp-responses.lisp`) is what
-`fn-nntp-archive-command` calls for it, and
-`fn-nntp-step-dispatches-newnews-to-the-newnews-response`
-(`books/nntp-newnews.lisp`) is that sentence as a theorem. The served path
-reaches it through `fn-served-dispatch` → `fn-auth-step` → `fn-peer-step` →
-`fn-nntp-post-step` → `fn-nntp-step`.
+RFC 3977 §7.4 answers `NEWNEWS wildmat date time [GMT]` with a 230 block of
+Message-IDs in matching groups accepted since the given instant. The served
+path reaches `fn-nntp-newnews-response` through `fn-served-dispatch` →
+`fn-auth-step` → `fn-peer-step` → `fn-nntp-post-step` → `fn-nntp-step` →
+`fn-nntp-archive-command`; `fn-nntp-step-dispatches-newnews-to-the-newnews-response`
+is the subject equation.
 
-**Which instant.** fn's committed article record carries message-id, payload,
-groups, memberships and pin, and no arrival stamp: the store records none, so
-there is no locally witnessed acceptance time for NEWNEWS to read. The instant
-compared is the one inside the article's own retained octets — `Injection-Date`,
-and where that is absent `Date` — which is the field and the fallback order RFC
-5537 §§3.6 and 3.7 fix for staleness and which `books/path.lisp` already reads.
-For an article this node injected, `books/injection.lisp` wrote that stamp from
-the node's own clock; for an article a peer fed, it is the injecting agent's
-claim and nothing stronger, and a `NEWNEWS` answer is therefore not evidence of
-when fn received anything. LIMITATION: an article whose date-time fn cannot
-decode exactly — no such field, an RFC 5322 comment in the field body, or a
-form outside §3.3 — is **not** reported. §7.4.2 makes the list a set the client
-may see more than once and permits it to be empty, so the omission stays inside
-the response; it is recorded here rather than hidden. OPEN: a durable
-acceptance stamp beside the article, which would make NEWNEWS a statement about
-this node.
+**Which instant.** A schema-1 article's durable stamp is the owner's wall-clock
+second at prepare, in seconds since the DTN epoch; payload `Injection-Date`
+and `Date` do not enter the test. A schema-0 article carries `:legacy` and is
+dated conservatively by the nearest article accepted after it with a natural
+stamp, even when that newer article belongs to a different group. With no
+such article, the horizon is the reader's pinned wall second; with no wall,
+the legacy article is reported at every threshold. These may over-report a
+legacy article; assuming the wall clock did not regress across migration,
+they do not omit one accepted after the requested instant. Availability at a
+number in a matched group still gates every reported identifier.
 
-**The bound, and its scope.** One `NEWNEWS` costs one pass over the committed
-article list — the same pass `GROUP`, `LISTGROUP` and `OVER` already pay,
-testing each article's own membership list and parsing nothing — plus at most
-`*fn-nntp-newnews-parse-budget*` = 256 article parses, one for each article
-available at a number in a matching group. Pessimistically that is
-`O(A·G' + min(C,256)·P)`, where `A` is the committed article count, `G'` the
-number of configured groups the wildmat matched, `C` the number of committed
-articles available in those groups, and `P` the per-article parse envelope of
-[the public work bound](article-work.md). A request with `C > 256` is refused
-with §3.2.1's 503 — the code that section assigns to a server that "only
-handles a subset of legitimate cases" — and parses **nothing at all**, because
-the refusal is decided walking down the article list and every parse happens on
-the way back up. `fn-nntp-newnews-scan-answers-exactly-within-the-budget`
-proves the refusal is decided by an independent count of the candidates against
-the fuel and by nothing else;
-`fn-nntp-newnews-scan-reports-at-most-the-budget` bounds the answer; and
-`fn-nntp-newnews-refusal-is-the-only-other-outcome` fixes the two outcomes, so
-no partial list can reach a 230 block. OPEN: the `A·G'` term is the whole-list
-walk this profile pays everywhere; the per-group index of
-`books/nntp-index.lisp` would replace it with the matched entries alone, and it
-is not on the dispatcher's path today.
+**Cost and proof scope.** One command walks the committed article list once,
+testing memberships in the matched groups and comparing one natural stamp
+per article. No article payload octet is read
+(`fn-nntp-newnews-scan-reads-no-payload`). The pessimistic bound is
+`O(A·G')` for `A` committed articles and `G'` groups matched by the wildmat,
+with at most `C` lines for `C` candidates, where `C` is bounded by Store
+`max_transactions`. The former 256 article-parse budget and its 503 refusal
+are gone. `fn-nntp-newnews-scan-is-the-acceptance-filter` equates the one-pass
+scan with an independent quadratic specification, establishing soundness and
+completeness. `fn-nntp-newnews-lines-are-clean` and
+`fn-nntp-newnews-scan-lines-at-most-candidates` establish block hygiene and
+the output bound. The per-group index of `books/nntp-index.lisp` is not on the
+served path; replacing the whole-list walk remains open.
 
-**What cannot be reported.** `fn-nntp-newnews-scan-reports-only-witnessed-lines`
-is the scoping property: every rendered line is the stored identifier of a
-committed article that is available at a number in a group the wildmat matched
-and whose own stamp is at or after the requested instant. A `NEWNEWS` cannot
-name an article of a group its wildmat did not match, and cannot name an
-article whose identifier this profile could not render, because an
-unrenderable identifier fails the availability test that makes an article a
-candidate at all. The command changes no session state
-(`fn-nntp-newnews-response-preserves-session`).
+230 is a complete answer. 501 is the syntax refusal for malformed arguments,
+date/time or wildmat. 503 remains only for a two-digit year when the pinned
+reader observation has no wall clock, per §7.3.2. NEWNEWS changes no session
+state (`fn-nntp-newnews-response-preserves-session`). The DATE-to-NEWNEWS
+no-miss property across reader pin and in-flight prepare depends on A-CLOCK
+and is the separate T6 proof target.
 
-NNT-008: answer NEWNEWS from the article's own injection stamp, scoped by the
-wildmat, under an explicit per-command parse budget whose exhaustion is a
-refusal and not a shorter list. The instant is `Injection-Date` and, where it
-is absent, `Date`; the store records no arrival stamp, so neither this command
-nor its specification claims one. The budget refusal is RFC 3977 §3.2.1's 503
-and it parses nothing. An article whose date-time fn cannot decode is omitted,
-and that omission is stated, not silent.
-
-**Three outcomes.** 230 with the block is the answer; 501 is the syntax
-refusal (wrong arity, a fourth token that is not `GMT`, a malformed wildmat, a
-date or time outside §7.3.2's forms and ranges); 503 is the refusal for want
-of something — a two-digit year with no wall-clock reading, or a request over
-the work budget. The three are distinct on the wire, in
-`tests/acl2/nntp-newnews-tests.lisp` and in the `V0-READ-NEWNEWS*` rows of the
-native matrix.
+NNT-008: NEWNEWS reports exactly the committed Message-IDs available in
+matching groups whose durable acceptance stamp, or conservative legacy
+horizon, is at or after the requested instant; it reads no payload octets and
+never returns a partial block for a size limit.
 
 ## Overview projection
 

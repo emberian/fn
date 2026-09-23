@@ -438,13 +438,13 @@
         "Exercise advertised forms with a real reader and independent transcripts.",
         "Partition CRLF, dot terminators, and articles across socket chunks.",
         "Exercise empty/missing groups, IDs, cursors, ranges, wildmat, failed selection, and oversized input.",
-        "Poll with NEWNEWS over a wildmat and a date, with and without the GMT token and with both year forms, against a store whose articles carry Injection-Date, Date, and neither."
+        "Poll with NEWNEWS over a wildmat and a date, with and without GMT and with both year forms, against stamped articles whose payloads carry Injection-Date, Date, and neither, plus carried-over legacy articles."
       ],
       "expected": [
         "Capability claims match the audited profile.",
         "Cursor/errors follow the checklist.",
         "Socket partitions do not change meaning; rejected body tails do not become commands.",
-        "NEWNEWS names only the matching groups' articles newer than the requested instant; a request over the parse budget is refused 503 whole; syntax and want-of-information refusals stay distinct."
+        "NEWNEWS names exactly the matching groups' articles at or after the requested acceptance stamp or conservative legacy horizon, without reading payloads or a size refusal; syntax and two-digit-year clock refusals stay distinct."
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",

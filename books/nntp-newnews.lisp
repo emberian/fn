@@ -115,6 +115,21 @@
               (fn-nntp-newnews-without-payload (cdr articles))))
     nil))
 
+(local
+ (defthm fn-nntp-newnews-candidate-of-payload-erasure
+   (equal (fn-nntp-newnews-candidatep
+           groups
+           (fn-make-article
+            (fn-article-msgid article) nil (fn-article-groups article)
+            (fn-article-memberships article) (fn-article-pin article)
+            (fn-article-stamp article)))
+          (fn-nntp-newnews-candidatep groups article))
+   :hints (("Goal"
+            :induct (fn-nntp-newnews-candidatep groups article)
+            :in-theory (e/d (fn-nntp-newnews-candidatep
+                             fn-nntp-article-number fn-nntp-article-idp)
+                            (fn-nntp-newnews-scan-is-the-acceptance-filter))))))
+
 (defthm fn-nntp-newnews-scan-reads-no-payload
   (equal (fn-nntp-newnews-scan
           groups threshold (fn-nntp-newnews-without-payload articles)
@@ -123,7 +138,9 @@
   :hints (("Goal" :induct (fn-nntp-newnews-scan
                            groups threshold articles horizon)
            :in-theory (disable fn-nntp-newnews-candidatep
-                               fn-nntp-newnews-newp fn-nntp-string-octets))))
+                               fn-nntp-newnews-newp fn-nntp-string-octets
+                               fn-nntp-newnews-scan-is-the-acceptance-filter
+                               fn-nntp-newnews-scan-is-filter-with-prefix))))
 
 (defun fn-nntp-newnews-candidate-count (groups articles)
   (declare (xargs :guard t))
@@ -139,7 +156,9 @@
   :hints (("Goal" :induct (fn-nntp-newnews-scan
                            groups threshold articles horizon)
            :in-theory (disable fn-nntp-newnews-candidatep
-                               fn-nntp-newnews-newp fn-nntp-string-octets))))
+                               fn-nntp-newnews-newp fn-nntp-string-octets
+                               fn-nntp-newnews-scan-is-the-acceptance-filter
+                               fn-nntp-newnews-scan-is-filter-with-prefix))))
 
 ; -----------------------------------------------------------------------------
 ; The dispatcher arm
