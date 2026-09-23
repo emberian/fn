@@ -47,6 +47,7 @@
                                      fn-tcl-delivery-plan-status
                                      fn-tcl-delivery-plan-messages
                                      fn-tcl-output-has-final-ackp
+                                     fn-tcl-make-xfer-refuse
                                      fn-tcl-xfer-ack-shapep))))
 
 (defthm fn-tcl-uncertain-delivery-withholds-final-ack
