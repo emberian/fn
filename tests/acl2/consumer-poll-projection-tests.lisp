@@ -5,6 +5,9 @@
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
 
+(assert-event (equal (fn-cpj-max-cursor-octets) 346))
+(assert-event (equal (fn-cpj-max-event-octets) 196608))
+
 (defconst *cpj-cursor*
   (fn-cp-cursor '(1) '(2) '(3) '(4) '(5) 1 1 1 3))
 (defconst *cpj-cursor-bytes* (fn-cp-cursor-encode *cpj-cursor*))

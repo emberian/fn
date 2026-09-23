@@ -15,11 +15,20 @@
   (implies (fn-stxa-bindsp event)
            (acl2-numberp (fn-stxa-sequence event)))
   :hints (("Goal" :in-theory (enable fn-stxa-bindsp fn-stxa-p))))
+(defun fn-cpj-max-cursor-octets ()
+  (declare (xargs :guard t))
+  (+ 5 (* 5 (1+ *fn-cp-max-id*)) (* 4 4)))
+
+(defun fn-cpj-max-event-octets ()
+  (declare (xargs :guard t))
+  *fn-stxa-max-octets*)
 
 (defun fn-cpj-project (cursor-octets event-octets)
   (declare (xargs :guard t :verify-guards nil))
-  (if (or (not (fn-cbor-at-mostp cursor-octets 346))
-          (not (fn-cbor-at-mostp event-octets *fn-stxa-max-octets*)))
+  (if (or (not (fn-cbor-at-mostp cursor-octets
+                                   (fn-cpj-max-cursor-octets)))
+          (not (fn-cbor-at-mostp event-octets
+                                   (fn-cpj-max-event-octets))))
       (list :refused :limit)
     (let* ((cursor-result (fn-cp-cursor-decode cursor-octets))
            (event-result (fn-stxa-decode-exact event-octets)))
