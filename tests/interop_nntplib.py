@@ -58,15 +58,11 @@ def main():
         assert none_new == [], none_new
 
         # Section 7.4: NEWNEWS over a wildmat, read by an independent client.
-        # The seed article carries no Injection-Date and no Date, so fn
-        # cannot read an injection instant for it and does not report it --
-        # the stated limitation of specs/nntp.md's NEWNEWS paragraph.  What
-        # this probe establishes is the framing: 230 and a well-formed
-        # multi-line block that nntplib parses, from both the wildmat that
-        # matches the group and one that matches nothing.
+        # The undated seed is a legacy article; the reader's pinned wall
+        # second supplies its conservative acceptance horizon.
         response, ids = client.newnews("fn.*", datetime.datetime(1970, 1, 1))
         assert response.startswith("230 "), response
-        assert ids == [], ids
+        assert ids == ["<reader@example.invalid>"], ids
         response, ids = client.newnews("no.such.*", datetime.datetime(2099, 1, 1))
         assert response.startswith("230 ") and ids == [], (response, ids)
 
