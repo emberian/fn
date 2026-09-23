@@ -1066,6 +1066,56 @@
                  fn-nntp-single
                  fn-nntp-session-consistentp)))))
 
+; The actual pinned dispatcher preserves the same carried reader invariant.
+; Its Message-ID retrieval and historical verdict arms leave the session
+; unchanged; every other arm invokes the original archive command.
+(defthm fn-nntp-archive-command-pinned-preserves-consistent-session
+  (implies (and (fn-nntp-session-consistentp session archive)
+                (fn-nntp-projectionp archive))
+           (fn-nntp-session-consistentp
+            (fn-nntp-result-session
+             (fn-nntp-archive-command-pinned
+              session archive index verdicts env keyword args)) archive))
+  :hints (("Goal" :in-theory
+           (e/d (fn-nntp-archive-command-pinned)
+                (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
+                 fn-nntp-verdict-hdr-response fn-nntp-result-session
+                 fn-nntp-session-consistentp)))))
+
+(local
+ (defthm fn-nntp-consistent-projected-session-has-archive
+   (implies (and (fn-nntp-session-consistentp session archive)
+                 (fn-nntp-session-projected session))
+            (fn-nntp-projectionp archive))
+   :hints (("Goal" :in-theory (enable fn-nntp-session-consistentp)))))
+
+(defthm fn-nntp-command-pinned-preserves-consistent-session
+  (implies (fn-nntp-session-consistentp session archive)
+           (fn-nntp-session-consistentp
+            (fn-nntp-result-session
+             (fn-nntp-command-pinned
+              session archive index verdicts env tokens)) archive))
+  :hints (("Goal" :in-theory
+           (e/d (fn-nntp-command-pinned)
+                (fn-nntp-archive-command-pinned fn-nntp-session-command
+                 fn-nntp-session-consistentp fn-nntp-result-session
+                 fn-nntp-keyword-tokenp fn-nntp-archive-keywordp
+                 fn-nntp-single fn-nntp-projectionp))
+           :use ((:instance fn-nntp-consistent-projected-session-has-archive)))))
+
+(defthm fn-nntp-step-pinned-preserves-consistent-session
+  (implies (fn-nntp-session-consistentp session archive)
+           (fn-nntp-session-consistentp
+            (fn-nntp-result-session
+             (fn-nntp-step-pinned
+              session archive index verdicts env wire-event)) archive))
+  :hints (("Goal" :in-theory
+           (e/d (fn-nntp-step-pinned)
+                (fn-nntp-command-pinned fn-nntp-session-consistentp
+                 fn-nntp-result-session fn-nntp-single fn-nntp-tokenize
+                 fn-nntp-command-inputp fn-nntp-command-arguments-at-mostp
+                 fn-nntp-make-result)))))
+
 ; -----------------------------------------------------------------------------
 ; Finite traces
 

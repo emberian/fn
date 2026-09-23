@@ -579,3 +579,53 @@
           fn-nntp-post-step fn-nntp-post-outcome)))
 
 (in-theory (disable fn-nntp-post-vocabulary))
+
+; The same POST machine with the pinned reader dispatcher in its ordinary
+; command arm.  While awaiting an article the original machine performs the
+; injection decision, and no Message-ID lookup can occur in that state.
+(defun fn-nntp-post-step-pinned
+    (ps archive index verdicts config observation injection wire-event)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (or (not (fn-post-sessionp ps)) (fn-post-session-awaiting ps))
+      (fn-nntp-post-step ps archive config observation injection wire-event)
+    (let ((r (fn-nntp-step-pinned
+              (fn-post-session-base ps) archive index verdicts
+              (fn-nntp-env observation nil
+                           (and (fn-inj-config-allow config) t))
+              wire-event)))
+      (if (fn-post-offeredp (fn-nntp-result-effects r))
+          (if (fn-inj-config-allow config)
+              (fn-post-make-result
+               (fn-post-make-session (fn-nntp-result-session r) t)
+               (fn-nntp-result-effects r) nil)
+            (fn-post-make-result
+             (fn-post-make-session (fn-nntp-result-session r) nil)
+             (fn-post-single ps "440 posting not permitted") nil))
+        (fn-post-make-result
+         (fn-post-make-session (fn-nntp-result-session r) nil)
+         (fn-nntp-result-effects r) nil)))))
+
+(verify-guards fn-nntp-post-step-pinned)
+
+(defthm fn-post-step-pinned-preserves-consistent-session
+  (implies (fn-post-session-consistentp ps archive)
+           (fn-post-session-consistentp
+            (fn-post-result-session
+             (fn-nntp-post-step-pinned
+              ps archive index verdicts config observation injection wire-event))
+            archive))
+  :hints (("Goal"
+           :in-theory
+           (e/d (fn-nntp-post-step-pinned fn-post-session-consistentp
+                  fn-post-sessionp)
+                (fn-nntp-step-pinned fn-nntp-session-consistentp
+                 fn-nntp-sessionp fn-nntp-projectionp fn-nntp-result-session
+                 fn-post-offeredp fn-nntp-post-step))
+           :use ((:instance fn-nntp-consistent-session-is-session
+                            (session
+                             (fn-nntp-result-session
+                              (fn-nntp-step-pinned
+                               (fn-post-session-base ps) archive index verdicts
+                               (fn-nntp-env observation nil
+                                            (and (fn-inj-config-allow config) t))
+                               wire-event))))))))

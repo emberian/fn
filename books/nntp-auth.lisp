@@ -2643,3 +2643,153 @@
     (:d fn-auth-principal-rolep)))
 
 (in-theory (disable fn-auth-vocabulary))
+
+(defun fn-auth-delegate-pinned
+    (as archive index verdicts config observation injection wire-event)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((r (fn-peer-step-pinned
+            (fn-auth-session-base as) archive index verdicts config
+            observation injection wire-event)))
+    (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
+                         (fn-post-result-effects r)
+                         (fn-post-result-submission r))))
+
+; Authentication and STARTTLS decisions remain the same.  Only a command
+; delegated past that gate can reach the trie or historical verdict pin.
+(defun fn-auth-step-pinned
+    (as archive index verdicts config observation injection wire-event)
+  (declare (xargs :guard t :verify-guards nil))
+  (cond
+   ((not (fn-auth-sessionp as)) (fn-post-make-result as nil nil))
+   ((fn-auth-tls-eventp wire-event) (fn-auth-tls-established as))
+   ((fn-auth-session-handshakingp as) (fn-post-make-result as nil nil))
+   ((and (consp wire-event)
+         (equal (car wire-event) :command)
+         (consp (cdr wire-event))
+         (null (cdr (cdr wire-event)))
+         (fn-nntp-command-inputp (car (cdr wire-event))))
+    (let ((tokens (fn-nntp-tokenize (car (cdr wire-event)))))
+      (if (and (consp tokens)
+               (fn-nntp-keyword-tokenp (car tokens))
+               (fn-nntp-command-arguments-at-mostp tokens))
+          (let ((r (fn-auth-command as config (car tokens) (cdr tokens))))
+            (if r r
+              (fn-auth-delegate-pinned as archive index verdicts config
+                                        observation injection wire-event)))
+        (fn-auth-delegate-pinned as archive index verdicts config observation
+                                  injection wire-event))))
+   (t (fn-auth-delegate-pinned as archive index verdicts config observation
+                                injection wire-event))))
+
+(verify-guards fn-auth-delegate-pinned)
+(verify-guards fn-auth-step-pinned)
+
+(defthm fn-auth-delegate-pinned-preserves-consistentp
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp
+            (fn-post-result-session
+             (fn-auth-delegate-pinned as archive index verdicts config
+                                      observation injection wire-event))
+            archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-delegate-pinned fn-auth-with-base
+                            fn-auth-session-consistentp fn-auth-sessionp)
+                           (fn-peer-step-pinned fn-peer-sessionp
+                            fn-peer-session-consistentp fn-auth-configp
+                            fn-peer-step-pinned-preserves-consistent-session
+                            fn-nntp-printable-tokenp fn-prin-idp))
+           :use ((:instance fn-peer-step-pinned-preserves-consistent-session
+                            (ps (fn-auth-session-base as)))))))
+
+(defthm fn-auth-step-pinned-preserves-consistent-session
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp
+            (fn-post-result-session
+             (fn-auth-step-pinned as archive index verdicts config observation
+                                  injection wire-event))
+            archive))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step-pinned)
+                           (fn-peer-step-pinned fn-auth-delegate-pinned
+                            fn-auth-command fn-auth-tls-established
+                            fn-auth-tls-eventp fn-auth-sessionp
+                            fn-auth-session-consistentp fn-nntp-keywordp
+                            fn-nntp-keyword-tokenp fn-nntp-command-inputp
+                            fn-nntp-tokenize
+                            fn-nntp-command-arguments-at-mostp)))))
+
+(defthm fn-auth-delegate-pinned-effects-well-formed
+  (implies (and (fn-auth-session-consistentp as archive)
+                (fn-midx-correspondencep index (fn-state-articles archive)))
+           (fn-auth-effectsp
+            (fn-post-result-effects
+             (fn-auth-delegate-pinned as archive index verdicts config
+                                      observation injection wire-event))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-auth-delegate-pinned fn-auth-session-consistentp)
+                (fn-peer-step-pinned fn-peer-session-consistentp
+                 fn-nntp-effectsp fn-auth-effectsp fn-post-result-effects
+                 fn-midx-correspondencep)))))
+
+(defthm fn-auth-step-pinned-effects-well-formed
+  (implies (and (fn-auth-session-consistentp as archive)
+                (fn-midx-correspondencep index (fn-state-articles archive)))
+           (fn-auth-effectsp
+            (fn-post-result-effects
+             (fn-auth-step-pinned as archive index verdicts config observation
+                                  injection wire-event))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-auth-step-pinned)
+                (fn-auth-delegate-pinned fn-auth-command
+                 fn-auth-tls-established fn-auth-tls-eventp
+                 fn-auth-sessionp fn-auth-session-consistentp
+                 fn-auth-effectsp fn-post-result-effects
+                 fn-midx-correspondencep fn-nntp-keywordp
+                 fn-nntp-keyword-tokenp fn-nntp-command-inputp
+                 fn-nntp-tokenize fn-nntp-command-arguments-at-mostp)))))
+
+(defthm fn-auth-pinned-submission-is-the-delegated-submission
+  (implies (fn-post-result-submission
+            (fn-auth-step-pinned as archive index verdicts config observation
+                                 injection wire-event))
+           (equal (fn-post-result-submission
+                   (fn-auth-step-pinned as archive index verdicts config
+                                        observation injection wire-event))
+                  (fn-post-result-submission
+                   (fn-peer-step-pinned
+                    (fn-auth-session-base as) archive index verdicts config
+                    observation injection wire-event))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-auth-step-pinned fn-auth-delegate-pinned
+                  fn-auth-tls-established)
+                (fn-peer-step-pinned fn-auth-command fn-auth-sessionp
+                 fn-nntp-tokenize fn-nntp-command-inputp
+                 fn-auth-tls-eventp fn-nntp-keyword-tokenp
+                 fn-nntp-command-arguments-at-mostp)))))
+
+(defthm fn-auth-step-pinned-submission-is-typed
+  (implies (and (fn-auth-sessionp as)
+                (fn-post-result-submission
+                 (fn-auth-step-pinned as archive index verdicts config
+                                      observation injection wire-event)))
+           (or (fn-inj-injectedp
+                (fn-post-result-submission
+                 (fn-auth-step-pinned as archive index verdicts config
+                                      observation injection wire-event)))
+               (fn-peer-submissionp
+                (fn-post-result-submission
+                 (fn-auth-step-pinned as archive index verdicts config
+                                      observation injection wire-event)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-auth-sessionp)
+                           (fn-auth-step-pinned fn-peer-step-pinned
+                            fn-peer-sessionp fn-inj-injectedp
+                            fn-peer-submissionp
+                            fn-peer-step-pinned-submission-is-typed))
+           :use ((:instance
+                  fn-auth-pinned-submission-is-the-delegated-submission)
+                 (:instance fn-peer-step-pinned-submission-is-typed
+                            (ps (fn-auth-session-base as))))))
+  :rule-classes nil)

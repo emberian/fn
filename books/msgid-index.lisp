@@ -168,12 +168,44 @@
   :hints (("Goal" :induct (fn-midx-build articles)
            :in-theory (enable fn-find-article))))
 
+; A served Message-ID token has at least one character.  For that query the
+; correspondence holds even when an arbitrary article list contains malformed
+; non-string identifiers: those occupy only the trie's terminal root slot and
+; cannot shadow a character branch.  This avoids imposing a whole-archive
+; recognizer on every reader command.
+(defthm fn-midx-lookup-of-build-is-find-article-for-nonempty
+  (implies (and (stringp msgid)
+                (consp (fn-midx-key-chars msgid)))
+           (equal (fn-midx-lookup msgid (fn-midx-build articles))
+                  (fn-find-article msgid articles)))
+  :hints (("Goal" :induct (fn-midx-build articles)
+           :in-theory (enable fn-find-article))))
+
 (defthm fn-midx-extend-preserves-correspondence
   (implies (fn-midx-correspondencep trie articles)
            (fn-midx-correspondencep
             (fn-midx-extend article trie)
             (cons article articles)))
   :hints (("Goal" :in-theory (enable fn-midx-correspondencep))))
+
+(defun fn-midx-refresh (index old-articles new-articles)
+  (declare (xargs :guard t))
+  (cond ((equal new-articles old-articles) index)
+        ((and (consp new-articles)
+              (equal (fn-ag-cdr new-articles) old-articles))
+         (fn-midx-extend (fn-ag-car new-articles) index))
+        (t (fn-midx-build new-articles))))
+
+; Retention/configuration events reuse the root, one acceptance path-copies
+; once, and a discontinuous recovery view rebuilds once at refresh.  Each
+; path preserves the relation to the archive the owner will publish.
+(defthm fn-midx-refresh-preserves-correspondence
+  (implies (fn-midx-correspondencep index old-articles)
+           (fn-midx-correspondencep
+            (fn-midx-refresh index old-articles new-articles)
+            new-articles))
+  :hints (("Goal" :in-theory (enable fn-midx-refresh
+                                      fn-midx-correspondencep))))
 
 ; A builder-produced branch list has one entry for each key.  This is the
 ; structural fact that bounds a branch scan by the finite character alphabet

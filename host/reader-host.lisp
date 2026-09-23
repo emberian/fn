@@ -72,6 +72,7 @@
 (defun fn-reader-use-seed (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-reader-archive *fn-reader-archive* state))
+         (state (f-put-global 'fn-reader-verdicts nil state))
          (state (f-put-global 'fn-reader-action :ready state)))
     (value :ready)))
 
@@ -106,6 +107,8 @@
         (let ((archive (fn-node-acceptance node)))
           (if (fn-nntp-projectionp archive)
               (let* ((state (f-put-global 'fn-reader-archive archive state))
+                     (state (f-put-global 'fn-reader-verdicts
+                                          (fn-sn-verdicts store) state))
                      (state (f-put-global 'fn-reader-action :ready state)))
                 (value :ready))
             (let ((state (f-put-global 'fn-reader-action :refused state)))
@@ -133,9 +136,15 @@
                   nil))
          ; RFC 3977's 512 includes CRLF; wire state holds only content before
          ; that delimiter.
+         (verdicts (if (boundp-global 'fn-reader-verdicts state)
+                       (f-get-global 'fn-reader-verdicts state)
+                     nil))
          (state (fn-reader-install-result
-                 (fn-served-open archive 510 8192 config clock clock
-                                  (fn-auth-open-config)) state)))
+                 (fn-served-pin-verdicts
+                  (fn-served-open archive 510 8192 config clock clock
+                                  (fn-auth-open-config))
+                  verdicts)
+                 state)))
     (value :ready)))
 
 ; One socket read.  The whole chunk is consumed: fn-served-step is a fold of

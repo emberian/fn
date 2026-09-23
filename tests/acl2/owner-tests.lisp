@@ -1063,6 +1063,50 @@
                      (append (fn-nntp-string-octets "211 2 1 2 fn.letters") '(13 10))))
 (defconst *own-late* (fn-own-run *own-after-post* '((:close 0) (:open))))
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 5 (fn-own-conns *own-late*))) 3))
+(assert-event
+ (and (fn-own-relation *own-after-post*)
+      (fn-own-relation *own-late*)
+      (fn-midx-correspondencep
+       (fn-own-conn-index (fn-own-find-conn 3 (fn-own-conns *own-after-post*)))
+       (fn-state-articles
+        (fn-own-conn-archive
+         (fn-own-find-conn 3 (fn-own-conns *own-after-post*)))))
+      (fn-midx-correspondencep
+       (fn-own-conn-index (fn-own-find-conn 5 (fn-own-conns *own-late*)))
+       (fn-state-articles
+        (fn-own-conn-archive (fn-own-find-conn 5 (fn-own-conns *own-late*)))))))
+(defconst *own-indexed-stat*
+  (append (fn-nntp-string-octets "STAT <three@example>") '(13 10)))
+(assert-event
+ (and (equal (fn-own-take 4
+              (fn-served-reply-octets
+               (car (fn-own-read *own-after-post* 3 *own-indexed-stat*))))
+             (fn-nntp-string-octets "430 "))
+      (equal (fn-own-take 4
+              (fn-served-reply-octets
+               (car (fn-own-read *own-late* 5 *own-indexed-stat*))))
+             (fn-nntp-string-octets "223 "))))
+; A forged stale trie changes the actual owner reply despite the same pinned
+; archive.  This is why correspondence is a conjunct of fn-own-relation.
+(defconst *own-forged-index*
+  (let ((conn (fn-own-find-conn 5 (fn-own-conns *own-late*))))
+    (fn-own-set-conns
+     *own-late*
+     (fn-own-replace-conn
+      (fn-own-conn-make-indexed
+       (fn-own-conn-id conn) (fn-own-conn-version conn)
+       (fn-own-conn-frontier conn) (fn-own-conn-wire conn)
+       (fn-own-conn-session conn) (fn-own-conn-archive conn)
+       (fn-own-conn-config conn) (fn-own-conn-observation conn)
+       (fn-own-conn-verdicts conn) nil)
+      (fn-own-conns *own-late*)))))
+(assert-event (not (fn-own-relation *own-forged-index*)))
+(must-fail
+ (defthm fn-own-forged-index-still-serves-accepted-article
+   (equal (fn-own-take 4
+           (fn-served-reply-octets
+            (car (fn-own-read *own-forged-index* 5 *own-indexed-stat*))))
+          (fn-nntp-string-octets "223 "))))
 (assert-event (equal (fn-served-reply-octets (car (fn-own-read *own-late* 5 *own-group-octets*)))
                      (append (fn-nntp-string-octets "211 3 1 3 fn.letters") '(13 10))))
 (assert-event (equal (fn-own-take 2 (fn-sf-records (fn-sn-files (fn-own-store *own-late*))))

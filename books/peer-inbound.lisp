@@ -55,6 +55,7 @@
 (in-package "ACL2")
 (include-book "node-config")
 (include-book "nntp-post")
+(include-book "nntp-pinned-effects")
 ; fn-charge-for-payload: the retention charge a transit probe offers.
 (include-book "identity")
 (include-book "peer-config")
@@ -1485,3 +1486,253 @@
     (:d fn-peer-step)))
 
 (in-theory (disable fn-peer-vocabulary))
+
+; A transit decision stays with fn-peer-command.  Reader commands, including
+; Message-ID retrieval, delegate through the pinned POST/NNTP path; an active
+; transfer keeps the existing transfer transition, which never reads archive.
+(defun fn-peer-delegate-pinned
+    (ps archive index verdicts config observation injection wire-event)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((r (fn-nntp-post-step-pinned
+            (fn-peer-session-base ps) archive index verdicts config
+            observation injection wire-event)))
+    (fn-post-make-result (fn-peer-with-base ps (fn-post-result-session r))
+                         (fn-post-result-effects r)
+                         (fn-post-result-submission r))))
+
+(defun fn-peer-step-pinned
+    (ps archive index verdicts config observation injection wire-event)
+  (declare (xargs :guard t :verify-guards nil))
+  (cond
+   ((not (fn-peer-sessionp ps)) (fn-post-make-result ps nil nil))
+   ((null (fn-peer-session-peer ps))
+    (fn-peer-delegate-pinned ps archive index verdicts config observation
+                             injection wire-event))
+   ((not (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t))
+    (fn-peer-delegate-pinned ps archive index verdicts config observation
+                             injection wire-event))
+   ((fn-peer-session-transfer ps)
+    (fn-peer-step ps archive config observation injection wire-event))
+   ((and (consp wire-event)
+         (equal (car wire-event) :command)
+         (consp (cdr wire-event))
+         (null (cdr (cdr wire-event)))
+         (fn-nntp-command-inputp (car (cdr wire-event))))
+    (let ((tokens (fn-nntp-tokenize (car (cdr wire-event)))))
+      (if (and (consp tokens)
+               (fn-nntp-keyword-tokenp (car tokens))
+               (fn-nntp-command-arguments-at-mostp tokens))
+          (let ((r (fn-peer-command ps (car tokens) (cdr tokens))))
+            (if r r
+              (fn-peer-delegate-pinned ps archive index verdicts config
+                                       observation injection wire-event)))
+        (fn-peer-delegate-pinned ps archive index verdicts config observation
+                                 injection wire-event))))
+   (t (fn-peer-delegate-pinned ps archive index verdicts config observation
+                               injection wire-event))))
+
+(verify-guards fn-peer-delegate-pinned)
+(verify-guards fn-peer-step-pinned)
+
+; Message-ID retrieval does not select a current article: its result labels
+; the article with zero, even when the pinned trie supplied the candidate.
+; Thus a malformed trie cannot mutate session state; the separate index
+; correspondence obligation controls which article is returned.
+(local (defthm fn-peer-indexed-article-no-update-preserves-session
+  (equal (fn-nntp-result-session
+          (fn-nntp-article-response session article 0 kind nil nil))
+         session)
+  :hints (("Goal" :in-theory (e/d (fn-nntp-article-response)
+                                  (fn-nntp-article-idp fn-nntp-article-framedp
+                                   fn-nntp-article-section
+                                   fn-nntp-retrieval-initial
+                                   fn-nntp-crlf fn-nntp-stuff-lines))))))
+
+(local (defthm fn-peer-indexed-msgid-preserves-session
+  (equal (fn-nntp-result-session
+          (fn-nntp-msgid-retrieval-indexed session archive index kind token))
+         session)
+  :hints (("Goal" :in-theory (e/d (fn-nntp-msgid-retrieval-indexed)
+                                  (fn-nntp-result-session
+                                   fn-nntp-article-response fn-nntp-single
+                                   fn-midx-lookup fn-nntp-token-string))))))
+
+(local (defthm fn-peer-archive-command-pinned-preserves-consistent-session
+  (implies (and (fn-nntp-session-consistentp session archive)
+                (fn-nntp-projectionp archive))
+           (fn-nntp-session-consistentp
+            (fn-nntp-result-session
+             (fn-nntp-archive-command-pinned
+              session archive index verdicts env keyword args)) archive))
+  :hints (("Goal"
+           :use ((:instance fn-nntp-archive-command-preserves-consistent-session)
+                 (:instance fn-nntp-verdict-hdr-response-preserves-session
+                            (verdicts verdicts) (args args)))
+           :in-theory (e/d (fn-nntp-archive-command-pinned)
+                           (fn-nntp-archive-command
+                            fn-nntp-msgid-retrieval-indexed
+                            fn-nntp-verdict-hdr-response
+                            fn-nntp-result-session
+                            fn-nntp-session-consistentp
+                            fn-nntp-projectionp fn-nntp-keywordp))))))
+
+(local (defthm fn-peer-nntp-command-pinned-preserves-consistent-session
+  (implies (fn-nntp-session-consistentp session archive)
+           (fn-nntp-session-consistentp
+            (fn-nntp-result-session
+             (fn-nntp-command-pinned session archive index verdicts env tokens))
+            archive))
+  :hints (("Goal" :in-theory
+           (e/d (fn-nntp-command-pinned)
+                (fn-nntp-session-command fn-nntp-archive-command-pinned
+                 fn-nntp-archive-keywordp fn-nntp-keyword-tokenp
+                 fn-nntp-single fn-nntp-projectionp
+                 fn-nntp-result-session fn-nntp-session-consistentp))
+           :expand ((fn-nntp-session-consistentp session archive))))))
+
+(local (defthm fn-peer-nntp-step-pinned-preserves-consistent-session
+  (implies (fn-nntp-session-consistentp session archive)
+           (fn-nntp-session-consistentp
+            (fn-nntp-result-session
+             (fn-nntp-step-pinned session archive index verdicts env wire-event))
+            archive))
+  :hints (("Goal" :in-theory
+           (e/d (fn-nntp-step-pinned)
+                (fn-nntp-make-result fn-nntp-command-pinned
+                 fn-nntp-projectionp fn-statep fn-nntp-sessionp
+                 fn-nntp-session-openp fn-nntp-command-inputp
+                 fn-nntp-tokenize fn-nntp-command-arguments-at-mostp
+                 fn-nntp-result-session fn-nntp-single
+                 fn-nntp-session-consistentp))))))
+
+(local (defthm fn-peer-post-step-pinned-preserves-consistent-session
+  (implies (fn-post-session-consistentp ps archive)
+           (fn-post-session-consistentp
+            (fn-post-result-session
+             (fn-nntp-post-step-pinned ps archive index verdicts config
+                                       observation injection wire-event))
+            archive))
+  :hints (("Goal"
+           :use ((:instance fn-peer-nntp-step-pinned-preserves-consistent-session
+                            (session (fn-post-session-base ps))
+                            (env (fn-nntp-env observation nil
+                                              (and (fn-inj-config-allow config) t))))
+                 (:instance fn-nntp-consistent-session-is-session
+                            (session (fn-nntp-result-session
+                                      (fn-nntp-step-pinned
+                                       (fn-post-session-base ps) archive index
+                                       verdicts
+                                       (fn-nntp-env observation nil
+                                                    (and (fn-inj-config-allow config) t))
+                                       wire-event))))
+                 (:instance fn-nntp-consistent-session-is-session
+                            (session (fn-post-session-base ps))))
+           :in-theory (e/d (fn-nntp-post-step-pinned
+                            fn-post-session-consistentp fn-post-sessionp)
+                           (fn-nntp-step-pinned fn-nntp-session-consistentp
+                            fn-nntp-sessionp
+                            fn-post-offeredp
+                            fn-inj-decide fn-inj-injectedp))))))
+
+(defthm fn-peer-delegate-pinned-preserves-consistent-session
+  (implies (fn-peer-session-consistentp ps archive)
+           (fn-peer-session-consistentp
+            (fn-post-result-session
+             (fn-peer-delegate-pinned ps archive index verdicts config
+                                      observation injection wire-event))
+            archive))
+  :hints (("Goal"
+           :use ((:instance fn-peer-sessionp-of-fn-peer-with-base
+                            (base (fn-post-result-session
+                                   (fn-nntp-post-step-pinned
+                                    (fn-peer-session-base ps) archive index
+                                    verdicts config observation injection
+                                    wire-event))))
+                 (:instance fn-peer-post-step-pinned-preserves-consistent-session
+                            (ps (fn-peer-session-base ps)))
+                 (:instance fn-post-session-consistentp-forward
+                            (x (fn-post-result-session
+                                (fn-nntp-post-step-pinned
+                                 (fn-peer-session-base ps) archive index
+                                 verdicts config observation injection
+                                 wire-event)))))
+           :in-theory (e/d (fn-peer-delegate-pinned
+                            fn-peer-session-consistentp)
+                           (fn-nntp-post-step-pinned
+                            fn-post-session-consistentp fn-peer-with-base
+                            fn-post-result-session fn-peer-sessionp
+                            fn-post-sessionp)))))
+
+(defthm fn-peer-step-pinned-preserves-consistent-session
+  (implies (fn-peer-session-consistentp ps archive)
+           (fn-peer-session-consistentp
+            (fn-post-result-session
+             (fn-peer-step-pinned ps archive index verdicts config observation
+                                  injection wire-event))
+            archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-peer-step-pinned)
+                           (fn-peer-delegate-pinned fn-peer-step
+                            fn-peer-command fn-peer-session-consistentp
+                            fn-peer-sessionp fn-nntp-tokenize
+                            fn-nntp-command-inputp fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp)))))
+
+(defthm fn-peer-delegate-pinned-effects-well-formed
+  (implies (and (fn-peer-session-consistentp ps archive)
+                (fn-midx-correspondencep index (fn-state-articles archive)))
+           (fn-nntp-effectsp
+            (fn-post-result-effects
+             (fn-peer-delegate-pinned ps archive index verdicts config
+                                      observation injection wire-event))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-peer-delegate-pinned fn-peer-session-consistentp)
+                (fn-nntp-post-step-pinned fn-post-session-consistentp
+                 fn-nntp-effectsp fn-post-result-effects
+                 fn-midx-correspondencep)))))
+
+(defthm fn-peer-step-pinned-effects-well-formed
+  (implies (and (fn-peer-session-consistentp ps archive)
+                (fn-midx-correspondencep index (fn-state-articles archive)))
+           (fn-nntp-effectsp
+            (fn-post-result-effects
+             (fn-peer-step-pinned ps archive index verdicts config observation
+                                  injection wire-event))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-peer-step-pinned)
+                (fn-peer-delegate-pinned fn-peer-step fn-peer-command
+                 fn-peer-session-consistentp fn-peer-sessionp
+                 fn-nntp-effectsp fn-post-result-effects
+                 fn-midx-correspondencep fn-nntp-command-inputp
+                 fn-nntp-tokenize fn-nntp-keyword-tokenp
+                 fn-nntp-command-arguments-at-mostp)))))
+
+(defthm fn-peer-step-pinned-submission-is-typed
+  (implies (and (fn-peer-sessionp ps)
+                (fn-post-result-submission
+                 (fn-peer-step-pinned ps archive index verdicts config
+                                      observation injection wire-event)))
+           (or (fn-inj-injectedp
+                (fn-post-result-submission
+                 (fn-peer-step-pinned ps archive index verdicts config
+                                      observation injection wire-event)))
+               (fn-peer-submissionp
+                (fn-post-result-submission
+                 (fn-peer-step-pinned ps archive index verdicts config
+                                      observation injection wire-event)))))
+  :hints (("Goal"
+           :use ((:instance fn-peer-step-submission-is-typed))
+           :in-theory
+           (e/d (fn-peer-step-pinned fn-peer-delegate-pinned fn-peer-command)
+                (fn-nntp-post-step-pinned fn-inj-injectedp
+                 fn-peer-submissionp fn-peer-step-submission-is-typed
+                 fn-peer-single fn-peer-echo-reply fn-peer-decide-offer
+                 fn-peer-decision-kind fn-nntp-keywordp
+                 fn-nntp-keyword-tokenp fn-nntp-multi
+                 fn-peer-capability-lines fn-cfg-peer-find
+                 fn-post-sessionp fn-node-statep fn-cfgp
+                 fn-af-message-idp fn-nntp-printable-tokenp
+                 fn-nntp-command-inputp fn-nntp-tokenize
+                 fn-nntp-command-arguments-at-mostp fn-post-body-octets
+                 fn-nntp-session-openp fn-peer-ihave-offer-line
+                 fn-peer-check-code)))))

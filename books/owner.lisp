@@ -14,7 +14,8 @@
 ;             generation, the length of the durable record history; archive
 ;             is the acceptance projection of the node at that generation;
 ;   conns     the open connections, each
-;             (id version frontier wire session archive config observation):
+;             (id version frontier wire session archive config observation
+;              verdicts):
 ;             pinned to one committed view and carrying the wire framing
 ;             state, the POST session, the posting configuration and the one
 ;             clock observation of one served connection (books/served.lisp);
@@ -82,6 +83,7 @@
 (include-book "served")
 (include-book "clock")
 (include-book "owner-feed")
+(include-book "msgid-index")
 
 ; store's idle-phase predicate has no explicit guard; it is guard t and its
 ; body is one member-equal over a constant, so verify it here so that
@@ -90,11 +92,11 @@
 
 ; -----------------------------------------------------------------------------
 ; The connection record:
-;   (id version frontier wire session archive config observation)
+;   (id version frontier wire session archive config observation verdicts index)
 
 (defun fn-own-conn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 8)))
+  (and (true-listp x) (equal (len x) 10)))
 (defun fn-own-conn-id (c)
   (declare (xargs :guard t))
   (mbe :logic (car c) :exec (fn-ag-car c)))
@@ -125,9 +127,122 @@
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr c))))))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c))))))))))
+(defun fn-own-conn-verdicts (c)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr c)))))))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c)))))))))))
+(defun fn-own-conn-index (c)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr c))))))))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c))))))))))))
+(defun fn-own-conn-make-indexed
+    (id version frontier wire session archive config observation verdicts index)
+  (declare (xargs :guard t))
+  (list id version frontier wire session archive config observation verdicts index))
+
+(defthm fn-own-conn-shapep-of-fn-own-conn-make-indexed
+  (fn-own-conn-shapep
+   (fn-own-conn-make-indexed id version frontier wire session archive config
+                              observation verdicts index)))
+
+(defthm fn-own-conn-fields-of-fn-own-conn-make-indexed
+  (and (equal (fn-own-conn-id
+               (fn-own-conn-make-indexed id version frontier wire session
+                                         archive config observation verdicts
+                                         index)) id)
+       (equal (fn-own-conn-version
+               (fn-own-conn-make-indexed id version frontier wire session
+                                         archive config observation verdicts
+                                         index)) version)
+       (equal (fn-own-conn-frontier
+               (fn-own-conn-make-indexed id version frontier wire session
+                                         archive config observation verdicts
+                                         index)) frontier)
+       (equal (fn-own-conn-wire
+               (fn-own-conn-make-indexed id version frontier wire session
+                                         archive config observation verdicts
+                                         index)) wire)
+       (equal (fn-own-conn-session
+               (fn-own-conn-make-indexed id version frontier wire session
+                                         archive config observation verdicts
+                                         index)) session)
+       (equal (fn-own-conn-archive
+               (fn-own-conn-make-indexed id version frontier wire session
+                                         archive config observation verdicts
+                                         index)) archive)
+       (equal (fn-own-conn-config
+               (fn-own-conn-make-indexed id version frontier wire session
+                                         archive config observation verdicts
+                                         index)) config)
+       (equal (fn-own-conn-observation
+               (fn-own-conn-make-indexed id version frontier wire session
+                                         archive config observation verdicts
+                                         index)) observation)
+       (equal (fn-own-conn-verdicts
+               (fn-own-conn-make-indexed id version frontier wire session
+                                         archive config observation verdicts
+                                         index)) verdicts)))
+(defun fn-own-conn-make-pinned
+    (id version frontier wire session archive config observation verdicts)
+  (declare (xargs :guard t))
+  (fn-own-conn-make-indexed id version frontier wire session archive config
+                             observation verdicts nil))
+
+(defthm fn-own-conn-index-of-fn-own-conn-make-indexed
+  (equal (fn-own-conn-index
+          (fn-own-conn-make-indexed id version frontier wire session archive
+                                     config observation verdicts index))
+         index))
+
+(defthm fn-own-conn-index-of-fn-own-conn-make-pinned
+  (equal (fn-own-conn-index
+          (fn-own-conn-make-pinned id version frontier wire session archive
+                                    config observation verdicts))
+         nil))
 (defun fn-own-conn-make (id version frontier wire session archive config observation)
   (declare (xargs :guard t))
-  (list id version frontier wire session archive config observation))
+  (fn-own-conn-make-pinned id version frontier wire session archive config
+                            observation nil))
+
+(defthm fn-own-conn-shapep-of-fn-own-conn-make-pinned
+  (fn-own-conn-shapep
+   (fn-own-conn-make-pinned id version frontier wire session archive config
+                             observation verdicts)))
+(defthm fn-own-conn-old-fields-of-fn-own-conn-make-pinned
+  (and (equal (fn-own-conn-id
+               (fn-own-conn-make-pinned id version frontier wire session archive
+                                         config observation verdicts)) id)
+       (equal (fn-own-conn-version
+               (fn-own-conn-make-pinned id version frontier wire session archive
+                                         config observation verdicts)) version)
+       (equal (fn-own-conn-frontier
+               (fn-own-conn-make-pinned id version frontier wire session archive
+                                         config observation verdicts)) frontier)
+       (equal (fn-own-conn-wire
+               (fn-own-conn-make-pinned id version frontier wire session archive
+                                         config observation verdicts)) wire)
+       (equal (fn-own-conn-session
+               (fn-own-conn-make-pinned id version frontier wire session archive
+                                         config observation verdicts)) session)
+       (equal (fn-own-conn-archive
+               (fn-own-conn-make-pinned id version frontier wire session archive
+                                         config observation verdicts)) archive)
+       (equal (fn-own-conn-config
+               (fn-own-conn-make-pinned id version frontier wire session archive
+                                         config observation verdicts)) config)
+       (equal (fn-own-conn-observation
+               (fn-own-conn-make-pinned id version frontier wire session archive
+                                         config observation verdicts)) observation)))
+(defthm fn-own-conn-verdicts-of-fn-own-conn-make-pinned
+  (equal (fn-own-conn-verdicts
+          (fn-own-conn-make-pinned id version frontier wire session archive
+                                    config observation verdicts))
+         verdicts))
+(defthm fn-own-conn-verdicts-of-fn-own-conn-make
+  (equal (fn-own-conn-verdicts
+          (fn-own-conn-make id version frontier wire session archive config
+                             observation))
+         nil))
 
 (defthm fn-own-conn-shapep-of-fn-own-conn-make
   (fn-own-conn-shapep (fn-own-conn-make id version frontier wire session archive config observation)))
@@ -186,6 +301,8 @@
                     (:d fn-own-conn-frontier) (:d fn-own-conn-wire)
                     (:d fn-own-conn-session) (:d fn-own-conn-archive)
                     (:d fn-own-conn-config) (:d fn-own-conn-observation)
+                    (:d fn-own-conn-verdicts) (:d fn-own-conn-index)
+                    (:d fn-own-conn-make-indexed) (:d fn-own-conn-make-pinned)
                     (:d fn-own-conn-make)))
 
 ; -----------------------------------------------------------------------------
@@ -235,11 +352,11 @@
                     (:d fn-own-sub-mark) (:d fn-own-sub-decision) (:d fn-own-sub-make)))
 
 ; -----------------------------------------------------------------------------
-; The committed view record: (version frontier archive)
+; The committed view record: (version frontier archive verdicts index)
 
 (defun fn-own-view-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 3)))
+  (and (true-listp x) (equal (len x) 5)))
 (defun fn-own-view-version (v)
   (declare (xargs :guard t))
   (mbe :logic (car v) :exec (fn-ag-car v)))
@@ -249,9 +366,77 @@
 (defun fn-own-view-archive (v)
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr v))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr v)))))
+(defun fn-own-view-verdicts (v)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr v))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v))))))
+(defun fn-own-view-index (v)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr v)))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v)))))))
+(defun fn-own-view-make-indexed (version frontier archive verdicts index)
+  (declare (xargs :guard t))
+  (list version frontier archive verdicts index))
+
+(defthm fn-own-view-shapep-of-fn-own-view-make-indexed
+  (fn-own-view-shapep
+   (fn-own-view-make-indexed version frontier archive verdicts index)))
+
+(defthm fn-own-view-fields-of-fn-own-view-make-indexed
+  (and (equal (fn-own-view-version
+               (fn-own-view-make-indexed version frontier archive verdicts
+                                         index))
+              version)
+       (equal (fn-own-view-frontier
+               (fn-own-view-make-indexed version frontier archive verdicts
+                                         index))
+              frontier)
+       (equal (fn-own-view-archive
+               (fn-own-view-make-indexed version frontier archive verdicts
+                                         index))
+              archive)
+       (equal (fn-own-view-verdicts
+               (fn-own-view-make-indexed version frontier archive verdicts
+                                         index))
+              verdicts)))
+(defun fn-own-view-make-pinned (version frontier archive verdicts)
+  (declare (xargs :guard t))
+  (fn-own-view-make-indexed version frontier archive verdicts nil))
+
+(defthm fn-own-view-index-of-fn-own-view-make-indexed
+  (equal (fn-own-view-index
+          (fn-own-view-make-indexed version frontier archive verdicts index))
+         index))
+
+(defthm fn-own-view-index-of-fn-own-view-make-pinned
+  (equal (fn-own-view-index
+          (fn-own-view-make-pinned version frontier archive verdicts))
+         nil))
 (defun fn-own-view-make (version frontier archive)
   (declare (xargs :guard t))
-  (list version frontier archive))
+  (fn-own-view-make-pinned version frontier archive nil))
+
+(defthm fn-own-view-shapep-of-fn-own-view-make-pinned
+  (fn-own-view-shapep
+   (fn-own-view-make-pinned version frontier archive verdicts)))
+(defthm fn-own-view-old-fields-of-fn-own-view-make-pinned
+  (and (equal (fn-own-view-version
+               (fn-own-view-make-pinned version frontier archive verdicts))
+              version)
+       (equal (fn-own-view-frontier
+               (fn-own-view-make-pinned version frontier archive verdicts))
+              frontier)
+       (equal (fn-own-view-archive
+               (fn-own-view-make-pinned version frontier archive verdicts))
+              archive)))
+(defthm fn-own-view-verdicts-of-fn-own-view-make-pinned
+  (equal (fn-own-view-verdicts
+          (fn-own-view-make-pinned version frontier archive verdicts))
+         verdicts))
+(defthm fn-own-view-verdicts-of-fn-own-view-make
+  (equal (fn-own-view-verdicts
+          (fn-own-view-make version frontier archive))
+         nil))
 
 (defthm fn-own-view-shapep-of-fn-own-view-make
   (fn-own-view-shapep (fn-own-view-make version frontier archive)))
@@ -276,6 +461,8 @@
                                     :trigger-terms ((fn-own-view-archive x)))))
 (in-theory (disable (:d fn-own-view-shapep) (:d fn-own-view-version)
                     (:d fn-own-view-frontier) (:d fn-own-view-archive)
+                    (:d fn-own-view-verdicts) (:d fn-own-view-index)
+                    (:d fn-own-view-make-indexed) (:d fn-own-view-make-pinned)
                     (:d fn-own-view-make)))
 
 ; -----------------------------------------------------------------------------
@@ -519,14 +706,21 @@
   (declare (xargs :guard t))
   (let ((s (fn-own-store o)))
     (if (fn-own-store-idlep s)
-        (fn-own-make s
-                     (fn-own-view-make (len (fn-sf-records (fn-sn-files s)))
-                                       (fn-sf-frontier (fn-sn-files s))
-                                       (fn-node-acceptance (fn-sn-node s)))
+        (let* ((old-view (fn-own-view o))
+               (archive (fn-node-acceptance (fn-sn-node s)))
+               (index (fn-midx-refresh
+                       (fn-own-view-index old-view)
+                       (fn-state-articles (fn-own-view-archive old-view))
+                       (fn-state-articles archive))))
+          (fn-own-make s
+                     (fn-own-view-make-indexed
+                      (len (fn-sf-records (fn-sn-files s)))
+                      (fn-sf-frontier (fn-sn-files s))
+                      archive (fn-sn-verdicts s) index)
                      (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                      (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                      (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                     (fn-own-inflight o) (fn-own-feeds o))
+                     (fn-own-inflight o) (fn-own-feeds o)))
       o)))
 
 ; The owner of a store.  The host calls this once per process over the state
@@ -535,9 +729,12 @@
   (declare (xargs :guard t))
   (fn-own-refresh
    (fn-own-make store
-                (fn-own-view-make 0 0 (fn-own-prefix-archive
-                                       (fn-sn-groups store) (fn-sn-capacity store)
-                                       (fn-sf-records (fn-sn-files store)) 0 0))
+                (let ((archive (fn-own-prefix-archive
+                                (fn-sn-groups store) (fn-sn-capacity store)
+                                (fn-sf-records (fn-sn-files store)) 0 0)))
+                  (fn-own-view-make-indexed
+                   0 0 archive nil
+                   (fn-midx-build (fn-state-articles archive))))
                 nil 0 max-conns nil nil nil nil nil nil nil nil)))
 
 ; -----------------------------------------------------------------------------
@@ -621,11 +818,13 @@
                 (fn-auth-with-base
                  as (fn-peer-open-session (fn-own-conn-archive conn) nil
                                           (fn-sn-node (fn-own-store o)) cfg)))
-               (next (fn-own-conn-make
+               (next (fn-own-conn-make-indexed
                       (fn-own-conn-id conn) (fn-own-conn-version conn)
                       (fn-own-conn-frontier conn) (fn-own-conn-wire conn) next-as
                       (fn-own-conn-archive conn) (fn-own-conn-config conn)
-                      (fn-own-conn-observation conn))))
+                      (fn-own-conn-observation conn)
+                      (fn-own-conn-verdicts conn)
+                      (fn-own-conn-index conn))))
           (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o))))
       o)))
 
@@ -674,11 +873,13 @@
                                      (fn-own-body-limit o) (fn-own-config o)
                                      (fn-own-clock o) (fn-own-clock o) acfg))
              (sconn (fn-served-result-conn opened))
-             (conn (fn-own-conn-make id (fn-own-view-version view)
+             (conn (fn-own-conn-make-indexed id (fn-own-view-version view)
                                      (fn-own-view-frontier view)
                                      (fn-served-conn-wire sconn)
                                      (fn-served-conn-session sconn)
-                                     archive (fn-own-config o) (fn-own-clock o))))
+                                     archive (fn-own-config o) (fn-own-clock o)
+                                     (fn-own-view-verdicts view)
+                                     (fn-own-view-index view))))
         (cons (fn-served-result-effects opened)
               (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
                            (1+ (nfix id)) (fn-own-max-conns o) (fn-own-pending o)
@@ -732,11 +933,13 @@
                                           peer (fn-sn-node (fn-own-store o)) cfg
                                           acfg))
              (sconn (fn-served-result-conn opened))
-             (conn (fn-own-conn-make id (fn-own-view-version view)
+             (conn (fn-own-conn-make-indexed id (fn-own-view-version view)
                                      (fn-own-view-frontier view)
                                      (fn-served-conn-wire sconn)
                                      (fn-served-conn-session sconn)
-                                     archive (fn-own-config o) (fn-own-clock o))))
+                                     archive (fn-own-config o) (fn-own-clock o)
+                                     (fn-own-view-verdicts view)
+                                     (fn-own-view-index view))))
         (cons (fn-served-result-effects opened)
               (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
                            (1+ (nfix id)) (fn-own-max-conns o) (fn-own-pending o)
@@ -942,14 +1145,16 @@
   (let* ((effects (fn-served-result-effects result))
          (sconn (fn-served-result-conn result))
          (id (fn-own-conn-id conn))
-         (next (fn-own-conn-make id
+         (next (fn-own-conn-make-indexed id
                                  (fn-own-conn-version conn)
                                  (fn-own-conn-frontier conn)
                                  (fn-served-conn-wire sconn)
                                  (fn-served-conn-session sconn)
                                  (fn-own-conn-archive conn)
                                  (fn-own-conn-config conn)
-                                 (fn-own-conn-observation conn)))
+                                 (fn-own-conn-observation conn)
+                                 (fn-own-conn-verdicts conn)
+                                 (fn-own-conn-index conn)))
          (decision (fn-served-submission effects)))
     (cons effects
           (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
@@ -968,12 +1173,14 @@
     (if conn
         (fn-own-finish-read
          o conn
-         (fn-served-step (fn-served-make-conn (fn-own-conn-wire conn)
+         (fn-served-step (fn-served-make-conn-indexed (fn-own-conn-wire conn)
                                               (fn-own-conn-live-session o conn)
                                               (fn-own-conn-archive conn)
                                               (fn-own-conn-config conn)
                                               (fn-own-conn-observation conn)
-                                              (fn-own-clock o))
+                                              (fn-own-clock o)
+                                              (fn-own-conn-verdicts conn)
+                                              (fn-own-conn-index conn))
                          octets))
       (cons nil o))))
 
@@ -989,22 +1196,26 @@
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
         (let* ((result (fn-served-dispatch
-                        (fn-served-make-conn (fn-own-conn-wire conn)
+                        (fn-served-make-conn-indexed (fn-own-conn-wire conn)
                                              (fn-own-conn-session conn)
                                              (fn-own-conn-archive conn)
                                              (fn-own-conn-config conn)
                                              (fn-own-conn-observation conn)
-                                             (fn-own-clock o))
+                                             (fn-own-clock o)
+                                             (fn-own-conn-verdicts conn)
+                                             (fn-own-conn-index conn))
                         event))
                (sconn (fn-served-result-conn result))
-               (next (fn-own-conn-make (fn-own-conn-id conn)
+               (next (fn-own-conn-make-indexed (fn-own-conn-id conn)
                                        (fn-own-conn-version conn)
                                        (fn-own-conn-frontier conn)
                                        (fn-served-conn-wire sconn)
                                        (fn-served-conn-session sconn)
                                        (fn-own-conn-archive conn)
                                        (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn))))
+                                       (fn-own-conn-observation conn)
+                                       (fn-own-conn-verdicts conn)
+                                       (fn-own-conn-index conn))))
           (cons (fn-served-result-effects result)
                 (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
                     (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o)))
@@ -1041,13 +1252,15 @@
                                                (fn-nntp-session-group base)
                                                (fn-nntp-session-current base))
                            (fn-post-session-awaiting told)))))
-               (next (fn-own-conn-make (fn-own-conn-id conn)
+               (next (fn-own-conn-make-indexed (fn-own-conn-id conn)
                                        (fn-own-view-version view)
                                        (fn-own-view-frontier view)
                                        (fn-own-conn-wire conn)
                                        session archive
                                        (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn))))
+                                       (fn-own-conn-observation conn)
+                                       (fn-own-view-verdicts view)
+                                       (fn-own-view-index view))))
           (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
               (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o)))
             o))
@@ -1630,12 +1843,14 @@
                                    (fn-own-feeds o)))))
           (cons (fn-served-result-effects
                  (fn-served-post-outcome
-                  (fn-served-make-conn (fn-own-conn-wire conn)
+                  (fn-served-make-conn-indexed (fn-own-conn-wire conn)
                                        (fn-own-conn-session conn)
                                        (fn-own-conn-archive conn)
                                        (fn-own-conn-config conn)
                                        (fn-own-conn-observation conn)
-                                       (fn-own-clock o))
+                                       (fn-own-clock o)
+                                       (fn-own-conn-verdicts conn)
+                                       (fn-own-conn-index conn))
                   completion))
                 (if (equal completion :durable)
                     (fn-own-advance next id)
@@ -1729,12 +1944,14 @@
                   ; pinned reader observation and the owner's current
                   ; reading, as fn-own-outcome passes them.  This caller
                   ; still passed five, so books/owner did not admit.
-                  (fn-served-make-conn (fn-own-conn-wire conn)
+                  (fn-served-make-conn-indexed (fn-own-conn-wire conn)
                                        (fn-own-conn-session conn)
                                        (fn-own-conn-archive conn)
                                        (fn-own-conn-config conn)
                                        (fn-own-conn-observation conn)
-                                       (fn-own-clock o))
+                                       (fn-own-clock o)
+                                       (fn-own-conn-verdicts conn)
+                                       (fn-own-conn-index conn))
                   (fn-own-sub-decision sub) d completion))
                 (if (equal completion :durable)
                     (fn-own-advance next id)
