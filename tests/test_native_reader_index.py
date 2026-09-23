@@ -157,7 +157,7 @@ class NativeReaderIndexTest(unittest.TestCase):
             self.assertEqual(rows, [b"exact reader source\r\n"])
             status, rows = self.command(fresh, "HDR :fn-verified " + msgid, True)
             self.assertEqual(status, b"225 headers follow\r\n")
-            self.assertEqual(rows, [b"0 absent no-record\r\n"])
+            self.assertEqual(rows, [b"0 absent no-field\r\n"])
 
         # Independent clients exercise the same called path under bounded
         # overlap.  This records responsiveness, not an asymptotic claim.
