@@ -361,7 +361,14 @@ def main():
             payload=n["root"]+"/"+label+".article"
             write_remote(n["host"],payload,article,"600")
             ssh(n["host"],image_argv(n["image"],"--fn","operator",n["config"],"post","--message-id",mid,"--payload",payload,"--group","fn.test"))
-            return mid,article
+            served=nntp_article(local_ports[n["side"]],n["local_cert"],n["login"],n["password"],mid)
+            if (served is None or b"\r\n\r\n" not in served
+                    or served.split(b"\r\n\r\n",1)[1] != article.split(b"\r\n\r\n",1)[1]):
+                raise RuntimeError("source article did not retain input body "+mid)
+            observations.append(dict(event="source-article",host=n["host"],message_id=mid,
+                input_sha256=hashlib.sha256(article).hexdigest(),input_bytes=len(article),
+                served_sha256=hashlib.sha256(served).hexdigest(),served_bytes=len(served)))
+            return mid,served
 
         def await_article(n, mid, article, seconds):
             deadline=time.monotonic()+seconds; observed=None
