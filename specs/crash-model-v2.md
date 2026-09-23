@@ -1482,9 +1482,59 @@ The first raw-byte step of K6b is certified in
 the exact `frame` argument, including its length. Its hypotheses are a
 well-formed byte state, fresh staging key, and true-list frame. The test
 book shows a second actual P-RECORD after an older durable record and
-counterexamples when each premise is removed. This does not yet identify
-the inode through the final immutable link at index 10 or prove that a
-post-link crash image's scanner decodes that same raw frame; K6b remains open.
+counterexamples when each premise is removed. The file-fence theorem alone does not identify the final immutable link
+or prove crash-image scanner provenance; the link step below addresses the
+first of those obligations.
+
+The next raw-byte step is
+`fn-bs-k6-actual-record-linked-input-has-exact-frame`, also in
+`books/byte-store-record-provenance.lisp`. Under a well-formed byte state,
+`fn-bs-record-inputp` (which binds the frame to ACL2's candidate and the
+transaction name to its sequence), a fresh staging key, and an absent final
+name at the file-fence cut, the actual P-RECORD interpreter's pair 8
+(`record-linked`) resolves that final name to the new inode, proves it is
+fenced, and proves its durable octets equal the complete `frame`. The proof
+joins the successful file-fence cut to the actual immutable-link step;
+`tests/acl2/byte-store-record-provenance-tests.lisp` supplies a second-record
+witness and separate failing examples for the four top-level premises.
+The linked-cut theorem is a pre-crash view assertion. The next theorem
+carries its bytes through a modeled crash image. General K0 remains
+necessary to connect arbitrary served call traces to admissible
+byte/kernel states and input premises.
+
+The next K6 theorem, `fn-bs-k6-actual-linked-crash-decoder-reads-candidate`,
+now carries that raw frame through every `fn-bs-crash-imagep` image of the
+actual `record-linked` cut **whose final name survives**. It requires the
+file-fence cut to have no earlier pending operation at that final name;
+live absence alone is insufficient because a pending set/delete pair can
+expose an unrelated older inode after a crash. The proof derives durable
+absence from no prior operation plus live absence, proves the link is the
+sole pending operation at that name, uses the crash-selector entry theorem
+to recover the exact target, and uses the fenced-content theorem to keep
+its complete octets. `fn-bs-record-of` on the recovered name therefore
+equals the ACL2 candidate. The test book includes a previous durable
+article, surviving/dropped link images, a corrupted non-crash image, and a
+modeled prior set/delete counterexample. The same raw-frame/decoder conclusion holds at the actual pair-10
+`record-attempted` cut: `fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state`
+proves that the link callback and named crash cut do not change the byte
+state. This is the decoder at the recovered final name, not yet a whole-list
+theorem about
+`fn-bs-scan-records (fn-bs-scan-store image)`. That list additionally needs
+the namespace contiguity, sequence and retained-prefix bridge, while
+general K0 must establish the input relation for every served P-RECORD call.
+`fn-bs-k6-related-attempted-surviving-scan-source-is-exact-frame` now
+derives both earlier-operation absence and final-name absence for an actual
+P-RECORD run starting from a byte/kernel-related `:record-staged` input. The
+relation rules out a pending transaction-directory operation and makes the
+candidate sequence the next index of the contiguous durable namespace; the
+interpreted create/write/file-fence prefix leaves that directory and its
+durable namespace untouched. `fn-bs-record-inputp` uses the typed
+`fn-store-event-sequence`, so this statement includes non-article Store
+events. It still requires a fresh staging name, a model crash image and a
+surviving final link. General K0 must establish the related input and
+freshness for each served call, and the scanner's whole-list conclusion
+remains open as a theorem. The test book executes a non-article retention
+event through the actual program and scanner as a concrete witness.
 
 ; K7. Fence after uncertainty: after an error outcome of a :link, :rename or
 ; :fsync-dir step, the kernel is fenced and the byte store's pending list
@@ -2002,7 +2052,7 @@ formula. No process-death cut or byte-crash outcome was removed.
 | K3 `fn-bs-store-recovery-is-a-kernel-crash` | **proved 2026-09-21** (lane `w11/k1-scan`), in `books/byte-store-keystones.lisp`: K2 and `fn-sf-recovery-crash-realizes-every-admissible-image` (**certified**, `books/store-files-invariants.lisp`, D14-b and D14-c) over all four arms. The constructor is `fn-sf-image-crash`, which selects among `fn-sf-crash` at the two choice functions, `fn-sf-crash-rollback` and `fn-sf-crash-frontier-rollback`. |
 | K2f (the frontier sub-case of K2) | **modelled 2026-09-20** ([D14-c](../planning/decisions.md), lane `w11/bytestore-k2`) and **discharged 2026-09-21** inside K2 (lane `w11/k1-scan`), in the shape `w10/kernel-freedom` named plus one conjunct it did not: the two rollbacks are exclusive. The recovery window can also be entered with a pending `:root` entry operation -- die at `frontier-replaced` (`tools/run_store.py:1305`), reopen, and the rename is drained only by `fsync_dir(self.root)` at `:1216`, the FOURTH recovery barrier, so at `recover-replayed` (`:1207`) and the first three `recover-barrier` cuts (`:1228`) a crash rolls the frontier back to the durable value, which the kernel does not hold. `fn-sf-recovery-crash-imagep` carries the arm, `fn-sf-frontier-rollback-visiblep` is its gate, `fn-sf-crash-frontier-rollback` inhabits it, and `fn-bs-replay-matches-scan` carries the byte clause. The gate's `posp` conjunct is what makes the rolled-back value a natural in K2's frontier clause, and its `fn-sf-record-listp` conjunct admits exactly the reachable window. |
 | K4 `fn-bs-acknowledged-record-survives-byte-crash`, and `fn-bs-crash-image-reopens` beside it | **proved 2026-09-21** (lane `w11/k1-scan`), in `books/byte-store-keystones.lisp`. `fn-bs-crash-image-reopens` is the half with no vacuous instance: the host reopen entry `fn-sn-open-observed` succeeds on every byte-level crash image of a related state, in both windows, from K2 and `fn-sn-recovery-admissible-image-reopens`. K4 itself adds the acknowledged pair, from clause 5 of `fn-sf-recovery-admissible-image-facts` through `fn-sn-open-observed-success-exact-history`. **Its recovery-window instances are vacuous and this is stated at the form**: `fn-bs-replay-matches-scan` carries `(equal (fn-sf-successes ks) nil)`, so a state with an acknowledged outcome is outside the window, and K4 is a statement about the publish window, which is live. What covers the recovery window is `fn-bs-crash-image-reopens`. |
-| K5-K8 | **K5's stated scan-record formula proved** in `books/byte-store-stable-prefix.lisp`: under the existing byte/kernel relation and a modeled crash image, the scanner retains the decoded durable list as a prefix and can add at most one record. Its test book reaches a second `record-linked` cut after an earlier transaction is durable, observes both absent/present images, and shows the bound fails separately when either relation or crash-image premise is dropped. **K7 publication uncertainty proved for four native authority boundaries** in `books/byte-store-fault-keystones.lisp`: issued record link, issued allocator rename, transaction-directory barrier error and root-directory barrier error enter the recovery fence at the composed `fn-sn-io` subject. **The corrected K8 byte-model theorem is proved** in `books/byte-store-record-fence.lisp`: for a related `:record-attempted` state with an issued pending transaction link, every crash image after `fn-bs-fence-dir :transactions` scans exactly the old kernel record list followed by the candidate. The proof carries the relation through the fence, including authority inode membership and fenced octets. The test book has a two-record actual P-RECORD witness and distinct counterexamples for relation, phase, issued-link and crash-image hypotheses. The older phase-and-relation-only formula is false: a logical `:ok` callback can be paired with a physical pre-link cut while preserving the relation. **K6 actual P-RECORD file-fence raw-frame cut is proved** in `books/byte-store-record-provenance.lisp`; final-link/crash-scanner provenance, general K0 call-trace establishment and physical barrier qualification remain open (P3). |
+| K5-K8 | **K5's stated scan-record formula proved** in `books/byte-store-stable-prefix.lisp`: under the existing byte/kernel relation and a modeled crash image, the scanner retains the decoded durable list as a prefix and can add at most one record. Its test book reaches a second `record-linked` cut after an earlier transaction is durable, observes both absent/present images, and shows the bound fails separately when either relation or crash-image premise is dropped. **K7 publication uncertainty proved for four native authority boundaries** in `books/byte-store-fault-keystones.lisp`: issued record link, issued allocator rename, transaction-directory barrier error and root-directory barrier error enter the recovery fence at the composed `fn-sn-io` subject. **The corrected K8 byte-model theorem is proved** in `books/byte-store-record-fence.lisp`: for a related `:record-attempted` state with an issued pending transaction link, every crash image after `fn-bs-fence-dir :transactions` scans exactly the old kernel record list followed by the candidate. The proof carries the relation through the fence, including authority inode membership and fenced octets. The test book has a two-record actual P-RECORD witness and distinct counterexamples for relation, phase, issued-link and crash-image hypotheses. The older phase-and-relation-only formula is false: a logical `:ok` callback can be paired with a physical pre-link cut while preserving the relation. **K6 actual P-RECORD file-fence and immutable-link raw-frame cuts are proved** in `books/byte-store-record-provenance.lisp`; whole-list post-crash scanner provenance, general K0 call-trace establishment and physical barrier qualification remain open (P3). |
 | K9, K9b, K9c, K10 | **open** (P5) |
 | K11a-d | **open** (P4) |
 | K12 | **open** (P8) |

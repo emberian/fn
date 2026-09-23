@@ -1343,6 +1343,42 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-bs-k6-actual-record-file-cut-has-exact-frame"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k6-actual-record-linked-input-has-exact-frame"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k6-actual-linked-crash-surviving-name-has-exact-frame"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k6-related-input-file-cut-has-no-transaction-pending"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k6-related-attempted-crash-reads-exact-frame"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k6-related-staged-durable-final-name-absent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k6-related-input-file-cut-final-name-absent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-k6-related-attempted-surviving-scan-source-is-exact-frame"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-bs-sweep-round-keeps-every-cut-reopenable"
         },
         {
