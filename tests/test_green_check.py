@@ -326,15 +326,39 @@ class MergeGateTests(unittest.TestCase):
             self.assertEqual(answer["not_green"], [])
             # Now the dependency's bytes move and nobody certifies: the changed
             # book reads `never`, its dependent stays green at its own bytes
-            # (the audit's rule), and the gate refuses on the changed book.
+            # (the audit's rule), but the merge gate rejects its stale closure.
             book(root, "books/dep", '(in-package "ACL2") ; edited')
             report = green_check.audit(root, roots=["books/top", "books/aside"])
             answer = green_check.gate(report, ["books/dep"],
                                       green_check.dependents(root, report, ["books/dep"]))
-            self.assertEqual(answer["not_green"], ["books/dep"])
+            self.assertEqual(answer["not_green"], ["books/dep", "books/top"])
             roles = {row["book"]: row["role"] for row in answer["rows"]}
             self.assertEqual(roles, {"books/dep": "changed", "books/top": "dependent"})
             self.assertNotIn("books/aside", roles)
+
+    def test_recertifying_only_dependency_does_not_qualify_its_consumer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.tree(root)
+            changed = book(root, "books/dep", '(in-package "ACL2") ; new contract')
+            manifest(root, "certify-20260902T010000Z-2", status="passed",
+                     passed={"books/dep": changed})
+            report = green_check.audit(root, roots=["books/top", "books/aside"])
+            answer = green_check.gate(report, ["books/dep"],
+                                     green_check.dependents(root, report, ["books/dep"]))
+            self.assertEqual(answer["not_green"], ["books/top"])
+            top_row = next(row for row in answer["rows"] if row["book"] == "books/top")
+            self.assertEqual(top_row["verdict"], "stale")
+            self.assertEqual(top_row["deps_moved_since"], ["books/dep.lisp"])
+            self.assertTrue(any("stale" in line and "books/dep.lisp" in line
+                                for line in green_check.gate_lines(answer)))
+            top_digest = report["books_by_verdict"]["books/top"]["digest_sha256"]
+            manifest(root, "certify-20260903T010000Z-3", status="passed",
+                     passed={"books/dep": changed, "books/top": top_digest})
+            report = green_check.audit(root, roots=["books/top", "books/aside"])
+            answer = green_check.gate(report, ["books/dep"],
+                                     green_check.dependents(root, report, ["books/dep"]))
+            self.assertEqual(answer["not_green"], [])
 
     def test_a_changed_book_no_root_reaches_is_unaudited_and_not_green(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -352,6 +376,12 @@ class MergeGateTests(unittest.TestCase):
             git("init", "-q", "-b", "main")
             git("config", "user.email", "t@example.invalid")
             git("config", "user.name", "t")
+            # This temporary history tests diff selection, not the user's
+            # signing agent or repository hooks.
+            git("config", "commit.gpgsign", "false")
+            hooks = root / "empty-hooks"
+            hooks.mkdir()
+            git("config", "core.hooksPath", str(hooks))
             book(root, "books/dep", '(in-package "ACL2")')
             book(root, "tests/acl2/dep-tests", '(in-package "ACL2")')
             (root / "notes.md").write_text("x")
