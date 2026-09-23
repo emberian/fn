@@ -434,9 +434,11 @@ PLAN = (
     S("V0-READ-NEWNEWS", "F-READ",
       "NEWNEWS over a wildmat, since an instant before the store existed",
       ("NNT-008",), ("SCN-014",), ACCEPTED, "node",
-      "the node under test may hold no article whose Injection-Date or Date "
-      "fn can decode, in which case 230 with an empty block is the correct "
-      "answer and the row records the framing, not a reported identifier"),
+      "the 230 block is complete over the node's durable acceptance stamps"),
+    S("V0-READ-NEWNEWS-STAMP", "F-READ",
+      "NEWNEWS since 1970 includes this node's accepted article even when "
+      "its payload date differs from its acceptance",
+      ("NNT-008",), ("SCN-014",), ACCEPTED, "node"),
     S("V0-READ-NEWNEWS-FUTURE", "F-READ",
       "NEWNEWS since a future instant returns the empty block",
       ("NNT-008",), ("SCN-014",), ACCEPTED, "node"),
@@ -1168,13 +1170,11 @@ def surface(args):
     out["XOVER"] = conn.cmd("XOVER {}-{}".format(n, last or n), multiline=True)[0]
     out["XHDR"] = conn.cmd("XHDR Subject {}".format(n), multiline=True)[0]
     out["XPAT"] = conn.cmd("XPAT Subject {}-{} *".format(n, last or n), multiline=True)[0]
-    # RFC 3977 section 7.4.  Three rows: the whole-history poll, the poll from
-    # an instant in the future (section 7.4.2's empty list is a valid answer),
-    # and a malformed wildmat, which section 3.2.1 makes 501.  A node that
-    # holds no article with a decodable Injection-Date or Date answers the
-    # first with an empty block too, which is why its row records framing.
-    out["NEWNEWS"] = conn.cmd("NEWNEWS {} 19700101 000000 GMT".format(args.group),
-                              multiline=True)[0]
+    # RFC 3977 section 7.4.  The first block must contain the accepted
+    # article named by this fixture, independently of its payload Date.
+    out["NEWNEWS"], newnews_lines = conn.cmd(
+        "NEWNEWS {} 19700101 000000 GMT".format(args.group), multiline=True)
+    out["NEWNEWS STAMP TARGET"] = args.msgid in newnews_lines
     out["NEWNEWS FUTURE"] = conn.cmd("NEWNEWS {} 20990101 000000 GMT".format(args.group),
                                      multiline=True)[0]
     out["NEWNEWS SYNTAX"] = conn.cmd("NEWNEWS [ 19700101 000000 GMT")[0]
@@ -2803,6 +2803,14 @@ else echo NONE; fi
                                 else None)
                 continue
             self.from_reply(key, status, step.command, node=node.name, limit=served_by)
+        self.emit("V0-READ-NEWNEWS-STAMP",
+                  ACCEPTED if (result.get("NEWNEWS", "").startswith("230")
+                               and result.get("NEWNEWS STAMP TARGET")) else REFUSED,
+                  step.command,
+                  "whole-history NEWNEWS contains target {}: {}".format(
+                      node.accepted[0] if node.accepted else ART[node.name],
+                      result.get("NEWNEWS STAMP TARGET")),
+                  node=node.name, limit=served_by)
         # The cursor pair: what RFC 3977 section 6.1.4 requires depends on how
         # many articles the group holds, so the expectation comes from the
         # count the server itself reported.

@@ -24,9 +24,9 @@
     "accepted": 141,
     "refused": 34,
     "uncertain": 3,
-    "not-exercised": 39,
+    "not-exercised": 41,
     "not-built": 1,
-    "total": 218,
+    "total": 220,
     "disagreed": 7,
     "faulted": 0,
     "independent": 2,
@@ -244,6 +244,8 @@
         "V0-READ-LAST-B",
         "V0-READ-NEWNEWS-A",
         "V0-READ-NEWNEWS-B",
+        "V0-READ-NEWNEWS-STAMP-A",
+        "V0-READ-NEWNEWS-STAMP-B",
         "V0-READ-NEWNEWS-FUTURE-A",
         "V0-READ-NEWNEWS-FUTURE-B",
         "V0-READ-NEWNEWS-SYNTAX-A",
@@ -261,7 +263,7 @@
         "accepted": 50,
         "refused": 4,
         "uncertain": 0,
-        "not-exercised": 8,
+        "not-exercised": 10,
         "not-built": 0
       },
       "disagreed": 0
@@ -3924,6 +3926,66 @@
       "owner": null
     },
     {
+      "id": "V0-READ-NEWNEWS-STAMP-A",
+      "feature": "F-READ",
+      "feature_title": "the reader profile on each node",
+      "title": "NEWNEWS since 1970 includes this node's accepted article even when its payload date differs from its acceptance",
+      "node": "a",
+      "direction": null,
+      "requirements": [
+        "NNT-008"
+      ],
+      "scenarios": [
+        "SCN-014"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
+      "id": "V0-READ-NEWNEWS-STAMP-B",
+      "feature": "F-READ",
+      "feature_title": "the reader profile on each node",
+      "title": "NEWNEWS since 1970 includes this node's accepted article even when its payload date differs from its acceptance",
+      "node": "b",
+      "direction": null,
+      "requirements": [
+        "NNT-008"
+      ],
+      "scenarios": [
+        "SCN-014"
+      ],
+      "verdict": "not-exercised",
+      "expected": "accepted",
+      "agrees": null,
+      "client": null,
+      "independent": null,
+      "invocation": "(none)",
+      "observed": "(not run)",
+      "exit_code": null,
+      "revision": "3f68944",
+      "backend": "development-python",
+      "source": "3f68944",
+      "image": "development Python entry points from 3f68944",
+      "log": "planning/evidence/v0-matrix-2026-09-21.md",
+      "limit": "",
+      "blocker": "planned after the recorded run: this row was added to the tool's PLAN after the measurement in this file was taken, so no run has reached it on any commit. The next matrix run measures it.",
+      "owner": null
+    },
+    {
       "id": "V0-READ-NEWNEWS-FUTURE-A",
       "feature": "F-READ",
       "feature_title": "the reader profile on each node",
@@ -6644,6 +6706,8 @@
     "NNT-008": [
       "V0-READ-NEWNEWS-A",
       "V0-READ-NEWNEWS-B",
+      "V0-READ-NEWNEWS-STAMP-A",
+      "V0-READ-NEWNEWS-STAMP-B",
       "V0-READ-NEWNEWS-FUTURE-A",
       "V0-READ-NEWNEWS-FUTURE-B",
       "V0-READ-NEWNEWS-SYNTAX-A",
@@ -6899,6 +6963,8 @@
       "V0-READ-LAST-B",
       "V0-READ-NEWNEWS-A",
       "V0-READ-NEWNEWS-B",
+      "V0-READ-NEWNEWS-STAMP-A",
+      "V0-READ-NEWNEWS-STAMP-B",
       "V0-READ-NEWNEWS-FUTURE-A",
       "V0-READ-NEWNEWS-FUTURE-B",
       "V0-READ-NEWNEWS-SYNTAX-A",
@@ -7051,5 +7117,5 @@
       "V0-BP-REPLAY"
     ]
   },
-  "rows_digest": "bdc8b4d005f21d2f9974142dd80a4ed6b316429f05b7ddc17347a0dce9f3e4aa"
+  "rows_digest": "7c6972da79987baf7acc3a4e40e44ee53d77d7148f70f444bbcb68ed4ec0098c"
 }

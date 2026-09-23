@@ -237,7 +237,7 @@
       "<a2@fn.invalid>" *nn-a2-payload* '("fn.letters") 820540800)
      "<a3@fn.invalid>" *nn-a3-payload* '("fn.notes") 843134400)
     "<a4@fn.invalid>" *nn-a4-payload* '("fn.letters") 843141600)
-   "<a5@fn.invalid>" *nn-a5-payload* '("fn.letters") 820540800)))
+   "<a5@fn.invalid>" *nn-a5-payload* '("fn.letters") 820540800))
 
 (assert-event (equal (len (fn-state-articles *nn-archive*)) 5))
 (assert-event (fn-nntp-projectionp *nn-archive*))

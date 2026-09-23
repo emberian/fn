@@ -1,8 +1,10 @@
 # The acceptance stamp (T2)
 
-Status: T2a implementation in progress; T2b remains design. The forms below
-state the contract; certification evidence, rather than this note, determines
-which statements have been proved under the [assurance rules](../AGENTS.md).
+Status: T2a is implemented and qualified on its frozen native image. T2b's
+NEWNEWS books and affected ACL2 closure are certified; native reader-image
+validation is pending. The forms below state the contract; certification
+evidence, rather than this note, determines which statements have been proved
+under the [assurance rules](../AGENTS.md).
 It is the design note for
 step T2 of [the trajectory plan](../planning/plan-2026-09-22-trajectory.md)
 (§0 decision 6, §3 row T2, §3.1 "T2", §4.1), written against `dev` `3373f935`

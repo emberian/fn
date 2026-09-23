@@ -1236,7 +1236,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from the article's own injection stamp under a work budget",
+      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1255,8 +1255,8 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 over the same section 7.3.2 date and time parse NEWGROUPS uses and the same wildmat matcher LIST ACTIVE uses. The instant compared is the article's own Injection-Date, falling back to Date (RFC 5537 sections 3.6 and 3.7), because the committed article record carries no arrival stamp. One command costs one pass over the committed article list plus at most *fn-nntp-newnews-parse-budget* = 256 article parses; a request with more candidates is refused with 503 and parses nothing.",
-      "note": "NEWNEWS answers from the injector's stamp until T2 writes the acceptance instant into the record; then it answers from this node's own acceptance and the parse budget leaves the served path."
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
       "id": "HST-001",
