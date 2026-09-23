@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 449 |
-| Certification roots in the Makefile | 444 |
-| Books inside the root closure | 448 |
-| `defthm` and `defthmd` events | 7359 |
-| `defun` events | 5594 |
+| Books read | 455 |
+| Certification roots in the Makefile | 450 |
+| Books inside the root closure | 454 |
+| `defthm` and `defthmd` events | 7367 |
+| `defun` events | 5628 |
 | Functions with verified guards | 1850 |
-| Functions declared `:verify-guards nil` and never verified | 301 |
-| Functions left at the default with an explicit guard | 2757 |
-| Functions left at the default with no guard | 686 |
-| `assert-event` checks | 8120 |
-| `must-fail` checks | 316 |
+| Functions declared `:verify-guards nil` and never verified | 302 |
+| Functions left at the default with an explicit guard | 2777 |
+| Functions left at the default with no guard | 699 |
+| `assert-event` checks | 8150 |
+| `must-fail` checks | 320 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 69 |
 | Export-hygiene warnings | 93 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 24 |
-| Include-hygiene warnings | 293 |
+| Include-hygiene warnings | 302 |
 | Host-names warnings | 664 |
 | Hand-written-record warnings | 18 |
 
@@ -112,6 +112,9 @@ that `make certify` requests.
 | `books/bp-authored-wire.lisp` | root | 2 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/bp-bundle-invariants.lisp` | root | 30 | 1 | 0/0/0/1 | 0 | 0 | 2 |
 | `books/bp-bundle.lisp` | root | 41 | 48 | 31/0/17/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-byte-publisher.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-codec-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-fnbs-codec.lisp` | root | 1 | 11 | 0/1/10/0 | 0 | 0 | 0 |
 | `books/bp-fragment-fast.lisp` | root | 15 | 8 | 6/0/0/2 | 0 | 0 | 0 |
 | `books/bp-fragment-invariants.lisp` | root | 62 | 3 | 0/0/0/3 | 0 | 0 | 3 |
 | `books/bp-fragment.lisp` | root | 6 | 36 | 35/1/0/0 | 0 | 0 | 0 |
@@ -370,6 +373,9 @@ that `make certify` requests.
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 0 | 0 |
 | `tests/acl2/bp-authored-wire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 3 | 0 |
 | `tests/acl2/bp-bundle-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 68 | 0 | 0 |
+| `tests/acl2/bp-fnbs-byte-counterexamples.lisp` | root | 2 | 5 | 0/0/0/5 | 3 | 2 | 0 |
+| `tests/acl2/bp-fnbs-byte-publisher-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 15 | 1 | 0 |
+| `tests/acl2/bp-fnbs-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 1 | 0 |
 | `tests/acl2/bp-fragment-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 88 | 0 | 0 |
 | `tests/acl2/bp-ingress-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
