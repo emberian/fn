@@ -22,13 +22,14 @@ DTN_DEVELOPER = Path(os.environ.get(
     "FN_NATIVE_DTN_DEVELOPER_HOST", ROOT / "build" / "fn-host-dtn-developer"))
 
 
-def invoke(image, *words):
+def invoke(image, *words, environment_override=None):
     environment = dict(os.environ)
     environment["ACL2_CUSTOMIZATION"] = "NONE"
     environment.pop("ACL2_SYSTEM_BOOKS", None)
     # The profile is serialized at build time.  A restart-time variable must
     # not change which entries the image exposes.
     environment["FN_NATIVE_PROFILE"] = "developer"
+    environment.update(environment_override or {})
     return subprocess.run(
         [str(image), "--fn", *words], cwd=ROOT, env=environment,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, check=False)
@@ -151,6 +152,23 @@ class NativeImageProfileSavedImageTests(unittest.TestCase):
 
 
 class RawPostEntryWitnesses(unittest.TestCase):
+    def test_dtn_selector_gate_is_serialized(self):
+        selector = {"FN_BP_TEST_DELIVER_FAULT": "1"}
+        for image in (PRODUCTION, DTN):
+            if not (image.is_file() and os.access(image, os.X_OK)):
+                self.skipTest(f"build {image} for the saved-image witness")
+            with self.subTest(image=image):
+                refused = invoke(image, "bp", "unknown", environment_override=selector)
+                self.assertEqual(refused.returncode, 5, refused.stderr.decode())
+                self.assertIn(b"FN_BP_TEST_DELIVER_FAULT", refused.stderr)
+        for image in (DEVELOPER, DTN_DEVELOPER):
+            if not (image.is_file() and os.access(image, os.X_OK)):
+                self.skipTest(f"build {image} for the saved-image witness")
+            with self.subTest(image=image):
+                dispatched = invoke(image, "bp", "unknown", environment_override=selector)
+                self.assertEqual(dispatched.returncode, 5, dispatched.stderr.decode())
+                self.assertIn(b"unknown bp command", dispatched.stderr)
+
     def test_production_images_refuse_raw_post_before_store_or_payload_io(self):
         for image in (PRODUCTION, DTN):
             if not (image.is_file() and os.access(image, os.X_OK)):
