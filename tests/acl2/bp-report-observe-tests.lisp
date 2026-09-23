@@ -49,6 +49,22 @@
 (assert-event (fn-bpb-bundlep (bproa-incoming-bundle)))
 (assert-event (fn-bpnf-heldp (bproa-held)))
 (assert-event
+ (equal (fn-bpn-report-job-matchp
+         (fn-bpnf-base (fn-bpnf-answer-state (bproa-committed)))
+         (bpro-outbox)) t))
+(assert-event
+ (null (fn-bpn-report-job-matchp
+        (fn-bpnf-base (fn-bpnf-answer-state (bproa-committed)))
+        (update-nth 3 '(1 2 3) (bpro-outbox)))))
+(assert-event
+ (let* ((base (fn-bpnf-base (fn-bpnf-answer-state (bproa-committed))))
+        (changed (update-nth 4 10 (bproa-job)))
+        (wrong (fn-bpn-state-with
+                base (list changed) (fn-bpn-machine-state-contacts base)
+                nil nil (fn-bpn-machine-state-next-token base))))
+   (and (fn-bpn-jobp changed)
+        (null (fn-bpn-report-job-matchp wrong (bpro-outbox))))))
+(assert-event
  (equal (fn-bpn-report-observe-next (bproa-state) *bpnm-local* nil)
         (list :observed 2 (fn-bpn-job-key (bproa-job)) (bproa-report))))
 (assert-event
