@@ -183,3 +183,4 @@ certify-20260920T215750Z-51499 planning/deputies/BOARD.md:807
 certify-20260920T215904Z-52240 planning/deputies/BOARD.md:811
 certify-20260921T004818Z-1354736 planning/evidence/tcpcl-outbound-w11-2026-09-20.md:39
 certify-20260921T011743Z-14492 planning/deputies/BOARD.md:1068
+certify-20260923T003741Z-1790068 planning/evidence/certification-cost-2026-09-23.md:13

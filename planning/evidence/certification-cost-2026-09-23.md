@@ -10,7 +10,7 @@ manifests and the per-book ACL2 logs, copied off the boxes with rsync.
 |---|---|---|---|---|
 | seam tree, `certify-20260923T000250Z-1473169` | persvati, 4 | 310 | 1639 s | `/home/ember/fn-gates/t1-seam/build/acl2/certify-20260923T000250Z-1473169/` (sources: commit 3102c6f2, all 310 digests match) |
 | image closure (freeze), `certify-20260922T200011Z-3216833` | hbox, 8 | 165 | 1877 s | `/tank/fn/gates/freeze-dev-28fb4bd0/build/acl2/certify-20260922T200011Z-3216833/` (all 165 digests match the gate tree) |
-| dev head treewide, `certify-20260923T003741Z-1790068`, stopped | persvati, 8 | 345 of 425 finished | about 1028 s when stopped | `/home/ember/fn-gates/dev-head/build/acl2/certify-20260923T003741Z-1790068/` (no manifest; 425 drivers name the requested set) |
+| dev head treewide, `certify-20260923T003741Z-1790068`, stopped | persvati, 8 | 345 of 425 finished | about 1028 s when stopped | `/home/ember/fn-gates/dev-head/build/acl2/certify-20260923T003741Z-1790068/` (stopped before it wrote a manifest, so the id is in `manifests/LOST.txt`; its 425 drivers name the requested set) |
 | `certify-20260922T225718Z-866045` (t13) and `certify-20260922T232404Z-1113276` (t6b, 169 books, 2988 s) | persvati, 4 | | | used only to cross-check |
 
 Method. Each `*.certify.log` was parsed for every `Summary` block: `Form:`,
