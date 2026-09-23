@@ -662,6 +662,11 @@ the clock's reason:
   for an uncertain transfer, never 437 or 439; a control or BP submission
   answers `:refused` with reason `:clock-unusable`. A BP ADU refused for the
   clock stays staged: it is not a bundle rejection (§7 question 10).
+
+  The local control reply carries `:clock-unusable` as a distinct status word
+  in the existing sealed reply grammar; its ACL2 status class is `:refused`
+  and its CLI exit code is 1. Existing status words retain their octets and
+  meanings, and clients built for the new image still decode every old reply.
 - Teeth: an owner witness whose clock was dropped by a contradicted reading
   (D10-a's own witness) with a queued POST; the take and attempt produce the
   clock line and no record, and a `must-fail` shows the same submission with a

@@ -19,7 +19,7 @@
 (defconst *fn-nctrl-admin-kind* 3)
 (defconst *fn-nctrl-request-spec* '(:blob :text :blob))
 (defconst *fn-nctrl-statuses*
-  '(:accepted :duplicate :refused :busy :uncertain :fault))
+  '(:accepted :duplicate :refused :clock-unusable :busy :uncertain :fault))
 (defconst *fn-nctrl-reply-spec* (list (cons :enum *fn-nctrl-statuses*)))
 
 ; Article plus its blob head, Message-ID plus its text head, and the CBOR group
@@ -290,7 +290,7 @@
 (defun fn-native-control-status-class (status)
   (declare (xargs :guard t))
   (cond ((member-equal status '(:accepted :duplicate)) :accepted)
-        ((member-equal status '(:refused :busy)) :refused)
+        ((member-equal status '(:refused :clock-unusable :busy)) :refused)
         ((equal status :uncertain) :uncertain)
         (t :fault)))
 
