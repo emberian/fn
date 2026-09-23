@@ -5,12 +5,17 @@
 (in-package "ACL2")
 (include-book "../books/checkpoint-publish")
 (include-book "../books/checkpoint-compaction")
+(include-book "../books/checkpoint-auxiliary")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
 ; must get them too.  A second `ld' of a file already in the session
 ; re-admits identical definitions, which ACL2 accepts as redundant.
 (ld "store-node-host.lisp" :ld-error-action :error)
+
+(defun fn-store-checkpoint-rollover-proposal (fresh-id state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cpa-rollover-proposal (f-get-global 'fn-store-sn state) fresh-id)))
 
 ; The protected prefix of a checkpoint generation captured from the decoded
 ; durable records at the durable allocator frontier.  Capture replays the
@@ -222,3 +227,12 @@
                     (fn-sn-node (f-get-global 'fn-store-sn state)))
              t
            nil)))
+
+; The node-only checkpoint is not a complete Store image.  Compare the
+; consumer and historical authorship projections of the actual reopened
+; Store with an independent replay of its exact journal records.  This runs
+; once during selected-checkpoint diagnostics, never on a served request.
+(defun fn-store-checkpoint-auxiliary-differential (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cpa-store-auxiliary-agrees
+          (f-get-global 'fn-store-sn state))))

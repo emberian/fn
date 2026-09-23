@@ -157,9 +157,12 @@
         "host/native/checkpoint.lisp",
         "tests/test_native_checkpoint.py",
         "planning/evidence/native-checkpoint-w15-2026-09-21.md",
-        "planning/evidence/native-checkpoint-namespace-w15-2026-09-21.md"
+        "planning/evidence/native-checkpoint-namespace-w15-2026-09-21.md",
+        "books/checkpoint-auxiliary.lisp",
+        "tests/acl2/checkpoint-auxiliary-tests.lisp",
+        "planning/evidence/checkpoint-auxiliary-e2-t10-2026-09-23.md"
       ],
-      "execution_scope": "Partial: logical checkpoint/suffix equivalence and index reconstruction are certified. Source-pinned native tests cover capture/select/reopen, selected corruption without rollback, unselected isolation, byte-identical cross-open, namespace bounds and selected crash cuts. The namespace successor adds unconditional mismatch corruption and mutation fencing. Recovery still fully replays the journal and compares a private restore; suffix-only recovery, full owner/index integration and every-cut physical correspondence remain open."
+      "execution_scope": "Partial: logical checkpoint/suffix equivalence and index reconstruction are certified. Source-pinned native tests cover capture/select/reopen, selected corruption without rollback, unselected isolation, byte-identical cross-open, namespace bounds and selected crash cuts. The namespace successor adds unconditional mismatch corruption and mutation fencing. Recovery still fully replays the journal and compares a private restore; suffix-only recovery, full owner/index integration and every-cut physical correspondence remain open. A source-pinned ACL2 selected-pack witness additionally reconstructs E2 history/incarnation/sequence and bound hybrid keyring/historical verdict from exact event bytes, with mismatched auxiliary projections rejected by the recovery-only checker. Combined native checkpoint/consumer/T10 reopen remains open."
     },
     {
       "id": "SCN-005",
