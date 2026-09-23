@@ -10,7 +10,8 @@ build against this contract are in
 ## Identity and version boundary
 
 The logical v1 cursor scope is `(history-id, incarnation-id, consumer-id,
-principal-id, query-id, query-version, view-version, position)`. `history-id`
+registration-epoch, principal-id, query-id, query-version, view-version,
+position)`. `history-id`
 is a durable identity minted when the Store is initialized; `incarnation-id`
 changes whenever a copy, restore, or replacement could produce another writable
 future from the same history. An ordinary process crash and replay of the one
@@ -34,23 +35,27 @@ could change, including a newly visible old article. If the implementation
 cannot prove that a change preserves visibility, it changes the view version.
 These versions are durable identifiers, not process-local counters.
 
-The wire cursor is an opaque, versioned token whose authenticated plaintext is
-the scope above. It also hides the position and history fields so the token
-does not reveal denied-record locations. A future bounded ACL2 decoder owns
-the field grammar, version check and scope comparison. The host may call a
-specified cryptographic primitive to seal/open bytes, but may not decide a
-field or advance a position. Primitive authenticity/confidentiality and key
-custody are external assumptions, not ACL2 theorems. A token from another
-store, incarnation, consumer, principal, query or view is refused before any
-ack mutation. An unknown token version is refused without guessing its
-meaning. The exact byte encoding, primitive and key rotation procedure must
-be fixed before this becomes a served interface.
+The first trusted-peer, public-group profile uses a bounded versioned cursor
+encoding. A future ACL2 decoder owns its field grammar, version check and
+scope comparison; the authenticated caller is bound to the principal and
+consumer entry before poll or ack. A cursor from another store, incarnation,
+consumer, registration epoch, principal, query or view is refused before any
+ack mutation. An unknown version is refused without guessing its meaning.
+The cursor need not be secret in this profile: its position may reveal a
+record-count bound, so this profile makes no cursor-metadata privacy claim.
+The page and errors still disclose no denied article source or identity.
+A later sealed-token profile could hide cursor fields and authenticate the
+encoding, with a selected primitive and key lifecycle stated as separate
+assumptions. No such cryptographic primitive is selected or required for v1.
+The exact first wire encoding remains to be fixed before a served interface.
 
 ## Operations and their meanings
 
 All requests have bounded lengths and an authenticated caller. `register`
 binds a consumer ID, principal and query under the current view, and durably
-sets its recorded position to zero. A duplicate registration with identical
+sets its recorded position to zero with a fresh `registration-epoch`. The
+epoch comes from a durable, never-reused Store allocation, not a wall clock;
+exhaustion refuses registration. A duplicate registration with identical
 scope returns the existing position; changing scope requires `rebase`.
 `poll(cursor, limits)` pins one committed frontier, scans **at most** the
 requested scan limit after the cursor position, and returns the visible
@@ -72,15 +77,18 @@ query/view are ordinary scanned entries, not unavailable content.
 
 `ack(cursor)` durably records only a consumer's declaration that its own
 transaction finished through the cursor's scanned prefix. It requires the
-current bound scope and a position no lower than the recorded one. Equal
-positions are idempotent. A lower position is refused without rewind; a
-position beyond the committed frontier is refused. `position(consumer-id)`
+current bound scope, including the registration epoch, and a position no lower
+than the recorded one. Equal positions are idempotent. A lower position is
+refused without rewind; a position beyond the committed frontier is refused.
+`position(consumer-id)`
 returns the durable recorded scope/position for recovery after an uncertain
 ack. A valid poll token is not itself evidence of processing. `rebase` is an
 explicit durable operation under a new query or view version: it resets the
 recorded position to zero in the new scope so newly visible old articles can
 be offered. It must not silently reinterpret an old token. `unregister`
 durably removes the table entry; it does not erase the consumer's own inbox.
+After unregister, reusing the same consumer ID allocates a new epoch; a delayed
+ack from the prior registration is refused even if query and view match.
 These operations do not pin articles for retention. Their outcomes are
 `accepted`, `refused`, or `uncertain`; a write/commit ambiguity is `uncertain`
 and fences further mutation until recovery, never a refusal guessed from a
@@ -101,15 +109,18 @@ unregister frees a slot in v1.
 
 ## Consumer transaction and recovery
 
-The consumer's own database atomically inserts an inbox key
-`(history-id, incarnation-id, source-identity, application-id, operation-id)`
-with its payload verdict, applies one deterministic local transition, and
-appends the immutable reply Q to its durable outbox. It must compare a repeat
-operation ID with the retained source identity: identical input reuses the
-prior verdict and Q; different source remains conflict evidence and cannot
-execute the operation a second time. Only after this transaction commits does
-the consumer call `ack`. An uncertain consumer commit is settled by querying
-the inbox/outbox; an uncertain fn ack is settled by `position`. If the ack
+The consumer's own database atomically stores a provenance inbox record keyed
+by `(history-id, incarnation-id, source-identity, application-id,
+operation-id)` **and** checks a unique application-operation index keyed by
+`(application-id, operation-id)` in the same transaction. A new operation
+applies one deterministic local transition and appends immutable reply Q to
+the durable outbox. The same operation and source reuse the prior verdict and
+Q. The same operation with different source is retained as conflict evidence
+in the inbox, while the unique operation index prevents a second transition
+or reply. A source-inclusive inbox key alone cannot enforce this rule. Only
+after this transaction commits does the consumer call `ack`. An uncertain
+consumer commit is settled by querying the inbox/outbox; an uncertain fn ack
+is settled by `position`. If the ack
 committed before Q was posted, the outbox still drives posting. Q keeps the
 same authored source and Message-ID on retry; an uncertain post is settled by
 identity lookup and exact-source comparison. An fn ack does not mean dregg
@@ -123,7 +134,8 @@ the new scope and scans from its beginning, using its own application keys to
 decide what to reuse. A view change similarly requires a scan from zero.
 Whether the consumer regards an identical source reimported in a new store
 incarnation as the same application operation is its own policy; the five-part
-inbox key preserves the provenance needed to make that choice explicitly.
+inbox key preserves provenance while the separate operation index makes the
+deduplication/conflict choice atomic.
 
 ## Executable seam and obligations
 

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "status": "specified-not-executed",
   "contract": "specs/consumer-progress.md",
-  "execution_rule": "Each trace runs the ACL2 owner/Store decision and native host publication with real reopen at the named cut, then observes both fn's durable position and the consumer database. No current caller implements these actions.",
+  "execution_rule": "Executable trace specifications awaiting an ACL2 owner/Store and native host runner. The future runner must reopen at each named cut and observe both fn's durable position and the consumer database. No current caller implements these actions, so none of these traces has executed.",
   "fixtures": {
     "store_a": "history HA, incarnation IA, administrator A",
     "store_b": "history HB, incarnation IB, administrator B, same endpoint in replacement traces",
@@ -29,14 +29,14 @@
     {
       "id": "E2-03",
       "name": "duplicate transport and application operation conflict",
-      "actions": ["accept R on B via BP attempt X", "receive duplicate R under attempt Y", "deliver application retry R2 with new Message-ID and the same operation ID but different signed source", "poll and process all admitted articles", "reopen both stores"],
-      "expect": ["R has one fn article/charge under the existing identity rule", "X and Y remain distinguishable transport evidence", "B makes one transition for OR and retains R2 as conflicting application evidence", "Q in outbox is byte-identical across replays"],
+      "actions": ["accept R on B via BP attempt X", "receive duplicate R under attempt Y", "deliver application retry R2 with new Message-ID and the same operation ID but different signed source", "poll and atomically check B's unique (application-id, operation-id) index while storing both source-inclusive inbox records", "reopen both stores"],
+      "expect": ["R has one fn article/charge under the existing identity rule", "X and Y remain distinguishable transport evidence", "B makes one transition for OR and retains R2 as conflicting application evidence through its distinct inbox source key", "unique operation index prevents a second transition and Q in outbox is byte-identical across replays"],
       "cuts": ["after B transaction commit before fn ack"]
     },
     {
       "id": "E2-04",
       "name": "uncertain consumer transaction and uncertain ack",
-      "actions": ["poll R", "kill B at the inbox/outbox transaction publication cut", "reopen B database and query inbox key plus Q outbox key", "complete transaction if absent or reuse exact Q if present", "send ack and kill fn at the ack publication cut", "reopen fn and query position", "repeat the same ack only if position stayed old"],
+      "actions": ["poll R", "kill B at the inbox/outbox transaction publication cut", "reopen B database and query provenance inbox key, unique operation index and Q outbox key", "complete transaction if absent or reuse exact Q if present", "send ack and kill fn at the ack publication cut", "reopen fn and query position", "repeat the same ack only if position stayed old"],
       "expect": ["B has either neither record or both after its cut, never half a pair", "after settlement B has one transition and one Q", "fn position is old or advanced after its cut and never invented from socket output", "repeat ack is idempotent"],
       "cuts": ["consumer transaction before/after durable barrier", "fn ack before/after durable barrier"]
     },
@@ -51,22 +51,29 @@
       "id": "E2-06",
       "name": "authorization view makes old report visible",
       "actions": ["commit hidden R at record 1 and visible Q at record 2", "B scans and acks through record 2 under view 1", "change effective read policy to view 2", "attempt old cursor poll and ack", "rebase and scan from zero", "reopen fn and B database"],
-      "expect": ["old view cursor is refused without advancing", "new scan offers R despite its record position below the former ack", "B's inbox deduplicates any repeated Q", "hidden source and record location are not disclosed by old-view page contents/token"],
+      "expect": ["old view cursor is refused without advancing", "new scan offers R despite its record position below the former ack", "B's unique operation index deduplicates any repeated Q", "old-view page contents and errors disclose no hidden source or article identity; the public-profile cursor may expose a committed-record position"],
       "cuts": ["after policy event before rebase", "after rebase publication before reply"]
     },
     {
       "id": "E2-07",
-      "name": "scope forgery and bounded registration",
+      "name": "scope mismatch and bounded registration",
       "actions": ["register B under query reports", "offer B token as C and under query replies", "offer a malformed or unknown-version token", "fill the configured consumer table", "attempt one more register", "reopen fn"],
-      "expect": ["all wrong-scope/token requests refuse before ack mutation", "the full table refuses before a durable registration promise", "existing positions survive reopen", "bounded decode work and no denied article metadata in refusals"],
+      "expect": ["all wrong-scope/token requests refuse before ack mutation under the authenticated caller", "the full table refuses before a durable registration promise", "existing positions survive reopen", "bounded decode work and no denied article identity in refusals; no cursor-position privacy claim"],
       "cuts": ["after last accepted registration", "after refused over-capacity registration"]
     },
     {
       "id": "E2-08",
       "name": "retention gap and independent page budgets",
       "actions": ["commit visible R, then reclaim its article bytes under the existing retention decision before B polls", "poll across R", "restore the article from authorized evidence or declare an explicit application waiver", "commit one article larger than the configured page-byte limit", "poll across that article and reopen fn"],
-      "expect": ["reclaimed visible R yields unavailable at its record position and no continuation past it", "no ack implies R was processed", "an oversized single article yields bounded refusal without a cursor past it", "scan, item, byte, token and registration limits are checked independently"],
+      "expect": ["reclaimed visible R yields unavailable at its record position and no continuation past it", "neither poll nor ack implies R was processed", "an oversized single article yields bounded refusal without a cursor past it", "scan, item, byte, token and registration limits are checked independently"],
       "cuts": ["after reclaim before poll", "after oversized poll refusal"]
+    },
+    {
+      "id": "E2-09",
+      "name": "unregister and reuse consumer ID with delayed old ack",
+      "actions": ["register C under HB/IB, query reports and view 1; record epoch EC1", "poll R and hold the resulting cursor without ack", "durably unregister C and reopen fn", "register C again under the same principal, query and view; record fresh epoch EC2", "send the delayed EC1 ack as authenticated C", "poll and ack R with EC2 cursor", "reopen fn"],
+      "expect": ["EC2 differs from EC1 despite identical consumer ID, query and view", "delayed EC1 ack is refused before mutation", "C's new position remains zero until EC2 ack commits", "after reopen C's epoch and position match EC2, with no wall-clock-derived epoch"],
+      "cuts": ["after unregister publication before reply", "after second register publication before reply", "after delayed old ack refusal"]
     },
     {
       "id": "E1-01",
