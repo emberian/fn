@@ -33,7 +33,9 @@ class NativeStampMigrationTests(unittest.TestCase):
     def stamp_of_frame(self, raw):
         """Ask the ACL2 byte-store decoder for the exact persisted stamp."""
         bridge = frame_bridge.session()
-        bridge.call('(include-book "books/byte-store-scan")')
+        # INCLUDE-BOOK prints an event transcript, not one value for the
+        # framing decoder.  The underlying bridge still checks ACL2 errors.
+        bridge.store.call('(include-book "books/byte-store-scan")')
         literal = "(" + " ".join(str(octet) for octet in raw) + ")"
         form = "(fn-bs-record-of-octets '" + literal + ")"
         self.assertEqual(bridge.call("(fn-record-p " + form + ")"), True)
@@ -52,6 +54,7 @@ class NativeStampMigrationTests(unittest.TestCase):
         return result.stdout
 
     def test_old_record_reopens_byte_exact_and_new_acceptance_uses_schema_one(self):
+        self.addCleanup(frame_bridge.close)
         with tempfile.TemporaryDirectory(prefix="fn-stamp-migration-") as temporary:
             base = Path(temporary)
             store = base / "store"
