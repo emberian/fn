@@ -1842,6 +1842,48 @@
                   conn))
   :hints (("Goal" :induct (fn-own-replace-conn conn conns))))
 
+; The historical configured-owner relation needs the bound the actual read
+; gate checked against this connection's immutable archive.  A failed gate
+; removes every connection with the selected ID; it cannot leave a stale
+; selected group in a surviving connection.
+(defthm fn-own-replaced-conn-archive-bounded
+  (implies (and (fn-own-find-conn id conns)
+                (equal (fn-own-conn-id next) id)
+                (fn-own-conn-boundedp
+                 next (fn-state-groups (fn-own-conn-archive next))))
+           (fn-own-conn-boundedp
+            (fn-own-find-conn id (fn-own-replace-conn next conns))
+            (fn-state-groups
+             (fn-own-conn-archive
+              (fn-own-find-conn id (fn-own-replace-conn next conns))))))
+  :hints (("Goal"
+           :use ((:instance fn-own-find-conn-of-replace-conn-same
+                            (conn next)))
+           :in-theory (disable fn-own-conn-boundedp))))
+
+(defthm fn-own-read-remove-leaves-no-selected-id
+  (equal (fn-own-find-conn id (fn-own-remove-conn id conns))
+         nil)
+  :hints (("Goal" :induct (fn-own-remove-conn id conns))))
+
+(defthm fn-own-read-survivor-is-archive-bounded
+  (implies
+   (fn-own-find-conn
+    id (fn-own-conns (cdr (fn-own-read o id octets))))
+   (fn-own-conn-boundedp
+    (fn-own-find-conn
+     id (fn-own-conns (cdr (fn-own-read o id octets))))
+    (fn-state-groups
+     (fn-own-conn-archive
+      (fn-own-find-conn
+       id (fn-own-conns (cdr (fn-own-read o id octets))))))))
+  :hints (("Goal"
+           :use ((:instance fn-own-find-conn-id
+                            (conns (fn-own-conns o))))
+           :in-theory (e/d (fn-own-read fn-own-finish-read
+                            fn-own-set-conns fn-own-enqueue)
+                           (fn-served-step fn-own-conn-boundedp)))))
+
 (defthm fn-own-find-conn-of-remove-conn-other
   (implies (not (equal id other))
            (equal (fn-own-find-conn other (fn-own-remove-conn id conns))
