@@ -7,6 +7,11 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class NativeCompactionCrashMapTests(unittest.TestCase):
+    def test_saved_image_loads_reclaim_plan_definition(self):
+        build = (ROOT / "host/native/build.lisp").read_text()
+        self.assertIn('(include-book "books/byte-store-compaction-correspondence")',
+                      build)
+
     def test_actual_reclaim_calls_logical_plan_subject(self):
         source = (ROOT / "host/native/checkpoint.lisp").read_text()
         start = source.index("(defun fnn-pack-prefix-reclaim")
