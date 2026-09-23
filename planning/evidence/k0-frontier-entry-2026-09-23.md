@@ -96,3 +96,27 @@ original source/closure/toolchain/results are in
 `planning/evidence/manifests/certify-20260923T233919Z-509059.json`.
 The actual rename, root fsync and :reserved callback still need their own
 relation proof. No physical power-loss or all-outcome claim follows.
+
+The next exact program slice establishes the successful physical root
+replacement and directory fence. From a related ready byte/kernel input,
+ACL2-valid frontier octets and a fresh staging name,
+`fn-bs-k0-frontier-dir-cut-exact-octets` proves that P-FRONTIER pair 12's
+durable root frontier pathname names the new fenced inode and contains the
+**exact supplied octets**. `fn-bs-k0-frontier-dir-cut-decodes-candidate`
+therefore gives the successor frontier, and
+`fn-bs-k0-frontier-dir-cut-root-quiet` proves the root pending operations
+were drained. The proof derives pair 8 from the interpreter's rename step,
+pair 12 from its actual root-fsync step, and uses the previously established
+complete old record-list equality at pair 6; it never assumes the desired
+scan or output relation. A second allocation after a retained first article
+is the positive fixture. Occupied staging and an old/wrong frontier frame
+make the successor conclusion false in separate negative fixtures.
+
+Selected hbox certification of the book and test roots passed under
+`run-20260923T234841Z-1a52`; the original requested-root results, source
+and dependency digests, toolchain and limits are archived in
+`planning/evidence/manifests/certify-20260923T234843Z-531417.json`.
+The logical `:frontier-attempted` state at pair 12, full relation there,
+`:reserved` callback relation at pair 14, all failure outcomes and physical
+barrier qualification remain open. This is an exact physical model prefix,
+not a whole-program K0 claim.

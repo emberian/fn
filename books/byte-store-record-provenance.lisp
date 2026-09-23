@@ -3582,3 +3582,215 @@
                             fn-bs-durable-frontier fn-bs-durable-records
                             fn-bs-authority-knownp
                             fn-bs-authority-fencedp)))))
+
+; Successful allocator rename and root barrier, at the exact interpreter
+; cuts called by Store.advance_frontier.  These facts use the prior relation
+; only at entry; none assumes the desired post-fence scan or relation.
+(local
+ (defthm fn-bs-k0-frontier-replace-cut-is-rename
+  (implies (and (fn-bs-statep bs) (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage)) (true-listp octets))
+           (equal (car (nth 8 (fn-bs-run bs ks (fn-bs-frontier-program stage octets)
+                                         nil groups capacity)))
+                  (mv-nth 1 (fn-bs-rename
+                             (car (nth 6 (fn-bs-run bs ks
+                                                   (fn-bs-frontier-program stage octets)
+                                                   nil groups capacity)))
+                             :staging stage :root *fn-bs-frontier-name* :ok))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-k0-frontier-file-observation-keeps-byte-state
+                 fn-bs-k0-frontier-file-cut-source-is-new-inode
+                 fn-bs-k0-frontier-file-cut-is-write-fence
+                 (:instance fn-bs-k6-write-created-inode-returns-ok-without-namep
+                            (frame octets)))
+           :in-theory (e/d (fn-bs-frontier-program fn-bs-run fn-bs-step fn-bs-inop)
+                           (fn-bs-statep fn-bs-create fn-bs-write fn-bs-fsync-file
+                            fn-bs-fence-file fn-bs-lookup fn-bs-rename))))))
+
+(local
+ (defthm fn-bs-k0-frontier-rename-returns-ok
+  (implies (and (fn-bs-statep bs) (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage)) (true-listp octets))
+           (equal (mv-nth 0 (fn-bs-rename
+                             (car (nth 6 (fn-bs-run bs ks
+                                                   (fn-bs-frontier-program stage octets)
+                                                   nil groups capacity)))
+                             :staging stage :root *fn-bs-frontier-name* :ok))
+                  :ok))
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-k0-frontier-file-cut-source-is-new-inode
+                 fn-bs-k0-frontier-file-observation-keeps-byte-state
+                 (:instance fn-bs-k6-state-next-ino-is-inop))
+           :in-theory (e/d (fn-bs-rename)
+                           (fn-bs-statep fn-bs-run fn-bs-frontier-program
+                            fn-bs-lookup fn-bs-inop))))))
+
+(local
+ (defthm fn-bs-k0-frontier-dir-cut-is-fence
+  (implies (and (fn-bs-statep bs) (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage)) (true-listp octets))
+           (equal (car (nth 12 (fn-bs-run bs ks
+                                    (fn-bs-frontier-program stage octets)
+                                    nil groups capacity)))
+                  (fn-bs-fence-dir
+                   (mv-nth 1 (fn-bs-rename
+                              (car (nth 6 (fn-bs-run bs ks
+                                                    (fn-bs-frontier-program stage octets)
+                                                    nil groups capacity)))
+                              :staging stage :root *fn-bs-frontier-name* :ok))
+                   :root)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-k0-frontier-replace-cut-is-rename
+                 fn-bs-k0-frontier-rename-returns-ok
+                 fn-bs-k0-frontier-file-observation-keeps-byte-state
+                 fn-bs-k0-frontier-file-cut-source-is-new-inode
+                 fn-bs-k0-frontier-file-cut-is-write-fence
+                 (:instance fn-bs-k6-write-created-inode-returns-ok-without-namep
+                            (frame octets)))
+           :in-theory (e/d (fn-bs-frontier-program fn-bs-run fn-bs-step
+                            fn-bs-fsync-dir fn-bs-inop)
+                           (fn-bs-statep fn-bs-create fn-bs-write fn-bs-fsync-file
+                            fn-bs-fence-file fn-bs-fence-dir fn-bs-lookup fn-bs-rename))))))
+
+(local
+ (defthm fn-bs-k0-one-set-entry
+  (implies (and dir name)
+   (equal (cdr (assoc-equal name
+                  (cdr (assoc-equal dir
+                        (fn-bs-apply-entries dirs
+                           (list (list :set-entry dir name ino)))))))
+         ino))
+  :hints (("Goal" :use ((:instance fn-bs-apply-entries-entry-is-entry-after
+                                    (ops (list (list :set-entry dir name ino)))))
+           :in-theory (e/d (fn-bs-entry-after)
+                           (fn-bs-apply-entries))))))
+
+(local
+ (defthm fn-bs-k0-rename-root-fence-installs-source
+  (implies (and (fn-bs-dir-quietp file :root)
+                (fn-bs-inop (fn-bs-lookup file :staging stage)))
+           (equal (fn-bs-durable-entry
+                   (fn-bs-fence-dir
+                    (mv-nth 1 (fn-bs-rename file :staging stage
+                                            :root *fn-bs-frontier-name* :ok))
+                    :root)
+                   :root *fn-bs-frontier-name*)
+                  (fn-bs-lookup file :staging stage)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-one-set-entry
+                            (dirs (fn-bs-dirs file))
+                            (dir :root) (name *fn-bs-frontier-name*)
+                            (ino (fn-bs-lookup file :staging stage))))
+           :in-theory (e/d (fn-bs-dir-quietp fn-bs-rename
+                            fn-bs-fence-dir fn-bs-durable-entry
+                            fn-bs-ops-for-dir-of-append
+                            fn-bs-apply-ops-dirs-are-apply-entries)
+                           (fn-bs-lookup fn-bs-apply-ops
+                            fn-bs-apply-entries))))))
+
+(local
+ (defthm fn-bs-k0-rename-root-fence-keeps-inode-content
+  (equal (fn-bs-durable-content
+          (fn-bs-fence-dir
+           (mv-nth 1 (fn-bs-rename file :staging stage
+                                   :root *fn-bs-frontier-name* :ok))
+           :root)
+          ino)
+         (fn-bs-durable-content file ino))
+  :hints (("Goal" :in-theory (e/d (fn-bs-fence-dir fn-bs-rename
+                                     fn-bs-durable-content)
+                                  (fn-bs-lookup fn-bs-apply-ops))))))
+
+(local
+ (defthm fn-bs-k0-frontier-dir-cut-durable-entry
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal (fn-bs-durable-entry
+                   (car (nth 12 (fn-bs-run bs ks
+                             (fn-bs-frontier-program stage octets)
+                             nil groups capacity)))
+                   :root *fn-bs-frontier-name*)
+                  (fn-bs-next-ino bs)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-frontier-dir-cut-is-fence
+                 fn-bs-k0-frontier-file-cut-source-is-new-inode
+                 fn-bs-k0-frontier-file-observation-keeps-byte-state
+                 fn-bs-k0-frontier-file-cut-authority-quiet
+                 (:instance fn-bs-k6-state-next-ino-is-inop)
+                 (:instance fn-bs-k0-rename-root-fence-installs-source
+                            (file (car (nth 6 (fn-bs-run bs ks
+                                             (fn-bs-frontier-program stage octets)
+                                             nil groups capacity))))))
+           :in-theory (e/d (fn-bs-frontier-inputp fn-bs-dir-quietp)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-store-relation fn-bs-statep
+                            fn-bs-durable-entry fn-bs-rename
+                            fn-bs-fence-dir fn-bs-lookup))))))
+
+(defthm fn-bs-k0-frontier-dir-cut-exact-octets
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal (fn-bs-durable-content
+                   (car (nth 12 (fn-bs-run bs ks
+                             (fn-bs-frontier-program stage octets)
+                             nil groups capacity)))
+                   (fn-bs-durable-entry
+                    (car (nth 12 (fn-bs-run bs ks
+                              (fn-bs-frontier-program stage octets)
+                              nil groups capacity)))
+                    :root *fn-bs-frontier-name*))
+                  octets))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-k0-frontier-dir-cut-is-fence
+                 fn-bs-k0-frontier-dir-cut-durable-entry
+                 fn-bs-k0-frontier-file-observation-keeps-byte-state
+                 fn-bs-k0-frontier-file-cut-has-exact-frame
+                 (:instance fn-bs-k0-rename-root-fence-keeps-inode-content
+                            (file (car (nth 6 (fn-bs-run bs ks
+                                             (fn-bs-frontier-program stage octets)
+                                             nil groups capacity))))
+                            (ino (fn-bs-next-ino bs))))
+           :in-theory (e/d (fn-bs-frontier-inputp)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-store-relation fn-bs-statep
+                            fn-bs-durable-entry fn-bs-durable-content
+                            fn-bs-rename fn-bs-fence-dir)))))
+
+(defthm fn-bs-k0-frontier-dir-cut-decodes-candidate
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-frontier-inputp ks stage octets)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal (fn-bs-durable-frontier
+                   (car (nth 12 (fn-bs-run bs ks
+                             (fn-bs-frontier-program stage octets)
+                             nil groups capacity))))
+                  (1+ (fn-sf-frontier ks))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-k0-frontier-dir-cut-exact-octets)
+           :in-theory (e/d (fn-bs-frontier-inputp fn-bs-durable-frontier)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-durable-entry fn-bs-durable-content)))))
+
+(defthm fn-bs-k0-frontier-dir-cut-root-quiet
+  (implies (and (fn-bs-statep bs) (fn-bs-namep stage)
+                (not (fn-bs-lookup bs :staging stage)) (true-listp octets))
+           (fn-bs-dir-quietp
+            (car (nth 12 (fn-bs-run bs ks
+                      (fn-bs-frontier-program stage octets)
+                      nil groups capacity)))
+            :root))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-bs-k0-frontier-dir-cut-is-fence)
+           :in-theory (e/d (fn-bs-dir-quietp)
+                           (fn-bs-run fn-bs-frontier-program
+                            fn-bs-fence-dir fn-bs-rename)))))
