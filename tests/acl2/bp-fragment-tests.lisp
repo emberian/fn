@@ -141,6 +141,15 @@
 (assert-event (fn-bpf-fragmentablep *bpf-block*))
 (assert-event (not (fn-bpp-fragmentp (fn-bpp-flags *bpf-block*))))
 
+; Whole-parent restoration has a reachable full antecedent: a valid whole
+; primary, successful two-child cut, and total equal to the payload length.
+(assert-event (equal (car (fn-bpf-fragment *bpf-payload* '(3))) :ok))
+(assert-event
+ (fn-bpf-all-unfragment-to
+  *bpf-block*
+  (fn-bpf-fragment-primaries *bpf-block* (fn-bpf-starts '(3))
+                             (len *bpf-payload*))))
+
 (defconst *bpf-block-0* (fn-bpf-fragment-block *bpf-block* 0 8))
 (defconst *bpf-block-3* (fn-bpf-fragment-block *bpf-block* 3 8))
 
@@ -196,6 +205,22 @@
  (equal (fn-bpp-adu-key
          (fn-bpf-refragment-block *bpf-refragment-parent* 3))
         (fn-bpp-adu-key *bpf-refragment-parent*)))
+
+; Removing the whole-parent hypothesis changes the conclusion while the
+; block shape, cut shape, and retained extent remain valid.  A child of an
+; already-fragmented parent cannot unfragment to that fragment parent.
+(assert-event
+ (not (fn-bpf-all-unfragment-to
+       *bpf-refragment-parent*
+       (fn-bpf-fragment-primaries *bpf-refragment-parent* '(0 3) 300))))
+; Removing the block-shape hypothesis also breaks the keystone.  Its field
+; operations are total in ACL2 logic even though such a value is not an input
+; to the guarded native path.
+(assert-event
+ (with-guard-checking :none
+  (not (fn-bpf-all-unfragment-to
+        '(:not-a-primary)
+        (fn-bpf-fragment-primaries '(:not-a-primary) '(0) 8)))))
 
 ; -----------------------------------------------------------------------------
 ; Teeth.

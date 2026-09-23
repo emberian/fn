@@ -11,20 +11,20 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 427 |
-| Certification roots in the Makefile | 425 |
+| Certification roots in the Makefile | 422 |
 | Books inside the root closure | 426 |
-| `defthm` and `defthmd` events | 7137 |
-| `defun` events | 5433 |
-| Functions with verified guards | 1750 |
-| Functions declared `:verify-guards nil` and never verified | 288 |
+| `defthm` and `defthmd` events | 7150 |
+| `defun` events | 5441 |
+| Functions with verified guards | 1756 |
+| Functions declared `:verify-guards nil` and never verified | 289 |
 | Functions left at the default with an explicit guard | 2722 |
-| Functions left at the default with no guard | 673 |
-| `assert-event` checks | 7860 |
+| Functions left at the default with no guard | 674 |
+| `assert-event` checks | 7870 |
 | `must-fail` checks | 282 |
 | `encapsulate` events | 26 |
-| Theorems flagged SUSPECT by shape | 65 |
+| Theorems flagged SUSPECT by shape | 66 |
 | Export-hygiene warnings | 93 |
-| Enabled-projection warnings | 29 |
+| Enabled-projection warnings | 31 |
 | Teeth-form warnings | 23 |
 | Include-hygiene warnings | 265 |
 | Host-names warnings | 654 |
@@ -111,9 +111,9 @@ that `make certify` requests.
 | `books/bp-authored-wire.lisp` | root | 2 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/bp-bundle-invariants.lisp` | root | 30 | 1 | 0/0/0/1 | 0 | 0 | 2 |
 | `books/bp-bundle.lisp` | root | 41 | 48 | 31/0/17/0 | 0 | 0 | 0 |
-| `books/bp-fragment-fast.lisp` | root | 9 | 4 | 3/0/0/1 | 0 | 0 | 0 |
-| `books/bp-fragment-invariants.lisp` | root | 41 | 3 | 0/0/0/3 | 0 | 0 | 2 |
-| `books/bp-fragment.lisp` | root | 6 | 31 | 31/0/0/0 | 0 | 0 | 0 |
+| `books/bp-fragment-fast.lisp` | root | 15 | 8 | 6/0/0/2 | 0 | 0 | 0 |
+| `books/bp-fragment-invariants.lisp` | root | 48 | 3 | 0/0/0/3 | 0 | 0 | 3 |
+| `books/bp-fragment.lisp` | root | 6 | 35 | 34/1/0/0 | 0 | 0 | 0 |
 | `books/bp-ingress.lisp` | root | 22 | 44 | 41/0/3/0 | 0 | 0 | 0 |
 | `books/bp-limits.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-native-app-fast.lisp` | root | 24 | 15 | 0/0/15/0 | 0 | 0 | 0 |
@@ -357,8 +357,8 @@ that `make certify` requests.
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 0 | 0 |
 | `tests/acl2/bp-authored-wire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 3 | 0 |
 | `tests/acl2/bp-bundle-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 68 | 0 | 0 |
-| `tests/acl2/bp-fragment-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
-| `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 76 | 0 | 0 |
+| `tests/acl2/bp-fragment-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
+| `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 80 | 0 | 0 |
 | `tests/acl2/bp-ingress-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
 | `tests/acl2/bp-ingress-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 21 | 0 | 0 |
 | `tests/acl2/bp-limits-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
@@ -535,6 +535,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpc-decode-refuses-overlong-input` | `books/bp-primary-cbor.lisp` | 1179 | branch-of-definition: the hypothesis is a branch test of fn-bpc-decode and the conclusion is that branch's value |
 | `fn-bpf-cell-of-uncovered-is-gap` | `books/bp-fragment-invariants.lisp` | 129 | branch-of-definition: the hypothesis negates a branch test of fn-bpf-cell-of and the conclusion is that branch's value |
 | `fn-bpf-out-of-bounds-input-allocates-nothing` | `books/bp-fragment-invariants.lisp` | 390 | branch-of-definition: the hypothesis is a branch test of fn-bpf-reassemble and the conclusion is that branch's value |
+| `fn-bpf-whole-parent-fragments-restore-parent` | `books/bp-fragment-invariants.lisp` | 554 | instance-corollary: the statement is fn-bpf-whole-fragment-primaries-restore-parent instantiated, discharging nothing |
 | `fn-bpn-apply-inapplicable-record-is-noop` | `books/bp-node-machine-invariants.lisp` | 850 | branch-of-definition: the hypothesis is a branch test of fn-bpn-apply-record and the conclusion is that branch's value |
 | `fn-bpn-machine-invariant-components` | `books/bp-node-machine-invariants.lisp` | 684 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bpn-machine-invariantp |
 | `fn-bpn-sf-crash-preserves-nonreuse` | `books/bp-sequence-fidelity.lisp` | 373 | preserves-no-subject-call: the statement never calls fn-bpn-sf-crash or a fn-bpn-sf-crash- transition |

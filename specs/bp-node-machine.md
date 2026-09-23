@@ -56,7 +56,7 @@ carry a pointer here and are not edited further; bp-design's packet table
 | FNBS kind 1, the frontier `(:bpn-sequence n)`, `fn-bpn-sequence-reserve` | `books/bp-node-records.lisp` | green |
 | PRF-045's non-reuse and persistence-cut models | `books/bp-sequence-fidelity.lisp`, `books/bp-sequence-persistence.lisp` | green |
 | the receive-evidence namespace | `books/bp-receive-evidence.lisp` | green |
-| fragmentation and reassembly (reference only), two lemmas commented out | `books/bp-fragment.lisp`, `books/bp-fragment-invariants.lisp` | green |
+| reference fragmentation/reassembly; cursor cutter and bounded position scanner proved equal on all inputs; whole-parent restoration | `books/bp-fragment.lisp`, `books/bp-fragment-invariants.lisp`, `books/bp-fragment-fast.lisp` | scoped C1 certificate in `planning/evidence/bp-fragment-c1-subset-2026-09-23.md`; inverse and consumed-fragment agreement remain open |
 | the receiver, the FNRJ journal, the join the host calls (`fn-bpaj-dispatch`) | `books/bp-receipt*.lisp`, `books/bp-native-app.lisp`, `-fast` | receipt books green; `bp-native-app`, `-fast`, `bp-receiver-evolving-*` red |
 | the release decision and, since `9dd5e3a2`, `fn-bprl-release-record`, `fn-bprl-replay-records`, `fn-bprl-replay-journal` | `books/bp-release.lisp` | green, persvati `certify-20260922T184059Z-2797731` |
 | the convergence layer, C1 to C4 | `books/tcpcl-*.lisp` | green |
@@ -2054,14 +2054,17 @@ contract, never restored by unfragmenting.
 
 ### 7.4 The executable refinement (F-H)
 
-`books/bp-fragment.lisp` stays the reference (its header says so).
-`books/bp-fragment-fast.lisp` (new, slice C1) defines
-`fn-bpf-fragment-fast` (a cursor over the payload, no repeated `nth`) and
-`fn-bpf-reassemble-fast` (one pass building the output by offset over
-fragments sorted by offset, tracking the least gap and least conflict
-position), with T4's two equalities, including the four outcomes, conflict
-precedence and the least conflict/gap positions. The machine calls only the
-fast functions. Slice C measures (BP-R22) payload size and held-set size
+`books/bp-fragment.lisp` stays the reference. `books/bp-fragment-fast.lisp`
+now defines `fn-bpf-fragment-fast` (a cursor over the payload) and
+`fn-bpf-reassemble-fast` (bounded position scans). Both have certified
+all-input equality with the reference, including the four reassembly
+outcomes, conflict precedence and least reported positions. Reassembly
+validates input before scanning, probes at most 64 fragments at each output
+position, and makes at most three position scans. It avoids full-canvas
+allocation for conflict and gap outcomes; the success path still builds the
+output canvas. This is a work bound, not measured native speed. The planned
+sorted-interval linear algorithm and machine/native call-site connection
+remain C2 work. Slice C measures (BP-R22) payload size and held-set size
 independently on the native image: allocations, time and latency for
 success, gap, overlap and conflict.
 
