@@ -489,7 +489,7 @@
       ; Unreachable-in-composition: journal replay enters with no pending
       ; transaction.  A standalone article step refuses a staged node, lest a
       ; record with matching coordinates complete that different article.
-      (if (consp (fn-node-stage node))
+      (if (not (null (fn-node-stage node)))
           nil
       (let* ((article (if (fn-stxa-p record)
                           (fn-replay-composite-record record)
