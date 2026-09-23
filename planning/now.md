@@ -91,8 +91,10 @@ artifacts and certifies changed closure members at four jobs. The [run failed th
 finite reader-context and authentication-dispatch repairs now pass the full
 Makefile-root retry at `884e4816`. The [saved-image campaign](evidence/native-reader-884e4816-2026-09-23.md)
 passed reader/HDR, authored peering/restart and topic inspection on `884e4816`.
-Mini portable-source verification also passed against that same image; its
-separate evidence packet is being archived. Broader existing NNTP/configuration
+Mini portable-source verification also passed against that same image;
+[its evidence](evidence/dregg-e1-portable-p2.md) distinguishes portable
+authorship from Store admission and records hostile-input refusals. A
+subsequent Mini stdout-allocation bound repair is being rerun separately. Broader existing NNTP/configuration
 qualification now reuses that image. This is a test subject, not a live deployment.
 
 The TLS-prefix correspondence still requires a well-formed selected wire;
