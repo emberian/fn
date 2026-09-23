@@ -116,7 +116,10 @@ published a certification of `dev`'s head since. The rules that follow:
 - **A lane reports when its run is submitted**, with the run id and the
   gate, and root harvests the manifest with `farm.py wait` and files it.
   An agent waiting an hour on a farm run is the most expensive idle there
-  is.
+  is. If a lane must wait on something (a proof session loading, a short
+  run), it issues ONE command in the background and does other work until
+  the notification arrives; a foreground wait that hits the ten-minute
+  shell cap and is reissued six times is the pattern that cost a night.
 - **A provisional wave runs only when the closure failed behind a
   cascade**, to name the reds behind it; never beside a closure run, and
   never to "show the books proved" when the closure passed.
