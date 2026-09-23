@@ -198,6 +198,18 @@ class NativeHybridAuthorTest(unittest.TestCase):
                               str(self.ml_public))
         self.assertEqual(refused.returncode, 1, refused.stderr.decode())
 
+        # The source alone is under the article cap, but adding the required
+        # carrier would exceed it.  The ACL2 total bound refuses emission.
+        large_source = self.root / "large-source.eml"
+        large_source.write_bytes(source.read_bytes() + b"x" * 26000)
+        refused_output = self.root / "too-large-carried.eml"
+        refused = self.invoke(
+            "hybrid-sign-carrier", str(self.principal), str(self.ed_public),
+            str(self.ed_secret), str(self.ml_public), str(self.ml_private),
+            str(large_source), str(refused_output))
+        self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+        self.assertFalse(refused_output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

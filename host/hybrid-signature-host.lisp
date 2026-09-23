@@ -9,7 +9,8 @@
 
 (defun fn-hsig-host-render-carrier (source principal keys signatures)
   (declare (xargs :mode :program))
-  (fn-hc-render source principal keys signatures))
+  (fn-hc-render-at-most *fn-article-max-octets*
+                        source principal keys signatures))
 
 (defun fn-hsig-host-preimage (principal keys source)
   (declare (xargs :mode :program))
@@ -18,6 +19,10 @@
     nil))
 
 (defun fn-hsig-host-max-source-octets ()
+  (declare (xargs :mode :program))
+  *fn-article-max-octets*)
+
+(defun fn-hsig-host-max-received-octets ()
   (declare (xargs :mode :program))
   *fn-article-max-octets*)
 

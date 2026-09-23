@@ -51,6 +51,17 @@
         (equal (cadr (fn-hc-value received))
                (list *hc-principal* *hc-keys* *hc-sigs*)))))
 
+; The complete transport article, including the carrier expansion, is the
+; bound's subject.  A source-sized cap refuses the otherwise valid artifact.
+(assert-event
+ (let ((wire (fn-hc-render *hc-source* *hc-principal* *hc-keys* *hc-sigs*)))
+   (and (< (len *hc-source*) (len wire))
+        (null (fn-hc-render-at-most
+               (len *hc-source*) *hc-source* *hc-principal* *hc-keys* *hc-sigs*))
+        (equal (fn-hc-render-at-most
+                (len wire) *hc-source* *hc-principal* *hc-keys* *hc-sigs*)
+               wire))))
+
 ; Relay and gateway fields are a separate projection.  They can change
 ; without changing the exact bytes passed to signature verification.
 (assert-event
