@@ -17,10 +17,12 @@
 
 (defvar *fnn-hsig-test-preimage* nil)
 (defvar *fnn-hsig-test-authorize-args* nil)
+(defvar *fnn-hsig-test-carrier-plan* nil)
 (defun fnn-core (name &rest args)
   "The production call convention: one scalar value, unlike FNN-CALL's list."
   (case name
     (fn-hsig-host-preimage *fnn-hsig-test-preimage*)
+    (fn-hsig-host-received-carrier-plan *fnn-hsig-test-carrier-plan*)
     (fn-hsig-host-authorize
      (setq *fnn-hsig-test-authorize-args* args)
      (and (equalp (fifth args) (cdr (second (second args))))
@@ -101,6 +103,31 @@
                  (cons :ml-dsa-65 ml-signature-b))
            public-b))
      "valid Ed25519 plus valid ML-DSA under substituted key B is rejected"))
+
+  ;; The new received-carrier entry consumes ACL2's plan, performs both real
+  ;; primitive checks, then asks ACL2 for the final conjunction.
+  (let ((keys (list (cons :ed25519 ed-public)
+                    (cons :ml-dsa-65 (coerce ml-public 'list)))))
+    (setq *fnn-hsig-test-carrier-plan*
+          (list :ok (list '(4 5) (list '(1 2 3) keys signatures))))
+    (fnn-hsig-check
+     (equal (fnn-hsig-verify-received-carrier '(7 8) public)
+            '(:verified (4 5) (1 2 3)))
+     "received carrier uses real dual verification")
+    (setq *fnn-hsig-test-carrier-plan*
+          (list :ok
+                (list '(4 5) (list '(1 2 3) keys
+                                    (list (cons :ed25519 ed-signature)
+                                          (cons :ml-dsa-65 ml-signature-b))))))
+    (fnn-hsig-check
+     (equal (fnn-hsig-verify-received-carrier '(7 8) public-b)
+            '(:unverified :signature (7 8)))
+     "substituted key cannot authorize received carrier")
+    (setq *fnn-hsig-test-carrier-plan* '(:unverified :carrier (7 8)))
+    (fnn-hsig-check
+     (equal (fnn-hsig-verify-received-carrier '(7 8) public)
+            '(:unverified :carrier (7 8)))
+     "malformed carrier remains unverified"))
 
   (handler-case
       (progn (fnn-hsig-ml-dsa-65-public-key
