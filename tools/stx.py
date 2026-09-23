@@ -51,6 +51,7 @@ EXIT_NO_VERDICT = 2
 _BOOKS = (
     '(include-book "tests/acl2/crypto-seam-tests")',
     '(include-book "books/stx-invariants")',
+    '(include-book "books/codec-attach")',
 )
 
 

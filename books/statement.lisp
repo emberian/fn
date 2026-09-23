@@ -39,6 +39,11 @@
 
 (in-package "ACL2")
 (include-book "crypto-seam")
+; The result records and item lists (statement-items) and the item codec,
+; behind its seam (statement-seam): this book and every book above it call
+; the constrained `fn-stmt-encode-items' and `fn-stmt-decode-items-bounded'
+; and see them only through the seam's constraints (plan 2026-09-22 §4.1).
+(include-book "statement-seam")
 
 
 ;; Convergence: the codecs cluster withdraws its proof vocabulary on export;
@@ -65,164 +70,6 @@
 (defconst *fn-stmt-id-tag* (fn-record-string-octets "fn-statement-v1"))
 (defconst *fn-stmt-sig-tag* (fn-record-string-octets "fn-statement-sig-v1"))
 (defconst *fn-stmt-payload-tag* (fn-record-string-octets "fn-payload-v1"))
-
-; -----------------------------------------------------------------------------
-; Result records.  (:ok value) / (:ok value rest) / (:error code).  Accessors
-; are total so every consumer has guard T.
-
-(defun fn-stmt-ok (value)
-  (declare (xargs :guard t))
-  (list :ok value))
-(defun fn-stmt-ok2 (value rest)
-  (declare (xargs :guard t))
-  (list :ok value rest))
-(defun fn-stmt-error (code)
-  (declare (xargs :guard t))
-  (list :error code))
-(defun fn-stmt-okp (r)
-  (declare (xargs :guard t))
-  (and (consp r) (equal (car r) :ok)))
-(defun fn-stmt-value (r)
-  (declare (xargs :guard t))
-  (if (and (consp r) (consp (cdr r))) (car (cdr r)) nil))
-(defun fn-stmt-rest (r)
-  (declare (xargs :guard t))
-  (if (and (consp r) (consp (cdr r)) (consp (cdr (cdr r))))
-      (car (cdr (cdr r)))
-    nil))
-
-; -----------------------------------------------------------------------------
-; Item sequences
-
-(defun fn-stmt-item-listp (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (and (fn-cbor-valuep (car xs))
-           (fn-stmt-item-listp (cdr xs)))
-    (null xs)))
-
-; The two shape facts an indexing consumer of an item sequence needs, the
-; twins of `fn-stmt-id-listp-implies-true-listp' below.  A successful bounded
-; decode delivers `fn-stmt-item-listp' of its value
-; (fn-stmt-decode-items-value-is-item-list, books/statement-invariants); from
-; that a caller's `nth' guard needs the sequence to be proper and its `cdr'
-; guard needs an index to land on an item pair or off the end.  With a literal
-; fuel the decoder suggests no induction, so these are what decide those
-; guards -- measured 2026-09-22 on `fn-hsig-keyring-snapshot-value'
-; (books/hybrid-store), whose extraction runs before its own shape checks.
-; Both are withdrawn immediately: a `true-listp' rewrite rule that backchains
-; into a recognizer joins the other recognizer-implies-true-listp rules of the
-; books above into a rewriter loop (call depth 1000 in
-; books/statement-invariants, same date), so a caller names them in its hint.
-(defthm fn-stmt-item-listp-implies-true-listp
-  (implies (fn-stmt-item-listp xs) (true-listp xs)))
-
-(defthm fn-stmt-item-listp-nth-is-item-or-nil
-  (implies (fn-stmt-item-listp xs)
-           (or (consp (nth n xs)) (equal (nth n xs) nil)))
-  :rule-classes ((:type-prescription :typed-term (nth n xs)))
-  :hints (("Goal" :in-theory (enable fn-cbor-valuep fn-cbor-valuep-bounded))))
-
-(in-theory (disable fn-stmt-item-listp-implies-true-listp
-                    fn-stmt-item-listp-nth-is-item-or-nil))
-
-(defun fn-stmt-encode-items (items)
-  (declare (xargs :guard (fn-stmt-item-listp items)))
-  (if (consp items)
-      (append (fn-cbor-encode (car items))
-              (fn-stmt-encode-items (cdr items)))
-    nil))
-
-(defthm fn-stmt-encode-items-is-octet-list
-  (fn-cbor-octet-listp (fn-stmt-encode-items items))
-  :hints (("Goal" :in-theory (disable fn-cbor-encode))))
-
-(defthm fn-stmt-encode-items-is-true-list
-  (true-listp (fn-stmt-encode-items items)))
-
-; The one-item decoder always returns a list, so its accessors are guarded.
-(defthm fn-stmt-cbor-decode-argument-true-listp
-  (true-listp (fn-cbor-decode-argument additional xs)))
-(defthm fn-stmt-cbor-decode-unsigned-true-listp
-  (true-listp (fn-cbor-decode-unsigned additional tail)))
-(defthm fn-stmt-cbor-decode-bytes-true-listp
-  (true-listp (fn-cbor-decode-bytes additional tail)))
-(defthm fn-stmt-cbor-decode-bounded-true-listp
-  (true-listp (fn-cbor-decode-bounded octets input-budget item-budget)))
-(defthm fn-stmt-cbor-decode-prechecked-true-listp
-  (true-listp (fn-cbor-decode-prechecked octets item-budget)))
-(defthm fn-stmt-cbor-decode-true-listp
-  (true-listp (fn-cbor-decode octets)))
-
-; Parse exactly COUNT items from an already validated bounded octet list.  It
-; returns the untouched remainder and performs no whole-suffix preflight.
-(defun fn-stmt-decode-prefix-items-prechecked (count octets item-budget)
-  (declare (xargs :guard (and (natp count)
-                              (fn-cbor-octet-listp octets)
-                              (natp item-budget))
-                  :measure (nfix count)))
-  (if (zp count)
-      (fn-stmt-ok2 nil octets)
-    (let ((first (fn-cbor-decode-prechecked octets item-budget)))
-      (if (not (fn-cbor-result-okp first))
-          (fn-stmt-error (fn-stmt-value first))
-        (let ((tail (fn-stmt-decode-prefix-items-prechecked
-                     (1- count) (fn-cbor-result-rest first) item-budget)))
-          (if (not (fn-stmt-okp tail))
-              tail
-            (fn-stmt-ok2 (cons (fn-cbor-result-value first)
-                               (fn-stmt-value tail))
-                         (fn-stmt-rest tail))))))))
-
-(defun fn-stmt-decode-prefix-items-bounded
-  (count octets outer-budget item-budget)
-  (declare (xargs :guard (and (natp count) (natp outer-budget)
-                              (natp item-budget))))
-  (if (not (fn-cbor-at-mostp octets outer-budget))
-      (fn-stmt-error :limit)
-    (if (not (fn-cbor-octet-listp octets))
-        (fn-stmt-error :malformed)
-      (fn-stmt-decode-prefix-items-prechecked count octets item-budget))))
-
-(defun fn-stmt-decode-items-prechecked (fuel octets item-budget)
-  (declare (xargs :guard (and (natp fuel)
-                              (fn-cbor-octet-listp octets)
-                              (natp item-budget))
-                  :measure (nfix fuel)))
-  (if (atom octets)
-      (fn-stmt-ok nil)
-    (if (zp fuel)
-        (fn-stmt-error :too-many-items)
-      (let ((first (fn-cbor-decode-prechecked octets item-budget)))
-        (if (not (fn-cbor-result-okp first))
-            (fn-stmt-error (fn-stmt-value first))
-          (let ((tail (fn-stmt-decode-items-prechecked
-                       (1- fuel) (fn-cbor-result-rest first) item-budget)))
-            (if (not (fn-stmt-okp tail))
-                tail
-              (fn-stmt-ok (cons (fn-cbor-result-value first)
-                                (fn-stmt-value tail))))))))))
-
-; Decode at most `fuel` items and require the input to be consumed exactly.
-; `fuel` bounds the number of allocations; each item is bounded by the
-; primitive decoder.  An atom that is not NIL is malformed, so a successful
-; decode always re-encodes to its input (statement-invariants).
-(defun fn-stmt-decode-items-bounded (fuel octets outer-budget item-budget)
-  (declare (xargs :guard (and (natp fuel) (natp outer-budget)
-                              (natp item-budget))))
-  ; One bounded preflight and octet validation occur before recursive parsing.
-  (if (not (fn-cbor-at-mostp octets outer-budget))
-      (fn-stmt-error :limit)
-    (if (not (fn-cbor-octet-listp octets))
-        (fn-stmt-error :malformed)
-      (fn-stmt-decode-items-prechecked fuel octets item-budget))))
-
-(defun fn-stmt-decode-items (fuel octets)
-  (declare (xargs :guard (natp fuel)))
-  ; Compatibility wrapper for every pre-existing statement caller.
-  (fn-stmt-decode-items-bounded fuel octets
-                                *fn-cbor-max-input* *fn-cbor-max-bytes*))
-
 
 ; -----------------------------------------------------------------------------
 ; Item shapes

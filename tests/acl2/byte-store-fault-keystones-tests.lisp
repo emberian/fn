@@ -2,6 +2,7 @@
 (include-book "../../books/byte-store-fault-keystones")
 (include-book "../../books/byte-store-frame")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 (defconst *fn-bsfk-groups* '("fn.letters" "fn.test"))
 (defconst *fn-bsfk-capacity* 10)

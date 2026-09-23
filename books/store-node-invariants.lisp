@@ -1,9 +1,10 @@
 ; Correspondence for actual live node/file completion, without a trusted reply.
 (in-package "ACL2")
 (include-book "store-node")
+(include-book "records-seam")
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
-(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
+(local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
 
 ; The core definitions these correspondence proofs open (the core exports
 ; keystones only, docs/proof-style.md s2); local, named once.
@@ -82,7 +83,7 @@
             :in-theory (e/d (fn-replay-verdict-pairs fn-sn-verdict-listp
                              fn-stx-make-verdict fn-stx-verdict-token
                              fn-stx-verdict-generation fn-stxe-tokenp)
-                            (fn-record-codec-vocabulary)
+                            (fn-record-shape-vocabulary)
                             (fn-record-msgidp))))))
 
 (local
@@ -106,7 +107,7 @@
             :use ((:instance fn-replay-apply-record-non-nil-is-node-state
                              (record event)))
             :in-theory (e/d (fn-replay-apply-record fn-store-event-p)
-                            (fn-record-codec-vocabulary
+                            (fn-record-shape-vocabulary
                              fn-stxe-p fn-stxk-p fn-stxa-p
                              fn-replay-apply-retention-event))))))
 
@@ -138,7 +139,7 @@
    :hints (("Goal"
             :in-theory (e/d (fn-stxk-apply-snapshot fn-stxk-fault
                              fn-stxk-context fn-sn-keyring-snapshot-listp)
-                            (fn-record-codec-vocabulary
+                            (fn-record-shape-vocabulary
                              fn-stxk-p fn-stxe-p fn-stxa-p
                              fn-stxk-find fn-stxk-same-snapshotp))))))
 
@@ -150,7 +151,7 @@
    :hints (("Goal"
             :in-theory (e/d (fn-stxk-apply-snapshot fn-stxk-fault
                              fn-stxk-context)
-                            (fn-record-codec-vocabulary
+                            (fn-record-shape-vocabulary
                              fn-stxk-p fn-stxe-p fn-stxa-p
                              fn-stxk-find fn-stxk-same-snapshotp))))))
 
@@ -164,7 +165,7 @@
    :hints (("Goal"
             :in-theory (e/d (fn-stxk-apply-verdict fn-stxk-fault
                              fn-stxk-context fn-sn-keyring-snapshot-listp)
-                            (fn-record-codec-vocabulary
+                            (fn-record-shape-vocabulary
                              fn-stxk-p fn-stxe-p fn-stxa-p
                              fn-stxk-find fn-stxk-same-snapshotp))))))
 
@@ -176,7 +177,7 @@
    :hints (("Goal"
             :in-theory (e/d (fn-stxk-apply-verdict fn-stxk-fault
                              fn-stxk-context)
-                            (fn-record-codec-vocabulary
+                            (fn-record-shape-vocabulary
                              fn-stxk-p fn-stxe-p fn-stxa-p
                              fn-stxk-find fn-stxk-same-snapshotp))))))
 
@@ -196,7 +197,7 @@
             :in-theory (e/d (fn-replay-identity-step
                              fn-replay-identity-advance
                              fn-stxk-fault fn-stxk-context)
-                            (fn-record-codec-vocabulary
+                            (fn-record-shape-vocabulary
                              fn-stxk-p fn-stxe-p fn-stxa-p fn-store-event-p
                              fn-stxk-apply-snapshot fn-stxk-apply-verdict
                              fn-stxk-find fn-stxk-same-snapshotp))))))
@@ -214,7 +215,7 @@
             :induct (fn-replay-identity-loop records ctx)
             :in-theory (e/d (fn-replay-identity-loop fn-stxk-fault
                              fn-stxk-context)
-                            (fn-record-codec-vocabulary
+                            (fn-record-shape-vocabulary
                              fn-stxk-p fn-stxe-p fn-stxa-p fn-store-event-p
                              fn-replay-identity-step
                              fn-stxk-apply-snapshot fn-stxk-apply-verdict
@@ -224,7 +225,7 @@
   (implies (fn-sn-statep s)
            (fn-sn-statep (fn-sn-finish s)))
   ; The record codec stays closed here.  This book enables
-  ; `fn-record-codec-vocabulary' at the top for its field lemmas, and that
+  ; `fn-record-shape-vocabulary' at the top for its field lemmas, and that
   ; theory carries (:d fn-record-p), (:d fn-record-encode) and
   ; (:d fn-record-decode-exact); `fn-sn-finish' reads the completion record
   ; through four accessors and dispatches on four recognizers, so with the
@@ -245,7 +246,7 @@
                              (fn-record-generation (fn-sn-completion-record s)))
                             (completion-status :durable)))
            :in-theory (e/d (fn-stxk-context fn-stxk-fault)
-                           (fn-record-codec-vocabulary
+                           (fn-record-shape-vocabulary
                             fn-stxe-p fn-stxk-p fn-stxa-p
                             fn-replay-apply-record
                             fn-replay-apply-retention-event
@@ -287,7 +288,7 @@
              (fn-sn-keyring-generation s))))
   :hints (("Goal"
            :in-theory (e/d (fn-sn-verdict-lookup fn-sn-verdict-lookup-list)
-                           (fn-record-codec-vocabulary
+                           (fn-record-shape-vocabulary
                             fn-stxe-p fn-stxk-p fn-stxa-p
                             fn-replay-apply-record
                             fn-replay-apply-retention-event
@@ -306,7 +307,7 @@
   :hints (("Goal"
            :in-theory (e/d (fn-sn-verdict-lookup fn-sn-verdict-lookup-list
                             fn-sn-advance-identity-next fn-sn-update-indexed)
-                           (fn-record-codec-vocabulary
+                           (fn-record-shape-vocabulary
                             fn-stxe-p fn-stxk-p fn-stxa-p
                             fn-replay-apply-record
                             fn-replay-apply-retention-event
@@ -461,7 +462,7 @@
   ; look inside a record.
   :hints (("Goal" :in-theory (disable fn-sn-completion-enabledp
                                       fn-sn-completion-record
-                                      fn-record-codec-vocabulary
+                                      fn-record-shape-vocabulary
                                       fn-stxe-p fn-stxk-p fn-stxa-p
                                       fn-replay-apply-record
                                       fn-replay-apply-retention-event
@@ -487,7 +488,7 @@
            ; codec open they unfold on both sides instead of cancelling.
            :in-theory (disable fn-sn-finish fn-sn-committed-recordp
                                fn-sn-record-bindsp fn-sn-completion-record
-                               fn-record-codec-vocabulary
+                               fn-record-shape-vocabulary
                                fn-stxe-p fn-stxk-p fn-stxa-p
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
@@ -515,7 +516,7 @@
                     (txid (fn-store-event-txid (fn-sn-completion-record s)))))
            :in-theory (e/d (fn-sf-core-completion fn-sf-emit-success)
                             (fn-sn-record-bindsp fn-sn-completion-record
-                             fn-record-codec-vocabulary
+                             fn-record-shape-vocabulary
                              fn-stxe-p fn-stxk-p fn-stxa-p
                              fn-replay-apply-record
                              fn-replay-apply-retention-event
@@ -555,7 +556,7 @@
                          fn-sn-finish-installs-exact-article-and-archive-pin
                          fn-sn-finish-disabled-is-no-op)
            :cases ((fn-sn-completion-enabledp s))
-           :in-theory (disable fn-record-codec-vocabulary
+           :in-theory (disable fn-record-shape-vocabulary
                                fn-stxe-p fn-stxk-p fn-stxa-p
                                fn-replay-apply-record
                                fn-replay-apply-retention-event
@@ -587,8 +588,7 @@
                              (:d fn-stxe-p) (:d fn-stxe-shapep)
                              (:d fn-stxk-p) (:d fn-stxk-shapep)
                              (:d fn-stxa-p) (:d fn-stxa-shapep))
-                            ((:d fn-record-encode) (:d fn-record-decode-exact)
-                             (:d fn-stxe-bounded-octetsp)
+                            ((:d fn-stxe-bounded-octetsp)
                              (:d fn-record-uint32p) (:d fn-record-msgidp)
                              (:d fn-record-payloadp)
                              (:d fn-record-groups-validp)
@@ -1047,7 +1047,7 @@
    :hints (("Goal" :in-theory (e/d (fn-replay-apply-retention-event)
                                    (fn-stx-store fn-replay-advance-txid
                                     fn-replay-complete-retention
-                                    fn-record-codec-vocabulary
+                                    fn-record-shape-vocabulary
                                     fn-store-retention-event-p
                                     fn-retain-admissiblep fn-retain-admit
                                     fn-retain-release))))))
@@ -1059,7 +1059,7 @@
                    (fn-stx-store node)))
    :hints (("Goal" :in-theory (e/d (fn-replay-apply-identity-neutral)
                                    (fn-stx-store fn-replay-advance-txid
-                                    fn-record-codec-vocabulary))))))
+                                    fn-record-shape-vocabulary))))))
 
 ; And the composite identity arm whose event binds nothing: its delta is the
 ; delta of no octets, which is empty, and adding an empty delta is the
@@ -1114,7 +1114,7 @@
                             fn-replay-apply-retention-event
                             fn-replay-apply-identity-neutral
                             fn-replay-advance-txid
-                            fn-record-codec-vocabulary
+                            fn-record-shape-vocabulary
                             fn-sn-completion-record fn-node-pending-matchesp))
            :use ((:instance fn-sn-finish-preserves-state)
                  (:instance fn-stx-durable-completion-is-an-acceptance
@@ -1374,7 +1374,7 @@
                              (recorded-txid k)))
             :in-theory (e/d (fn-replay-advance-txid fn-node-statep fn-statep
                              fn-snx-core-definitions)
-                            (fn-record-codec-vocabulary)))))
+                            (fn-record-shape-vocabulary)))))
 
 ; `fn-replay-advance-txid' returns its argument unchanged unless that argument
 ; is a node, so an advance that IS a node was given one.  The retention arm
@@ -1385,7 +1385,7 @@
             (fn-node-statep node))
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (e/d (fn-replay-advance-txid)
-                                   (fn-record-codec-vocabulary)))))
+                                   (fn-record-shape-vocabulary)))))
 
 ; Both arms test that the advance landed exactly on the event's transaction
 ; id.  That test is also what says the node was not already past it, which is
@@ -1404,7 +1404,7 @@
             (<= (fn-state-next-txid (fn-node-acceptance node)) k))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-replay-advance-txid)
-                                   (fn-record-codec-vocabulary)))))
+                                   (fn-record-shape-vocabulary)))))
 
 (local
  (defthm fn-snt-identity-neutral-from-idle-is-idle-at-successor
@@ -1431,7 +1431,7 @@
                              (k (fn-store-event-txid event))))
             :in-theory (e/d (fn-replay-apply-identity-neutral)
                             (fn-replay-advance-txid fn-node-statep
-                             fn-record-codec-vocabulary))))))
+                             fn-record-shape-vocabulary))))))
 
 (local
  (defthm fn-snt-retention-from-idle-is-idle-at-successor
@@ -1464,7 +1464,7 @@
                              fn-retain-admissiblep fn-retain-admit
                              fn-retain-release fn-retain-find-id
                              fn-retain-matching-releasep
-                             fn-record-codec-vocabulary))))))
+                             fn-record-shape-vocabulary))))))
 
 ; The same two arms, as the linear half: each refuses unless the advance
 ; landed on the event's transaction id, so a node they accepted was not past
@@ -1487,7 +1487,7 @@
                              (k (fn-store-event-txid event))))
             :in-theory (e/d (fn-replay-apply-identity-neutral)
                             (fn-replay-advance-txid fn-node-statep
-                             fn-record-codec-vocabulary))))))
+                             fn-record-shape-vocabulary))))))
 
 (local
  (defthm fn-snt-retention-from-idle-was-not-past-its-txid
@@ -1511,7 +1511,7 @@
                              fn-retain-admissiblep fn-retain-admit
                              fn-retain-release fn-retain-find-id
                              fn-retain-matching-releasep
-                             fn-record-codec-vocabulary))))))
+                             fn-record-shape-vocabulary))))))
 
 ; Every store event carries a uint32 transaction id, whichever of the five
 ; shapes it has.
@@ -1525,7 +1525,7 @@
                              fn-store-retention-event-p fn-record-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
                              fn-record-uint32p)
-                            (fn-record-codec-vocabulary
+                            (fn-record-shape-vocabulary
                              fn-record-msgidp fn-record-payloadp
                              fn-record-groups-validp
                              fn-record-metadata-bytes-p
@@ -1543,7 +1543,7 @@
         (fn-node-acceptance (fn-replay-advance-txid node k))))
    :rule-classes :linear
    :hints (("Goal" :in-theory (e/d (fn-replay-advance-txid)
-                                   (fn-record-codec-vocabulary))))))
+                                   (fn-record-shape-vocabulary))))))
 
 (local
  (defthm fn-snt-prepare-is-txid-monotone
@@ -1556,7 +1556,7 @@
    :hints (("Goal" :in-theory (e/d (fn-node-prepare fn-accept-prepare
                                     fn-node-statep fn-statep
                                     fn-snx-core-definitions)
-                                   (fn-record-codec-vocabulary))))))
+                                   (fn-record-shape-vocabulary))))))
 
 (local
  (defthm fn-snt-durable-completion-is-idle-and-keeps-the-txid
@@ -1582,7 +1582,7 @@
                                     fn-snx-core-definitions)
                                    (fn-state-pending fn-state-next-txid
                                     fn-node-stage fn-state-fenced
-                                    fn-record-codec-vocabulary))))))
+                                    fn-record-shape-vocabulary))))))
 
 ; The step fact the loop's induction needs, over every arm of
 ; `fn-replay-apply-record' rather than over an article record alone.
@@ -1621,7 +1621,7 @@
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
                              fn-record-record-vocabulary
-                             fn-record-codec-vocabulary)))))
+                             fn-record-shape-vocabulary)))))
 
 ; A preparation that actually staged moved the next transaction id by exactly
 ; one: `fn-accept-prepare' writes `(1+ (fn-state-next-txid s))' and pins the
@@ -1646,7 +1646,7 @@
                                     fn-snx-core-definitions)
                                    (fn-state-next-txid fn-state-pending
                                     fn-node-stage fn-state-fenced
-                                    fn-record-codec-vocabulary))))))
+                                    fn-record-shape-vocabulary))))))
 
 ; And so every arm of the step lands the node at the successor of the event's
 ; own transaction id: the two that only advance land there directly, and the
@@ -1680,7 +1680,7 @@
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
                              fn-record-record-vocabulary
-                             fn-record-codec-vocabulary)))))
+                             fn-record-shape-vocabulary)))))
 
 ; And the same step's other arithmetic half: a node the step accepted was not
 ; past the event's transaction id.  With the successor equation above, this is
@@ -1709,7 +1709,7 @@
                              fn-store-event-p fn-store-retention-event-p
                              fn-stxe-p fn-stxk-p fn-stxa-p
                              fn-record-record-vocabulary
-                             fn-record-codec-vocabulary))))))
+                             fn-record-shape-vocabulary))))))
 
 ; The same step's arithmetic half as a linear fact: the loop induction closes
 ; its monotonicity conjunct by transitivity with the induction hypothesis, and

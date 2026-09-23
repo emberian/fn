@@ -6,6 +6,7 @@
 ; call outside a guard is made under `with-guard-checking :none'.
 (in-package "ACL2")
 (include-book "../../books/replay")
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; Guard world.  `fn-node-statep' is carried: the advance, the one-record step

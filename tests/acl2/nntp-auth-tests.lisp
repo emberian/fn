@@ -9,6 +9,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/nntp-auth")
+(include-book "../../books/codec-attach")
 
 (local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                           fn-nntp-projection-vocabulary

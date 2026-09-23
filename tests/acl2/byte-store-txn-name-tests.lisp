@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-txn-name")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 
 ; Minimum width is padding, not a bound.  The realization covers every
 ; natural, including a 21-digit value outside the allocator's bounded domain.

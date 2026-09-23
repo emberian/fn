@@ -1,6 +1,7 @@
 ; Reachable witnesses for the bounded FNCT local-control grammar.
 (in-package "ACL2")
 (include-book "../../books/native-control")
+(include-book "../../books/codec-attach")
 
 (defconst *fn-nctrl-test-msgid*
   (fn-record-string-octets "<control-1@example.invalid>"))

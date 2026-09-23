@@ -1,6 +1,7 @@
 ; Teeth for the bounded native administrative command plan.
 (in-package "ACL2")
 (include-book "../../books/native-admin")
+(include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defun fn-na-test-argv (words)

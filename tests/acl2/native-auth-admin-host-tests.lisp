@@ -1,6 +1,7 @@
 ; Program-mode wrapper checks for native AUTHINFO administration.
 (in-package "ACL2")
 (include-book "../../host/native-auth-admin-host")
+(include-book "../../books/codec-attach")
 
 (assert-event
  (equal (fn-native-auth-admin-host-action-kind

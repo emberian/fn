@@ -1,6 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-hybrid-control")
 (include-book "std/testing/assert-equal" :dir :system)
+(include-book "../../books/codec-attach")
 
 (defconst *nhc-principal* (make-list 32 :initial-element 1))
 (defconst *nhc-ed-key* (make-list 32 :initial-element 2))

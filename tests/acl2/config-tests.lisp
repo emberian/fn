@@ -17,6 +17,7 @@
 (include-book "../../books/config-records")
 (include-book "../../books/node-config")
 (include-book "../../books/store-config")
+(include-book "../../books/codec-attach")
 
 (local (in-theory (enable fn-cfg-vocabulary fn-cfg-invariants-vocabulary
                           fn-cnode-vocabulary)))

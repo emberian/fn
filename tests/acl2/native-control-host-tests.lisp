@@ -1,6 +1,7 @@
 ; The host wrappers call the exact ACL2 FNCT subjects.
 (in-package "ACL2")
 (include-book "../../host/native-control-host")
+(include-book "../../books/codec-attach")
 
 (defconst *fn-nctrl-host-msgid*
   (fn-record-string-octets "<host-control@example.invalid>"))

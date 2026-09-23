@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/hybrid-store")
+(include-book "../../books/codec-attach")
 (include-book "std/testing/assert-equal" :dir :system)
 
 (defconst *hst-principal* (make-list 32 :initial-element 7))
@@ -13,8 +14,8 @@
 (defconst *hst-record*
   (fn-record-make 2 3 4 "<hybrid@example.invalid>" *hst-source* '("example")
                   "obligation" "subject" "release" 3))
-(defconst *hst-record-octets* (fn-record-encode *hst-record*))
-(defconst *hst-snapshot* (fn-hsig-keyring-snapshot *hst-principal* *hst-keys*))
+(defconst *hst-record-octets* (fn-record-encode-impl *hst-record*))
+(make-event `(defconst *hst-snapshot* ',(fn-hsig-keyring-snapshot *hst-principal* *hst-keys*)))
 
 (defun hst-line (text)
   (append (fn-record-string-octets text) '(13 10)))
@@ -63,12 +64,11 @@
 (assert! (fn-stxk-p
           (fn-hsig-keyring-event 1 2 3 4 *hst-principal* *hst-keys*)))
 
-(defconst *hst-event*
-  (fn-hsig-authorized-article-event
+(make-event `(defconst *hst-event* ',(fn-hsig-authorized-article-event
    2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
    (fn-record-string-octets "subject") *hst-record-octets*
    *hst-principal* *hst-keys* *hst-source* *hst-signatures* *hst-ml-key*
-   :verified :verified))
+   :verified :verified)))
 
 (assert! (fn-stxa-bindsp *hst-event*))
 (assert! (fn-hsig-article-event-snapshot-bindsp

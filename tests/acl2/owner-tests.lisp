@@ -15,6 +15,7 @@
 (include-book "../../books/owner-invariants")
 (include-book "../../books/owner-fault")
 (include-book "../../books/crypto-attach")
+(include-book "../../books/codec-attach")
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit: the served port and the connection events are total in

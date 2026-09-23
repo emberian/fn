@@ -80,7 +80,6 @@
                     (e/d (fn-stmt-item-listp-implies-true-listp
                           fn-stmt-item-listp-nth-is-item-or-nil)
                          (fn-stmt-decode-items
-                          fn-stmt-decode-items-bounded
                           fn-stmt-item-listp
                           nth))))))
   (if (not (fn-stxk-p snapshot)) nil

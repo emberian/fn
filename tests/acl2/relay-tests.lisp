@@ -10,6 +10,7 @@
 (in-package "ACL2")
 (include-book "../../books/relay-crash-invariants")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/codec-attach")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary

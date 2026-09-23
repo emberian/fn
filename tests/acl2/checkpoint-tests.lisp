@@ -1,6 +1,7 @@
 ; Executable logical checkpoint and suffix-replay assertions.
 (in-package "ACL2")
 (include-book "../../books/checkpoint")
+(include-book "../../books/codec-attach")
 
 (defconst *cp-groups* '("fn.letters" "fn.test"))
 (defconst *cp-r0*

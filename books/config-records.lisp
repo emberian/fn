@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "config")
 (include-book "replay")
+(include-book "records-seam")
 
 ; `fn-jrec-p' must conclude `true-listp' of a record body to discharge
 ; `fn-replay-apply-record's guard, and `books/records' exports the shape

@@ -7,6 +7,7 @@
 
 (in-package "ACL2")
 (include-book "stx-keyring-records")
+(include-book "records-seam")
 (local (in-theory (enable fn-record-record-vocabulary
                           fn-record-codec-vocabulary)))
 

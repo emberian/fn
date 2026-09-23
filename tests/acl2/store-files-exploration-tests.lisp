@@ -15,6 +15,7 @@
 ; since several events can select the same successor.
 (in-package "ACL2")
 (include-book "../../books/store-files")
+(include-book "../../books/codec-attach")
 
 (defconst *sfe-groups* '("fn.letters" "fn.test"))
 (defconst *sfe-capacity* 4)

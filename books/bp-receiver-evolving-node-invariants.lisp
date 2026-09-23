@@ -246,7 +246,6 @@
  fn-record-make
  fn-record-p
  fn-record-encode-groups
- fn-record-encode
  fn-record-parse-ok
  fn-record-parse-error
  fn-record-parse-okp
@@ -258,8 +257,7 @@
  fn-record-read-bytes
  fn-record-parse-groups
  fn-record-decode-tail
- fn-record-decode-after-header
- fn-record-decode-exact)))
+ fn-record-decode-after-header)))
 
 (local (in-theory (enable fn-bpa-car fn-bpa-cdr)))
 (local (in-theory (disable fn-snt-relation fn-snt-step fn-snt-run fn-sf-prefixp

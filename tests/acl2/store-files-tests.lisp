@@ -7,6 +7,7 @@
 ; recognizer itself, in which case the witness is a malformed tuple.
 (in-package "ACL2")
 (include-book "../../books/store-files-invariants")
+(include-book "../../books/codec-attach")
 
 (defconst *sf-groups* '("fn.letters" "fn.test"))
 (defconst *sf-record-0*
