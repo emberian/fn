@@ -1,0 +1,6 @@
+test_different_local_uid_is_refused_by_owner (tests.test_native_consumer_e2.NativeConsumerE2Tests.test_different_local_uid_is_refused_by_owner) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.371s
+
+OK
