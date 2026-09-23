@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -11,6 +12,7 @@ import time
 import unittest
 
 from tools import run_store
+from tests.native_process import wait_for_announcement, stop_and_diagnostics
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -149,6 +151,123 @@ class NativeCheckpointTests(unittest.TestCase):
                       self.native("store", unlinked, "recover").stdout)
         self.assertIn("records=3",
                       self.native("checkpoint", "pack", unlinked).stdout)
+
+    @unittest.skipUnless(sys.platform.startswith("linux") and
+                         os.environ.get("FN_RUN_NATIVE_CLONE") == "1",
+                         "run only against a combined E2/T10/checkpoint developer image")
+    def test_clone_reopens_historical_authorship_verdict(self):
+        source = self.initialized("authored-source", article=False)
+        control = self.base / "author-control.sock"
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        config = self.base / "author.toml"
+        config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
+            'port = {}\n[control]\npath = "{}"\n'.format(source, port, control),
+            encoding="ascii")
+        principal = self.base / "principal.bin"
+        ed_public = self.base / "ed-public.bin"
+        ed_secret = self.base / "ed-secret.bin"
+        ml_private = self.base / "ml-private.pem"
+        ml_public = self.base / "ml-public.pem"
+        article = self.base / "authored.eml"
+        principal.write_bytes(bytes([85]) * 32)
+        ed_public.write_bytes(bytes.fromhex(
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        ed_secret.write_bytes(bytes.fromhex(
+            "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
+        subprocess.run([openssl, "genpkey", "-algorithm", "ML-DSA-65",
+                        "-out", str(ml_private)], timeout=60, check=True)
+        subprocess.run([openssl, "pkey", "-in", str(ml_private), "-pubout",
+                        "-out", str(ml_public)], timeout=60, check=True)
+        msgid = "<clone-authored@example.invalid>"
+        article.write_bytes(
+            b"From: author@example.invalid\r\n"
+            b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+            b"Newsgroups: fn.letters\r\n"
+            b"Subject: clone historical verdict\r\nMessage-ID: " +
+            msgid.encode("ascii") + b"\r\n\r\nexact authored source\r\n")
+
+        owner = subprocess.Popen(
+            [str(IMAGE), "--fn", "operator", str(config), "run"],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        try:
+            wait_for_announcement(owner, b"LISTENING ")
+            self.native("hybrid-enroll", control, "1", principal,
+                        ed_public, ml_public)
+            signed = self.native("hybrid-sign", principal, ed_public,
+                                 ed_secret, ml_public, ml_private, article)
+            parts = dict(line.split() for line in signed.stdout.splitlines())
+            ed_sig = self.base / "ed.sig"
+            ml_sig = self.base / "ml.sig"
+            ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+            ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+            self.native("hybrid-author", control, "1", article,
+                        ed_sig, ml_sig, ml_public)
+            wrong_ed = self.base / "wrong-ed-public.bin"
+            wrong_ed.write_bytes(bytes([99]) * 32)
+            self.native("hybrid-enroll", control, "2", principal,
+                        wrong_ed, ml_public)
+        finally:
+            diagnostic = stop_and_diagnostics(owner, timeout=60)
+            self.assertEqual(owner.returncode, 0, diagnostic)
+
+        self.native("consumer-bootstrap-fixture", source,
+                    "history-id", "incarnation-old")
+        self.native("checkpoint", "pack", source, "select")
+        self.native("checkpoint", "pack-reclaim", source)
+        target = self.base / "authored-clone"
+        self.native("checkpoint", "clone", source, target,
+                    "incarnation-new")
+        self.assertIn("articles=1",
+                      self.native("store", target, "recover").stdout)
+
+        target_control = self.base / "clone-control.sock"
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            target_port = probe.getsockname()[1]
+        target_config = self.base / "clone.toml"
+        target_config.write_text(
+            '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
+            'port = {}\n[control]\npath = "{}"\n'.format(
+                target, target_port, target_control), encoding="ascii")
+        owner = subprocess.Popen(
+            [str(IMAGE), "--fn", "operator", str(target_config), "run"],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        try:
+            wait_for_announcement(owner, b"LISTENING ")
+            with socket.create_connection(("127.0.0.1", target_port),
+                                          timeout=30) as sock:
+                with sock.makefile("rwb", buffering=0) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+                    stream.write(("ARTICLE {}\r\n".format(msgid)).encode())
+                    self.assertTrue(stream.readline().startswith(b"220 "))
+                    received = bytearray()
+                    while True:
+                        line = stream.readline()
+                        self.assertTrue(line, "cloned ARTICLE ended early")
+                        if line == b".\r\n":
+                            break
+                        received.extend(line[1:] if line.startswith(b"..") else line)
+                    self.assertIn(b"FN-Authorship: ", bytes(received)[:200])
+                    self.assertTrue(bytes(received).endswith(article.read_bytes()))
+                    carried = self.base / "clone-received.eml"
+                    carried.write_bytes(bytes(received))
+                    self.native("hybrid-verify-carrier", carried, ml_public)
+                    stream.write(("HDR :fn-verified {}\r\n".format(msgid)).encode())
+                    self.assertEqual(stream.readline(), b"225 headers follow\r\n")
+                    self.assertEqual(stream.readline(),
+                                     b"0 verified " + b"55" * 32 +
+                                     b" keyring 1\r\n")
+                    self.assertEqual(stream.readline(), b".\r\n")
+        finally:
+            diagnostic = stop_and_diagnostics(owner, timeout=60)
+            self.assertEqual(owner.returncode, 0, diagnostic)
 
     def test_native_and_python_frames_cross_open_byte_identically(self):
         source = self.initialized("source")
