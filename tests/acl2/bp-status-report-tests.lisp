@@ -1,7 +1,8 @@
 ; RFC 9171 section 6.1.1 wire facts.  Literal vectors are independent of the
 ; encoder, and include both subject shapes and timed and untimed assertions.
 (in-package "ACL2")
-(include-book "../../books/bp-status-report")
+(include-book "../../books/bp-status-report-invariants")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *fn-bpn-report-whole*
   '(:report ((nil) (nil) (nil) (nil)) 0 (:dtn-none) (0 0) nil))
@@ -38,6 +39,30 @@
                        130 24 100 7 24 24 5)))
 (assert-event (equal (fn-bpn-report-decode *fn-bpn-report-fragment-wire*)
                      (fn-cbor-ok *fn-bpn-report-fragment* nil)))
+
+; Reachable whole and fragment witnesses for the general round-trip theorem.
+(assert-event (and (fn-bpn-reportp *fn-bpn-report-whole*)
+                   (fn-cbor-at-mostp *fn-bpn-report-whole-wire*
+                                     *fn-bpn-report-max-input*)
+                   (equal (fn-bpn-report-decode
+                           (fn-bpn-report-encode *fn-bpn-report-whole*))
+                          (fn-cbor-ok *fn-bpn-report-whole* nil))))
+(assert-event (and (fn-bpn-reportp *fn-bpn-report-fragment*)
+                   (fn-cbor-at-mostp *fn-bpn-report-fragment-wire*
+                                     *fn-bpn-report-max-input*)
+                   (equal (fn-bpn-report-decode
+                           (fn-bpn-report-encode *fn-bpn-report-fragment*))
+                          (fn-cbor-ok *fn-bpn-report-fragment* nil))))
+; Dropping the report recognizer admits an out-of-profile reason.
+(must-fail
+ (defthm fn-bpn-report-roundtrip-without-reportp-is-false
+   (equal (fn-bpn-report-decode
+           (fn-bpn-report-encode
+            '(:report ((nil) (nil) (nil) (nil)) 12
+              (:dtn-none) (0 0) nil)))
+          (fn-cbor-ok
+           '(:report ((nil) (nil) (nil) (nil)) 12
+             (:dtn-none) (0 0) nil) nil))))
 
 ; The subject's time-request flag permits a time only on true assertions.
 ; The parser has no subject bundle in hand, so it accepts both wire variants;

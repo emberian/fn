@@ -280,6 +280,47 @@
                           (fn-cbor-result-rest b))
             b))))))
 
+(defun fn-bpn-report-parse-fragment (status reason source stamp fragmentp xs)
+  (declare (xargs :guard t))
+  (let ((fragment (fn-bpn-report-read-fragment fragmentp xs)))
+    (if (not (fn-cbor-result-okp fragment)) fragment
+      (fn-cbor-ok
+       (list :report status reason source stamp
+             (fn-cbor-result-value fragment))
+       (fn-cbor-result-rest fragment)))))
+
+(defun fn-bpn-report-parse-stamp (status reason source fragmentp xs)
+  (declare (xargs :guard t))
+  (let ((stamp (fn-bpn-report-read-stamp xs)))
+    (if (not (fn-cbor-result-okp stamp)) stamp
+      (fn-bpn-report-parse-fragment
+       status reason source (fn-cbor-result-value stamp) fragmentp
+       (fn-cbor-result-rest stamp)))))
+
+(defun fn-bpn-report-parse-source (status reason fragmentp xs)
+  (declare (xargs :guard t))
+  (let ((source (fn-bpn-report-read-source xs)))
+    (if (not (fn-cbor-result-okp source)) source
+      (fn-bpn-report-parse-stamp
+       status reason (fn-cbor-result-value source) fragmentp
+       (fn-cbor-result-rest source)))))
+
+(defun fn-bpn-report-parse-reason (status fragmentp xs)
+  (declare (xargs :guard t))
+  (let ((reason (fn-bpn-report-read-uint xs)))
+    (if (not (fn-cbor-result-okp reason)) reason
+      (fn-bpn-report-parse-source
+       status (fn-cbor-result-value reason) fragmentp
+       (fn-cbor-result-rest reason)))))
+
+(defun fn-bpn-report-parse-after-header (fragmentp xs)
+  (declare (xargs :guard t))
+  (let ((status (fn-bpn-report-read-status 4 xs)))
+    (if (not (fn-cbor-result-okp status)) status
+      (fn-bpn-report-parse-reason
+       (fn-cbor-result-value status) fragmentp
+       (fn-cbor-result-rest status)))))
+
 (defun fn-bpn-report-parse (xs)
   (declare (xargs :guard t))
   (if (not (and (consp xs) (equal (car xs) 130)
@@ -288,27 +329,8 @@
                 (or (equal (caddr xs) 132) (equal (caddr xs) 134))
                 (consp (cdddr xs)) (equal (cadddr xs) 132)))
       (fn-cbor-error :malformed)
-    (let* ((fragmentp (equal (caddr xs) 134))
-           (status (fn-bpn-report-read-status 4 (cddddr xs))))
-      (if (not (fn-cbor-result-okp status)) status
-        (let ((reason (fn-bpn-report-read-uint (fn-cbor-result-rest status))))
-          (if (not (fn-cbor-result-okp reason)) reason
-            (let ((source (fn-bpn-report-read-source
-                           (fn-cbor-result-rest reason))))
-              (if (not (fn-cbor-result-okp source)) source
-                (let ((stamp (fn-bpn-report-read-stamp
-                              (fn-cbor-result-rest source))))
-                  (if (not (fn-cbor-result-okp stamp)) stamp
-                    (let ((fragment (fn-bpn-report-read-fragment
-                                     fragmentp (fn-cbor-result-rest stamp))))
-                      (if (not (fn-cbor-result-okp fragment)) fragment
-                        (fn-cbor-ok
-                         (list :report (fn-cbor-result-value status)
-                               (fn-cbor-result-value reason)
-                               (fn-cbor-result-value source)
-                               (fn-cbor-result-value stamp)
-                               (fn-cbor-result-value fragment))
-                         (fn-cbor-result-rest fragment))))))))))))))
+    (fn-bpn-report-parse-after-header
+     (equal (caddr xs) 134) (cddddr xs))))
 
 (defun fn-bpn-report-decode (octets)
   (declare (xargs :guard t))
@@ -372,6 +394,11 @@
 (verify-guards fn-bpn-report-read-source)
 (verify-guards fn-bpn-report-read-stamp)
 (verify-guards fn-bpn-report-read-fragment)
+(verify-guards fn-bpn-report-parse-fragment)
+(verify-guards fn-bpn-report-parse-stamp)
+(verify-guards fn-bpn-report-parse-source)
+(verify-guards fn-bpn-report-parse-reason)
+(verify-guards fn-bpn-report-parse-after-header)
 (verify-guards fn-bpn-report-parse)
 (verify-guards fn-bpn-report-decode)
 (deftheory fn-bpn-report-codec-vocabulary nil)
