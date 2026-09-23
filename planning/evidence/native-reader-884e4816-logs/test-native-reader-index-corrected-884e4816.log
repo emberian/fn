@@ -1,0 +1,7 @@
+test_pinned_archive_and_index_through_public_reader (tests.test_native_reader_index.NativeReaderIndexTest.test_pinned_archive_and_index_through_public_reader) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.471s
+
+OK
+native reader indexed 96 concurrent STAT reads: 0.032s

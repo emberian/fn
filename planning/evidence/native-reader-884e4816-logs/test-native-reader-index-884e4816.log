@@ -1,0 +1,25 @@
+test_pinned_archive_and_index_through_public_reader (tests.test_native_reader_index.NativeReaderIndexTest.test_pinned_archive_and_index_through_public_reader) ... FAIL
+
+======================================================================
+FAIL: test_pinned_archive_and_index_through_public_reader (tests.test_native_reader_index.NativeReaderIndexTest.test_pinned_archive_and_index_through_public_reader)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/integrate-reader-repair-20260923/tests/test_native_reader_index.py", line 160, in test_pinned_archive_and_index_through_public_reader
+    self.assertEqual(rows, [b"0 absent no-record\r\n"])
+AssertionError: Lists differ: [b'0 absent no-field\r\n'] != [b'0 absent no-record\r\n']
+
+First differing element 0:
+b'0 absent no-field\r\n'
+b'0 absent no-record\r\n'
+
+- [b'0 absent no-field\r\n']
+?                ^^ ^
+
++ [b'0 absent no-record\r\n']
+?                ^ ^^^
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.449s
+
+FAILED (failures=1)

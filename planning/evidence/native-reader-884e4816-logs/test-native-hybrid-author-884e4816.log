@@ -1,0 +1,9 @@
+test_authored_carrier_survives_native_peering_and_receiver_restart (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_authored_carrier_survives_native_peering_and_receiver_restart)
+Real owner/feed/receiver path; portable verification is independent. ... ok
+test_enroll_author_refuse_tamper_and_restart_query (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_enroll_author_refuse_tamper_and_restart_query) ... ok
+test_portable_carrier_verifies_exact_source_and_keyset (tests.test_native_hybrid_author.NativeHybridAuthorTest.test_portable_carrier_verifies_exact_source_and_keyset) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 4.643s
+
+OK

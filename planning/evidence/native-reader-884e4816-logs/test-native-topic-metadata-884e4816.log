@@ -1,0 +1,18 @@
+test_signed_source_candidate_and_relay (tests.test_native_topic_metadata.NativeTopicMetadataTest.test_signed_source_candidate_and_relay) ... FAIL
+
+======================================================================
+FAIL: test_signed_source_candidate_and_relay (tests.test_native_topic_metadata.NativeTopicMetadataTest.test_signed_source_candidate_and_relay)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tank/fn/gates/integrate-reader-repair-20260923/tests/test_native_topic_metadata.py", line 91, in test_signed_source_candidate_and_relay
+    duplicate = self.sign("duplicate", self.source(field + field))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tank/fn/gates/integrate-reader-repair-20260923/tests/test_native_topic_metadata.py", line 60, in sign
+    self.assertEqual(signed.returncode, 0, signed.stderr.decode("utf-8", "replace"))
+AssertionError: 1 != 0 : store: rendered FN-Authorship failed independent verification
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.414s
+
+FAILED (failures=1)
