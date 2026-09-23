@@ -37,8 +37,13 @@ qualification passed all twenty changed/dependent roots in
 Native BP service/recovery, TCPCL accepted/refused/uncertain completion and
 contact scheduling are now integrated at `66bf9e55`, with current-source
 changed-root certification. The combined native image is the next test subject.
-A3 application handoff and separately queued return receipts are being implemented. Kind-5 persistence
-proofs alone are not a native receive or end-to-end receipt guarantee.
+A3 application handoff and separately queued return receipts are integrated at
+`7c25183d`. The [native A3 campaign](evidence/bp-a3-handoff-checkpoint-2026-09-23.md)
+records request/retry, return-contact and exact forwarding-pin release on
+`7ad230b5`, with separately attributed process-death and ambiguity witnesses.
+The caller still lacks the specified observed-channel admission binding; its
+configured-peer loopback tests do not establish peer authentication. Effective
+durable handoff projection and outbox-uncertainty reporting are being repaired.
 
 Historical live configuration/recovery and durable exact-source author
 bindings are integrated. The frozen `295bbe35` developer image passed live
@@ -62,9 +67,10 @@ interop scope.
 
 The K5 prefix result and corrected K8 issued-link post-fence crash-scan
 theorem are integrated with explicit hypotheses and negative witnesses.
-K6 now proves exact raw-frame bytes at the actual P-RECORD file-fence cut;
-its final-link/crash-scanner join and general K0 call-trace establishment
-remain open.
+K6 now connects exact typed frame bytes through the actual P-RECORD
+immutable-link cut to the ordered surviving crash scan, conditional on the
+pair-10 byte/kernel relation. General K0 must establish that relation along
+the actual served call trace; physical barrier qualification remains separate.
 An isolated ext4 device-EIO campaign observed actual directory-fsync failure,
 native uncertainty and successful recovery; this does not qualify physical
 power loss or production ZFS. The BP native campaign also exposed process-
@@ -94,14 +100,19 @@ passed reader/HDR, authored peering/restart and topic inspection on `884e4816`.
 Mini portable-source verification also passed against that same image;
 [its evidence](evidence/dregg-e1-portable-p2.md) distinguishes portable
 authorship from Store admission and records hostile-input refusals. A
-subsequent Mini stdout-allocation bound repair is being rerun separately. Broader existing NNTP/configuration
-qualification now reuses that image. This is a test subject, not a live deployment.
+subsequent Mini stdout-allocation bound repair passed the twelve-case native
+portable-verification matrix. The [broader NNTP campaign](evidence/native-reader-regression-884e4816-2026-09-23.md)
+passed INN and live configuration; its outcome matrix has no disagreement
+among observed outcomes, but retains an invalid-config usage mismatch and
+unexercised rows. The Mini lane now joins real portable verification to its
+durable operation/reply receiver. This is a test subject, not a live deployment.
 
 The TLS-prefix correspondence still requires a well-formed selected wire;
 carrying that premise through the historical owner relation is separate work.
-A3 application handoff is being composed with the same FNBS owner. Receipt
-queue identity must bind each handoff trigger and the exact receipt ADU/peer;
-a colliding queued-job name alone cannot establish handoff completion.
+A3 application handoff uses the same FNBS owner. Receipt queue identity
+binds each handoff trigger and the exact receipt ADU/peer; a colliding queued-job
+name alone cannot establish handoff completion. The effective-status proof
+will derive completion from these existing durable records.
 
 The next indexed-open optimization is integrated through `ceed4b9e` and passed
 its complete incremental proof run (29 new, 483 cached books). Runtime evidence
@@ -111,3 +122,12 @@ current header budget, and the maximum topic field needs physical-line
 folding. The codec bound is not yet a promise that every maximum topic value
 can be posted in an authenticated article; that envelope join is the next
 concrete P3 implementation step.
+
+The crash/topic/authentication union at `2234c1f3` passed the complete
+Makefile-root incremental run: [original manifest](evidence/manifests/certify-20260923T204958Z-90622.json).
+It reused 496 of 513 closure books and certified 17 in 15.164 seconds at
+four jobs. The next union at `b9bf596d` adds A3 and the conditional whole-list
+scanner bridge; hbox run `run-20260923T205921Z-411b` passed that combined source
+([manifest](evidence/manifests/certify-20260923T205938Z-120445.json)): 493
+compatible cached books and 28 new certificates in 27.353 seconds at four
+jobs. It does not replace the already tested images.

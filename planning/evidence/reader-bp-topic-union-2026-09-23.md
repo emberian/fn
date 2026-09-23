@@ -80,3 +80,38 @@ on the integrated source; one negative test deliberately refuses an
 incompatible parent/child set before a session is started. The previously
 unarchived primary hybrid-store certification was recovered from its original
 hbox run, rather than recertifying for a ledger label.
+
+## Crash, topic and authentication union
+
+Source `2234c1f3` adds actual typed P-RECORD link/crash provenance,
+topic constructor bounds/inverse and host-called authored-field binding,
+and handled authentication-command correspondence. Hbox run
+`run-20260923T204942Z-deec`, gate
+`/tank/fn/gates/integrate-crash-topic-auth-20260923`, passed the full
+Makefile-root incremental selection with 496 cached closure books from
+fifteen origins and 17 certified in 15.164 seconds at four jobs.
+[Original manifest](manifests/certify-20260923T204958Z-90622.json).
+`make check` passed. This does not attribute runtime evidence from884 to
+this later source or close general K0, topic governance or delegated-reader
+correspondence.
+
+## A3 and ordered crash-scanner union
+
+Source `b9bf596d` integrates the A3 native/ACL2 application handoff through
+lane `7ad230b5` and the K6 ordered scanner theorem conditional on the actual
+pair-10 byte/kernel relation. Hbox run `run-20260923T205921Z-411b`, gate
+`/tank/fn/gates/integrate-a3-scanner-20260923`, passed the full Makefile-root
+selection at four jobs with 493 cached closure books from sixteen origins
+and 28 newly certified books in 27.353 seconds.
+[Original manifest](manifests/certify-20260923T205938Z-120445.json).
+The slowest book, `bp-fnbs-codec-invariants`, took 10.832 seconds; the actual
+record-provenance root took 7.229 seconds. `make check` passed; the native
+matrix driver's 47 unit tests passed. Native host loading in the local static
+gate is explicitly skipped without FN_ACL2; image evidence is separate.
+
+The A3 native campaign remains pinned to its named images. Source review
+found two actual caller gaps not covered by the successful loopback exchange:
+missing observed-channel principal admission (spec §2.3), and potential
+outbox publication uncertainty reported as refusal. Cooperating lanes are
+repairing these; this proof run does not close either host boundary. K0 still
+must derive the pair-10 relation along every supported served trace.

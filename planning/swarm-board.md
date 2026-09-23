@@ -173,20 +173,29 @@ maximal codec value after the mandatory hybrid carrier. The short-duplicate
 native witness now reaches actual topic rejection; the earlier oversize
 negative remains recorded separately.
 
-Ready next convergence packets (not yet integrated into root):
+Current convergence checkpoint (root `b9bf596d`):
 
-- K6 `d2a66dce` through `14d08cdb` and earlier link/crash refinements;
-  includes typed Store-event sequence fix. Original manifests are in lane.
-- Topic proof packet `9ff82359`; native fixture `1da3801f` already landed.
-  Topic lane continues coherent folded signed-envelope work.
-- Auth handled-command correspondence `cdedd176`; arbitrary index/verdicts,
-  no index hypothesis, excludes delegated reader commands by explicit scope.
-- Historical T8/T17 open/read relation union is still being composed with
-  pin cleanup; do not claim full read preservation from its conditional pieces.
-- A3 combined source `7ad230b5` passed the two-carrier request/receipt/pin-release
-  happy path. Five fault cases passed preceding `4e7dd362`; preserve separate
-  image attribution. Effective handoff-state projection is still being built.
-- Mini P2 evidence `cc84eb67` landed `f3b22b8c`; Mini now repairs the subprocess
-  stdout allocation bound (cap before accumulating) and reruns the matrix.
-- E2 completed-prefix/crash relation remains in progress; resolution theory
-  explosion was repaired from a 5210-way split to a 3.16-second certificate.
+- K6 through `aedf696f` integrated, including typed Store-event sequence and
+  conditional pair-10 whole-list scanner bridge. General K0 actual-call
+  relation establishment continues in `crash_differential`.
+- Topic proof packet `9ff82359` integrated; folded maximum signed-envelope
+  source and its broad dependent qualification are next.
+- Auth handled-command correspondence `cdedd176` integrated. Authorship lane
+  proves the full no-local-POST fold while preserving authorized transit.
+- Historical T8/T17 relation union continues. Archive/pin domain witnesses
+  are certified; actual read bounds and full relation composition remain.
+- A3 native source through `7ad230b5` and fault evidence are integrated at
+  `7c25183d` and followups. Foundation/status finish effective handoff projection.
+  Fragment review found missing observed-channel principal admission and an
+  outbox ambiguity-to-refusal error; repair them before claiming those seams.
+- Mini P2 bounded-output twelve-case evidence integrated `0d411186`; lane
+  joins actual portable authentication to Mini P1 durable operation/reply.
+- E2 phase-aware completed-prefix/crash relation remains in progress; native
+  fetch/ack and preservation-clone campaign depend on this coherent packet.
+- Frozen884 broader INN/live-config/matrix evidence integrated `b9bf596d`.
+  Stamp fixes the wildcard-config matrix's usage expectation without changing
+  native accepted/refused/uncertain meanings.
+- Latest root full Makefile-root proof run: hbox `run-20260923T205921Z-411b`,
+  `/tank/fn/gates/integrate-a3-scanner-20260923`, four jobs, existing pool/cache: passed, 493 cached, 28 newly
+  certified, 27.353 seconds, manifest `certify-20260923T205938Z-120445`.
+  Prior `2234c1f3` run passed (496 cached, 17 certified, 15.164 seconds).
