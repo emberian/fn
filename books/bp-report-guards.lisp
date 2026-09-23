@@ -36,21 +36,11 @@
                             (bundle (fn-bpnf-held-bundle
                                      (fn-bpn-report-find-expired-held
                                       (fn-bpnf-held-list st) observation)))))
-           :in-theory (disable fn-bpn-report-find-expired-held
-                               fn-bpn-report-held-delete-pendingp
-                               fn-bpn-report-deleted-payload
-                               fn-bpn-report-deleted-term
-                               fn-bpn-report-delete-recordp
-                               fn-bpnf-delete-frame
-                               fn-bpnf-state-with-arrival
-                               fn-bpn-machine-statep
-                               fn-bpn-machine-recordp
-                               fn-bpnf-heldp fn-bpb-bundlep
-                               fn-bpp-blockp fn-bpp-eidp
-                               fn-bpp-vchar-listp fn-bpp-vcharp
-                               fn-bpn-report-expired-held-shape-for-guard
-                               fn-bpn-report-held-bundle-for-guard
-                               fn-bpn-report-primary-for-guard))))
+           :in-theory (union-theories
+                       '((:definition fn-frame-natp)
+                         (:definition natp)
+                         fn-bpn-bundle-primary-true-list-for-guard)
+                       (theory 'minimal-theory)))))
 (verify-guards fn-bpn-report-delete-issuedp)
 (verify-guards fn-bpn-report-delete-persist-step
   :hints (("Goal" :do-not-induct t
