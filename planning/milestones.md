@@ -1,5 +1,7 @@
 Current selected-v1 join: consumer projection and native publication integrated
-at `98996532` / `944916e6`; combined certification is pending. CNS-001,
+at `98996532` / `944916e6`; combined certification exposed five source joins
+under repair (optimized preparation, owner constructors, stamp event kinds,
+BP replay event disjointness and physical consumer recovery). CNS-001,
 PRF-064 and SCN-033 track this work; end-to-end fetch/ack remains open.
 
 Current task (2026-09-23): concurrent v0/v1 development grounded in the actual
@@ -25,8 +27,9 @@ the wider `884e4816` image passed indexed-reader, historical HDR, signed
 peering/restart, topic inspection, INN interoperability and live configuration.
 The P3 codec now has general constructor bounds/inverse and host-called
 authored-field binding proofs. Canonical folding and a bounded larger header
-envelope accommodate the maximum topic profile in ACL2; its native image
-witness and durable topic admission remain open. K6 now carries exact typed Store-event frames
+envelope accommodate the maximum topic profile in ACL2; the exact maximum
+profile passed native inspection on frozen `86323c89`, while durable topic
+admission remains open. K6 now carries exact typed Store-event frames
 through the modeled surviving-link crash. The ordered whole-list scanner
 join now holds under the actual pair-10 byte/kernel relation; general K0 must
 establish that relation along every supported served trace.

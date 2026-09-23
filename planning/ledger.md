@@ -19,8 +19,8 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 321 |
 | Functions left at the default with an explicit guard | 2948 |
 | Functions left at the default with no guard | 755 |
-| `assert-event` checks | 8678 |
-| `must-fail` checks | 394 |
+| `assert-event` checks | 8683 |
+| `must-fail` checks | 395 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 72 |
 | Export-hygiene warnings | 101 |
@@ -591,7 +591,7 @@ that `make certify` requests.
 | `tests/acl2/store-node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/store-observed-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 137 | 0 | 0 |
-| `tests/acl2/store-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 1 | 0 |
+| `tests/acl2/store-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/store-sweep-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 33 | 0 | 0 |
 | `tests/acl2/stx-accept-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 0 | 0 |
 | `tests/acl2/stx-evidence-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
