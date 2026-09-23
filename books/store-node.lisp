@@ -338,7 +338,7 @@
   (declare (xargs :guard t))
   (let ((stamp (fn-record-stamp-of-observation obs))
         (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
-    (if (equal stamp :clock-unusable)
+    (if (not (natp stamp))
         :clock-unusable
       (fn-record-make (fn-sn-identity-next s) txid txid msgid payload groups
                       obligation-id subject evidence charge stamp))))
@@ -357,8 +357,7 @@
            (equal (fn-sn-article-record s obs msgid payload groups
                                         obligation-id subject evidence charge)
                   :clock-unusable))
-  :hints (("Goal" :in-theory (enable fn-sn-article-record
-                                     fn-record-stamp-of-observation))))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record))))
 
 ; The record is derived from the real pending proposal, including its retention
 ; stage, instead of a second host interpretation of the submission.
