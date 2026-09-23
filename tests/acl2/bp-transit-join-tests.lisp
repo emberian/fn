@@ -3,6 +3,7 @@
 ; transfer decision are used; a BP-only boundary grants no inbound scope.
 (in-package "ACL2")
 (include-book "../../books/bp-transit-join")
+(include-book "../../books/owner-invariants")
 (include-book "../../books/codec-attach")
 (include-book "peer-inbound-tests")
 (include-book "std/testing/must-fail" :dir :system)
@@ -102,6 +103,14 @@
   (fn-own-bp-transit-submit
    *btj-owner* *btj-cfg* "dtnB" *pt-id1* *pt-a1*
    (fn-bpaj-nth 8 *btj-plan*) (fn-bpaj-nth 9 *btj-plan*)))
+(assert-event (fn-own-relation *btj-owner*))
+(assert-event (fn-own-relation *btj-queued*))
+(must-fail
+ (assert-event
+  (fn-own-relation
+   (fn-own-bp-transit-submit
+    (update-nth 4 -1 *btj-owner*) *btj-cfg* "dtnB" *pt-id1* *pt-a1*
+    (fn-bpaj-nth 8 *btj-plan*) (fn-bpaj-nth 9 *btj-plan*)))))
 (assert-event (fn-own-bp-transit-submissionp
                (car (fn-own-queue *btj-queued*))))
 (defconst *btj-taken* (fn-own-take-submission *btj-queued*))
@@ -113,6 +122,15 @@
 (assert-event
  (not (fn-own-inflight
        (fn-own-bp-transit-outcome *btj-taken* :uncertain))))
+(assert-event (fn-own-relation *btj-taken*))
+(assert-event
+ (fn-own-relation
+  (fn-own-bp-transit-outcome *btj-taken* :uncertain)))
+(must-fail
+ (assert-event
+  (fn-own-relation
+   (fn-own-bp-transit-outcome
+    (update-nth 4 -1 *btj-taken*) :uncertain))))
 (must-fail
  (assert-event
   (equal (fn-own-bp-transit-outcome-result *btj-taken* :durable)

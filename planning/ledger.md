@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 577 |
 | Certification roots in the Makefile | 571 |
 | Books inside the root closure | 576 |
-| `defthm` and `defthmd` events | 8290 |
+| `defthm` and `defthmd` events | 8292 |
 | `defun` events | 6231 |
 | Functions with verified guards | 2021 |
 | Functions declared `:verify-guards nil` and never verified | 369 |
 | Functions left at the default with an explicit guard | 3051 |
 | Functions left at the default with no guard | 790 |
-| `assert-event` checks | 9062 |
-| `must-fail` checks | 454 |
+| `assert-event` checks | 9066 |
+| `must-fail` checks | 456 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 75 |
 | Export-hygiene warnings | 102 |
@@ -323,7 +323,7 @@ that `make certify` requests.
 | `books/owner-fault.lisp` | root | 11 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/owner-feed-port.lisp` | root | 11 | 1 | 0/0/1/0 | 0 | 0 | 4 |
 | `books/owner-feed.lisp` | root | 84 | 77 | 0/0/77/0 | 0 | 0 | 0 |
-| `books/owner-invariants.lisp` | root | 145 | 8 | 0/0/6/2 | 0 | 0 | 1 |
+| `books/owner-invariants.lisp` | root | 147 | 8 | 0/0/6/2 | 0 | 0 | 1 |
 | `books/owner-log.lisp` | root | 11 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/owner-prepare-correspondence.lisp` | root | 18 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/owner-tls-prefix.lisp` | root | 3 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -497,7 +497,7 @@ that `make certify` requests.
 | `tests/acl2/bp-sequence-persistence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
 | `tests/acl2/bp-session-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/bp-status-report-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 1 | 0 |
-| `tests/acl2/bp-transit-join-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 3 | 0 |
+| `tests/acl2/bp-transit-join-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 5 | 0 |
 | `tests/acl2/bp-workflow-binding-invariants-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 23 | 2 | 0 |
 | `tests/acl2/bp-workflow-records-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
 | `tests/acl2/bp-workflow-records-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 101 | 6 | 0 |

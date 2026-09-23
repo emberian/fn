@@ -1122,6 +1122,14 @@
                                    fn-own-enqueue fn-own-relation)
                                   (fn-own-operator-decision-of)))))
 
+(defthm fn-own-bp-transit-submit-preserves-relation
+  (implies (fn-own-relation o)
+           (fn-own-relation
+            (fn-own-bp-transit-submit o cfg peer msgid octets id subject)))
+  :hints (("Goal" :in-theory (enable fn-own-bp-transit-submit
+                                     fn-own-bp-transit-submit-result
+                                     fn-own-enqueue fn-own-relation))))
+
 ; -----------------------------------------------------------------------------
 ; The operator's submission injects (books/owner.lisp fn-own-operator-submit,
 ; the (:operator-submit ...) event; host/owner-host.lisp fn-owner-operator-
@@ -1245,6 +1253,12 @@
            :in-theory (e/d (fn-own-control-outcome)
                            (fn-own-relation fn-own-outcome-completion
                             fn-own-outcome-body-preserves-relation)))))
+
+(defthm fn-own-bp-transit-outcome-preserves-relation
+  (implies (fn-own-relation o)
+           (fn-own-relation (fn-own-bp-transit-outcome o word)))
+  :hints (("Goal" :in-theory (disable fn-own-relation
+                                      fn-own-control-outcome))))
 
 ; The host calls fn-owner-control-outcome (host/owner-host.lisp), whose state
 ; transition is this function.  It gates acceptance on the same completion
@@ -1370,6 +1384,8 @@
                                       fn-own-declare-group fn-own-configure
                                       fn-own-take-submission fn-own-outcome
                                       fn-own-control-submit
+                                      fn-own-bp-transit-submit
+                                      fn-own-bp-transit-outcome
                                       fn-own-operator-submit
                                       fn-own-control-outcome))))
 

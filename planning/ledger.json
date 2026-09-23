@@ -578,10 +578,10 @@
     "books": 577,
     "books_in_root_closure": 576,
     "roots": 571,
-    "theorems": 8290,
+    "theorems": 8292,
     "functions": 6231,
-    "assert_events": 9062,
-    "must_fails": 454,
+    "assert_events": 9066,
+    "must_fails": 456,
     "encapsulates": 26,
     "guards": {
       "verified": 2021,
@@ -6918,7 +6918,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 145,
+      "theorems": 147,
       "functions": 8,
       "guards": {
         "verified": 0,
@@ -11609,14 +11609,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
-      "must_fails": 3,
+      "assert_events": 22,
+      "must_fails": 5,
       "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-transit-join",
         "../../books/codec-attach",
+        "../../books/owner-invariants",
         "peer-inbound-tests"
       ],
       "system_includes": [
@@ -20000,14 +20001,14 @@
       },
       {
         "book": "tests/acl2/bp-transit-join-tests.lisp",
-        "line": 6,
+        "line": 7,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/bp-transit-join-tests.lisp",
-        "line": 7,
+        "line": 8,
         "include": "peer-inbound-tests",
         "included": "tests/acl2/peer-inbound-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
