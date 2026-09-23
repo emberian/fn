@@ -131,6 +131,11 @@ def main(argv: list[str] | None = None) -> int:
               f"project toolchain or set FN_ACL2 to an ACL2 path.",
               file=sys.stderr, flush=True)
         return 2
+    if executable.resolve() == Path(__file__).resolve():
+        print("fn: FN_ACL2 points to tools/acl2 itself; set it to the ACL2 "
+              "executable to avoid recursive wrapper launches.",
+              file=sys.stderr, flush=True)
+        return 2
 
     label = arguments.label or f"ld {Path.cwd().name}"
     with acl2_slots.slot(label) as held:

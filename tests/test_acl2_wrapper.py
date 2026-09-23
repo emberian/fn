@@ -173,6 +173,21 @@ class PassThroughTests(unittest.TestCase):
             self.assertFalse(harness.slot_dir.exists(),
                              "a refused run still touched the pool")
 
+    def test_a_recursive_wrapper_is_refused_before_any_slot_is_taken(self):
+        with tempfile.TemporaryDirectory() as directory:
+            harness = Harness(directory)
+            alias = harness.root / "acl2-wrapper-link"
+            alias.symlink_to(WRAPPER)
+            for candidate in (WRAPPER, alias):
+                with self.subTest(candidate=candidate):
+                    result = harness.run([], FN_ACL2=str(candidate))
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertIn(b"FN_ACL2 points to tools/acl2 itself",
+                                  result.stderr)
+                    self.assertEqual(harness.recorded(), [])
+                    self.assertFalse(harness.slot_dir.exists(),
+                                     "recursive setup touched the pool")
+
 
 class TimeoutTests(unittest.TestCase):
     """The brief's three-minute rule, mechanical instead of remembered."""
