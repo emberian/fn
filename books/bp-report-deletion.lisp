@@ -53,6 +53,14 @@
                                   (fn-bpp-blockp fn-bpp-eidp
                                    fn-bpp-vchar-listp fn-bpp-vcharp)))))
 
+(defthm fn-bpn-report-primary-flags-natural-for-guard
+  (implies (fn-bpp-blockp primary)
+           (natp (fn-bpp-flags primary)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bpp-blockp)
+                                  (fn-bpp-eidp fn-bpp-timep
+                                   fn-bpp-crc-typep fn-bpp-dtn-sspp)))))
+
 (defun fn-bpn-report-tombstone-held (held reason)
   (declare (xargs :guard t))
   (fn-bpnf-held (fn-bpn-nth 1 held) (fn-bpn-nth 2 held)
@@ -90,6 +98,66 @@
         (car held-list)
       (fn-bpn-report-find-expired-held (cdr held-list) observation))))
 
+; Only a committed deletion record and its exact tombstoned subject can
+; authorize a diagnostic report.  The report is not application evidence.
+(defun fn-bpn-report-deleted-record-matches-heldp (record held)
+  (declare (xargs :guard t))
+  (and (fn-bpn-report-delete-recordp record)
+       (fn-bpnf-heldp held)
+       (equal (fn-bpn-nth 14 held) (fn-bpn-nth 5 record))
+       (equal (fn-bpn-nth 3 held) (fn-bpn-nth 3 record))
+       (equal (fn-bpn-nth 4 record)
+              (fn-bpp-primary-identity
+               (fn-bpb-bundle-primary (fn-bpnf-held-bundle held))))))
+
+(defun fn-bpn-report-deleted-term (record held observation enabled)
+  (declare (xargs :guard t))
+  (if (not (and (eq enabled t)
+                (fn-bpn-report-deleted-record-matches-heldp record held)
+                (fn-clock-observationp observation)))
+      nil
+    (let* ((bundle (fn-bpnf-held-bundle held))
+           (primary (fn-bpb-bundle-primary bundle))
+           (flags (fn-bpp-flags primary))
+           (timed (fn-bpp-flag-onp flags *fn-bpp-flag-status-time*))
+           (fragment (and (fn-bpp-fragmentp flags)
+                          (cons (fn-bpp-fragment-offset primary)
+                                (len (fn-bpb-payload bundle))))))
+      (if (or (fn-bpp-administrativep flags)
+              (not (fn-bpp-flag-onp
+                    flags *fn-bpp-flag-report-deletion*))
+              (not (fn-bpp-identifiablep primary))
+              (equal (fn-bpp-report-to primary) '(:dtn-none))
+              (and timed (not (fn-clock-has-wall observation))))
+          nil
+        (list :report
+              (list '(nil) '(nil) '(nil)
+                    (if timed (list t (fn-clock-wall observation)) '(t)))
+              1 (fn-bpp-source primary)
+              (list (fn-bpp-creation-time primary)
+                    (fn-bpp-sequence primary))
+              fragment)))))
+
+(defun fn-bpn-report-deleted-payload (record held observation enabled)
+  (declare (xargs :guard t))
+  (let ((report (fn-bpn-report-deleted-term
+                 record held observation enabled)))
+    (if report
+        (let ((octets (fn-bpn-report-encode-for-subject
+                       report
+                       (fn-bpp-flag-onp
+                        (fn-bpp-flags
+                         (fn-bpb-bundle-primary
+                          (fn-bpnf-held-bundle held)))
+                        *fn-bpp-flag-status-time*))))
+          (if (equal octets :bad) nil
+            (list :due
+                  (fn-bpp-report-to
+                   (fn-bpb-bundle-primary
+                    (fn-bpnf-held-bundle held)))
+                  octets)))
+      nil)))
+
 (defthm fn-bpn-report-find-expired-held-is-expired
   (implies (fn-bpn-report-find-expired-held held-list observation)
            (equal (fn-bpah-held-expiry
@@ -121,3 +189,35 @@
 (verify-guards fn-bpn-report-tombstone-held)
 (verify-guards fn-bpn-report-apply-delete)
 (verify-guards fn-bpn-report-find-expired-held)
+(verify-guards fn-bpn-report-deleted-record-matches-heldp
+  :hints (("Goal" :use ((:instance fn-bpn-report-held-bundle-for-guard)
+                         (:instance fn-bpn-report-primary-for-guard
+                          (bundle (fn-bpnf-held-bundle held))))
+           :in-theory (disable fn-bpnf-heldp fn-bpb-bundlep
+                               fn-bpp-blockp
+                               fn-bpn-report-held-bundle-for-guard
+                               fn-bpn-report-primary-for-guard))))
+(verify-guards fn-bpn-report-deleted-term
+  :hints (("Goal" :use ((:instance fn-bpn-report-held-bundle-for-guard)
+                         (:instance fn-bpn-report-primary-for-guard
+                          (bundle (fn-bpnf-held-bundle held)))
+                         (:instance fn-bpn-report-primary-flags-natural-for-guard
+                          (primary (fn-bpb-bundle-primary
+                                    (fn-bpnf-held-bundle held)))))
+           :in-theory (disable fn-bpnf-heldp fn-bpb-bundlep
+                               fn-bpp-blockp
+                               fn-bpn-report-held-bundle-for-guard
+                               fn-bpn-report-primary-for-guard
+                               ))))
+(verify-guards fn-bpn-report-deleted-payload
+  :hints (("Goal" :use ((:instance fn-bpn-report-held-bundle-for-guard)
+                         (:instance fn-bpn-report-primary-for-guard
+                          (bundle (fn-bpnf-held-bundle held)))
+                         (:instance fn-bpn-report-primary-flags-natural-for-guard
+                          (primary (fn-bpb-bundle-primary
+                                    (fn-bpnf-held-bundle held)))))
+           :in-theory (disable fn-bpnf-heldp fn-bpb-bundlep
+                               fn-bpp-blockp
+                               fn-bpn-report-held-bundle-for-guard
+                               fn-bpn-report-primary-for-guard
+                               ))))

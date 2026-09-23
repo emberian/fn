@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 562 |
 | Certification roots in the Makefile | 556 |
 | Books inside the root closure | 561 |
-| `defthm` and `defthmd` events | 8274 |
-| `defun` events | 6180 |
-| Functions with verified guards | 2016 |
+| `defthm` and `defthmd` events | 8275 |
+| `defun` events | 6183 |
+| Functions with verified guards | 2019 |
 | Functions declared `:verify-guards nil` and never verified | 343 |
 | Functions left at the default with an explicit guard | 3031 |
 | Functions left at the default with no guard | 790 |
-| `assert-event` checks | 8998 |
-| `must-fail` checks | 443 |
+| `assert-event` checks | 9003 |
+| `must-fail` checks | 444 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 73 |
 | Export-hygiene warnings | 102 |
@@ -172,7 +172,7 @@ that `make certify` requests.
 | `books/bp-release-invariants.lisp` | root | 46 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-release-replay-status.lisp` | root | 12 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-release.lisp` | root | 0 | 37 | 0/16/21/0 | 0 | 0 | 0 |
-| `books/bp-report-deletion.lisp` | root | 4 | 7 | 6/0/1/0 | 0 | 0 | 0 |
+| `books/bp-report-deletion.lisp` | root | 5 | 10 | 9/0/1/0 | 0 | 0 | 0 |
 | `books/bp-sequence-fidelity.lisp` | root | 24 | 31 | 2/0/29/0 | 0 | 0 | 3 |
 | `books/bp-sequence-persistence.lisp` | root | 10 | 20 | 1/0/19/0 | 0 | 0 | 0 |
 | `books/bp-session-admission.lisp` | root | 2 | 9 | 8/0/1/0 | 0 | 0 | 0 |
@@ -477,7 +477,7 @@ that `make certify` requests.
 | `tests/acl2/bp-receiver-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-receiver-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
 | `tests/acl2/bp-release-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 86 | 5 | 0 |
-| `tests/acl2/bp-report-deletion-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 2 | 0 |
+| `tests/acl2/bp-report-deletion-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
 | `tests/acl2/bp-sequence-fidelity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 1 | 0 |
 | `tests/acl2/bp-sequence-persistence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
 | `tests/acl2/bp-session-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |

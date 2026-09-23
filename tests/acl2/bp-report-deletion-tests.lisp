@@ -54,3 +54,50 @@
  (assert-event
   (fn-bpn-report-find-expired-held
    (list *bpah-held*) *bprd-later*)))
+
+; A real requested subject reaches the payload planner only after its exact
+; kind-10 row has been applied.  Ordinary native authored bundles have flag 0
+; and therefore cannot be counted as report-generation witnesses.
+(defconst *bprd-request-primary*
+  (update-nth 1 *fn-bpp-flag-report-deletion*
+              (fn-bpb-bundle-primary *bpah-bundle*)))
+(defconst *bprd-request-bundle*
+  (fn-bpb-make-bundle *bprd-request-primary*
+                      (fn-bpb-bundle-blocks *bpah-bundle*)
+                      (fn-bpb-bundle-payload *bpah-bundle*)))
+(defconst *bprd-request-held*
+  (fn-bpnf-held (fn-bpnf-ingress-principal *bpah-ingress*)
+                 (fn-bpb-bundle-id *bprd-request-bundle*) 1 *bpah-ingress*
+                 nil nil *bprd-request-bundle*
+                 (fn-bpb-encode *bprd-request-bundle*)
+                 (fn-bpnf-received-anchor
+                  *bprd-request-bundle* *bprd-arrival*)
+                 nil nil '(:dispatch-pending) nil nil 0))
+(defconst *bprd-request-record*
+  (fn-bpn-report-delete-record
+   1 5 1 (fn-bpp-primary-identity *bprd-request-primary*)
+   :lifetime-expired))
+(defconst *bprd-request-tombstone*
+  (fn-bpn-report-tombstone-held *bprd-request-held* :lifetime-expired))
+(assert-event (fn-bpnf-heldp *bprd-request-held*))
+(assert-event (fn-bpn-report-delete-recordp *bprd-request-record*))
+(assert-event
+ (equal (fn-bpn-report-deleted-payload
+         *bprd-request-record* *bprd-request-tombstone*
+         *bprd-later* t)
+        (list :due *bpah-peer*
+              (fn-bpn-report-encode
+               (list :report
+                     '((nil) (nil) (nil) (t)) 1 *bpah-peer* '(0 7) nil)))))
+(assert-event
+ (null (fn-bpn-report-deleted-payload
+        *bprd-request-record* *bprd-request-tombstone*
+        *bprd-later* nil)))
+(assert-event
+ (null (fn-bpn-report-deleted-payload
+        *bprd-request-record* *bprd-request-held*
+        *bprd-later* t)))
+(must-fail
+ (assert-event
+  (fn-bpn-report-deleted-payload
+   *bprd-request-record* *bprd-request-held* *bprd-later* t)))

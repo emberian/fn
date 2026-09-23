@@ -25,3 +25,17 @@ cap and `/home/ember/fn-certcache`. Kind-10 codec, ordered mixed replay,
 live issue/publish callback, policy-gated administrative report authoring
 and read-only remote-observation consumption remain open. No report or
 application receipt is release authority for the other.
+
+A follow-on pure planner now derives the RFC 9171 deletion assertion only
+from the exact kind-10 record and its tombstoned held subject, with an
+explicit reports-enabled input. It requires the subject's deletion-request
+flag, suppresses administrative subjects and null report-to, uses reason
+code 1 (lifetime expired), and uses the subject's status-time flag for an
+optional assertion timestamp. Without a wall observation when time is
+requested it emits no report. The exact requested-subject payload and
+pre-commit/no-policy negative fixtures passed focused
+`run-20260923T220946Z-acba`,
+[manifest](manifests/certify-20260923T220950Z-806779.json); the book
+including planner guard verification passed `run-20260923T220848Z-180d`,
+[manifest](manifests/certify-20260923T220851Z-797062.json). The planner
+is still not a host-called publisher or a completed D1b generation path.
