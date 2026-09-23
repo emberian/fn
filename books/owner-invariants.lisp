@@ -367,10 +367,10 @@
 
 ; Every store transition keeps the fixed configuration.
 ;
-; Each transition rebuilds the state through `fn-sn-make-v2' with the old
+; Each transition rebuilds the state through `fn-sn-make-v3' with the old
 ; state's groups and capacity, or returns the state itself, so the fact is
 ; one lemma per transition, each opening that transition alone in the
-; minimal theory: `fn-sn-groups-of-fn-sn-make-v2' and its capacity twin
+; minimal theory: constructor group and capacity projections for v2/v3
 ; answer every branch without looking at a test.  The step then dispatches
 ; with every transition closed.  Stated over the whole step with the
 ; transitions and `fn-sn-finish' open together, the tests of the finish arms
@@ -405,7 +405,9 @@
                               fn-sn-update-accepted fn-sn-update-replayed
                               fn-sn-advance-identity-next fn-sn-finish-identity
                               fn-sn-groups-of-fn-sn-make-v2
-                              fn-sn-capacity-of-fn-sn-make-v2)
+                              fn-sn-capacity-of-fn-sn-make-v2
+                              fn-sn-groups-of-fn-sn-make-v3
+                              fn-sn-capacity-of-fn-sn-make-v3)
                             (theory 'minimal-theory))))))
 
 (local

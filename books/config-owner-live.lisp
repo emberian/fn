@@ -33,12 +33,13 @@
              (fn-ocl-owner-with-store o new-store)
              (fn-ocfg-published-config (fn-ocfg-config oc) record)
              (fn-ocfg-pins oc) nil)))
-      (fn-ocfg-complete oc))))
+      (fn-ocfg-make (fn-own-complete (fn-ocfg-owner oc))
+                    (fn-ocfg-config oc) (fn-ocfg-pins oc) nil))))
 
 (defthm fn-ocl-complete-keeps-existing-pins
   (equal (fn-ocfg-pins (fn-ocl-complete oc))
          (fn-ocfg-pins oc))
-  :hints (("Goal" :in-theory (enable fn-ocl-complete fn-ocfg-complete))))
+  :hints (("Goal" :in-theory (enable fn-ocl-complete))))
 
 (defthm fn-ocl-complete-keeps-existing-served-table
   (equal (fn-ocfg-served (fn-ocl-complete oc) id)
@@ -52,7 +53,21 @@
                   (fn-cpo-configure-durable
                    (fn-own-store (fn-ocfg-owner oc))
                    (fn-ocfg-staged oc))))
-  :hints (("Goal" :in-theory (enable fn-ocl-complete fn-ocl-owner-with-store))))
+  :hints (("Goal" :in-theory (enable fn-ocl-complete fn-ocl-owner-with-store
+                                     fn-own-refresh-keeps-fields))))
+
+(defthm fn-ocl-durable-keeps-file-phase
+  (equal (fn-sf-phase (fn-sn-files (fn-cpo-configure-durable st record)))
+         (fn-sf-phase (fn-sn-files st)))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-configure-durable fn-cpo-install)
+                                  (fn-cpo-history-relation fn-cpr-replay)))))
+
+(defthm fn-ocl-durable-keeps-history-proper
+  (implies (true-listp (fn-sn-config-history st))
+           (true-listp
+            (fn-sn-config-history (fn-cpo-configure-durable st record))))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-configure-durable fn-cpo-install)
+                                  (fn-cpo-history-relation fn-cpr-replay)))))
 
 (defthm fn-ocl-complete-success-preserves-historical-store-relation
   (implies (and (fn-ocfg-staged oc)
@@ -75,9 +90,10 @@
                             (st (fn-cpo-configure-durable
                                  (fn-own-store (fn-ocfg-owner oc))
                                  (fn-ocfg-staged oc)))))
-           :in-theory (e/d (fn-ocl-complete fn-ocl-owner-with-store)
+           :in-theory (e/d (fn-ocl-complete fn-ocl-owner-with-store
+                            fn-own-refresh-keeps-fields)
                            (fn-cpo-configure-durable fn-cpo-history-relation
-                            fn-cst-relation fn-cst-idle-from-observed-history)))))
+                            fn-cst-relation)))))
 
 (deftheory fn-ocl-vocabulary '(fn-ocl-owner-with-store fn-ocl-complete))
 (in-theory (disable fn-ocl-vocabulary))

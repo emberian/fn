@@ -1067,16 +1067,23 @@ differences are deliberate:
   event and checks both independent sequences. It is proved to return a
   configured node on success and tested against a decrease after release, an
   invalid decrease before release, a burned transaction-ID gap and an article
-  after an increase. Native recovery does not call it yet: the Store and owner
-  replay relations still assume one static final domain and capacity.
+  after an increase. The Store and owner recovery wrappers now call this
+  physical fold, and the administrative candidate check uses the same
+  historical observed open. Native image validation remains pending.
   The follow-on `fn-cpo-open-observed` installs the physical configuration
   history in a carried Store field and reconstructs the recovering node from
   the ordered fold. `fn-cpo-configure-durable` is an ACL2 administrative
   transition that changes that history, Store domain/capacity and node
   together after an admissible durable record. Its history relation is proved
-  preserved by that transition. These entries are not yet native callers;
-  `fn-snt-relation`, owner connection pins, checkpoint suffix recovery and
-  native open still need to use the carried history before live adoption.
+  preserved by that transition. The live owner completion wrapper calls the
+  ACL2 `fn-ocl-complete`, which installs the Store transition and refreshes the
+  committed view for future connections while retaining old reader archives
+  and configuration pins. A failed install after a durable publication forces
+  recovery. The old `fn-snt-relation` and `fn-own-relation` still use static
+  final parameters and do not characterize valid historical decreases; a new
+  per-connection historical owner relation, transition proofs, checkpoint
+  suffix correspondence and native image test remain required before T8b
+  live adoption is complete.
 - **The two-kind stream, earlier proposed (lane `w9/reconfig`).** The layout stays
   two directories -- article records in the transaction journal, configuration
   records under `config/` -- and the STREAM is one: every record of either
