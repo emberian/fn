@@ -548,3 +548,14 @@
  (assert-event
   (bsk0-prefix-equalp (bsk0-occupied-stage) (bsk6-prepared)
                        ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
+
+; K0's fresh-inode authority clause is now derived through the full
+; create/write/file-fence/link prefix, including write-all's empty branch.
+; The second article and a retention Store event both reach pair 10 with
+; the allocator's new inode present in the durable inode table.
+(assert-event
+ (let* ((article (car (nth 10 (bsk5-record-2-run))))
+        (retention (car (nth 10 (bsk6-retention-run))))
+        (new (fn-bs-next-ino (bsk6-start))))
+   (and (consp (assoc-equal new (fn-bs-inodes article)))
+        (consp (assoc-equal new (fn-bs-inodes retention))))))

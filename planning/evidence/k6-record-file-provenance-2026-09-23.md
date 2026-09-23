@@ -222,3 +222,22 @@ Authority-known and authority-fenced over the *new* pending inode, plus
 composition of the pending phase and config/record clauses into the full
 pair-10 relation, remain open. The existing K0 input relation is still a
 proof premise rather than an established fact for every served call trace.
+
+The next local authority fact is now proved without fixing the file write
+list: `fn-bs-k0-apply-writes-preserves-known-inode` inducts over arbitrary
+pending operations, and `fn-bs-k0-new-inode-survives-write-fold` applies it
+to the fresh inode inserted by O_EXCL. The actual pair-5 file-fence theorem
+handles both zero and nonzero write-all branches, the generic pair-8 link
+join preserves that inode table entry, and
+`fn-bs-k0-attempted-cut-has-new-inode` carries it through the unchanged
+pair-10 byte state. The related-input join uses the separately proved
+name, true-list frame and absent-final-name facts; it never treats a
+fixed pending operation list as an input assumption. A second-article and
+retention-event witness checks the inode at pair 10. Selected hbox book
+certification passed under `run-20260923T222026Z-6cf4`, original manifest
+`planning/evidence/manifests/certify-20260923T222030Z-323574.json`; the
+affected test root passed under `run-20260923T222108Z-44aa`, original
+manifest `planning/evidence/manifests/certify-20260923T222110Z-325598.json`.
+The new inode's authority-known fact is only one member of the authority
+list. Preservation of every prior authority target and the fenced status
+of the entire list remain before the full relation can be claimed.

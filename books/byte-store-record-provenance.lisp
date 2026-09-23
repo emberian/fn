@@ -2074,3 +2074,131 @@
            :in-theory (e/d (fn-bs-durable-entry)
                            (fn-bs-run fn-bs-record-program fn-bs-store-relation
                             fn-bs-record-inputp fn-bs-durable-content)))))
+
+; The fold is independent of the number and content of write operations.
+; This is the link between O_EXCL's freshly allocated inode and both the
+; empty and nonempty write-all branches in the actual P-RECORD program.
+(local
+ (defthm fn-bs-k0-apply-writes-preserves-known-inode
+   (implies (and (natp key)
+                 (alistp inodes)
+                 (assoc-equal key inodes))
+            (consp (assoc-equal key (fn-bs-apply-writes inodes ops))))
+   :hints (("Goal" :induct (fn-bs-apply-writes inodes ops)
+            :in-theory (e/d (fn-bs-apply-writes
+                             fn-bs-assoc-of-put-assoc-iff
+                             fn-bs-alistp-of-put-assoc)
+                            (fn-bs-splice fn-bs-take))))))
+
+(local
+ (defthm fn-bs-k0-new-inode-survives-write-fold
+   (implies (and (natp key) (alistp inodes))
+            (consp (assoc-equal
+                    key
+                    (fn-bs-apply-writes (cons (cons key nil) inodes) ops))))
+   :hints (("Goal"
+            :use ((:instance fn-bs-k0-apply-writes-preserves-known-inode
+                             (inodes (cons (cons key nil) inodes))))
+            :in-theory (e/d (assoc-equal alistp)
+                            (fn-bs-apply-writes))))))
+
+(local
+ (defthm fn-bs-k0-file-cut-has-new-inode
+   (implies (and (fn-bs-statep bs) (fn-bs-namep stage)
+                 (not (fn-bs-lookup bs :staging stage))
+                 (true-listp frame))
+            (consp (assoc-equal
+                    (fn-bs-next-ino bs)
+                    (fn-bs-inodes
+                     (car (nth 5 (fn-bs-run bs ks
+                                            (fn-bs-record-program stage name frame)
+                                            nil groups capacity)))))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k6-interpreted-record-fence-is-write-fence)
+                  (:instance fn-bs-inode-tablep-implies-alistp
+                             (x (fn-bs-inodes bs))))
+            :in-theory (e/d (fn-bs-create fn-bs-write fn-bs-fence-file
+                             fn-bs-apply-ops-inodes-are-apply-writes
+                             fn-bs-statep
+                             fn-bs-k0-new-inode-survives-write-fold)
+                            (fn-bs-run fn-bs-record-program
+                             fn-bs-lookup fn-bs-apply-ops))))))
+
+(local
+ (defthm fn-bs-k0-link-keeps-inode-entry
+   (equal (assoc-equal other
+                       (fn-bs-inodes (mv-nth 1 (fn-bs-link bs :staging stage
+                                                       :transactions name :ok))))
+          (assoc-equal other (fn-bs-inodes bs)))
+   :hints (("Goal" :in-theory (enable fn-bs-link)))))
+
+(local
+ (defthm fn-bs-k0-link-cut-has-new-inode
+   (implies
+    (and (fn-bs-statep bs) (fn-bs-namep stage) (fn-bs-namep name)
+         (not (fn-bs-lookup bs :staging stage)) (true-listp frame)
+         (not (fn-bs-lookup
+               (car (nth 5 (fn-bs-run bs ks
+                                          (fn-bs-record-program stage name frame)
+                                          nil groups capacity)))
+               :transactions name)))
+    (consp (assoc-equal
+            (fn-bs-next-ino bs)
+            (fn-bs-inodes
+             (car (nth 8 (fn-bs-run bs ks
+                                    (fn-bs-record-program stage name frame)
+                                    nil groups capacity)))))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bs-k0-file-cut-has-new-inode)
+                  (:instance fn-bs-k6-actual-link-cut-is-file-cut-link)
+                  (:instance fn-bs-k0-link-keeps-inode-entry
+                             (bs (car (nth 5 (fn-bs-run bs ks
+                                                    (fn-bs-record-program stage name frame)
+                                                    nil groups capacity))))
+                             (other (fn-bs-next-ino bs))))
+            :in-theory (theory 'minimal-theory)))))
+
+(local
+ (defthm fn-bs-k0-related-input-enables-link-cut
+   (implies (and (fn-bs-store-relation bs ks)
+                 (fn-bs-record-inputp ks stage name frame)
+                 (not (fn-bs-lookup bs :staging stage)))
+            (and (fn-bs-statep bs)
+                 (fn-bs-namep stage)
+                 (fn-bs-namep name)
+                 (true-listp frame)
+                 (not (fn-bs-lookup
+                       (car (nth 5 (fn-bs-run bs ks
+                                                  (fn-bs-record-program stage name frame)
+                                                  nil groups capacity)))
+                       :transactions name))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use (fn-bs-store-relation-unfolds
+                  fn-bs-k6-related-input-file-cut-final-name-absent
+                  (:instance fn-bs-txn-name-is-a-name
+                             (n (fn-store-event-sequence
+                                 (fn-sf-record-candidate ks))))
+                  (:instance fn-cbor-octet-listp-implies-true-listp
+                             (xs frame)))
+            :in-theory (union-theories '(fn-bs-record-inputp)
+                                       (theory 'minimal-theory))))))
+
+(defthm fn-bs-k0-attempted-cut-has-new-inode
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (consp (assoc-equal
+                   (fn-bs-next-ino bs)
+                   (fn-bs-inodes
+                    (car (nth 10 (fn-bs-run bs ks
+                                           (fn-bs-record-program stage name frame)
+                                           nil groups capacity)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k0-related-input-enables-link-cut)
+                 (:instance fn-bs-k0-link-cut-has-new-inode)
+                 (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state))
+           :in-theory (theory 'minimal-theory))))
