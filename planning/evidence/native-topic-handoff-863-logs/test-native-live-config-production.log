@@ -1,0 +1,16 @@
+test_a_group_created_live_is_served_before_restart (tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_a_group_created_live_is_served_before_restart) ... ok
+test_a_live_peer_add_leaves_a_pinned_reader_unchanged_and_is_durable (tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_a_live_peer_add_leaves_a_pinned_reader_unchanged_and_is_durable) ... ok
+test_an_offline_mutation_is_refused_at_the_lock_while_the_owner_lives (tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_an_offline_mutation_is_refused_at_the_lock_while_the_owner_lives) ... ok
+test_the_live_verb_answers_and_the_owner_keeps_serving (tests.test_native_live_reconfiguration.LiveReconfigurationImageTests.test_the_live_verb_answers_and_the_owner_keeps_serving) ... ok
+test_a_request_being_answered_is_not_shut_by_the_stop_it_caused (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_a_request_being_answered_is_not_shut_by_the_stop_it_caused) ... ok
+test_actual_native_open_and_completion_call_the_physical_history_model (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_actual_native_open_and_completion_call_the_physical_history_model) ... ok
+test_completion_publishes_what_recovery_replays (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_completion_publishes_what_recovery_replays) ... ok
+test_publication_is_authorized_on_the_stores_own_lock_observation (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_publication_is_authorized_on_the_stores_own_lock_observation) ... ok
+test_the_live_arm_is_the_event_sequence_the_theorem_names (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_the_live_arm_is_the_event_sequence_the_theorem_names) ... ok
+test_the_live_arm_reads_the_open_connection_id_as_an_id (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_the_live_arm_reads_the_open_connection_id_as_an_id) ... ok
+test_the_live_arm_stages_acls_delta_list_and_builds_none (tests.test_native_live_reconfiguration.LiveReconfigurationSourceTests.test_the_live_arm_stages_acls_delta_list_and_builds_none) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 1.397s
+
+OK
