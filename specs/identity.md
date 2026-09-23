@@ -95,6 +95,8 @@ ML-PRIVATE-PEM SOURCE OUTPUT` command writes an ACL2-rendered article with
 `hybrid-verify-carrier ARTICLE ML-PUBLIC-PEM` command reads a bounded article,
 uses ACL2's received-source projection, checks the Ed25519 and ML-DSA-65
 signatures with native libraries, and asks ACL2 for the final conjunction.
+ACL2's `fn-hc-render-at-most` refuses output when carrier expansion pushes the
+complete received article over the same article cap the verifier reads.
 It reports `verified PRINCIPAL-HEX` (exit 0) or `unverified REASON` (exit 1).
 The caller-supplied ML public key must match the carrier's key set. This is an
 independent portable artifact check, not Store acceptance or a historical
