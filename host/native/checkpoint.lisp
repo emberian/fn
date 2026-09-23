@@ -338,14 +338,14 @@
            (fnn-fault "invalid immutable checkpoint publication outcome")))))))
 
 (defun fnn-checkpoint-test-fault (point path)
-  (when (string= (or (sb-ext:posix-getenv "FN_CHECKPOINT_TEST_FAIL") "") point)
+  (when (string= (or (fnn-developer-selector "FN_CHECKPOINT_TEST_FAIL") "") point)
     (fnn-os-fail sb-posix:eio path)))
 
 (defvar *fnn-checkpoint-test-stop-counts* (make-hash-table :test #'equal))
 
 (defun fnn-checkpoint-test-stop-after ()
   "Return the bounded matching-hook occurrence selected by the test process."
-  (let ((raw (sb-ext:posix-getenv "FN_CHECKPOINT_TEST_STOP_AFTER")))
+  (let ((raw (fnn-developer-selector "FN_CHECKPOINT_TEST_STOP_AFTER")))
     (if raw
         (handler-case
             (let ((value (parse-integer raw :junk-allowed nil)))
@@ -356,7 +356,7 @@
 
 (defun fnn-checkpoint-test-stop (point)
   "Stop at a selected occurrence of a named test-only process-death boundary."
-  (when (string= (or (sb-ext:posix-getenv "FN_CHECKPOINT_TEST_STOP") "") point)
+  (when (string= (or (fnn-developer-selector "FN_CHECKPOINT_TEST_STOP") "") point)
     (let ((count (1+ (gethash point *fnn-checkpoint-test-stop-counts* 0))))
       (setf (gethash point *fnn-checkpoint-test-stop-counts*) count)
       (when (= count (fnn-checkpoint-test-stop-after))
@@ -478,8 +478,7 @@
                              ; Developer-only reachability hook for the
                              ; otherwise theorem-excluded mismatch branch.
                              (not (string=
-                                   (or (sb-ext:posix-getenv
-                                        "FN_CHECKPOINT_TEST_MISMATCH") "")
+                                   (or (fnn-developer-selector "FN_CHECKPOINT_TEST_MISMATCH") "")
                                    "1")))))
                   ; Full replay remains live authority, but an ACL2-computed
                   ; mismatch means the selected checkpoint is not a valid

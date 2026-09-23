@@ -8,9 +8,8 @@
 (defun fnn-immutable-test-fault (point path)
   ; Test injection is reached through the production action loop.  The older
   ; FN_APP spelling remains while the workflow test packet lands.
-  (let ((chosen (or (sb-ext:posix-getenv
-                     "FN_IMMUTABLE_PUBLISH_TEST_FAIL")
-                    (sb-ext:posix-getenv "FN_APP_JOURNAL_TEST_FAIL") "")))
+  (let ((chosen (or (fnn-developer-selector "FN_IMMUTABLE_PUBLISH_TEST_FAIL")
+                    (fnn-developer-selector "FN_APP_JOURNAL_TEST_FAIL") "")))
     (when (string= chosen point) (fnn-os-fail sb-posix:eio path))))
 
 (defun fnn-immutable-publish-effect

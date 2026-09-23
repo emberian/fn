@@ -12,7 +12,7 @@
 ; host/native/build.lisp by default, and an image built from this file must
 ; say so in its evidence record.
 ;
-; What it costs: this specialized image keeps io.lisp's production profile, so
+; What it costs: the default specialized image keeps io.lisp's production profile, so
 ; `--fn reader ...` is refused at dispatch and `--fn model ...` reaches
 ; `fnn-call` for a counterpart that is not in this image and faults with
 ; "ACL2 executable counterpart missing".  Every reference to the omitted
@@ -90,6 +90,9 @@
   (prog2$ (cw "fn-native: raw entry not installed~%") (value :missing)))
 (progn! (set-raw-mode t)
         (load "host/native/io.lisp")
+        ; Select once during construction, before any diagnostic module loads.
+        ; A restart-time FN_NATIVE_PROFILE cannot promote this saved image.
+        (fnn-select-image-profile)
         (load "host/native/immutable-publish.lisp")
         (load "host/native/admin.lisp")
         (load "host/native/workflow.lisp")
@@ -106,7 +109,8 @@
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
 
 :q
-(save-exec "build/fn-host-dtn" "fn native host (DTN only, no NNTP reader)"
+(save-exec (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host-dtn")
+           "fn native host (DTN only, no NNTP reader)"
            :return-from-lp '(fn-native-entry state)
            :inert-args t
            :host-lisp-args "--noinform"

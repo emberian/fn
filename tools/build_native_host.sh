@@ -21,6 +21,12 @@ case "$PROFILE" in
   developer) DEFAULT_IMAGE=build/fn-host-developer ;;
   *) echo "build_native_host: FN_NATIVE_PROFILE must be production or developer" >&2; exit 2 ;;
 esac
+if [ "$BUILD" = host/native/build-dtn.lisp ]; then
+    case "$PROFILE" in
+      production) DEFAULT_IMAGE=build/fn-host-dtn ;;
+      developer) DEFAULT_IMAGE=build/fn-host-dtn-developer ;;
+    esac
+fi
 IMAGE="${FN_NATIVE_IMAGE:-$DEFAULT_IMAGE}"
 LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"
 mkdir -p build
