@@ -17,7 +17,7 @@
                       "dtn://fn.example"))
 (defconst *bpi-context*
   (fn-bpi-make-context "dtn://fn.example/inbox" "dtn://peer.example"
-                       "bpa-local-42" 3600))
+                       "bpa-local-42" 3600 (fn-clock-observation 1 841000000000 0 t)))
 (defconst *bpi-adu*
   '(77 101 115 115 97 103 101 45 73 68 58 32 60 98 112 45 49 64 101 120 97 109 112 108 101 62 13 10
     78 101 119 115 103 114 111 117 112 115 58 32 102 110 46 108 101 116 116 101 114 115 13 10 13 10
@@ -79,7 +79,7 @@
                                                    (fn-bpi-make-context
                                                     "dtn://wrong/inbox"
                                                     "dtn://peer.example"
-                                                    "bpa-local-42" 3600))
+                                                    "bpa-local-42" 3600 (fn-clock-observation 1 841000000000 0 t)))
                      nil))
 ; Parser/semantic and policy failures happen before Store preparation.
 (assert-event (equal (fn-bpi-result-kind
@@ -89,7 +89,7 @@
 (assert-event (equal (fn-bpi-result-kind
                       (fn-bpi-ingress-prepare *bpi-reserved* *bpi-policy*
                        (fn-bpi-make-context "dtn://wrong/inbox" "dtn://peer.example"
-                                            "bpa-local-42" 3600)
+                                            "bpa-local-42" 3600 (fn-clock-observation 1 841000000000 0 t))
                        *bpi-adu*))
                      :rejected))
 ; Critical-field and group-policy rejections use the actual ACL2 article and

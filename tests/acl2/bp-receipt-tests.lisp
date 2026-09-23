@@ -17,7 +17,7 @@
                       "dtn://fn.lab/issuer"))
 (defconst *bpr-context*
   (fn-bpi-make-context "dtn://fn.lab/inbox" "dtn://sender.lab"
-                       "local-bid-1" 300))
+                       "local-bid-1" 300 (fn-clock-observation 1 841000000000 0 t)))
 (defconst *bpr-adu*
   '(77 101 115 115 97 103 101 45 73 68 58 32 60 114 101 99 101 105 112 116 45 49 64 101 120 97 109 112 108 101 62 13 10
     78 101 119 115 103 114 111 117 112 115 58 32 102 110 46 108 101 116 116 101 114 115 13 10 13 10
