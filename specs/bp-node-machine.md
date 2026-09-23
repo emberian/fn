@@ -728,6 +728,13 @@ stages. The old contiguous namespace planner validates the legacy subset;
 the kind-5 byte replay validates the received subset. An unknown public name
 faults before either replay. This classifier is awaiting certification in
 the coherent combined A2/guard batch.
+`books/bp-fnbs-publication.lisp` authorizes the immutable kind-5 publisher
+only from the exact pending `:store` issued echo and observed lock ownership
+and absent final name. It returns ACL2-derived final name, frame bytes and
+`fn-jpub-initial`; stale epoch/operation ID, changed held row, uncertain
+issued status, or missing lock/name precondition faults. `fn-bpnf-stored-
+frame-limit` supplies the bounded kind-5 physical read size. This join is
+awaiting the same coherent certification and native caller.
 
 Every record is built by its constructor and read by selectors; no book and
 no theorem matches a record by list shape. `fn-bpn-rec-kind`,
