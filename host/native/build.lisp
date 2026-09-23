@@ -122,8 +122,10 @@
   (prog2$ (cw "fn-native: raw entry not installed~%") (value :missing)))
 (progn! (set-raw-mode t)
         ; Native cryptographic observations are a required process facility.
-        ; Validate them before saving and again after the saved image starts;
-        ; serialized foreign-library readiness is never trusted.
+        ; Validate them before saving and again after the saved image starts.
+        ; crypto.lisp and tls.lisp load with :dont-save t, so SBCL does not
+        ; serialize build-host foreign-library paths into a relocatable core.
+        ; Serialized readiness and the OpenSSL pair are cleared on restart.
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
@@ -137,7 +139,8 @@
         ; transport primitives, not protocol decisions.
         (load "host/native/tls.lisp")
         ; D09 uses the same process-wide OpenSSL pair as TLS and refuses the
-        ; image unless that pair provides ML-DSA-65 (OpenSSL >= 3.5).
+        ; image unless that pair provides ML-DSA-65 (OpenSSL >= 3.5).  The
+        ; restart revalidates that requirement against the bundled pair.
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
         (defun fn-native-entry (st)
