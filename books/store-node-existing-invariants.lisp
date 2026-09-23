@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "store-node")
 
-(defthm fn-sn-existing-action-is-duplicate-iff-byte-identical
+(defthm fn-sn-existing-action-is-duplicate-iff-byte-identical-by-definition
   (let ((held (fn-find-article
                msgid (fn-state-articles
                       (fn-node-acceptance (fn-sn-node s))))))
@@ -14,7 +14,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sn-existing-action))))
 
-(defthm fn-sn-existing-action-is-conflict-iff-held-binding-differs
+(defthm fn-sn-existing-action-is-conflict-iff-held-binding-differs-by-definition
   (let ((held (fn-find-article
                msgid (fn-state-articles
                       (fn-node-acceptance (fn-sn-node s))))))
@@ -25,7 +25,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sn-existing-action))))
 
-(defthm fn-sn-existing-action-is-missing-iff-no-held-binding
+(defthm fn-sn-existing-action-is-missing-iff-no-held-binding-by-definition
   (equal (null (fn-sn-existing-action msgid payload groups s))
          (null (fn-find-article
                 msgid (fn-state-articles

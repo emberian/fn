@@ -18,7 +18,8 @@ answers `:duplicate` exactly for a held Message-ID with equal payload octets
 and ordered groups, `:conflict` exactly for a held Message-ID where either
 differs, and `nil` exactly for no held Message-ID. These are direct case
 properties of the called decision, not keystones for the broader allocation
-or durability claims. `tests/acl2/store-node-existing-tests.lisp` creates a
+or durability claims; their event names end in `-by-definition` for that
+reason. `tests/acl2/store-node-existing-tests.lisp` creates a
 reachable committed two-group article, then exercises each outcome and a
 `must-fail` for changing payload alone, groups alone and binding alone.
 
@@ -36,6 +37,11 @@ reports three changed books, 90 dependent books, zero not green. The first
 focused run failed only because the new test named an invariant-book helper
 without including that book; the corrected test passed in
 [run `run-20260923T164830Z-876e`](manifests/certify-20260923T164832Z-1839702.json).
+After the three direct case events were renamed `-by-definition`, a selected
+two-root certification of the changed proof book and its test passed in
+[run `run-20260923T165541Z-e9f4`](manifests/certify-20260923T165544Z-1904575.json).
+The prior affected-root manifest covers the unchanged Store definition and
+dependent books; the selected run covers the final theorem/test bytes.
 
 `make check` reached the expected stale generated `planning/ledger.json` and
 `planning/ledger.md` files; root generates the ledger during integration.
