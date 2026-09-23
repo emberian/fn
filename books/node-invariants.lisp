@@ -24,7 +24,7 @@
   (implies (fn-node-statep s)
            (fn-node-statep
             (fn-node-prepare s generation msgid payload groups
-                             obligation-id subject evidence charge))))
+                             obligation-id subject evidence charge stamp))))
 
 (defthm fn-member-of-subset
   (implies (and (fn-subsetp xs ys)
@@ -144,14 +144,14 @@
             (fn-state-articles
              (fn-node-acceptance
               (fn-node-prepare s generation msgid payload groups
-                               obligation-id subject evidence charge)))
+                               obligation-id subject evidence charge stamp)))
             (fn-node-bindings
              (fn-node-prepare s generation msgid payload groups
-                              obligation-id subject evidence charge))
+                              obligation-id subject evidence charge stamp))
             (fn-retain-pins
              (fn-node-retention
               (fn-node-prepare s generation msgid payload groups
-                               obligation-id subject evidence charge)))))
+                               obligation-id subject evidence charge stamp)))))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn-node-prepare-preserves-state
                                fn-node-state-has-committed-archive-pins))))
@@ -187,7 +187,7 @@
 (defthm fn-node-prepare-preserves-bindings
   (equal (fn-node-bindings
           (fn-node-prepare s generation msgid payload groups
-                           obligation-id subject evidence charge))
+                           obligation-id subject evidence charge stamp))
          (fn-node-bindings s)))
 
 (defthm fn-node-complete-preserves-existing-binding

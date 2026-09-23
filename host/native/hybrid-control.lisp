@@ -23,6 +23,8 @@
     (fnn-owner-serialized
      service nil
      (lambda ()
+       (unless (eq (fnn-owner-advance-clock) :observed)
+         (return-from fnn-hybrid-control-author :refused))
        (let* ((snapshot
                (fnn-owner-core 'fn-owner-keyring-snapshot keyring-generation))
               (enrollment
@@ -54,7 +56,8 @@
                   (fnn-octets-string obligation)
                   (fnn-octets-string subject)
                   (fnn-octets-string release) charge
-                  principal keys signatures (fnn-octets-string ml-path))))
+                  principal keys signatures (fnn-octets-string ml-path)
+                  (fnn-owner-core 'fn-owner-clock-observation))))
            (if event
                (let* ((evidence (fnn-octets (fnn-owner-core 'fn-owner-prov-post)))
                       (generation

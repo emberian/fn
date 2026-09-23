@@ -15,12 +15,13 @@
 (in-package "ACL2")
 (include-book "acceptance-alloc")
 (include-book "defrecord")
+(include-book "records-shape")
 
 ; -----------------------------------------------------------------------------
 ; Article: (message-id payload requested-groups memberships archive-pin)
 
 (fn-defrecord fn-article
-  :constructor (fn-make-article msgid payload groups memberships pin)
+  :constructor (fn-make-article msgid payload groups memberships pin stamp)
   :fields ((fn-article-msgid stringp)
            (fn-article-payload fn-octet-listp)
            (fn-article-groups
@@ -28,7 +29,8 @@
            (fn-article-memberships
             (fn-membership-listp (fn-article-groups x)
                                  (fn-article-memberships x)))
-           (fn-article-pin (equal (fn-article-pin x) t)))
+           (fn-article-pin (equal (fn-article-pin x) t))
+           (fn-article-stamp fn-record-stampp))
   :recognizer-formals (configured))
 
 (defun fn-article-msgids (xs)
@@ -139,7 +141,7 @@
 
 (fn-defrecord fn-pending
   :constructor (fn-make-pending txid generation msgid payload groups
-                                memberships pin)
+                                memberships pin stamp)
   :fields ((fn-pending-txid
             (and (natp (fn-pending-txid x))
                  (mbe :logic (< (fn-pending-txid x) next-txid)
@@ -154,7 +156,8 @@
                                       (fn-pending-memberships x))
                  (fn-memberships-at-watermarkp
                   (fn-pending-memberships x) nexts)))
-           (fn-pending-pin (equal (fn-pending-pin x) t)))
+           (fn-pending-pin (equal (fn-pending-pin x) t))
+           (fn-pending-stamp fn-record-stampp))
   :recognizer-formals (configured nexts next-txid))
 
 ; -----------------------------------------------------------------------------
@@ -223,7 +226,8 @@
    (fn-pending-payload pending)
    (fn-pending-groups pending)
    (fn-pending-memberships pending)
-   (fn-pending-pin pending)))
+   (fn-pending-pin pending)
+   (fn-pending-stamp pending)))
 
 (verify-guards fn-article-from-pending)
 
@@ -253,7 +257,7 @@
 
 ; Prepare reserves a unique txid and stages every local membership.  It does
 ; not change committed articles or group watermarks.
-(defun fn-accept-prepare (s generation msgid payload groups)
+(defun fn-accept-prepare (s generation msgid payload groups stamp)
   (declare (xargs :guard (fn-statep s) :verify-guards nil))
   (if (mbe :logic (not (fn-statep s)) :exec nil)
       s
@@ -262,6 +266,7 @@
             (not (natp generation))
             (not (stringp msgid))
             (not (fn-octet-listp payload))
+            (not (fn-record-stampp stamp))
             (not (fn-selection-validp groups (fn-state-groups s)))
             (fn-acceptedp msgid (fn-state-articles s)))
         s
@@ -277,7 +282,8 @@
         payload
         groups
         (fn-allocate-memberships groups (fn-state-nexts s))
-        t)
+        t
+        stamp)
        nil))))
 
 (verify-guards fn-accept-prepare)
@@ -341,28 +347,28 @@
 (defthm fn-fenced-prepare-is-no-op
   (implies (and (fn-statep s)
                 (equal (fn-state-fenced s) t))
-           (equal (fn-accept-prepare s generation msgid payload groups)
+           (equal (fn-accept-prepare s generation msgid payload groups stamp)
                   s))
   :hints (("Goal" :in-theory (enable fn-accept-prepare))))
 
 (defthm fn-duplicate-accepted-prepare-is-no-op
   (implies (and (fn-statep s)
                 (fn-acceptedp msgid (fn-state-articles s)))
-           (equal (fn-accept-prepare s generation msgid payload groups)
+           (equal (fn-accept-prepare s generation msgid payload groups stamp)
                   s))
   :hints (("Goal" :in-theory (enable fn-accept-prepare))))
 
 (defthm fn-unknown-or-duplicate-group-prepare-is-no-op
   (implies (and (fn-statep s)
                 (not (fn-selection-validp groups (fn-state-groups s))))
-           (equal (fn-accept-prepare s generation msgid payload groups)
+           (equal (fn-accept-prepare s generation msgid payload groups stamp)
                   s))
   :hints (("Goal" :in-theory (enable fn-accept-prepare))))
 
 (defthm fn-prepare-does-not-publish
   (implies (fn-statep s)
            (equal (fn-state-articles
-                   (fn-accept-prepare s generation msgid payload groups))
+                   (fn-accept-prepare s generation msgid payload groups stamp))
                   (fn-state-articles s)))
   :hints (("Goal" :in-theory (enable fn-accept-prepare))))
 
@@ -462,11 +468,11 @@
            (and (equal
                  (fn-pending-txid
                   (fn-state-pending
-                   (fn-accept-prepare s generation msgid payload groups)))
+                   (fn-accept-prepare s generation msgid payload groups stamp)))
                  (fn-state-next-txid s))
                 (equal
                  (fn-state-next-txid
-                  (fn-accept-prepare s generation msgid payload groups))
+                  (fn-accept-prepare s generation msgid payload groups stamp))
                  (1+ (fn-state-next-txid s)))))
   :hints (("Goal" :in-theory (enable fn-accept-prepare))))
 

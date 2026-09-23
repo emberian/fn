@@ -80,6 +80,10 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-ocfg-owner (f-get-global 'fn-owner state)))
 
+(defun fn-owner-clock-observation (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-own-clock (fn-owner-core state))))
+
 (defun fn-owner-config (state)
   ; The one live configuration.  No host global shadows this value: every
   ; caller reads the generation replayed into and published by fn-ocfg.
@@ -301,23 +305,26 @@
              (existing (fn-store-article-match msgid payload groups node)))
         (if existing
             (value existing)
-          (let* ((record (fn-record-make (fn-sn-identity-next s)
-                                         (fn-state-next-txid (fn-node-acceptance node))
-                                         (fn-state-next-txid (fn-node-acceptance node))
-                                         msgid payload groups
-                                         (fn-store-octets->string id-octets)
-                                         (fn-store-octets->string subject-octets)
-                                         (fn-store-octets->string evidence-octets)
-                                         charge))
+          (let* ((record (fn-sn-article-record
+                          s (fn-own-clock (fn-owner-core state))
+                          msgid payload groups
+                          (fn-store-octets->string id-octets)
+                          (fn-store-octets->string subject-octets)
+                          (fn-store-octets->string evidence-octets)
+                          charge))
                  ; fn-opc-prepare is equal to the former fn-ocfg-step event
                  ; under fn-own-relation, established by observed recovery
                  ; and preserved by every live owner transition.
-                 (state (fn-owner-install-ocfg
-                         (fn-opc-prepare (fn-owner-ocfg state) record)
-                         state)))
-            (if (equal (fn-owner-store state) s)
+                 (state (if (equal record :clock-unusable)
+                            state
+                          (fn-owner-install-ocfg
+                           (fn-opc-prepare (fn-owner-ocfg state) record)
+                           state))))
+            (if (equal record :clock-unusable)
+                (value :clock-unusable)
+              (if (equal (fn-owner-store state) s)
                 (value :refused)
-              (value :prepared)))))))))
+              (value :prepared))))))))))
 
 (defun fn-owner-refuse-reservation (state)
   (declare (xargs :stobjs state :mode :program))

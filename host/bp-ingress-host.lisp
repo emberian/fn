@@ -19,6 +19,7 @@
 (defconst *fn-bpi-host-policy-id* "bp-lab-policy-v0")
 (defconst *fn-bpi-host-terms-id* "bp-lab-terms-v0")
 (defconst *fn-bpi-host-issuer-eid* "dtn://fn.lab/issuer")
+(defconst *fn-bpi-host-dtn-epoch-ms* 946684800000)
 
 (defun fn-bpi-host-textp (octets)
   ; IDs are a host boundary representation only.  Source EID and local BID
@@ -33,10 +34,30 @@
                       *fn-bpi-host-policy-id* *fn-bpi-host-terms-id*
                       *fn-bpi-host-issuer-eid*))
 
-(defun fn-bpi-host-context (destination source-eid bundle-id lifetime)
+(defun fn-bpi-host-observation (monotonic-ns wall-ns wall-error-ms has-wall)
+  ; The host reads two counters and states one error bound; the units and the
+  ; DTN epoch are converted here, not in Python.  A wall reading before the
+  ; DTN epoch, or a host that claims no wall clock, yields has-wall nil, which
+  ; `fn-clock-expiry-decision` answers :uncertain for.
+  (declare (xargs :mode :program))
+  (let* ((monotonic (if (natp monotonic-ns) (floor monotonic-ns 1000000) 0))
+         (unix-ms (if (natp wall-ns) (floor wall-ns 1000000) 0))
+         (usable (and has-wall (natp wall-ns)
+                      (<= *fn-bpi-host-dtn-epoch-ms* unix-ms)
+                      (natp wall-error-ms)))
+         (wall (if usable (- unix-ms *fn-bpi-host-dtn-epoch-ms*) 0)))
+    (fn-clock-observation (min monotonic *fn-clock-max*)
+                          (min wall *fn-clock-max*)
+                          (if usable (min wall-error-ms *fn-clock-max*) 0)
+                          usable)))
+
+(defun fn-bpi-host-context (destination source-eid bundle-id lifetime
+                                       monotonic-ns wall-ns wall-error-ms has-wall)
   (fn-bpi-make-context (fn-store-octets->string destination)
                        (fn-store-octets->string source-eid)
-                       (fn-store-octets->string bundle-id) lifetime))
+                       (fn-store-octets->string bundle-id) lifetime
+                       (fn-bpi-host-observation monotonic-ns wall-ns
+                                                wall-error-ms has-wall)))
 
 (defun fn-bpi-host-inputsp (destination source-eid bundle-id lifetime
                                         archive-id subject evidence charge)
@@ -64,7 +85,8 @@
   (fn-store-sn-reset state))
 
 (defun fn-bpi-host-prepare (destination source-eid bundle-id lifetime
-                                         archive-id subject evidence charge adu state)
+                                         archive-id subject evidence charge adu
+                                         monotonic-ns wall-ns wall-error-ms has-wall state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (fn-bpi-host-inputsp destination source-eid bundle-id lifetime
                                  archive-id subject evidence charge))
@@ -74,13 +96,16 @@
                    (fn-bpi-host-policy (fn-store-octets->string archive-id)
                                        (fn-store-octets->string subject)
                                        (fn-store-octets->string evidence) charge)
-                   (fn-bpi-host-context destination source-eid bundle-id lifetime)
+                   (fn-bpi-host-context destination source-eid bundle-id lifetime
+                                        monotonic-ns wall-ns wall-error-ms has-wall)
                    adu)))
       (if (equal (fn-bpi-result-kind result) :prepared)
           (let ((state (f-put-global 'fn-store-sn
                                      (fn-bpi-result-store result) state)))
             (value :prepared))
-        (value :rejected)))))
+        (value (if (equal (fn-bpi-result-store result) :clock-unusable)
+                   :clock-unusable
+                 :rejected))))))
 
 ; An exact durable replay is recognized by the certified parser/field/group
 ; composition and node binding before another allocator reservation is made.
@@ -88,7 +113,8 @@
 ; prior durable article acceptance; malformed and conflicting ADUs stay staged.
 (defun fn-bpi-host-already-durablep (destination source-eid bundle-id lifetime
                                                  archive-id subject evidence charge
-                                                 adu state)
+                                                 adu monotonic-ns wall-ns wall-error-ms
+                                                 has-wall state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (fn-bpi-host-inputsp destination source-eid bundle-id lifetime
                                  archive-id subject evidence charge))
@@ -98,7 +124,8 @@
             (fn-bpi-host-policy (fn-store-octets->string archive-id)
                                 (fn-store-octets->string subject)
                                 (fn-store-octets->string evidence) charge)
-            (fn-bpi-host-context destination source-eid bundle-id lifetime)
+            (fn-bpi-host-context destination source-eid bundle-id lifetime
+                                 monotonic-ns wall-ns wall-error-ms has-wall)
             adu))))
 
 ; -----------------------------------------------------------------------------
@@ -121,7 +148,6 @@
 ; staging.
 
 (defconst *fn-bpi-host-bundle-head* 159)   ; CBOR indefinite-length array head
-(defconst *fn-bpi-host-dtn-epoch-ms* 946684800000) ; 2000-01-01T00:00:00Z, Unix ms
 
 (defun fn-bpi-host-primary-octets (bundle)
   ; The exact octets of the bundle's first CBOR item, or nil.
@@ -154,23 +180,6 @@
           (if (not (fn-bpp-identifiablep (fn-bpp-result-block result)))
               (fn-bpp-error :anonymous)
             result))))))
-
-(defun fn-bpi-host-observation (monotonic-ns wall-ns wall-error-ms has-wall)
-  ; The host reads two counters and states one error bound; the units and the
-  ; DTN epoch are converted here, not in Python.  A wall reading before the
-  ; DTN epoch, or a host that claims no wall clock, yields has-wall nil, which
-  ; `fn-clock-expiry-decision` answers :uncertain for.
-  (declare (xargs :mode :program))
-  (let* ((monotonic (if (natp monotonic-ns) (floor monotonic-ns 1000000) 0))
-         (unix-ms (if (natp wall-ns) (floor wall-ns 1000000) 0))
-         (usable (and has-wall (natp wall-ns)
-                      (<= *fn-bpi-host-dtn-epoch-ms* unix-ms)
-                      (natp wall-error-ms)))
-         (wall (if usable (- unix-ms *fn-bpi-host-dtn-epoch-ms*) 0)))
-    (fn-clock-observation (min monotonic *fn-clock-max*)
-                          (min wall *fn-clock-max*)
-                          (if usable (min wall-error-ms *fn-clock-max*) 0)
-                          usable)))
 
 (defun fn-bpi-host-bundle-report (bundle monotonic-ns wall-ns wall-error-ms has-wall)
   ; One answer for the whole receive boundary.  A refusal is (:REFUSED reason);

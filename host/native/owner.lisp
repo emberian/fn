@@ -121,17 +121,6 @@
 ;;; seconds and the sub-second part cannot come from two different instants;
 ;;; get-universal-time, which this used, has one-second resolution and gives
 ;;; every submission inside a second the same reading.
-(defconstant +fnn-owner-wall-error-ms+ 1000)
-(defconstant +fnn-owner-unix-dtn-offset-seconds+
-  (- (encode-universal-time 0 0 0 1 1 2000 0)
-     (encode-universal-time 0 0 0 1 1 1970 0)))
-
-(defun fnn-owner-wall-milliseconds ()
-  "One gettimeofday reading, as milliseconds since 2000-01-01T00:00:00Z."
-  (multiple-value-bind (seconds microseconds) (sb-ext:get-time-of-day)
-    (max 0 (+ (* 1000 (- seconds +fnn-owner-unix-dtn-offset-seconds+))
-              (floor microseconds 1000)))))
-
 (defun fnn-owner-advance-clock ()
   "Hand the owner one fresh reading of this host's clocks.
 
@@ -742,7 +731,8 @@ the current connection."
                               :refused)
                     (fnn-indeterminate "owner could not consume refused reservation"))
                   (setf (fnn-store-fenced store) nil)
-                  (return-from fnn-owner-attempt :refused))))
+                  (return-from fnn-owner-attempt
+                    (if (eq prepared :clock-unusable) :clock-unusable :refused)))))
             (fnn-owner-publish-prepared service "article")))
       (fnn-store-indeterminate () :uncertain)
       (fnn-store-fault (e)

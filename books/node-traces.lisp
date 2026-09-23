@@ -56,6 +56,8 @@
   (declare (xargs :guard (true-listp event))) (nth 7 event))
 (defun fn-node-prepare-charge (event)
   (declare (xargs :guard (true-listp event))) (nth 8 event))
+(defun fn-node-prepare-stamp (event)
+  (declare (xargs :guard (true-listp event))) (nth 9 event))
 (defun fn-node-complete-txid (event)
   (declare (xargs :guard (true-listp event))) (nth 1 event))
 (defun fn-node-complete-generation (event)
@@ -72,7 +74,7 @@
 (defun fn-node-prepare-eventp (event)
   (declare (xargs :guard t))
   (and (true-listp event)
-       (equal (len event) 9)
+       (equal (len event) 10)
        (equal (car event) :prepare)
        (natp (fn-node-prepare-generation event))
        (stringp (fn-node-prepare-msgid event))
@@ -82,7 +84,8 @@
        (stringp (fn-node-prepare-obligation-id event))
        (stringp (fn-node-prepare-subject event))
        (stringp (fn-node-prepare-evidence event))
-       (posp (fn-node-prepare-charge event))))
+       (posp (fn-node-prepare-charge event))
+       (fn-record-stampp (fn-node-prepare-stamp event))))
 
 (defun fn-node-complete-eventp (event)
   (declare (xargs :guard t))
@@ -122,7 +125,8 @@
                        (fn-node-prepare-obligation-id event)
                        (fn-node-prepare-subject event)
                        (fn-node-prepare-evidence event)
-                       (fn-node-prepare-charge event))
+                       (fn-node-prepare-charge event)
+                       (fn-node-prepare-stamp event))
     (if (fn-node-complete-eventp event)
         (fn-node-complete s
                           (fn-node-complete-txid event)
@@ -208,7 +212,7 @@
             old
             (fn-node-bindings
              (fn-node-prepare s generation msgid payload groups
-                              obligation-id subject evidence charge))))
+                              obligation-id subject evidence charge stamp))))
   :hints (("Goal" :in-theory (disable fn-node-prepare))))
 
 (defthm fn-node-complete-preserves-old-bindings

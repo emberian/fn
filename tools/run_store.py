@@ -378,7 +378,7 @@ def acl2_symbol(output):
     body = acl2_result(output).upper()
     if body not in {b":READY", b":PREPARED", b":DURABLE", b":ABORTED",
                     b":INDETERMINATE", b":DUPLICATE", b":CONFLICT", b":ABSENT", b":INVALID",
-                    b":REFUSED", b":FAULT", b":RECOVERING",
+                    b":REFUSED", b":CLOCK-UNUSABLE", b":FAULT", b":RECOVERING",
                     b":FRONTIER-STAGED", b":FRONTIER-DATA-DURABLE", b":FRONTIER-ATTEMPTED",
                     b":RECORD-STAGED", b":RECORD-DATA-DURABLE", b":RECORD-ATTEMPTED",
                     b":RESERVED", b":ABORTING", b":COMPLETING", b":FENCED-FRONTIER", b":FENCED-RECORD",
@@ -641,10 +641,15 @@ class Acl2Store:
         return acl2_symbol(self.call("(fn-store-sn-io :{} :{} state)".format(operation, result)))
 
     def prepare(self, msgid, payload, group_codes, obligation_id, subject, evidence, charge):
+        # One environmental reading per prepare.  ACL2 alone derives the
+        # acceptance stamp and decides whether this reading is usable.
+        monotonic_ms = time.monotonic_ns() // 1_000_000
+        wall_ms = max(0, (time.time_ns() - 946684800 * 1_000_000_000) // 1_000_000)
         form = "(fn-store-sn-prepare '" + self.literal(msgid) + " '" + self.literal(payload)
         form += " '" + self.numeric_list(group_codes) + " '" + self.literal(obligation_id)
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
-        form += " " + str(charge) + " state)"
+        form += " {} (fn-clock-observation {} {} 1000 t) state)".format(
+            charge, monotonic_ms, wall_ms)
         return acl2_symbol(self.call(form))
 
     def existing_action(self, msgid, payload, group_codes):

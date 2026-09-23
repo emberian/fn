@@ -14,6 +14,7 @@
 ; books/stx-index's closure, so carrying it here is not.
 (include-book "stx-index")
 (include-book "records-seam")
+(include-book "records-stamp")
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-record-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
@@ -332,6 +333,33 @@
                 (natp (fn-stx-verdict-generation verdict)))
            (fn-sn-verdict-listp (cons (cons msgid verdict) verdicts))))
 
+(defun fn-sn-article-record (s obs msgid payload groups
+                              obligation-id subject evidence charge)
+  (declare (xargs :guard t))
+  (let ((stamp (fn-record-stamp-of-observation obs))
+        (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
+    (if (equal stamp :clock-unusable)
+        :clock-unusable
+      (fn-record-make (fn-sn-identity-next s) txid txid msgid payload groups
+                      obligation-id subject evidence charge stamp))))
+
+(defthm fn-sn-article-record-stamps-the-observation
+  (implies (natp (fn-record-stamp-of-observation obs))
+           (equal (fn-record-stamp
+                   (fn-sn-article-record s obs msgid payload groups
+                                         obligation-id subject evidence charge))
+                  (floor (fn-clock-wall obs) 1000)))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record
+                                     fn-record-stamp-of-observation))))
+
+(defthm fn-sn-article-record-without-a-usable-clock-is-refused
+  (implies (not (natp (fn-record-stamp-of-observation obs)))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :clock-unusable))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record
+                                     fn-record-stamp-of-observation))))
+
 ; The record is derived from the real pending proposal, including its retention
 ; stage, instead of a second host interpretation of the submission.
 (defun fn-sn-pending-record (node sequence)
@@ -343,7 +371,7 @@
                     (fn-pending-msgid pending) (fn-pending-payload pending)
                     (fn-pending-groups pending) (fn-node-stage-id stage)
                     (fn-node-stage-subject stage) (fn-node-stage-evidence stage)
-                    (fn-node-stage-charge stage))))
+                    (fn-node-stage-charge stage) (fn-pending-stamp pending))))
 
 (verify-guards fn-sn-pending-record)
 (defun fn-sn-record-bindsp (node record)
@@ -365,7 +393,8 @@
                    (fn-record-payload record) (fn-record-groups record)
                    (fn-record-obligation-id record)
                    (fn-record-content-subject record)
-                   (fn-record-release-evidence record) (fn-record-charge record)))
+                   (fn-record-release-evidence record) (fn-record-charge record)
+                   (fn-record-stamp record)))
 
 (verify-guards fn-sn-prepare-node)
 
@@ -381,7 +410,8 @@
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (null (fn-node-stage (fn-sn-node s)))
-           (fn-record-p record))
+           (fn-record-p record)
+           (not (equal (fn-record-stamp record) :legacy)))
       (let* ((node (fn-sn-prepare-node (fn-sn-node s) record))
              (files (fn-sf-prepare-record (fn-sn-files s) record
                                           (fn-sn-groups s) (fn-sn-capacity s))))
@@ -428,6 +458,9 @@
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (or (fn-stxe-p event) (fn-stxk-p event) (fn-stxa-p event))
+           (or (not (fn-stxa-p event))
+               (not (equal (fn-record-stamp (fn-replay-composite-record event))
+                           :legacy)))
            (consp (fn-replay-apply-record (fn-sn-node s) event))
            (equal (fn-stxk-context-kind
                    (fn-replay-identity-step (fn-sn-identity-context s) event))

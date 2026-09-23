@@ -275,6 +275,8 @@
      (fn-post-single
       ps
       (cond ((equal completion :durable) "240 article received OK")
+            ((equal completion :clock-unusable)
+             (fn-post-refusal-line :clock-unusable))
             ((equal completion :refused)
              "441 posting failed; the article was refused")
             (t "441 posting failed; the outcome is uncertain, do not repost")))
