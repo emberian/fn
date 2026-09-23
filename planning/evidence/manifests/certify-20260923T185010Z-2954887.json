@@ -67,7 +67,7 @@
   "acl2_version": "ACL2 Version 8.7",
   "acl2_version_probe_exit_code": 0,
   "affected_by": [],
-  "archived_from": "persvati:/home/ember/fn-gates/takeover-bp-contact-service/build/acl2/certify-20260923T184517Z-2905271",
+  "archived_from": "persvati:/home/ember/fn-gates/takeover-bp-contact-service/build/acl2/certify-20260923T185010Z-2954887",
   "book_failures": {},
   "book_provenance": {
     "books/bp-bundle": "installed",
@@ -92,8 +92,8 @@
     "tests/acl2/bp-contact-service-tests": "passed"
   },
   "book_wall_seconds": {
-    "books/bp-contact-service": 1.626,
-    "tests/acl2/bp-contact-service-tests": 1.115
+    "books/bp-contact-service": 1.539,
+    "tests/acl2/bp-contact-service-tests": 1.129
   },
   "book_wave_seconds": null,
   "budget_seconds": 90,
@@ -132,17 +132,17 @@
     "published": 0
   },
   "certificate_digests_sha256": {
-    "books/bp-contact-service": "65a8b1e143f184fd28b973240ca3ca8219e3bdb858f265164c0e204304685ad6",
-    "tests/acl2/bp-contact-service-tests": "b50d19f83d40fa104b1955a98b1bc8117e51b17e5f3c8da13d6f81dfde1e221c"
+    "books/bp-contact-service": "8fdc919ee727fc8911d35e8fe25200a043ce94d3f31c0124445c8323718a1fdb",
+    "tests/acl2/bp-contact-service-tests": "9cf34272bb35431f36732701746993b043dca53085ce8ea33d3af0b8c727dc96"
   },
-  "certify_wall_seconds": 2.747,
+  "certify_wall_seconds": 2.674,
   "closure": false,
   "command": [
     "/home/ember/fn-gates/toolchains/w25/acl2-literal"
   ],
   "driver_digests_sha256": {
-    "books/bp-contact-service": "0292ddb9e3d3940e7ce0459cdf29a6439d6ca06266c603a63524a70aa1f23694",
-    "tests/acl2/bp-contact-service-tests": "b61b2f30cd13d0599017d9468cfc7d41cfa7dee6a7760c9b93908b085f4cf3a3"
+    "books/bp-contact-service": "947c2cbd52742d911ca46c046f88d0160f14415a9ee62fdfee14eeb6b3d9d89c",
+    "tests/acl2/bp-contact-service-tests": "b6d96a9608efd8c2460b4fa1317949cd7422f3aad5653f92e94a49054259d0be"
   },
   "environment": {
     "ACL2_BOOK_HASH_ALISTP": "NIL",
@@ -150,11 +150,11 @@
     "ACL2_SYSTEM_BOOKS": null
   },
   "expected_success_markers": [
-    "FN_CERTIFY_SUCCESS 2aa62e427b6d7ad6a8eeef7c093b9a5b 93cc785645a0",
-    "FN_CERTIFY_SUCCESS 2aa62e427b6d7ad6a8eeef7c093b9a5b 7ac38651665e"
+    "FN_CERTIFY_SUCCESS e87136264121e056fa9b078e417b3105 93cc785645a0",
+    "FN_CERTIFY_SUCCESS e87136264121e056fa9b078e417b3105 7ac38651665e"
   ],
   "failure_markers": [],
-  "finished_utc": "2026-09-23T18:45:21+00:00",
+  "finished_utc": "2026-09-23T18:50:14+00:00",
   "git_branch": null,
   "git_dirty": null,
   "git_revision": null,
@@ -193,8 +193,8 @@
     "scope": "local source closure only; installed ACL2/system books remain trusted"
   },
   "observed_success_markers": [
-    "FN_CERTIFY_SUCCESS 2aa62e427b6d7ad6a8eeef7c093b9a5b 93cc785645a0",
-    "FN_CERTIFY_SUCCESS 2aa62e427b6d7ad6a8eeef7c093b9a5b 7ac38651665e"
+    "FN_CERTIFY_SUCCESS e87136264121e056fa9b078e417b3105 93cc785645a0",
+    "FN_CERTIFY_SUCCESS e87136264121e056fa9b078e417b3105 7ac38651665e"
   ],
   "pcert": false,
   "pcert_reached": null,
@@ -214,13 +214,13 @@
     "books/bp-contact-service",
     "tests/acl2/bp-contact-service-tests"
   ],
-  "run_id": "certify-20260923T184517Z-2905271",
+  "run_id": "certify-20260923T185010Z-2954887",
   "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
   "runner_unchanged": true,
   "schedule": {
     "books_with_archived_wall": 2,
     "policy": "critical-path-first",
-    "predicted_critical_path_seconds": 0.905
+    "predicted_critical_path_seconds": 2.741
   },
   "slot_wait_seconds": {
     "books/bp-contact-service": 0.0,
@@ -230,7 +230,7 @@
   "source_digests_sha256": {
     "books/bp-bundle-invariants.lisp": "b0a67117f56e674bc95675019ebb3de17b30473f1b01e3a50cd874d6ccef3352",
     "books/bp-bundle.lisp": "b209f5b465ea008d313deb02ac3a056d5f2716af86a3e4151a6111f4854f4505",
-    "books/bp-contact-service.lisp": "53860fb7ebc7f8a935bc73cfa151517ec602da91521f0ffb1d93dce6bd7fe6bb",
+    "books/bp-contact-service.lisp": "c74ef6a114dd47082c2bb28c3f74113ae0c39ad4a5a8ca3816d75238112a0c2c",
     "books/bp-node-machine.lisp": "60f1a248d4efbd2e04235ef3cab883f1f9352b60f2996895138ec6aa8d8fd896",
     "books/bp-node.lisp": "bfadba9ee9100787fd16a533d4386b1190b5e273bcb097a33b74dbc6a6c4ca95",
     "books/bp-primary-cbor.lisp": "6391e304623c67447b21b998228d0ec55d1e0b652ba2d3f32cedfdca6f888095",
@@ -243,12 +243,12 @@
     "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
     "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
     "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
-    "tests/acl2/bp-contact-service-tests.lisp": "9ee4e1b48bdfc63fcbb224b80f43bbfbe82ae824d85ad3f6f518a46b7702802b"
+    "tests/acl2/bp-contact-service-tests.lisp": "c18fa116123be1ab4a580af2e47fec9a7939a3233dab66cc17173a0217a029e8"
   },
   "source_digests_sha256_after": {
     "books/bp-bundle-invariants.lisp": "b0a67117f56e674bc95675019ebb3de17b30473f1b01e3a50cd874d6ccef3352",
     "books/bp-bundle.lisp": "b209f5b465ea008d313deb02ac3a056d5f2716af86a3e4151a6111f4854f4505",
-    "books/bp-contact-service.lisp": "53860fb7ebc7f8a935bc73cfa151517ec602da91521f0ffb1d93dce6bd7fe6bb",
+    "books/bp-contact-service.lisp": "c74ef6a114dd47082c2bb28c3f74113ae0c39ad4a5a8ca3816d75238112a0c2c",
     "books/bp-node-machine.lisp": "60f1a248d4efbd2e04235ef3cab883f1f9352b60f2996895138ec6aa8d8fd896",
     "books/bp-node.lisp": "bfadba9ee9100787fd16a533d4386b1190b5e273bcb097a33b74dbc6a6c4ca95",
     "books/bp-primary-cbor.lisp": "6391e304623c67447b21b998228d0ec55d1e0b652ba2d3f32cedfdca6f888095",
@@ -261,13 +261,13 @@
     "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
     "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
     "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
-    "tests/acl2/bp-contact-service-tests.lisp": "9ee4e1b48bdfc63fcbb224b80f43bbfbe82ae824d85ad3f6f518a46b7702802b"
+    "tests/acl2/bp-contact-service-tests.lisp": "c18fa116123be1ab4a580af2e47fec9a7939a3233dab66cc17173a0217a029e8"
   },
   "start_order": [
     "books/bp-contact-service",
     "tests/acl2/bp-contact-service-tests"
   ],
-  "started_utc": "2026-09-23T18:45:17+00:00",
+  "started_utc": "2026-09-23T18:50:10+00:00",
   "status": "passed",
   "timeout_seconds": 90,
   "tree": "/home/ember/fn-gates/takeover-bp-contact-service"

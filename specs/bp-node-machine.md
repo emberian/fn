@@ -2258,10 +2258,14 @@ expires or is deleted (RFC 9171 §5.4). The FIFO theorem, restated
 (review-2 §2.2), over the immutable `arrival` field (F-M):
 
 The native FNBS contact runner uses `fn-bpsc-contact-event` in
-`books/bp-contact-service.lisp` for a single peer/window tick. It advances
-the machine's clock before consulting ready peers, opens a contact only when
-that peer is ready and the observed monotonic time is inside the inclusive
-window, and closes the contact after a bounded send batch. Its host caller is
+`books/bp-contact-service.lisp` for a single peer/window tick. The CLI's
+`start-delay` and `end-delay` are offsets in milliseconds from that invocation's
+one monotonic observation, and ACL2 constructs and bounds the resulting
+window. They are not persistent absolute contact-plan timestamps; no epoch
+agreement is assumed across processes or reboot. The runner advances the
+machine's clock before consulting ready peers, opens a contact only when
+that peer is ready and the observation falls inside the inclusive window,
+and closes the contact after a bounded send batch. Its host caller is
 `fnn-command-bp-contact-tick` in `host/native/bp-contact.lisp`; effects go
 through the same `fnn-bps-step` and durable publisher as the normal BP
 service. The older FNWF `fn-sched-tick-step` cannot be called on the FNBS

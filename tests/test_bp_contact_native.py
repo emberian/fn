@@ -9,7 +9,6 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-MAX_TIME = 18446744073709551615
 
 
 class NativeBpContactTests(unittest.TestCase):
@@ -57,21 +56,22 @@ class NativeBpContactTests(unittest.TestCase):
         self.assertIn("BP queue accepted", queued.stdout)
         before = len(self.records())
 
-        closed = self.tick(0, 0, 3600000, 2, 32, 1048576, 0, 0)
+        closed = self.tick(1, 1, 3600000, 2, 32, 1048576, 0, 0)
         self.assertEqual(closed.returncode, 0, closed.stderr)
         self.assertIn("BP contact closed", closed.stdout)
         self.assertEqual(len(self.records()), before)
 
-        interrupted = self.tick(0, MAX_TIME, 3600000, 2, 32, 1048576, 0, 0)
+        interrupted = self.tick(0, 60000, 3600000, 2, 32, 1048576, 0, 0)
         self.assertEqual(interrupted.returncode, 3, interrupted.stderr)
         self.assertIn("BP contact open", interrupted.stdout)
         self.assertGreater(len(self.records()), before)
+        after_interruption = len(self.records())
 
-        expired = self.tick(0, 0, 3600000, 2, 32, 1048576, 3600001, 0)
+        expired = self.tick(1, 1, 3600000, 2, 32, 1048576, 3600001, 0)
         self.assertEqual(expired.returncode, 0, expired.stderr)
         self.assertIn("BP contact closed", expired.stdout)
         self.assertNotIn("release", expired.stdout.lower())
-        self.assertGreater(len(self.records()), before)
+        self.assertGreater(len(self.records()), after_interruption)
 
     def test_bad_window_and_decimal_bound(self):
         malformed = self.tick(10, 9)
@@ -79,6 +79,9 @@ class NativeBpContactTests(unittest.TestCase):
         self.assertFalse(self.journal.exists())
         overlong = self.tick("9" * 21, 0)
         self.assertEqual(overlong.returncode, 5, overlong.stderr)
+        self.assertFalse(self.journal.exists())
+        overflow = self.tick(0, 18446744073709551615)
+        self.assertEqual(overflow.returncode, 1, overflow.stderr)
         self.assertFalse(self.journal.exists())
 
 
