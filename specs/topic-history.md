@@ -19,6 +19,15 @@ Unknown versions, duplicate fields, malformed folding and noncanonical
 encodings produce an unsupported candidate, leaving ordinary article handling
 separate.
 
+`books/topic-history-metadata-invariants.lisp` proves that every valid
+constructor encodes to at most 1,531 binary octets and 39 items, and that
+decoding its encoding recovers the original value. The decoder checks the
+1,536-octet whole-input limit before invoking the statement item decoder.
+The source-binding theorem names the host-called `fn-th-host-inspect-source`:
+success requires one FN-Topic field in the parsed authored source and returns
+the decode of that field's unfolded value. Tests keep a different relay
+FN-Topic, Path and Xref in received bytes separate from that source.
+
 The native `topic-inspect-carrier ARTICLE ML-PUBLIC-PEM` command checks both
 hybrid signature suites through the existing carrier verifier, then passes the
 returned exact source to `fn-th-host-inspect-source`. Its output distinguishes

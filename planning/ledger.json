@@ -456,6 +456,7 @@
     "tests/acl2/hybrid-carrier-tests",
     "books/hybrid-store-invariants",
     "books/topic-history-metadata",
+    "books/topic-history-metadata-invariants",
     "tests/acl2/topic-history-metadata-tests",
     "tests/acl2/hybrid-store-tests",
     "books/crypto-attach",
@@ -506,25 +507,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 507,
-    "books_in_root_closure": 506,
-    "roots": 502,
-    "theorems": 7742,
-    "functions": 5886,
-    "assert_events": 8527,
-    "must_fails": 373,
+    "books": 508,
+    "books_in_root_closure": 507,
+    "roots": 503,
+    "theorems": 7769,
+    "functions": 5889,
+    "assert_events": 8529,
+    "must_fails": 375,
     "encapsulates": 26,
     "guards": {
       "verified": 1892,
       "declared-off": 313,
-      "default-guarded": 2907,
+      "default-guarded": 2910,
       "default-unguarded": 774
     },
     "suspect_theorems": 72,
-    "export_hygiene_warnings": 96,
+    "export_hygiene_warnings": 99,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 26,
-    "include_hygiene_warnings": 363,
+    "include_hygiene_warnings": 364,
     "host_names_warnings": 696,
     "hand_written_record_warnings": 18
   },
@@ -8040,15 +8041,42 @@
       "read_error": null
     },
     {
+      "book": "books/topic-history-metadata-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 27,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "topic-history-metadata"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/topic-history-metadata.lisp",
       "in_root_closure": true,
       "is_root": true,
       "theorems": 6,
-      "functions": 21,
+      "functions": 22,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 21,
+        "default-guarded": 22,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -13837,14 +13865,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 20,
-      "must_fails": 1,
+      "assert_events": 22,
+      "must_fails": 3,
       "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/topic-history-metadata"
+        "../../books/topic-history-metadata-invariants"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -14610,7 +14638,7 @@
     {
       "theorem": "fn-th-decode-refuses-oversize-by-definition",
       "book": "books/topic-history-metadata.lisp",
-      "line": 247,
+      "line": 249,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-th-decode and the conclusion is that branch's value"
       ]
@@ -15071,9 +15099,27 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-th-encode-returns-constructor",
+        "book": "books/topic-history-metadata-invariants.lisp",
+        "line": 147,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-th-items-value-of-items",
+        "book": "books/topic-history-metadata-invariants.lisp",
+        "line": 193,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-th-constructor-roundtrip",
+        "book": "books/topic-history-metadata-invariants.lisp",
+        "line": 211,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-th-decode-refuses-oversize-by-definition",
         "book": "books/topic-history-metadata.lisp",
-        "line": 247,
+        "line": 249,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -15261,9 +15307,10 @@
         "line": 97,
         "stated_in": [
           "books/article-invariants.lisp",
-          "books/article-properties.lisp"
+          "books/article-properties.lisp",
+          "books/topic-history-metadata-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-field-raw-lines",
@@ -15289,9 +15336,10 @@
         "line": 118,
         "stated_in": [
           "books/article-work.lisp",
-          "books/injection-invariants.lisp"
+          "books/injection-invariants.lisp",
+          "books/topic-history-metadata-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-result-article",
@@ -15303,9 +15351,10 @@
           "books/injection-invariants.lisp",
           "books/nntp-legacy.lisp",
           "books/nntp-post.lisp",
-          "books/peer-inbound-invariants.lisp"
+          "books/peer-inbound-invariants.lisp",
+          "books/topic-history-metadata-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-line-value",
@@ -15463,9 +15512,10 @@
         "book": "books/cbor.lisp",
         "line": 102,
         "stated_in": [
-          "books/hybrid-signature.lisp"
+          "books/hybrid-signature.lisp",
+          "books/topic-history-metadata-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-kind",
@@ -16625,6 +16675,13 @@
         "line": 5,
         "include": "tcpcl-host-drive",
         "included": "books/tcpcl-host-drive.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/topic-history-metadata-invariants.lisp",
+        "line": 3,
+        "include": "topic-history-metadata",
+        "included": "books/topic-history-metadata.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -18205,8 +18262,8 @@
       {
         "book": "tests/acl2/topic-history-metadata-tests.lisp",
         "line": 2,
-        "include": "../../books/topic-history-metadata",
-        "included": "books/topic-history-metadata.lisp",
+        "include": "../../books/topic-history-metadata-invariants",
+        "included": "books/topic-history-metadata-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

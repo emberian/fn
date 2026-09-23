@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "../../books/topic-history-metadata")
+(include-book "../../books/topic-history-metadata-invariants")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
 
@@ -36,6 +36,7 @@
         (fn-t-th-authors-from 0 16)))
 (assert-event (fn-th-value-p *th-max-root*))
 (assert-event (equal (len (fn-th-encode *th-max-root*)) 1531))
+(assert-event (equal (len (fn-th-items *th-max-root*)) 39))
 (assert-event (equal (len (fn-th-field-encode *th-max-root*)) 2047))
 (assert-event (equal (fn-th-decode (fn-th-encode *th-max-root*))
                      (fn-stmt-ok *th-max-root*)))
@@ -67,7 +68,21 @@
  (let* ((field-line (append (fn-record-string-octets "FN-Topic: ")
                             (fn-th-field-encode *th-root*) '(13 10)))
         (source (append *th-source-head* field-line '(13 10 120))))
-   (equal (fn-th-project-source source) (fn-stmt-ok *th-root*))))
+   (equal (fn-th-host-inspect-source source) (fn-stmt-ok *th-root*))))
+; A relay's Path, Xref, and even a competing received FN-Topic do not become
+; the authored source passed to the native inspection subject.
+(assert-event
+ (let* ((field-line (append (fn-record-string-octets "FN-Topic: ")
+                            (fn-th-field-encode *th-root*) '(13 10)))
+        (source (append *th-source-head* field-line '(13 10 120)))
+        (received (append (fn-t-th-line "Path: relay!not-for-mail")
+                          (fn-t-th-line "Xref: relay fn.test:9")
+                          (append (fn-record-string-octets "FN-Topic: ")
+                                  (fn-th-field-encode *th-control*) '(13 10))
+                          source)))
+   (and (equal (fn-th-host-inspect-source source)
+               (fn-stmt-ok *th-root*))
+        (not (fn-stmt-okp (fn-th-host-inspect-source received))))))
 (assert-event
  (let ((field-line (append (fn-record-string-octets "FN-Topic: ")
                            (fn-th-field-encode *th-root*) '(13 10))))
@@ -88,3 +103,19 @@
            (append *th-source-head*
                    (append (fn-t-th-line "FN-Topic: v1 AAAA") '(13 10 120))))
           (fn-stmt-ok *th-root*))))
+; Dropping the validity hypothesis loses the constructor inverse.
+(must-fail
+ (defthm fn-th-roundtrip-without-validity
+   (equal (fn-th-decode (fn-th-encode
+                         (list :control *th-id* *th-id*
+                               (list *th-author* *th-author*))))
+          (fn-stmt-ok (list :control *th-id* *th-id*
+                            (list *th-author* *th-author*))))))
+; A duplicate authored field cannot satisfy the successful-field binding.
+(must-fail
+ (defthm fn-th-host-inspect-duplicate-is-candidate
+   (let ((field-line (append (fn-record-string-octets "FN-Topic: ")
+                             (fn-th-field-encode *th-root*) '(13 10))))
+     (fn-stmt-okp
+      (fn-th-host-inspect-source
+       (append *th-source-head* field-line field-line '(13 10 120)))))))

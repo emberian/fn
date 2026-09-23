@@ -1898,6 +1898,26 @@
       ]
     },
     {
+      "id": "PRF-062",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-th-host-inspect-source-binds-authored-field",
+          "note": "Subject is the exact ACL2 function invoked by host/native/signature-command.lisp after native carrier verification. Success binds to one FN-Topic field in the parsed authored source; relay-header separation has a positive/negative witness in the test book. This proves projection, not cryptographic verification or topic admission."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-th-constructor-encoding-bound",
+          "note": "General valid root/control/report constructor encoded-size upper bound of 1,531 octets, below the 1,536-octet decoder limit; the maximum root witness reaches the bound."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-th-constructor-roundtrip",
+          "note": "For every valid constructor, statement codec inverse and shape-reader inverse yield decode(encode(x)) = ok(x); an invalid duplicate-author constructor is a must-fail witness without the validity premise."
+        }
+      ]
+    },
+    {
       "id": "PRF-063",
       "events": [
         {
