@@ -111,6 +111,13 @@ state. These records remain workflow history and are not Store release
 authority. The configured owner's separate Store release event remains the
 authoritative retention mutation.
 
+On a successful reopen, `fn-bprl-replay-work-status-is-durable-status-restarted`
+equates the work status installed by the host-called release-aware replay with
+one restart of the status obtained by folding its exact durable records through
+the same ACL2 interpreter. The witness includes undertaking and release; a
+malformed suffix is refused and shows why the successful-replay premise is
+needed. This is status correspondence, not physical filesystem durability.
+
 The authoritative retention mutation is a variant of the Store's single
 immutable transaction history (`books/store-events.lisp`). Existing article
 transactions retain their exact `fn-r` schema-0 encoding. A disjoint `fn-e`

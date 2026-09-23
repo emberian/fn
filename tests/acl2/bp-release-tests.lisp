@@ -9,6 +9,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-release-invariants")
 (include-book "../../books/bp-workflow-constructors")
+(include-book "../../books/bp-release-replay-status")
 (include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
@@ -309,6 +310,64 @@
                      *rl-released* "receipt-1")))
 (assert-event (null (fn-bprl-release-record-for-journal
                      *rl-receipted* "receipt-other")))
+
+; Actual host replay, with both appended record kinds, reaches the same
+; receipted work answer and preserves the independent archive pin.  A failed
+; replay cannot claim the one-restart status equation.
+(defconst *rl-config-record*
+  '(:config "dtn://home/fn" "dtn://peer/fn" "policy-1"
+            "receipt-authority" 1000 "home-incarnation-1"
+            "authorization-context-1"))
+(defconst *rl-enqueue-record*
+  '(:enqueue 10 0 "work-1" "<rl@example.invalid>" "subject-rl"
+             "archive-rl" "forward-1" "dtn://peer/fn" "policy-1" "terms-1"))
+(defconst *rl-attempt-record*
+  '(:attempt 11 0 "work-1" "attempt-0" 0
+             "dtn://home/fn" "dtn://peer/fn" "policy-1" 1000))
+(defconst *rl-replay-records*
+  (list *rl-config-record* *rl-enqueue-record*
+        '(:outcome 10 0 :ordinary :durable)
+        '(:undertake "work-1" 3)
+        *rl-attempt-record* '(:outcome 11 0 :ordinary :durable)
+        '(:transport "work-1" "attempt-0" 0 :delivered)
+        '(:receipt-intent 12 0 "receipt-1" "work-1" "subject-rl"
+          "receipt-authority" "dtn://peer/fn" "policy-1"
+          "home-incarnation-1" "authorization-context-1" "terms-1")
+        '(:outcome 12 0 :ordinary :durable) *rl-release-record*))
+(defconst *rl-replayed* (fn-bprl-replay-journal *rl-node-committed*
+                                                 *rl-replay-records*))
+(assert-event (car *rl-replayed*))
+(assert-event (equal (fn-bp-work-status
+                      "work-1" (fn-bp-state-works (fn-bp-journal-nth 1 *rl-replayed*)))
+                     :receipted))
+(assert-event (null (fn-retain-find-id
+                     "forward-1" (fn-bprl-pins (fn-bp-journal-nth 1 *rl-replayed*)))))
+(assert-event (consp (fn-retain-find-id
+                      "archive-rl" (fn-bprl-pins (fn-bp-journal-nth 1 *rl-replayed*)))))
+(defconst *rl-broken-replay-records*
+  (list *rl-config-record* *rl-enqueue-record*
+        '(:outcome 10 0 :ordinary :durable)
+        '(:undertake "work-1" 3)
+        *rl-attempt-record* '(:outcome 11 0 :ordinary :durable)
+        '(:not-a-workflow-record)))
+(assert-event (not (car (fn-bprl-replay-journal *rl-node-committed*
+                                                *rl-broken-replay-records*))))
+(must-fail
+ (defthm rl-teeth-failed-replay-is-not-restarted-status
+   (equal
+    (fn-bp-work-status
+     "work-1" (fn-bp-state-works
+               (fn-bp-journal-nth 1
+                (fn-bprl-replay-journal
+                 *rl-node-committed* *rl-broken-replay-records*))))
+    (fn-bp-work-status-after-restart
+     (fn-bp-work-status
+      "work-1" (fn-bp-state-works
+                (fn-bprl-durable-fold
+                 (fn-bp-initial-state
+                  *rl-node-committed*
+                  (fn-bp-config-from-record *rl-config-record*))
+                 (cdr *rl-broken-replay-records*))))))))
 
 ; -----------------------------------------------------------------------------
 ; must-fail siblings
