@@ -32,6 +32,10 @@
 (assert-event (equal (fn-replay-result-kind *cpr-t-open*) :ok))
 (assert-event (fn-cnode-statep (fn-replay-result-node *cpr-t-open*)))
 (assert-event
+ (equal (fn-cfg-generation
+         (fn-cnode-config (fn-replay-result-node *cpr-t-open*)))
+        (len *cpr-t-configs*)))
+(assert-event
  (equal (fn-cfg-capacity
          (fn-cfg-value (fn-cnode-config (fn-replay-result-node *cpr-t-open*))))
         20))
@@ -91,6 +95,13 @@
 (assert-event (equal (fn-replay-result-kind *cpr-t-premature-open*) :fault))
 (assert-event (equal (fn-replay-result-reason *cpr-t-premature-open*)
                      :config-refusal))
+; Removing the successful-result hypothesis exposes a fault before the
+; second configuration has been applied, so the generation need not count
+; every record in the input file.
+(assert-event
+ (not (equal (fn-cfg-generation
+              (fn-cnode-config (fn-replay-result-node *cpr-t-premature-open*)))
+             2)))
 (assert-event
  (equal (fn-replay-result-kind
          (fn-cnode-config-replay

@@ -273,6 +273,20 @@
          (equal (fn-ocfg-config oc)
                 (fn-cnode-config (fn-replay-result-node replayed))))))
 
+(defun fn-ocl-view-configp (oc)
+  (declare (xargs :guard t))
+  (let* ((o (fn-ocfg-owner oc))
+         (st (fn-own-store o))
+         (view (fn-own-view o))
+         (configs (fn-sn-config-history st))
+         (events (fn-sf-records (fn-sn-files st))))
+    (equal (fn-cnode-config
+            (fn-replay-result-node
+             (fn-cpr-replay configs
+                            (fn-own-take (fn-own-view-version view)
+                                         events))))
+           (fn-ocfg-config oc))))
+
 ; The phase-aware replacement for fn-ocfg-statep on a physical-history
 ; owner. It is proof vocabulary, never an executable guard on a served path.
 (defun fn-ocl-relation (oc)
@@ -287,6 +301,9 @@
          (true-listp (fn-sn-config-history st))
          (fn-cfgp (fn-ocfg-config oc))
          (fn-ocl-config-historyp oc)
+         (fn-ocl-view-configp oc)
+         (equal (fn-cfg-generation (fn-ocfg-config oc))
+                (len (fn-sn-config-history st)))
          (fn-ocl-view-historyp o)
          (fn-ocl-conns-historyp oc conns)
          (fn-ocfg-pins-okp (fn-ocfg-pins oc))
@@ -361,6 +378,19 @@
                             fn-ocl-store-config)
                            (fn-cpr-replay fn-cpr-replay-ok-is-configured)))))
 
+(defthm fn-ocl-store-config-generation-counts-history
+  (implies (fn-cpo-history-relation st)
+           (equal (fn-cfg-generation (fn-ocl-store-config st))
+                  (len (fn-sn-config-history st))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-cpr-replay-success-counts-configurations
+                            (configs (fn-sn-config-history st))
+                            (events (fn-sf-records (fn-sn-files st)))))
+           :in-theory (e/d (fn-cpo-history-relation fn-ocl-store-config)
+                           (fn-cpr-replay
+                            fn-cpr-replay-success-counts-configurations)))))
+
 (defthm fn-ocl-config-historyp-of-history-related-store
   (implies (fn-cpo-history-relation st)
            (fn-ocl-config-historyp
@@ -379,6 +409,22 @@
            :in-theory (e/d (fn-ocl-config-historyp fn-ocl-owner-with-store
                             fn-ocl-store-config fn-cpo-history-relation)
                            (fn-own-refresh fn-cpr-replay)))))
+
+(defthm fn-ocl-view-configp-of-ready-owner-with-store
+  (implies (and (fn-cpo-history-relation st)
+                (equal (fn-sf-phase (fn-sn-files st)) :ready)
+                (true-listp (fn-sf-records (fn-sn-files st))))
+           (fn-ocl-view-configp
+            (fn-ocfg-make (fn-ocl-owner-with-store o st)
+                          (fn-ocl-store-config st) pins nil)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-own-take-of-len
+                            (xs (fn-sf-records (fn-sn-files st)))))
+           :in-theory (e/d (fn-ocl-view-configp fn-ocl-owner-with-store
+                            fn-own-refresh fn-own-store-idlep
+                            fn-ocl-store-config)
+                           (fn-cpr-replay fn-own-take)))))
 
 (defthm fn-ocl-complete-preserves-full-historical-relation
   (implies
@@ -420,11 +466,21 @@
                  (:instance fn-cpo-configure-durable-keeps-observed-events
                             (st (fn-own-store (fn-ocfg-owner oc)))
                             (record (fn-ocfg-staged oc)))
+                 (:instance fn-ocl-store-config-generation-counts-history
+                            (st (fn-cpo-configure-durable
+                                 (fn-own-store (fn-ocfg-owner oc))
+                                 (fn-ocfg-staged oc))))
                  (:instance fn-ocl-store-config-is-typed
                             (st (fn-cpo-configure-durable
                                  (fn-own-store (fn-ocfg-owner oc))
                                  (fn-ocfg-staged oc))))
                  (:instance fn-ocl-config-historyp-of-history-related-store
+                            (o (fn-ocfg-owner oc))
+                            (st (fn-cpo-configure-durable
+                                 (fn-own-store (fn-ocfg-owner oc))
+                                 (fn-ocfg-staged oc)))
+                            (pins (fn-ocfg-pins oc)))
+                 (:instance fn-ocl-view-configp-of-ready-owner-with-store
                             (o (fn-ocfg-owner oc))
                             (st (fn-cpo-configure-durable
                                  (fn-own-store (fn-ocfg-owner oc))
@@ -445,12 +501,94 @@
            :in-theory (e/d (fn-ocl-relation fn-ocl-complete
                             fn-ocl-owner-with-store fn-ocl-store-config)
                            (fn-own-refresh fn-ocl-view-historyp
-                            fn-ocl-config-historyp fn-cpo-history-relation
+                            fn-ocl-config-historyp fn-ocl-view-configp
+                            fn-cpo-history-relation
                             fn-cpo-configure-durable fn-cst-relation
                             fn-cpr-replay fn-ocl-conns-historyp)))))
+
+(defthm fn-ocl-reader-context-preserves-owner-shape
+  (implies (fn-own-shapep o)
+           (fn-own-shapep (fn-own-reader-context o id cfg)))
+  :hints (("Goal" :in-theory (enable fn-own-reader-context
+                                      fn-own-set-conns))))
+
+(local
+ (defthm fn-ocl-pin-is-open
+   (implies (and (fn-ocfg-pins-pin-conns-only pins conns)
+                 (fn-ocfg-pin-find id pins))
+            (fn-own-find-conn id conns))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-ocfg-pin-find id pins)
+            :in-theory (enable fn-ocfg-pin-find
+                               fn-ocfg-pins-pin-conns-only)))))
+
+(defthm fn-ocl-open-pins-current-physical-configuration
+  (implies (and (fn-ocl-relation oc)
+                (fn-own-find-conn
+                 (fn-own-next-id (fn-ocfg-owner oc))
+                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))
+           (equal (fn-ocfg-conn-config
+                   (cdr (fn-ocfg-open oc acfg))
+                   (fn-own-next-id (fn-ocfg-owner oc)))
+                  (fn-ocfg-config oc)))
+  :hints (("Goal"
+           :use ((:instance fn-ocl-pin-is-open
+                            (id (fn-own-next-id (fn-ocfg-owner oc)))
+                            (pins (fn-ocfg-pins oc))
+                            (conns (fn-own-conns (fn-ocfg-owner oc))))
+                 (:instance fn-own-find-conn-id-below-next
+                            (id (fn-own-next-id (fn-ocfg-owner oc)))
+                            (conns (fn-own-conns (fn-ocfg-owner oc)))
+                            (n (fn-own-next-id (fn-ocfg-owner oc)))))
+           :in-theory (e/d (fn-ocl-relation fn-ocfg-open
+                            fn-ocfg-conn-config fn-ocfg-pin-add
+                            fn-ocfg-pin-find)
+                           (fn-cst-relation fn-ocl-conns-historyp
+                            fn-ocl-view-historyp fn-ocl-config-historyp)))))
+
+(defthm fn-ocl-replayed-view-has-successful-physical-prefix
+  (implies (fn-node-statep (fn-cst-replay-node configs events frontier))
+           (equal (fn-replay-result-kind (fn-cpr-replay configs events))
+                  :ok))
+  :hints (("Goal" :in-theory (e/d (fn-cst-replay-node)
+                                      (fn-cpr-replay fn-node-statep)))))
+
+(defthm fn-ocl-current-view-pins-a-historical-connection
+  (implies
+   (and (fn-ocl-relation oc)
+        (fn-own-conn-shapep conn)
+        (equal (fn-ocfg-conn-config oc (fn-own-conn-id conn))
+               (fn-ocfg-config oc))
+        (equal (fn-own-conn-version conn)
+               (fn-own-view-version (fn-own-view (fn-ocfg-owner oc))))
+        (equal (fn-own-conn-frontier conn)
+               (fn-own-view-frontier (fn-own-view (fn-ocfg-owner oc))))
+        (equal (fn-own-conn-archive conn)
+               (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))
+        (fn-own-conn-boundedp conn
+                              (fn-cnode-domain-of (fn-ocfg-config oc))))
+   (fn-ocl-conn-historyp oc conn))
+  :rule-classes nil
+  :hints (("Goal"
+   :use ((:instance fn-own-take-of-len
+                            (xs (fn-sn-config-history
+                                 (fn-own-store (fn-ocfg-owner oc)))))
+                 (:instance fn-ocl-replayed-view-has-successful-physical-prefix
+                            (configs (fn-sn-config-history
+                                      (fn-own-store (fn-ocfg-owner oc))))
+                            (events (fn-own-take
+                                     (fn-own-conn-version conn)
+                                     (fn-sf-records
+                                      (fn-sn-files
+                                       (fn-own-store (fn-ocfg-owner oc))))))
+                            (frontier (fn-own-conn-frontier conn))))
+           :in-theory (e/d (fn-ocl-relation fn-ocl-conn-historyp
+                            fn-ocl-view-historyp fn-ocl-view-configp)
+                           (fn-cst-replay-node fn-cpr-replay
+                            fn-ocl-conns-historyp fn-own-take)))))
 
 (deftheory fn-ocl-vocabulary
   '(fn-ocl-owner-with-store fn-ocl-store-config fn-ocl-complete fn-ocl-conn-historyp
     fn-ocl-conns-historyp fn-ocl-view-historyp fn-ocl-config-historyp
-    fn-ocl-relation))
+    fn-ocl-view-configp fn-ocl-relation))
 (in-theory (disable fn-ocl-vocabulary))

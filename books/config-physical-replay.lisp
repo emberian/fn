@@ -131,6 +131,49 @@
                             (config-sequence 0) (event-sequence 0)))
            :in-theory (disable fn-cpr-loop-ok-is-configured))))
 
+(defthm fn-cpr-apply-event-keeps-configuration
+  (implies (consp (fn-cpr-apply-event cn event))
+           (equal (fn-cnode-config (fn-cpr-apply-event cn event))
+                  (fn-cnode-config cn)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-cpr-apply-event)
+                (fn-replay-apply-record fn-cpr-event-servedp
+                 fn-cnode-statep fn-store-event-p)))))
+
+(defthm fn-cpr-loop-success-counts-configurations
+  (implies
+   (and (natp config-sequence)
+        (equal (fn-cfg-generation (fn-cnode-config cn)) config-sequence)
+        (equal (fn-replay-result-kind
+                (fn-cpr-loop cn configs events config-sequence event-sequence))
+               :ok))
+   (equal (fn-cfg-generation
+           (fn-cnode-config
+            (fn-replay-result-node
+             (fn-cpr-loop cn configs events config-sequence event-sequence))))
+          (+ config-sequence (len configs))))
+  :hints (("Goal"
+           :induct (fn-cpr-loop cn configs events config-sequence event-sequence)
+           :in-theory (e/d (fn-cpr-loop
+                            fn-cnode-apply-config-bumps-the-generation)
+                           (fn-cnode-statep fn-cnode-apply-config
+                            fn-cpr-apply-event fn-cpr-event-servedp
+                            fn-replay-apply-record
+                            fn-cnode-record-acceptablep fn-store-event-p
+                            fn-cfg-recordp)))))
+
+(defthm fn-cpr-replay-success-counts-configurations
+  (implies (equal (fn-replay-result-kind (fn-cpr-replay configs events)) :ok)
+           (equal (fn-cfg-generation
+                   (fn-cnode-config
+                    (fn-replay-result-node (fn-cpr-replay configs events))))
+                  (len configs)))
+  :hints (("Goal"
+           :use ((:instance fn-cpr-loop-success-counts-configurations
+                            (cn (fn-cnode-initial (fn-cfg-initial)))
+                            (config-sequence 0) (event-sequence 0)))
+           :in-theory (disable fn-cpr-loop-success-counts-configurations))))
+
 (verify-guards fn-cpr-loop
   :hints (("Goal" :in-theory (e/d (fn-cnode-statep)
                                   (fn-cpr-config-firstp fn-cpr-apply-event
