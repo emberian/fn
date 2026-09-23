@@ -21,11 +21,10 @@
 ; fn-node-statep enters only through fn-node-prepare's own refusal of a
 ; non-state (fn-node-prepare-preserves-state, books/node-invariants.lisp).
 (defthm fn-peer-transfer-is-the-post-path
-  (implies (and (natp (fn-record-stamp-of-observation clock))
-                (equal (fn-peer-decision-kind
+  (implies (equal (fn-peer-decision-kind
                    (fn-peer-decide-transfer node cfg peer msgid octets clock
                                             id subject))
-                  :want))
+                  :want)
            (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject))
                   (let ((a (fn-peer-injection-arguments node cfg peer msgid octets generation id subject clock)))
                     (fn-node-prepare node (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a)
