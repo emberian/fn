@@ -460,3 +460,37 @@
  (assert-event
   (bsk0-trace-equalp (bsk0-occupied-stage) (bsk6-prepared)
                      ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
+
+; The physical transaction-directory delta at the same attempt cut is one
+; issued link to the newly allocated inode.  The three stopped traces above
+; also separate this stronger, physical conclusion's three premises.
+(defun bsk0-issued-link-equalp (bs ks stage name frame)
+  (equal (fn-bs-ops-for-dir
+          (fn-bs-pending
+           (car (nth 10 (fn-bs-run bs ks
+                                        (fn-bs-record-program stage name frame)
+                                        nil *bsk5-groups* *bsk5-capacity*))))
+          :transactions)
+         (list (list :set-entry :transactions name (fn-bs-next-ino bs)))))
+(assert-event
+ (and (bsk0-issued-link-equalp (bsk6-start) (bsk6-prepared)
+                                     ".stage-k5-2" (fn-bs-txn-name 1)
+                                     (bsk5-frame-2))
+      (bsk0-issued-link-equalp (bsk6-start) (bsk6-retention-prepared)
+                                     ".stage-k6-retention" (fn-bs-txn-name 1)
+                                     (bsk6-retention-frame))))
+(must-fail
+ (assert-event
+  (bsk0-issued-link-equalp (bsk6-occupied-final-start)
+                            (bsk6-prepared) ".stage-k5-2"
+                            (fn-bs-txn-name 1) (bsk5-frame-2))))
+(must-fail
+ (assert-event
+  (bsk0-issued-link-equalp (bsk6-start) (bsk6-prepared)
+                            ".stage-k5-2" (fn-bs-txn-name 0)
+                            (bsk5-frame-2))))
+(must-fail
+ (assert-event
+  (bsk0-issued-link-equalp (bsk0-occupied-stage) (bsk6-prepared)
+                            ".stage-k5-2" (fn-bs-txn-name 1)
+                            (bsk5-frame-2))))

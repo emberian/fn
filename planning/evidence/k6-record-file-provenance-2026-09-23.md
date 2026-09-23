@@ -159,3 +159,16 @@ especially pending-link shape, framed candidate in the fenced target, and
 authority inode provenance under an arbitrary retained prefix. The served
 Store-node caller's preparation-to-`fn-bs-record-inputp` bridge remains
 separate. Thus the earlier conditional scanner theorem is still conditional.
+
+A second certified K0 slice,
+`fn-bs-k0-attempted-cut-has-one-issued-transaction-link`, derives the
+entire pair-10 pending transaction-directory list as the single
+`(:set-entry :transactions NAME NEXT-INO)` operation. This is a physical
+prefix fact over the actual `fn-bs-run`, not a scanner premise. It uses the
+input relation's absence of prior transaction operations, the staged file's
+fresh fenced inode, and the successful link; article and retention fixtures
+and all three premise counterexamples are in the same test book. Selected
+two-root hbox certification passed under `run-20260923T211220Z-bdef`,
+original manifest
+`planning/evidence/manifests/certify-20260923T211222Z-158686.json`.
+Full pair-10 relation preservation remains open as stated above.

@@ -1551,3 +1551,35 @@
                             fn-bs-store-relation fn-bs-lookup
                             fn-bs-k6-lookup-is-entry-after
                             fn-sf-record-link-result)))))
+
+; The physical half of the same cut has exactly one transaction-directory
+; operation.  This is an issued immutable link, not an assumed scanner row.
+; Earlier pending transaction operations are ruled out by the input relation;
+; staging create/write/fence cannot add one, and the successful link adds
+; precisely the fresh inode at the typed candidate's next name.
+(defthm fn-bs-k0-attempted-cut-has-one-issued-transaction-link
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-record-inputp ks stage name frame)
+                (not (fn-bs-lookup bs :staging stage)))
+           (equal
+            (fn-bs-ops-for-dir
+             (fn-bs-pending
+              (car (nth 10 (fn-bs-run bs ks
+                                           (fn-bs-record-program stage name frame)
+                                           nil groups capacity))))
+             :transactions)
+            (list (list :set-entry :transactions name (fn-bs-next-ino bs)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-k6-related-input-file-cut-has-no-transaction-pending)
+                 (:instance fn-bs-k6-related-input-file-cut-final-name-absent)
+                 (:instance fn-bs-k6-file-cut-source-is-fenced-frame)
+                 (:instance fn-bs-k6-state-next-ino-is-inop)
+                 (:instance fn-bs-k6-actual-link-cut-is-file-cut-link)
+                 (:instance fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state)
+                 (:instance fn-bs-store-relation-unfolds))
+           :in-theory (e/d (fn-bs-link fn-bs-ops-for-dir-of-append
+                            fn-bs-ops-for-dir fn-bs-record-inputp)
+                           (fn-bs-run fn-bs-record-program fn-bs-store-relation
+                            fn-bs-statep fn-bs-lookup
+                            fn-bs-k6-lookup-is-entry-after)))))
