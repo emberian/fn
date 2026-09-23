@@ -178,7 +178,7 @@ the terms those five books' `assert-event`s pin, no more.
 | `books/store-node-invariants` | 410.5 s | 410.7 s |
 | `books/feed-connection-invariants` | 112.4 s | 89.8 s |
 | (`books/store-node`) | 403.2 s | 408.6 s |
-| (`books/store-node-resolution`) | 1748.0 s (`dev`, manifest `certify-20260922T221439Z-474314`, another lane's run) | 886.5 s |
+| (`books/store-node-resolution`) | 1748.0 s (`dev`, another lane's persvati run at jobs 4 finishing 22:14Z; its manifest is filed on that lane's branch, not here) | 886.5 s |
 
 Load (`uptime` on persvati): the before run ran 22:34 to 22:50 UTC with
 load 5.80, 6.26, 4.70 at its start and 6.44, 8.00, 8.33 five minutes after its
