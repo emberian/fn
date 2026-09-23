@@ -1669,7 +1669,9 @@
         "books/bp-handoff-status.lisp",
         "tests/acl2/bp-handoff-status-tests.lisp",
         "planning/evidence/bp-effective-handoff-2026-09-23.md",
-        "planning/evidence/manifests/certify-20260923T210917Z-151607.json"
+        "planning/evidence/manifests/certify-20260923T210917Z-151607.json",
+        "planning/evidence/bp-fragment-dispatch-safety-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T212044Z-180470.json"
       ],
       "pending_subject": "The native host directly calls fn-bpn-step. The maintained lifecycle invariant and durable send/queue authorization now have source-pinned certified keystones; physical publication observations, full application/Store trace composition and all reachable crash cuts remain open.",
       "progress_note": "The actual fn-bpn-step preserves fn-bpn-lifecycle-invariantp under that input invariant and fn-bpn-machine-eventp, and under the lifecycle invariant its send and queue-accept effects require the exact durable authorization or an exact retained duplicate. The hbox source-pinned closure and reachable authorization counterexamples are archived in bp-lifecycle-assurance-w18-2026-09-21.md; the duplicate persvati dependency timeout remains negative evidence. These logical results assume the reported persistence outcomes and do not establish physical durability or a current combined native image. Native lifecycle append consumes the shared immutable publisher; authority-barrier failure remains uncertain.",

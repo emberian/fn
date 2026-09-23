@@ -59,3 +59,33 @@
   (fn-bpah-receipt-trustedp
    (update-nth 6 "dtn://other/" *bpah-receipt-view*)
    "dtn://receiver/")))
+
+; A fragment whose own payload is a well-formed request is still only a
+; fragment carrier.  The host-called pending selector must never dispatch it.
+(include-book "../../books/bp-fragment")
+(defconst *bpah-partial-primary*
+  (fn-bpf-fragment-block (fn-bpb-bundle-primary *bpah-bundle*)
+                         0 (+ 1 (len *bpah-adu*))))
+(defconst *bpah-partial-bundle*
+  (fn-bpb-make-bundle *bpah-partial-primary*
+                      (fn-bpb-bundle-blocks *bpah-bundle*)
+                      (fn-bpb-bundle-payload *bpah-bundle*)))
+(defconst *bpah-partial-held*
+  (fn-bpnf-held (fn-bpnf-ingress-principal *bpah-ingress*)
+                 (fn-bpb-bundle-id *bpah-partial-bundle*) 0 *bpah-ingress*
+                 nil nil *bpah-partial-bundle*
+                 (fn-bpb-encode *bpah-partial-bundle*)
+                 nil nil nil '(:dispatch-pending) nil nil 0))
+(defconst *bpah-partial-state*
+  (fn-bpnf-state (fn-bpnf-base *bpah-state*)
+                 (list *bpah-partial-held*) nil nil nil nil nil 1 1))
+(assert-event (fn-bpb-bundlep *bpah-partial-bundle*))
+(assert-event (fn-bpnf-heldp *bpah-partial-held*))
+(assert-event (equal (fn-bpah-held-class *bpah-partial-held*) :request))
+(assert-event (fn-bpp-fragmentp (fn-bpp-flags *bpah-partial-primary*)))
+(assert-event (null (fn-bpah-pending-view *bpah-partial-state* *bpah-local*)))
+(must-fail
+ (assert-event (equal (fn-bpah-view-class
+                       (fn-bpah-pending-view *bpah-partial-state*
+                                              *bpah-local*))
+                      :request)))
