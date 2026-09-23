@@ -58,3 +58,14 @@ remote peer stores one copy. The protected two-node kill/restart gate is
 being measured separately; it must count recipient Store articles apart
 from outbound transport attempts and report accepted, refused and uncertain
 outcomes distinctly.
+
+The next developer image also has `FN_NATIVE_FEED_TEST_STOP_AFTER_SENT=1`.
+It is registered in the common developer selector gate, so a production
+image refuses to start with it. On an outbound `:send`, the feed worker
+stops its own thread after `fnn-feed-reply-step` has flushed the FNFD batch
+and before `fnn-feed-send` writes the article to the socket. The test can
+observe the stopped process and kill it to exercise the unresolved `:sent`
+cut. Eight targeted source/gate tests passed locally. The raw Lisp selector
+script did not run to completion on this macOS SBCL: its existing
+`FNN-OS-ERROR` handler type was undefined in the script's stubs. No native
+image or protected two-node runtime result is claimed for this new hook.
