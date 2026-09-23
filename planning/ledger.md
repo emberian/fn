@@ -19,7 +19,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 300 |
 | Functions left at the default with an explicit guard | 2770 |
 | Functions left at the default with no guard | 683 |
-| `assert-event` checks | 8103 |
+| `assert-event` checks | 8104 |
 | `must-fail` checks | 316 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 69 |
@@ -377,7 +377,7 @@ that `make certify` requests.
 | `tests/acl2/bp-native-app-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-native-app-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-node-foundation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 7 | 0 |
-| `tests/acl2/bp-node-fragment-family-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 26 | 0 | 0 |
+| `tests/acl2/bp-node-fragment-family-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 27 | 0 | 0 |
 | `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-node-machine-authorization-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 22 | 4 | 0 |
 | `tests/acl2/bp-node-machine-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 47 | 4 | 0 |
