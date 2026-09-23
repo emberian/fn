@@ -53,3 +53,16 @@ The trust boundary includes Linux `renameat2` no-replace semantics, fsync
 ordering, and the existing Store publisher's OS assumptions; ACL2 does not
 prove a syscall or persistence hardware.  The source-only event-phase facts
 do not by themselves prove byte-copy correspondence or every crash cut.
+
+The acknowledged-progress selected-pack witness was added after that run.
+Its register and ack events retain their exact bytes in the reclaimed prefix;
+reopen before rollover recovers ack position 2, and reopen after rollover
+recovers the new incarnation with no active registrations while the prior
+events remain in the exact history. Scoped rerun
+`run-20260923T201349Z-6498`, archived manifest
+`planning/evidence/manifests/certify-20260923T201352Z-3815077.json`,
+passed: 66 dependencies kept from four cache origins, the unchanged source
+book installed, and the changed test root certified in 2.374 seconds.
+The test source SHA-256 is
+`dc4833c45a2273e7be11b0533dd700b4c407ec3505db6272a092a18f8f8ca713`.
+This ACL2 witness does not replace the pending saved-image native test.
