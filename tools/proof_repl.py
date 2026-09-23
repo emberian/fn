@@ -17,9 +17,9 @@ socket so that an agent (or a person) can talk to it from any shell.
     python3 tools/proof_repl.py status sni
     python3 tools/proof_repl.py stop sni
 
-`start` installs every certified pair in the book's include closure from the
-local cache (`tools/certs.py install`; a dependency with no cached pair is
-named and the session then stops at its `include-book`), starts ACL2 through
+`start` acquires a complete, ACL2-compatible certificate set for the book's
+local include closure from the cache. An incompatible or missing dependency
+refuses startup before a session is created. It then starts ACL2 through
 `tools/acl2` (so the machine-wide slot pool holds), sets the connected book
 directory to `books/`, and sends the book's top-level forms in order up to
 the named event, stopping at the first form ACL2 refuses.  `send` delivers
@@ -41,6 +41,7 @@ import os
 from pathlib import Path
 import queue
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -50,6 +51,9 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import theory_check  # noqa: E402
+import acl2_slots  # noqa: E402
+import acl2_toolchain  # noqa: E402
+import certs  # noqa: E402
 
 SESSIONS = ROOT / "build" / "proof-repl"
 SENTINEL = "FN-REPL-DONE"
@@ -318,17 +322,37 @@ def ask(name: str, request: dict, timeout: float = 3600) -> dict:
     return json.loads(read_all(client))
 
 
-def install_closure(book: str) -> str:
-    import certs  # noqa: E402  the cache tool beside this one
+def install_closure(book: str) -> tuple[bool, str]:
+    """Acquire all dependencies under the same ACL2 used by the REPL child."""
     try:
         names = [name for name in certs.closure(ROOT, book) if name != book]
-    except Exception as error:  # a scratch book outside books/: nothing to install
-        return f"closure not read ({error}); installing nothing"
+    except (OSError, certs.UnreadableBook, ValueError) as error:
+        return False, f"proof-repl: cannot read {book}'s closure: {error}"
     if not names:
-        return "no dependencies to install"
-    result = subprocess.run([sys.executable, str(ROOT / "tools" / "certs.py"),
-                             "install", *names], capture_output=True, text=True, cwd=ROOT)
-    return (result.stdout + result.stderr).strip()
+        return True, "no dependencies to install"
+    configured = os.environ.get("FN_ACL2", "acl2")
+    found = (configured if "/" in configured else shutil.which(configured))
+    if not found:
+        return False, f"proof-repl: no ACL2 executable at {configured!r}"
+    acl2 = Path(found).expanduser().resolve()
+    fingerprint = acl2_toolchain.fingerprint(acl2)
+    if not fingerprint.qualified or fingerprint.identity is None:
+        return False, ("proof-repl: unqualified ACL2 launcher/core/runtime: "
+                       + fingerprint.reason)
+    try:
+        # The alist probe starts ACL2 directly. Hold the same machine-wide
+        # slot that the subsequent interactive wrapper will take.
+        with acl2_slots.slot(f"proof-repl cache {book}"):
+            report = certs.install_artifact_set(
+                ROOT, certs.cache_directory(), [book],
+                toolchain_identity=fingerprint.identity,
+                dependencies_only=True, purge_on_miss=True, acl2=acl2)
+    except (OSError, ValueError, subprocess.TimeoutExpired) as error:
+        return False, f"proof-repl: certificate acquisition failed: {error}"
+    if report.artifact_set is None:
+        return False, ("proof-repl: no complete compatible cached dependency set; "
+                       + ", ".join(report.uncached))
+    return True, "\n".join(report.lines())
 
 
 def start(args) -> int:
@@ -336,7 +360,10 @@ def start(args) -> int:
     if (directory / "sock").exists():
         print(f"proof-repl: session {args.name!r} is already live; stop it first")
         return 2
-    print(install_closure(args.book))
+    acquired, detail = install_closure(args.book)
+    print(detail)
+    if not acquired:
+        return 1
     directory.mkdir(parents=True, exist_ok=True)
     log = open(directory / "server.log", "a", encoding="utf-8")
     command = [sys.executable, __file__, "serve", args.name, args.book,
