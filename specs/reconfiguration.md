@@ -1056,7 +1056,20 @@ differences are deliberate:
   history through `fn-cnode-config-replay` and the article history into a
   node whose domain and capacity come from the configured node; codes are
   positions in the domain, stable across retirement and revival.
-- **The two-kind stream, decided (lane `w9/reconfig`).** The layout stays
+- **T8b physical-format correction (2026-09-23).** The preceding open path
+  remains the native caller. Its two files number records independently:
+  configuration sequence is the preceding generation, Store sequence is the
+  journal position, and a configuration record carries the next unconsumed
+  Store transaction ID. The unified-sequence fold described below was a model
+  of a proposed encoding, not the format these writers emitted. The new
+  recovery-only `fn-cpr-replay` in `books/config-physical-replay.lisp` orders
+  physical records by transaction ID, takes configuration before a tied Store
+  event and checks both independent sequences. It is proved to return a
+  configured node on success and tested against a decrease after release, an
+  invalid decrease before release, a burned transaction-ID gap and an article
+  after an increase. Native recovery does not call it yet: the Store and owner
+  replay relations still assume one static final domain and capacity.
+- **The two-kind stream, earlier proposed (lane `w9/reconfig`).** The layout stays
   two directories -- article records in the transaction journal, configuration
   records under `config/` -- and the STREAM is one: every record of either
   kind carries its position in the unified stream in its own sequence field,

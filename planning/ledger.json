@@ -363,6 +363,8 @@
     "tests/acl2/nntp-auth-teeth-tests",
     "books/config-stream",
     "tests/acl2/config-stream-tests",
+    "books/config-physical-replay",
+    "tests/acl2/config-physical-replay-tests",
     "books/owner-config",
     "books/ideal",
     "books/nntp-index",
@@ -454,25 +456,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 455,
-    "books_in_root_closure": 454,
-    "roots": 450,
-    "theorems": 7367,
-    "functions": 5628,
-    "assert_events": 8150,
+    "books": 457,
+    "books_in_root_closure": 456,
+    "roots": 452,
+    "theorems": 7370,
+    "functions": 5633,
+    "assert_events": 8162,
     "must_fails": 320,
     "encapsulates": 26,
     "guards": {
-      "verified": 1850,
+      "verified": 1853,
       "declared-off": 302,
-      "default-guarded": 2777,
+      "default-guarded": 2779,
       "default-unguarded": 699
     },
     "suspect_theorems": 69,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 24,
-    "include_hygiene_warnings": 302,
+    "include_hygiene_warnings": 303,
     "host_names_warnings": 664,
     "hand_written_record_warnings": 18
   },
@@ -3154,6 +3156,31 @@
       "encapsulates": 0,
       "includes": [
         "config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-physical-replay.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 5,
+      "guards": {
+        "verified": 3,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-stream"
       ],
       "system_includes": [],
       "suspects": [],
@@ -9653,6 +9680,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/config-physical-replay-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 12,
+      "must_fails": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/config-physical-replay"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/config-stream-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -15669,6 +15722,13 @@
       {
         "book": "tests/acl2/codec-seam-tests.lisp",
         "line": 26,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-physical-replay-tests.lisp",
+        "line": 7,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
