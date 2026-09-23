@@ -919,9 +919,10 @@
       "evidence": [
         "tests/acl2/tcpcl-delivery-tests.lisp",
         "tests/test_bp_receive_integrity_native.py",
-        "planning/evidence/tcpcl-late-disposition-2026-09-23.md"
+        "planning/evidence/tcpcl-late-disposition-2026-09-23.md",
+        "books/tcpcl-host-drive.lisp"
       ],
-      "execution_scope": "ACL2 planner and no-final-ACK proof are certified. The native partial-refusal regression is prepared but awaits a source-matched combined image and the A2 FNBS callback join; ambiguity and durable duplicate require that joined image."
+      "execution_scope": "ACL2 host-drive event ordering, two coalesced completions, held-prefix projection, and no-final-ACK planner proof are certified. The native partial-refusal regression is prepared but awaits a source-matched combined image and the A2 FNBS callback join; ambiguity and durable duplicate require that joined image."
     }
   ]
 }

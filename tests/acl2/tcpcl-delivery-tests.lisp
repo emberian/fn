@@ -91,6 +91,60 @@
         (fn-tcl-delivery-plan *t-delivery-mixed-held* 1
                               '(:refused :capacity)))
        1)))
+
+; Two complete transfers in one socket read exercise the host's reset after
+; the first callback.  Both held prefixes come from actual host-drive output.
+(defconst *t-delivery-two-wire*
+  (append (fn-tcl-encode
+           (fn-tcl-make-xfer-segment 3 0 nil '(11 12)))
+          (fn-tcl-encode
+           (fn-tcl-make-xfer-segment 3 1 nil '(21 22)))))
+(defconst *t-delivery-two-events*
+  (cadr (fn-tcl-host-drive *t-b* *t-delivery-two-wire* 0)))
+(assert-event (fn-tcl-delivery-eventsp *t-delivery-two-events*))
+(assert-event
+ (equal (cadr (fn-tcl-first-bundle-event *t-delivery-two-events*)) 0))
+(assert-event
+ (fn-tcl-held-final-ackp
+  (fn-tcl-held-before-first-bundle *t-delivery-two-events*) 0))
+(assert-event
+ (equal (cadr (fn-tcl-first-bundle-event
+               (fn-tcl-events-after-first-bundle *t-delivery-two-events*))) 1))
+(assert-event
+ (fn-tcl-held-final-ackp
+  (fn-tcl-held-before-first-bundle
+   (fn-tcl-events-after-first-bundle *t-delivery-two-events*)) 1))
+
+; Dropping either premise of the host boundary theorem is materially wrong.
+(must-fail
+ (defthm fn-tcl-events-without-first-bundle-held-final
+   (implies (fn-tcl-delivery-eventsp events)
+            (fn-tcl-held-final-ackp
+             (fn-tcl-held-before-first-bundle events)
+             (cadr (fn-tcl-first-bundle-event events))))))
+(must-fail
+ (defthm fn-tcl-arbitrary-events-have-held-final
+   (implies (fn-tcl-first-bundle-event events)
+            (fn-tcl-held-final-ackp
+             (fn-tcl-held-before-first-bundle events)
+             (cadr (fn-tcl-first-bundle-event events))))))
+(assert-event
+ (not (fn-tcl-held-final-ackp
+       (fn-tcl-held-before-first-bundle '((:bundle-received 0 (1)))) 0)))
+
+; An accepted path must be NIL (exact duplicate) or a native path string.
+; If its type premise is dropped, an invalid callback is a fault, not release.
+(must-fail
+ (defthm fn-tcl-accepted-without-path-type-releases-held
+   (implies (fn-tcl-held-final-ackp messages xfer-id)
+            (equal (fn-tcl-delivery-plan-messages
+                    (fn-tcl-delivery-plan messages xfer-id
+                                          (list :accepted path)))
+                   messages))))
+(assert-event
+ (equal (fn-tcl-delivery-plan-status
+         (fn-tcl-delivery-plan *t-delivery-held* 0 '(:accepted 99)))
+        :fault))
 (must-fail
  (assert-event
   (equal (fn-tcl-delivery-plan-status

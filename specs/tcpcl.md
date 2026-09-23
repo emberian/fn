@@ -17,6 +17,16 @@ to Not Acceptable. This local mapping does not turn a transport ACK into an
 application receipt. The foundation's actual FNBS receive callback and the
 combined native image are separate integration gates.
 
+The certifiable `fn-tcl-host-drive` wrapper is the exact function the native
+read loop calls. `fn-tcl-drive-delivery-events` proves every driver event list
+has each final END ACK immediately followed by its matching
+`:bundle-received`, including coalesced frames and error/control output.
+`fn-tcl-delivery-events-imply-held-final` proves the native ordered `:send`
+collection up to a delivery event satisfies the planner gate; the property
+holds again after each completed bundle in the same read. The host wrapper
+bridge states this for the actual caller. This source-level correspondence
+does not prove a physical FNBS barrier or socket delivery.
+
 Status: all five roots certify on the w6/tcpcl-tests tree (dev 1c5b950):
 `books/tcpcl-records`, `books/tcpcl-octets` (146 s), `books/tcpcl-session`
 (31 s), `books/tcpcl-invariants` (840 s) in

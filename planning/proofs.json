@@ -2014,7 +2014,7 @@
     {
       "id": "PRF-060",
       "title": "TCPCL final acknowledgement follows the durable delivery disposition",
-      "statement": "For the host-called fn-tcl-delivery-plan, a held matching END XFER_ACK from fn-tcl-complete is released only for (:accepted path-or-nil). A definitive (:refused reason) preserves any prior partial ACKs, replaces the END ACK with RFC 9174 XFER_REFUSE, and emits no final ACK; (:uncertain reason) emits no held ACK. The conditional theorem requires fn-tcl-held-final-ackp; it does not prove every native callback result or physical FNBS barrier.",
+      "statement": "The exact native fn-tcl-host-drive caller emits final END ACKs only immediately before matching :bundle-received events; at each such event, the ordered held messages satisfy fn-tcl-held-final-ackp. The host-called fn-tcl-delivery-plan then releases that ACK only for (:accepted path-or-nil), replaces it with XFER_REFUSE for definitive (:refused reason), and withholds it for (:uncertain reason). The source-level proof does not establish the physical FNBS barrier, raw Lisp execution, or socket delivery.",
       "milestone": "M4",
       "requirements": [
         "REP-006"
@@ -2031,12 +2031,16 @@
         "host/native/tcpcl.lisp",
         "tests/test_bp_receive_integrity_native.py",
         "planning/evidence/tcpcl-late-disposition-2026-09-23.md",
-        "planning/evidence/manifests/certify-20260923T185812Z-4118399.json"
+        "planning/evidence/manifests/certify-20260923T185812Z-4118399.json",
+        "books/tcpcl-host-drive.lisp",
+        "planning/evidence/manifests/certify-20260923T191855Z-4158317.json"
       ],
-      "progress_note": "ACL2 8.7 certified the exact host-called planner and conditional refusal/uncertainty keystones with a reachable coalesced batch containing a partial ACK and refusal for transfer 0 followed by a completed transfer 1, plus a missing-held negative tooth. Native host source executes its selected message list; the updated live refusal test awaits a combined image with the A2 receive callback. The proof does not establish socket delivery, all callback dispositions, or publisher durability.",
+      "progress_note": "ACL2 8.7 certified the exact host-drive event order, ordered held-list projection and conditional delivery plan. Reachable witnesses cover coalesced prior-transfer partial ACK/refusal, two completed bundles in one read, and missing-held/path-type counterexamples. Native source executes the selected message list; combined-image A2 callback runtime remains pending.",
       "events": [
         "fn-tcl-late-refusal-gets-no-final-ack",
-        "fn-tcl-uncertain-delivery-withholds-final-ack"
+        "fn-tcl-uncertain-delivery-withholds-final-ack",
+        "fn-tcl-drive-delivery-events",
+        "fn-tcl-delivery-events-imply-held-final"
       ]
     }
   ]

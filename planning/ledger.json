@@ -273,6 +273,7 @@
     "books/tcpcl-octets",
     "books/tcpcl-session",
     "books/tcpcl-invariants",
+    "books/tcpcl-host-drive",
     "books/tcpcl-delivery",
     "books/tcpcl-delivery-invariants",
     "tests/acl2/tcpcl-tests",
@@ -487,25 +488,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 488,
-    "books_in_root_closure": 487,
-    "roots": 483,
-    "theorems": 7510,
-    "functions": 5772,
-    "assert_events": 8398,
-    "must_fails": 339,
+    "books": 489,
+    "books_in_root_closure": 488,
+    "roots": 484,
+    "theorems": 7519,
+    "functions": 5778,
+    "assert_events": 8410,
+    "must_fails": 342,
     "encapsulates": 26,
     "guards": {
       "verified": 1876,
-      "declared-off": 307,
+      "declared-off": 311,
       "default-guarded": 2839,
-      "default-unguarded": 750
+      "default-unguarded": 752
     },
     "suspect_theorems": 70,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 35,
-    "teeth_form_warnings": 24,
-    "include_hygiene_warnings": 337,
+    "teeth_form_warnings": 26,
+    "include_hygiene_warnings": 338,
     "host_names_warnings": 691,
     "hand_written_record_warnings": 18
   },
@@ -7605,11 +7606,11 @@
       "book": "books/tcpcl-delivery-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
-      "functions": 0,
+      "theorems": 15,
+      "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 4,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -7620,7 +7621,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "tcpcl-delivery"
+        "tcpcl-delivery",
+        "tcpcl-host-drive"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7637,6 +7639,31 @@
         "declared-off": 0,
         "default-guarded": 9,
         "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "tcpcl-session"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/tcpcl-host-drive.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -9188,7 +9215,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 13,
+      "assert_events": 18,
       "must_fails": 1,
       "defconsts": 1,
       "defmacros": 0,
@@ -13254,9 +13281,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
-      "must_fails": 1,
-      "defconsts": 6,
+      "assert_events": 22,
+      "must_fails": 4,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -15129,6 +15156,18 @@
         "book": "tests/acl2/peer-inbound-tests.lisp",
         "line": 723,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-tcl-events-without-first-bundle-held-final",
+        "book": "tests/acl2/tcpcl-delivery-tests.lisp",
+        "line": 119,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "fn-tcl-arbitrary-events-have-held-final",
+        "book": "tests/acl2/tcpcl-delivery-tests.lisp",
+        "line": 125,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       }
     ],
     "include_hygiene": [
@@ -15956,6 +15995,13 @@
         "line": 4,
         "include": "tcpcl-delivery",
         "included": "books/tcpcl-delivery.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/tcpcl-delivery-invariants.lisp",
+        "line": 5,
+        "include": "tcpcl-host-drive",
+        "included": "books/tcpcl-host-drive.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
