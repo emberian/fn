@@ -95,8 +95,11 @@ consumer database observations and the process-death cuts each implementation
 must execute. They are specified traces, not passing tests or a served API.
 
 Proposed cursor meaning is `(store-history/incarnation, consumer-id,
-query-definition/version, authorization-view/version, committed position)`.
-It is opaque on the wire and authenticates those fields; it is **not** a bare
+durable registration epoch, authenticated principal, query-definition/version,
+authorization-view/version, committed position)`.
+The first public-group profile uses bounded versioned cursor bytes with ACL2
+scope checks under the authenticated caller. Sealing cursor metadata is a
+separate future profile. The cursor is **not** a bare
 host, TLS certificate, Message-ID, timestamp, BP EID or per-group article
 number. A poll returns a bounded page and a cursor for the committed prefix it
 scanned, including holes and filtered entries, so a consumer can advance
@@ -104,10 +107,11 @@ through an empty page. The first query is a small ACL2-owned selection over
 configured groups and, if needed, principal/profile. The server reports
 `accepted`, `refused`, or `uncertain` distinctly for state-changing calls.
 
-The consumer owns a durable transaction: insert `(store identity, source
-identity, application operation ID, payload verdict)` into its inbox if
-absent, apply its local deterministic transition, and append any reply to its
-outbox **atomically**. It then acknowledges the page cursor to fn. The
+The consumer owns a durable transaction: retain a source-inclusive provenance
+inbox record, check a separate unique `(application ID, operation ID)` index
+for repeat or conflict, apply one local deterministic transition for a new
+operation, and append any reply to its outbox **atomically**. It then
+acknowledges the page cursor to fn. The
 acknowledgement means only that fn durably recorded that consumer's declared
 position, not that dregg work was correct, an external effect happened, or an
 fn retention obligation was released. A repeated ack is idempotent; one behind
@@ -116,8 +120,10 @@ queries its recorded position and may repeat the ack. Posting the outbox item
 uses a stable signed source and Message-ID; uncertain posting is settled by
 identity lookup before retry, as today's client already requires.
 
-This is at-least-once delivery. Exactly-once local application transitions
-require the consumer's own unique inbox key and atomic transaction. An API,
+This is at-least-once delivery while the required articles remain available.
+Exactly-once local application transitions require the consumer's unique
+operation index and atomic transaction; a source-inclusive inbox key alone
+cannot detect an altered-source repeat operation. An API,
 payment, shell command or other external effect needs its own idempotency or
 reconciliation; fn's ack cannot make it exactly once. The existing
 `fn_client.py` watermark is keyed by host/port and group, advances after
@@ -127,8 +133,8 @@ not this cursor or acknowledgement.
 | Cut in B's consume/reply trace | Durable state after restart | Required next action |
 | --- | --- | --- |
 | Poll returned R, before consumer transaction | Neither inbox nor outbox has R; fn ack stays old. | Poll R again. |
-| Inbox/outbox transaction uncertain | Consumer asks its own store whether R's unique inbox key and Q outbox entry committed. | Commit if absent; otherwise reuse exactly Q. No new operation ID. |
-| Consumer transaction committed, before fn ack | Inbox has R and outbox has Q; fn ack stays old. | Poll may repeat R; unique key prevents another transition; retry ack. |
+| Inbox/outbox transaction uncertain | Consumer asks its own store whether R's provenance inbox record, unique operation index and Q outbox entry committed. | Commit if absent; otherwise reuse exactly Q. No new operation ID. |
+| Consumer transaction committed, before fn ack | Inbox and operation index have R, outbox has Q; fn ack stays old. | Poll may repeat R; the operation index prevents another transition; retry ack. |
 | fn ack uncertain | Consumer transaction remains committed; fn position may be old or new. | Query ack position, then retry same monotone ack if needed. |
 | fn ack committed, before Q post | fn position advanced; outbox still holds Q. | Post Q from outbox independently. |
 | Q post uncertain | Q may or may not be accepted at B. | Look up Q's stable Message-ID/source; repost only after definitive absence. |
@@ -142,7 +148,10 @@ evaded by copying a hostname or TLS key. If group policy, authorization or
 filter changes make old articles newly visible, the old view cursor is
 explicitly invalidated and the consumer replays a bounded scan under the new
 view, deduplicating through its inbox. It may not simply continue from the
-largest article number. A denied article is not disclosed through the cursor.
+largest article number. The first public-group cursor may reveal a committed
+record position but never a denied article's source or identity. A delayed ack
+from an unregistered consumer ID is refused after that ID is registered again,
+because the durable registration epoch changed.
 
 Poll bounds cover scanned records, returned records, returned octets, token
 size and parse work independently. A server-side ack table, if used, has a
