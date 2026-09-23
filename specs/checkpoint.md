@@ -231,11 +231,15 @@ physical prefix names must not change issued dense Store positions.
 
 ### Cold writable clone activation
 
-A byte copy is not an activated Store.  The clone operation requires an
-offline, locked source; a destination that does not exist; and an explicit
-caller-supplied fresh incarnation ID.  It first builds a private sibling
-directory containing the exact source bytes and a durable `clone-pending`
-fence.  Publication of that directory may expose the destination name but
+A byte copy is not an activated Store.  The native `checkpoint clone SOURCE
+DESTINATION FRESH-INCARNATION-ID` operation requires an offline, locked source;
+a destination that does not exist; and an explicit caller-supplied fresh
+incarnation ID.  It first builds a private sibling directory containing the
+exact source bytes and a durable `clone-pending.fnce` fence.  The fence holds
+the canonical version-one `fnce` rollover event proposed by ACL2, not a
+second projection format.  Publication uses Linux `renameat2` with
+`RENAME_NOREPLACE`; another platform refuses this operation.  Publication of
+that directory may expose the destination name but
 must never make it serviceable while the fence exists.  Every normal writable
 or reader open at that destination refuses before Store initialization or
 recovery can serve it.  The clone executor alone reopens the destination under
@@ -258,8 +262,13 @@ incarnation or an existing nonempty destination is never overwritten.  The
 copied old cursor tokens are invalid after the new incarnation; registration
 state resets, while exact journal history, article and retention obligations,
 authorship verdicts, and keyring snapshots remain.  This paragraph is the
-activation contract; the current native image does not yet implement the
-clone executor or its pre-open fence.
+activation contract.  The source contains the executor and pre-open fence;
+native saved-image qualification and a served consumer cursor witness remain
+open.  `checkpoint clone-resume DESTINATION` is the only operator path that
+may reopen a fenced destination; it verifies the same durable event rather
+than proposing a second incarnation.  The developer-only
+`consumer-bootstrap-fixture` makes an E2 Store for integration tests and is
+not a production bootstrap interface.
 
 The filename codec reuses the byte store's proved natural-decimal renderer.
 `fn-cpp-generation-name-decode-of-render` is its called-codec round trip;

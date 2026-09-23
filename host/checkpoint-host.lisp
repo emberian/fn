@@ -17,6 +17,27 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cpa-rollover-proposal (f-get-global 'fn-store-sn state) fresh-id)))
 
+(defun fn-store-checkpoint-clone-fence-name ()
+  (declare (xargs :mode :program))
+  *fn-cpa-clone-fence-name*)
+
+(defun fn-store-checkpoint-clone-fence-read-bound ()
+  (declare (xargs :mode :program))
+  (fn-cpa-clone-fence-read-bound))
+
+(defun fn-store-checkpoint-clone-max-depth ()
+  (declare (xargs :mode :program))
+  (fn-cpa-clone-max-depth))
+
+(defun fn-store-checkpoint-clone-max-entries ()
+  (declare (xargs :mode :program))
+  (fn-cpa-clone-max-entries))
+
+(defun fn-store-checkpoint-clone-phase (marker-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cpa-clone-phase-of-octets
+          (f-get-global 'fn-store-sn state) marker-octets)))
+
 ; The protected prefix of a checkpoint generation captured from the decoded
 ; durable records at the durable allocator frontier.  Capture replays the
 ; records in ACL2 (fn-checkpoint-capture); Python never sees the node.

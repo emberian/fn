@@ -32,6 +32,7 @@
 (include-book "../books/owner-tls-prefix")
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
+(include-book "../books/checkpoint-auxiliary")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
 (include-book "../books/feed-connection-invariants")
@@ -420,6 +421,16 @@
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-unregister (fn-owner-core state) consumer)))
+
+(defun fn-owner-checkpoint-clone-phase (marker-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cpa-clone-phase-of-octets
+          (fn-owner-store state) marker-octets)))
+
+(defun fn-owner-checkpoint-bootstrap-proposal (history-id incarnation-id state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cpa-bootstrap-proposal
+          (fn-owner-store state) history-id incarnation-id)))
 
 (defun fn-owner-known-abort (state)
   (declare (xargs :stobjs state :mode :program))

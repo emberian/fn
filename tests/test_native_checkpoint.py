@@ -72,6 +72,61 @@ class NativeCheckpointTests(unittest.TestCase):
                         self.payload, "-", "-", "fn.letters")
         return store
 
+    @unittest.skipUnless(sys.platform.startswith("linux") and
+                         os.environ.get("FN_RUN_NATIVE_CLONE") == "1",
+                         "run only against a combined E2/checkpoint developer image")
+    def test_fenced_clone_rollover_after_selected_pack_reclaim(self):
+        source = self.initialized("clone-source")
+        self.native("consumer-bootstrap-fixture", source,
+                    "history-id", "incarnation-old")
+        self.native("checkpoint", "pack", source, "select")
+        self.native("checkpoint", "pack-reclaim", source)
+
+        # Reusing the copied incarnation and an occupied destination are
+        # refused before any target is published.
+        old_id_target = self.base / "same-id"
+        self.native("checkpoint", "clone", source, old_id_target,
+                    "incarnation-old", expected=run_store.EXIT_REFUSED)
+        self.assertFalse(old_id_target.exists())
+        occupied = self.base / "occupied"
+        occupied.mkdir()
+        (occupied / "keep").write_bytes(b"preserve")
+        self.native("checkpoint", "clone", source, occupied,
+                    "incarnation-new", expected=run_store.EXIT_REFUSED)
+        self.assertEqual((occupied / "keep").read_bytes(), b"preserve")
+
+        target = self.base / "clone-target"
+        self.native("checkpoint", "clone", source, target,
+                    "incarnation-new")
+        self.assertFalse((target / "clone-pending.fnce").exists())
+        self.assertEqual(
+            (source / "packs" / "generation-0.fncp").read_bytes(),
+            (target / "packs" / "generation-0.fncp").read_bytes())
+        self.assertIn("articles=1",
+                      self.native("store", target, "recover").stdout)
+        # Prefix reclamation changed physical names, never dense history.
+        packed = self.native("checkpoint", "pack", target)
+        self.assertIn("records=3", packed.stdout)
+        self.native("checkpoint", "clone", source, target,
+                    "incarnation-another", expected=run_store.EXIT_REFUSED)
+
+        for point in ("clone-published", "clone-rollover-durable"):
+            with self.subTest(point=point):
+                destination = self.base / point
+                self.stopped_then_killed(
+                    ("checkpoint", "clone", source, destination,
+                     "new-" + point), point)
+                self.assertTrue((destination / "clone-pending.fnce").is_file())
+                refused = self.native("store", destination, "recover",
+                                      expected=run_store.EXIT_REFUSED)
+                self.assertIn("fenced pending durable incarnation", refused.stderr)
+                self.native("checkpoint", "clone-resume", destination)
+                self.assertFalse((destination / "clone-pending.fnce").exists())
+                self.assertIn("articles=1",
+                              self.native("store", destination, "recover").stdout)
+                packed = self.native("checkpoint", "pack", destination)
+                self.assertIn("records=3", packed.stdout)
+
     def test_native_and_python_frames_cross_open_byte_identically(self):
         source = self.initialized("source")
         native_store = self.base / "native"
