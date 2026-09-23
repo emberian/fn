@@ -230,6 +230,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-machine \
 	books/bp-node-machine-codec \
 	books/bp-node-machine-invariants \
+	books/bp-node-machine-guards \
 	books/bp-node-machine-authorization \
 	tests/acl2/bp-node-machine-tests \
 	books/bp-node-foundation \
@@ -241,6 +242,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-codec-tests \
 	books/bp-fnbs-byte-publisher \
 	books/bp-fnbs-byte-invariants \
+	books/bp-fnbs-replay \
+	books/bp-fnbs-replay-invariants \
+	tests/acl2/bp-fnbs-replay-tests \
+	books/bp-fnbs-namespace \
+	tests/acl2/bp-fnbs-namespace-tests \
+	books/bp-fnbs-publication \
+	tests/acl2/bp-fnbs-publication-tests \
 	tests/acl2/bp-fnbs-byte-publisher-tests \
 	tests/acl2/bp-fnbs-byte-counterexamples \
 	books/bp-sequence-fidelity \

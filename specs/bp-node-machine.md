@@ -99,8 +99,19 @@ provenance. `session` is a pair of unsigned 64-bit counters, `xfer` and
 nil or bounded canonical text octets. This checks replayable provenance shape;
 the host must still establish that the principal was admitted by the current
 session configuration. The foundation delegates outbound events to
-`fn-bpn-step` and is not the native service caller yet. Its helper guards are
-verified, but the top-level step inherits open guards from `fn-bpn-step`.
+`fn-bpn-step` and is not the native service caller yet. The inherited
+`fn-bpn-step`, its bounded restart replay, `fn-bpnf-recover-fnbs-step`, and
+`fn-bpnf-step` have verified guards in `bp-node-machine-guards.lisp`.
+Recovery validates whole held rows on the cold path; ordinary steps do not.
+Reception issues an FNBS operation only when its epoch and operation ID fit
+the 64-bit frame field; the maximum operation ID is a terminal frontier and
+is refused so the incremented state frontier remains representable.
+The ACL2 mixed FNBS namespace plan partitions legacy and kind-5 final names
+before their respective byte decoders and rejects unknown names. A native
+caller of the foundation
+must carry the base-state invariant and validate delegated outbound events
+at the boundary; guard verification alone does not establish those facts for
+the current service adapter.
 If the FNBS kind-5 encoder refuses a proposed record as non-frameable, the
 native effect driver must return the matching `:persist-result` with
 `:refused`; it cannot issue a stored receive answer or leave a pending
@@ -616,25 +627,21 @@ re-anchoring. These three are the vocabulary of T6.
 
 ### 2.7 No whole-state revalidation on the served path
 
-`fn-bpn-step` evaluates `fn-bpn-machine-statep` on entry
-(`bp-node-machine.lisp:642`): `fn-bpb-bundlep` over every held bundle on
-every event (D7). `fn-bpn-step-fast` is the same dispatcher validating only
-the event's operands, and
-
-```lisp
-(defthm fn-bpn-step-fast-is-step
-  (implies (fn-bpn-lifecycle-invariantp st)
-           (equal (fn-bpn-step-fast st event) (fn-bpn-step st event))))
-```
-
-is the equation under which every theorem of §5 is about the function
-`fnn-bps-step` calls. The audit extends past `fn-bpn-step`:
-`fn-bpn-existing-sequence` (`bp-node-machine.lisp:284`) also evaluates
-`fn-bpn-machine-statep` (D8) and is replaced by the carrier lookup of §4.4;
-slice A lists every `fnn-core` call in `host/native/bp-service.lisp`,
-`host/bp-node-machine-host.lisp` and the new loop book whose subject runs a
-whole-state recognizer, and each gets a fast twin with its equation or is
-removed.
+`fn-bpn-step` retains its total logical malformed-state response but its
+verified `mbe` executable arm calls `fn-bpn-dispatch` directly. The guard is
+`fn-bpn-machine-statep` together with `fn-bpn-machine-eventp`; ACL2 guard
+verification proves agreement of the logical and executable arms under that
+guard. Both saved-image profiles include `bp-node-machine-guards`.
+`fnn-bps-open` checks the initial machine invariant once, and `fnn-bps-step`
+validates `fn-bpn-machine-eventp` before calling this exact `fn-bpn-step`.
+Only initialization and step answers write the service's state;
+`fn-bpn-step-preserves-machine-invariant` carries the state premise between
+calls. The native image containing this wiring has not yet been built or
+exercised in this packet. The audit extends past `fn-bpn-step`:
+`fn-bpn-existing-sequence` has a guard-verified `mbe` executable arm that
+omits the whole-state recognizer, and the ready-peers host projection uses
+the maintained state directly. §4.4's carrier lookup remains future work
+for stronger dispatch bounds.
 
 ## 3. Events, effects, records
 
@@ -695,9 +702,46 @@ an occupied damaged final name is a recovery fault. These are the first
 physical and codec parts of A2. `fn-bpnf-byte-crash-keeps-canonical-kind-five`
 proves exact recovery of one fenced canonical record in any admissible crash
 image that selects its final inode. The general `fn-bs-crash-imagep` to observed
-journal theorem, multi-record replay, restored epoch/frontier, and native
-publisher/recovery caller are still open. The present kind-5 subset has no
+journal theorem and native publisher/recovery caller are still open. The
+present kind-5 subset has no
 submission or receipt handoff; the broader row below remains the target.
+`fn-bpnf-actual-link-crash-is-absent-or-exact` further connects the real
+`fn-bs-link` pending entry to the absent-or-exact crash choices;
+`fn-bpnf-directory-barrier-quiet` fixes the final name after directory
+fsync. The relation across every native publisher call remains open.
+The kind-5 payload has exact length `76 + peer-CBOR + principal-blob + wire`;
+typed bounds give `76 + 2048 + 512 + 131072 = 133708`, below the
+134144-octet frame limit. The present non-`:bad` theorem also assumes the
+record's field-value predicate; removing that remaining hypothesis is open.
+`books/bp-fnbs-replay.lisp` is the bounded kind-5 byte-row scanner over
+canonical final names: it decodes exact frames, rejects damaged/duplicate or
+out-of-order rows and capacity overflow, and reconstructs the held list and
+last `(epoch . operation-id)` pair. `fn-bpnf-recover-event` constructs the
+recovery-only `fn-bpnf-step` event from those exact row bytes. The step
+atomically requires successful inherited base restart and ready FNBS replay,
+installs both projections, clears volatile issued work, and advances to a
+fresh epoch with operation ID zero. A fault leaves the uncertain state
+fenced. This does not yet establish the byte-store publisher's whole-history
+crash relation or a native caller. `fn-bpnf-recover-auto-event` selects the
+fresh epoch as one above both the current state epoch and the replayed last
+epoch; at the 64-bit terminal epoch, the step faults rather than wrapping.
+Process-death callbacks cannot survive to the new process remains a host
+assumption.
+`books/bp-fnbs-namespace.lisp` partitions one bounded physical FNBS
+directory into legacy lifecycle finals, kind-5 received finals, and hidden
+stages. The old contiguous namespace planner validates the legacy subset;
+the kind-5 byte replay validates the received subset. An unknown public name
+faults before either replay. `fn-bpnf-mixed-recovery-plan` composes the split
+with the legacy contiguous planner and returns both final-name partitions,
+hidden stages, and the old token frontier. Its mixed, kind-5-only, and
+legacy-gap tests certified in the coherent A2/guard batch.
+`books/bp-fnbs-publication.lisp` authorizes the immutable kind-5 publisher
+only from the exact pending `:store` issued echo and observed lock ownership
+and absent final name. It returns ACL2-derived final name, frame bytes and
+`fn-jpub-initial`; stale epoch/operation ID, changed held row, uncertain
+issued status, or missing lock/name precondition faults. `fn-bpnf-stored-
+frame-limit` supplies the bounded kind-5 physical read size. This join
+certified in the coherent A2/guard batch and still awaits a native caller.
 
 Every record is built by its constructor and read by selectors; no book and
 no theorem matches a record by list shape. `fn-bpn-rec-kind`,

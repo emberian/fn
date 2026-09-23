@@ -57,6 +57,22 @@
 (assert-event
  (equal (fn-bpnf-byte-slot (fn-bpnf-byte-test-link-present) 9 1)
         (list :record *bpnfc-anon-record*)))
+(assert-event
+ (let* ((fenced (fn-bpnf-byte-test-state :file-barrier))
+        (linked (fn-bpnf-byte-test-state :link))
+        (ino (fn-bs-lookup fenced :fnbs ".kind5-stage"))
+        (name (fn-bpnf-stored-record-name 9 1))
+        (frame (fn-bpnf-stored-record-frame *bpnfc-anon-record*)))
+   (and (fn-bs-inop ino)
+        (fn-bs-fencedp fenced ino)
+        (equal (fn-bs-durable-content fenced ino) frame)
+        (equal (fn-bs-durable-entry fenced :fnbs name) nil)
+        (equal (fn-bs-ops-for-name (fn-bs-pending fenced) :fnbs name) nil)
+        (equal linked (fn-bpnf-byte-test-state :link))
+        (member-equal (fn-bpnf-byte-slot (fn-bpnf-byte-test-link-absent) 9 1)
+                      (list :absent (list :record *bpnfc-anon-record*)))
+        (member-equal (fn-bpnf-byte-slot (fn-bpnf-byte-test-link-present) 9 1)
+                      (list :absent (list :record *bpnfc-anon-record*))))))
 (must-fail
  (assert-event
   (equal (fn-bpnf-byte-slot (fn-bpnf-byte-test-link-absent) 9 1)
@@ -73,6 +89,20 @@
 (assert-event
  (equal (fn-bpnf-byte-slot (fn-bpnf-byte-test-durable-crash) 9 1)
         (list :record *bpnfc-anon-record*)))
+(assert-event
+ (let* ((durable (fn-bpnf-byte-test-state :directory-barrier))
+        (ino (fn-bs-durable-entry
+              durable :fnbs (fn-bpnf-stored-record-name 9 1))))
+   (and (fn-bs-dir-quietp durable :fnbs)
+        (fn-bs-fencedp durable ino)
+        (equal (fn-bs-crash durable nil)
+               (fn-bpnf-byte-test-durable-crash))
+        (equal (fn-bs-durable-content durable ino)
+               (fn-bpnf-stored-record-frame *bpnfc-anon-record*)))))
+(must-fail
+ (assert-event
+  (equal (fn-bpnf-byte-slot (fn-bpnf-byte-test-durable-crash) 9 1)
+         :absent)))
 (assert-event
  (equal (fn-jpub-outcome (fn-bpnf-byte-publisher-phase :directory-barrier))
         :durable))
