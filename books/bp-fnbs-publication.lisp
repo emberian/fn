@@ -83,7 +83,8 @@
                         (fn-bpnf-publication-authorize
                          st epoch operation-id held lock-owned final-absent))
                        (fn-jpub-initial t))))
-  :hints (("Goal" :in-theory (enable fn-bpnf-publication-authorize
+  :hints (("Goal" :do-not-induct t
+                   :in-theory (enable fn-bpnf-publication-authorize
                                      fn-bpnf-publication-operation-name
                                      fn-bpnf-publication-operation-frame
                                      fn-bpnf-publication-operation-publisher))))
@@ -95,5 +96,6 @@
            (fn-bpnf-publication-operationp
             (fn-bpnf-publication-authorize
              st epoch operation-id held lock-owned final-absent)))
-  :hints (("Goal" :in-theory (enable fn-bpnf-publication-authorize
+  :hints (("Goal" :do-not-induct t
+                   :in-theory (enable fn-bpnf-publication-authorize
                                      fn-bpnf-publication-operationp))))
