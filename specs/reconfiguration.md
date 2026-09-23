@@ -1306,3 +1306,21 @@ acceptance state's group list and do not show it until a restart; a capacity
 change reaches the retention ledger only at restart. Closing it needs a
 per-connection domain in `fn-own-conn-okp` and a store re-parameterisation
 proved against `fn-snt-relation`: an owner and store cluster step.
+
+### T8b physical-history owner model (2026-09-23)
+
+The live completion caller now uses `fn-ocl-complete` in
+`books/config-owner-live.lisp`. It applies the exact durable configuration
+record to the Store's carried physical history, publishes the configuration
+obtained by replaying that installed history, and refreshes the current
+owner view. Existing connections retain their archives and pinned
+configuration; a newly opened connection sees the new domain and capacity.
+An unapplicable durable record remains staged so the native owner fences for
+recovery. The historical relation reconstructs each connection at its pinned
+generation and Store-journal version, while the current view uses the full
+installed history. `fn-ocl-complete-preserves-full-historical-relation`
+proves this relation across successful ready-phase completion under a
+physical Store-history premise. The [T8b evidence](../planning/evidence/config-physical-replay-t8b-2026-09-23.md)
+records the selected certification and old/new connection witness. Native
+image execution and preservation across ordinary Store/owner transitions
+are still required before a live-service claim.

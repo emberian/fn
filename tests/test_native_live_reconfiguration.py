@@ -95,14 +95,17 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         self.assertIn("(defthm fn-native-admin-live-group-delta-is-a-typed-delta", self.admin)
 
     def test_completion_publishes_what_recovery_replays(self):
-        start = self.owner_config.index("(defun fn-ocfg-complete (oc)")
-        end = self.owner_config.index("(defun", start + 10)
-        body = self.owner_config[start:end]
-        self.assertIn("(fn-ocfg-published-config (fn-ocfg-config oc) record)", body)
+        live = (ROOT / "books" / "config-owner-live.lisp").read_text(encoding="ascii")
+        start = live.index("(defun fn-ocl-complete (oc)")
+        end = live.index("(defthm", start)
+        body = live[start:end]
+        self.assertIn("(fn-cpo-configure-durable old-store record)", body)
+        self.assertIn("(fn-ocl-store-config new-store)", body)
+        self.assertIn("(fn-ocfg-pins oc)", body)
         self.assertNotIn("fn-cnode-apply-config", body)
-        for name in ("fn-ocfg-no-reader-observes-a-half-change",
-                     "fn-ocfg-crash-at-any-instant-recovers-the-live-generation"):
-            self.assertIn("(defthm " + name, self.owner_config)
+        for name in ("fn-ocl-complete-keeps-existing-served-table",
+                     "fn-ocl-complete-preserves-pinned-connection-histories"):
+            self.assertIn("(defthm " + name, live)
 
     def test_actual_native_open_and_completion_call_the_physical_history_model(self):
         owner = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")

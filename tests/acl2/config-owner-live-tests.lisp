@@ -19,10 +19,12 @@
 (defconst *ocl-t-after* (fn-ocl-complete *ocl-t-before*))
 
 (assert-event (fn-cst-relation *cpo-t-ready*))
+(assert-event (fn-ocl-relation *ocl-t-before*))
 (assert-event
  (fn-ocl-conns-historyp *ocl-t-before*
                         (fn-own-conns (fn-ocfg-owner *ocl-t-before*))))
 (assert-event (null (fn-ocfg-staged *ocl-t-after*)))
+(assert-event (fn-ocl-relation *ocl-t-after*))
 (assert-event
  (equal (fn-sn-capacity (fn-own-store (fn-ocfg-owner *ocl-t-after*))) 20))
 (assert-event
@@ -52,6 +54,7 @@
 (defconst *ocl-t-created* (fn-ocl-complete *ocl-t-create-before*))
 (defconst *ocl-t-new-open* (cdr (fn-ocfg-open *ocl-t-created* nil)))
 (assert-event (null (fn-ocfg-staged *ocl-t-created*)))
+(assert-event (fn-ocl-relation *ocl-t-created*))
 (assert-event
  (member-equal "fn.live"
                (fn-sn-groups (fn-own-store (fn-ocfg-owner *ocl-t-created*)))))
@@ -79,6 +82,7 @@
 (assert-event
  (fn-ocl-conns-historyp *ocl-t-new-open*
                         (fn-own-conns (fn-ocfg-owner *ocl-t-new-open*))))
+(assert-event (fn-ocl-relation *ocl-t-new-open*))
 ; The old invariant replays this pinned archive at the newly created Store
 ; domain and capacity, so it cannot express the same historical connection.
 (assert-event
