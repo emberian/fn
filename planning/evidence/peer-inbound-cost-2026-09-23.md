@@ -16,7 +16,7 @@ which is sound for timing and says nothing about certification).
 |---|---|
 | `/home/ember/fn-gates/t1-seam/build/acl2/certify-20260923T000250Z-1473169/books--peer-inbound.certify.log` | the 310-book run: book 804.8 s |
 | `/home/ember/fn-gates/t13-conform/build/acl2/certify-20260922T225718Z-866045/books--peer-inbound.certify.log` | `dev` plus the relayed-octets edit, jobs 4: book 875.2 s |
-| `/home/ember/fn-gates/dev-head/build/acl2/certify-20260923T003741Z-1790068/` | did not reach `peer-inbound` |
+| `/home/ember/fn-gates/dev-head/build/acl2/the treewide run of dev's head that root stopped after 345 books (no manifest was written)/` | did not reach `peer-inbound` |
 
 ## Event times
 
