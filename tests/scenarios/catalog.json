@@ -1024,6 +1024,32 @@
         "Old incarnation, registration epoch and view cursors are refused without mutation; independent stores and consumers keep separate positions."
       ],
       "note": "The ACL2 Store model portion is witnessed in tests/acl2/consumer-store-invariants-tests.lisp and certified in planning/evidence/manifests/certify-20260923T210725Z-145187.json. The end-to-end E2-01.. trace specifications in planning/experiments/e1-e2-v1-traces.json remain unexecuted until native authenticated poll/ack and consumer database integration."
+    },
+    {
+      "id": "SCN-032",
+      "title": "Topic candidate author comes from verified exact source and historical key context",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "TOP-001"
+      ],
+      "steps": [
+        "Select a canonical root with a controller and keyset ID matching the verified hybrid principal and ordered key snapshot; repeat with changed principal and changed keyset under the same principal.",
+        "Select a report whose From claims another author and a received relay projection with a competing FN-Topic field.",
+        "Construct a retained schema-1 article event and matching historical keyring snapshot; repeat with changed enrolled principal and substituted retained exact source. Inspect a signed carrier in the native CLI."
+      ],
+      "expected": [
+        "Only the exact matching root receives controller-matched status; either verified-context change yields controller-mismatch while generic topic candidate reporting remains available.",
+        "The report author reference is derived from verified principal and ordered keys; From and relay fields do not supply author authority.",
+        "The matching retained event selects its exact-source candidate; historical enrollment or source substitution returns unbound-event. Native output retains topic=candidate and admission=unestablished with verifier-derived author/binding fields."
+      ],
+      "evidence": [
+        "tests/acl2/topic-history-authorship-tests.lisp",
+        "tests/test_native_topic_metadata.py",
+        "planning/evidence/topic-history-authorship-p3-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T211422Z-167141.json"
+      ],
+      "execution_scope": "ACL2 constructor, selector, historical event and negative teeth tests certify on hbox at the lane source. The updated native CLI awaits a source-matched combined saved image; no durable topic admission, fork choice, roster adoption or general signature primitive proof is claimed."
     }
   ]
 }

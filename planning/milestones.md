@@ -22,7 +22,11 @@ peering/restart, topic inspection, INN interoperability and live configuration.
 The P3 codec now has general constructor bounds/inverse and host-called
 authored-field binding proofs. Canonical folding and a bounded larger header
 envelope accommodate the maximum topic profile in ACL2; its native image
-witness and durable topic admission remain open. K6 now carries exact typed Store-event frames
+witness and durable topic admission remain open. The new candidate selector
+compares a root's controller and keyset declaration against the verified
+principal and ordered keyset, while the historical selector first checks the
+schema-1 event/snapshot binding. It does not select governance or admission.
+K6 now carries exact typed Store-event frames
 through the modeled surviving-link crash. The ordered whole-list scanner
 join now holds under the actual pair-10 byte/kernel relation; general K0 must
 establish that relation along every supported served trace.
