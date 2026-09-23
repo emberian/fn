@@ -1,5 +1,20 @@
 # Current work — 2026-09-23
 
+## Current repair qualification — 23:25 UTC
+
+Source `1d26e01f` passes the full incremental ACL2 run with 534 compatible
+cached books and 17 newly certified books; the [original manifest](evidence/manifests/certify-20260923T232249Z-467250.json)
+records its timing and exact scope. `make check` and four direct host-function
+regressions pass. The repairs resolve posted groups from the current ACL2
+owner, refresh the native configuration projection after durable publication,
+settle known preflight refusals without stranding a pending request, and verify
+the consumer poll projection guard against the current cursor codec. Faults
+and ambiguous writes still require recovery. The shared source-matched image
+at `/tank/fn/gates/poll-live-group-native-1d26-20260923` is now building for
+signed poll/advancing ACK, live-created group posting, clone and Mini fixture
+qualification. This is not yet native success evidence. The live node is
+unchanged.
+
 ## Current combined qualification — 23:03 UTC
 
 The repaired reader/consumer/clone source `bc9be7ec` passes its full
