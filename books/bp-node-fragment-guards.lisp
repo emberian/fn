@@ -30,6 +30,14 @@
                             (fn-bpb-bundlep fn-bpb-encode))))))
 
 (local
+ (defthm fn-bpnfg-held-true-listp
+   (implies (fn-bpnf-heldp h) (true-listp h))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bpnf-heldp)
+                            (fn-bpb-bundlep fn-bpb-encode
+                             fn-bpp-blockp fn-bpp-eidp))))))
+
+(local
  (defthm fn-bpnfg-held-primary-guard-fields
    (implies (fn-bpnf-heldp h)
             (and (true-listp h)
@@ -39,13 +47,19 @@
                   (fn-bpp-flags
                    (fn-bpb-bundle-primary (fn-bpnf-held-bundle h))))))
    :hints (("Goal" :do-not-induct t
-            :use ((:instance fn-bpnfg-bundle-primary-blockp
-                             (bundle (fn-bpnf-held-bundle h))))
-            :in-theory (e/d (fn-bpnf-heldp fn-bpp-blockp)
-                            (fn-bpb-bundlep fn-bpb-encode
-                             fn-bpnfg-bundle-primary-blockp
-                             fn-bpp-eidp fn-bpp-vchar-listp
-                             fn-bpp-vcharp))))))
+            :use ((:instance fn-bpnfg-held-true-listp)
+                  (:instance fn-bpnfg-held-bundlep)
+                  (:instance fn-bpnfg-bundle-primary-blockp
+                             (bundle (fn-bpnf-held-bundle h)))
+                  (:instance fn-bpn-bundle-primary-true-list-for-guard
+                             (bundle (fn-bpnf-held-bundle h)))
+                  (:instance fn-bpn-report-primary-flags-natural-for-guard
+                             (primary
+                              (fn-bpb-bundle-primary
+                               (fn-bpnf-held-bundle h)))))
+            :in-theory (union-theories
+                        '(fn-bpnfg-held-true-listp)
+                        (theory 'minimal-theory))))))
 
 (local
  (defthm fn-bpnfg-held-octets-natp
@@ -113,15 +127,38 @@
                                fn-bpb-bundlep fn-bpb-encode
                                fn-bpn-state-field-types-for-guard
                                fn-bpnfg-held-octets-natp))))
+
+; The family-plan theorem is stated with car/cadr.  The executable apply
+; guard uses the total selectors, so bridge just those two fields while the
+; expensive plan body stays closed.
+(local
+ (defthm fn-bpnfg-second-is-cadr
+   (equal (fn-bpn-nth 1 xs) (cadr xs))
+   :hints (("Goal" :in-theory (enable fn-bpn-nth fn-cbor-ag-car)))))
+(local
+ (defthm fn-bpnfg-car-is-car
+   (equal (fn-cbor-ag-car xs) (car xs))
+   :hints (("Goal" :in-theory (enable fn-cbor-ag-car)))))
+(local
+ (defthm fn-bpnfg-ready-plan-bundlep
+   (implies (equal (fn-cbor-ag-car (fn-bpnf-family-plan st anchor)) :ready)
+            (fn-bpb-bundlep
+             (fn-bpn-nth 1 (fn-bpnf-family-plan st anchor))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bpnf-family-ready-has-valid-whole))
+            :in-theory (union-theories
+                        '(fn-bpnfg-second-is-cadr fn-bpnfg-car-is-car)
+                        (theory 'minimal-theory))))))
 (verify-guards fn-bpnf-family-apply
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bpnf-family-ready-has-valid-whole
+           :use ((:instance fn-bpnfg-ready-plan-bundlep
                             (anchor (fn-bpnf-find-arrival
                                      (fn-bpn-nth 3 record)
                                      (fn-bpnf-held-list st)))))
            :in-theory (disable fn-bpnf-family-plan
                                fn-bpnf-heldp fn-bpb-bundlep
-                               fn-bpn-machine-statep))))
+                               fn-bpn-machine-statep
+                               fn-bpnfg-ready-plan-bundlep))))
 ; Recovery calls the inherited unverified kind-5 decoder and row predicate.
 ; Its guard closure remains a separate A2 codec obligation.
 (verify-guards fn-bpnf-family-issuedp)
