@@ -186,7 +186,7 @@
            :use ((:instance fn-auth-step-pinned-post-without-permission-is-not-offered
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
-                            (index (fn-served-conn-index conn))
+                            (index (fn-served-conn-pinned-index conn))
                             (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
@@ -197,7 +197,7 @@
                  (:instance fn-auth-step-pinned-effects-well-formed
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
-                            (index (fn-served-conn-index conn))
+                            (index (fn-served-conn-pinned-index conn))
                             (verdicts (fn-served-conn-verdicts conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
@@ -208,7 +208,7 @@
                                       (fn-auth-step-pinned
                                        (fn-served-conn-session conn)
                                        (fn-served-conn-archive conn)
-                                       (fn-served-conn-index conn)
+                                       (fn-served-conn-pinned-index conn)
                                        (fn-served-conn-verdicts conn)
                                        (fn-served-conn-config conn)
                                        (fn-served-conn-observation conn)
