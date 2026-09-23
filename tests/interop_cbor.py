@@ -372,10 +372,13 @@ def run_probe(acl2: ACL2) -> dict[str, Any]:
     results.append(refusal_case(acl2, "trailing-second-item", b"\x00\x00", generic_sequence=True))
 
     record_values = [b"fn-r", 0, 1, 2, 3, b"<a>", b"\x09\x08", 1, b"g", b"o", b"s", b"e", 4]
-    record_fixture = '(fn-record-make 1 2 3 "<a>" \'(9 8) \'("g") "o" "s" "e" 4)'
+    record_fixture = '(fn-record-make 1 2 3 "<a>" \'(9 8) \'("g") "o" "s" "e" 4 :legacy)'
     results.append(record_case(acl2, "schema0-record-one-group", record_fixture, record_values))
+    stamped_values = [b"fn-r", 1, 1, 2, 3, b"<a>", b"\x09\x08", 1, b"g", b"o", b"s", b"e", 4, 5]
+    stamped_fixture = '(fn-record-make 1 2 3 "<a>" \'(9 8) \'("g") "o" "s" "e" 4 5)'
+    results.append(record_case(acl2, "schema1-record-one-group", stamped_fixture, stamped_values))
     empty_groups_values = [b"fn-r", 0, 0, 0, 0, b"<b>", b"", 0, b"o", b"s", b"e", 0]
-    empty_groups_fixture = '(fn-record-make 0 0 0 "<b>" nil nil "o" "s" "e" 0)'
+    empty_groups_fixture = '(fn-record-make 0 0 0 "<b>" nil nil "o" "s" "e" 0 :legacy)'
     results.append(record_case(acl2, "schema0-record-empty-groups", empty_groups_fixture, empty_groups_values))
 
     return {
