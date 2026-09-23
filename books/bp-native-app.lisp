@@ -27,6 +27,87 @@
         (fn-bpa-result-message answer)
       nil)))
 
+(defun fn-bpaj-request-subjectp (request)
+  (declare (xargs :guard t))
+  (and (fn-bpa-requestp request)
+       (let* ((identity (fn-id-subject-of-payload
+                         (fn-bpa-request-article request)))
+              (text (fn-record-octets-string (fn-id-text identity))))
+         (equal (fn-bpa-request-subject request) text))))
+
+
+(defun fn-bpaj-transit-record-matchp (store record request stored-octets)
+  (declare (xargs :guard t))
+  (and (fn-record-p record)
+       (fn-bpa-requestp request)
+       (fn-bpr-store-record-acceptedp store record)
+       (equal (fn-record-payload record) stored-octets)))
+
+
+; The v3 intent is written before Store submission.  Its final three fields
+; are the selected local Path identity, expected peer Path identity, and
+; locally stored projection.  Replay verifies the projection against those
+; pinned identities, without consulting a later owner configuration.
+; (kind inbound raw-request generation planned-txid result peer
+;       local-path peer-path stored-projection)
+(defun fn-bpaj-transit-intentp (r)
+  (declare (xargs :guard t))
+  (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 r)))
+         (local (fn-record-string-octets (fn-bpaj-nth 7 r)))
+         (expected (fn-record-string-octets (fn-bpaj-nth 8 r))))
+    (and (true-listp r) (equal (len r) 10)
+         (equal (fn-bpaj-nth 0 r) :request-transit-intent)
+         (fn-bprr-textp (fn-bpaj-nth 1 r))
+         (fn-bprr-octetsp (fn-bpaj-nth 2 r))
+         request
+         (fn-bpaj-request-subjectp request)
+         (fn-record-uint32p (fn-bpaj-nth 3 r))
+         (fn-record-uint32p (fn-bpaj-nth 4 r))
+         (member-equal (fn-bpaj-nth 5 r) '(:accepted :duplicate))
+         (fn-bprr-textp (fn-bpaj-nth 6 r))
+         (fn-bprr-textp (fn-bpaj-nth 7 r))
+         (fn-bprr-textp (fn-bpaj-nth 8 r))
+         (fn-path-identityp local) (fn-path-identityp expected)
+         (fn-bprr-octetsp (fn-bpaj-nth 9 r))
+         (equal (fn-bpaj-nth 9 r)
+                (fn-pu-relay-article (fn-bpa-request-article request)
+                                     local expected)))))
+
+; The context binds a recovered exact Store record to a prior validated v3
+; intent.  The raw request stays in the context for receipt construction;
+; the Store payload is compared with the independently pinned projection.
+; (kind inbound raw-request store-record owner-generation store-txid
+;       store-generation result)
+(defun fn-bpaj-transit-contextp (r)
+  (declare (xargs :guard t))
+  (and (true-listp r) (equal (len r) 8)
+       (equal (fn-bpaj-nth 0 r) :request-transit-context)
+       (fn-bprr-textp (fn-bpaj-nth 1 r))
+       (fn-bprr-octetsp (fn-bpaj-nth 2 r))
+       (fn-bprr-octetsp (fn-bpaj-nth 3 r))
+       (fn-record-uint32p (fn-bpaj-nth 4 r))
+       (fn-record-uint32p (fn-bpaj-nth 5 r))
+       (fn-record-uint32p (fn-bpaj-nth 6 r))
+       (member-equal (fn-bpaj-nth 7 r) '(:accepted :duplicate))))
+
+(defun fn-bpaj-transit-context-matches-intentp (store context intent)
+  (declare (xargs :guard t))
+  (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 context)))
+         (record (fn-bprr-decode-value (fn-bpaj-nth 3 context) :record)))
+    (and (fn-bpaj-transit-contextp context)
+         (fn-bpaj-transit-intentp intent)
+         (equal (fn-bpaj-nth 1 context) (fn-bpaj-nth 1 intent))
+         (equal (fn-bpaj-nth 2 context) (fn-bpaj-nth 2 intent))
+         (equal (fn-bpaj-nth 4 context) (fn-bpaj-nth 3 intent))
+         (equal (fn-bpaj-nth 7 context) (fn-bpaj-nth 5 intent))
+         (fn-bpaj-transit-record-matchp
+          store record request (fn-bpaj-nth 9 intent))
+         (equal (fn-record-txid record) (fn-bpaj-nth 5 context))
+         (equal (fn-record-generation record) (fn-bpaj-nth 6 context))
+         (or (equal (fn-bpaj-nth 5 intent) :duplicate)
+             (equal (fn-record-txid record) (fn-bpaj-nth 4 intent))))))
+
+
 (defun fn-bpaj-intentp (r)
   (declare (xargs :guard t))
   (and (true-listp r) (equal (len r) 6)
@@ -41,7 +122,8 @@
 (defun fn-bpaj-intent-listp (xs)
   (declare (xargs :guard t :measure (acl2-count xs)))
   (if (consp xs)
-      (and (fn-bpaj-intentp (car xs))
+      (and (or (fn-bpaj-intentp (car xs))
+               (fn-bpaj-transit-intentp (car xs)))
            (fn-bpaj-intent-listp (cdr xs)))
     (null xs)))
 
@@ -61,7 +143,8 @@
 (defun fn-bpaj-context-v2-listp (xs)
   (declare (xargs :guard t :measure (acl2-count xs)))
   (if (consp xs)
-      (and (fn-bpaj-context-v2p (car xs))
+      (and (or (fn-bpaj-context-v2p (car xs))
+               (fn-bpaj-transit-contextp (car xs)))
            (fn-bpaj-context-v2-listp (cdr xs)))
     (null xs)))
 
@@ -156,6 +239,18 @@
                        (fn-bpaj-receiver joined)
                        (append (fn-bpaj-intents joined) (list r))
                        (fn-bpaj-facts joined) t))))))
+       ((equal kind :request-transit-intent)
+        (if (not (fn-bpaj-transit-intentp r)) (list nil joined)
+          (let* ((work-id (fn-bpaj-intent-work-id r))
+                 (prior (fn-bpaj-find-intent work-id (fn-bpaj-intents joined)))
+                 (context (fn-bpr-find-context
+                           work-id
+                           (fn-bpr-state-contexts (fn-bpaj-receiver joined)))))
+            (if (or prior context) (list nil joined)
+              (list t (fn-bpaj-make-state
+                       (fn-bpaj-receiver joined)
+                       (append (fn-bpaj-intents joined) (list r))
+                       (fn-bpaj-facts joined) t))))))
        ((equal kind :request-context-v2)
         (let ((intent (fn-bpaj-context-intent joined r)))
           (if (not (and intent (fn-bpaj-context-matches-intentp r intent)))
@@ -170,6 +265,22 @@
                          ; configuration generation after binding.  Receipt
                          ; retries may arrive in a different BP bundle, but
                          ; they never rewrite the acceptance evidence.
+                         (fn-bpaj-intents joined)
+                         (append (fn-bpaj-facts joined) (list r)) t)))))))
+       ((equal kind :request-transit-context)
+        (let ((intent (fn-bpaj-context-intent joined r)))
+          (if (not (and intent
+                        (fn-bpaj-transit-context-matches-intentp
+                         store r intent)))
+              (list nil joined)
+            (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 r)))
+                   (record (fn-bprr-decode-value (fn-bpaj-nth 3 r) :record))
+                   (answer (fn-bpr-accept-projected-request
+                            (fn-bpaj-receiver joined) store record request
+                            (fn-bpaj-nth 9 intent) t)))
+              (if (not (equal (car answer) :accepted)) (list nil joined)
+                (list t (fn-bpaj-make-state
+                         (fn-bprr-nth 1 answer)
                          (fn-bpaj-intents joined)
                          (append (fn-bpaj-facts joined) (list r)) t)))))))
        ((equal kind :request-context)
@@ -284,7 +395,9 @@
          (fact (and request
                     (fn-bpaj-find-fact (fn-bpa-request-work-id request)
                                        (fn-bpaj-facts joined)))))
-    (and fact (fn-bpaj-nth 8 fact))))
+    (and fact (if (equal (fn-bpaj-nth 0 fact) :request-transit-context)
+                  (fn-bpaj-nth 7 fact)
+                (fn-bpaj-nth 8 fact)))))
 
 (defun fn-bpaj-article-fields (request)
   (declare (xargs :guard t))
@@ -299,14 +412,6 @@
               (if (or (not msgid) (not (consp groups)))
                   (list :refused :article-fields)
                 (list :ok msgid groups)))))))))
-
-(defun fn-bpaj-request-subjectp (request)
-  (declare (xargs :guard t))
-  (and (fn-bpa-requestp request)
-       (let* ((identity (fn-id-subject-of-payload
-                         (fn-bpa-request-article request)))
-              (text (fn-record-octets-string (fn-id-text identity))))
-         (equal (fn-bpa-request-subject request) text))))
 
 (defun fn-bpaj-bp-provenance-octets (node-id bundle-identity request)
   (declare (xargs :guard t))
@@ -367,6 +472,22 @@
                (list :found (car records)))
               (t (list :conflict)))))))
 
+(defun fn-bpaj-transit-record-lookup (store request intent)
+  (declare (xargs :guard t))
+  (let ((fields (fn-bpaj-article-fields request)))
+    (if (not (and (equal (car fields) :ok)
+                  (fn-bpaj-transit-intentp intent)))
+        (list :conflict)
+      (let ((records (fn-bpaj-record-for-msgid
+                      (fn-record-octets-string (cadr fields))
+                      (fn-sf-records (fn-sn-files store)))))
+        (cond ((endp records) (list :absent))
+              ((consp (cdr records)) (list :conflict))
+              ((fn-bpaj-transit-record-matchp
+                store (car records) request (fn-bpaj-nth 9 intent))
+               (list :found (car records)))
+              (t (list :conflict)))))))
+
 ; This is the dispatcher the native callback calls.  It is intentionally a
 ; projection over replayed FNRJ state plus the authoritative live Store.  In
 ; particular, an intent does not imply acceptance: it permits a Store attempt
@@ -380,16 +501,27 @@
     (case status
       (:new (list :persist-intent))
       (:intent
-       (if (not (equal current-generation
-                       (fn-bpaj-request-generation joined request-octets)))
-           (list :refused :stale-owner-generation)
-         (let ((lookup (fn-bpaj-record-lookup store request)))
-           (case (car lookup)
+       (let* ((intent (fn-bpaj-request-intent joined request-octets))
+                (lookup (if (equal (fn-bpaj-nth 0 intent)
+                                   :request-transit-intent)
+                            (fn-bpaj-transit-record-lookup store request intent)
+                          (fn-bpaj-record-lookup store request))))
+           (if (and (not (equal (fn-bpaj-nth 0 intent)
+                                :request-transit-intent))
+                    (not (equal current-generation
+                                (fn-bpaj-request-generation
+                                 joined request-octets))))
+               (list :refused :stale-owner-generation)
+             (case (car lookup)
              (:absent
-              (if (equal (fn-bpaj-request-planned-result
-                          joined request-octets) :accepted)
-                  (list :submit)
-                (list :refused :missing-duplicate-record)))
+              (cond ((not (equal current-generation
+                                 (fn-bpaj-request-generation
+                                  joined request-octets)))
+                     (list :refused :stale-owner-generation))
+                    ((equal (fn-bpaj-request-planned-result
+                             joined request-octets) :accepted)
+                     (list :submit))
+                    (t (list :refused :missing-duplicate-record))))
              (:found
               (if (and (equal (fn-bpaj-request-planned-result
                                joined request-octets) :accepted)
@@ -444,6 +576,9 @@
 ; under which this dispatcher returns :submit; it is not a replay theorem.
 (defthm fn-bpaj-dispatch-intent-absent-retries
   (implies (and (equal (fn-bpaj-request-status joined request-octets) :intent)
+                (not (equal (fn-bpaj-nth 0
+                             (fn-bpaj-request-intent joined request-octets))
+                            :request-transit-intent))
                 (equal current-generation
                        (fn-bpaj-request-generation joined request-octets))
                 (equal (fn-bpaj-request-planned-result
@@ -458,6 +593,29 @@
                 (fn-bpaj-request-status fn-bpaj-request-generation
                  fn-bpaj-request-planned-result fn-bpaj-record-lookup
                  fn-bpaj-request)))))
+
+(defthm fn-bpaj-dispatch-transit-intent-absent-retries
+  (implies
+   (and (equal (fn-bpaj-request-status joined request-octets) :intent)
+        (equal (fn-bpaj-nth 0
+                (fn-bpaj-request-intent joined request-octets))
+               :request-transit-intent)
+        (equal current-generation
+               (fn-bpaj-request-generation joined request-octets))
+        (equal (fn-bpaj-request-planned-result joined request-octets)
+               :accepted)
+        (equal (car (fn-bpaj-transit-record-lookup
+                     store (fn-bpaj-request request-octets)
+                     (fn-bpaj-request-intent joined request-octets)))
+               :absent))
+   (equal (fn-bpaj-dispatch joined store request-octets
+                            current-generation)
+          (list :submit)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-bpaj-dispatch)
+                (fn-bpaj-request-status fn-bpaj-request-generation
+                 fn-bpaj-request-planned-result
+                 fn-bpaj-transit-record-lookup fn-bpaj-request)))))
 
 (defthm fn-bpaj-dispatch-committed-never-retries
   (implies (equal (fn-bpaj-request-status joined request-octets) :committed)

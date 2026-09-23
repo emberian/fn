@@ -53,7 +53,7 @@
                   (if (eq (fnn-owner-core 'fn-owner-bp-request-trustedp view) t)
                       (fnn-bpapp-accept-locked
                        owner journal inbound-id request node-id identity
-                       source dest)
+                       (fifth view) source dest)
                     (values :refused nil)))))
              (case result
                ((:accepted :duplicate)

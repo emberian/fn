@@ -60,6 +60,50 @@
                  (cons context (fn-bpr-state-contexts st))
                  (fn-bpr-state-receipts st) nil)))))))
 
+(defun fn-bpaj-projected-request-acceptable-fast
+    (store config record request stored-octets policy-authorizedp)
+  (declare (xargs :guard t))
+  (and (equal policy-authorizedp t)
+       (fn-bpr-configp config)
+       (fn-bpa-requestp request)
+       (fn-record-p record)
+       (fn-bpaj-store-record-accepted-fast store record)
+       (equal (fn-bpa-request-destination-eid request)
+              (fn-bpr-config-destination config))
+       (equal (fn-bpa-request-policy-id request)
+              (fn-bpr-config-policy-id config))
+       (equal stored-octets (fn-record-payload record))))
+
+(defun fn-bpaj-bpr-accept-projected-request-fast
+    (st store record request stored-octets policy-authorizedp)
+  (declare (xargs :guard t))
+  (if (not (and (not (consp (fn-bpr-state-pending st)))
+                (fn-bpaj-projected-request-acceptable-fast
+                 store (fn-bpr-state-config st) record request
+                 stored-octets policy-authorizedp)))
+      (list :refused st)
+    (fn-bpr-bind-request-context st record request)))
+
+(defun fn-bpaj-transit-context-matches-intent-fastp
+    (store context intent)
+  (declare (xargs :guard t))
+  (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 context)))
+         (record (fn-bprr-decode-value (fn-bpaj-nth 3 context) :record)))
+    (and (fn-bpaj-transit-contextp context)
+         (fn-bpaj-transit-intentp intent)
+         (equal (fn-bpaj-nth 1 context) (fn-bpaj-nth 1 intent))
+         (equal (fn-bpaj-nth 2 context) (fn-bpaj-nth 2 intent))
+         (equal (fn-bpaj-nth 4 context) (fn-bpaj-nth 3 intent))
+         (equal (fn-bpaj-nth 7 context) (fn-bpaj-nth 5 intent))
+         (fn-record-p record)
+         (fn-bpa-requestp request)
+         (fn-bpaj-store-record-accepted-fast store record)
+         (equal (fn-record-payload record) (fn-bpaj-nth 9 intent))
+         (equal (fn-record-txid record) (fn-bpaj-nth 5 context))
+         (equal (fn-record-generation record) (fn-bpaj-nth 6 context))
+         (or (equal (fn-bpaj-nth 5 intent) :duplicate)
+             (equal (fn-record-txid record) (fn-bpaj-nth 4 intent))))))
+
 (defun fn-bpaj-bpr-prepare-receipt-fast
     (st work-id receipt-id policy-authorizedp)
   (declare (xargs :guard t))
@@ -166,6 +210,36 @@
   (declare (xargs :guard t))
   (let ((kind (fn-bpaj-nth 0 r)))
     (cond
+     ((equal kind :request-transit-intent)
+      (if (not (fn-bpaj-transit-intentp r)) (list nil joined)
+        (let* ((work-id (fn-bpaj-intent-work-id r))
+               (prior (fn-bpaj-find-intent work-id
+                                           (fn-bpaj-intents joined)))
+               (context (fn-bpr-find-context
+                         work-id
+                         (fn-bpr-state-contexts
+                          (fn-bpaj-receiver joined)))))
+          (if (or prior context) (list nil joined)
+            (list t (fn-bpaj-make-state
+                     (fn-bpaj-receiver joined)
+                     (append (fn-bpaj-intents joined) (list r))
+                     (fn-bpaj-facts joined) t))))))
+     ((equal kind :request-transit-context)
+      (let ((intent (fn-bpaj-context-intent joined r)))
+        (if (not (and intent
+                      (fn-bpaj-transit-context-matches-intent-fastp
+                       store r intent)))
+            (list nil joined)
+          (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 r)))
+                 (record (fn-bprr-decode-value (fn-bpaj-nth 3 r) :record))
+                 (answer (fn-bpaj-bpr-accept-projected-request-fast
+                          (fn-bpaj-receiver joined) store record request
+                          (fn-bpaj-nth 9 intent) t)))
+            (if (not (equal (car answer) :accepted)) (list nil joined)
+              (list t (fn-bpaj-make-state
+                       (fn-bprr-nth 1 answer)
+                       (fn-bpaj-intents joined)
+                       (append (fn-bpaj-facts joined) (list r)) t)))))))
      ((equal kind :request-intent)
       (if (not (fn-bpaj-intentp r)) (list nil joined)
         (let* ((work-id (fn-bpaj-intent-work-id r))
@@ -308,6 +382,25 @@
                (list :found (car records)))
               (t (list :conflict)))))))
 
+(defun fn-bpaj-transit-record-lookup-fast (store request intent)
+  (declare (xargs :guard t))
+  (let ((fields (fn-bpaj-article-fields request)))
+    (if (not (and (equal (car fields) :ok)
+                  (fn-bpaj-transit-intentp intent)))
+        (list :conflict)
+      (let ((records (fn-bpaj-record-for-msgid
+                      (fn-record-octets-string (cadr fields))
+                      (fn-sf-records (fn-sn-files store)))))
+        (cond ((endp records) (list :absent))
+              ((consp (cdr records)) (list :conflict))
+              ((and (fn-record-p (car records))
+                    (fn-bpa-requestp request)
+                    (fn-bpaj-store-record-accepted-fast store (car records))
+                    (equal (fn-record-payload (car records))
+                           (fn-bpaj-nth 9 intent)))
+               (list :found (car records)))
+              (t (list :conflict)))))))
+
 (defun fn-bpaj-dispatch-fast
     (joined store request-octets current-generation)
   (declare (xargs :guard t))
@@ -316,16 +409,28 @@
     (case status
       (:new (list :persist-intent))
       (:intent
-       (if (not (equal current-generation
-                       (fn-bpaj-request-generation joined request-octets)))
-           (list :refused :stale-owner-generation)
-         (let ((lookup (fn-bpaj-record-lookup-fast store request)))
+       (let* ((intent (fn-bpaj-request-intent joined request-octets))
+              (lookup (if (equal (fn-bpaj-nth 0 intent)
+                                 :request-transit-intent)
+                          (fn-bpaj-transit-record-lookup-fast
+                           store request intent)
+                        (fn-bpaj-record-lookup-fast store request))))
+         (if (and (not (equal (fn-bpaj-nth 0 intent)
+                              :request-transit-intent))
+                  (not (equal current-generation
+                              (fn-bpaj-request-generation
+                               joined request-octets))))
+             (list :refused :stale-owner-generation)
            (case (car lookup)
              (:absent
-              (if (equal (fn-bpaj-request-planned-result
-                          joined request-octets) :accepted)
-                  (list :submit)
-                (list :refused :missing-duplicate-record)))
+              (cond ((not (equal current-generation
+                                 (fn-bpaj-request-generation
+                                  joined request-octets)))
+                     (list :refused :stale-owner-generation))
+                    ((equal (fn-bpaj-request-planned-result
+                             joined request-octets) :accepted)
+                     (list :submit))
+                    (t (list :refused :missing-duplicate-record))))
              (:found
               (if (and (equal (fn-bpaj-request-planned-result
                                joined request-octets) :accepted)
@@ -364,19 +469,29 @@
   (equal (fn-bpaj-nth 1 (list first second)) second)
   :hints (("Goal" :in-theory (enable fn-bpaj-nth))))
 
+(defthm fn-bpaj-bprr-nth-one-is-bpa-nth
+  (equal (fn-bprr-nth 1 x) (fn-bpa-nth 1 x))
+  :hints (("Goal" :in-theory
+           (enable fn-bprr-nth fn-bpa-nth fn-bpa-car fn-bpa-cdr))))
+
 (defthm fn-bpaj-intent-listp-append-one
   (implies (and (fn-bpaj-intent-listp intents)
-                (fn-bpaj-intentp intent))
+                (or (fn-bpaj-intentp intent)
+                    (fn-bpaj-transit-intentp intent)))
            (fn-bpaj-intent-listp (append intents (list intent))))
   :hints (("Goal" :induct (fn-bpaj-intent-listp intents)
-           :in-theory (enable fn-bpaj-intent-listp append))))
+           :in-theory (e/d (fn-bpaj-intent-listp append)
+                           (fn-bpaj-intentp fn-bpaj-transit-intentp)))))
 
 (defthm fn-bpaj-context-v2-listp-append-one
   (implies (and (fn-bpaj-context-v2-listp facts)
-                (fn-bpaj-context-v2p fact))
+                (or (fn-bpaj-context-v2p fact)
+                    (fn-bpaj-transit-contextp fact)))
            (fn-bpaj-context-v2-listp (append facts (list fact))))
   :hints (("Goal" :induct (fn-bpaj-context-v2-listp facts)
-           :in-theory (enable fn-bpaj-context-v2-listp append))))
+           :in-theory (e/d (fn-bpaj-context-v2-listp append)
+                           (fn-bpaj-context-v2p
+                            fn-bpaj-transit-contextp)))))
 
 (defthm fn-bpaj-context-match-implies-context-v2p
   (implies (fn-bpaj-context-matches-intentp context intent)
@@ -384,13 +499,23 @@
   :hints (("Goal" :in-theory
            (enable fn-bpaj-context-matches-intentp))))
 
+(defthm fn-bpaj-transit-context-match-implies-contextp
+  (implies (fn-bpaj-transit-context-matches-intentp store context intent)
+           (fn-bpaj-transit-contextp context))
+  :hints (("Goal" :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-transit-context-matches-intentp)))))
+
 (defthm fn-bpaj-store-record-accepted-fast-is-checked
   (implies (fn-sn-statep store)
            (equal (fn-bpaj-store-record-accepted-fast store record)
                   (fn-bpr-store-record-acceptedp store record)))
   :hints (("Goal" :in-theory
-           (enable fn-bpaj-store-record-accepted-fast
-                   fn-bpr-store-record-acceptedp))))
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-store-record-accepted-fast
+              fn-bpr-store-record-acceptedp)))))
 
 (defthm fn-bpaj-request-acceptable-fast-is-checked
   (implies (fn-sn-statep store)
@@ -399,8 +524,11 @@
                   (fn-bpr-request-acceptablep
                    store config record request policy-authorizedp)))
   :hints (("Goal" :in-theory
-           (enable fn-bpaj-request-acceptable-fast
-                   fn-bpr-request-acceptablep))))
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-request-acceptable-fast
+              fn-bpr-request-acceptablep
+              fn-bpaj-store-record-accepted-fast-is-checked)))))
 
 (defthm fn-bpaj-bpr-accept-request-fast-is-checked
   (implies (and (fn-bpr-statep st) (fn-sn-statep store))
@@ -410,7 +538,8 @@
                    st store record request policy-authorizedp)))
   :hints (("Goal" :in-theory
            (enable fn-bpaj-bpr-accept-request-fast
-                   fn-bpr-accept-request))))
+                   fn-bpr-accept-request
+                   fn-bpr-bind-request-context))))
 
 (defthm fn-bpaj-bpr-prepare-receipt-fast-is-checked
   (implies (fn-bpr-statep st)
@@ -446,6 +575,42 @@
   :hints (("Goal" :in-theory
            (enable fn-bpaj-bprr-apply-record-fast fn-bprr-apply-record))))
 
+(defthm fn-bpaj-projected-request-acceptable-fast-is-checked
+  (implies (fn-sn-statep store)
+           (equal (fn-bpaj-projected-request-acceptable-fast
+                   store config record request stored-octets authorizedp)
+                  (fn-bpr-projected-request-acceptablep
+                   store config record request stored-octets authorizedp)))
+  :hints (("Goal" :in-theory
+           (enable fn-bpaj-projected-request-acceptable-fast
+                   fn-bpr-projected-request-acceptablep
+                   fn-bpaj-store-record-accepted-fast-is-checked))))
+
+(defthm fn-bpaj-bpr-accept-projected-request-fast-is-checked
+  (implies (and (fn-bpr-statep st) (fn-sn-statep store))
+           (equal (fn-bpaj-bpr-accept-projected-request-fast
+                   st store record request stored-octets authorizedp)
+                  (fn-bpr-accept-projected-request
+                   st store record request stored-octets authorizedp)))
+  :hints (("Goal" :in-theory
+           (enable fn-bpaj-bpr-accept-projected-request-fast
+                   fn-bpr-accept-projected-request
+                   fn-bpaj-projected-request-acceptable-fast-is-checked))))
+
+(defthm fn-bpaj-transit-context-matches-intent-fast-is-checked
+  (implies (fn-sn-statep store)
+           (equal (fn-bpaj-transit-context-matches-intent-fastp
+                   store context intent)
+                  (fn-bpaj-transit-context-matches-intentp
+                   store context intent)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-bpaj-transit-context-matches-intent-fastp
+                 fn-bpaj-transit-context-matches-intentp
+                 fn-bpaj-transit-record-matchp)
+                (fn-bpaj-transit-intentp fn-bpaj-transit-contextp
+                 fn-bpaj-request fn-bprr-decode-value
+                 fn-bpr-store-record-acceptedp)))))
+
 (defthm fn-bpaj-apply-record-fast-is-checked
   (implies (and (fn-bpaj-statep joined) (fn-sn-statep store))
            (equal (fn-bpaj-apply-record-fast joined store r)
@@ -457,9 +622,22 @@
                  (:instance fn-bpaj-bprr-apply-record-fast-is-checked
                             (st (fn-bpaj-receiver joined))
                             (r (fn-bpaj-base-record r)))
+                 (:instance fn-bpaj-bpr-accept-projected-request-fast-is-checked
+                            (st (fn-bpaj-receiver joined))
+                            (record (fn-bprr-decode-value
+                                     (fn-bpaj-nth 3 r) :record))
+                            (request (fn-bpaj-request (fn-bpaj-nth 2 r)))
+                            (stored-octets
+                             (fn-bpaj-nth 9 (fn-bpaj-context-intent joined r)))
+                            (authorizedp t))
+                 (:instance fn-bpaj-transit-context-matches-intent-fast-is-checked
+                            (context r)
+                            (intent (fn-bpaj-context-intent joined r)))
                  (:instance fn-bpaj-statep-components))
            :cases ((equal (fn-bpaj-nth 0 r) :request-intent)
+                   (equal (fn-bpaj-nth 0 r) :request-transit-intent)
                    (equal (fn-bpaj-nth 0 r) :request-context-v2)
+                   (equal (fn-bpaj-nth 0 r) :request-transit-context)
                    (equal (fn-bpaj-nth 0 r) :request-context))
            :in-theory
            (union-theories
@@ -520,6 +698,17 @@
             '(fn-bpaj-record-lookup-fast fn-bpaj-record-lookup
               fn-bpaj-record-matches-request-fast-is-checked)))))
 
+(defthm fn-bpaj-transit-record-lookup-fast-is-checked
+  (implies (fn-sn-statep store)
+           (equal (fn-bpaj-transit-record-lookup-fast store request intent)
+                  (fn-bpaj-transit-record-lookup store request intent)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-bpaj-transit-record-lookup-fast
+                 fn-bpaj-transit-record-lookup
+                 fn-bpaj-transit-record-matchp)
+                (fn-bpaj-transit-intentp fn-bpaj-article-fields
+                 fn-bpaj-record-for-msgid fn-bpr-store-record-acceptedp)))))
+
 (defthm fn-bpaj-dispatch-fast-is-checked
   (implies (and (fn-bpaj-statep joined) (fn-sn-statep store))
            (equal (fn-bpaj-dispatch-fast
@@ -531,7 +720,8 @@
             (theory 'minimal-theory)
             '(fn-bpaj-dispatch-fast fn-bpaj-dispatch
               fn-bpaj-request-status-fast-is-checked
-              fn-bpaj-record-lookup-fast-is-checked)))))
+              fn-bpaj-record-lookup-fast-is-checked
+              fn-bpaj-transit-record-lookup-fast-is-checked)))))
 
 (defthm fn-bpaj-apply-record-preserves-statep
   (implies (and (fn-bpaj-statep joined)
@@ -545,18 +735,30 @@
                             (record r))
                  (:instance fn-bprr-apply-record-preserves-statep
                             (st (fn-bpaj-receiver joined))
-                            (record (fn-bpaj-base-record r))))
+                            (record (fn-bpaj-base-record r)))
+                 (:instance fn-bpr-accept-projected-request-preserves-statep
+                            (st (fn-bpaj-receiver joined))
+                            (record (fn-bprr-decode-value
+                                     (fn-bpaj-nth 3 r) :record))
+                            (request (fn-bpaj-request (fn-bpaj-nth 2 r)))
+                            (stored-octets
+                             (fn-bpaj-nth 9 (fn-bpaj-context-intent joined r)))
+                            (policy-authorizedp t)))
            :cases ((equal (fn-bpaj-nth 0 r) :request-intent)
+                   (equal (fn-bpaj-nth 0 r) :request-transit-intent)
                    (equal (fn-bpaj-nth 0 r) :request-context-v2)
+                   (equal (fn-bpaj-nth 0 r) :request-transit-context)
                    (equal (fn-bpaj-nth 0 r) :request-context))
            :in-theory
            (union-theories
             (theory 'minimal-theory)
             '(car-cons cdr-cons fn-bpaj-nth-one-of-two-list
+              fn-bpaj-bprr-nth-one-is-bpa-nth
               fn-bpaj-apply-record
               fn-bpaj-statep-of-constructor
               fn-bpaj-intent-listp-append-one
               fn-bpaj-context-v2-listp-append-one
+              fn-bpaj-transit-context-match-implies-contextp
               fn-bpaj-context-match-implies-context-v2p)))))
 
 (defthm fn-bpaj-apply-record-fast-preserves-statep
@@ -593,9 +795,12 @@
                                (fn-bprr-config (car records)))
                               nil nil nil))
                             (records (cdr records))))
-           :in-theory (enable fn-bpaj-replay fn-bpaj-statep
-                              fn-bpaj-intent-listp
-                              fn-bpaj-context-v2-listp))))
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-replay fn-bpaj-statep-of-constructor
+              fn-bpaj-intent-listp fn-bpaj-context-v2-listp
+              fn-bpaj-nth-one-of-two-list car-cons cdr-cons)))))
 
 (in-theory (disable fn-bpaj-bpr-accept-request-fast
                     fn-bpaj-store-record-accepted-fast

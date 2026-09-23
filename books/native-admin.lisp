@@ -213,21 +213,28 @@ decoded as source-address for durable command compatibility."
 ; deliberately narrow: loopback IPv4, no translation, and every co-resident
 ; process in the originator set.  Its auth-principal value cannot be a SHA-256
 ; principal hex, so this row does not grant an NNTP peer login as a side effect.
-(defun fn-native-admin-bp-boundary-rows (name path eid port)
+(defun fn-native-admin-bp-boundary-rows
+  (name path eid port inbound max-octets max-inflight)
   (declare (xargs :guard t))
-  (list (fn-cfg-row-make name "path-identity" path 0)
+  (append
+   (list (fn-cfg-row-make name "path-identity" path 0)
         (fn-cfg-row-make name "transport-bp" eid 0)
-        (fn-cfg-row-make name "auth-principal" "bp-only-no-nntp-principal" 0)
+        (fn-cfg-row-make name "auth-principal" "bp-only-no-nntp-principal" 0))
+   (if inbound
+       (list (fn-cfg-row-make name "inbound-groups" inbound max-octets)
+             (fn-cfg-row-make name "inbound-inflight" "" max-inflight))
+     nil)
+   (list
         (fn-cfg-row-make name "bp-trust" "network" 0)
         (fn-cfg-row-make name "bp-boundary-listener" "127.0.0.1" port)
         (fn-cfg-row-make name "bp-boundary-source" "127.0.0.1" 0)
         (fn-cfg-row-make name "bp-boundary-translation" "none" 0)
         (fn-cfg-row-make name "bp-boundary-originators"
-                         "all-co-resident" 0)))
+                         "all-co-resident" 0))))
 
 (defun fn-native-admin-bp-boundary-plan (words)
   (declare (xargs :guard t))
-  (if (and (true-listp words) (equal (len words) 6)
+  (if (and (true-listp words) (member-equal (len words) '(6 9))
            (equal (nth 0 words) "bp-boundary")
            (equal (nth 1 words) "add")
            (fn-cfg-labelp (nth 2 words))
@@ -238,12 +245,31 @@ decoded as source-address for durable command compatibility."
            (<= 1 (fn-native-admin-decimal-value
                   (coerce (nth 5 words) 'list)))
            (<= (fn-native-admin-decimal-value
-                (coerce (nth 5 words) 'list)) 65535))
+                (coerce (nth 5 words) 'list)) 65535)
+           (or (equal (len words) 6)
+               (and (fn-cfg-wildmatp (nth 6 words))
+                    (fn-native-admin-decimalp (nth 7 words))
+                    (<= 1 (fn-native-admin-decimal-value
+                           (coerce (nth 7 words) 'list)))
+                    (<= (fn-native-admin-decimal-value
+                         (coerce (nth 7 words) 'list)) *fn-record-max-payload*)
+                    (fn-native-admin-decimalp (nth 8 words))
+                    (<= 1 (fn-native-admin-decimal-value
+                           (coerce (nth 8 words) 'list)))
+                    (<= (fn-native-admin-decimal-value
+                         (coerce (nth 8 words) 'list)) *fn-record-max-payload*))))
       (let* ((name (nth 2 words))
              (rows (fn-native-admin-bp-boundary-rows
                     name (nth 3 words) (nth 4 words)
                     (fn-native-admin-decimal-value
-                     (coerce (nth 5 words) 'list)))))
+                     (coerce (nth 5 words) 'list))
+                    (if (equal (len words) 9) (nth 6 words) nil)
+                    (if (equal (len words) 9)
+                        (fn-native-admin-decimal-value
+                         (coerce (nth 7 words) 'list)) 0)
+                    (if (equal (len words) 9)
+                        (fn-native-admin-decimal-value
+                         (coerce (nth 8 words) 'list)) 0))))
         (fn-native-admin-result :accepted nil :set-bp-boundary
                                 (fn-record-string-octets name) 0 nil rows))
     (fn-native-admin-result :refused :bp-boundary nil nil 0 nil nil)))
