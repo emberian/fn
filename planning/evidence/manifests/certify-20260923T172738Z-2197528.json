@@ -1,0 +1,226 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "tests/acl2/frame-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-gates/workflow-join/build/acl2/certify-20260923T172738Z-2197528",
+  "book_failures": {},
+  "book_provenance": {
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/frame": "installed",
+    "books/frame-fields": "installed",
+    "books/frame-invariants": "installed",
+    "books/frame-journal": "installed",
+    "books/frame-octets": "installed",
+    "books/wildmat": "installed",
+    "tests/acl2/frame-tests": "certified"
+  },
+  "book_results": {
+    "tests/acl2/frame-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "tests/acl2/frame-tests": 0.938
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 1800,
+  "cache_install": {
+    "directory": "/home/ember/fn-certcache",
+    "installed": 0,
+    "kept": 8,
+    "origins": {
+      "/Users/ember/dev/fn/build/lanes/authorship-integration": 5,
+      "/home/ember/fn-gates/workflow-join": 3
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286"
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "tests/acl2/frame-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "tests/acl2/frame-tests": "b51a36a4cdaefef792f813f73171aa986b2eb1e8f8ead4659494d91b0c6bc530"
+  },
+  "certify_wall_seconds": 0.941,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "driver_digests_sha256": {
+    "tests/acl2/frame-tests": "8d896962efe40ab929b9590fd5799cc0efa2f96924c6af406f71de25a2eca878"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 233045765f323d6808aa2238cc6addcb 9d3b92c833f0"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T17:27:39+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "incremental": true,
+  "installed_books": {
+    "books/cbor": "/Users/ember/dev/fn/build/lanes/authorship-integration",
+    "books/cbor-invariants": "/Users/ember/dev/fn/build/lanes/authorship-integration",
+    "books/frame": "/home/ember/fn-gates/workflow-join",
+    "books/frame-fields": "/Users/ember/dev/fn/build/lanes/authorship-integration",
+    "books/frame-invariants": "/home/ember/fn-gates/workflow-join",
+    "books/frame-journal": "/home/ember/fn-gates/workflow-join",
+    "books/frame-octets": "/Users/ember/dev/fn/build/lanes/authorship-integration",
+    "books/wildmat": "/Users/ember/dev/fn/build/lanes/authorship-integration"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 233045765f323d6808aa2238cc6addcb 9d3b92c833f0"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "tests/acl2/frame-tests"
+  ],
+  "requested_books": [
+    "tests/acl2/frame-tests"
+  ],
+  "roots": [
+    "tests/acl2/frame-tests"
+  ],
+  "run_id": "certify-20260923T172738Z-2197528",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "tests/acl2/frame-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "cc309f21de8fb3b6f40dd2aba05bacc3af6add588f690d8833efbf0298767854",
+    "books/frame-journal.lisp": "62dc2c9a95a16dfedc594b3780b991f2973116dc3cf5ede4fede55e36c2ad3e0",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "7a3e3f202057f1f496a7f963008475e197baeb7424e70abf2e0cc2e00983a3d6",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/frame-tests.lisp": "13a37ee1061ae63791c8b9bacaeac1b4a8d777df3a981f7049888165f8b3888d"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "cc309f21de8fb3b6f40dd2aba05bacc3af6add588f690d8833efbf0298767854",
+    "books/frame-journal.lisp": "62dc2c9a95a16dfedc594b3780b991f2973116dc3cf5ede4fede55e36c2ad3e0",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "7a3e3f202057f1f496a7f963008475e197baeb7424e70abf2e0cc2e00983a3d6",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/frame-tests.lisp": "13a37ee1061ae63791c8b9bacaeac1b4a8d777df3a981f7049888165f8b3888d"
+  },
+  "start_order": [
+    "tests/acl2/frame-tests"
+  ],
+  "started_utc": "2026-09-23T17:27:38+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/home/ember/fn-gates/workflow-join"
+}

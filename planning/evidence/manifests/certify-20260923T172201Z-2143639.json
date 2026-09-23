@@ -1,0 +1,467 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "books/assumptions": 0,
+    "books/bp-release": 0,
+    "books/bp-release-invariants": 0,
+    "books/bp-workflow-constructors": 0,
+    "books/byte-store-invariants": 0,
+    "books/frame": 0,
+    "books/frame-invariants": 0,
+    "books/frame-journal": 0,
+    "tests/acl2/bp-release-tests": 0,
+    "tests/acl2/frame-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-gates/workflow-join/build/acl2/certify-20260923T172201Z-2143639",
+  "book_failures": {},
+  "book_provenance": {
+    "books/acceptance": "installed",
+    "books/acceptance-alloc": "installed",
+    "books/acceptance-invariants": "installed",
+    "books/assumptions": "certified",
+    "books/bp-adu": "installed",
+    "books/bp-release": "certified",
+    "books/bp-release-invariants": "certified",
+    "books/bp-workflow": "installed",
+    "books/bp-workflow-binding-core": "installed",
+    "books/bp-workflow-constructors": "certified",
+    "books/bp-workflow-invariants": "installed",
+    "books/bp-workflow-records": "installed",
+    "books/byte-store": "installed",
+    "books/byte-store-invariants": "certified",
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/defrecord": "installed",
+    "books/frame": "certified",
+    "books/frame-fields": "installed",
+    "books/frame-invariants": "certified",
+    "books/frame-journal": "certified",
+    "books/frame-octets": "installed",
+    "books/node": "installed",
+    "books/node-invariants": "installed",
+    "books/provenance": "installed",
+    "books/records": "installed",
+    "books/records-invariants": "installed",
+    "books/records-shape": "installed",
+    "books/retention": "installed",
+    "books/retention-invariants": "installed",
+    "books/wildmat": "installed",
+    "tests/acl2/bp-release-tests": "certified",
+    "tests/acl2/frame-tests": "certified"
+  },
+  "book_results": {
+    "books/assumptions": "passed",
+    "books/bp-release": "passed",
+    "books/bp-release-invariants": "passed",
+    "books/bp-workflow-constructors": "passed",
+    "books/byte-store-invariants": "passed",
+    "books/frame": "passed",
+    "books/frame-invariants": "passed",
+    "books/frame-journal": "passed",
+    "tests/acl2/bp-release-tests": "passed",
+    "tests/acl2/frame-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/assumptions": 0.746,
+    "books/bp-release": 1.306,
+    "books/bp-release-invariants": 2.515,
+    "books/bp-workflow-constructors": 1.47,
+    "books/byte-store-invariants": 2.996,
+    "books/frame": 2.159,
+    "books/frame-invariants": 1.548,
+    "books/frame-journal": 1.009,
+    "tests/acl2/bp-release-tests": 1.436,
+    "tests/acl2/frame-tests": 0.941
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 1800,
+  "cache_install": {
+    "directory": "/home/ember/fn-certcache",
+    "installed": 0,
+    "kept": 23,
+    "origins": {
+      "/home/ember/fn-gates/dev-head": 11,
+      "/home/ember/fn-gates/takeover-acceptance-stamp": 12
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286"
+  },
+  "cert_cache": {
+    "already_cached": 10,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/frame-journal",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/frame",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/frame-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/frame-tests",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/byte-store-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/assumptions",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-release",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-workflow-constructors",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-release-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/bp-release-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 10,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/assumptions": "6fc257d8ba68e76466a554e623b66b7e341debc56d15558f9394159d770da23e",
+    "books/bp-release": "c4d5c51ca6f30f2f8e326e84dd7a2cb074d7e8738f04d286c73ff1edbc027ffc",
+    "books/bp-release-invariants": "c3d550302b89fece974ae0f96cde1dfd672d4b21b9fd035193f30fe8b6549a15",
+    "books/bp-workflow-constructors": "e2ce5c100bcfb0381fc40c3d0e8956f6e2170b7b3e9608dc38a93286dc0945a2",
+    "books/byte-store-invariants": "706832678dcae40a57f948d3963c67d36c6c30a87b1416b8cc85928258167979",
+    "books/frame": "2990693b2ad8e9144b8b63ad50fc413ce56aadb872d0514e65db72265de5e1e2",
+    "books/frame-invariants": "31f21073006eaec0cc3a31a8c08d293298354808bede69638c2dd3208015a3b5",
+    "books/frame-journal": "795a3896fd2bbf823a7f16d0bfe4670e9a6141701de249569f2b0a6b73e036a5",
+    "tests/acl2/bp-release-tests": "451ded061b31c049efcf294fe98fcd5dc1dec7cd1b42c7a1ed87832dd4d08e40",
+    "tests/acl2/frame-tests": "45216157f6ac11b07388111c3f459204253e942aba1141e3cf82117e6a88e565"
+  },
+  "certify_wall_seconds": 12.193,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "driver_digests_sha256": {
+    "books/assumptions": "f113d7aecafdfcaef9f284f6a80426b29ce374b46dd8a7f88e7aa3e061c37404",
+    "books/bp-release": "1bb531cabb9daa72df0d9ffe51c6e063adb8e6471f3507a10dd63f6a1541357d",
+    "books/bp-release-invariants": "8eefb2aa0c18dfa84ed1d63c75e0e57aa5f621d2bf9eeee95be1d32bf4dcedfb",
+    "books/bp-workflow-constructors": "5de8fe280696bbba3aaef66f76c2f3aea71214362ac0cbf600303101e6b3748d",
+    "books/byte-store-invariants": "8f561c0f6f42db84d71f4110e46542624846fa2cd80c2711d1f80d239ee86e5b",
+    "books/frame": "0d0a7fb95789f08bd6e6df1b142bd177b1c81a3927ef584dfbc11f7d35a62a41",
+    "books/frame-invariants": "8632882edd131311f8ea415937b93831d4224cda97be6302504b19493e06698d",
+    "books/frame-journal": "e6752ae6fa473547be929b91ff8f73584b6b2dd05f2d636ef3a7c1e18eb1a574",
+    "tests/acl2/bp-release-tests": "bd14b07c6d4f0d6f083c0f1c7d3426b51789b883554ca17f5ab9448262d27d8a",
+    "tests/acl2/frame-tests": "f38ee3d06d91888954987a676fe1f3357cd9bca3becd9b9b9e6ea1dd4159906d"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c 40edeea7aa8f",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c c908c6685496",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c e5da9c96aa92",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c 9d3b92c833f0",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c 42e5d5a6d4cd",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c 7fa6ad152b7b",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c d5af7cd2819a",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c e00a2c076f38",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c 4edf4d4a082a",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c d6a3181784ac"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T17:22:14+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "incremental": true,
+  "installed_books": {
+    "books/acceptance": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/acceptance-alloc": "/home/ember/fn-gates/dev-head",
+    "books/acceptance-invariants": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/bp-adu": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/bp-workflow": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/bp-workflow-binding-core": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/bp-workflow-invariants": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/bp-workflow-records": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/byte-store": "/home/ember/fn-gates/dev-head",
+    "books/cbor": "/home/ember/fn-gates/dev-head",
+    "books/cbor-invariants": "/home/ember/fn-gates/dev-head",
+    "books/defrecord": "/home/ember/fn-gates/dev-head",
+    "books/frame-fields": "/home/ember/fn-gates/dev-head",
+    "books/frame-octets": "/home/ember/fn-gates/dev-head",
+    "books/node": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/node-invariants": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/provenance": "/home/ember/fn-gates/dev-head",
+    "books/records": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/records-invariants": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/records-shape": "/home/ember/fn-gates/takeover-acceptance-stamp",
+    "books/retention": "/home/ember/fn-gates/dev-head",
+    "books/retention-invariants": "/home/ember/fn-gates/dev-head",
+    "books/wildmat": "/home/ember/fn-gates/dev-head"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c 40edeea7aa8f",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c c908c6685496",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c e5da9c96aa92",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c 9d3b92c833f0",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c 42e5d5a6d4cd",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c 7fa6ad152b7b",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c d5af7cd2819a",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c e00a2c076f38",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c 4edf4d4a082a",
+    "FN_CERTIFY_SUCCESS 1e6caee49d26c33b2f8cedb195f1de7c d6a3181784ac"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/frame-journal",
+    "books/frame",
+    "tests/acl2/frame-tests",
+    "books/bp-workflow-constructors",
+    "tests/acl2/bp-release-tests"
+  ],
+  "requested_books": [
+    "books/frame-journal",
+    "books/frame",
+    "books/frame-invariants",
+    "tests/acl2/frame-tests",
+    "books/byte-store-invariants",
+    "books/assumptions",
+    "books/bp-release",
+    "books/bp-workflow-constructors",
+    "books/bp-release-invariants",
+    "tests/acl2/bp-release-tests"
+  ],
+  "roots": [
+    "books/frame-journal",
+    "books/frame",
+    "tests/acl2/frame-tests",
+    "books/bp-workflow-constructors",
+    "tests/acl2/bp-release-tests"
+  ],
+  "run_id": "certify-20260923T172201Z-2143639",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "books_with_archived_wall": 9,
+    "policy": "critical-path-first",
+    "predicted_critical_path_seconds": 13.635
+  },
+  "slot_wait_seconds": {
+    "books/assumptions": 0.0,
+    "books/bp-release": 0.0,
+    "books/bp-release-invariants": 0.0,
+    "books/bp-workflow-constructors": 0.0,
+    "books/byte-store-invariants": 0.0,
+    "books/frame": 0.0,
+    "books/frame-invariants": 0.0,
+    "books/frame-journal": 0.0,
+    "tests/acl2/bp-release-tests": 0.0,
+    "tests/acl2/frame-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "8d580e364f1fae2d871d462d81756c631abefb0ac21b88dfc2901fb40372fb76",
+    "books/acceptance.lisp": "a50ce3b2883c2f28a58cee5758b95366a777ee2ad9326de23f12275748c02960",
+    "books/assumptions.lisp": "934a65e68007e01b239ab50ae0c96897cbfb3f65d6a90ae91bc0522ed0cbd721",
+    "books/bp-adu.lisp": "719a1c26fadc034bcc6360ff6c095f37159d1ebe0cfb756a0d4a5d1980a3411e",
+    "books/bp-release-invariants.lisp": "666c1393081361bb3498a81813f9e7c8ee25587ff7e6895c34827fbfbc8a7668",
+    "books/bp-release.lisp": "9ac98b7536ce1b062fc10079e9cd92da9b0b79c7af6173295f109de44b64b0fc",
+    "books/bp-workflow-binding-core.lisp": "9e2e7c3debd38df224f4aa2ee749a8273a5bae0fd90c6784865eb9760c6d7657",
+    "books/bp-workflow-constructors.lisp": "04534e890e32fb44bf5e210c631c909340f892fa241fe26aa17ef8945dda4235",
+    "books/bp-workflow-invariants.lisp": "33a53c606fe12a7cf6cf033edee4d140c0452426b90701a3a430f83660d32764",
+    "books/bp-workflow-records.lisp": "b88269b8ef1fe526ef6da0ae6341615f09e6e349c05f5316a0822818fadeb8ad",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/byte-store-invariants.lisp": "8481c1f6ea615daf4b900d7c92ba27b49c0138476447dba01d9cd589876afe70",
+    "books/byte-store.lisp": "9c9864e72118155c5e1a4bd2c6dfee88c93d9d1f93f123197d77281f75d94432",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "cc309f21de8fb3b6f40dd2aba05bacc3af6add588f690d8833efbf0298767854",
+    "books/frame-journal.lisp": "62dc2c9a95a16dfedc594b3780b991f2973116dc3cf5ede4fede55e36c2ad3e0",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "7a3e3f202057f1f496a7f963008475e197baeb7424e70abf2e0cc2e00983a3d6",
+    "books/node-invariants.lisp": "1605c6d1399f3ec77e7652e3baba094f34a2cc4e578df6e9f9682620dbefae3c",
+    "books/node.lisp": "dc13d507479a343fc694b69974a2eee3e4b387e85c02f0dccb9fb78d2e9d5572",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-invariants.lisp": "9f0afa3017215a9c574b7c6aca20b28798e8038244f03d3388f7187fd002ae5a",
+    "books/records-shape.lisp": "56696b8e7f89971ffbe80ea26477a0808d9b19b37e41c1aedfffebf787b5ff86",
+    "books/records.lisp": "76c4c69d2595d45fc3b140170b7efe54a309fbfc98021070c29dcb38c2f2739b",
+    "books/retention-invariants.lisp": "84edac122a1526bc2a8a53fe53c4d55afae3eb4a93eb7866066185ba779de51e",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-release-tests.lisp": "784f56aa56480cc5ffb79ee14f27cce23a0ae3cde48df7db3983e751f453e881",
+    "tests/acl2/frame-tests.lisp": "438386439fd8ee538353122611c6f28150117e4ae80f535322b9d563700c7f7c"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "8d580e364f1fae2d871d462d81756c631abefb0ac21b88dfc2901fb40372fb76",
+    "books/acceptance.lisp": "a50ce3b2883c2f28a58cee5758b95366a777ee2ad9326de23f12275748c02960",
+    "books/assumptions.lisp": "934a65e68007e01b239ab50ae0c96897cbfb3f65d6a90ae91bc0522ed0cbd721",
+    "books/bp-adu.lisp": "719a1c26fadc034bcc6360ff6c095f37159d1ebe0cfb756a0d4a5d1980a3411e",
+    "books/bp-release-invariants.lisp": "666c1393081361bb3498a81813f9e7c8ee25587ff7e6895c34827fbfbc8a7668",
+    "books/bp-release.lisp": "9ac98b7536ce1b062fc10079e9cd92da9b0b79c7af6173295f109de44b64b0fc",
+    "books/bp-workflow-binding-core.lisp": "9e2e7c3debd38df224f4aa2ee749a8273a5bae0fd90c6784865eb9760c6d7657",
+    "books/bp-workflow-constructors.lisp": "04534e890e32fb44bf5e210c631c909340f892fa241fe26aa17ef8945dda4235",
+    "books/bp-workflow-invariants.lisp": "33a53c606fe12a7cf6cf033edee4d140c0452426b90701a3a430f83660d32764",
+    "books/bp-workflow-records.lisp": "b88269b8ef1fe526ef6da0ae6341615f09e6e349c05f5316a0822818fadeb8ad",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/byte-store-invariants.lisp": "8481c1f6ea615daf4b900d7c92ba27b49c0138476447dba01d9cd589876afe70",
+    "books/byte-store.lisp": "9c9864e72118155c5e1a4bd2c6dfee88c93d9d1f93f123197d77281f75d94432",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "cc309f21de8fb3b6f40dd2aba05bacc3af6add588f690d8833efbf0298767854",
+    "books/frame-journal.lisp": "62dc2c9a95a16dfedc594b3780b991f2973116dc3cf5ede4fede55e36c2ad3e0",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "7a3e3f202057f1f496a7f963008475e197baeb7424e70abf2e0cc2e00983a3d6",
+    "books/node-invariants.lisp": "1605c6d1399f3ec77e7652e3baba094f34a2cc4e578df6e9f9682620dbefae3c",
+    "books/node.lisp": "dc13d507479a343fc694b69974a2eee3e4b387e85c02f0dccb9fb78d2e9d5572",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-invariants.lisp": "9f0afa3017215a9c574b7c6aca20b28798e8038244f03d3388f7187fd002ae5a",
+    "books/records-shape.lisp": "56696b8e7f89971ffbe80ea26477a0808d9b19b37e41c1aedfffebf787b5ff86",
+    "books/records.lisp": "76c4c69d2595d45fc3b140170b7efe54a309fbfc98021070c29dcb38c2f2739b",
+    "books/retention-invariants.lisp": "84edac122a1526bc2a8a53fe53c4d55afae3eb4a93eb7866066185ba779de51e",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-release-tests.lisp": "784f56aa56480cc5ffb79ee14f27cce23a0ae3cde48df7db3983e751f453e881",
+    "tests/acl2/frame-tests.lisp": "438386439fd8ee538353122611c6f28150117e4ae80f535322b9d563700c7f7c"
+  },
+  "start_order": [
+    "books/frame-journal",
+    "books/frame",
+    "books/byte-store-invariants",
+    "books/frame-invariants",
+    "tests/acl2/frame-tests",
+    "books/assumptions",
+    "books/bp-release",
+    "books/bp-release-invariants",
+    "books/bp-workflow-constructors",
+    "tests/acl2/bp-release-tests"
+  ],
+  "started_utc": "2026-09-23T17:22:01+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/home/ember/fn-gates/workflow-join"
+}
