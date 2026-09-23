@@ -372,6 +372,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/config-observed-tests \
 	books/config-store-traces \
 	tests/acl2/config-store-traces-tests \
+	books/config-owner-live \
+	tests/acl2/config-owner-live-tests \
 	books/owner-config \
 	books/ideal \
 	books/nntp-index \
