@@ -242,34 +242,79 @@
            (not (equal (nth i cells) marker)))
   :hints (("Goal" :induct (fn-bpf-first-index-nth-induction cells from i))))
 
-;; OPEN, not certified: the `:ok` shape gives
-;; `fn-bpf-inputsp`, but placing `offset f + k` below `total` needs a member
-;; lemma over `fn-bpf-same-total` this book does not yet have.
-;; (defthm fn-bpf-reassemble-ok-agrees-with-every-fragment
-;;   (implies (and (equal (fn-bpf-result-tag (fn-bpf-reassemble fs total)) :ok)
-;;                 (member-equal f fs)
-;;                 (natp k)
-;;                 (< k (len (fn-bpf-bytes f))))
-;;            (equal (nth k (fn-bpf-bytes f))
-;;                   (nth (+ (fn-bpf-offset f) k)
-;;                        (fn-bpf-result-bytes (fn-bpf-reassemble fs total)))))
-;;   :hints (("Goal"
-;;            :do-not-induct t
-;;            :use ((:instance fn-bpf-cell-at-agrees-with-member
-;;                             (i (+ (fn-bpf-offset f) k)))
-;;                  (:instance fn-bpf-nth-of-canvas
-;;                             (from 0) (n total)
-;;                             (i (+ (fn-bpf-offset f) k)))
-;;                  (:instance fn-bpf-first-index-nil-means-no-marker
-;;                             (cells (fn-bpf-canvas fs 0 total))
-;;                             (from 0) (marker :conflict)
-;;                             (i (+ (fn-bpf-offset f) k))))
-;;            :in-theory (disable fn-bpf-cell-at-agrees-with-member
-;;                                fn-bpf-nth-of-canvas
-;;                                fn-bpf-first-index-nil-means-no-marker
-;;                                fn-bpf-canvas fn-bpf-cell-at
-;;                                fn-bpf-reassemble fn-bpf-result-tag
-;;                                fn-bpf-result-bytes))))
+(local
+ (defthm fn-bpf-member-of-fragment-listp
+   (implies (and (fn-bpf-fragment-listp fs) (member-equal f fs))
+            (fn-bpf-fragmentp f))
+   :hints (("Goal" :induct (fn-bpf-fragment-listp fs)))))
+
+(local
+ (defthm fn-bpf-same-total-member
+   (implies (and (fn-bpf-same-total fs total) (member-equal f fs))
+            (equal (fn-bpf-total f) total))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-bpf-same-total fs total)))))
+
+(local
+ (defthm fn-bpf-member-cell-index
+   (implies (and (fn-bpf-inputsp fs total)
+                 (member-equal f fs)
+                 (natp k)
+                 (< k (len (fn-bpf-bytes f))))
+            (and (natp (+ (fn-bpf-offset f) k))
+                 (< (+ (fn-bpf-offset f) k) total)
+                 (equal (fn-bpf-cell-of f (+ (fn-bpf-offset f) k))
+                        (nth k (fn-bpf-bytes f)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bpf-member-of-fragment-listp)
+                  (:instance fn-bpf-same-total-member))
+            :in-theory (disable fn-bpf-member-of-fragment-listp)))))
+
+(local
+ (defthm fn-bpf-member-byte-is-octet
+   (implies (and (fn-bpf-inputsp fs total)
+                 (member-equal f fs)
+                 (natp k)
+                 (< k (len (fn-bpf-bytes f))))
+            (fn-cbor-octetp (nth k (fn-bpf-bytes f))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bpf-member-of-fragment-listp)
+                  (:instance fn-bpf-nth-of-octet-list
+                             (xs (fn-bpf-bytes f)) (i k)))
+            :in-theory (disable fn-bpf-member-of-fragment-listp
+                                fn-bpf-nth-of-octet-list)))))
+
+(defthm fn-bpf-reassemble-ok-agrees-with-every-fragment
+  (implies (and (equal (fn-bpf-result-tag (fn-bpf-reassemble fs total)) :ok)
+                (member-equal f fs)
+                (natp k)
+                (< k (len (fn-bpf-bytes f))))
+           (equal (nth k (fn-bpf-bytes f))
+                  (nth (+ (fn-bpf-offset f) k)
+                       (fn-bpf-result-bytes (fn-bpf-reassemble fs total)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpf-member-cell-index)
+                 (:instance fn-bpf-member-byte-is-octet)
+                 (:instance fn-bpf-reassemble-ok-shape)
+                 (:instance fn-bpf-canvas-length (from 0) (n total))
+                 (:instance fn-bpf-cell-at-agrees-with-member
+                            (i (+ (fn-bpf-offset f) k)))
+                 (:instance fn-bpf-nth-of-canvas
+                            (from 0) (n total)
+                            (i (+ (fn-bpf-offset f) k)))
+                 (:instance fn-bpf-first-index-nil-means-no-marker
+                            (cells (fn-bpf-canvas fs 0 total))
+                            (from 0) (marker :conflict)
+                            (i (+ (fn-bpf-offset f) k))))
+           :in-theory (e/d (fn-bpf-inputsp)
+                         (fn-bpf-canvas-length
+                               fn-bpf-cell-at-agrees-with-member
+                               fn-bpf-nth-of-canvas
+                               fn-bpf-first-index-nil-means-no-marker
+                               fn-bpf-canvas fn-bpf-cell-at
+                               fn-bpf-result-bytes)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone: an uncovered index makes success impossible, and the reported
@@ -421,15 +466,87 @@
          (+ 1 (len boundaries)))
   :hints (("Goal" :induct (fn-bpf-cut payload from boundaries total))))
 
-;; OPEN, not certified: the step case needs a covered-range split lemma
-;; (a fragment over [from, b) plus a cover of [b, total) cover [from, total))
-;; that this book does not yet have.
-;; (defthm fn-bpf-cut-covers
-;;   (implies (and (natp from) (natp total)
-;;                 (fn-bpf-boundariesp boundaries from total))
-;;            (fn-bpf-covered-range (fn-bpf-cut payload from boundaries total)
-;;                                  from (- total from)))
-;;   :hints (("Goal" :induct (fn-bpf-cut payload from boundaries total))))
+; The pointwise split is simpler than splitting a range in the cut induction.
+; Each index is either in the first extent or in a later cut.  The range
+; theorem then walks the indices, using this one fact at each step.
+(defthm fn-bpf-cut-covers-index
+  (implies (and (natp from) (natp total)
+                (fn-bpf-boundariesp boundaries from total)
+                (natp i) (<= from i) (< i total))
+           (fn-bpf-coveredp (fn-bpf-cut payload from boundaries total) i))
+  :hints (("Goal" :induct (fn-bpf-cut payload from boundaries total)
+           :in-theory (disable fn-bpf-fragmentp fn-cbor-octet-listp))))
+
+(defthm fn-bpf-cut-covers-range
+  (implies (and (natp start) (natp total)
+                (fn-bpf-boundariesp boundaries start total)
+                (natp from) (natp n) (<= start from)
+                (<= (+ from n) total))
+           (fn-bpf-covered-range
+            (fn-bpf-cut payload start boundaries total) from n))
+  :hints (("Goal" :induct
+           (fn-bpf-covered-range
+            (fn-bpf-cut payload start boundaries total) from n)
+           :in-theory (disable fn-bpf-cut fn-bpf-coveredp))))
+
+(defthm fn-bpf-cut-produces-fragment-list
+  (implies (and (fn-cbor-octet-listp payload)
+                (natp from) (natp total) (< from total)
+                (<= total (len payload))
+                (<= total *fn-bpf-max-length*)
+                (fn-bpf-boundariesp boundaries from total))
+           (fn-bpf-fragment-listp
+            (fn-bpf-cut payload from boundaries total)))
+  :hints (("Goal" :induct (fn-bpf-cut payload from boundaries total)
+           :in-theory (disable fn-cbor-octet-listp))))
+
+(local
+ (defthm fn-bpf-consp-has-positive-length
+   (implies (consp x) (< 0 (len x)))))
+
+(defthm fn-bpf-fragment-ok-produces-inputs
+  (implies (equal (car (fn-bpf-fragment payload boundaries)) :ok)
+           (fn-bpf-inputsp
+            (cadr (fn-bpf-fragment payload boundaries)) (len payload)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpf-cut-produces-fragment-list
+                            (from 0) (total (len payload))))
+           :in-theory (disable fn-bpf-cut-produces-fragment-list fn-bpf-cut
+                               fn-bpf-fragment-listp fn-cbor-octet-listp
+                               fn-bpf-boundariesp))))
+
+(defthm fn-bpf-fragment-ok-covers-all
+  (implies (equal (car (fn-bpf-fragment payload boundaries)) :ok)
+           (fn-bpf-covers-all
+            (cadr (fn-bpf-fragment payload boundaries)) (len payload)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpf-cut-covers-range
+                            (start 0) (from 0) (n (len payload))
+                            (total (len payload))))
+           :in-theory (disable fn-bpf-cut-covers-range fn-bpf-cut
+                               fn-bpf-covered-range fn-bpf-boundariesp
+                               fn-cbor-octet-listp len))))
+
+(defthm fn-bpf-fragment-then-reassemble-is-identity
+  (implies (equal (car (fn-bpf-fragment payload boundaries)) :ok)
+           (equal (fn-bpf-reassemble
+                   (cadr (fn-bpf-fragment payload boundaries))
+                   (len payload))
+                  (list :ok payload)))
+  :hints (("Goal"
+           :use ((:instance
+                  fn-bpf-complete-agreeing-cover-reassembles-to-payload
+                  (fs (cadr (fn-bpf-fragment payload boundaries))))
+                 (:instance fn-bpf-fragment-ok-produces-inputs)
+                 (:instance fn-bpf-fragment-ok-covers-all)
+                 (:instance fn-bpf-cut-agrees
+                            (from 0) (total (len payload))))
+           :in-theory (disable
+                       fn-bpf-complete-agreeing-cover-reassembles-to-payload
+                       fn-bpf-fragment-ok-produces-inputs
+                       fn-bpf-fragment-ok-covers-all fn-bpf-cut-agrees
+                       fn-bpf-reassemble fn-bpf-canvas fn-bpf-cut
+                       fn-cbor-octet-listp))))
 
 ; -----------------------------------------------------------------------------
 ; Identity is preserved across fragmentation (RFC 9171 section 5.8)
@@ -582,3 +699,41 @@
        (equal (fn-bpp-adu-key
                (fn-bpf-refragment-block parent local-offset))
               (fn-bpp-adu-key parent))))
+
+; The second-cut mapper tracks every local start, including a nonzero parent
+; offset.  This induction is the list-level step absent from the single-child
+; constructor equation above.
+(defthm fn-bpf-refragment-primaries-nth
+  (implies (and (natp i) (< i (len starts)))
+           (equal (nth i (fn-bpf-refragment-primaries parent starts))
+                  (fn-bpf-refragment-block parent (nth i starts))))
+  :hints (("Goal" :induct (nth i starts))))
+
+(defthm fn-bpf-refragment-primaries-compose-at
+  (implies (and (fn-bpp-blockp parent)
+                (fn-bpp-fragmentp (fn-bpp-flags parent))
+                (fn-bpf-fragmentablep parent)
+                (equal (car (fn-bpf-fragment payload boundaries)) :ok)
+                (<= (+ (fn-bpp-fragment-offset parent) (len payload))
+                    (fn-bpp-total-adu-length parent))
+                (natp i)
+                (< i (len (fn-bpf-starts boundaries))))
+           (let* ((starts (fn-bpf-starts boundaries))
+                  (child (nth i (fn-bpf-refragment-primaries parent starts))))
+             (and (equal (fn-bpp-fragment-offset child)
+                         (+ (fn-bpp-fragment-offset parent) (nth i starts)))
+                  (equal (fn-bpp-total-adu-length child)
+                         (fn-bpp-total-adu-length parent))
+                  (equal (fn-bpp-adu-key child)
+                         (fn-bpp-adu-key parent)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpf-refragment-primaries-nth
+                            (starts (fn-bpf-starts boundaries)))
+                 (:instance fn-bpf-refragment-block-unfolds
+                            (local-offset
+                             (nth i (fn-bpf-starts boundaries)))))
+           :in-theory (disable fn-bpf-refragment-primaries-nth
+                               fn-bpf-refragment-block-unfolds
+                               fn-bpf-refragment-primaries
+                               fn-bpf-refragment-block
+                               fn-bpf-fragment-block))))
