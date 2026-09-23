@@ -63,6 +63,9 @@ import ledger  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 READER = Path(ledger.__file__).resolve()
 BUILD_ROOT = ROOT / "build" / "acl2"
+# Archived manifests, read only for the per-book wall times that order a
+# parallel schedule (`archived_walls`).  Nothing about a verdict comes from here.
+WALL_HISTORY = ROOT / "planning" / "evidence" / "manifests"
 SUCCESS_PREFIX = "FN_CERTIFY_SUCCESS "
 FAILURE_MARKERS = (
     "CERTIFICATION FAILED",
@@ -556,11 +559,73 @@ def run_acl2(
     )
 
 
+def archived_walls(books: list[str], history: Path | None = None) -> dict[str, float]:
+    """Each book's most recently archived wall time, for the books that have one.
+
+    Archived run ids begin with a UTC stamp, so file-name order is time order
+    and a later run's measurement replaces an earlier one.  A missing or
+    unreadable manifest is skipped: this is a scheduling estimate, and a
+    wrong estimate only costs time, never evidence.
+    """
+    history = WALL_HISTORY if history is None else history
+    wanted = set(books)
+    measured: dict[str, float] = {}
+    for path in sorted(history.glob("certify-*.json")) if history.is_dir() else []:
+        try:
+            walls = json.loads(path.read_text(encoding="utf-8")).get("book_wall_seconds") or {}
+        except (OSError, ValueError, AttributeError):
+            continue
+        for book, seconds in walls.items():
+            if book in wanted and isinstance(seconds, (int, float)) and seconds >= 0:
+                measured[book] = float(seconds)
+    return measured
+
+
+def critical_path_priority(books: list[str], graph: dict[str, set[str]],
+                           walls: dict[str, float]) -> dict[str, float]:
+    """For each book, its own wall plus the longest chain of dependents above it.
+
+    Starting the ready book with the largest value first is the classic
+    critical-path list schedule: the chain that bounds the run from below
+    starts as early as its dependencies allow instead of waiting behind
+    small books that happen to come first in the requested order.  With no
+    edges (the Convert wave) it is longest-book-first.
+    """
+    dependents: dict[str, list[str]] = {book: [] for book in books}
+    for book in books:
+        for dependency in graph[book]:
+            dependents[dependency].append(book)
+    level: dict[str, float] = {}
+    # Requested order is dependencies-first, so its reverse visits every
+    # dependent before the books it includes.
+    for book in reversed(topological(books, graph)):
+        level[book] = walls.get(book, 1.0) + max(
+            (level[dependent] for dependent in dependents[book]), default=0.0)
+    return level
+
+
+def topological(books: list[str], graph: dict[str, set[str]]) -> list[str]:
+    """`books` with every book after its requested dependencies, stable."""
+    placed: set[str] = set()
+    ordered: list[str] = []
+    pending = list(books)
+    while pending:
+        rest = [book for book in pending if not graph[book] <= placed]
+        ready = [book for book in pending if graph[book] <= placed]
+        if not ready:
+            raise ValueError("certification schedule has a cycle: " + ", ".join(rest))
+        ordered.extend(ready)
+        placed.update(ready)
+        pending = rest
+    return ordered
+
+
 def run_schedule(
     books: list[str],
     graph: dict[str, set[str]],
     jobs: int,
     certify: Any,
+    priority: dict[str, float] | None = None,
 ) -> None:
     """Certify `books`, starting one only once every requested dependency's
     ACL2 process has exited.  At most `jobs` ACL2 processes exist at a time.
@@ -582,9 +647,15 @@ def run_schedule(
 
     Ready books start in requested order, which is a topological order for the
     project roots, so `--jobs 1` starts books in exactly the requested order.
+    Given `priority`, the ready book with the largest value starts first and
+    requested order breaks ties (`critical_path_priority`).
     """
     waiting = {book: set(graph[book]) for book in books}
     queue = list(books)
+    if priority is not None:
+        # A stable sort, so equal priorities keep requested order; the scan
+        # below then takes the first ready book in this order.
+        queue.sort(key=lambda book: -priority.get(book, 0.0))
     futures: dict[concurrent.futures.Future, str] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
         while queue or futures:
@@ -611,7 +682,7 @@ def run_schedule(
 
 
 def pcert_waves(books: list[str], graph: dict[str, set[str]], jobs: int,
-                run_wave: Any) -> dict[str, float]:
+                run_wave: Any, walls: dict[str, float] | None = None) -> dict[str, float]:
     """Create, Convert, Complete, and how long each wave took.
 
     Create and Complete are dependency-ordered: Create of a book needs its
@@ -633,11 +704,16 @@ def pcert_waves(books: list[str], graph: dict[str, set[str]], jobs: int,
         started = time.monotonic()
         if wave == "convert":
             # No edges: the whole tree's proofs at once.
-            run_schedule(books, {book: set() for book in books}, jobs,
-                         lambda book: run_wave(book, "convert"))
+            free = {book: set() for book in books}
+            run_schedule(books, free, jobs,
+                         lambda book: run_wave(book, "convert"),
+                         None if walls is None
+                         else critical_path_priority(books, free, walls))
         else:
             run_schedule(books, graph, jobs,
-                         lambda book, wave=wave: run_wave(book, wave))
+                         lambda book, wave=wave: run_wave(book, wave),
+                         None if walls is None
+                         else critical_path_priority(books, graph, walls))
         walls[wave] = round(time.monotonic() - started, 3)
     return walls
 
@@ -1043,15 +1119,30 @@ def main() -> int:
                                              source_digests, output,
                                              exit_codes[book], manifest))
 
+    # One job keeps requested order exactly; more than one starts the longest
+    # remaining chain first, by the archived walls of each book.
+    # A book never measured counts one second.
+    walls: dict[str, float] | None = None
+    priority: dict[str, float] | None = None
+    manifest["schedule"] = {"policy": "requested-order"}
+    if effective_jobs > 1:
+        measured = archived_walls(args.books)
+        walls = {book: measured.get(book, 1.0) for book in args.books}
+        priority = critical_path_priority(args.books, schedule, walls)
+        manifest["schedule"] = {
+            "policy": "critical-path-first",
+            "books_with_archived_wall": len(measured),
+            "predicted_critical_path_seconds": round(max(priority.values()), 3),
+        }
     certify_started = time.monotonic()
     if args.pcert:
         pcert_wall_seconds = pcert_waves(args.books, schedule, effective_jobs,
-                                         run_wave)
+                                         run_wave, walls)
         for book in args.books:
             collect_pcert(book)
     else:
         pcert_wall_seconds = None
-        run_schedule(args.books, schedule, effective_jobs, certify)
+        run_schedule(args.books, schedule, effective_jobs, certify, priority)
     certify_wall_seconds = round(time.monotonic() - certify_started, 3)
 
     # Evidence is assembled in requested order, never completion order, so the
