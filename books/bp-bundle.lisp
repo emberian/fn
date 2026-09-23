@@ -407,8 +407,15 @@
 ; -----------------------------------------------------------------------------
 ; The block sequence, up to the break octet.
 
+; The guard is `append''s: each block's encoding is a true list, which
+; `fn-bpb-encode-block-is-true-list' states.  With the encoder and the block
+; recognizer open, the CRC scans split the conjecture 128 ways twice, 1.8 s
+; (planning/evidence/misc-books-cost-2026-09-23.md).
 (defun fn-bpb-encode-blocks (xs)
-  (declare (xargs :guard (fn-bpb-block-listp xs)))
+  (declare (xargs :guard (fn-bpb-block-listp xs)
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn-bpb-encode-block
+                                          fn-bpb-blockp)))))
   (if (consp xs)
       (append (fn-bpb-encode-block (car xs)) (fn-bpb-encode-blocks (cdr xs)))
     nil))

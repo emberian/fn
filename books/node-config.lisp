@@ -623,8 +623,14 @@
 (verify-guards fn-cnode-apply-record
   :hints (("Goal" :use ((:instance fn-replay-apply-record-statep-iff-consp
                                    (node (fn-cnode-node cn))))
+           ;; `fn-record-p' closed as well: the conjecture has it as a
+           ;; hypothesis, and that literal is the disjunct of
+           ;; `fn-store-event-p' the used lemma needs.  Open, the record codec
+           ;; split the goal 743 ways, 3.3 s
+           ;; (planning/evidence/misc-books-cost-2026-09-23.md).
            :in-theory (e/d (fn-cnode-statep fn-store-event-p)
-                           (fn-stxe-p fn-stxk-p fn-stxa-p
+                           (fn-stxe-p fn-stxk-p fn-stxa-p fn-record-p
+                            fn-store-retention-event-p
                             fn-node-statep fn-replay-apply-record)))))
 
 (local (defthm fn-cnode-advance-keeps-groups
@@ -658,13 +664,20 @@
                 (equal (fn-retain-capacity
                         (fn-node-retention (fn-replay-apply-record node record)))
                        (fn-retain-capacity (fn-node-retention node)))))
+  ;; The event recognizers and the composite decoder stay closed: the three
+  ;; arms need only their kind test as a literal.  Open, they and the
+  ;; retention arm's release test split `Goal' 1 536 ways, 6.8 s
+  ;; (planning/evidence/misc-books-cost-2026-09-23.md).
   :hints (("Goal"
            :in-theory (e/d (fn-replay-apply-record)
                            (fn-node-prepare fn-node-complete
                             fn-node-pending-matchesp
                             fn-replay-advance-txid
                             fn-record-record-vocabulary
-                            fn-record-shape-vocabulary))))))
+                            fn-record-shape-vocabulary
+                            fn-stxa-p fn-stxe-p fn-stxk-p
+                            fn-store-retention-event-p
+                            fn-replay-composite-record))))))
 
 (defthm fn-cnode-apply-record-keeps-config
   (implies (consp (fn-cnode-apply-record cn record))

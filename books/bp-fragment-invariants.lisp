@@ -444,17 +444,31 @@
                 (<= (+ (fn-bpp-flags b) 1) *fn-bpc-max-uint*))
            (fn-bpp-fragmentp
             (fn-bpp-flags (fn-bpf-fragment-block b offset total))))
-  :hints (("Goal" :in-theory (enable fn-bpp-flag-onp))))
+  ;; The field predicates stay closed: the fragment block carries the
+  ;; original's fields and its two new ones are hypotheses.  Opened, they
+  ;; split the goal 104 ways (2.2 and 2.6 s).
+  :hints (("Goal" :in-theory (e/d (fn-bpp-flag-onp)
+                                  (fn-bpp-eidp fn-bpp-timep fn-bpp-crc-typep
+                                   fn-bpp-dtn-sspp)))))
 
 (defthm fn-bpf-fragment-block-is-a-block
   (implies (and (fn-bpp-blockp b)
                 (fn-bpp-timep offset) (fn-bpp-timep total)
                 (<= (+ (fn-bpp-flags b) 1) *fn-bpc-max-uint*))
            (fn-bpp-blockp (fn-bpf-fragment-block b offset total)))
-  :hints (("Goal" :in-theory (enable fn-bpp-flag-onp))))
+  ;; The field predicates stay closed: the fragment block carries the
+  ;; original's fields and its two new ones are hypotheses.  Opened, they
+  ;; split the goal 104 ways (2.2 and 2.6 s).
+  :hints (("Goal" :in-theory (e/d (fn-bpp-flag-onp)
+                                  (fn-bpp-eidp fn-bpp-timep fn-bpp-crc-typep
+                                   fn-bpp-dtn-sspp)))))
 
 ; An unidentifiable bundle is never fragmentable: RFC 9171 section 4.2.3
-; requires an anonymous source to set "must not be fragmented".
+; requires an anonymous source to set "must not be fragmented".  The fact is
+; propositional in the three flag tests, so they stay closed: opened, each
+; one is a `floor'/`mod' bit test, and the goal split 146 ways (32 more under
+; each case) and forced 39 hypotheses, 12.8 s
+; (planning/evidence/misc-books-cost-2026-09-23.md).
 (defthm fn-bpf-anonymous-conformant-bundle-is-not-fragmentable
   (implies (and (fn-bpp-blockp b)
                 (fn-bpp-flags-conformantp b)
@@ -464,4 +478,7 @@
                                    fn-bpp-flags-conformantp
                                    fn-bpf-fragmentablep)
                                   (fn-bpp-blockp fn-bpp-eidp fn-bpp-timep
-                                   fn-bpp-crc-typep fn-bpp-dtn-sspp)))))
+                                   fn-bpp-crc-typep fn-bpp-dtn-sspp
+                                   fn-bpp-no-fragmentp
+                                   fn-bpp-any-status-requestp
+                                   fn-bpp-administrativep)))))

@@ -269,9 +269,10 @@
            (and (fn-cbor-octet-listp (fn-id-subject-preimage payload))
                 (equal (len (fn-id-subject-preimage payload))
                        (+ 18 (len payload)))))
-  :hints (("Goal" :in-theory (enable fn-id-subject-preimage
-                                     fn-id-subject-prefix
-                                     fn-cbor-octet-listp))))
+  :hints (("Goal" :in-theory (e/d (fn-id-subject-preimage
+                                   fn-id-subject-prefix
+                                   fn-cbor-octet-listp)
+                                  (fn-cbor-u32-bytes)))))
 
 (defthm fn-id-obligation-preimage-octets
   (implies (and (fn-cbor-octet-listp msgid)
@@ -281,20 +282,60 @@
            (and (fn-cbor-octet-listp (fn-id-obligation-preimage msgid subject))
                 (equal (len (fn-id-obligation-preimage msgid subject))
                        (+ 25 (len msgid) (len subject)))))
-  :hints (("Goal" :in-theory (enable fn-id-obligation-preimage
-                                     fn-cbor-octet-listp))))
+  ;; The two length prefixes stay closed: the CBOR invariants give their
+  ;; octets and their four-octet length, and opened, their `floor'/`mod'
+  ;; spelling split the goal eight ways and each case again, 1.8 s.
+  :hints (("Goal" :in-theory (e/d (fn-id-obligation-preimage
+                                   fn-cbor-octet-listp)
+                                  (fn-cbor-u32-bytes)))))
 
 ; -----------------------------------------------------------------------------
 ; The two identities
+;
+; Four facts about a rendering, stated over any label so that none of the
+; theorems below has to take a constant label apart.  With `fn-id-render'
+; and `fn-id-labelledp' open on the quoted labels, the rewriter spelled the
+; 48- and 51-octet identities out and ran `fn-frame-split' down them octet by
+; octet: `fn-id-obligation-shape' took 9.3 M steps (7.3 s) to simplify one
+; goal, and the two separation theorems 5.2 M and 1.9 M
+; (planning/evidence/misc-books-cost-2026-09-23.md).  The separation needs
+; only the lengths: an identity with a 13-octet label is 48 octets and one
+; with a 16-octet label is 51.
+
+(local
+ (defthm fn-id-render-is-octets
+   (implies (and (fn-cbor-octet-listp label) (fn-id-digestp digest))
+            (fn-cbor-octet-listp (fn-id-render label digest)))
+   :hints (("Goal" :in-theory (enable fn-id-render fn-id-digestp)))))
+
+(local
+ (defthm fn-id-render-length
+   (equal (len (fn-id-render label digest))
+          (+ 3 (len label) (len digest)))
+   :hints (("Goal" :in-theory (enable fn-id-render)))))
+
+(local
+ (defthm fn-id-labelledp-of-render
+   (implies (and (fn-cbor-octet-listp label) (fn-id-digestp digest))
+            (fn-id-labelledp label (fn-id-render label digest)))
+   :hints (("Goal" :in-theory (e/d (fn-id-labelledp fn-id-render
+                                    fn-id-digestp)
+                                   (fn-frame-split))))))
+
+(local
+ (defthm fn-id-labelledp-length
+   (implies (fn-id-labelledp label octets)
+            (equal (len octets) (+ 35 (len label))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-id-labelledp) (fn-frame-split))))))
 
 (defthm fn-id-subject-shape
   (implies (fn-id-digestp digest)
            (and (fn-cbor-octet-listp (fn-id-subject digest))
                 (equal (len (fn-id-subject digest)) *fn-id-subject-octets*)
                 (fn-id-subjectp (fn-id-subject digest))))
-  :hints (("Goal" :in-theory (enable fn-id-subject fn-id-render fn-id-digestp
-                                     fn-id-subjectp fn-id-labelledp
-                                     fn-cbor-octet-listp fn-cbor-octetp))))
+  :hints (("Goal" :in-theory (e/d (fn-id-subject fn-id-digestp fn-id-subjectp)
+                                  (fn-id-render fn-id-labelledp)))))
 
 (defthm fn-id-obligation-shape
   (implies (fn-id-digestp digest)
@@ -302,10 +343,9 @@
                 (equal (len (fn-id-obligation digest))
                        *fn-id-obligation-octets*)
                 (fn-id-obligationp (fn-id-obligation digest))))
-  :hints (("Goal" :in-theory (enable fn-id-obligation fn-id-render
-                                     fn-id-digestp fn-id-obligationp
-                                     fn-id-labelledp fn-cbor-octet-listp
-                                     fn-cbor-octetp))))
+  :hints (("Goal" :in-theory (e/d (fn-id-obligation fn-id-digestp
+                                   fn-id-obligationp)
+                                  (fn-id-render fn-id-labelledp)))))
 
 (defthm fn-id-subject-injective
   (implies (and (fn-id-digestp a) (fn-id-digestp b)
@@ -327,15 +367,20 @@
 (defthm fn-id-subject-is-not-an-obligation
   (implies (fn-id-digestp digest)
            (not (fn-id-obligationp (fn-id-subject digest))))
-  :hints (("Goal" :in-theory (enable fn-id-subject fn-id-render fn-id-digestp
-                                     fn-id-obligationp fn-id-labelledp))))
+  :hints (("Goal" :use ((:instance fn-id-labelledp-length
+                                   (label *fn-id-obligation-label*)
+                                   (octets (fn-id-subject digest))))
+           :in-theory (e/d (fn-id-subject fn-id-digestp fn-id-obligationp)
+                           (fn-id-render fn-id-labelledp)))))
 
 (defthm fn-id-obligation-is-not-a-subject
   (implies (fn-id-digestp digest)
            (not (fn-id-subjectp (fn-id-obligation digest))))
-  :hints (("Goal" :in-theory (enable fn-id-obligation fn-id-render
-                                     fn-id-digestp fn-id-subjectp
-                                     fn-id-labelledp))))
+  :hints (("Goal" :use ((:instance fn-id-labelledp-length
+                                   (label *fn-id-subject-label*)
+                                   (octets (fn-id-obligation digest))))
+           :in-theory (e/d (fn-id-obligation fn-id-digestp fn-id-subjectp)
+                           (fn-id-render fn-id-labelledp)))))
 
 ; A-CRYPTO: the host-facing pair is the specification pair exactly when the
 ; host supplied the constrained digest of the right preimage.
