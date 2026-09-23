@@ -129,15 +129,15 @@ reading it cannot reconcile, not a host fault: a clock-less owner refuses to
 inject, refuses to declare a group and answers DATE 503, each with its own
 line, and the next reading is admitted whatever it says.  :invalid means this
 function supplied no observation at all, which is a defect here."
-  (let ((outcome (fnn-owner-action
-                  'fn-owner-observe
-                  (floor (* (get-internal-real-time) 1000)
-                         internal-time-units-per-second)
-                  (fnn-owner-wall-milliseconds)
-                  +fnn-owner-wall-error-ms+ t)))
-    (when (eq outcome :invalid)
-      (fnn-fault "owner was handed a malformed clock reading"))
-    outcome))
+  (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
+    (let ((outcome (fnn-owner-action
+                    'fn-owner-observe
+                    (floor (* (get-internal-real-time) 1000)
+                           internal-time-units-per-second)
+                    wall +fnn-owner-wall-error-ms+ has-wall)))
+      (when (eq outcome :invalid)
+        (fnn-fault "owner was handed a malformed clock reading"))
+      outcome)))
 
 (defun fnn-owner-finish ()
   (fnn-owner-action 'fn-owner-finish))

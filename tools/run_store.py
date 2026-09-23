@@ -643,13 +643,19 @@ class Acl2Store:
     def prepare(self, msgid, payload, group_codes, obligation_id, subject, evidence, charge):
         # One environmental reading per prepare.  ACL2 alone derives the
         # acceptance stamp and decides whether this reading is usable.
-        monotonic_ms = time.monotonic_ns() // 1_000_000
-        wall_ms = max(0, (time.time_ns() - 946684800 * 1_000_000_000) // 1_000_000)
+        try:
+            monotonic_ms = time.monotonic_ns() // 1_000_000
+            wall_ms = (time.time_ns() - 946684800 * 1_000_000_000) // 1_000_000
+            has_wall = monotonic_ms >= 0 and wall_ms >= 0
+        except OSError:
+            monotonic_ms, wall_ms, has_wall = 0, 0, False
+        monotonic_ms = max(0, monotonic_ms)
+        wall_ms = max(0, wall_ms)
         form = "(fn-store-sn-prepare '" + self.literal(msgid) + " '" + self.literal(payload)
         form += " '" + self.numeric_list(group_codes) + " '" + self.literal(obligation_id)
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
-        form += " {} (fn-clock-observation {} {} 1000 t) state)".format(
-            charge, monotonic_ms, wall_ms)
+        form += " {} (fn-clock-observation {} {} 1000 {}) state)".format(
+            charge, monotonic_ms, wall_ms, "t" if has_wall else "nil")
         return acl2_symbol(self.call(form))
 
     def existing_action(self, msgid, payload, group_codes):
