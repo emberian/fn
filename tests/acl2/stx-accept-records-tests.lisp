@@ -29,6 +29,31 @@
          (fn-stmt-value (fn-stxa-decode-exact (fn-stxa-encode *stxa-event*))))
         (fn-record-encode *stxa-record*)))
 
+; Version 1 appends a separately bound exact authored source and identity;
+; version 0 keeps its original eleven items and decodes to :legacy.
+(defconst *stxa-carried-event*
+  (fn-stxa-make-carried 4 9 12 3 *stxa-profile*
+                         (fn-record-string-octets *stxa-subject*)
+                         (fn-record-encode-impl *stxa-record*)
+                         (fn-stxe-encode *stxa-verdict*)
+                         '(65 13 10) '(115 1 2 3)))
+(assert-event (fn-stxa-p *stxa-carried-event*))
+(assert-event (equal (fn-stxa-schema *stxa-event*) 0))
+(assert-event (equal (fn-stxa-schema *stxa-carried-event*) 1))
+(assert-event (equal (nth 5 (fn-stxa-encode *stxa-event*)) 0))
+(assert-event (equal (nth 5 (fn-stxa-encode *stxa-carried-event*)) 1))
+(assert-event
+ (equal (fn-stmt-value (fn-store-event-decode-exact
+                        (fn-stxa-encode *stxa-carried-event*)))
+        *stxa-carried-event*))
+(assert-event
+ (equal (fn-stxa-authored-source
+         (fn-stmt-value (fn-stxa-decode-exact (fn-stxa-encode *stxa-event*))))
+        :legacy))
+(assert-event
+ (not (equal (fn-stxa-encode *stxa-event*)
+             (fn-stxa-encode *stxa-carried-event*))))
+
 ; A valid composite value with two large opaque children crosses the old
 ; 65,538-octet decoder ceiling.  The value round-trips exactly; semantic child
 ; binding remains the separate fn-stxa-bindsp contract exercised below.

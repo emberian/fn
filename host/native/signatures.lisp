@@ -356,3 +356,28 @@ The caller may pass the returned object unchanged to the identity owner."
          (if (consp ml-observation) (first ml-observation)
            ml-observation)
          observation)))))
+
+(defun fnn-hsig-authorized-carried-submission-event
+    (coordinates keyring-generation enrolled-snapshot msgid source received groups
+                 obligation-id content-subject release-evidence charge
+                 principal keys signatures ml-public-key-path observation)
+  "Verify both native signatures, then ask ACL2 for the bound received carrier event."
+  (destructuring-bind (sequence txid generation) coordinates
+    (let ((preimage (fnn-core 'fn-hsig-host-preimage principal keys source)))
+      (unless (and preimage (plusp (length preimage)))
+        (return-from fnn-hsig-authorized-carried-submission-event nil))
+      (let* ((observations
+              (fnn-hsig-observe (cdr (first keys)) ml-public-key-path
+                                preimage signatures))
+             (ml-observation (second observations))
+             (observed-ml-key (and (consp ml-observation)
+                                   (second ml-observation))))
+        (fnn-core
+         'fn-hsig-host-authorized-carried-submission-event
+         sequence txid generation keyring-generation enrolled-snapshot
+         msgid source received groups obligation-id content-subject
+         release-evidence charge principal keys signatures
+         (and observed-ml-key (coerce observed-ml-key 'list))
+         (first observations)
+         (if (consp ml-observation) (first ml-observation) ml-observation)
+         observation)))))
