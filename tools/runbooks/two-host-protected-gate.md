@@ -44,6 +44,17 @@ octets; it also checks the submitted body survives source injection unchanged.
 Do not run this gate with guessed hashes or a
 source revision inferred from a mutable launcher.
 
+The gate durably sets distinct local `path-identity` policies before starting
+the owners, and records each peer with the opposite identity. Operator posts
+must retain the complete supplied proto-article as a suffix of the locally
+served injection. For every protected transfer, the target's served article
+must equal that complete source-served article with exactly the expected
+`Path: <target>!!<source>!not-for-mail` line; every other byte is compared.
+The fixture is an ordinary operator post, not a signed carrier. Injection
+refuses a supplied `Xref`, so this gate does not exercise received-Xref
+removal; that remains covered by the ACL2 transit tests and separate native
+peering scenarios.
+
 If the frozen runtime cannot start on persvati, preserve the failure and
 qualify a separately built persvati image at its own core/runtime hashes;
 do not call a one-host run a two-host result.
