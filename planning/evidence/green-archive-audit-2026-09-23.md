@@ -35,3 +35,21 @@ failure at the exact current closure still wins. A failure without enough
 closure digests remains a conservative red; a pass without them cannot claim
 an exact match. This changes evidence selection only, not the runner's
 per-book success criteria.
+
+The NNTP lane's initial runs were later reused by its aggregate certification
+and had not all been copied into the archive. The following byte-for-byte
+copies came from `build/lanes/newnews-stamp/build/acl2/`. At the audit of the
+integrated tree, each named passed book had its current source and full include
+closure in the manifest. These are the original runs, not new certifications:
+
+| Run | Passed books relevant to the gate | Manifest SHA-256 |
+| --- | --- | --- |
+| `certify-20260923T165705Z-1918381` | `books/nntp-responses` | `f2523d672d182c3841e10006c7d48d2e208117ed9bbc613f3847b1a469b870b4` |
+| `certify-20260923T165752Z-1925070` | `books/nntp`, `books/nntp-legacy`, `books/nntp-overview` | `8b6b7db2cbb03fe73bda8679e6e28da0d967e3b85deaa12880753adb293aef1d` |
+| `certify-20260923T170345Z-1979977` | `books/nntp-newnews` | `6899e745ebd033817e63fb99109a7d3087c0c693f06953c2f9cfbe4c80f199d8` |
+| `certify-20260923T170527Z-1995317` | `books/nntp-invariants` | `41d20129380381e71b2f90da2568bbab0332dbc32a5eef3c57a0853120d232f6` |
+| `certify-20260923T170720Z-2013548` | `books/nntp-effects`, `tests/acl2/nntp-newnews-tests` | `224cb67e2deff913c3690186f7ffee4a7e2f06def491666b2a7a9c6c69f0f0fa` |
+
+The `165752` and `170527` aggregate runs failed on other requested books;
+their per-book success markers, certificate digests and exit codes support
+only the passed books named above. Their other failures remain recorded.
