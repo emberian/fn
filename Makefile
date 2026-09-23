@@ -160,6 +160,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-scan \
 	books/byte-store-stable-prefix \
 	tests/acl2/byte-store-stable-prefix-tests \
+	books/byte-store-record-fence \
+	tests/acl2/byte-store-record-fence-tests \
 	books/byte-store-keystones \
 	books/byte-store-observation \
 	tests/acl2/byte-store-observation-tests \
