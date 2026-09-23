@@ -61,3 +61,22 @@ repair evidence, not a full-tree benchmark. The source-matched developer
 image and native reader, authored peering/restart, topic inspection and Mini
 portable-verification runs are the next evidence; no runtime success is
 inferred from this proof run.
+
+## Indexed-open follow-up
+
+Source `ceed4b9e` also routes owner opens through the indexed served-open
+entry, reusing the existing pinned trie/verdicts instead of building and then
+discarding a fresh trie for each connection. The full Makefile-root hbox run
+`run-20260923T203850Z-16b5`, gate
+`/tank/fn/gates/integrate-indexed-open-20260923`, passed with 483 compatible
+cached books and 29 newly certified books in 51.753 seconds at four jobs.
+[Original manifest](manifests/certify-20260923T203907Z-62267.json).
+The `884e4816` saved image does not contain this later open-cost change;
+its runtime results must not be attributed to the newer source.
+
+The proof REPL now uses the same actual certificate-alist compatibility
+selection as certification and image acquisition. The nine REPL tests passed
+on the integrated source; one negative test deliberately refuses an
+incompatible parent/child set before a session is started. The previously
+unarchived primary hybrid-store certification was recovered from its original
+hbox run, rather than recertifying for a ledger label.

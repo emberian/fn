@@ -98,3 +98,12 @@ carrying that premise through the historical owner relation is separate work.
 A3 application handoff is being composed with the same FNBS owner. Receipt
 queue identity must bind each handoff trigger and the exact receipt ADU/peer;
 a colliding queued-job name alone cannot establish handoff completion.
+
+The next indexed-open optimization is integrated through `ceed4b9e` and passed
+its complete incremental proof run (29 new, 483 cached books). Runtime evidence
+remains tied to the earlier `884e4816` image. The P3 native negative fixture
+exposed composition limits: the mandatory hybrid carrier uses most of the
+current header budget, and the maximum topic field needs physical-line
+folding. The codec bound is not yet a promise that every maximum topic value
+can be posted in an authenticated article; that envelope join is the next
+concrete P3 implementation step.
