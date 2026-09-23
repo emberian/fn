@@ -11,6 +11,11 @@
 (defconst *fn-bpnf-stored-fields*
   '(:nat :nat :nat :nat :nat :nat :blob :nat :blob :nat :blob))
 
+(defun fn-bpnf-stored-frame-limit ()
+  (declare (xargs :guard t))
+  (+ *fn-frame-header-octets* *fn-bpn-lifecycle-max-payload*
+     *fn-frame-trailer-octets*))
+
 (defun fn-bpnf-frame-ingressp (ingress)
   (declare (xargs :guard t))
   (fn-bpnf-cl-ingressp ingress))
