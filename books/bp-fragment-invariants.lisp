@@ -482,3 +482,16 @@
                                    fn-bpp-no-fragmentp
                                    fn-bpp-any-status-requestp
                                    fn-bpp-administrativep)))))
+
+; N09: a fragment parent at ADU offset O cut at local offset K has child
+; offset O+K and retains the original total and ADU key.
+(defthm fn-bpf-refragment-block-unfolds
+  (and (equal (fn-bpp-fragment-offset
+               (fn-bpf-refragment-block parent local-offset))
+              (+ (fn-bpp-fragment-offset parent) local-offset))
+       (equal (fn-bpp-total-adu-length
+               (fn-bpf-refragment-block parent local-offset))
+              (fn-bpp-total-adu-length parent))
+       (equal (fn-bpp-adu-key
+               (fn-bpf-refragment-block parent local-offset))
+              (fn-bpp-adu-key parent))))

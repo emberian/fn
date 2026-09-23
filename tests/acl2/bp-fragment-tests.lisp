@@ -173,6 +173,30 @@
 (assert-event (not (fn-bpp-identifiablep *bpf-anon*)))
 (assert-event (not (fn-bpf-fragmentablep *bpf-anon*)))
 
+; N09's fragment-parent antecedents are reachable.  The second cut is local
+; at offset 3, while both child headers are in the original ADU coordinates.
+(defconst *bpf-refragment-parent*
+  (fn-bpf-fragment-block *bpf-block* 100 300))
+(assert-event (fn-bpp-blockp *bpf-refragment-parent*))
+(assert-event (fn-bpp-fragmentp (fn-bpp-flags *bpf-refragment-parent*)))
+(assert-event (fn-bpf-fragmentablep *bpf-refragment-parent*))
+(assert-event (equal (car (fn-bpf-fragment *bpf-payload* '(3))) :ok))
+(assert-event (<= (+ (fn-bpp-fragment-offset *bpf-refragment-parent*)
+                     (len *bpf-payload*))
+                  (fn-bpp-total-adu-length *bpf-refragment-parent*)))
+(assert-event
+ (equal (fn-bpp-fragment-offset
+         (fn-bpf-refragment-block *bpf-refragment-parent* 3))
+        103))
+(assert-event
+ (equal (fn-bpp-total-adu-length
+         (fn-bpf-refragment-block *bpf-refragment-parent* 3))
+        300))
+(assert-event
+ (equal (fn-bpp-adu-key
+         (fn-bpf-refragment-block *bpf-refragment-parent* 3))
+        (fn-bpp-adu-key *bpf-refragment-parent*)))
+
 ; -----------------------------------------------------------------------------
 ; Teeth.
 

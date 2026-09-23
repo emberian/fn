@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 423 |
-| Certification roots in the Makefile | 421 |
-| Books inside the root closure | 422 |
-| `defthm` and `defthmd` events | 7126 |
-| `defun` events | 5428 |
-| Functions with verified guards | 1746 |
+| Books read | 427 |
+| Certification roots in the Makefile | 425 |
+| Books inside the root closure | 426 |
+| `defthm` and `defthmd` events | 7137 |
+| `defun` events | 5433 |
+| Functions with verified guards | 1750 |
 | Functions declared `:verify-guards nil` and never verified | 288 |
 | Functions left at the default with an explicit guard | 2722 |
-| Functions left at the default with no guard | 672 |
-| `assert-event` checks | 7843 |
+| Functions left at the default with no guard | 673 |
+| `assert-event` checks | 7860 |
 | `must-fail` checks | 282 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 65 |
 | Export-hygiene warnings | 93 |
-| Enabled-projection warnings | 27 |
+| Enabled-projection warnings | 29 |
 | Teeth-form warnings | 23 |
-| Include-hygiene warnings | 260 |
+| Include-hygiene warnings | 265 |
 | Host-names warnings | 654 |
 | Hand-written-record warnings | 18 |
 
@@ -111,9 +111,11 @@ that `make certify` requests.
 | `books/bp-authored-wire.lisp` | root | 2 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/bp-bundle-invariants.lisp` | root | 30 | 1 | 0/0/0/1 | 0 | 0 | 2 |
 | `books/bp-bundle.lisp` | root | 41 | 48 | 31/0/17/0 | 0 | 0 | 0 |
-| `books/bp-fragment-invariants.lisp` | root | 40 | 3 | 0/0/0/3 | 0 | 0 | 2 |
-| `books/bp-fragment.lisp` | root | 6 | 30 | 30/0/0/0 | 0 | 0 | 0 |
+| `books/bp-fragment-fast.lisp` | root | 9 | 4 | 3/0/0/1 | 0 | 0 | 0 |
+| `books/bp-fragment-invariants.lisp` | root | 41 | 3 | 0/0/0/3 | 0 | 0 | 2 |
+| `books/bp-fragment.lisp` | root | 6 | 31 | 31/0/0/0 | 0 | 0 | 0 |
 | `books/bp-ingress.lisp` | root | 22 | 44 | 41/0/3/0 | 0 | 0 | 0 |
+| `books/bp-limits.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-native-app-fast.lisp` | root | 24 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/bp-native-app.lisp` | root | 5 | 38 | 0/0/38/0 | 0 | 0 | 1 |
 | `books/bp-node-machine-authorization.lisp` | root | 30 | 4 | 0/4/0/0 | 0 | 0 | 0 |
@@ -355,9 +357,11 @@ that `make certify` requests.
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 0 | 0 |
 | `tests/acl2/bp-authored-wire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 3 | 0 |
 | `tests/acl2/bp-bundle-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 68 | 0 | 0 |
-| `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 68 | 0 | 0 |
+| `tests/acl2/bp-fragment-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
+| `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 76 | 0 | 0 |
 | `tests/acl2/bp-ingress-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
 | `tests/acl2/bp-ingress-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 21 | 0 | 0 |
+| `tests/acl2/bp-limits-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-native-app-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-native-app-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
