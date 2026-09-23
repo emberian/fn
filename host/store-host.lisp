@@ -135,16 +135,6 @@
         (fn-store-event-txid (car (cdr decoded)))
       -1)))
 
-(defun fn-store-article-match (msgid payload groups node)
-  (let ((article (fn-find-article msgid
-                                  (fn-state-articles (fn-node-acceptance node)))))
-    (if article
-        (if (and (equal payload (fn-article-payload article))
-                 (equal groups (fn-article-groups article)))
-            :duplicate
-          :conflict)
-      nil)))
-
 ; -----------------------------------------------------------------------------
 ; Frame bridge
 ;

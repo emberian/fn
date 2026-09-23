@@ -52,6 +52,23 @@
 
 (verify-guards fn-sn-node)
 
+; The live Store owns the decision for an already held Message-ID.  The host
+; supplies the parsed exact ID, source octets and selected group names; it
+; does not compare an article or infer acceptance from a transport result.
+; Keep the guard independent of fn-sn-statep: that recognizer walks the store
+; and must not run on this served path.
+(defun fn-sn-existing-action (msgid payload groups s)
+  (declare (xargs :guard t))
+  (let ((article (fn-find-article
+                  msgid (fn-state-articles
+                         (fn-node-acceptance (fn-sn-node s))))))
+    (if article
+        (if (and (equal payload (fn-article-payload article))
+                 (equal groups (fn-article-groups article)))
+            :duplicate
+          :conflict)
+      nil)))
+
 ; The keyring the index was computed under.  It is configuration, and it is
 ; the third piece of configuration this record carries beside groups and
 ; capacity.  No other state or configuration record in the tree holds one
