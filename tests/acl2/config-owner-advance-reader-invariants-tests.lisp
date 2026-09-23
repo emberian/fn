@@ -6,6 +6,9 @@
 (assert-event (fn-ocri-relation *ocl-t-new-open*))
 (assert-event (fn-ocri-relation *ocla-t-advanced*))
 (assert-event
+ (equal (fn-ocfg-step *ocl-t-new-open* (list :advance 0))
+        *ocla-t-advanced*))
+(assert-event
  (let* ((conn (fn-own-find-conn
                0 (fn-own-conns (fn-ocfg-owner *ocla-t-advanced*)))))
    (and (fn-wire-statep (fn-own-conn-wire conn))

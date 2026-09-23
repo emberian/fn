@@ -81,3 +81,19 @@
     (e/d (fn-ocri-relation fn-ocfg-advance)
          (fn-ocl-relation fn-own-advance-result fn-ocri-conns-p
           fn-ocri-viewp fn-ocari-owner-advance-preserves-reader-pins)))))
+
+; host/owner-host.lisp:fn-owner-step calls fn-ocfg-step, including for the
+; host's (list :advance id) event.  Keep the dispatch equation explicit so
+; the proof subject is the function actually called at that boundary.
+(defthm fn-ocari-called-advance-is-configured-advance
+  (equal (fn-ocfg-step oc (list :advance id))
+         (fn-ocfg-advance oc id))
+  :hints (("Goal" :in-theory (enable fn-ocfg-step))))
+
+(defthm fn-ocari-called-advance-preserves-historical-reader-relation
+  (implies (fn-ocri-relation oc)
+           (fn-ocri-relation (fn-ocfg-step oc (list :advance id))))
+  :hints (("Goal"
+           :use (fn-ocari-advance-preserves-historical-reader-relation
+                 fn-ocari-called-advance-is-configured-advance)
+           :in-theory (disable fn-ocfg-step))))
