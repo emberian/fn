@@ -113,6 +113,15 @@
   :hints (("Goal" :in-theory (enable fn-cpo-configure-durable
                                       fn-cpo-install))))
 
+(defthm fn-cpo-configure-durable-preserves-history-relation
+  (implies (fn-cpo-history-relation st)
+           (fn-cpo-history-relation
+            (fn-cpo-configure-durable st record)))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-configure-durable
+                                   fn-cpo-history-relation fn-cpo-install)
+                                  (fn-cpr-replay fn-cpr-loop
+                                   fn-sn-statep fn-cnode-statep)))))
+
 ; The caller sees the complete observed journal and the parameters from the
 ; final *ordered* configuration. No barrier has been reported at open.
 (defthm fn-cpo-open-success-exact-image

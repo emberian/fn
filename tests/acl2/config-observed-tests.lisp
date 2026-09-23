@@ -70,6 +70,18 @@
 (assert-event (equal (fn-sf-records (fn-sn-files *cpo-t-live*))
                      *cpo-t-events*))
 (assert-event (equal (fn-sf-frontier (fn-sn-files *cpo-t-live*)) 8))
+(defconst *cpo-t-create*
+  (fn-cfg-record-make
+   3 8 4 (list (fn-cfg-create-group "fn.live" *fn-cfg-default-policy-id*))
+   *fn-cfg-default-stamp*))
+(defconst *cpo-t-live-domain*
+  (fn-cpo-configure-durable *cpo-t-live* *cpo-t-create*))
+(assert-event (fn-cpo-history-relation *cpo-t-live-domain*))
+(assert-event (member-equal "fn.live" (fn-sn-groups *cpo-t-live-domain*)))
+(assert-event (not (member-equal "fn.live" (fn-sn-groups *cpo-t-live*))))
+(assert-event (equal (fn-sn-config-history *cpo-t-live-domain*)
+                     (append *cpo-t-configs*
+                             (list *cpo-t-increase* *cpo-t-create*))))
 (assert-event
  (equal (fn-cpo-configure-durable
          *cpo-t-ready*
