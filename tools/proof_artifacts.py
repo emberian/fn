@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Acquire and load-check one coherent ACL2 certificate artifact set.
 
-The selected native image declaration and the deployed ACL2 entry points are
-the sources of the required root books.  A candidate set must bind those
-roots' complete local include closure to one certificate origin and one ACL2
-executable digest.  ACL2 then loads the roots; an uncertified warning, an ACL2
-error, or an absolute-origin conflict rejects the set and the next complete
+The selected native image declaration and deployed ACL2 entry points are
+the sources of the required root books. A candidate set binds their complete
+local include closure to one ACL2 toolchain and compatible certificate
+post-alists, possibly drawn from several origins. ACL2 then loads the roots;
+an uncertified warning or ACL2 error rejects the set and the next complete
 set is tried.
 """
 from __future__ import annotations
@@ -140,14 +140,15 @@ def acquire(root: Path, cache: Path, acl2: Path, profile: str,
             False, profile, roots,
             reason="unqualified ACL2 launcher/core/runtime: " + fingerprint.reason)
     toolchain = fingerprint.identity
-    candidates = certs.artifact_sets(root, cache, roots, toolchain)
+    candidates = certs.artifact_sets(root, cache, roots, toolchain, acl2=acl2)
     rejected: list[str] = []
     attempts: list[str] = []
     for candidate in candidates:
         if not candidate.complete:
             continue
         report = certs.install_artifact_set(
-            root, cache, roots, toolchain_identity=toolchain, reject=rejected)
+            root, cache, roots, toolchain_identity=toolchain, reject=rejected,
+            acl2=acl2)
         if report.artifact_set is None:
             break
         loaded = validate(root, acl2, roots, timeout=timeout, run=run)

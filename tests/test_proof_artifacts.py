@@ -101,8 +101,13 @@ class AcquisitionTests(unittest.TestCase):
                           b"FN_ARTIFACT_SET_LOADED\n")
                 return subprocess.CompletedProcess(args[0], 0, output, b"")
 
+            # The synthetic .cert fixtures are not ACL2-readable; the
+            # acquisition path still exercises real candidate selection.
             with mock.patch.object(proof_artifacts, "profile_roots",
-                                   return_value=["books/mid"]):
+                                   return_value=["books/mid"]), \
+                 mock.patch.object(certs.cert_alists, "acl2_certificate_pairs",
+                                   side_effect=lambda paths, pairs, acl2, root:
+                                       {pair: (True, True) for pair in pairs}):
                 result = proof_artifacts.acquire(
                     target, cache, acl2, "default", run=fake_run)
             self.assertTrue(result.ok, result.reason)
