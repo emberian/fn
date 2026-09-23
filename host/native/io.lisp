@@ -788,17 +788,20 @@ round policy."
      (encode-universal-time 0 0 0 1 1 1970 0)))
 
 (defun fnn-owner-wall-milliseconds ()
-  "One gettimeofday reading, as milliseconds since 2000-01-01T00:00:00Z."
-  (multiple-value-bind (seconds microseconds) (sb-ext:get-time-of-day)
-    (max 0 (+ (* 1000 (- seconds +fnn-owner-unix-dtn-offset-seconds+))
-              (floor microseconds 1000)))))
+  "One gettimeofday reading since 2000-01-01; the second value says if usable."
+  (handler-case
+      (multiple-value-bind (seconds microseconds) (sb-ext:get-time-of-day)
+        (let ((wall (+ (* 1000 (- seconds +fnn-owner-unix-dtn-offset-seconds+))
+                       (floor microseconds 1000))))
+          (if (minusp wall) (values 0 nil) (values wall t))))
+    (error () (values 0 nil))))
 
 (defun fnn-store-prepare-observation ()
-  (fnn-core 'fn-clock-observation
-            (floor (* (get-internal-real-time) 1000)
-                   internal-time-units-per-second)
-            (fnn-owner-wall-milliseconds)
-            +fnn-owner-wall-error-ms+ t))
+  (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
+    (fnn-core 'fn-clock-observation
+              (floor (* (get-internal-real-time) 1000)
+                     internal-time-units-per-second)
+              wall +fnn-owner-wall-error-ms+ has-wall)))
 
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)
   (fnn-action (fnn-core-state 'fn-store-sn-prepare (fnn-octet-list msgid) (fnn-octet-list payload)

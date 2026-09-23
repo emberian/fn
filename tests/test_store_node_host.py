@@ -19,6 +19,31 @@ sys.path.insert(0, str(ROOT / "tools"))
 import run_store  # noqa: E402
 
 
+class StoreClockObservationTests(unittest.TestCase):
+    def prepare_with_reading(self, wall_ns):
+        bridge = object.__new__(run_store.Acl2Store)
+        forms = []
+        def capture(form):
+            forms.append(form)
+            return b":CLOCK-UNUSABLE" + run_store.PROMPT
+        wall_effect = (lambda: wall_ns) if isinstance(wall_ns, int) else wall_ns
+        with mock.patch.object(bridge, "call", side_effect=capture), \
+             mock.patch("run_store.time.monotonic_ns", return_value=10_000_000), \
+             mock.patch("run_store.time.time_ns", side_effect=wall_effect):
+            action = bridge.prepare(b"<m@fn.invalid>", b"x", [0], b"o", b"s", b"e", 1)
+        return action, forms[0]
+
+    def test_pre_epoch_reading_is_marked_unusable(self):
+        action, form = self.prepare_with_reading(946684799 * 1_000_000_000)
+        self.assertEqual(action, "clock-unusable")
+        self.assertIn("(fn-clock-observation 10 0 1000 nil)", form)
+
+    def test_missing_wall_reading_is_marked_unusable(self):
+        action, form = self.prepare_with_reading(OSError(errno.EIO, "clock"))
+        self.assertEqual(action, "clock-unusable")
+        self.assertIn("(fn-clock-observation 0 0 1000 nil)", form)
+
+
 class StoreNodeHostTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-sn-host-")
