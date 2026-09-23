@@ -331,7 +331,9 @@
 
 (defthm fn-stmt-signing-preimage-is-octet-list
   (fn-cbor-octet-listp (fn-stmt-signing-preimage h))
-  :hints (("Goal" :in-theory (disable fn-cbor-encode))))
+  ; `fn-stmt-content-id-is-digest' is the fact; opened, the content id
+  ; carried the whole header encoder and recognizer in (1.7 million steps).
+  :hints (("Goal" :in-theory (disable fn-cbor-encode fn-stmt-content-id))))
 
 (defun fn-stmt-payloadp (p)
   (declare (xargs :guard t))
@@ -408,7 +410,11 @@
 ; Whole-statement bytes: header items, then payload and signature.
 
 (defun fn-stmt-items (s)
-  (declare (xargs :guard (fn-stmt-p s)))
+  ; The header's item builder and recognizer stay closed in the guard proof;
+  ; opened, they cost 424 688 steps for a `true-listp' and a `headerp'.
+  (declare (xargs :guard (fn-stmt-p s)
+                  :guard-hints (("Goal" :in-theory (disable fn-stmt-header-items
+                                                            fn-stmt-headerp)))))
   (append (fn-stmt-header-items (fn-stmt-header s))
           (list (cons :bytes (fn-stmt-payload s))
                 (cons :bytes (fn-stmt-signature s)))))
@@ -420,7 +426,9 @@
                                       fn-stmt-headerp))))
 
 (defun fn-stmt-encode (s)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-stmt-items
+                                                            fn-stmt-p)))))
   (if (fn-stmt-p s)
       (fn-stmt-encode-items (fn-stmt-items s))
     nil))

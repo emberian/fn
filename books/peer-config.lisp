@@ -393,7 +393,11 @@
 (defthm fn-cfg-peer-names-of-peer-rows
   (equal (fn-cfg-peer-names (fn-cfg-peer-rows p))
          (list (fn-cfg-peer-name p)))
-  :hints (("Goal" :in-theory (enable fn-cfg-peer-rows))))
+  ; The row builder's accessors stay closed: they are the field reads inside
+  ; each row, and opening them split this proof 612 ways at Goal (15 448
+  ; subgoals, 26 s) over cases the conclusion never reads.
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peer-rows) ((:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr)
+                                                  (:d fn-cfg-peer-outbound-auth))))))
 
 ; The two deltas, as the design writes them.
 (defun fn-cfg-set-peer-delta (p)
@@ -408,7 +412,9 @@
 ; Round trip and the delta facts
 
 (local (defthm fn-cfg-peer-rows-keyed
-  (fn-cfg-rows-keyed-p (fn-cfg-peer-rows p) (fn-cfg-peer-name p))))
+  (fn-cfg-rows-keyed-p (fn-cfg-peer-rows p) (fn-cfg-peer-name p))
+  :hints (("Goal" :in-theory (disable (:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr)
+                                      (:d fn-cfg-peer-outbound-auth))))))
 
 (local (defthm fn-cfg-rows-with-key-of-append
   (equal (fn-cfg-rows-with-key (append a b) k)
@@ -433,16 +439,149 @@
 ; halves, a BP feed-only peer) in tests/acl2/peer-inbound-tests.lisp, which is
 ; the coverage books/config.lisp has for its own codec.
 
+; The row builder by halves.  `fn-cfg-peer-rows' is one flat append of the
+; path-identity row and four halves (transport, inbound, outbound, auth), and
+; a row-typing proof over the whole builder multiplies the halves' cases (138
+; at Goal', 2 986 subgoals, 13 s).  Each half below is the builder's own
+; subterm, named locally; the typing is proved once per half against that
+; half's recognizer, and the whole by `fn-cfg-row-listp-of-append'.
+
+(local (defun fn-cfg-peer-transport-rows (name transport)
+  (if (equal (fn-cfg-ag-car transport) :nntp)
+      (if (equal (len transport) 5)
+          (let ((security (fn-cfg-ag-car
+                           (fn-cfg-ag-cdr (fn-cfg-ag-cdr
+                            (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport)))))))
+            (append
+             (list (fn-cfg-row-make name "transport-nntp"
+                                    (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                                    (fn-cfg-ag-cdr transport)))
+                                    (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                     (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport)))))
+                   (fn-cfg-row-make name "transport-security"
+                                    (cond ((equal security '(:clear)) "clear")
+                                          ((equal (fn-cfg-ag-car
+                                                   (fn-cfg-ag-cdr security))
+                                                  :implicit) "implicit")
+                                          (t "starttls")) 1))
+             (if (equal security '(:clear)) nil
+               (list (fn-cfg-row-make name "transport-server-name"
+                                      (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                       (fn-cfg-ag-cdr security))) 0)
+                     (fn-cfg-row-make name "transport-trust-anchor"
+                                      (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                       (fn-cfg-ag-cdr (fn-cfg-ag-cdr security)))) 0)))))
+        (list (fn-cfg-row-make name "transport-nntp"
+                               (fn-cfg-ag-car (fn-cfg-ag-cdr transport))
+                               (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport))))))
+    (list (fn-cfg-row-make name "transport-bp"
+                           (fn-cfg-ag-car (fn-cfg-ag-cdr transport)) 0)))))
+
+(local (defun fn-cfg-peer-inbound-rows (name inbound)
+  (if inbound
+      (list (fn-cfg-row-make name "inbound-groups" (fn-cfg-ag-car inbound)
+                             (fn-cfg-ag-car (fn-cfg-ag-cdr inbound)))
+            (fn-cfg-row-make name "inbound-inflight" ""
+                             (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr inbound)))))
+    nil)))
+
+(local (defun fn-cfg-peer-outbound-rows (name outbound)
+  (if outbound
+      (append
+       (list (fn-cfg-row-make name "outbound-groups" (fn-cfg-ag-car outbound)
+                              (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr outbound))))
+             (fn-cfg-row-make name "outbound-streaming" ""
+                              (if (fn-cfg-ag-car (fn-cfg-ag-cdr outbound)) 1 0))
+             (fn-cfg-row-make name "outbound-backoff" ""
+                              (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr
+                                                             (fn-cfg-ag-cdr outbound))))))
+       (let ((policy (if (and (true-listp outbound) (equal (len outbound) 5))
+                         (fn-cfg-ag-car
+                          (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr
+                                                          (fn-cfg-ag-cdr outbound)))))
+                       nil)))
+        (if policy
+           (list (fn-cfg-row-make
+                  name "outbound-auth-profile"
+                  (fn-cfg-ag-car (fn-cfg-ag-cdr policy))
+                  (if (fn-cfg-ag-car (fn-cfg-ag-cdr
+                                      (fn-cfg-ag-cdr policy))) 1 0)))
+         nil)))
+    nil)))
+
+(local (defun fn-cfg-peer-auth-rows (name auth)
+  (if (equal (fn-cfg-ag-car auth) :source-address)
+      (list (fn-cfg-row-make name "auth-source-address"
+                             (fn-cfg-ag-car (fn-cfg-ag-cdr auth)) 0))
+    (list (fn-cfg-row-make name "auth-principal"
+                           (fn-cfg-ag-car (fn-cfg-ag-cdr auth)) 0)))))
+
+(local (defthm fn-cfg-peer-rows-by-halves
+  (equal (fn-cfg-peer-rows p)
+         (append (list (fn-cfg-row-make (fn-cfg-peer-name p) "path-identity"
+                                        (fn-cfg-peer-path-identity p) 0))
+                 (fn-cfg-peer-transport-rows (fn-cfg-peer-name p)
+                                             (fn-cfg-peer-transport p))
+                 (fn-cfg-peer-inbound-rows (fn-cfg-peer-name p)
+                                           (fn-cfg-peer-inbound p))
+                 (fn-cfg-peer-outbound-rows (fn-cfg-peer-name p)
+                                            (fn-cfg-peer-outbound p))
+                 (fn-cfg-peer-auth-rows (fn-cfg-peer-name p)
+                                        (fn-cfg-peer-auth p))))
+  :hints (("Goal" :in-theory '(fn-cfg-peer-rows fn-cfg-peer-outbound-auth
+                               fn-cfg-peer-transport-rows
+                               fn-cfg-peer-inbound-rows fn-cfg-peer-outbound-rows
+                               fn-cfg-peer-auth-rows)))))
+
+(local (in-theory (disable fn-cfg-peer-rows-by-halves)))
+
+(local (defthm fn-cfg-row-listp-of-append
+  (implies (true-listp a)
+           (equal (fn-cfg-row-listp (append a b))
+                  (and (fn-cfg-row-listp a) (fn-cfg-row-listp b))))))
+
+(local (defthm fn-cfg-peer-transport-rows-are-rows
+  (implies (and (fn-cfg-labelp name) (fn-cfg-peer-transportp transport))
+           (fn-cfg-row-listp (fn-cfg-peer-transport-rows name transport)))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peer-transportp fn-cfg-rowp fn-record-uint32p)
+                                  (fn-cfg-labelp fn-record-string-octets))))))
+
+(local (defthm fn-cfg-peer-inbound-rows-are-rows
+  (implies (and (fn-cfg-labelp name) (fn-cfg-peer-inboundp inbound))
+           (fn-cfg-row-listp (fn-cfg-peer-inbound-rows name inbound)))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peer-inboundp fn-cfg-wildmatp fn-cfg-rowp
+                                   fn-record-uint32p)
+                                  (fn-cfg-labelp fn-record-string-octets
+                                   fn-wildmat-parse))))))
+
+(local (defthm fn-cfg-peer-outbound-rows-are-rows
+  (implies (and (fn-cfg-labelp name) (fn-cfg-peer-outboundp outbound))
+           (fn-cfg-row-listp (fn-cfg-peer-outbound-rows name outbound)))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peer-outboundp fn-cfg-wildmatp fn-cfg-rowp
+                                   fn-record-uint32p)
+                                  (fn-cfg-labelp fn-record-string-octets
+                                   fn-wildmat-parse))))))
+
+(local (defthm fn-cfg-peer-auth-rows-are-rows
+  (implies (and (fn-cfg-labelp name) (fn-cfg-peer-authp auth))
+           (fn-cfg-row-listp (fn-cfg-peer-auth-rows name auth)))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peer-authp fn-cfg-rowp)
+                                  (fn-cfg-labelp fn-record-string-octets))))))
+
 ; (:set-peer ...) of a well-formed record is admissible on every value: the
 ; delta is typed and every row is keyed by the peer name.
 (local (defthm fn-cfg-peer-rows-are-rows
   (implies (fn-cfg-peerp p) (fn-cfg-row-listp (fn-cfg-peer-rows p)))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-peerp fn-cfg-peer-transportp
-                                   fn-cfg-peer-inboundp fn-cfg-peer-outboundp
-                                   fn-cfg-peer-authp fn-cfg-wildmatp
-                                   fn-cfg-rowp fn-record-uint32p)
-                                  (fn-cfg-labelp fn-record-string-octets
-                                   fn-path-identityp fn-wildmat-parse))))))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peer-rows-by-halves
+                                   fn-cfg-peerp fn-cfg-rowp fn-record-uint32p)
+                                  (fn-cfg-peer-rows fn-cfg-labelp
+                                   fn-record-string-octets fn-path-identityp
+                                   fn-cfg-peer-transportp fn-cfg-peer-inboundp
+                                   fn-cfg-peer-outboundp fn-cfg-peer-authp
+                                   fn-cfg-peer-transport-rows
+                                   fn-cfg-peer-inbound-rows
+                                   fn-cfg-peer-outbound-rows
+                                   fn-cfg-peer-auth-rows))))))
 
 ; Two facts about `fn-cfg-peerp` that the admissibility obligation below
 ; needs and that no rule supplied: the name is an ASCII string, and the row
@@ -459,7 +598,8 @@
 (local (defthm fn-cfg-peer-rows-are-few
   (<= (len (fn-cfg-peer-rows p)) 1024)
   :rule-classes (:rewrite :linear)
-  :hints (("Goal" :in-theory (enable fn-cfg-peer-rows)))))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peer-rows) ((:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr)
+                                                  (:d fn-cfg-peer-outbound-auth)))))))
 
 (local (defthm fn-cfg-peer-name-octets-are-bounded
   (implies (fn-cfg-peerp p)
@@ -524,14 +664,72 @@
 ; has the two positive, bounded numbers the served path compares against
 ; (books/peer-inbound.lisp, fn-peer-decide-offer and fn-peer-decide-transfer).
 
+; The decoder's last step checks the record it built, and that check is all
+; the forward rule below reads.  Opening the decoder whole split on every
+; slot lookup inside the record it builds (810 subgoals at Goal, 7 s); the
+; candidate below is that record, named locally, so the check is one case.
+(local (defun fn-cfg-peer-of-rows-candidate (name rows)
+  (let* ((pid (fn-cfg-peer-slot rows "path-identity"))
+         (tn (fn-cfg-peer-slot rows "transport-nntp"))
+         (tb (fn-cfg-peer-slot rows "transport-bp"))
+         (ts (fn-cfg-peer-slot rows "transport-security"))
+         (tname (fn-cfg-peer-slot rows "transport-server-name"))
+         (ta (fn-cfg-peer-slot rows "transport-trust-anchor"))
+         (ig (fn-cfg-peer-slot rows "inbound-groups"))
+         (ii (fn-cfg-peer-slot rows "inbound-inflight"))
+         (og (fn-cfg-peer-slot rows "outbound-groups"))
+         (os (fn-cfg-peer-slot rows "outbound-streaming"))
+         (ob (fn-cfg-peer-slot rows "outbound-backoff"))
+         (oa (fn-cfg-peer-slot rows "outbound-auth-profile"))
+         (as (fn-cfg-peer-slot rows "auth-source-address"))
+         (ap (fn-cfg-peer-slot rows "auth-principal"))
+         (p (fn-cfg-peer-make
+             name
+             (if pid (fn-cfg-row-c pid) "")
+             (cond (tn (if (null ts)
+                           (list :nntp (fn-cfg-row-c tn) (fn-cfg-row-n tn))
+                         (list :nntp 1 (fn-cfg-row-c tn) (fn-cfg-row-n tn)
+                               (cond ((equal (fn-cfg-row-c ts) "clear") '(:clear))
+                                     ((and tname ta (equal (fn-cfg-row-c ts) "implicit"))
+                                      (list :tls :implicit (fn-cfg-row-c tname) (fn-cfg-row-c ta)))
+                                     ((and tname ta (equal (fn-cfg-row-c ts) "starttls"))
+                                      (list :tls :starttls (fn-cfg-row-c tname) (fn-cfg-row-c ta)))
+                                     (t nil)))))
+                   (tb (list :bp (fn-cfg-row-c tb)))
+                   (t nil))
+             (if (and ig ii)
+                 (list (fn-cfg-row-c ig) (fn-cfg-row-n ig) (fn-cfg-row-n ii))
+               nil)
+             (if (and og os ob)
+                 (append (list (fn-cfg-row-c og) (equal (fn-cfg-row-n os) 1)
+                               (fn-cfg-row-n og) (fn-cfg-row-n ob))
+                         (if oa (list (list :authinfo (fn-cfg-row-c oa)
+                                           (equal (fn-cfg-row-n oa) 1))) nil))
+               nil)
+             (cond (as (list :source-address (fn-cfg-row-c as)))
+                   (ap (list :principal (fn-cfg-row-c ap)))
+                   (t nil)))))
+    p)))
+
+(local (defthm fn-cfg-peer-of-rows-is-its-checked-candidate
+  (equal (fn-cfg-peer-of-rows name rows)
+         (if (fn-cfg-peerp (fn-cfg-peer-of-rows-candidate name rows))
+             (fn-cfg-peer-of-rows-candidate name rows)
+           nil))
+  :hints (("Goal" :in-theory '(fn-cfg-peer-of-rows
+                               fn-cfg-peer-of-rows-candidate)))))
+
+(local (in-theory (disable fn-cfg-peer-of-rows-is-its-checked-candidate)))
+
 (defthm fn-cfg-peer-find-is-a-peer
   (implies (fn-cfg-peer-find name peers)
            (fn-cfg-peerp (fn-cfg-peer-find name peers)))
   :rule-classes ((:forward-chaining
                   :trigger-terms ((fn-cfg-peer-find name peers))))
   :hints (("Goal" :in-theory (e/d ((:d fn-cfg-peer-find)
-                                   (:d fn-cfg-peer-of-rows))
-                                  ((:d fn-cfg-peerp))))))
+                                   fn-cfg-peer-of-rows-is-its-checked-candidate)
+                                  ((:d fn-cfg-peerp) (:d fn-cfg-peer-of-rows)
+                                   (:d fn-cfg-peer-of-rows-candidate))))))
 
 ; The authentication half a peer record always carries.  `fn-cfg-peer-authp'
 ; is a two-element list, so the field is a cons; books/nntp-auth.lisp reads
