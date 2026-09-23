@@ -115,3 +115,36 @@ The image's source predates this theorem book but its native served fault
 hooks are the same; ACL2 in the source tree loads the new book for the check.
 The raw native crash suite also passed its thirteen post cuts (six unittest
 methods, 36.269 seconds) with the new scanner premises and equality checked.
+
+## Complete declared served post cut extension
+
+The six-cut and seven-open statements above describe the first two frozen
+runs. `tests/test_native_served_crash_model.py` now drives every member of
+`native_cuts.POST_CUTS` through `operator CFG post` to the served owner. The
+seven added selectors are `frontier-staged-durable`, `frontier-attempted`,
+`frontier-durable`, `frontier-reserved`, `record-attempted`,
+`record-completing`, and `record-staging-cleaned`. At each named coordinate,
+the actual killed store is compared with the model's byte-program prefix and
+the allowed all-new/all-applied SIGKILL crash choice. The ACL2 checks evaluate
+the scanner theorem's ordered-name and valid-model-scan premises, exact
+scanner-result equality, and exact `fn-sn-open-observed` result equality for
+the fixed groups and capacity used by the test. The prior acknowledged
+article is reread byte-for-byte after native recovery; the candidate's native
+presence follows that cut's absent/present/either contract.
+
+Physical assumptions are explicit: every modeled syscall issued before the
+selected hook returned, SIGKILL leaves the kernel's dirty data present, and
+the local filesystem exposes the same visible names and octets when imported
+after process exit. The harness checks the concrete crash choice with
+`fn-bs-crash-choicesp` and the resulting visible relation, so it cannot
+silently select a different prefix. This is process death on the hbox ZFS test
+store, not a power-failure or torn-write profile.
+
+On the source-pinned `f0b8b166` self-contained developer image named above,
+`python3 -m unittest tests.test_native_served_crash_model
+tests.test_native_crash_model` passed on hbox in 88.651 seconds: thirteen
+served post cuts, five served recovery barriers, and thirteen raw post cuts,
+including exact model/native reopen equality at the observed images. The
+combined acceptance-stamp image has not yet been run. `recover-replayed`,
+recovery staging cleanup, injected error callbacks, repeated recovery deaths,
+and non-all-new/all-applied crash choices remain open.
