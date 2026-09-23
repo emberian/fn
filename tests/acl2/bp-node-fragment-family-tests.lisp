@@ -23,7 +23,7 @@
 (defun fn-bpnfft-held (principal arrival bundle constraints deleted)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bpnf-held principal (fn-bpb-bundle-id bundle) arrival
-                 (list :cl arrival 1 *bpnff-peer* principal 0)
+                 (list :cl (cons arrival 0) 1 *bpnff-peer* principal 0)
                  nil nil bundle (fn-bpb-encode bundle) nil nil nil
                  constraints nil deleted arrival))
 
@@ -87,20 +87,23 @@
                   (fn-bpb-bundle-id *bpnff-bconflict*)))
       (equal (fn-bpnf-receive-decision
               (list *bpnff-p3* *bpnff-p0*)
-              (list :cl 7 1 *bpnff-peer* '(112) 0)
+              (list :cl (cons 7 0) 1 *bpnff-peer* '(112) 0)
               *bpnff-bconflict*)
              :fresh)))
 (assert-event
  (and (equal (fn-bpnf-receive-decision
               (list *bpnff-p3* *bpnff-p0*)
-              (list :cl 8 1 *bpnff-peer* '(112) 0)
+              (list :cl (cons 8 0) 1 *bpnff-peer* '(112) 0)
               *bpnff-bbad*)
              :fresh)
       (equal (fn-bpnf-receive-decision
               (list *bpnff-p3* *bpnff-p0*)
-              (list :cl 9 1 *bpnff-peer* '(113) 0)
+              (list :cl (cons 9 0) 1 *bpnff-peer* '(113) 0)
               *bpnff-bq*)
              :fresh)))
+(assert-event (fn-bpnf-cl-ingressp
+               (list :cl (cons 7 0) 1 *bpnff-peer* '(112) 0)))
+
 (defconst *bpnff-two-held-state*
   (fn-bpnf-state (fn-bpnf-base *bpnff-state*)
                  (list *bpnff-p3* *bpnff-p0*)
@@ -111,7 +114,7 @@
                     *bpnff-two-held-state*
                     (list :receive-bundle *bpnff-bconflict*
                           (fn-bpb-encode *bpnff-bconflict*)
-                          (list :cl 7 1 *bpnff-peer* '(112) 0))))))
+                          (list :cl (cons 7 0) 1 *bpnff-peer* '(112) 0))))))
         :persist))
 (assert-event (equal (fn-bpnf-active-set *bpnff-state* *bpnff-p3*)
                      (list *bpnff-p3* *bpnff-p0*)))
@@ -178,7 +181,7 @@
 (defconst *bpnff-receive-proposal*
   (fn-bpnf-step *bpnff-state*
                  (list :receive-bundle *bpnff-bq* (fn-bpb-encode *bpnff-bq*)
-                       (list :cl 8 1 *bpnff-peer* '(114) 0))))
+                       (list :cl (cons 8 0) 1 *bpnff-peer* '(114) 0))))
 (assert-event (equal (car (car (fn-bpnf-answer-effects *bpnff-receive-proposal*)))
                      :persist))
 (assert-event

@@ -1989,7 +1989,12 @@
         "planning/evidence/manifests/certify-20260923T164648Z-1822489.json",
         "planning/evidence/bp-status-report-d1a-2026-09-23.md"
       ],
-      "note": "D1a codec only. ACL2 8.7 on persvati certifies the exact source/test books in the manifest, with a maximal-profile 1024-octet DTN SSP witness and rejected malformed/noncanonical vectors. No host node path calls this codec yet; D1b/D2 remain open. Events are populated by tools/ledger.py after integration."
+      "note": "D1a codec only. ACL2 8.7 on persvati certifies the exact source/test books in the manifest, with a maximal-profile 1024-octet DTN SSP witness and rejected malformed/noncanonical vectors. No host node path calls this codec yet; D1b/D2 remain open. Events are populated by tools/ledger.py after integration.",
+      "events": [
+        "fn-bpn-report-decode-of-encode-when-bounded",
+        "fn-bpn-report-encode-length-bound",
+        "fn-bpn-report-accepted-input-is-canonical"
+      ]
     }
   ]
 }
