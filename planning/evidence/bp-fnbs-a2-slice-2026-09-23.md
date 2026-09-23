@@ -42,6 +42,7 @@ digests:
 - `manifests/certify-20260923T174029Z-4018611.json`: the four remaining changed dependent FNBS byte/invariant/test roots passed at the combined foundation and replay bytes; five of nine requested roots were already installed at those exact bytes.
 - `manifests/certify-20260923T174953Z-4030296.json`: the byte-invariant book and its dependent test book passed with link and directory-barrier crash cases.
 - `manifests/certify-20260923T175130Z-4032082.json`: the test book passed after its reachable-cut assertions were strengthened.
+- `manifests/certify-20260923T175939Z-4041719.json`: kind-5 exact payload arithmetic, EID/optional-principal bounds, and conditional encoder non-`:bad` theorem passed.
 
 `fn-bpnf-stored-unframe-of-canonical-frame` connects the actual decoder to
 the canonical frame and held record under valid fields, a fitting frame,
@@ -53,6 +54,15 @@ recovery slot is the identical kind-5 record. The name-selection premise is
 material: before the directory barrier, the tests witness both an absent
 and a present crash image. This theorem does not yet derive the name
 selection from a publisher trace or cover a whole replayed history.
+The payload length is exactly `76 + peer-CBOR + principal-blob + wire`:
+8 fixed u64 fields and 3 u32 blob lengths account for 76 octets. A typed
+EID's CBOR is at most 2048 octets, the optional principal blob at most 512,
+and received wire at most 131072, so the derived ceiling is 133708 octets,
+436 below the configured 134144-octet FNBS payload limit.
+`fn-bpnf-valid-kind-five-encodes` proves the frame builder is not `:bad`
+under `fn-bpnf-stored-recordp` **and** valid frame field values. The latter
+conjunct is not yet derived universally from the record predicate, so the
+host must still handle a codec refusal as a matched refused publication.
 `fn-bpnf-actual-link-crash-is-absent-or-exact` composes the actual `fn-bs-link`
 pending entry with `fn-bs-crash-imagep`: if the final name was absent, the
 staged inode was file-fenced and canonical, and no earlier operation targeted

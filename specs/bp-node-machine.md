@@ -702,6 +702,10 @@ submission or receipt handoff; the broader row below remains the target.
 `fn-bs-link` pending entry to the absent-or-exact crash choices;
 `fn-bpnf-directory-barrier-quiet` fixes the final name after directory
 fsync. The relation across every native publisher call remains open.
+The kind-5 payload has exact length `76 + peer-CBOR + principal-blob + wire`;
+typed bounds give `76 + 2048 + 512 + 131072 = 133708`, below the
+134144-octet frame limit. The present non-`:bad` theorem also assumes the
+record's field-value predicate; removing that remaining hypothesis is open.
 `books/bp-fnbs-replay.lisp` is the bounded kind-5 byte-row scanner over
 canonical final names: it decodes exact frames, rejects damaged/duplicate or
 out-of-order rows and capacity overflow, and reconstructs the held list and
