@@ -10,28 +10,46 @@ with [gpt-6's third review](review-2026-09-23-bp-node-machine-3.md), whose
 §2 to §5 are contract changes the DTN slices own; where this file and those
 disagree, those win and this file is wrong.
 
-## State (at handoff)
+## State (at handoff, 2026-09-23 ~03:00Z)
 
 - `dev` is the integration branch; every commit on it is pushed; `make check`
-  is green at every commit. The deployed node is hbox at 192.168.50.39:1119
-  from the `dabebb84` image ([page](../docs/nodes/hbox.md),
-  [record](evidence/node-hbox-dabebb84-2026-09-22.md)). Its image predates
-  everything landed since 22:00Z on 2026-09-22; the next freeze carries it.
-- The image closure of 165 books certified at `dabebb84`. Books red at their
-  current digest on `dev` are listed by `python3 tools/green_check.py --table`;
-  the ones inside the image closure are the ones a freeze must fix. Two are
-  known and owned: `byte-store-keystones` (PRF-041, the T5-sweep lane) and
-  whatever the codec seam's cluster conversion leaves.
-- Live lanes at the time of writing, and the books they own (do not edit
-  these until their branches land on `dev`): `t1/codec-seam` (the seam books
-  `records-seam`, `records-shape`, `records-attach`, `codec-attach`, and the
-  store cluster `store-files*`, `store-node*`, `store-observed*`,
-  `store-prepare-correspondence`, `replay`, `config-records`, `node-config`,
-  `checkpoint*`); `t6b/profile` (`native-config`, `injection-invariants`,
-  `owner-agent`); `t13/conform` (`injection`, `peer-inbound`,
-  `native-operator`, the operator post entry in `host/native/io.lisp`);
-  `t5/sweep` (`store-sweep`, `store-files`, `byte-store-programs`,
-  `byte-store-keystones`, the sweep in `host/native/io.lisp`).
+  is green at every commit. The deployed node is hbox at 192.168.50.39:1119,
+  upgraded in place on 2026-09-23 to the `da5fd8cb` image (sources `dev`
+  2e53fae2) with its store, credentials and TLS pair kept
+  ([page](../docs/nodes/hbox.md),
+  [record](evidence/node-hbox-da5fd8cb-2026-09-23.md)); the probe from a
+  Mac on the LAN holds on every row and the node's log file writes.
+- The image closure is green from scratch: 177 books in 1 min 44 s at
+  sixteen jobs on hbox (`manifests/certify-20260923T024230Z-*.json`). The
+  fourth incremental run of dev's head certified 62 books against 363
+  installed in 63 s with no red; exactly three books are over ten seconds
+  (`tcpcl-session` 23 s, `owner-invariants` 17 s, `tcpcl-octets` 12 s), in
+  the COST package.
+- The matrix on the da5fd8cb image
+  (`evidence/v0-runs/20260923T024725.039819Z-*/`): 218 rows, 164 observed,
+  three disagreements by name: `V0-CFG-LIVE`, where the live `group
+  create` is now accepted by the owner and the group is not served until a
+  restart, which is T8b; and `V0-TRANSIT-IDENTICAL-AB/BA`, whose
+  expectation predates the relay's Path prepend (a harness lane is
+  restating it as identity modulo the prepend). `V0-CFG-LIVE-REFUSE`,
+  `V0-NODE-PROFILE` and `V0-POST-FROM-MAILBOX` agree, which witnesses the
+  live-rows, profile and conformance repairs on an image.
+- The cut campaign and the INN lab on this image are running as this is
+  written; their records land as `evidence/campaign-da5fd8cb-2026-09-23.md`
+  and `evidence/inn-lab-da5fd8cb-2026-09-23.md`, and this section is amended
+  with what they say.
+- No lane is live on any book. The tooling as of tonight: the certificate
+  cache composes across runs; a plain run is incremental; the runner starts
+  the longest chain first; `farm.py wait` returns; eight local ACL2 session
+  slots on the Mac; `tools/proof_repl.py`, `tools/triage.py`,
+  `tools/theory_check.py` (46 book-wide codec openings left, 0 in the store
+  cluster), `tools/teeth_check.py` sees macro-generated must-fails.
+- Two decisions are ember's, not taken: the OpenSSL 3.5.8 build on hbox
+  inside the trust boundary, and hbox's tailscale (the node is LAN-only).
+- Two runbook gaps for the first Codex lane that deploys: `hbox-node-deploy.sh`
+  refuses an existing store, so an upgrade is by hand (the record above has
+  the steps); and the frozen launchers exec the tree's `build/*.core`, not
+  the copy under `build/images/<rev>/`.
 
 ## The loop, in one paragraph
 
