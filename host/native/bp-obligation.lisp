@@ -60,7 +60,26 @@
                              'fn-owner-workflow-store-release release)))
                  (unless event
                    (fnn-fault "committed receipt has no canonical Store release"))
-                 (fnn-owner-retention-commit service event)
+                 ; The owner path releases through Store, so the developer
+                 ; namespace cut belongs to that canonical publication, not
+                 ; an FNWF :release record this path does not publish.
+                 (let* ((cut-fired nil)
+                        (release-cut
+                         (string= (or (fnn-developer-selector
+                                       "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE")
+                                      "") "1"))
+                        (*fnn-record-directory-fault-observer*
+                         (and release-cut
+                              (lambda (path)
+                                (setq cut-fired t)
+                                (fnn-os-fail sb-posix:eio path)))))
+                   (handler-case
+                       (fnn-owner-retention-commit service event)
+                     (fnn-store-indeterminate (e)
+                       (if cut-fired
+                           (fnn-indeterminate
+                            "application release publication is uncertain")
+                         (error e)))))
                  (fnn-owner-action 'fn-owner-workflow-sync-store-node))))))
        (fnn-out "BP obligation owner durable release receipt=~a profile=~a"
                 receipt-id profile)

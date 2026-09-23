@@ -167,6 +167,13 @@ The configured-owner `bp-obligation` command publishes the retention event
 through the canonical Store owner; an FNWF release record alone has no Store
 release authority.
 
+The developer `FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE=1` cut follows
+the actual release publisher. Standalone `app-journal` release faults at its
+FNWF records-directory barrier; configured-owner `bp-obligation receipt`
+faults after the canonical Store release record's final link and before its
+transactions-directory barrier. Both cuts report uncertainty, fence further
+mutation until recovery, and require replay before the release is reported.
+
 `fn-aj-authorize` is the admission function this path calls.  Its carried
 frontier owns the exact next filename, record count, aggregate byte count,
 configuration-first order, per-domain frame bound, and intent-resolution
