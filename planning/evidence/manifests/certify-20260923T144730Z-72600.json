@@ -1,0 +1,391 @@
+{
+  "acl2_compatibility": null,
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/acceptance": 0,
+    "books/acceptance-invariants": 0,
+    "books/cbor": 0,
+    "books/defrecord": 0,
+    "books/node": 0,
+    "books/node-invariants": 0,
+    "books/node-retention-transitions": 0,
+    "books/node-traces": 0,
+    "books/provenance": 0,
+    "books/records-shape": 0,
+    "books/retention": 0,
+    "books/retention-invariants": 0
+  },
+  "acl2_slots": 8,
+  "acl2_toolchain": {
+    "launcher": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+    "launcher_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+    "launcher_size": 142,
+    "reason": "shell expansion is outside the recognized launcher subset at /opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2:6",
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "unqualified"
+  },
+  "acl2_toolchain_identity": null,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/acceptance-stamp/build/acl2/certify-20260923T144730Z-72600",
+  "book_failures": {},
+  "book_provenance": {
+    "books/acceptance": "certified",
+    "books/acceptance-alloc": "installed",
+    "books/acceptance-invariants": "certified",
+    "books/cbor": "certified",
+    "books/defrecord": "certified",
+    "books/node": "certified",
+    "books/node-invariants": "certified",
+    "books/node-retention-transitions": "certified",
+    "books/node-traces": "certified",
+    "books/provenance": "certified",
+    "books/records-shape": "certified",
+    "books/retention": "certified",
+    "books/retention-invariants": "certified"
+  },
+  "book_results": {
+    "books/acceptance": "passed",
+    "books/acceptance-invariants": "passed",
+    "books/cbor": "passed",
+    "books/defrecord": "passed",
+    "books/node": "passed",
+    "books/node-invariants": "passed",
+    "books/node-retention-transitions": "passed",
+    "books/node-traces": "passed",
+    "books/provenance": "passed",
+    "books/records-shape": "passed",
+    "books/retention": "passed",
+    "books/retention-invariants": "passed"
+  },
+  "book_wall_seconds": {
+    "books/acceptance": 0.372,
+    "books/acceptance-invariants": 0.476,
+    "books/cbor": 0.183,
+    "books/defrecord": 0.124,
+    "books/node": 0.502,
+    "books/node-invariants": 2.986,
+    "books/node-retention-transitions": 0.489,
+    "books/node-traces": 0.505,
+    "books/provenance": 2.334,
+    "books/records-shape": 0.252,
+    "books/retention": 0.405,
+    "books/retention-invariants": 0.313
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 120,
+  "cache_install": {
+    "directory": "/Users/ember/.cache/fn-certs",
+    "installed": 0,
+    "kept": 1,
+    "origins": {
+      "/Users/ember/dev/fn/build/lanes/w25-crash-correspondence": 1
+    },
+    "removed": 18,
+    "roots_installed": [],
+    "toolchain_identity": null
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [
+      "books/acceptance-invariants: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/acceptance: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/cbor: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/defrecord: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/node-invariants: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/node-retention-transitions: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/node-traces: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/node: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/provenance: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/records-shape: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/retention-invariants: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/retention: no qualified ACL2 launcher/core/runtime fingerprint"
+    ],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/defrecord",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/defrecord: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/cbor",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/cbor: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/records-shape",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/records-shape: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/acceptance",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/acceptance: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/acceptance-invariants",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/acceptance-invariants: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/provenance",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/provenance: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/retention",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/retention: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/node",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/node: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/node-invariants",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/node-invariants: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/node-traces",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/node-traces: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/retention-invariants",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/retention-invariants: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/node-retention-transitions",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/node-retention-transitions: no qualified ACL2 launcher/core/runtime fingerprint"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/acceptance": "3ab63f08fb88d8e0c3299476c3d71e074cdc5866d9269a81b056b1bf24301d18",
+    "books/acceptance-invariants": "334a0071fd6928417081045ecac08109f9b5640ddf1ea7a6015d3abafdd335a5",
+    "books/cbor": "f591b09a0c194fe199daebb3f044af3ded1a7fba314aba2a1648bb166146e587",
+    "books/defrecord": "aaeb089f2c5fd50a00f64222d147cf2d8eaabcdb069c37ff7d7db7e120dd1578",
+    "books/node": "d26a1e5d10fe9ab4381ad59b1606b7a5c285896c783410101a80247c7c0de512",
+    "books/node-invariants": "c7639ef71c81a25f5b649edf615108b7c510def8e2f1e3f19bcc10afae9b7189",
+    "books/node-retention-transitions": "6c6d478cf102a681841d6e75e3de76e926a12db2df830e31c0a4450312f3742f",
+    "books/node-traces": "390181a849b107d617e8c072464b73ca147a557598da0a90dbaca93436b1770d",
+    "books/provenance": "40aba54f252c4f0b8f7fd09c4ae1b42903e728e8dfdf412aef3138a45ffa56d2",
+    "books/records-shape": "acc592c2f9187be78b187643396c58267703a7bbeace54f407a227fdcb206ccc",
+    "books/retention": "ccce76298838a535077e433b9ac581e4968405987f02cd8e500b075b37c9a81d",
+    "books/retention-invariants": "f0c0778114a593149596c48963c6b2a4179ece5d7bf54c5c07fb8edb32238c50"
+  },
+  "certify_wall_seconds": 8.976,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/acceptance": "031e474354c1d756991d80884aa171793641ba05f63a5545589414dd6bd7f006",
+    "books/acceptance-invariants": "6766ec1389b454a5a0e78eeeb74fc4710577fed5166a960de5e78db6f0c9e389",
+    "books/cbor": "a86427f09956ac1b3cda03b1f715bbd7204092bb3add3272c0e54d1f2208c18d",
+    "books/defrecord": "c2c33caed675d1f6bdb2443f11e81701c894567c3df72669f4b73c38b471f3d6",
+    "books/node": "ce44636fc57b758f1be459998a88e3e51dbb1691978840f1e96149540a2a968f",
+    "books/node-invariants": "4e43db53688b0aab0dbd702388e3d238535f83052906e8ee089c50b6375ababb",
+    "books/node-retention-transitions": "b8b042b177524289b7ce4876f7feb73e6c21888b471edfb55ece9e0a25c54263",
+    "books/node-traces": "a4996f55d53a18b9fc362424a2300585cbf1feb336d881b2160729ca352f4351",
+    "books/provenance": "1c1d684cb4927be6964b76be23cccf50b7ccf6457dca320e92f991863fe3b97a",
+    "books/records-shape": "e541d30e52e7e872e902bd86ca8889bebeec7b5a623ffe62a1b4240be2f5c18c",
+    "books/retention": "7a4a99afa02720fee39563347905ed0047b37acf8aceec1ab9b2fa22129d199a",
+    "books/retention-invariants": "40a8318fa7c043fabb521c857149cea4364960a5de0dd67b2a9c048ed7cbc89e"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 949ba7ded144",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 900aa5ccb56a",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 23645b7a2c53",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 00bdd09c4915",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 277b11e7429f",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 e2aaf8c35567",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 345cbcad4d5e",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 db4eeaa5ccab",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 0cc8d1433d7d",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 3aa4f6abf983",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 cb5aeef982b6"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T14:47:40+00:00",
+  "git_branch": "implement/acceptance-stamp",
+  "git_dirty": false,
+  "git_revision": "78f278ac09add5986ddc74b1f8a40ed0b551406d",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "incremental": true,
+  "installed_books": {
+    "books/acceptance-alloc": "/Users/ember/dev/fn/build/lanes/w25-crash-correspondence"
+  },
+  "installed_over_failed": [],
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 949ba7ded144",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 900aa5ccb56a",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 23645b7a2c53",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 00bdd09c4915",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 277b11e7429f",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 e2aaf8c35567",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 345cbcad4d5e",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 db4eeaa5ccab",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 0cc8d1433d7d",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 3aa4f6abf983",
+    "FN_CERTIFY_SUCCESS fba7321b53fad4b2686164f0d217bce5 cb5aeef982b6"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/acceptance-invariants",
+    "books/node",
+    "books/node-invariants",
+    "books/node-traces",
+    "books/node-retention-transitions"
+  ],
+  "requested_books": [
+    "books/defrecord",
+    "books/cbor",
+    "books/records-shape",
+    "books/acceptance",
+    "books/acceptance-invariants",
+    "books/provenance",
+    "books/retention",
+    "books/node",
+    "books/node-invariants",
+    "books/node-traces",
+    "books/retention-invariants",
+    "books/node-retention-transitions"
+  ],
+  "roots": [
+    "books/acceptance-invariants",
+    "books/node",
+    "books/node-invariants",
+    "books/node-traces",
+    "books/node-retention-transitions"
+  ],
+  "run_id": "certify-20260923T144730Z-72600",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "books/acceptance": 0.0,
+    "books/acceptance-invariants": 0.0,
+    "books/cbor": 0.0,
+    "books/defrecord": 0.0,
+    "books/node": 0.0,
+    "books/node-invariants": 0.0,
+    "books/node-retention-transitions": 0.0,
+    "books/node-traces": 0.0,
+    "books/provenance": 0.0,
+    "books/records-shape": 0.0,
+    "books/retention": 0.0,
+    "books/retention-invariants": 0.0,
+    "version-probe": 0.001
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "8d580e364f1fae2d871d462d81756c631abefb0ac21b88dfc2901fb40372fb76",
+    "books/acceptance.lisp": "a50ce3b2883c2f28a58cee5758b95366a777ee2ad9326de23f12275748c02960",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/node-invariants.lisp": "1605c6d1399f3ec77e7652e3baba094f34a2cc4e578df6e9f9682620dbefae3c",
+    "books/node-retention-transitions.lisp": "5d6d7ec486e7d654ce21d63255a1620559fa0d86f1ed09883bbb0ab9e1b3c68e",
+    "books/node-traces.lisp": "e8f307f40da9d2e64e76b739173a850f76a71c5cd30770f65f0389e8955d0e7e",
+    "books/node.lisp": "dc13d507479a343fc694b69974a2eee3e4b387e85c02f0dccb9fb78d2e9d5572",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-shape.lisp": "56696b8e7f89971ffbe80ea26477a0808d9b19b37e41c1aedfffebf787b5ff86",
+    "books/retention-invariants.lisp": "84edac122a1526bc2a8a53fe53c4d55afae3eb4a93eb7866066185ba779de51e",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "8d580e364f1fae2d871d462d81756c631abefb0ac21b88dfc2901fb40372fb76",
+    "books/acceptance.lisp": "a50ce3b2883c2f28a58cee5758b95366a777ee2ad9326de23f12275748c02960",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/node-invariants.lisp": "1605c6d1399f3ec77e7652e3baba094f34a2cc4e578df6e9f9682620dbefae3c",
+    "books/node-retention-transitions.lisp": "5d6d7ec486e7d654ce21d63255a1620559fa0d86f1ed09883bbb0ab9e1b3c68e",
+    "books/node-traces.lisp": "e8f307f40da9d2e64e76b739173a850f76a71c5cd30770f65f0389e8955d0e7e",
+    "books/node.lisp": "dc13d507479a343fc694b69974a2eee3e4b387e85c02f0dccb9fb78d2e9d5572",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-shape.lisp": "56696b8e7f89971ffbe80ea26477a0808d9b19b37e41c1aedfffebf787b5ff86",
+    "books/retention-invariants.lisp": "84edac122a1526bc2a8a53fe53c4d55afae3eb4a93eb7866066185ba779de51e",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1"
+  },
+  "start_order": [
+    "books/defrecord",
+    "books/cbor",
+    "books/records-shape",
+    "books/acceptance",
+    "books/acceptance-invariants",
+    "books/provenance",
+    "books/retention",
+    "books/node",
+    "books/node-invariants",
+    "books/node-traces",
+    "books/retention-invariants",
+    "books/node-retention-transitions"
+  ],
+  "started_utc": "2026-09-23T14:47:30+00:00",
+  "status": "passed",
+  "timeout_seconds": 120,
+  "tree": "/Users/ember/dev/fn/build/lanes/acceptance-stamp"
+}

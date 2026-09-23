@@ -1,0 +1,208 @@
+{
+  "acl2_compatibility": null,
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/cbor": 0,
+    "books/defrecord": 0,
+    "books/records": 0,
+    "books/records-shape": 0
+  },
+  "acl2_slots": 8,
+  "acl2_toolchain": {
+    "launcher": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+    "launcher_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+    "launcher_size": 142,
+    "reason": "shell expansion is outside the recognized launcher subset at /opt/homebrew/Cellar/acl2/8.7_6/libexec/saved_acl2:6",
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "unqualified"
+  },
+  "acl2_toolchain_identity": null,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/acceptance-stamp/build/acl2/certify-20260923T143022Z-54278",
+  "book_failures": {},
+  "book_provenance": {
+    "books/cbor": "certified",
+    "books/defrecord": "certified",
+    "books/records": "certified",
+    "books/records-shape": "certified"
+  },
+  "book_results": {
+    "books/cbor": "passed",
+    "books/defrecord": "passed",
+    "books/records": "passed",
+    "books/records-shape": "passed"
+  },
+  "book_wall_seconds": {
+    "books/cbor": 0.19,
+    "books/defrecord": 0.14,
+    "books/records": 12.07,
+    "books/records-shape": 0.263
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 120,
+  "cache_install": {
+    "directory": "/Users/ember/.cache/fn-certs",
+    "installed": 0,
+    "kept": 0,
+    "origins": {},
+    "removed": 7,
+    "roots_installed": [],
+    "toolchain_identity": null
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [
+      "books/cbor: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/defrecord: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/records-shape: no qualified ACL2 launcher/core/runtime fingerprint",
+      "books/records: no qualified ACL2 launcher/core/runtime fingerprint"
+    ],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/defrecord",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/defrecord: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/cbor",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/cbor: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/records-shape",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/records-shape: no qualified ACL2 launcher/core/runtime fingerprint"
+      },
+      {
+        "already_cached": false,
+        "book": "books/records",
+        "published": false,
+        "verdict": "passed",
+        "why": "books/records: no qualified ACL2 launcher/core/runtime fingerprint"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/cbor": "f591b09a0c194fe199daebb3f044af3ded1a7fba314aba2a1648bb166146e587",
+    "books/defrecord": "aaeb089f2c5fd50a00f64222d147cf2d8eaabcdb069c37ff7d7db7e120dd1578",
+    "books/records": "3e3d9099ba8066227c02ce3411b88c2365e8f8f599a3d69357ae54739a0119f5",
+    "books/records-shape": "3cb7b456486dba0ba6bf0763e6f6ee962f80902e3d24a49ab8ccf264d72aa214"
+  },
+  "certify_wall_seconds": 12.676,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/cbor": "db266832fbb5ddda44b89ed6a22dde84bec4e72e0ce48cbc73a91894172827b7",
+    "books/defrecord": "beb3b426b9f2b1137791ecf191cb9aec1e2f72db137b0b648dcb02ba6c6a06f8",
+    "books/records": "051bc5141b3b5df40f06715acb929d02bf9370fc48b0cdc84d4c1ed43e51f37c",
+    "books/records-shape": "5e571be4290621537ba00ae7987fafb7d9c799cf758617f7981ad93c3f517b8d"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 5a4fe94dd134d2ac1bd176f2769c47bc 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 5a4fe94dd134d2ac1bd176f2769c47bc 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 5a4fe94dd134d2ac1bd176f2769c47bc 900aa5ccb56a",
+    "FN_CERTIFY_SUCCESS 5a4fe94dd134d2ac1bd176f2769c47bc d45992d8befd"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T14:30:35+00:00",
+  "git_branch": "implement/acceptance-stamp",
+  "git_dirty": true,
+  "git_revision": "24a5df6b41e8885f992610cbcfc267c0dbfdb17c",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "incremental": true,
+  "installed_books": {},
+  "installed_over_failed": [],
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 5a4fe94dd134d2ac1bd176f2769c47bc 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 5a4fe94dd134d2ac1bd176f2769c47bc 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 5a4fe94dd134d2ac1bd176f2769c47bc 900aa5ccb56a",
+    "FN_CERTIFY_SUCCESS 5a4fe94dd134d2ac1bd176f2769c47bc d45992d8befd"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "books/records"
+  ],
+  "requested_books": [
+    "books/defrecord",
+    "books/cbor",
+    "books/records-shape",
+    "books/records"
+  ],
+  "roots": [
+    "books/records"
+  ],
+  "run_id": "certify-20260923T143022Z-54278",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "books/cbor": 0.0,
+    "books/defrecord": 0.0,
+    "books/records": 0.0,
+    "books/records-shape": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/records-shape.lisp": "cbe3b345472b7a678d4b8cd793ea024847fd9c87818d3c455f19d3137fa1a2af",
+    "books/records.lisp": "830aeaef7866a9d2718f476db1aa0037b6c05b167307ed1ddc2df8ef8fb5f16e"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/records-shape.lisp": "cbe3b345472b7a678d4b8cd793ea024847fd9c87818d3c455f19d3137fa1a2af",
+    "books/records.lisp": "830aeaef7866a9d2718f476db1aa0037b6c05b167307ed1ddc2df8ef8fb5f16e"
+  },
+  "start_order": [
+    "books/defrecord",
+    "books/cbor",
+    "books/records-shape",
+    "books/records"
+  ],
+  "started_utc": "2026-09-23T14:30:22+00:00",
+  "status": "passed",
+  "timeout_seconds": 120,
+  "tree": "/Users/ember/dev/fn/build/lanes/acceptance-stamp"
+}
