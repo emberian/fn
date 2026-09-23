@@ -19723,7 +19723,7 @@
       },
       {
         "book": "books/peer-inbound.lisp",
-        "line": 81,
+        "line": 87,
         "shape": "fn-peer-decision-shapep",
         "shapes": 3,
         "accessors": 10,

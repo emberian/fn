@@ -62,11 +62,17 @@
 ; fn-pu-relay-article: the Path update and Xref removal of RFC 5537 3.6/3.7.
 (include-book "path-update")
 
+; fn-cfg-peer-vocabulary (books/peer-config) stays closed here: no proof in
+; this book needs the peer table open, and with it open the guard proof of
+; fn-peer-command expanded fn-cfg-peer-find into fn-cfg-peer-of-rows, fourteen
+; slot lookups deep, under each copy of fn-peer-decide-offer (805 s, 96.8
+; million prover steps; planning/evidence/peer-inbound-cost-2026-09-23.md).
+; A proof that reads a peer record enables the definition in its hint.
 (local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                           fn-nntp-projection-vocabulary
                           fn-nntp-responses-vocabulary fn-nntp-vocabulary
                           fn-nntp-post-vocabulary fn-cfg-vocabulary
-                          fn-cfg-peer-vocabulary fn-path-vocabulary)))
+                          fn-path-vocabulary)))
 (local (in-theory (enable fn-inj-nth fn-inj-car fn-inj-cdr)))
 
 ; -----------------------------------------------------------------------------
