@@ -1204,7 +1204,9 @@
     (fn-nntp-newnews-response session archive env args)))
   ; Keep the scan closed so the block-text lemma matches the served term.
   :hints (("Goal" :in-theory (e/d (fn-nntp-newnews-response)
-                                  (fn-nntp-newnews-scan fn-nntp-single
+                                  (fn-nntp-newnews-scan
+                                   fn-nntp-newnews-scan-is-the-acceptance-filter
+                                   fn-nntp-single
                                    fn-nntp-parse-1 fn-nntp-parse-okp
                                    fn-nntp-filter-groups-by-wildmat
                                    fn-wildmat-parse

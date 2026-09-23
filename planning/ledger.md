@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 449 |
 | Certification roots in the Makefile | 444 |
 | Books inside the root closure | 448 |
-| `defthm` and `defthmd` events | 7358 |
-| `defun` events | 5585 |
-| Functions with verified guards | 1848 |
+| `defthm` and `defthmd` events | 7359 |
+| `defun` events | 5588 |
+| Functions with verified guards | 1850 |
 | Functions declared `:verify-guards nil` and never verified | 300 |
 | Functions left at the default with an explicit guard | 2754 |
-| Functions left at the default with no guard | 683 |
-| `assert-event` checks | 8123 |
-| `must-fail` checks | 317 |
+| Functions left at the default with no guard | 684 |
+| `assert-event` checks | 8118 |
+| `must-fail` checks | 315 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 69 |
 | Export-hygiene warnings | 93 |
@@ -243,7 +243,7 @@ that `make certify` requests.
 | `books/nntp-index.lisp` | root | 33 | 25 | 25/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-invariants.lisp` | root | 94 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/nntp-legacy.lisp` | root | 23 | 2 | 2/0/0/0 | 0 | 0 | 0 |
-| `books/nntp-newnews.lisp` | root | 11 | 2 | 2/0/0/0 | 0 | 0 | 0 |
+| `books/nntp-newnews.lisp` | root | 12 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-overview.lisp` | root | 18 | 6 | 6/0/0/0 | 0 | 0 | 1 |
 | `books/nntp-post.lisp` | root | 20 | 18 | 12/1/5/0 | 0 | 0 | 0 |
 | `books/nntp-projection.lisp` | root | 23 | 22 | 22/0/0/0 | 0 | 0 | 0 |
@@ -469,7 +469,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 145 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
 | `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 92 | 0 | 0 |
-| `tests/acl2/nntp-newnews-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 76 | 11 | 0 |
+| `tests/acl2/nntp-newnews-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 71 | 9 | 0 |
 | `tests/acl2/nntp-post-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 0 | 0 |
 | `tests/acl2/nntp-reader-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 95 | 0 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 2 | 0 |

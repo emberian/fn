@@ -1551,23 +1551,19 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-nntp-newnews-scan-is-the-acceptance-filter"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-newnews-scan-reads-no-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-newnews-scan-lines-at-most-candidates"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-nntp-newnews-lines-are-clean"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-nntp-newnews-scan-reports-only-witnessed-lines"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-nntp-newnews-scan-answers-exactly-within-the-budget"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-nntp-newnews-scan-reports-at-most-the-budget"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-nntp-newnews-refusal-is-the-only-other-outcome"
         },
         {
           "kind": "theorem",
