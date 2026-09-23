@@ -11,6 +11,7 @@
              (and (fn-tcl-held-final-ackp (list (cadr (car events))) xfer-id)
                   (equal (cadr events) (list :bundle-received xfer-id data)))))
   :hints (("Goal" :in-theory (enable fn-tcl-complete
+                                     fn-tcl-send-event
                                      fn-tcl-held-final-ackp))))
 
 (defthm fn-tcl-held-partial-acks-have-no-final
