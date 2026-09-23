@@ -131,9 +131,10 @@ LOOP2_ID = "<inn-lab-loop2-{tag}@example.invalid>"
 FN_POST_ID = "<inn-lab-fn-post-{tag}@example.invalid>"
 FN_OPERATOR_ID = "<inn-lab-fn-operator-{tag}@example.invalid>"
 FN_LOOP_ID = "<inn-lab-fn-loop-{tag}@example.invalid>"
+FN_FROM_ID = "<inn-lab-fn-from-{tag}@example.invalid>"
 ABSENT_ID = "<inn-lab-absent-{tag}@example.invalid>"
 ID_TEMPLATES = ("FED_ID", "LOOP_ID", "LOOP2_ID", "FN_POST_ID", "FN_OPERATOR_ID",
-                "FN_LOOP_ID", "ABSENT_ID")
+                "FN_LOOP_ID", "FN_FROM_ID", "ABSENT_ID")
 
 
 def message_ids(tag: str) -> dict:
@@ -142,14 +143,15 @@ def message_ids(tag: str) -> dict:
 
 
 def article(msgid: str, subject: str, date: str, path: str | None = None,
-            group: str = GROUP, body: str = "From the fn INN interop lab.") -> bytes:
+            group: str = GROUP, body: str = "From the fn INN interop lab.",
+            sender: str = "lab@example.invalid") -> bytes:
     """One article's octets, CRLF lines, RFC 5536 order.
 
     `path` None is an article as a posting agent writes it: RFC 5537 section
     3.4.1 has the injecting agent add Path, and fn's POST refuses one that is
     already there (books/nntp-post.lisp, `:path-present`)."""
     lines = (["Path: {}".format(path)] if path is not None else []) + [
-        "From: lab@example.invalid",
+        "From: " + sender,
         "Newsgroups: " + group,
         "Subject: " + subject,
         "Date: " + date,
@@ -1421,8 +1423,16 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
             "is {}".format(step.rc, step.output.strip().splitlines()[-1]
                            if step.output.strip() else "", self.reply_summary(found),
                            "`{}`".format(path_header) if path_header else "ABSENT")
+        injected = [name for name in ("Path", "Injection-Date", "Injection-Info")
+                    if fed and header_value(fed, name)]
+        if fed:
+            self.facts["operator post vs fed"] = "{}; the fed Path is {}".format(
+                describe_differences(header_differences(payload, fed)),
+                "`{}`".format(path_header) if path_header else "ABSENT")
         ok = bool(found and found["offer"][:3] in ("335", "238")
-                  and found["result"][:3] in ("235", "239"))
+                  and found["result"][:3] in ("235", "239")
+                  and len(injected) == 3
+                  and FN_PATH_IDENTITY in path_header.split("!")[:-1])
         self.check("operator-post-feeds-inn", ok,
                    "`operator post` accepted {} (rc={}) and fn's feed offered it to innd, "
                    "which answered {}. The octets fed carry {} Path header. `operator "
@@ -1434,6 +1444,28 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
                        msgid, step.rc, self.reply_summary(found),
                        "a `{}`".format(path_header) if path_header else "NO"),
                    observed=self.reply_summary(found))
+
+    def scenario_from_invalid(self):
+        """POST with `From: yue`, which names no address: 441, and nothing served.
+
+        RFC 5536 3.1.2 makes From a mailbox-list (RFC 5322 3.6.2); the
+        agents run of 2026-09-22 saw the image answer 240 and serve it."""
+        msgid = self.ids["FN_FROM_ID"]
+        posted = article(msgid, "a From that names no address", self.date, sender="yue")
+        path = self.put_article("fn-from", posted)
+        probe = self.drive_inn("post", "--port {} --msgid '{}' --file {}".format(
+            self.fn_port, msgid, path), name="POST {} (From: yue) to the fn owner".format(
+                msgid))
+        result = self.payload(probe)
+        reply, after = str(result.get("result", "")), str(result.get("article", ""))
+        self.facts["fn post from yue"] = "POST='{}' article='{}' ARTICLE='{}'".format(
+            result.get("post"), reply, after)
+        self.check("fn-post-from-invalid-441",
+                   reply.startswith("441") and after.startswith("430"),
+                   "POST of {} with `From: yue` drew '{}' and ARTICLE then drew '{}': "
+                   "RFC 5536 3.1.2 makes From a mailbox-list, so the posting must be "
+                   "refused (441) and never served".format(msgid, reply, after),
+                   observed="{} / ARTICLE {}".format(reply, after))
 
     def scenario_inn_control(self):
         """INN's inbound path by hand: a transfer, a duplicate and a Path loop."""
@@ -1770,6 +1802,7 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
             self.run, self.fn_port)), expect=None)
         self.scenario_fn_posts()
         self.scenario_operator_post()
+        self.scenario_from_invalid()
         self.scenario_inn_control()
         self.scenario_innfeed_to_fn()
         self.scenario_duplicates_and_loop()

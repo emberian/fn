@@ -17,6 +17,8 @@ What it copies from the image, because the lab's assertions are about it
 * An article taken by transit is stored and served as it arrived, Path and
   Xref included -- so the lab's two serving-agent rows are violated here, as
   they were on the image, and the tests pin that the lab says so.
+* POST takes a From that names no address (`From: yue`) with 240, as the
+  image did in the agents run of 2026-09-22.
 * The feed offers every article not taken from the peer to each peer with an
   outbound pattern, by IHAVE when the record says streaming `false`.
 """
