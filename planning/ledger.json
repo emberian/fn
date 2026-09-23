@@ -281,6 +281,12 @@
     "tests/acl2/bp-fnbs-family-replay-tests",
     "books/bp-node-fragment-step",
     "tests/acl2/bp-node-fragment-step-tests",
+    "books/bp-node-report-step",
+    "tests/acl2/bp-node-report-step-tests",
+    "books/bp-report-outbox",
+    "tests/acl2/bp-report-outbox-tests",
+    "books/bp-fnbs-deletion-publication",
+    "tests/acl2/bp-fnbs-deletion-publication-tests",
     "books/bp-fnbs-family-publication",
     "tests/acl2/bp-fnbs-family-publication-tests",
     "books/bp-node-receive-boundary",
@@ -562,25 +568,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 564,
-    "books_in_root_closure": 563,
-    "roots": 558,
-    "theorems": 8275,
-    "functions": 6189,
-    "assert_events": 9012,
-    "must_fails": 445,
+    "books": 570,
+    "books_in_root_closure": 569,
+    "roots": 564,
+    "theorems": 8279,
+    "functions": 6210,
+    "assert_events": 9035,
+    "must_fails": 448,
     "encapsulates": 26,
     "guards": {
       "verified": 2019,
-      "declared-off": 345,
-      "default-guarded": 3035,
+      "declared-off": 355,
+      "default-guarded": 3046,
       "default-unguarded": 790
     },
-    "suspect_theorems": 73,
+    "suspect_theorems": 74,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 35,
-    "include_hygiene_warnings": 459,
+    "include_hygiene_warnings": 473,
     "host_names_warnings": 786,
     "hand_written_record_warnings": 18
   },
@@ -1540,6 +1546,32 @@
       "read_error": null
     },
     {
+      "book": "books/bp-fnbs-deletion-publication.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-fnbs-byte-publisher",
+        "bp-node-report-step"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bp-fnbs-delivery-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2357,6 +2389,32 @@
       "read_error": null
     },
     {
+      "book": "books/bp-node-report-step.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-fnbs-deletion-codec",
+        "bp-node-fragment-step"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bp-node.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2910,11 +2968,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 5,
-      "functions": 10,
+      "functions": 11,
       "guards": {
         "verified": 9,
         "declared-off": 0,
-        "default-guarded": 1,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
       "verify_guards_events": 9,
@@ -2929,6 +2987,33 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-report-outbox.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-node-report-step"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-bpn-report-outbox-view-requires-tombstone"
+      ],
       "read_error": null
     },
     {
@@ -10027,6 +10112,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-fnbs-deletion-publication-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 1,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-fnbs-deletion-publication",
+        "../../books/codec-attach",
+        "bp-node-report-step-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-fnbs-delivery-codec-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -10752,7 +10866,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 22,
+      "assert_events": 25,
       "must_fails": 1,
       "defconsts": 1,
       "defmacros": 0,
@@ -10788,6 +10902,35 @@
       "encapsulates": 0,
       "includes": [
         "../../books/bp-node-records"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-node-report-step-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 9,
+      "must_fails": 1,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-node-report-step",
+        "../../books/codec-attach",
+        "bp-report-deletion-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -11112,6 +11255,35 @@
         "../../books/bp-report-deletion",
         "../../books/codec-attach",
         "bp-app-handoff-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-report-outbox-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 1,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-report-outbox",
+        "../../books/codec-attach",
+        "bp-node-report-step-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -15768,6 +15940,14 @@
       ]
     },
     {
+      "theorem": "fn-bpn-report-outbox-view-requires-tombstone",
+      "book": "books/bp-report-outbox.lisp",
+      "line": 46,
+      "reasons": [
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "fn-bpn-sf-crash-preserves-nonreuse",
       "book": "books/bp-sequence-fidelity.lisp",
       "line": 373,
@@ -17115,9 +17295,10 @@
           "books/bp-node-machine-authorization.lisp",
           "books/bp-node-machine-invariants.lisp",
           "books/bp-node-machine.lisp",
+          "books/bp-node-report-step.lisp",
           "books/hybrid-signature.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-cbor-ag-cdr",
@@ -17580,6 +17761,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-fnbs-deletion-publication.lisp",
+        "line": 3,
+        "include": "bp-node-report-step",
+        "included": "books/bp-node-report-step.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-fnbs-deletion-publication.lisp",
+        "line": 4,
+        "include": "bp-fnbs-byte-publisher",
+        "included": "books/bp-fnbs-byte-publisher.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-fnbs-delivery-codec.lisp",
         "line": 6,
         "include": "bp-fnbs-codec",
@@ -17832,6 +18027,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-node-report-step.lisp",
+        "line": 5,
+        "include": "bp-node-fragment-step",
+        "included": "books/bp-node-fragment-step.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-report-step.lisp",
+        "line": 6,
+        "include": "bp-fnbs-deletion-codec",
+        "included": "books/bp-fnbs-deletion-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-outbound.lisp",
         "line": 7,
         "include": "bp-workflow-records",
@@ -17955,6 +18164,13 @@
         "line": 6,
         "include": "bp-status-report",
         "included": "books/bp-status-report.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-report-outbox.lisp",
+        "line": 4,
+        "include": "bp-node-report-step",
+        "included": "books/bp-node-report-step.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -18882,6 +19098,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bp-fnbs-deletion-publication-tests.lisp",
+        "line": 2,
+        "include": "../../books/bp-fnbs-deletion-publication",
+        "included": "books/bp-fnbs-deletion-publication.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-fnbs-deletion-publication-tests.lisp",
+        "line": 3,
+        "include": "bp-node-report-step-tests",
+        "included": "tests/acl2/bp-node-report-step-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-fnbs-deletion-publication-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bp-fnbs-delivery-codec-tests.lisp",
         "line": 2,
         "include": "../../books/bp-fnbs-delivery-codec",
@@ -19239,6 +19476,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bp-node-report-step-tests.lisp",
+        "line": 2,
+        "include": "../../books/bp-node-report-step",
+        "included": "books/bp-node-report-step.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-report-step-tests.lisp",
+        "line": 3,
+        "include": "bp-report-deletion-tests",
+        "included": "tests/acl2/bp-report-deletion-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-report-step-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bp-outbound-guards-tests.lisp",
         "line": 3,
         "include": "../../books/bp-outbound",
@@ -19373,6 +19631,27 @@
       },
       {
         "book": "tests/acl2/bp-report-deletion-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-report-outbox-tests.lisp",
+        "line": 2,
+        "include": "../../books/bp-report-outbox",
+        "included": "books/bp-report-outbox.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-report-outbox-tests.lisp",
+        "line": 3,
+        "include": "bp-node-report-step-tests",
+        "included": "tests/acl2/bp-node-report-step-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-report-outbox-tests.lisp",
         "line": 4,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",

@@ -284,6 +284,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-family-replay-tests \
 	books/bp-node-fragment-step \
 	tests/acl2/bp-node-fragment-step-tests \
+	books/bp-node-report-step \
+	tests/acl2/bp-node-report-step-tests \
+	books/bp-report-outbox \
+	tests/acl2/bp-report-outbox-tests \
+	books/bp-fnbs-deletion-publication \
+	tests/acl2/bp-fnbs-deletion-publication-tests \
 	books/bp-fnbs-family-publication \
 	tests/acl2/bp-fnbs-family-publication-tests \
 	books/bp-node-receive-boundary \

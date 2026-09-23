@@ -8,11 +8,16 @@
 
 (defun fn-bpn-report-delete-record (epoch op arrival identity reason)
   (declare (xargs :guard t))
-  (list :bpnf-deleted epoch op arrival identity reason))
+  (list :bpnf-deleted epoch op arrival identity reason '(0)))
+
+(defun fn-bpn-report-delete-with-intent
+  (epoch op arrival identity reason report-payload)
+  (declare (xargs :guard t))
+  (list :bpnf-deleted epoch op arrival identity reason report-payload))
 
 (defun fn-bpn-report-delete-recordp (record)
   (declare (xargs :guard t))
-  (and (true-listp record) (equal (len record) 6)
+  (and (true-listp record) (equal (len record) 7)
        (equal (car record) :bpnf-deleted)
        (fn-frame-natp (nth 1 record))
        (fn-frame-natp (nth 2 record))
@@ -20,7 +25,10 @@
        (fn-cbor-octet-listp (nth 4 record))
        (consp (nth 4 record))
        (<= (len (nth 4 record)) 1024)
-       (equal (nth 5 record) :lifetime-expired)))
+       (equal (nth 5 record) :lifetime-expired)
+       (fn-cbor-octet-listp (nth 6 record))
+       (consp (nth 6 record))
+       (<= (len (nth 6 record)) *fn-bpn-report-max-input*)))
 
 (defun fn-bpn-report-held-delete-pendingp (held)
   (declare (xargs :guard t))
@@ -61,7 +69,7 @@
                                   (fn-bpp-eidp fn-bpp-timep
                                    fn-bpp-crc-typep fn-bpp-dtn-sspp)))))
 
-(defun fn-bpn-report-tombstone-held (held reason)
+(defun fn-bpn-report-tombstone-held (held record)
   (declare (xargs :guard t))
   (fn-bpnf-held (fn-bpn-nth 1 held) (fn-bpn-nth 2 held)
                 (fn-bpn-nth 3 held) (fn-bpn-nth 4 held)
@@ -69,7 +77,7 @@
                 (fn-bpn-nth 7 held) (fn-bpn-nth 8 held)
                 (fn-bpn-nth 9 held) (fn-bpn-nth 10 held)
                 (fn-bpn-nth 11 held) (fn-bpn-nth 12 held)
-                (fn-bpn-nth 13 held) reason (fn-bpn-nth 15 held)))
+                (fn-bpn-nth 13 held) record (fn-bpn-nth 15 held)))
 
 (defun fn-bpn-report-apply-delete (record held-list)
   (declare (xargs :guard t :measure (acl2-count held-list)))
@@ -78,7 +86,7 @@
     (if (equal (fn-bpn-nth 3 record) (fn-bpn-nth 3 (car held-list)))
         (if (fn-bpn-report-delete-matches-heldp record (car held-list))
             (mv t (cons (fn-bpn-report-tombstone-held
-                         (car held-list) (fn-bpn-nth 5 record))
+                         (car held-list) record)
                         (cdr held-list)))
           (mv nil held-list))
       (mv-let (ok rest)
@@ -104,7 +112,7 @@
   (declare (xargs :guard t))
   (and (fn-bpn-report-delete-recordp record)
        (fn-bpnf-heldp held)
-       (equal (fn-bpn-nth 14 held) (fn-bpn-nth 5 record))
+       (equal (fn-bpn-nth 14 held) record)
        (equal (fn-bpn-nth 3 held) (fn-bpn-nth 3 record))
        (equal (fn-bpn-nth 4 record)
               (fn-bpp-primary-identity
@@ -172,7 +180,8 @@
 
 (defthm fn-bpn-report-tombstone-not-pending
   (not (fn-bpn-report-held-delete-pendingp
-        (fn-bpn-report-tombstone-held held :lifetime-expired)))
+        (fn-bpn-report-tombstone-held
+         held (fn-bpn-report-delete-record 0 0 0 '(1) :lifetime-expired))))
   :hints (("Goal" :in-theory (enable fn-bpn-report-held-delete-pendingp
                                       fn-bpn-report-tombstone-held))))
 
