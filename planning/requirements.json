@@ -44,15 +44,17 @@
         "tests/acl2/article-fields-tests.lisp",
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/store-node-existing-invariants.lisp",
+        "tests/acl2/store-node-existing-tests.lisp"
       ],
-      "implementation_note": "Exact Message-ID strings, content subjects and local numbers remain distinct. Article-field extraction validates the RFC identifier grammar, preserves exact octets and reports duplicates explicitly; native identity/signature composition remains open. Open (2026-09-22): the duplicate-versus-conflict comparison for a held Message-ID, fn-store-article-match in host/store-host.lisp, is host code with no theorem naming it, while every word downstream of it is ACL2's (planning/evidence/native-duplicate-outcome-2026-09-22.md); moving it under a book and a theorem is a lane after the current freeze.",
+      "implementation_note": "Exact Message-ID strings, content subjects and local numbers remain distinct. Article-field extraction validates the RFC identifier grammar and preserves exact octets. The actual standalone Store and configured owner prepare/query wrappers call fn-sn-existing-action over their live composed Store; it returns duplicate only for the held Message-ID with equal payload octets and ordered groups, conflict for a held differing binding, and nil for no binding. Native identity/signature composition remains open.",
       "keystones": [
         "fn-complete-preserves-existing-message-id-binding",
         "fn-recover-preserves-existing-message-id-binding",
         "fn-article-successful-parse-preserves-source"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The exact Message-ID binding survives completion and recovery, and a successful parse reconstructs its exact source octets, so the wire identity, the content subject and the local number stay three things. Open: native identity and signature composition, and the digest side of OBJ-001. Open item: `fn-store-article-match` (`host/store-host.lisp:138`) decides duplicate-versus-conflict in host code; T3 moves it into `books/store-node` with its theorem."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The exact Message-ID binding survives completion and recovery, and a successful parse reconstructs its exact source octets, so the wire identity, the content subject and the local number stay three things. Open: native identity and signature composition, and the digest side of OBJ-001. T3 removes the host duplicate/conflict decision twin; the ACL2 theorem and reachable teeth cover this live Store comparison. This does not establish legacy source-variant comparison, network composition, or digest collision handling."
     },
     {
       "id": "OBJ-003",
@@ -1172,7 +1174,7 @@
       "evidence": [
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "note": "`books/nntp-post` and `books/owner` certify at their last green digests; what is missing is the theorem from the served `240` to the consumed completion (`fn-own-240-follows-consumed-completion`) and the native cut campaign on an image; both are T5. 2026-09-22 (T13-conform): an operator's retry of the same octets after a lost outcome resubmits the stored injection, so the store answers duplicate rather than a conflict (fn-own-operator-retry-resubmits-the-stored-injection, PRF-056); the duplicate itself is host/store-host.lisp fn-store-article-match's octet comparison, not a theorem."
+      "note": "`books/nntp-post` and `books/owner` certify at their last green digests; what is missing is the theorem from the served `240` to the consumed completion (`fn-own-240-follows-consumed-completion`) and the native cut campaign on an image; both are T5. 2026-09-22 (T13-conform): an operator's retry of the same octets after a lost outcome resubmits the stored injection, so the store answers duplicate rather than a conflict (fn-own-operator-retry-resubmits-the-stored-injection, PRF-056); the Store comparison now runs in books/store-node.lisp fn-sn-existing-action, with exact outcome theorems and reachable teeth; the owner-to-Store retry composition is not yet a theorem."
     },
     {
       "id": "NNT-006",

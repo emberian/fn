@@ -21,7 +21,10 @@
              :record-directory :ok)))
 
 (assert-event (fn-sn-statep *snex-finished*))
-(assert-event (fn-sn-committed-recordp (fn-sn-node *snex-finished*) *snex-record*))
+(assert-event
+ (fn-find-article "<held@example>"
+                  (fn-state-articles
+                   (fn-node-acceptance (fn-sn-node *snex-finished*)))))
 (assert-event (equal (fn-sn-existing-action
                       "<held@example>" '(65 66) *snex-groups* *snex-finished*)
                      :duplicate))
