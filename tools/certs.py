@@ -1071,15 +1071,21 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
                       content_hash(target_port) == content_hash(port)))
         old_meta = read_meta(directory)
         same_provenance = (
-            old_meta.get("origin_kind", LIVE_ORIGIN) == origin_kind
+            old_meta.get("book") == name
+            and old_meta.get("closure") == listing
+            and old_meta.get("origin_kind", LIVE_ORIGIN) == origin_kind
+            and old_meta.get("origin_host") == meta["origin_host"]
             and old_meta.get("toolchain") == record.compatibility
             and old_meta.get("certification_provenance")
             == record.certification_provenance
+            and old_meta.get("evidence") == record.evidence
             and old_meta.get("cert_sha256") == record.cert
             and old_meta.get("port_sha256") == meta["port_sha256"]
+            and old_meta.get("has_port") == meta["has_port"]
             and old_meta.get("source_sha256") == record.source
             and old_meta.get("closure_key") == key
-            and old_meta.get("origin_root") == origin)
+            and old_meta.get("origin_root") == origin
+            and old_meta.get("published_from") == str(cert.parent))
         if same_cert and same_port and same_provenance:
             return "already"
         if not same_cert:
