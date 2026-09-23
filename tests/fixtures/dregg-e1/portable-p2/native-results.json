@@ -53,5 +53,10 @@
     "case": "untrusted-store-claim",
     "exit": 1,
     "stderr": "minidregg-host: fn claim: unknown field storeAdmission"
+  },
+  {
+    "case": "oversize-verifier-output",
+    "exit": 1,
+    "stderr": "minidregg-host: Mini evidence input exceeds byte bound"
   }
 ]

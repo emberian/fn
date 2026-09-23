@@ -13,7 +13,7 @@ re-admitted the origin prefix. `verified-result.json` explicitly records
 `storeAdmission: unestablished`.
 
 `probe.py` runs the compiled Mini host and fn image against this fixture with
-one positive and ten hostile inputs. It only orchestrates processes and
+one positive and eleven hostile inputs. It only orchestrates processes and
 compares exact public bytes and exit outcomes; fn and Mini retain their own
 semantic decisions. `hbox-transport-only.sh` is the exact transport shim used
 for the Mac Mini host to invoke the Linux fn image on hbox. It copies the
