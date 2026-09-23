@@ -1532,9 +1532,20 @@ durable namespace untouched. `fn-bs-record-inputp` uses the typed
 `fn-store-event-sequence`, so this statement includes non-article Store
 events. It still requires a fresh staging name, a model crash image and a
 surviving final link. General K0 must establish the related input and
-freshness for each served call, and the scanner's whole-list conclusion
-remains open as a theorem. The test book executes a non-article retention
+freshness for each served call. The test book executes a non-article retention
 event through the actual program and scanner as a concrete witness.
+
+`fn-bs-k6-related-attempt-surviving-crash-scans-exact-frame-event` now joins
+that exact raw frame to the **ordered scanner result** at actual P-RECORD
+pair 10. Its extra premise is `fn-bs-store-relation` of that pair's byte and
+kernel states. Under an admissible crash image retaining the final name,
+the scanner returns the durable old record prefix followed by the candidate
+decoded from the exact fenced frame. The proof derives the scanner index
+from the typed event sequence and the unchanged durable namespace; it does
+not assume scan equality or candidate membership. This is a conditional
+scanner bridge, not general K0: the relation at pair 10 has a concrete
+second-publication witness but is not yet proved preserved by every actual
+P-RECORD call or established for every served input.
 
 ; K7. Fence after uncertainty: after an error outcome of a :link, :rename or
 ; :fsync-dir step, the kernel is fenced and the byte store's pending list

@@ -125,3 +125,18 @@ The linked-cut theorem's name-typing proof hint was also changed to the
 typed Store-event accessor; the book and test root passed selected hbox
 certification under `run-20260923T204231Z-6c75`, archived at
 `planning/evidence/manifests/certify-20260923T204236Z-70620.json`.
+
+The conditional whole-list bridge is now certified:
+`fn-bs-k6-related-attempt-surviving-crash-scans-exact-frame-event` names the
+actual pair-10 P-RECORD cut and proves that a surviving link's scanner result
+is the old durable prefix followed by the candidate decoded from the exact
+fenced frame. It derives the scanner index from the typed Store-event
+sequence, unchanged durable namespace, and model crash-image namespace
+alternatives. Unlike a restatement of scan equality, its premises are the
+related staged input, valid frame/name, fresh staging name, relation of the
+actual pair-10 byte/kernel states, modeled crash image and surviving final
+link. The pair-10 relation is observed in the second-article and non-article
+retention fixtures; universal P-RECORD preservation of it is still K0.
+Selected hbox certification of the book and test root passed under
+`run-20260923T205309Z-9c0f`, original manifest
+`planning/evidence/manifests/certify-20260923T205311Z-99085.json`.

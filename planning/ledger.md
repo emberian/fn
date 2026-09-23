@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 516 |
 | Certification roots in the Makefile | 511 |
 | Books inside the root closure | 515 |
-| `defthm` and `defthmd` events | 7782 |
+| `defthm` and `defthmd` events | 7795 |
 | `defun` events | 5935 |
 | Functions with verified guards | 1907 |
 | Functions declared `:verify-guards nil` and never verified | 314 |
@@ -189,7 +189,7 @@ that `make certify` requests.
 | `books/byte-store-program-invariants.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/byte-store-programs.lisp` | root | 1 | 31 | 0/31/0/0 | 33 | 0 | 0 |
 | `books/byte-store-record-fence.lisp` | root | 41 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/byte-store-record-provenance.lisp` | root | 58 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/byte-store-record-provenance.lisp` | root | 71 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-relation.lisp` | root | 12 | 8 | 0/5/0/3 | 0 | 0 | 0 |
 | `books/byte-store-scan.lisp` | root | 134 | 35 | 1/29/0/5 | 0 | 0 | 1 |
 | `books/byte-store-stable-prefix.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
