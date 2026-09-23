@@ -455,6 +455,8 @@
     "books/hybrid-carrier",
     "tests/acl2/hybrid-carrier-tests",
     "books/hybrid-store-invariants",
+    "books/topic-history-metadata",
+    "tests/acl2/topic-history-metadata-tests",
     "tests/acl2/hybrid-store-tests",
     "books/crypto-attach",
     "books/auth-secret",
@@ -505,8 +507,8 @@
   ],
   "totals": {
     "books": 507,
-    "books_in_root_closure": 504,
-    "roots": 500,
+    "books_in_root_closure": 506,
+    "roots": 502,
     "theorems": 7700,
     "functions": 5870,
     "assert_events": 8515,
@@ -8039,8 +8041,8 @@
     },
     {
       "book": "books/topic-history-metadata.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 6,
       "functions": 21,
       "guards": {
@@ -13824,8 +13826,8 @@
     },
     {
       "book": "tests/acl2/topic-history-metadata-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 2,
       "guards": {
