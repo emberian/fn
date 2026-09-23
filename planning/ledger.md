@@ -13,12 +13,12 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 423 |
 | Certification roots in the Makefile | 421 |
 | Books inside the root closure | 422 |
-| `defthm` and `defthmd` events | 7103 |
-| `defun` events | 5427 |
+| `defthm` and `defthmd` events | 7123 |
+| `defun` events | 5428 |
 | Functions with verified guards | 1746 |
 | Functions declared `:verify-guards nil` and never verified | 288 |
 | Functions left at the default with an explicit guard | 2722 |
-| Functions left at the default with no guard | 671 |
+| Functions left at the default with no guard | 672 |
 | `assert-event` checks | 7843 |
 | `must-fail` checks | 282 |
 | `encapsulate` events | 26 |
@@ -26,7 +26,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 93 |
 | Enabled-projection warnings | 27 |
 | Teeth-form warnings | 23 |
-| Include-hygiene warnings | 263 |
+| Include-hygiene warnings | 260 |
 | Host-names warnings | 654 |
 | Hand-written-record warnings | 18 |
 
@@ -160,7 +160,7 @@ that `make certify` requests.
 | `books/byte-store-native-correspondence.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/byte-store-program-invariants.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/byte-store-programs.lisp` | root | 1 | 31 | 0/31/0/0 | 33 | 0 | 0 |
-| `books/byte-store-relation.lisp` | root | 12 | 7 | 0/5/0/2 | 0 | 0 | 0 |
+| `books/byte-store-relation.lisp` | root | 12 | 8 | 0/5/0/3 | 0 | 0 | 0 |
 | `books/byte-store-scan.lisp` | root | 134 | 35 | 1/29/0/5 | 0 | 0 | 1 |
 | `books/byte-store-txn-name.lisp` | root | 30 | 13 | 3/0/10/0 | 0 | 0 | 0 |
 | `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
@@ -227,7 +227,7 @@ that `make certify` requests.
 | `books/native-hybrid-control.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/native-operator.lisp` | root | 0 | 58 | 0/0/58/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
-| `books/nntp-auth.lisp` | root | 107 | 58 | 40/3/14/1 | 0 | 0 | 3 |
+| `books/nntp-auth.lisp` | root | 116 | 58 | 40/3/14/1 | 0 | 0 | 3 |
 | `books/nntp-effects.lisp` | root | 143 | 12 | 0/0/0/12 | 0 | 0 | 1 |
 | `books/nntp-index.lisp` | root | 33 | 25 | 25/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-invariants.lisp` | root | 94 | 4 | 0/0/0/4 | 0 | 0 | 0 |
@@ -317,7 +317,7 @@ that `make certify` requests.
 | `books/stx-lace.lisp` | root | 22 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/stx-policy.lisp` | root | 16 | 3 | 0/0/3/0 | 0 | 0 | 1 |
 | `books/stx-verify.lisp` | root | 15 | 15 | 0/0/15/0 | 0 | 0 | 0 |
-| `books/tcpcl-invariants.lisp` | root | 51 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/tcpcl-invariants.lisp` | root | 62 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/tcpcl-octets.lisp` | root | 172 | 36 | 14/0/22/0 | 0 | 0 | 1 |
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
 | `books/tcpcl-session.lisp` | root | 98 | 57 | 9/0/48/0 | 0 | 0 | 0 |
@@ -521,9 +521,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-af-message-id-equalp-is-exact` | `books/article-fields.lisp` | 336 | definition-restated: the conclusion is the body of fn-af-message-id-equalp with the conjuncts the hypotheses already assert struck out |
 | `fn-ag-less-is-less` | `books/acceptance-alloc.lisp` | 58 | definition-restated: the conclusion is the body of fn-ag-less; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-anchor-octets-of-lengthp-forward` | `books/anchor.lisp` | 130 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp |
-| `fn-auth-consistent-forward` | `books/nntp-auth.lisp` | 409 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp |
-| `fn-auth-session-peer-folds` | `books/nntp-auth.lisp` | 2221 | definition-restated: the conclusion is the body of fn-auth-session-peer |
-| `fn-auth-token-argp-forward` | `books/nntp-auth.lisp` | 796 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp |
+| `fn-auth-consistent-forward` | `books/nntp-auth.lisp` | 420 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp |
+| `fn-auth-session-peer-folds` | `books/nntp-auth.lisp` | 2318 | definition-restated: the conclusion is the body of fn-auth-session-peer |
+| `fn-auth-token-argp-forward` | `books/nntp-auth.lisp` | 807 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp |
 | `fn-bp-effect-for-pending-attempt-unfolds` | `books/bp-workflow-invariants.lisp` | 890 | branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value |
 | `fn-bpaj-dispatch-intent-absent-retries` | `books/bp-native-app.lisp` | 445 | branch-of-definition: the hypothesis is a branch test of fn-bpaj-dispatch and the conclusion is that branch's value |
 | `fn-bpb-decode-refuses-overlong-input` | `books/bp-bundle-invariants.lisp` | 540 | branch-of-definition: the hypothesis is a branch test of fn-bpb-decode and the conclusion is that branch's value |
