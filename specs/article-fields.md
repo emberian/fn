@@ -11,7 +11,7 @@ durable admission decision.
 `books/article-fields.lisp` accepts an article view only after a successful
 `fn-article-parse`; callers must pass `fn-article-result-article` from such a
 result. The syntax parser remains the sole source parser and supplies its
-32,768-octet source, 8,192-octet header, 128-line, and 64-field local bounds.
+32,768-octet source, 16,384-octet header, 256-line, and 64-field local bounds.
 This book does not reparse source bytes, invoke the Lisp reader, intern names,
 or use host text/regular-expression processing.
 
@@ -23,7 +23,7 @@ rewritten by this layer.
 
 The standalone `fn-af-message-idp` applies the RFC 5536 250-octet maximum
 before octet traversal. `fn-af-newsgroup-list-parse` similarly preflights its
-value against the article parser's 8,192-octet header limit. These are bounded
+value against its own narrower 8,192-octet field limit. These are bounded
 octet functions, independent of host character encoding.
 
 ## Message-ID

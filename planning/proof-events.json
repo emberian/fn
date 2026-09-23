@@ -1903,7 +1903,7 @@
         {
           "kind": "theorem",
           "name": "fn-th-host-inspect-source-binds-authored-field",
-          "note": "Subject is the exact ACL2 function invoked by host/native/signature-command.lisp after native carrier verification. Success binds to one FN-Topic field in the parsed authored source; relay-header separation has a positive/negative witness in the test book. This proves projection, not cryptographic verification or topic admission."
+          "note": "Subject is the exact ACL2 function invoked by host/native/signature-command.lisp after native carrier verification. Success binds to one FN-Topic field in the parsed authored source and its canonical raw-line projection, including folded values; relay-header separation has a positive/negative witness. This proves projection, not cryptographic verification or topic admission."
         },
         {
           "kind": "theorem",
@@ -1914,6 +1914,11 @@
           "kind": "theorem",
           "name": "fn-th-constructor-roundtrip",
           "note": "For every valid constructor, statement codec inverse and shape-reader inverse yield decode(encode(x)) = ok(x); an invalid duplicate-author constructor is a must-fail witness without the validity premise."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-th-field-lines-fit-85",
+          "note": "The ACL2-owned canonical folded-field renderer puts at most 85 octets on every physical line, below the unchanged article 998-octet limit. The 29-line maximum root witness reaches the combined native envelope after article header and line-count bounds are raised."
         }
       ]
     },

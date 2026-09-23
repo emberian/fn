@@ -38,6 +38,7 @@
 (assert-event (equal (len (fn-th-encode *th-max-root*)) 1531))
 (assert-event (equal (len (fn-th-items *th-max-root*)) 39))
 (assert-event (equal (len (fn-th-field-encode *th-max-root*)) 2047))
+(assert-event (equal (len (fn-th-field-lines *th-max-root*)) 29))
 (assert-event (equal (fn-th-decode (fn-th-encode *th-max-root*))
                      (fn-stmt-ok *th-max-root*)))
 (assert-event (not (fn-th-value-p
@@ -64,6 +65,54 @@
           (fn-t-th-line "Date: Sun, 01 Jan 2023 00:00:00 +0000")
           (fn-t-th-line "Newsgroups: fn.test")
           (fn-t-th-line "Message-ID: <th@example>")))
+(defconst *th-max-native-head*
+  (append (fn-t-th-line "From: author@example.invalid")
+          (fn-t-th-line "Date: Wed, 23 Sep 2026 12:00:00 +0000")
+          (fn-t-th-line "Newsgroups: fn.test")
+          (fn-t-th-line "Subject: topic")
+          (fn-t-th-line "Message-ID: <topic@example.invalid>")))
+(defun fn-t-th-max-native-source ()
+  (declare (xargs :guard t))
+  (append *th-max-native-head* (fn-th-field-wire *th-max-root*)
+          '(13 10 120)))
+(defconst *th-max-carrier-principal* (make-list 32 :initial-element 85))
+(defconst *th-max-carrier-keys*
+  (list (cons :ed25519 (make-list 32 :initial-element 17))
+        (cons :ml-dsa-65 (make-list 1952 :initial-element 34))))
+(defconst *th-max-carrier-signatures*
+  (list (cons :ed25519 (make-list 64 :initial-element 51))
+        (cons :ml-dsa-65 (make-list 3309 :initial-element 68))))
+(assert-event (equal (len *th-max-native-head*) 143))
+(assert-event
+ (let* ((source (fn-t-th-max-native-source))
+        (wire (fn-hc-render source *th-max-carrier-principal*
+                            *th-max-carrier-keys*
+                            *th-max-carrier-signatures*))
+        (received (fn-hc-received-plan wire)))
+   (and (equal (len source) 2289)
+        (equal (len wire) 9814)
+        (fn-article-result-okp (fn-article-parse wire))
+        (fn-hc-okp received)
+        (equal (car (fn-hc-value received)) source)
+        (equal (fn-th-host-inspect-source (car (fn-hc-value received)))
+               (fn-stmt-ok *th-max-root*)))))
+(assert-event
+ (let ((lines (fn-th-field-lines *th-max-root*)))
+   (and (<= (len (car lines)) 998)
+        (<= (len (car (last lines))) 998)
+        (equal (fn-th-host-inspect-source
+                (append *th-source-head* (fn-th-field-wire *th-max-root*)
+                        '(13 10 120)))
+               (fn-stmt-ok *th-max-root*)))))
+(assert-event
+ (let* ((lines (fn-th-field-lines *th-max-root*))
+        (changed (cons (car lines)
+                       (cons (cons 32 (cdr (cadr lines)))
+                             (cddr lines)))))
+   (equal (fn-th-host-inspect-source
+           (append *th-source-head* (fn-stx-field-octets changed)
+                   '(13 10 120)))
+          (fn-stmt-error :folding))))
 (assert-event
  (let* ((field-line (append (fn-record-string-octets "FN-Topic: ")
                             (fn-th-field-encode *th-root*) '(13 10)))

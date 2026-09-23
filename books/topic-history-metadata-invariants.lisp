@@ -228,6 +228,24 @@
 ; `host/native/signature-command.lisp` invokes this exact subject only on
 ; source octets returned by carrier verification. A successful candidate is
 ; tied to the unique authored field in those octets, not a received header.
+(local (defthm fn-th-find-name-preserves-fieldp
+  (implies (and (fn-article-field-listp fields)
+                (fn-hc-find-name name fields))
+           (fn-article-fieldp (fn-hc-find-name name fields)))
+  :hints (("Goal" :induct (fn-hc-find-name name fields)
+           :in-theory (enable fn-article-field-listp fn-hc-find-name)))))
+(local (defthm fn-th-project-field-success-fieldp
+  (implies (fn-stmt-okp (fn-th-project-field field))
+           (fn-article-fieldp field))
+  :hints (("Goal" :in-theory
+           (e/d (fn-th-project-field)
+                (fn-th-field-decode fn-th-field-lines))))))
+(local (defthm fn-th-project-field-success-leading-sp
+  (implies (fn-stmt-okp (fn-th-project-field field))
+           (equal (fn-th-at 0 (fn-article-field-unfolded-value field)) 32))
+  :hints (("Goal" :in-theory
+           (e/d (fn-th-project-field)
+                (fn-th-field-decode fn-th-field-lines))))))
 (defthm fn-th-host-inspect-source-binds-authored-field
   (implies
    (fn-stmt-okp (fn-th-host-inspect-source source))
@@ -238,11 +256,53 @@
      (and (fn-article-result-okp parsed)
           (fn-article-syntax-p (fn-article-result-article parsed))
           (equal (fn-hc-count-name *fn-th-name* fields) 1)
+          (fn-article-fieldp field)
           (equal (fn-th-at 0 value) 32)
           (equal (fn-th-host-inspect-source source)
-                 (fn-th-field-decode (fn-cbor-ag-cdr value))))))
-  :hints (("Goal" :in-theory
+                 (fn-th-project-field field)))))
+  :hints (("Goal" :use
+           ((:instance fn-th-project-field-success-fieldp
+                       (field (fn-hc-find-name
+                               *fn-th-name*
+                               (fn-article-fields
+                                (fn-article-result-article
+                                 (fn-article-parse source))))))
+            (:instance fn-th-project-field-success-leading-sp
+                       (field (fn-hc-find-name
+                               *fn-th-name*
+                               (fn-article-fields
+                                (fn-article-result-article
+                                 (fn-article-parse source)))))))
+           :in-theory
            (e/d (fn-th-host-inspect-source fn-th-project-source
                   fn-th-project-fields)
-                (fn-article-parse fn-th-field-decode fn-th-decode
-                 fn-th-encode fn-th-items-value)))))
+                (fn-article-parse fn-th-project-field fn-th-field-decode fn-th-decode
+                 fn-th-encode fn-th-items-value
+                 fn-th-project-field-success-fieldp
+                 fn-th-project-field-success-leading-sp)))))
+
+(defun fn-th-lines-at-most-p (lines bound)
+  (declare (xargs :guard t))
+  (if (consp lines)
+      (and (<= (len (car lines)) (nfix bound))
+           (fn-th-lines-at-most-p (cdr lines) bound))
+    (null lines)))
+(local (defthm fn-th-take-length-bound
+  (implies (natp n) (<= (len (fn-hc-take n xs)) n))
+  :hints (("Goal" :induct (fn-hc-take n xs)
+           :in-theory (enable fn-hc-take)))))
+(local (defthm fn-th-take72-bound
+  (<= (len (fn-hc-take 72 xs)) 72)
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-th-take-length-bound (n 72)))
+           :in-theory (disable fn-th-take-length-bound)))))
+(local (defthm fn-th-continuation-lines-fit-85
+  (fn-th-lines-at-most-p (fn-th-field-continuation-lines base64) 85)
+  :hints (("Goal" :induct (fn-th-field-continuation-lines base64)
+           :in-theory (enable fn-th-field-continuation-lines
+                              fn-th-lines-at-most-p)))))
+(defthm fn-th-field-lines-fit-85
+  (fn-th-lines-at-most-p (fn-th-field-lines x) 85)
+  :hints (("Goal" :in-theory
+           (e/d (fn-th-field-lines fn-th-lines-at-most-p)
+                (fn-th-field-encode fn-th-field-continuation-lines)))))

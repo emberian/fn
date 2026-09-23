@@ -1590,10 +1590,17 @@
         "planning/evidence/manifests/certify-20260923T200634Z-19239.json",
         "planning/evidence/manifests/certify-20260923T200855Z-21687.json",
         "books/topic-history-metadata-invariants.lisp",
-        "planning/evidence/manifests/certify-20260923T203140Z-48694.json"
+        "planning/evidence/manifests/certify-20260923T203140Z-48694.json",
+        "books/article.lisp",
+        "tests/acl2/article-tests.lisp",
+        "tests/fixtures/topic-history/max-root-field.bin",
+        "tests/test_native_topic_metadata.py",
+        "planning/evidence/manifests/certify-20260923T205409Z-107337.json",
+        "planning/evidence/manifests/certify-20260923T205651Z-114702.json",
+        "planning/evidence/manifests/certify-20260923T210021Z-121875.json"
       ],
-      "implementation_note": "The experimental root/control/report field codec and offline native carrier inspection are implemented. No durable topic admission, current policy, or governance authority follows from projection.",
-      "note": "The codec, host-called authored-field binding, general constructor bound, inverse, and separating ACL2 tests are certified at exact source digests. Native saved-image execution remains pending in the combined gate. The fixed-controller profile remains experimental."
+      "implementation_note": "The experimental root/control/report codec, ACL2-owned canonical folded field renderer, widened bounded article envelope and offline native carrier inspection are implemented. No durable topic admission, current policy or governance authority follows from projection.",
+      "note": "General constructor bound/inverse, host-called authored-field binding, physical-line bound and ACL2 max-profile/negative tests are certified. Source-matched native max-profile saved-image execution remains pending. The fixed-controller profile remains experimental."
     }
   ]
 }

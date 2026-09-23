@@ -5,6 +5,7 @@ The field vectors below are exact ACL2 `fn-th-field-encode` results for the
 root and a zero-parent report. Python does not encode them.
 """
 import os
+import hashlib
 from pathlib import Path
 import subprocess
 import tempfile
@@ -19,6 +20,8 @@ TOPIC_FIELD = (
 SHORT_TOPIC_FIELD = (
     b"v1 AQJYMGZuL3N1YmplY3QvdjEAAQEFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBVgwZm4vc3ViamVjdC92MQABAQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFAA=="
 )
+MAX_FIELD = ROOT / "tests" / "fixtures" / "topic-history" / "max-root-field.bin"
+MAX_FIELD_SHA256 = "8b9aeeb3311f313d5b0826f105faaa05e93f398017451442ed7c128d04584851"
 
 
 @unittest.skipUnless(os.environ.get("FN_RUN_TOPIC_METADATA_E2E") == "1",
@@ -92,8 +95,8 @@ class NativeTopicMetadataTest(unittest.TestCase):
         self.assertEqual(refused.returncode, 1)
         self.assertIn(b"topic=unverified", refused.stdout)
         # This shorter valid report field is an exact ACL2-emitted vector.
-        # Two large root fields exceed the article's 8,192-octet header cap
-        # after FN-Authorship is added, so they cannot reach this inspection.
+        # This exact ACL2 vector also fits the older frozen image's 8,192-octet
+        # header cap; two large root fields could not reach its inspector.
         short_field = b"FN-Topic: " + SHORT_TOPIC_FIELD + b"\r\n"
         duplicate = self.sign("duplicate", self.source(short_field + short_field))
         unsupported = self.invoke("topic-inspect-carrier", str(duplicate),
@@ -106,6 +109,30 @@ class NativeTopicMetadataTest(unittest.TestCase):
                                   str(self.ml_public))
         self.assertEqual(unsupported.returncode, 1)
         self.assertIn(b"topic=unsupported", unsupported.stdout)
+
+    def test_max_roster_folded_source_and_relay(self):
+        field = MAX_FIELD.read_bytes()
+        self.assertEqual(len(field), 2143)
+        self.assertEqual(hashlib.sha256(field).hexdigest(), MAX_FIELD_SHA256)
+        source = self.source(field)
+        carried = self.sign("max-root", source)
+        self.assertTrue(carried.read_bytes().endswith(source))
+        inspected = self.invoke("topic-inspect-carrier", str(carried), str(self.ml_public))
+        self.assertEqual(inspected.returncode, 0, inspected.stderr.decode("utf-8", "replace"))
+        self.assertIn(b"topic=candidate carrier=authenticated kind=root", inspected.stdout)
+        self.assertIn(b"admission=unestablished", inspected.stdout)
+        relayed = self.root / "max-relayed.eml"
+        relayed.write_bytes(b"Path: relay.example!fn\r\n"
+                            b"Xref: relay.example fn.test:8\r\n" + carried.read_bytes())
+        again = self.invoke("topic-inspect-carrier", str(relayed), str(self.ml_public))
+        self.assertEqual(again.returncode, 0, again.stderr.decode("utf-8", "replace"))
+        self.assertEqual(again.stdout, inspected.stdout)
+        tampered = self.root / "max-tampered.eml"
+        tampered.write_bytes(carried.read_bytes().replace(b"exact signed source",
+                                                        b"alter signed source", 1))
+        refused = self.invoke("topic-inspect-carrier", str(tampered), str(self.ml_public))
+        self.assertEqual(refused.returncode, 1)
+        self.assertIn(b"topic=unverified", refused.stdout)
 
 
 if __name__ == "__main__":

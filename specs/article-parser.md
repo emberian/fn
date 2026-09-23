@@ -13,9 +13,9 @@ these local resource limits:
 | Limit | Value | Status |
 | --- | ---: | --- |
 | complete source | 32,768 octets | local policy |
-| header section before the blank separator | 8,192 octets | local policy |
+| header section before the blank separator | 16,384 octets | local policy |
 | physical header line excluding CRLF | 998 octets | local policy, aligned with RFC 5536 §2.2's generation limit |
-| physical header lines | 128 | local policy |
+| physical header lines | 256 | local policy |
 | header fields | 64 | local policy |
 
 The input uses CRLF line framing throughout.  A bare CR or bare LF anywhere in
@@ -100,7 +100,7 @@ folded/binary inputs and rejection boundaries. The
 [integrated evidence](../tests/evidence/2026-09-18-articles.md) records certification.
 The [property book](../books/article-properties.lisp) additionally proves that
 successful parsing establishes `fn-article-syntax-p`, source/body length at most
-32,768, header length at most 8,192 and at most 64 fields, from the sole success
+32,768, header length at most 16,384 and at most 64 fields, from the sole success
 hypothesis. These results are in the [assurance checkpoint](../tests/evidence/2026-09-18-assurance.md).
 Full parser work/allocation proofs and other semantic fields remain open.
 None of these properties establishes full RFC article validity.

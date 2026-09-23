@@ -105,20 +105,20 @@
 (assert-event (equal (fn-article-parse (fn-article-test-fields 65))
                      '(:error :limit)))
 
-; Exactly 128 physical header lines (one field plus 127 folds) are accepted;
-; the next fold exceeds the line-count cap.  Separately, 123 valid short-enough
-; folds exceed only the 8,192-octet header budget.
+; Exactly 256 physical header lines (one field plus 255 folds) are accepted;
+; the next fold exceeds the line-count cap. Separately, 245 valid short-enough
+; folds exceed only the 16,384-octet header budget.
 (assert-event (fn-article-result-okp
                (fn-article-parse
-                (append '(88 58 32 120 13 10) (fn-article-test-folds 127)))))
+                (append '(88 58 32 120 13 10) (fn-article-test-folds 255)))))
 (assert-event (equal
                (fn-article-parse
-                (append '(88 58 32 120 13 10) (fn-article-test-folds 128)))
+                (append '(88 58 32 120 13 10) (fn-article-test-folds 256)))
                '(:error :limit)))
 (assert-event (equal
                (fn-article-parse
                 (append '(88 58 32 120 13 10)
-                        (fn-article-test-long-folds 123)))
+                        (fn-article-test-long-folds 245)))
                '(:error :limit)))
 
 
