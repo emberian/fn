@@ -44,21 +44,21 @@
    *hst-authored-source* '("example") "obligation" "subject" "release"
    (fn-charge-for-payload (len *hst-authored-source*))
    *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
-   :verified :verified)))
+   :verified :verified (fn-clock-observation 1 841000000000 0 t))))
 (assert-equal
  (fn-hsig-authorized-submission-event
   2 3 4 4 *hst-snapshot* "<conflict@example.invalid>"
   *hst-authored-source* '("example") "obligation" "subject" "release"
   (fn-charge-for-payload (len *hst-authored-source*))
   *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
-  :verified :verified)
+  :verified :verified (fn-clock-observation 1 841000000000 0 t))
  nil)
 (assert-equal
  (fn-hsig-authorized-submission-event
   2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
   *hst-authored-source* '("example") "obligation" "subject" "release" 1
   *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
-  :verified :verified)
+  :verified :verified (fn-clock-observation 1 841000000000 0 t))
  nil)
 
 (assert! (fn-stxk-p

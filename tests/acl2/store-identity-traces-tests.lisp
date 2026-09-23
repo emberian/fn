@@ -104,7 +104,7 @@
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-refused*)) nil))
 
 (make-event `(defconst *sit-legacy* ',(fn-record-make 2 3 3 "<legacy@example.invalid>" '(76 13 10) *sit-groups*
-                  "legacy-obligation" "legacy-subject" "legacy-release" 2 :legacy)))
+                  "legacy-obligation" "legacy-subject" "legacy-release" 2 841000000)))
 (make-event `(defconst *sit-after-legacy* ',(fn-sit-commit-legacy *sit-refused* *sit-legacy*)))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-after-legacy*))
                      '((2 . 3))))

@@ -236,17 +236,18 @@
 ; The owner's transit port: the transfer is one fn-node-prepare on the
 ; arguments computed from the octets.  Two Newsgroups, one membership
 ; (non-degenerate: alt.test is not carried here).
-(defconst *pt-t1* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* nil 1 "ob-a1" "subject-a1")))
+(defconst *pt-t1* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* *pt-obs* 1 "ob-a1" "subject-a1")))
 (assert-event (equal (nth 1 *pt-t1*) (fn-peer-decision :want nil)))
 (assert-event (not (equal (nth 0 *pt-t1*) *pt-node0*)))
 (assert-event (fn-node-statep (nth 0 *pt-t1*)))
-(assert-event (equal (nth 3 (fn-peer-injection-arguments *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* 1 "ob-a1" "subject-a1")) '("fn.letters")))
+(assert-event (equal (nth 3 (fn-peer-injection-arguments *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* 1 "ob-a1" "subject-a1" *pt-obs*)) '("fn.letters")))
 (assert-event (equal (fn-pending-groups (fn-state-pending (fn-node-acceptance (nth 0 *pt-t1*)))) '("fn.letters")))
 (assert-event (equal (fn-node-stage-msgid (fn-node-stage (nth 0 *pt-t1*))) "<a1@example.invalid>"))
 (assert-event (equal (fn-node-stage-evidence (fn-node-stage (nth 0 *pt-t1*))) "peer-transit:innA"))
 (assert-event (equal (nth 0 *pt-t1*)
                      (fn-node-prepare *pt-node0* 1 "<a1@example.invalid>" *pt-a1-stored* '("fn.letters")
-                                      "ob-a1" "subject-a1" "peer-transit:innA" (fn-charge-for-payload (len *pt-a1-stored*)) 841000000)))
+                                      "ob-a1" "subject-a1" "peer-transit:innA" (fn-charge-for-payload (len *pt-a1-stored*))
+                                      (fn-record-stamp-of-observation *pt-obs*))))
 ; Nothing is published by the prepare: the archive is unchanged until the
 ; store's :durable completion.
 (assert-event (equal (fn-state-articles (fn-node-acceptance (nth 0 *pt-t1*))) nil))
@@ -262,7 +263,7 @@
 ; Transcript: the loop is refused at transfer (K2), and the two acceptances
 
 (assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* nil "ob" "s") (fn-peer-decision :refuse :loop)))
-(assert-event (equal (nth 0 (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* nil 1 "ob" "s"))) *pt-node0*))
+(assert-event (equal (nth 0 (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* *pt-obs* 1 "ob" "s"))) *pt-node0*))
 ; Separating witness: the same article with a Path that does not name us.
 (assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-noloop* nil "ob" "s") (fn-peer-decision :want nil)))
 ; Tail-entry and POSTED variants are accepted: the test is not substring search.
@@ -273,7 +274,7 @@
 ; The IHAVE transcript of a loop: 335, the article, 437 with the reason.
 (defconst *pt-l1* (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <loop@example.invalid>")))
 (defconst *pt-l2* (fn-peer-step (fn-post-result-session *pt-l1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-loop-lines*)))
-(defconst *pt-lt* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* nil 1 "ob" "s")))
+(defconst *pt-lt* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* *pt-obs* 1 "ob" "s")))
 (assert-event (equal (fn-post-result-effects (fn-peer-transit-outcome (fn-post-result-session *pt-l2*) (fn-post-result-submission *pt-l2*) (nth 1 *pt-lt*) nil))
                      (list (pt-reply "437 transfer rejected; path loop"))))
 
@@ -287,7 +288,7 @@
 (assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps1* (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
                      (list (pt-echo "438 " *pt-id1*))))
 (assert-event (equal (fn-peer-decide-transfer *pt-node1* *pt-cfg* "innA" *pt-id1* *pt-a1* nil "ob-a1" "subject-a1") (fn-peer-decision :have :history)))
-(assert-event (equal (nth 0 (mv-list 2 (fn-peer-transfer *pt-node1* *pt-cfg* "innA" *pt-id1* *pt-a1* nil 2 "ob-a1" "subject-a1"))) *pt-node1*))
+(assert-event (equal (nth 0 (mv-list 2 (fn-peer-transfer *pt-node1* *pt-cfg* "innA" *pt-id1* *pt-a1* *pt-obs* 2 "ob-a1" "subject-a1"))) *pt-node1*))
 ; The separating witness: a fresh Message-ID on the same node is wanted.
 (assert-event (equal (fn-peer-decide-offer *pt-node1* *pt-cfg* "innA" *pt-ps1* *pt-idloop* nil 0) (fn-peer-decision :want nil)))
 ; A binding is a tombstone: released of its pin, the article is still :have.
@@ -436,7 +437,7 @@
 (assert-event (equal (fn-peer-session-inflight (fn-post-result-session *pt-c2*)) 0))
 (defconst *pt-c3* (fn-peer-step (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-alt-lines*)))
 (assert-event (equal (fn-post-result-submission *pt-c3*) (fn-peer-make-submission "innA" :takethis *pt-idalt* *pt-alt*)))
-(defconst *pt-ct* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idalt* *pt-alt* nil 1 "ob" "s")))
+(defconst *pt-ct* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idalt* *pt-alt* *pt-obs* 1 "ob" "s")))
 (assert-event (equal (nth 1 *pt-ct*) (fn-peer-decision :refuse :out-of-scope)))
 (assert-event (equal (nth 0 *pt-ct*) *pt-node0*))
 (assert-event (equal (fn-post-result-effects (fn-peer-transit-outcome (fn-post-result-session *pt-c3*) (fn-post-result-submission *pt-c3*) (nth 1 *pt-ct*) nil))
@@ -589,17 +590,17 @@
                      (fn-peer-decision :want nil)))
 (assert-event (equal (nth 2 (fn-peer-injection-arguments *pt-node0* *pt-cfg* "innA"
                                                          *pt-inn-id* *pt-inn-fed*
-                                                         1 "ob-inn" "subject-inn"))
+                                                         1 "ob-inn" "subject-inn" *pt-obs*))
                      *pt-inn-stored*))
 (assert-event (equal (nth 7 (fn-peer-injection-arguments *pt-node0* *pt-cfg* "innA"
                                                          *pt-inn-id* *pt-inn-fed*
-                                                         1 "ob-inn" "subject-inn"))
+                                                         1 "ob-inn" "subject-inn" *pt-obs*))
                      (fn-charge-for-payload (len *pt-inn-stored*))))
 ; Through the transfer to the durable article a reader is served.
 (defconst *pt-inn-node*
   (fn-node-complete
    (nth 0 (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-inn-id*
-                                       *pt-inn-fed* nil 1 "ob-inn" "subject-inn")))
+                                       *pt-inn-fed* *pt-obs* 1 "ob-inn" "subject-inn")))
    0 1 :durable))
 (assert-event (equal (fn-article-payload
                       (car (fn-state-articles (fn-node-acceptance *pt-inn-node*))))
