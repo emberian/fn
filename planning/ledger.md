@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 535 |
 | Certification roots in the Makefile | 530 |
 | Books inside the root closure | 534 |
-| `defthm` and `defthmd` events | 8067 |
+| `defthm` and `defthmd` events | 8068 |
 | `defun` events | 6044 |
 | Functions with verified guards | 1982 |
 | Functions declared `:verify-guards nil` and never verified | 324 |
@@ -155,7 +155,7 @@ that `make certify` requests.
 | `books/bp-receiver-context-invariants.lisp` | root | 20 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/bp-receiver-evolving-history-invariants.lisp` | root | 34 | 8 | 0/0/0/8 | 0 | 0 | 0 |
 | `books/bp-receiver-evolving-node-invariants.lisp` | root | 38 | 1 | 0/0/0/1 | 0 | 0 | 0 |
-| `books/bp-receiver-evolving-store-invariants.lisp` | root | 30 | 11 | 0/0/0/11 | 0 | 0 | 0 |
+| `books/bp-receiver-evolving-store-invariants.lisp` | root | 31 | 11 | 0/0/0/11 | 0 | 0 | 0 |
 | `books/bp-receiver-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-receiver-journal-invariants.lisp` | root | 10 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/bp-receiver-retention-invariants.lisp` | root | 15 | 0 | 0/0/0/0 | 0 | 0 | 0 |
