@@ -484,6 +484,7 @@
     "tests/acl2/topic-history-admission-tests",
     "tests/acl2/topic-history-store-events-tests",
     "tests/acl2/topic-history-store-union-tests",
+    "tests/acl2/topic-history-prefix-tests",
     "tests/acl2/hybrid-store-tests",
     "books/crypto-attach",
     "books/auth-secret",
@@ -533,25 +534,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 534,
-    "books_in_root_closure": 533,
-    "roots": 529,
-    "theorems": 7983,
-    "functions": 6030,
-    "assert_events": 8763,
-    "must_fails": 405,
+    "books": 536,
+    "books_in_root_closure": 535,
+    "roots": 530,
+    "theorems": 7985,
+    "functions": 6035,
+    "assert_events": 8769,
+    "must_fails": 406,
     "encapsulates": 26,
     "guards": {
       "verified": 1966,
       "declared-off": 322,
-      "default-guarded": 2987,
+      "default-guarded": 2992,
       "default-unguarded": 755
     },
     "suspect_theorems": 74,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 28,
-    "include_hygiene_warnings": 401,
+    "include_hygiene_warnings": 402,
     "host_names_warnings": 756,
     "hand_written_record_warnings": 18
   },
@@ -8414,6 +8415,31 @@
       "read_error": null
     },
     {
+      "book": "books/topic-history-prefix.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-events"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/topic-history-store-events.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -14560,6 +14586,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/topic-history-prefix-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 1,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/topic-history-prefix",
+        "topic-history-admission-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/topic-history-store-events-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19288,6 +19342,13 @@
         "line": 3,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/topic-history-prefix-tests.lisp",
+        "line": 3,
+        "include": "topic-history-admission-tests",
+        "included": "tests/acl2/topic-history-admission-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

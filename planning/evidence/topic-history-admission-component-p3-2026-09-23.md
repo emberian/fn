@@ -71,6 +71,15 @@ published by a native caller, and replay must not apply one until it can
 re-resolve prior T10 source context and the historically installed local
 administrator.
 
+The ordered recovery-prefix component in `books/topic-history-prefix.lisp`
+finds only preceding T10 accepted events and snapshots before invoking the
+existing root/report commit validation. Its source-matched
+[book and test manifest](manifests/certify-20260923T222127Z-926909.json)
+passed on persvati with the standard ACL2 toolchain, jobs 2 and explicit
+roots. The test accepts a bound root and rejects a wrong local administrator,
+missing prior accepted event and missing snapshot. This does not integrate
+the projection into Store's carried state or validate the native caller.
+
 This packet has no same-journal publication,
 replay/index relation, retention dependency pin, historical administrator
 configuration lookup, native command or source-matched native test. It cannot
