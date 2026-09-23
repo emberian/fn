@@ -1,0 +1,319 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+    "launcher_chain_sha256": [
+      "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+  "acl2_executable_sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+  "acl2_exit_codes": {
+    "tests/acl2/bp-node-fragment-family-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "launcher_chain_sha256": [
+        "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/home/ember/fn-tools/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/home/ember/fn-tools/acl2-8.7/saved_acl2.core",
+      "sha256": "1bc67f611886a0898641bbb0a67a38baddc6b800c1c31a1d757d26e10eda3ffd",
+      "size": 233654128
+    },
+    "launchers": [
+      {
+        "path": "/home/ember/fn-gates/toolchains/w25/acl2-literal",
+        "sha256": "346b7ee183e8c291cb61cf31be75a332caf329fa74b4995921cbb224208f2c08",
+        "size": 309
+      }
+    ],
+    "runtime": {
+      "path": "/home/ember/fn-tools/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-gates/takeover-fragment-family/build/acl2/certify-20260923T165550Z-1905489",
+  "book_failures": {},
+  "book_provenance": {
+    "books/bp-bundle": "installed",
+    "books/bp-bundle-invariants": "installed",
+    "books/bp-fragment": "installed",
+    "books/bp-fragment-fast": "installed",
+    "books/bp-fragment-invariants": "installed",
+    "books/bp-node": "installed",
+    "books/bp-node-foundation": "installed",
+    "books/bp-node-fragment-family": "installed",
+    "books/bp-node-machine": "installed",
+    "books/bp-primary": "installed",
+    "books/bp-primary-cbor": "installed",
+    "books/bp-primary-invariants": "installed",
+    "books/cbor": "installed",
+    "books/cbor-invariants": "installed",
+    "books/clock": "installed",
+    "books/codec-attach": "installed",
+    "books/crypto-seam": "installed",
+    "books/defrecord": "installed",
+    "books/frame-fields": "installed",
+    "books/frame-octets": "installed",
+    "books/records": "installed",
+    "books/records-attach": "installed",
+    "books/records-canonicality": "installed",
+    "books/records-invariants": "installed",
+    "books/records-seam": "installed",
+    "books/records-shape": "installed",
+    "books/statement-attach": "installed",
+    "books/statement-codec": "installed",
+    "books/statement-items": "installed",
+    "books/statement-seam": "installed",
+    "books/wildmat": "installed",
+    "tests/acl2/bp-node-fragment-family-tests": "certified"
+  },
+  "book_results": {
+    "tests/acl2/bp-node-fragment-family-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "tests/acl2/bp-node-fragment-family-tests": 1.371
+  },
+  "book_wave_seconds": null,
+  "budget_seconds": 1800,
+  "cache_install": {
+    "directory": "/home/ember/fn-certcache",
+    "installed": 0,
+    "kept": 31,
+    "origins": {
+      "/home/ember/fn-gates/dev-head": 26,
+      "/home/ember/fn-gates/takeover-fragment-family": 2,
+      "/home/ember/fn-gates/takeover-fragment-refinement": 3
+    },
+    "removed": 0,
+    "roots_installed": [],
+    "toolchain_identity": "1b4169e9c5825a4e1fc827767f00470ceafc459619e0a4fd522c48f1ba964286"
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "tests/acl2/bp-node-fragment-family-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "tests/acl2/bp-node-fragment-family-tests": "d0465067e47b05a205b28f7b3842f80b9f37cd8bb3d61a1d933187e6cd2c4b2a"
+  },
+  "certify_wall_seconds": 1.376,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-gates/toolchains/w25/acl2-literal"
+  ],
+  "driver_digests_sha256": {
+    "tests/acl2/bp-node-fragment-family-tests": "171b9fae0048af5953def58552aa5b8f3ca9c5e8b26b160c8f2f71f39fcb7aaf"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS f26916c35b95f1ce3fb23d7f5ab49f96 8080e4e24f04"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-23T16:55:52+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "persvati",
+  "incremental": true,
+  "installed_books": {
+    "books/bp-bundle": "/home/ember/fn-gates/dev-head",
+    "books/bp-bundle-invariants": "/home/ember/fn-gates/dev-head",
+    "books/bp-fragment": "/home/ember/fn-gates/takeover-fragment-refinement",
+    "books/bp-fragment-fast": "/home/ember/fn-gates/takeover-fragment-refinement",
+    "books/bp-fragment-invariants": "/home/ember/fn-gates/takeover-fragment-refinement",
+    "books/bp-node": "/home/ember/fn-gates/dev-head",
+    "books/bp-node-foundation": "/home/ember/fn-gates/takeover-fragment-family",
+    "books/bp-node-fragment-family": "/home/ember/fn-gates/takeover-fragment-family",
+    "books/bp-node-machine": "/home/ember/fn-gates/dev-head",
+    "books/bp-primary": "/home/ember/fn-gates/dev-head",
+    "books/bp-primary-cbor": "/home/ember/fn-gates/dev-head",
+    "books/bp-primary-invariants": "/home/ember/fn-gates/dev-head",
+    "books/cbor": "/home/ember/fn-gates/dev-head",
+    "books/cbor-invariants": "/home/ember/fn-gates/dev-head",
+    "books/clock": "/home/ember/fn-gates/dev-head",
+    "books/codec-attach": "/home/ember/fn-gates/dev-head",
+    "books/crypto-seam": "/home/ember/fn-gates/dev-head",
+    "books/defrecord": "/home/ember/fn-gates/dev-head",
+    "books/frame-fields": "/home/ember/fn-gates/dev-head",
+    "books/frame-octets": "/home/ember/fn-gates/dev-head",
+    "books/records": "/home/ember/fn-gates/dev-head",
+    "books/records-attach": "/home/ember/fn-gates/dev-head",
+    "books/records-canonicality": "/home/ember/fn-gates/dev-head",
+    "books/records-invariants": "/home/ember/fn-gates/dev-head",
+    "books/records-seam": "/home/ember/fn-gates/dev-head",
+    "books/records-shape": "/home/ember/fn-gates/dev-head",
+    "books/statement-attach": "/home/ember/fn-gates/dev-head",
+    "books/statement-codec": "/home/ember/fn-gates/dev-head",
+    "books/statement-items": "/home/ember/fn-gates/dev-head",
+    "books/statement-seam": "/home/ember/fn-gates/dev-head",
+    "books/wildmat": "/home/ember/fn-gates/dev-head"
+  },
+  "installed_over_failed": [],
+  "jobs": 2,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS f26916c35b95f1ce3fb23d7f5ab49f96 8080e4e24f04"
+  ],
+  "pcert": false,
+  "pcert_reached": null,
+  "pcert_wall_seconds": null,
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "e81ee4eaa5728ed8f9f26d115ef25c5f3e34cbf331ddda53b8e2a1b9ef43ae58",
+  "requested_before_filter": [
+    "tests/acl2/bp-node-fragment-family-tests"
+  ],
+  "requested_books": [
+    "tests/acl2/bp-node-fragment-family-tests"
+  ],
+  "roots": [
+    "tests/acl2/bp-node-fragment-family-tests"
+  ],
+  "run_id": "certify-20260923T165550Z-1905489",
+  "runner_sha256": "d227a0062a34754c2c77261d72cfb6ae616b7276b7e69ba541d4a2c2935afd43",
+  "runner_unchanged": true,
+  "schedule": {
+    "policy": "requested-order"
+  },
+  "slot_wait_seconds": {
+    "tests/acl2/bp-node-fragment-family-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/bp-bundle-invariants.lisp": "b0a67117f56e674bc95675019ebb3de17b30473f1b01e3a50cd874d6ccef3352",
+    "books/bp-bundle.lisp": "b209f5b465ea008d313deb02ac3a056d5f2716af86a3e4151a6111f4854f4505",
+    "books/bp-fragment-fast.lisp": "204a9b7ca926f19b11b8e4e057f815b670124990093ac5901b1a0d9d63d3afa1",
+    "books/bp-fragment-invariants.lisp": "46f99f981eb6ae7190afa7b395e96caae58fa3bef64d58b7aaa796d4a7cecc53",
+    "books/bp-fragment.lisp": "bed02a988118787826217dc24eb3e78a381fc82014e65eb6544df07b56562049",
+    "books/bp-node-foundation.lisp": "a24961a300fbee5e15fbc22b3cbb5f15ea5c90db9fa7c58312b9b3b1d3752913",
+    "books/bp-node-fragment-family.lisp": "71a186f3795ce6a17151b5f598fb36ac5fab797afbc9c582c0a98b7b11da7f00",
+    "books/bp-node-machine.lisp": "6c0c0ef8cdaa7c1111c0e91fe8a9d03b0feba985a1234f9896e94cad60afae1a",
+    "books/bp-node.lisp": "bfadba9ee9100787fd16a533d4386b1190b5e273bcb097a33b74dbc6a6c4ca95",
+    "books/bp-primary-cbor.lisp": "6391e304623c67447b21b998228d0ec55d1e0b652ba2d3f32cedfdca6f888095",
+    "books/bp-primary-invariants.lisp": "2480d733e28328f76c6d406c46b0cb55aff09450973143a7c2d8a702eb90d141",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/codec-attach.lisp": "d26dacf4a14e32216acc4779ad007734120389815fba89585966761875fca252",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/records-attach.lisp": "dfd7681d95190fa9704a936e0e6b34d929b1bc69b8bb4d2e303a7ecbb29abbe1",
+    "books/records-canonicality.lisp": "cbc87fbd2167779e66be164658874448ba0e13aa2383ab1f5a6cb381f9f9ad0c",
+    "books/records-invariants.lisp": "fa9b5871ec15966ca5a1f374a83f7a2ad3863998dd913898f54c6055022b37c3",
+    "books/records-seam.lisp": "e1e62329922c67475b5d29318e63f9ae25817557340c3b6bb23095aa443de570",
+    "books/records-shape.lisp": "eda424ad4def1b5be467652b4766d2f7c1cb7d78319fcbcfd89857dc9a0c4eae",
+    "books/records.lisp": "e9b5394a5f01dc64a12921057c750a5f0a706b03f58c3a69cd90bb9e65f47bfc",
+    "books/statement-attach.lisp": "0ca7a4dd3a18036585791cc5eec9171f34b7bb12cccb25b472699a0095b4489e",
+    "books/statement-codec.lisp": "1d74adc060854fcca78b634d86d8256aa2662df0bb0f50f7ba83cc90997030b2",
+    "books/statement-items.lisp": "d276c25e727687d2a0d81511dac307fca0ce21dcd138088449256edb089dea6e",
+    "books/statement-seam.lisp": "632414aa7641096c9a571804d0c45b225315119600051a9c251dae00c908874c",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-node-fragment-family-tests.lisp": "ca527627638dfb00141a25aa8202d64381d40cabf1e56453f1ae56541a2ec41a"
+  },
+  "source_digests_sha256_after": {
+    "books/bp-bundle-invariants.lisp": "b0a67117f56e674bc95675019ebb3de17b30473f1b01e3a50cd874d6ccef3352",
+    "books/bp-bundle.lisp": "b209f5b465ea008d313deb02ac3a056d5f2716af86a3e4151a6111f4854f4505",
+    "books/bp-fragment-fast.lisp": "204a9b7ca926f19b11b8e4e057f815b670124990093ac5901b1a0d9d63d3afa1",
+    "books/bp-fragment-invariants.lisp": "46f99f981eb6ae7190afa7b395e96caae58fa3bef64d58b7aaa796d4a7cecc53",
+    "books/bp-fragment.lisp": "bed02a988118787826217dc24eb3e78a381fc82014e65eb6544df07b56562049",
+    "books/bp-node-foundation.lisp": "a24961a300fbee5e15fbc22b3cbb5f15ea5c90db9fa7c58312b9b3b1d3752913",
+    "books/bp-node-fragment-family.lisp": "71a186f3795ce6a17151b5f598fb36ac5fab797afbc9c582c0a98b7b11da7f00",
+    "books/bp-node-machine.lisp": "6c0c0ef8cdaa7c1111c0e91fe8a9d03b0feba985a1234f9896e94cad60afae1a",
+    "books/bp-node.lisp": "bfadba9ee9100787fd16a533d4386b1190b5e273bcb097a33b74dbc6a6c4ca95",
+    "books/bp-primary-cbor.lisp": "6391e304623c67447b21b998228d0ec55d1e0b652ba2d3f32cedfdca6f888095",
+    "books/bp-primary-invariants.lisp": "2480d733e28328f76c6d406c46b0cb55aff09450973143a7c2d8a702eb90d141",
+    "books/bp-primary.lisp": "0c28b57406e5864c0bb4ede0db3909638e7fd9aa70ecf4f20f7b26c50323b20c",
+    "books/cbor-invariants.lisp": "e13c6e95dd5318f0710fd1e3097a1f5b890d5e4a6c51e7f56dd72c9f360cbea2",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/codec-attach.lisp": "d26dacf4a14e32216acc4779ad007734120389815fba89585966761875fca252",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "b765f68d7c64a49b97e6e3787c94ddd4cb1b488d429053c563c5bdac51bd054d",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/records-attach.lisp": "dfd7681d95190fa9704a936e0e6b34d929b1bc69b8bb4d2e303a7ecbb29abbe1",
+    "books/records-canonicality.lisp": "cbc87fbd2167779e66be164658874448ba0e13aa2383ab1f5a6cb381f9f9ad0c",
+    "books/records-invariants.lisp": "fa9b5871ec15966ca5a1f374a83f7a2ad3863998dd913898f54c6055022b37c3",
+    "books/records-seam.lisp": "e1e62329922c67475b5d29318e63f9ae25817557340c3b6bb23095aa443de570",
+    "books/records-shape.lisp": "eda424ad4def1b5be467652b4766d2f7c1cb7d78319fcbcfd89857dc9a0c4eae",
+    "books/records.lisp": "e9b5394a5f01dc64a12921057c750a5f0a706b03f58c3a69cd90bb9e65f47bfc",
+    "books/statement-attach.lisp": "0ca7a4dd3a18036585791cc5eec9171f34b7bb12cccb25b472699a0095b4489e",
+    "books/statement-codec.lisp": "1d74adc060854fcca78b634d86d8256aa2662df0bb0f50f7ba83cc90997030b2",
+    "books/statement-items.lisp": "d276c25e727687d2a0d81511dac307fca0ce21dcd138088449256edb089dea6e",
+    "books/statement-seam.lisp": "632414aa7641096c9a571804d0c45b225315119600051a9c251dae00c908874c",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/bp-node-fragment-family-tests.lisp": "ca527627638dfb00141a25aa8202d64381d40cabf1e56453f1ae56541a2ec41a"
+  },
+  "start_order": [
+    "tests/acl2/bp-node-fragment-family-tests"
+  ],
+  "started_utc": "2026-09-23T16:55:50+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/home/ember/fn-gates/takeover-fragment-family"
+}

@@ -1959,6 +1959,19 @@ progress step's dispatch branch, for a fragment, computes
 `fn-bpf-reassemble-fast` over the active set, ordered by offset; arrival
 order only chooses which active set is served.
 
+The finite C2 query in `bp-node-fragment-family.lisp` currently reads A1's
+actual `fn-bpnf-held-list`. An anchor must be a live held fragment; rows join
+its set only when admitted principal, ADU key and primary-header coherence
+key agree. Deleted rows and rows marked `:reassembly-consumed` in the
+constraint slot are excluded. That consumed marker is a query convention
+until the durable family replacement event exists. The query projects the
+selected bundles into `fn-bpf` cells and calls `fn-bpf-reassemble-fast`;
+success entails an offset-zero source, independent of arrival order. A1's
+receive proposal does not alter this query before its matched durable
+publication. The query is read-only and has no host caller or machine
+replacement event yet, so it does not establish the later T4 conservation,
+retirement, or final-delivery claims.
+
 - `(:ok bytes)`: propose kind 18 `(fn-bpn-rec-reassembled token family held
   ids)`. Applied atomically: the fragment entries leave the live list (their
   kind-5 records stay in the journal as provenance, their dispatch and
