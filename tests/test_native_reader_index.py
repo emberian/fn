@@ -1,4 +1,4 @@
-"""Saved-image witness for pinned NNTP Message-ID retrieval.
+"""Saved-image witnesses for pinned NNTP Message-ID and LISTGROUP retrieval.
 
 The Python test drives only public operator and NNTP interfaces.  The index,
 archive and their correspondence are ACL2 decisions in the called owner path.
@@ -102,19 +102,114 @@ class NativeReaderIndexTest(unittest.TestCase):
                 self.assertLessEqual(len(rows), 256)
         return status, rows
 
-    def post(self, msgid, ordinal):
+    def post(self, msgid, ordinal, group="fn.test"):
         source = (
             b"From: reader@example.invalid\r\n"
             b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
-            b"Newsgroups: fn.test\r\n"
+            b"Newsgroups: " + group.encode("ascii") + b"\r\n"
             b"Subject: pinned reader " + str(ordinal).encode("ascii") + b"\r\n"
             b"Message-ID: " + msgid.encode("ascii") +
             b"\r\n\r\nexact reader source\r\n")
         path = self.root / ("post-{}.eml".format(ordinal))
         path.write_bytes(source)
         self.run_native("operator", self.config, "post", "--message-id", msgid,
-                        "--payload", path, "--group", "fn.test")
+                        "--payload", path, "--group", group)
         return source
+
+    def listgroup(self, reader, group, number_range=None):
+        command = "LISTGROUP " + group
+        if number_range is not None:
+            command += " " + number_range
+        return self.command(reader, command, True)
+
+    def test_listgroup_historical_pin_live_group_and_restart(self):
+        owner = self.start_owner()
+        old = self.reader()
+        status, rows = self.listgroup(old, "fn.test")
+        self.assertTrue(status.startswith(b"211 0 "), status)
+        self.assertEqual(rows, [])
+        self.assertEqual(self.command(old, "GROUP fn.live")[0],
+                         b"411 no such newsgroup\r\n")
+
+        # Config publication updates the served owner without repinning old.
+        self.run_native("operator", self.config, "group", "create", "fn.live")
+        configured = self.reader()
+        self.assertEqual(self.command(old, "GROUP fn.live")[0],
+                         b"411 no such newsgroup\r\n")
+        self.assertTrue(self.command(configured, "GROUP fn.live")[0]
+                        .startswith(b"211 "))
+        status, rows = self.listgroup(configured, "fn.live")
+        self.assertTrue(status.startswith(b"211 0 "), status)
+        self.assertEqual(rows, [])
+
+        self.post("<reader-group-one@example.invalid>", 101)
+        middle = self.reader()
+        self.assertEqual(self.listgroup(old, "fn.test")[1], [])
+        self.assertEqual(self.listgroup(configured, "fn.test")[1], [])
+        self.assertEqual(self.listgroup(middle, "fn.test")[1], [b"1\r\n"])
+
+        self.post("<reader-group-two@example.invalid>", 102)
+        self.post("<reader-live-one@example.invalid>", 103, "fn.live")
+        fresh = self.reader()
+        self.assertEqual(self.listgroup(old, "fn.test")[1], [])
+        self.assertEqual(self.listgroup(middle, "fn.test")[1], [b"1\r\n"])
+        self.assertEqual(self.listgroup(fresh, "fn.test")[1],
+                         [b"1\r\n", b"2\r\n"])
+        self.assertEqual(self.listgroup(middle, "fn.test", "2-2")[1], [])
+        self.assertEqual(self.listgroup(fresh, "fn.test", "2-2")[1],
+                         [b"2\r\n"])
+        # An empty range above the high watermark remains empty.  The public
+        # operator API does not yet make an internal allocation hole.
+        self.assertEqual(self.listgroup(fresh, "fn.test", "3-5")[1], [])
+        self.assertEqual(self.listgroup(old, "fn.live"),
+                         (b"411 no such newsgroup\r\n", []))
+        self.assertEqual(self.listgroup(configured, "fn.live")[1], [])
+        self.assertEqual(self.listgroup(middle, "fn.live")[1], [])
+        self.assertEqual(self.listgroup(fresh, "fn.live")[1], [b"1\r\n"])
+
+        for reader in (old, configured, middle, fresh):
+            reader[1].close()
+            reader[0].close()
+        self.stop_owner(owner)
+        restarted = self.start_owner()
+        recovered = self.reader()
+        self.assertEqual(self.listgroup(recovered, "fn.test", "1-9")[1],
+                         [b"1\r\n", b"2\r\n"])
+        self.assertEqual(self.listgroup(recovered, "fn.live", "1-9")[1],
+                         [b"1\r\n"])
+        recovered[1].close()
+        recovered[0].close()
+        self.stop_owner(restarted)
+
+    def test_listgroup_many_unrelated_groups_measured_socket_workload(self):
+        groups = ["fn.work.{:02d}".format(i) for i in range(24)]
+        for group in groups:
+            self.run_native("operator", self.config, "group", "create", group)
+        owner = self.start_owner()
+        for ordinal, group in enumerate(groups):
+            self.post("<reader-work-{}@example.invalid>".format(ordinal),
+                      200 + ordinal, group)
+        reader = self.reader()
+
+        # 24 unrelated one-member groups, then 96 bounded socket reads on
+        # one pinned view.  The measured interval excludes group creation,
+        # Store publication, and process startup.  It is observational only.
+        for group in (groups[0], groups[-1]):
+            status, rows = self.listgroup(reader, group, "1-1")
+            self.assertTrue(status.startswith(b"211 1 "), status)
+            self.assertEqual(rows, [b"1\r\n"])
+        started = time.monotonic()
+        for _ in range(48):
+            for group in (groups[0], groups[-1]):
+                status, rows = self.listgroup(reader, group, "1-1")
+                self.assertTrue(status.startswith(b"211 1 "), status)
+                self.assertEqual(rows, [b"1\r\n"])
+        elapsed = time.monotonic() - started
+        print("native LISTGROUP workload: groups=24 articles=24 commands=96 "
+              "range=1-1 elapsed={:.3f}s".format(elapsed))
+        reader[1].close()
+        reader[0].close()
+        self.stop_owner(owner)
 
     def test_pinned_archive_and_index_through_public_reader(self):
         first = "<reader-index-first@example.invalid>"
