@@ -138,7 +138,7 @@ owner armed. The `owner run ... INJECT` developer verb
 (`host/native/owner.lisp:1371-1387`) takes only the four `+fnn-cli-faults+`
 exceptions, not the kill cuts.
 
-*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+*Fixed on dev at `371ba851` (lane t5/host); witnessed on the `da5fd8cb` image by [the second campaign](campaign-da5fd8cb-2026-09-23.md), which gives this finding's status there.*
 `fnn-post-entry-fault` (`host/native/io.lisp`) reads the positional FAULT,
 `FN_NATIVE_POST_FAULT` and `FN_NATIVE_RECOVERY_FAULT` into the store's one
 fault slot; `fnn-command-post`, `fnn-owner-run-normalized` (the `operator
@@ -170,6 +170,12 @@ the test selects it) ends up unopenable without someone deleting files by
 hand. The table's candidate column cannot see this, because it records only
 the transaction.
 
+*Fixed on dev by the staging sweep of lane t5/sweep
+([its record](sweep-allocation-orphans-2026-09-22.md)); witnessed on the
+`da5fd8cb` image by [the second campaign](campaign-da5fd8cb-2026-09-23.md):
+the deaths no longer accumulate, and a 65-orphan directory built from files
+is swept in rounds.*
+
 **F3 — the developer control stop is not the cut it names (a host defect
 of the developer cut).** `fnn-control-test-after-submit`
 (`host/native/control.lisp:141-146`) sends a process-directed
@@ -189,7 +195,7 @@ transactions at the stop, which is the image at the end of
 `fn-bs-finish-program`. The byte model has no coordinate for the control
 reply.
 
-*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+*Fixed on dev at `371ba851` (lane t5/host); witnessed on the `da5fd8cb` image by [the second campaign](campaign-da5fd8cb-2026-09-23.md), which gives this finding's status there.*
 The stop is `pthread_kill(pthread_self(), SIGSTOP)` from the worker that
 holds the reply (`fnn-control-stop-calling-thread`), so that thread takes the
 stop on its return from the call and the reply cannot leave first.
@@ -207,7 +213,7 @@ holds in the sense that the owner does not stop. What it costs is that an
 accepted article reaches its caller as a non-outcome. The owner has refused
 nothing: it accepted.
 
-*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+*Fixed on dev at `371ba851` (lane t5/host); witnessed on the `da5fd8cb` image by [the second campaign](campaign-da5fd8cb-2026-09-23.md), which gives this finding's status there.*
 A production image refuses to start with `FN_NATIVE_CONTROL_TEST_STOP` set
 (exit 5, `fnn-developer-selector-gate` in `fnn-main`, before dispatch), and
 the reply expression no longer converts the owner's status.
@@ -228,7 +234,7 @@ where a fault fences the owner and stops the service. It is not raised at
 the reply. An environment variable on a production node thus turns the next
 post into an uncertain answer and a stopped service.
 
-*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+*Fixed on dev at `371ba851` (lane t5/host); witnessed on the `da5fd8cb` image by [the second campaign](campaign-da5fd8cb-2026-09-23.md), which gives this finding's status there.*
 A production image refuses to start with `FN_NATIVE_CONTROL_FAULT` set (exit
 5, before any store or socket is opened); the serialized action has no
 production branch.
@@ -248,7 +254,7 @@ article durable. `FN_NATIVE_AUTH_ADMIN_FAULT`
 (`host/native/auth-admin.lisp:20-45`) has the same ungated shape in source.
 It was not run.
 
-*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+*Fixed on dev at `371ba851` (lane t5/host); witnessed on the `da5fd8cb` image by [the second campaign](campaign-da5fd8cb-2026-09-23.md), which gives this finding's status there.*
 Every selector, including these four, is in `+fnn-developer-selectors+`
 and read through `fnn-developer-selector`; a production image refuses to
 start with any of them, or with a `store post` FAULT argument, with exit 5
@@ -269,7 +275,7 @@ that does say disagrees with the host. The recovery program's own cuts,
 select: `+fnn-recovery-model-cuts+` (`host/native/io.lisp:1619-1620`) lists
 only the cleanup cut.
 
-*Fixed on dev at `371ba851` (lane t5/host), unwitnessed on an image.*
+*Fixed on dev at `371ba851` (lane t5/host); witnessed on the `da5fd8cb` image by [the second campaign](campaign-da5fd8cb-2026-09-23.md), which gives this finding's status there.*
 `+fnn-recovery-model-cuts+` now lists `recover-replayed`, `recover-barrier`
 (the first of its five sites) and `recovery-stage-unlinked`;
 `tests/campaign/native_cuts.py` places `recovery-stage-unlinked` after the
