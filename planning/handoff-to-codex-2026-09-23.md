@@ -53,7 +53,10 @@ test books and their closure on the farm before you report
 `/tank/fn/gates/<lane>`, `/tank/fn/toolchains/w28/acl2-literal-4g`,
 `/tank/fn/certcache`; then report the run id and root harvests with `farm.py wait`;
 never `--closure`, which recertifies the whole closure from the cache's
-purge); for a whole-closure picture, only when a run failed behind a
+purge; note `--affected-by` currently also selects `host/native-*-host`
+roots, which the cache preflight rejects, so until that is fixed list the
+changed books and their test books as plain roots); for a whole-closure
+picture, only when a run failed behind a
 cascade, use one provisional wave (`python3 tools/triage.py`,
 every independent red at once, publishes nothing); regenerate the ledger
 (`python3 tools/ledger.py --write`); `make check` exits 0; commit named
@@ -181,7 +184,16 @@ dependency after a refused enqueue (review §4.2).
 - **T3 and T4** (after T1 and, for T4, T2a): the article match into
   `books/store-node` with its four host lines, and `fn-sn-finish` proved per
   arm with the retention and identity arms stated positively and
-  `fn-sn-finish-preserves-indexedp` unconditional. T4's brief also reads the
+  `fn-sn-finish-preserves-indexedp` unconditional. T4's first batch is the
+  cost repair the store-node-resolution study measured
+  (`planning/evidence/store-node-resolution-cost-2026-09-23.md`): add the
+  two prepare arms and `fn-sn-identity-context` to `books/store-node`'s
+  export disable (this recertifies the store cluster, so it lands with a
+  treewide run), then `fn-sn-finish-preserves-indexedp` as one lemma per
+  arm with the replay closed and a `:cases` on the arm (145 s, 12,852
+  subgoals today), and field lemmas for `fn-node-prepare` and
+  `fn-node-complete` so the three `fn-snt-prepared-*` proofs stop opening
+  the whole node-state recognizer (10 to 31 million steps each). T4's brief also reads the
   eight Store event-order commits on `w25/bp-obligation-vertical` against
   the commutative contract in the BP spec's §10 and marks each integrated
   or unnecessary by name (nothing is marked until then).
