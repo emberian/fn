@@ -179,7 +179,9 @@ class NativeCheckpointTests(unittest.TestCase):
                       self.native("store", target, "recover").stdout)
         # Prefix reclamation changed physical names, never dense history.
         packed = self.native("checkpoint", "pack", target)
-        self.assertIn("records=7", packed.stdout)
+        # Zero-position ACK is idempotent and adds no Store event.  The
+        # advancing ACK is the sole progress publication in this history.
+        self.assertIn("records=6", packed.stdout)
         target_control = self.base / "clone-target-control.sock"
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", 0))
@@ -235,7 +237,7 @@ class NativeCheckpointTests(unittest.TestCase):
                 self.assertIn("articles=2",
                               self.native("store", destination, "recover").stdout)
                 packed = self.native("checkpoint", "pack", destination)
-                self.assertIn("records=7", packed.stdout)
+                self.assertIn("records=6", packed.stdout)
 
         # Process death after unlink is safe because the independent reopen
         # already confirmed the durable rollover.  A power-loss claim still
@@ -247,7 +249,7 @@ class NativeCheckpointTests(unittest.TestCase):
         self.assertFalse((unlinked / "clone-pending.fnce").exists())
         self.assertIn("articles=2",
                       self.native("store", unlinked, "recover").stdout)
-        self.assertIn("records=7",
+        self.assertIn("records=6",
                       self.native("checkpoint", "pack", unlinked).stdout)
 
     @unittest.skipUnless(sys.platform.startswith("linux") and
