@@ -1555,6 +1555,19 @@ scanner bridge, not general K0: the relation at pair 10 has a concrete
 second-publication witness but is not yet proved preserved by every actual
 P-RECORD call or established for every served input.
 
+The next K0 trace slice, `fn-bs-k0-record-attempted-cut-kernel-is-link-observation`,
+proves the **logical** component at that actual pair-10 cut. Starting with
+`fn-bs-store-relation`, a typed `fn-bs-record-inputp` and fresh staging key,
+it derives that the pair-10 kernel is exactly file-success followed by
+link-success on the input kernel. Its proof splits the actual interpreter at
+pair 5, uses the fenced staging inode and relation-derived final-name
+absence to execute the link suffix, and does not assume the output relation
+or scanner result. The test book has article and non-article event witnesses
+plus counterexamples when each of its three hypotheses is dropped. K0 still
+must prove the byte component satisfies the full output relation and that
+every served caller supplies its input hypotheses; this trace lemma alone
+does not discharge the conditional scanner bridge's output-relation premise.
+
 ; K7. Fence after uncertainty: after an error outcome of a :link, :rename or
 ; :fsync-dir step, the kernel is fenced and the byte store's pending list
 ; may be non-empty; P-RECOVER's :fsync-dir steps 817/818 leave it empty on

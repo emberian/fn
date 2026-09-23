@@ -403,3 +403,60 @@
         (image (bsk6-prior-image)))
     (equal (fn-bs-lookup image :transactions (fn-bs-txn-name 1))
            (fn-bs-next-ino bs)))))
+
+; K0 actual trace witness: both article and retention callbacks advance the
+; logical file kernel through file success and link success at pair 10.
+(defun bsk0-trace-equalp (bs ks stage name frame)
+  (equal (cdr (nth 10 (fn-bs-run bs ks
+                                   (fn-bs-record-program stage name frame)
+                                   nil *bsk5-groups* *bsk5-capacity*)))
+         (fn-sf-record-link-result (fn-sf-record-file-result ks :ok) :ok)))
+(assert-event
+ (and (bsk0-trace-equalp (bsk6-start) (bsk6-prepared)
+                          ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))
+      (bsk0-trace-equalp (bsk6-start) (bsk6-retention-prepared)
+                          ".stage-k6-retention" (fn-bs-txn-name 1)
+                          (bsk6-retention-frame))))
+
+; Dropping the relation admits an already occupied final name, so link
+; stops before the callback while the expected kernel advances.
+(assert-event
+ (let ((bs (bsk6-occupied-final-start)))
+   (and (fn-bs-statep bs)
+        (fn-bs-record-inputp (bsk6-prepared) ".stage-k5-2"
+                             (fn-bs-txn-name 1) (bsk5-frame-2))
+        (not (fn-bs-lookup bs :staging ".stage-k5-2"))
+        (not (fn-bs-store-relation bs (bsk6-prepared))))))
+(must-fail
+ (assert-event
+  (bsk0-trace-equalp (bsk6-occupied-final-start) (bsk6-prepared)
+                     ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
+
+; Dropping the typed input gate allows the caller to reuse a durable name.
+(assert-event
+ (let ((bs (bsk6-start)) (ks (bsk6-prepared)))
+   (and (fn-bs-store-relation bs ks)
+        (not (fn-bs-record-inputp ks ".stage-k5-2"
+                                  (fn-bs-txn-name 0) (bsk5-frame-2)))
+        (not (fn-bs-lookup bs :staging ".stage-k5-2")))))
+(must-fail
+ (assert-event
+  (bsk0-trace-equalp (bsk6-start) (bsk6-prepared)
+                     ".stage-k5-2" (fn-bs-txn-name 0) (bsk5-frame-2))))
+
+; Dropping O_EXCL freshness stops before even the file-fence callback.
+(defun bsk0-occupied-stage ()
+  (mv-let (result bs)
+    (fn-bs-create (bsk6-start) :staging ".stage-k5-2" :ok)
+    (declare (ignore result))
+    bs))
+(assert-event
+ (let ((bs (bsk0-occupied-stage)) (ks (bsk6-prepared)))
+   (and (fn-bs-store-relation bs ks)
+        (fn-bs-record-inputp ks ".stage-k5-2"
+                             (fn-bs-txn-name 1) (bsk5-frame-2))
+        (fn-bs-lookup bs :staging ".stage-k5-2"))))
+(must-fail
+ (assert-event
+  (bsk0-trace-equalp (bsk0-occupied-stage) (bsk6-prepared)
+                     ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))

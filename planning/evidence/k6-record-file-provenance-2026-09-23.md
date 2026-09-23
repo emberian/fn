@@ -140,3 +140,22 @@ retention fixtures; universal P-RECORD preservation of it is still K0.
 Selected hbox certification of the book and test root passed under
 `run-20260923T205309Z-9c0f`, original manifest
 `planning/evidence/manifests/certify-20260923T205311Z-99085.json`.
+
+The subsequent K0 trace packet proves
+`fn-bs-k0-record-attempted-cut-kernel-is-link-observation` in the same
+book. The actual P-RECORD pair 5 is the `:record-file :ok` callback; the
+actual pair 10 is the `:record-link :ok` callback after a successful immutable
+link. A five-step suffix theorem joins them. The relation at input derives
+final-name absence, and the file-fence cut supplies the fresh source inode;
+the theorem concludes exact equality of the pair-10 logical state with the
+two callbacks, without assuming output relation or scanner equality. Its
+test book exercises an article and a retention event after one durable
+article, and separates the relation, typed-input, and staging-freshness
+hypotheses with distinct stopped traces. Selected hbox certification passed
+under `run-20260923T210658Z-6956`, original manifest
+`planning/evidence/manifests/certify-20260923T210701Z-143870.json`.
+The byte-state clauses of the pair-10 output relation remain unproved,
+especially pending-link shape, framed candidate in the fenced target, and
+authority inode provenance under an arbitrary retained prefix. The served
+Store-node caller's preparation-to-`fn-bs-record-inputp` bridge remains
+separate. Thus the earlier conditional scanner theorem is still conditional.
