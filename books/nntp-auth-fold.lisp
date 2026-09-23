@@ -641,12 +641,19 @@
   :hints (("Goal"
            :in-theory (e/d (fn-auth-fold-safe-connp fn-served-dispatch)
                            (fn-served-connp fn-auth-step-pinned
+                            fn-served-conn-pinned-index fn-gidx-pin-correspondencep
+                            fn-gidx-pin-trie fn-gidx-pinp
+                            fn-midx-correspondencep
+                            fn-served-connp-is-group-correspondence
+                            fn-served-connp-is-pinned-trie-correspondence
                             fn-auth-fold-post-awaiting
                             fn-auth-config-no-postersp
                             fn-wire-begin-article-with-line-limit))
            :use ((:instance fn-served-dispatch-preserves-connp)
                  (:instance fn-served-connp-is-consistent-session
                             (c conn))
+                 (:instance fn-served-connp-is-group-correspondence (c conn))
+                 (:instance fn-served-connp-is-pinned-trie-correspondence (c conn))
                  (:instance fn-auth-consistent-forward
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn)))
@@ -678,11 +685,18 @@
                             fn-served-submit-effect
                             fn-auth-fold-no-local-effectsp)
                            (fn-served-connp fn-auth-step-pinned
+                            fn-served-conn-pinned-index fn-gidx-pin-correspondencep
+                            fn-gidx-pin-trie fn-gidx-pinp
+                            fn-midx-correspondencep
+                            fn-served-connp-is-group-correspondence
+                            fn-served-connp-is-pinned-trie-correspondence
                             fn-auth-fold-post-awaiting
                             fn-auth-effectsp fn-nntp-effectp
                             fn-wire-begin-article-with-line-limit))
            :use ((:instance fn-served-connp-is-consistent-session
                             (c conn))
+                 (:instance fn-served-connp-is-group-correspondence (c conn))
+                 (:instance fn-served-connp-is-pinned-trie-correspondence (c conn))
                  (:instance fn-auth-consistent-forward
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn)))
