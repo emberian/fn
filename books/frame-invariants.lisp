@@ -786,6 +786,16 @@
                             fn-frame-inputp fn-frame-magicp fn-frame-item)
                            (fn-frame-decode fn-frame-encode)))))
 
+; A workflow kind with a field specification has a nonzero code.  With it,
+; the two workflow theorems below keep the table lookup, the field
+; recognizer and the code lookup closed; opened, they unrolled every kind
+; (1.4 and 2.5 million steps, 6.3 s and 5.2 s).
+(local (defthm fn-frame-workflow-spec-for-has-code
+  (implies (not (equal (fn-frame-spec-for kind *fn-frame-workflow-specs*)
+                       :none))
+           (not (equal (fn-frame-enum-index kind *fn-frame-workflow-kinds*)
+                       0)))))
+
 (defthm fn-frame-workflow-decode-of-encode
   (implies (and (fn-frame-workflow-record-okp kind values)
                 (fn-frame-digestp digest)
@@ -804,7 +814,8 @@
                             fn-frame-inputp fn-frame-magicp fn-frame-item)
                            (fn-frame-decode fn-frame-encode
                             fn-frame-fields-parse fn-frame-fields-parse-aux
-                            fn-frame-fields-octets)))))
+                            fn-frame-fields-octets fn-frame-spec-for
+                            fn-frame-values-okp fn-frame-enum-index)))))
 
 (defthm fn-frame-receipt-decode-of-encode
   (implies (and (fn-frame-receipt-record-okp kind values)
@@ -857,7 +868,9 @@
   :hints (("Goal" :in-theory (e/d (fn-frame-workflow-encode
                                    fn-frame-workflow-protected
                                    fn-frame-encode)
-                                  (fn-frame-protected fn-frame-fields-octets)))))
+                                  (fn-frame-protected fn-frame-fields-octets
+                                   fn-frame-spec-for fn-frame-values-okp
+                                   fn-frame-enum-index)))))
 
 (defthm fn-frame-receipt-encode-is-protected-plus-digest
   (implies (and (fn-frame-receipt-record-okp kind values)

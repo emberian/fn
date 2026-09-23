@@ -121,6 +121,13 @@
                                fn-record-parse-rest
                                fn-cbor-encode))))
 
+; The group reader is an induction over `fn-record-read-bytes'; each step
+; needs only that reader's own facts (`fn-record-read-bytes-reencode-prefix',
+; `-value-are-octets' above, `fn-record-string-octets-of-octets-string') and
+; the parser-result constructors, so the reader, the CBOR codec and the
+; result accessors stay closed.  Opened (the book-wide codec enable), each
+; step ran the whole CBOR decoder: 974 285 steps and 40 s, and 755 086 steps
+; and 21 s for the length theorem below.
 (defthm fn-record-parse-groups-reencode-prefix
   (implies (fn-record-parse-okp (fn-record-parse-groups count octets))
            (equal (append
@@ -132,11 +139,14 @@
                   octets))
   :hints (("Goal"
            :induct (fn-record-parse-groups count octets)
-           :in-theory (enable fn-record-parse-groups
-                              fn-record-parse-okp
-                              fn-record-parse-value
-                              fn-record-parse-rest
-                              fn-record-encode-groups)
+           :in-theory (e/d (fn-record-parse-groups fn-record-encode-groups
+                            fn-record-parse-okp-of-ok fn-record-parse-value-of-ok
+                            fn-record-parse-rest-of-ok fn-record-parse-error-is-failure)
+                           (fn-record-read-bytes fn-cbor-encode
+                            fn-record-octets-string fn-record-string-octets
+                            fn-record-group-namep fn-record-parse-okp
+                            fn-record-parse-value fn-record-parse-rest
+                            fn-record-parse-ok fn-record-parse-error))
            :do-not '(generalize fertilize))))
 
 (defthm fn-record-parse-groups-value-length
@@ -146,9 +156,13 @@
                   (nfix count)))
   :hints (("Goal"
            :induct (fn-record-parse-groups count octets)
-           :in-theory (enable fn-record-parse-groups
-                              fn-record-parse-okp
-                              fn-record-parse-value))))
+           :in-theory (e/d (fn-record-parse-groups
+                            fn-record-parse-okp-of-ok fn-record-parse-value-of-ok
+                            fn-record-parse-rest-of-ok fn-record-parse-error-is-failure)
+                           (fn-record-read-bytes fn-record-octets-string
+                            fn-record-group-namep fn-record-parse-okp
+                            fn-record-parse-value fn-record-parse-rest
+                            fn-record-parse-ok fn-record-parse-error)))))
 
 ; Preserve parser-result abstractions during sequential composition.  Expanding
 ; CADR/CADDR before the typed read lemmas can match loses their useful vocabulary.
@@ -231,7 +245,11 @@
                  fn-cbor-at-mostp
                  fn-record-encode-groups
                  fn-record-string-octets
-                 fn-record-p)))))
+                 fn-record-p
+                 ; Both sides are right-nested appends of eight encodings;
+                 ; with this rule on, type-set backchained through every
+                 ; level's `true-listp' hypothesis (3 979 steps, 3.3 s).
+                 (:type-prescription true-listp-append))))))
 
 ; A small append-only bridge for the five fields parsed before decode-tail.
 ; Keeping this algebra separate prevents the header proof from opening CBOR.

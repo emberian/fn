@@ -149,6 +149,59 @@
 
 (verify-guards fn-frame-receipt-record-okp)
 
+; What an entry point's guard reads of a well-formed record: its kind's
+; specification is a spec list and its values satisfy it.  The table lookup
+; and the field recognizer stay closed behind these, so a guard does not
+; unroll every kind's field list (`fn-frame-workflow-encode' did: 7.3 million
+; steps, 37 s).  Disabled on export below; a proof names them.
+(defthm fn-frame-workflow-record-okp-fields
+  (implies (fn-frame-workflow-record-okp kind values)
+           (and (fn-frame-spec-listp
+                 (fn-frame-spec-for kind *fn-frame-workflow-specs*))
+                (fn-frame-values-okp
+                 (fn-frame-spec-for kind *fn-frame-workflow-specs*) values)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-frame-workflow-record-okp
+                                   fn-frame-spec-for-workflow-is-spec-list)
+                                  (fn-frame-spec-for fn-frame-values-okp
+                                   fn-frame-spec-listp)))))
+
+(defthm fn-frame-receipt-record-okp-fields
+  (implies (fn-frame-receipt-record-okp kind values)
+           (and (fn-frame-spec-listp
+                 (fn-frame-spec-for kind *fn-frame-receipt-specs*))
+                (fn-frame-values-okp
+                 (fn-frame-spec-for kind *fn-frame-receipt-specs*) values)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-frame-receipt-record-okp
+                                   fn-frame-spec-for-receipt-is-spec-list)
+                                  (fn-frame-spec-for fn-frame-values-okp
+                                   fn-frame-spec-listp)))))
+
+; The encoded length of a well-formed record, for the guard's
+; `(<= (len payload) *fn-cbor-max-uint*)': no field encodes to more than a
+; blob's four length octets and its cap, and no workflow kind has more than
+; eleven fields.
+(local (defthm fn-frame-field-octets-length-bound
+  (implies (fn-frame-field-okp spec value)
+           (<= (len (fn-frame-field-octets spec value))
+               (+ 4 *fn-frame-max-blob*)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-frame-field-okp fn-frame-field-octets
+                                     fn-frame-textp fn-frame-blobp)))))
+
+(local (defthm fn-frame-fields-octets-length-bound
+  (implies (fn-frame-values-okp specs values)
+           (<= (len (fn-frame-fields-octets specs values))
+               (* (+ 4 *fn-frame-max-blob*) (len specs))))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-frame-values-okp specs values)
+           :in-theory (disable fn-frame-field-octets fn-frame-field-okp)))))
+
+(local (defthm fn-frame-spec-for-workflow-length
+  (<= (len (fn-frame-spec-for kind *fn-frame-workflow-specs*)) 11)
+  :rule-classes :linear))
+
 (defun fn-frame-bundle-store-record-okp (kind values)
   (declare (xargs :guard t :verify-guards nil))
   (let ((spec (fn-frame-spec-for kind *fn-frame-bundle-store-specs*)))
@@ -211,7 +264,11 @@
                           values)
                          digest)))))
 
-(verify-guards fn-frame-workflow-encode)
+(verify-guards fn-frame-workflow-encode
+  :hints (("Goal" :in-theory (e/d (fn-frame-workflow-record-okp-fields)
+                                  (fn-frame-workflow-record-okp
+                                   fn-frame-spec-for fn-frame-values-okp
+                                   fn-frame-fields-octets)))))
 
 (defun fn-frame-workflow-decode (octets digest)
   (declare (xargs :guard t :verify-guards nil))
@@ -242,7 +299,9 @@
                                    kind
                                    (fn-frame-parse-value parsed)))))))))))))
 
-(verify-guards fn-frame-workflow-decode)
+(verify-guards fn-frame-workflow-decode
+  :hints (("Goal" :in-theory (disable fn-frame-spec-for fn-frame-values-okp
+                                      fn-frame-fields-octets))))
 
 (defun fn-frame-receipt-encode (kind values digest)
   (declare (xargs :guard t :verify-guards nil))
@@ -258,7 +317,11 @@
                           values)
                          digest)))))
 
-(verify-guards fn-frame-receipt-encode)
+(verify-guards fn-frame-receipt-encode
+  :hints (("Goal" :in-theory (e/d (fn-frame-receipt-record-okp-fields)
+                                  (fn-frame-receipt-record-okp
+                                   fn-frame-spec-for fn-frame-values-okp
+                                   fn-frame-fields-octets)))))
 
 (defun fn-frame-receipt-decode (octets digest)
   (declare (xargs :guard t :verify-guards nil))
@@ -286,7 +349,9 @@
                                  kind
                                  (fn-frame-parse-value parsed))))))))))))
 
-(verify-guards fn-frame-receipt-decode)
+(verify-guards fn-frame-receipt-decode
+  :hints (("Goal" :in-theory (disable fn-frame-spec-for fn-frame-values-okp
+                                      fn-frame-fields-octets))))
 
 (defun fn-frame-bundle-store-encode (kind values digest)
   (declare (xargs :guard t :verify-guards nil))
@@ -341,6 +406,8 @@
     fn-frame-spec-for-receipt-is-spec-list
     fn-frame-spec-for-bundle-store-is-spec-list))
 
-(in-theory (disable fn-frame-spec-for-workflow-is-spec-list
+(in-theory (disable fn-frame-workflow-record-okp-fields
+             fn-frame-receipt-record-okp-fields
+             fn-frame-spec-for-workflow-is-spec-list
              fn-frame-spec-for-receipt-is-spec-list
              fn-frame-spec-for-bundle-store-is-spec-list))
