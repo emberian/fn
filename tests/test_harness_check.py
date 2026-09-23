@@ -17,6 +17,7 @@ import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -217,6 +218,31 @@ class Acl2ArityWalkTests(unittest.TestCase):
         found = self.applications("(defun fn-f (octets lines) (fn-g octets))")
         self.assertNotIn("octets", found)
         self.assertEqual(found.get("fn-g"), 1)
+
+    def test_only_a_named_same_line_test_fixture_is_waived(self):
+        source = ('form = "(fn-example a)"  '
+                  '# acl2-arity-fixture: fn-example synthetic reader input')
+        self.assertTrue(harness_check.declared_arity_fixture(source, "fn-example"))
+        self.assertFalse(harness_check.declared_arity_fixture(source, "fn-other"))
+        self.assertFalse(harness_check.declared_arity_fixture(
+            'form = "(fn-example a)"', "fn-example"))
+        self.assertFalse(harness_check.declared_arity_fixture(
+            'form = "(fn-example a)"  # acl2-arity-fixture: fn-example',
+            "fn-example"))
+        self.assertFalse(harness_check.declared_arity_fixture(
+            'form = "# acl2-arity-fixture: fn-example fake comment"',
+            "fn-example"))
+
+    def test_unwaived_acl2_arity_finding_fails_the_default_gate(self):
+        def broken(_root):
+            return ([{"where": "host/caller.lisp:7", "callee": "fn-entry",
+                      "problem": "called with 1 argument and takes 2"}],
+                    {"applications": 1})
+
+        with patch.dict(harness_check.LINTS, {"acl2-arity": (broken, True)}):
+            self.assertEqual(harness_check.main(["--lint", "acl2-arity"]), 1)
+            self.assertEqual(harness_check.main(["--lint", "acl2-arity",
+                                                 "--report"]), 0)
 
 
 class Acl2InPythonStringTests(unittest.TestCase):

@@ -44,7 +44,9 @@ of reading Lisp with a lint-grade reader rather than with ACL2, which is the
 argument against a second reader of the books.  Docstrings are prose and are
 skipped; a form holding a `{}` or a `%s` is not decided at all, because a
 `" ".join(...)` in that slot stands for any number of arguments.  This half
-reports and does not gate.
+gates. Deliberately malformed forms used as test data carry a same-line
+`# acl2-arity-fixture: fn-name reason` declaration, counted on every run; a
+declaration for one callee never waives another on that line.
 
 **waivers** flags a skip whose predicate reads a FAILURE rather than a
 dependency: `if "<text>" in str(error): skipTest(...)`, a skip guarded by a
@@ -62,7 +64,8 @@ another process is beyond a static reader, and those need the triage in
     python3 tools/harness_check.py --json build/harness.json
     python3 tools/harness_check.py --lint signatures
 
-Exit code 1 on any finding of a lint that gates (`signatures`, `waivers`),
+Exit code 1 on any finding of a lint that gates (`signatures`, `acl2-arity`,
+`waivers`),
 0 otherwise; `--report` never fails and only prints.
 """
 from __future__ import annotations
@@ -70,10 +73,12 @@ from __future__ import annotations
 import argparse
 import ast
 from dataclasses import dataclass, field
+import io
 import json
 from pathlib import Path
 import re
 import sys
+import tokenize
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -549,6 +554,20 @@ def acl2_applications(form, found: list) -> None:
 PLACEHOLDER = "fn--harness-placeholder"
 PLACEHOLDER_PATTERN = re.compile(r"\{[^{}]*\}|%[-#0-9.*]*[sdrifxX]")
 ACL2_FORM = re.compile(r"\(\s*fn-[a-z0-9-]+")
+ARITY_FIXTURE = re.compile(
+    r"#\s*acl2-arity-fixture:\s*(fn-[a-z0-9-]+)\s+([^\s#].*)$")
+
+
+def declared_arity_fixture(source_line: str, callee: str) -> bool:
+    """Waive only the named synthetic form on the same Python source line."""
+    try:
+        comments = (token.string for token in tokenize.generate_tokens(
+            io.StringIO(source_line).readline) if token.type == tokenize.COMMENT)
+        return any((match := ARITY_FIXTURE.fullmatch(comment)) is not None
+                   and match.group(1) == callee and match.group(2).strip()
+                   for comment in comments)
+    except tokenize.TokenError:
+        return False
 
 
 def acl2_in_string(text: str) -> str | None:
@@ -678,6 +697,8 @@ def acl2_findings(root: Path) -> tuple[list[dict], dict]:
     # The same question of the ACL2 that Python spells as text.
     counts["python_strings"] = 0
     counts["undecidable_strings"] = 0
+    counts["declared_fixtures"] = 0
+    python_lines: dict[str, list[str]] = {}
     for relative, line, form in python_acl2_forms(root):
         if form is None:
             counts["undecidable_strings"] += 1
@@ -694,6 +715,13 @@ def acl2_findings(root: Path) -> tuple[list[dict], dict]:
                 continue
             counts["applications"] += 1
             if count != arity[name]:
+                if relative.startswith("tests/"):
+                    lines = python_lines.setdefault(
+                        relative,
+                        (root / relative).read_text(encoding="utf-8").splitlines())
+                    if declared_arity_fixture(lines[line - 1], name):
+                        counts["declared_fixtures"] += 1
+                        continue
                 findings.append({
                     "lint": "acl2-arity",
                     "where": "{}:{}".format(relative, line),
@@ -899,7 +927,7 @@ def _enclosing_test(parsed: ast.Module, call: ast.Call, lines: list[str]) -> str
 
 LINTS = {
     "signatures": (signature_findings, True),
-    "acl2-arity": (acl2_findings, False),
+    "acl2-arity": (acl2_findings, True),
     "waivers": (waiver_findings, True),
 }
 
