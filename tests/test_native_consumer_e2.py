@@ -7,12 +7,14 @@ ack and do not claim nonzero scan progress or consumer inbox processing.
 """
 
 import os
+import json
 from pathlib import Path
 import shutil
 import socket
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 from tests.native_process import stop_and_diagnostics, wait_for_announcement
@@ -308,6 +310,37 @@ class NativeConsumerE2Tests(unittest.TestCase):
         self.consumer("poll", node, "worker", second_cursor, second_report)
         self.assertEqual(second_cursor.read_bytes(), continuation)
         self.assertEqual(second_report.read_bytes(), report)
+
+        # Optional cross-process Mini join.  The external driver must itself
+        # call the live local poll route and establish its signed result; this
+        # handoff only keeps the synthetic owner open until that work finishes.
+        handoff_name = os.environ.get("FN_CONSUMER_POLL_LIVE_HANDOFF_DIR")
+        if handoff_name:
+            handoff = Path(handoff_name)
+            self.assertTrue(handoff.is_absolute())
+            handoff.mkdir(parents=True, exist_ok=False)
+            ready = {
+                "version": 1,
+                "control": str(node["control"]),
+                "consumer": "worker",
+                "registered_cursor": str(node["base"] / "registered.fncu"),
+                "poll_cursor": str(poll_cursor),
+                "poll_report": str(report_path),
+                "authored_source": str(article),
+                "principal": str(principal),
+                "ed_public": str(ed_public),
+                "ml_public": str(ml_public),
+            }
+            (handoff / "ready.json").write_text(
+                json.dumps(ready, sort_keys=True) + "\n", encoding="utf-8")
+            deadline = time.monotonic() + 600
+            marker = handoff / "mini-finished.marker"
+            while not marker.exists() and time.monotonic() < deadline:
+                self.assertIsNone(owner.poll(), "synthetic owner died during Mini join")
+                time.sleep(0.1)
+            self.assertTrue(marker.is_file(), "Mini join handoff timed out")
+            self.assertEqual(marker.read_bytes(), b"continue\n")
+
         self.stop_owner(owner)
 
         cut_owner = self.start_owner(node, stop_after_submit=True)
