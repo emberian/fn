@@ -49,7 +49,20 @@ The first two proof attempts exposed a guard proof opening the source codec;
 replacing a partial `member-equal` call with total bounded author membership
 kept that guard closed. The interrupted attempts are not cited as passing.
 
-This packet has no physical topic Store event, same-journal publication,
+The follow-up codec book defines a distinct `fnto` version-1 payload for the
+two proposed topic operations. It bounds input before statement decoding,
+rejects unknown versions, trailing bytes and noncanonical encodings, and
+requires the referred T10 article sequence to precede the topic event. The
+anchor and report witnesses round-trip exactly; duplicate parents and an
+over-quota anchor fail the recognizer. The accepted-canonical theorem and
+an explicit oversize refusal test certify with the codec and test book in
+[`certify-20260923T215838Z-688900.json`](manifests/certify-20260923T215838Z-688900.json)
+on persvati using jobs 2 and the same toolchain identity. Exact source digests
+are `cfae4af194b8eef8ce84c7080b527d46da56e9da7a46918a9c8ba7ffbc2897ff`
+for the book and `657f67ee87880b526a284adce23173ab947541671541fc5261d82a8da38ee570`
+for its test. The codec has no Store union caller yet.
+
+This packet has no same-journal publication,
 replay/index relation, retention dependency pin, historical administrator
 configuration lookup, native command or source-matched native test. It cannot
 claim durable admission, a served topic view, or Mini authorization. Those are
