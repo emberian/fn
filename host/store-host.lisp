@@ -386,10 +386,10 @@
   (fn-bs-config-decode octets))
 
 (defun fn-store-metadata-frontier-frame (n)
-  (fn-bs-frontier-encode-impl n))
+  (fn-bs-frontier-encode n))
 
 (defun fn-store-metadata-frontier-decode (octets)
-  (fn-bs-frontier-decode-impl octets))
+  (fn-bs-frontier-decode octets))
 
 (defun fn-store-metadata-frontier-next (n)
   (fn-bs-frontier-next n))

@@ -590,22 +590,22 @@
     "books": 589,
     "books_in_root_closure": 588,
     "roots": 583,
-    "theorems": 8371,
-    "functions": 6247,
-    "assert_events": 9121,
-    "must_fails": 472,
+    "theorems": 8377,
+    "functions": 6249,
+    "assert_events": 9122,
+    "must_fails": 476,
     "encapsulates": 26,
     "guards": {
       "verified": 2022,
       "declared-off": 369,
       "default-guarded": 3060,
-      "default-unguarded": 796
+      "default-unguarded": 798
     },
     "suspect_theorems": 76,
     "export_hygiene_warnings": 102,
     "enabled_projection_warnings": 35,
     "teeth_form_warnings": 39,
-    "include_hygiene_warnings": 504,
+    "include_hygiene_warnings": 505,
     "host_names_warnings": 788,
     "hand_written_record_warnings": 18
   },
@@ -3881,7 +3881,7 @@
       "book": "books/byte-store-record-provenance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 135,
+      "theorems": 141,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3896,6 +3896,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "byte-store-frame",
         "byte-store-program-invariants",
         "byte-store-relation",
         "frame-trailer",
@@ -12238,16 +12239,16 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 29,
+      "functions": 31,
       "guards": {
         "verified": 0,
         "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 28
+        "default-unguarded": 30
       },
       "verify_guards_events": 0,
-      "assert_events": 32,
-      "must_fails": 35,
+      "assert_events": 33,
+      "must_fails": 39,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
@@ -18958,6 +18959,13 @@
         "line": 5,
         "include": "byte-store-program-invariants",
         "included": "books/byte-store-program-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/byte-store-record-provenance.lisp",
+        "line": 7,
+        "include": "byte-store-frame",
+        "included": "books/byte-store-frame.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
