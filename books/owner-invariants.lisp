@@ -1699,7 +1699,9 @@
                             ;; make each of these rewrite a term to itself
                             fn-own-take-of-prefix fn-own-prefix-archive-of-prefix
                             fn-own-conns-okp-of-prefix fn-own-view-okp-of-prefix
-                            fn-own-ledger-durablep-of-prefix)))))
+                            fn-own-ledger-durablep-of-prefix
+                            fn-own-conn-okp fn-own-view-okp
+                            fn-midx-correspondencep fn-gidx-build)))))
 
 (defthm fn-own-run-records-prefix
   (implies (fn-own-relation o)
@@ -2410,7 +2412,9 @@
                             fn-own-ledger-durablep-member fn-own-last-member
                             fn-nntp-post-outcome fn-post-sessionp
                             fn-own-post-outcome-answers
-                            fn-own-prefix-archive)))))
+                            fn-own-prefix-archive fn-own-view-okp
+                            fn-own-ledger-durablep
+                            fn-midx-correspondencep fn-gidx-build)))))
 
 ; -----------------------------------------------------------------------------
 ; Clock-stamped group facts: no fact without an observation; the live group
