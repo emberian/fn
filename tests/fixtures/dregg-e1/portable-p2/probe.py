@@ -104,6 +104,17 @@ def main() -> None:
     changed = dict(claim)
     changed["storeAdmission"] = "verified"
     run("untrusted-store-claim", changed_claim=changed)
+    oversized = args.out / "oversize-verifier.sh"
+    oversized.write_text(
+        "#!/bin/sh\n"
+        "python3 -c 'import sys; sys.stdout.write(\"x\"*70002); "
+        "sys.stdout.flush()'\n"
+        "sleep 5\n"
+    )
+    oversized.chmod(0o700)
+    changed = dict(pin)
+    changed["fnBinary"] = str(oversized)
+    run("oversize-verifier-output", changed_pin=changed)
     (args.out / "results.json").write_text(json.dumps(results, indent=2) + "\n")
     print(f"portable E1: {len(results)} cases passed")
 

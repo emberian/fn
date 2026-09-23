@@ -38,16 +38,18 @@ source ID
 principal `55` repeated 32 octets, the exact public Ed key, and the exact
 1952-octet ML key pinned from the public PEM. No private key was present.
 
-Mini isolated branch `implement/fn-evidence` at `97171a3` compiled a new
+Mini isolated branch `implement/fn-evidence` at `0d50383` compiled a new
 `Kernel.FnPortableSource` and modified `Host.Main` against the existing P1
 native closure, reusing 3,088 source/package objects and recompiling only
 those two Lean modules; the final response contains 3,090 objects. Lean
 4.30.0; native binary
-`/Users/ember/dev/minidregg-wt/fn-evidence/.lake/build/bin/minidregg-fn-portable-strict`
-SHA-256 `3c0a3cd6d1949e88042f355a9444d1681f1e698060638c7a3f2284da09275cb0`.
+`/Users/ember/dev/minidregg-wt/fn-evidence/.lake/build/bin/minidregg-fn-portable-bounded`
+SHA-256 `35c9bede8152132c367ccaa38f1b2e6a9524184f9106045aa530be0a1ef3b18d`.
 The first incremental link took 25 seconds and the strict-claim Host-only
-relink 10 seconds. The native command reads the carrier within 32,768 bytes,
-invokes the fn verifier without a shell, caps and parses its exact six-token
+relink 10 seconds; the bounded-stdout Host-only relink took 17 seconds. The
+native command reads the carrier within 32,768 bytes,
+spawns its pinned verifier argument vector without constructing a shell command,
+caps stdout during reading and parses its exact six-token
 line below 70,000 characters, compares principal and both full public keys
 with independent pins, checks the claimed source ID, Message-ID and group
 text, then derives the base64 Mini package from the authenticated source in
@@ -69,15 +71,16 @@ execution boundaries for this test, as are the native crypto libraries.
 
 The exact driver is
 `tests/fixtures/dregg-e1/portable-p2/probe.py` (SHA-256
-`90563ebbb1eae2c7a59fb15b5e314db29cadca1c6306464ce4dfdb84d28698e5`).
+`63a2cbac0fba3da8fbd2d30ebf3f12bc2fae5472e00a30c3e7e32b8e44237ea3`).
 It was invoked with the binary above, origin pin
 `/tmp/mini-fn-evidence-final-20260923/independent-pin.json`, the transport
-shim, and a fresh scratch output directory. Its 11-case result is
+shim, and a fresh scratch output directory. Its 12-case result is
 `native-results.json` (SHA-256
-`cb8c43b144ab044d87bd5638f4bdb171019fe560c739818ed617b899b5a84bd5`):
+`68c2dc10aac0f74037d0211665569e994610b0a46f90cc3199e05a01e1f61e20`):
 one exact positive; wrong source ID, Message-ID, group, principal, Ed key,
 full ML key, and substituted ML PEM; a changed signed body; a wrong Mini
-origin pin; and an untrusted extra `storeAdmission` claim. Every negative
+origin pin; an untrusted extra `storeAdmission` claim; and a verifier that
+emits 70,002 stdout bytes. Every negative
 exited 1 and created no source/package/result file. A separate Lean source
 probe decoded the exact public package and refused four MIME/base64/layout
 mutations; the strict portable-output probe refused trailing junk, wrong
