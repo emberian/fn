@@ -125,10 +125,9 @@
 (defun fnn-control-peer-is-owner-p (socket)
   "Bind the local-control principal to the process's effective UID.
 
-Darwin's getpeereid observes credentials on the connected Unix socket; a
-failed observation refuses.  The current native production image is Darwin.
-Other host ports must supply an equivalent peer-credential observation before
-enabling this owner-only control profile."
+Darwin getpeereid and Linux SO_PEERCRED observe credentials on the connected
+Unix socket. A failed observation refuses. The OS supplies the UID; it does
+not decide the ACL2 consumer operation or prove the peer's application work."
   #+darwin
   (sb-alien:with-alien ((peer-uid sb-alien:unsigned-int)
                         (peer-gid sb-alien:unsigned-int))
@@ -142,7 +141,32 @@ enabling this owner-only control profile."
              (fnn-socket-fd socket)
              (sb-alien:addr peer-uid) (sb-alien:addr peer-gid))))
       (and (zerop result) (= peer-uid (sb-posix:geteuid)))))
-  #-darwin (let ((ignored socket)) (declare (ignore ignored)) nil))
+  #+linux
+  (handler-case
+      ;; Linux ucred is three 32-bit fields: pid, uid, gid.  SOL_SOCKET=1 and
+      ;; SO_PEERCRED=17 are the Linux socket ABI constants.  Check optlen so
+      ;; a short or failed observation cannot authenticate a caller.  Linux
+      ;; also returns the socket creator's own credentials on an unconnected
+      ;; listener; getpeername must establish a connected peer first.
+      (progn
+        (sb-bsd-sockets:socket-peername socket)
+        (sb-alien:with-alien ((credentials (sb-alien:array sb-alien:unsigned-int 3))
+                            (length sb-alien:unsigned-int 12))
+        (let ((result
+                (sb-alien:alien-funcall
+                 (sb-alien:extern-alien
+                  "getsockopt"
+                  (function sb-alien:int sb-alien:int sb-alien:int
+                            sb-alien:int (* sb-alien:unsigned-int)
+                            (* sb-alien:unsigned-int)))
+                 (fnn-socket-fd socket) 1 17
+                 (sb-alien:addr (sb-alien:deref credentials 0))
+                 (sb-alien:addr length))))
+          (and (zerop result) (= length 12)
+               (= (sb-alien:deref credentials 1) (sb-posix:geteuid))))))
+    (error () nil))
+  #-(or darwin linux)
+  (let ((ignored socket)) (declare (ignore ignored)) nil))
 
 (defun fnn-control-stop-cut-armed-p ()
   "Whether FN_NATIVE_CONTROL_TEST_STOP arms the developer stop cut.
