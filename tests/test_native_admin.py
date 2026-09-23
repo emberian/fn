@@ -129,7 +129,7 @@ class NativeAdminTests(unittest.TestCase):
         report = self.config_report()
         served, domain = report.split(" served=", 1)[1].split(" domain=", 1)
         self.assertNotIn("fn.admin", served.split(","))
-        self.assertIn("fn.admin", domain.split(","))
+        self.assertIn("fn.admin", domain.strip().split(","))
         # Retirement removes service eligibility but not historical article
         # obligations or the allocation-domain identity they rely on.
         self.native("store", self.store, "inspect", message_id)
