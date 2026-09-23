@@ -137,6 +137,13 @@
                  "441 posting failed; the article was refused"))))))
 (assert-event
  (equal (fn-post-result-effects
+         (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) :clock-unusable))
+        (list (fn-nntp-reply-effect
+               (fn-nntp-crlf
+                (fn-nntp-string-octets
+                 "441 posting failed; this server has no usable clock reading"))))))
+(assert-event
+ (equal (fn-post-result-effects
          (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) :uncertain))
         (list (fn-nntp-reply-effect
                (fn-nntp-crlf

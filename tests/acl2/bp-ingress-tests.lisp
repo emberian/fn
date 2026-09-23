@@ -33,6 +33,16 @@
 (assert-event (equal (fn-bpi-result-kind *bpi-prepared*) :prepared))
 (defconst *bpi-record* (fn-bpi-result-record *bpi-prepared*))
 (assert-event (equal (fn-record-payload *bpi-record*) *bpi-adu*))
+(assert-event (equal (fn-record-stamp *bpi-record*) 841000000))
+(defconst *bpi-no-clock-context*
+  (fn-bpi-make-context "dtn://fn.example/inbox" "dtn://peer.example"
+                       "bpa-local-42" 3600 (fn-clock-observation 1 0 0 nil)))
+(defconst *bpi-no-clock*
+  (fn-bpi-ingress-prepare *bpi-reserved* *bpi-policy*
+                          *bpi-no-clock-context* *bpi-adu*))
+(assert-event (equal (fn-bpi-result-kind *bpi-no-clock*) :rejected))
+(assert-event (equal (fn-bpi-result-store *bpi-no-clock*) :clock-unusable))
+(assert-event (null (fn-bpi-result-record *bpi-no-clock*)))
 (assert-event (equal (fn-record-string-octets (fn-record-msgid *bpi-record*))
                      '(60 98 112 45 49 64 101 120 97 109 112 108 101 62)))
 (defconst *bpi-done* (fn-bpi-finish-prepared (fn-bpi-result-store *bpi-prepared*)))

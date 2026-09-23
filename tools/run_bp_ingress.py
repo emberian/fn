@@ -45,7 +45,7 @@ class BpDeletePending(BpIngressError):
 
 @dataclass(frozen=True)
 class IngressResult:
-    outcome: str  # accepted | duplicate | rejected
+    outcome: str  # accepted | duplicate | rejected | refused-clock-unusable
     bid: str
     staged_path: Path
 
