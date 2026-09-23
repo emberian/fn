@@ -147,6 +147,8 @@
     "books/byte-store-invariants",
     "books/byte-store-scan",
     "books/byte-store-keystones",
+    "books/byte-store-observation",
+    "tests/acl2/byte-store-observation-tests",
     "tests/acl2/byte-store-scan-tests",
     "tests/acl2/byte-store-sweep-tests",
     "books/byte-store-compaction-correspondence",
@@ -352,10 +354,12 @@
     "books/peer-feed-invariants",
     "books/feed-events",
     "books/feed-correspondence",
+    "books/feed-port-replay",
     "books/feed-journal",
     "tests/acl2/feed-journal-tests",
     "tests/acl2/peer-feed-tests",
     "tests/acl2/feed-correspondence-tests",
+    "tests/acl2/feed-port-replay-tests",
     "books/owner-feed",
     "books/owner-feed-port",
     "tests/acl2/owner-feed-port-tests",
@@ -422,25 +426,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 423,
-    "books_in_root_closure": 422,
-    "roots": 418,
-    "theorems": 7126,
-    "functions": 5428,
-    "assert_events": 7843,
-    "must_fails": 282,
+    "books": 427,
+    "books_in_root_closure": 426,
+    "roots": 422,
+    "theorems": 7137,
+    "functions": 5440,
+    "assert_events": 7858,
+    "must_fails": 285,
     "encapsulates": 26,
     "guards": {
       "verified": 1746,
-      "declared-off": 288,
-      "default-guarded": 2722,
+      "declared-off": 296,
+      "default-guarded": 2726,
       "default-unguarded": 672
     },
     "suspect_theorems": 65,
     "export_hygiene_warnings": 93,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 23,
-    "include_hygiene_warnings": 260,
+    "include_hygiene_warnings": 262,
     "host_names_warnings": 660,
     "hand_written_record_warnings": 18
   },
@@ -2385,6 +2389,31 @@
       "read_error": null
     },
     {
+      "book": "books/byte-store-observation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 8,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/byte-store-program-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3283,6 +3312,32 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/feed-port-replay.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "feed-totality",
+        "owner-feed-port"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -8490,6 +8545,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/byte-store-observation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-observation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/byte-store-program-invariants-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -9202,6 +9282,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/feed-journal"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/feed-port-replay-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 1,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/feed-port-replay"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -10280,15 +10387,17 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 119,
-      "must_fails": 0,
-      "defconsts": 28,
+      "assert_events": 121,
+      "must_fails": 2,
+      "defconsts": 29,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-feed"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -14242,6 +14351,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-observation-tests.lisp",
+        "line": 2,
+        "include": "../../books/byte-store-observation",
+        "included": "books/byte-store-observation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-program-invariants-tests.lisp",
         "line": 4,
         "include": "byte-store-relation-tests",
@@ -14456,6 +14572,13 @@
         "line": 2,
         "include": "../../books/feed-journal",
         "included": "books/feed-journal.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/feed-port-replay-tests.lisp",
+        "line": 2,
+        "include": "../../books/feed-port-replay",
+        "included": "books/feed-port-replay.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -18158,14 +18281,14 @@
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 455,
+        "line": 465,
         "name": "fnn-owner-fence-service",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 455,
+        "line": 465,
         "name": "fnn-owner-fault-service",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"

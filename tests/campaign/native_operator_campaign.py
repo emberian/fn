@@ -539,6 +539,13 @@ def run_faults(dev: Path, prod: Path, base: Path, prior: Path, candidate: Path):
     finally:
         node.reap()
     rows.append(row)
+    node = Node(prod, base, "prod-raw-store-post-guard")
+    row = {"name": "prod-raw-store-post-guard", "image": prod.name}
+    absent_payload = node.dir / "absent-payload.art"
+    row["plain_post"] = public(node.store_post(CANDIDATE_ID, absent_payload))
+    row["store_created"] = node.store.exists()
+    row["payload_created"] = absent_payload.exists()
+    rows.append(row)
     node = Node(prod, base, "prod-init-fault")
     row = {"name": "prod-init-fault", "image": prod.name}
     row["init"] = public(node.operator(

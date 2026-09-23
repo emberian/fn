@@ -42,11 +42,11 @@ class NativeCampaignMixin:
     def invoke(self, store, command, *arguments, expected=0, env=None):
         host_env = dict(os.environ)
         host_env.update(env or {})
-        host_env["FN_HOST"] = "native"
-        host_env["FN_NATIVE_HOST"] = str(IMAGE)
+        if command == "inspect" and arguments[:1] == ("--message-id",):
+            arguments = arguments[1:]
         result = subprocess.run(
-            [sys.executable, "tools/run_store.py", "--store", str(store),
-             command, *map(str, arguments)], cwd=ROOT, env=host_env,
+            [str(IMAGE), "--fn", "store", str(store), command,
+             *map(str, arguments)], cwd=ROOT, env=host_env,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
         self.assertEqual(result.returncode, expected,
                          "stdout={}\nstderr={}".format(result.stdout, result.stderr))
@@ -64,7 +64,8 @@ class NativeCampaignMixin:
         return {p.name: p.read_bytes()
                 for p in sorted((store / "transactions").iterdir()) if p.is_file()}
 
-    def assert_observed_scan_is_program_image(self, before_form, store, cut):
+    def assert_observed_scan_is_program_image(self, before_form, store, cut,
+                                              prior_names=()):
         """Compare exact scan values with the model's process-death image.
 
         SIGKILL does not simulate loss of dirty kernel state.  Therefore the
@@ -76,6 +77,10 @@ class NativeCampaignMixin:
         bridge = model_images.ModelBridge()
         try:
             bridge.call('(include-book "books/byte-store-keystones")')
+            bridge.call('(include-book "books/byte-store-observation")')
+            bridge.call('(include-book "books/codec-attach")')
+            bridge.call('(include-book "books/byte-store-frame")')
+            bridge.call('(include-book "books/byte-store-txn-name")')
             bridge.call("(defun fn-native-visible-choices (ops unit)"
                         " (if (atom ops) nil"
                         "  (cons (if (equal (car (car ops)) :write)"
@@ -83,83 +88,83 @@ class NativeCampaignMixin:
                         "             (nth 2 (car ops)) (len (nth 3 (car ops))) unit))"
                         "          :apply)"
                         "        (fn-native-visible-choices (cdr ops) unit))))")
-            bridge.call("(defconst *fn-native-before* {})".format(before_form))
-            bridge.call("(defconst *fn-native-before-scan*"
-                        " (fn-bs-scan-store *fn-native-before*))")
-            bridge.call("(defconst *fn-native-open*"
-                        " (fn-sn-open-observed '(\"fn.letters\" \"fn.test\") 10000000"
-                        "  (fn-bs-scan-frontier *fn-native-before-scan*)"
-                        "  (fn-bs-scan-records *fn-native-before-scan*)))")
-            bridge.call("(defconst *fn-native-ks*"
-                        " (fn-sn-files (fn-sn-open-state *fn-native-open*)))")
+            bindings = ["(before {})".format(before_form),
+                        "(before-scan (fn-bs-scan-store before))",
+                        "(opened-before (fn-sn-open-observed '(\"fn.letters\" \"fn.test\")"
+                        " 10000000 (fn-bs-scan-frontier before-scan)"
+                        " (fn-bs-scan-records before-scan)))",
+                        "(ks (fn-sn-files (fn-sn-open-state opened-before)))"]
             frontier = (store / "allocation-frontier.json").read_bytes()
             stages = sorted((store / "staging").glob(".allocation-*"))
             next_frontier = stages[0].read_bytes() if stages else frontier
-            frontier_program = "(fn-bs-frontier-program \".native-campaign\" '{} )".format(
-                tuple(next_frontier)).replace(",", "").replace("'(", "'(")
-            # Python tuple formatting is not ACL2 syntax for singleton/empty;
-            # byte lists here are nonempty, and spaces plus parentheses suffice.
-            frontier_program = "(fn-bs-frontier-program \".native-campaign\" '({}))".format(
-                " ".join(str(x) for x in next_frontier))
-            bridge.call("(defconst *fn-native-frontier-run*"
-                        " (fn-bs-run *fn-native-before* *fn-native-ks* {} nil"
-                        "  '(\"fn.letters\" \"fn.test\") 10000000))".format(frontier_program))
+            frontier_stage = stages[0].name if stages else ".allocation-campaign"
+            # The program receives exact frontier octets observed at this cut.
+            frontier_program = "(fn-bs-frontier-program \"{}\" '({}))".format(
+                frontier_stage, " ".join(str(x) for x in next_frontier))
+            bindings.append("(frontier-run (fn-bs-run before ks {} nil"
+                            " '(\"fn.letters\" \"fn.test\") 10000000))".format(
+                                frontier_program))
             if cut.program == "fn-bs-frontier-program":
-                index = model_images.cut_index(cut.program, cut.name)
-                bridge.call("(defconst *fn-native-cut-bs*"
-                            " (car (nth {} *fn-native-frontier-run*)))".format(index))
+                index = model_images.cut_index(cut.program,
+                                               cut.model_name or cut.name,
+                                               cut.occurrence)
+                bindings.append("(cut-bs (car (nth {} frontier-run)))".format(index))
             else:
-                bridge.call("(defconst *fn-native-after-frontier*"
-                            " (car (car (last *fn-native-frontier-run*))))")
-                bridge.call("(defconst *fn-native-reserved*"
-                            " (cdr (car (last *fn-native-frontier-run*))))")
+                bindings.extend(["(after-frontier (car (car (last frontier-run))))",
+                                 "(reserved (cdr (car (last frontier-run))))"])
                 txns = self.transaction_bytes(store)
-                candidate_frame = txns.get("00000000000000000001.txn")
+                candidate_names = sorted(set(txns).difference(prior_names))
+                candidate_frame = txns[candidate_names[0]] if candidate_names else None
+                candidates = sorted((store / "staging").glob(".stage-*"))
                 if candidate_frame is None:
-                    candidates = sorted((store / "staging").glob(".stage-*"))
                     self.assertTrue(candidates, "candidate frame absent from final and staging names")
                     candidate_frame = candidates[0].read_bytes()
+                record_stage = candidates[0].name if candidates else ".stage-campaign"
                 octets = " ".join(str(x) for x in candidate_frame)
-                bridge.call("(defconst *fn-native-candidate*"
-                            " (fn-bs-record-of-octets '({})))".format(octets))
-                bridge.call("(defconst *fn-native-prepared*"
-                            " (fn-sf-prepare-record *fn-native-reserved*"
-                            "  *fn-native-candidate* '(\"fn.letters\" \"fn.test\") 10000000))")
-                record_program = "(fn-bs-record-program \".stage-native\""
-                record_program += " \"00000000000000000001.txn\" '({}))".format(octets)
-                bridge.call("(defconst *fn-native-record-run*"
-                            " (fn-bs-run *fn-native-after-frontier* *fn-native-prepared* {} nil"
-                            "  '(\"fn.letters\" \"fn.test\") 10000000))".format(record_program))
+                bindings.append("(candidate-record (fn-bs-record-of-octets '({})))".format(octets))
+                bindings.append("(prepared (fn-sf-prepare-record reserved"
+                                " candidate-record '(\"fn.letters\" \"fn.test\") 10000000))")
+                next_name = "{:020d}.txn".format(len(prior_names))
+                record_program = "(fn-bs-record-program \"{}\"".format(record_stage)
+                record_program += " \"{}\" '({}))".format(next_name, octets)
+                bindings.append("(record-run (fn-bs-run after-frontier prepared {} nil"
+                                " '(\"fn.letters\" \"fn.test\") 10000000))".format(
+                                    record_program))
                 if cut.program == "fn-bs-record-program":
                     index = model_images.cut_index(cut.program, cut.name)
-                    bridge.call("(defconst *fn-native-cut-bs*"
-                                " (car (nth {} *fn-native-record-run*)))".format(index))
+                    bindings.append("(cut-bs (car (nth {} record-run)))".format(index))
                 else:
-                    bridge.call("(defconst *fn-native-after-record*"
-                                " (car (car (last *fn-native-record-run*))))")
-                    bridge.call("(defconst *fn-native-completing*"
-                                " (cdr (car (last *fn-native-record-run*))))")
-                    finish = "(fn-bs-finish-program 1 1)"
-                    bridge.call("(defconst *fn-native-finish-run*"
-                                " (fn-bs-run *fn-native-after-record* *fn-native-completing*"
-                                "  {} nil '(\"fn.letters\" \"fn.test\") 10000000))".format(finish))
-                    index = model_images.cut_index(cut.program, cut.name)
-                    bridge.call("(defconst *fn-native-cut-bs*"
-                                " (car (nth {} *fn-native-finish-run*)))".format(index))
-            bridge.call("(defconst *fn-native-observed* {})".format(
-                model_images.import_image(store)))
+                    bindings.extend(["(after-record (car (car (last record-run))))",
+                                     "(completing (cdr (car (last record-run))))"])
+                    finish = "(fn-bs-finish-program {} {})".format(
+                        len(prior_names), len(prior_names))
+                    bindings.append("(finish-run (fn-bs-run after-record completing"
+                                    " {} nil '(\"fn.letters\" \"fn.test\") 10000000))".format(finish))
+                    index = model_images.cut_index(cut.program,
+                                                   cut.model_name or cut.name,
+                                                   cut.occurrence)
+                    bindings.append("(cut-bs (car (nth {} finish-run)))".format(index))
+            bindings.extend([
+                "(observed {})".format(model_images.import_image(store)),
+                "(choices (fn-native-visible-choices (fn-bs-pending cut-bs) (fn-bs-unit cut-bs)))",
+                "(model-image (fn-bs-crash cut-bs choices))",
+                "(scan (fn-bs-scan-store observed))",
+                "(opened (fn-sn-open-observed '(\"fn.letters\" \"fn.test\")"
+                " 10000000 (fn-bs-scan-frontier scan) (fn-bs-scan-records scan)))",
+            ])
             observed = bridge.value(
-                "(let* ((choices (fn-native-visible-choices"
-                "                  (fn-bs-pending *fn-native-cut-bs*)"
-                "                  (fn-bs-unit *fn-native-cut-bs*)))"
-                "       (model-image (fn-bs-crash *fn-native-cut-bs* choices))"
-                "       (scan (fn-bs-scan-store *fn-native-observed*))"
-                "       (opened (fn-sn-open-observed '(\"fn.letters\" \"fn.test\")"
-                "                 10000000 (fn-bs-scan-frontier scan)"
-                "                 (fn-bs-scan-records scan))))"
-                "  (list (fn-bs-scan-okp scan) (fn-sn-open-okp opened)"
-                "        (equal scan (fn-bs-scan-store model-image))))")
-            self.assertRegex(observed, r"\(T\s+T\s+T\)\s*$", observed)
+                "(let* ({} ) (list"
+                " (fn-bs-crash-choicesp choices (fn-bs-pending cut-bs) (fn-bs-unit cut-bs))"
+                " (fn-bs-scan-okp scan) (fn-sn-open-okp opened)"
+                " (fn-bso-served-image-agree model-image observed)"
+                " (list (fn-bso-directory-agree model-image observed :root)"
+                "       (fn-bso-directory-agree model-image observed :transactions)"
+                "       (fn-bso-directory-agree model-image observed :staging)"
+                "       (fn-bs-names model-image :staging)"
+                "       (fn-bs-names observed :staging))))".format(
+                    " ".join(bindings)))
+            self.assertRegex(observed, r"\(T\s+T\s+T\s+T\s+\(T\s+T\s+T",
+                             "{}: {}".format(cut.name, observed))
         finally:
             bridge.close()
 
@@ -179,7 +184,8 @@ class NativeCampaignMixin:
             killed_frames = self.transaction_bytes(store)
             self.assertEqual(killed_frames.get(next(iter(prior_frames))),
                              next(iter(prior_frames.values())))
-            self.assert_observed_scan_is_program_image(before_form, store, cut)
+            self.assert_observed_scan_is_program_image(before_form, store, cut,
+                                                       prior_frames)
             recovered = self.invoke(store, "recover")
             self.assertIn(b"articles=", recovered.stdout)
             self.assertEqual(self.transaction_bytes(store), killed_frames)
@@ -197,6 +203,9 @@ if IMAGE_AVAILABLE:
     class NativeCrashModelTests(NativeCampaignMixin, unittest.TestCase):
         def test_all_native_post_process_death_cuts(self):
             for cut in native_cuts.POST_CUTS:
+                selected = os.environ.get("FN_NATIVE_LOWLEVEL_CUT")
+                if selected and cut.name != selected:
+                    continue
                 with self.subTest(cut=cut.name):
                     self.run_post_cut(cut)
 
@@ -225,6 +234,9 @@ if IMAGE_AVAILABLE:
                 bridge = model_images.ModelBridge()
                 try:
                     bridge.call('(include-book "books/byte-store-keystones")')
+                    bridge.call('(include-book "books/codec-attach")')
+                    bridge.call('(include-book "books/byte-store-frame")')
+                    bridge.call('(include-book "books/byte-store-txn-name")')
                     bridge.call("(defconst *fn-native-recovery-observed* {})".format(
                         model_images.import_image(store)))
                     value = bridge.value(

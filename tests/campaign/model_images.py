@@ -79,7 +79,7 @@ def program_form(program: str, point: str) -> str:
     return "({} {})".format(program, PROGRAM_ARGUMENTS[program]).replace(" )", ")")
 
 
-def cut_index(program: str, point: str) -> int:
+def cut_index(program: str, point: str, occurrence: int = 1) -> int:
     """The index in fn-bs-run's pair list of the cut named POINT.
 
     fn-bs-run returns one pair per step, so the pair after the (:cut NAME)
@@ -90,12 +90,21 @@ def cut_index(program: str, point: str) -> int:
     end = text.find("\n(", start + 1)
     body = text[start:end if end > 0 else len(text)]
     index = -1
+    seen = 0
+    steps = {":cut", ":create", ":write-all", ":write", ":fsync-file",
+             ":fsync-dir", ":link", ":rename", ":unlink", ":mkdir",
+             ":observe"}
     for step in __import__("re").finditer(
             r"\(list (:[a-z-]+)(?:\s+\"([^\"]*)\")?", body):
+        if step.group(1) not in steps:
+            continue
         index += 1
         if step.group(1) == ":cut" and step.group(2) == point:
-            return index
-    raise ModelError("{} has no :cut {!r}".format(program, point))
+            seen += 1
+            if seen == occurrence:
+                return index
+    raise ModelError("{} has no :cut {!r} occurrence {}".format(
+        program, point, occurrence))
 
 
 class ModelError(RuntimeError):
@@ -145,6 +154,8 @@ class ModelBridge:
             except Exception:
                 pass
             self.proc.wait(timeout=10)
+            if self.proc.stdout is not None:
+                self.proc.stdout.close()
             self.proc = None
 
 
