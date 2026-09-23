@@ -7,6 +7,7 @@ tmpfs, so the result cannot qualify hbox's ZFS or hardware write cache.
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import hashlib
 import json
 import os
@@ -51,6 +52,11 @@ def single_mount(path):
     return result.stdout.decode().strip() if result.returncode == 0 else None
 
 
+def exact_dm_loop_dependency(output, expected_loop):
+    match = re.fullmatch(r"\s*1 dependencies\s*:\s*\((loop[0-9]+)\)\s*", output)
+    return bool(match and match.group(1) == Path(expected_loop).name)
+
+
 class PrivateExt4:
     def __init__(self, size_mib=128):
         if run(["findmnt", "-T", "/tmp", "-rn", "-o", "FSTYPE"]).stdout.strip() != b"tmpfs":
@@ -86,7 +92,7 @@ class PrivateExt4:
             raise RuntimeError("private mapper was not created")
         self.verify_loop()
         deps = root("dmsetup", "deps", "-o", "devname", self.mapping).stdout.decode()
-        if Path(self.loop).name not in deps:
+        if not exact_dm_loop_dependency(deps, self.loop):
             raise RuntimeError("mapper no longer depends on owned loop: " + deps)
 
     def create(self):
@@ -188,31 +194,61 @@ class PrivateExt4:
             raise RuntimeError("; ".join(problems) + "; retained " + str(self.base))
 
 
-def stopped_core_processes(core):
-    """Find only stopped SBCL processes using this campaign's unique core path.
+@dataclass(frozen=True)
+class ProcIdentity:
+    pid: int
+    group: int
+    session: int
+    start_time: int
+    state: str
+    argv: tuple[bytes, ...]
 
-    strace can make the tracee its own child rather than a child visible in
-    /proc/<tracer>/task/<tracer>/children, so inspect the exact core argument.
-    """
+
+def read_proc_identity(pid):
+    """Read Linux process identity; stat start_time defeats PID reuse."""
+    proc = Path("/proc") / str(pid)
+    try:
+        stat = (proc / "stat").read_text()
+        argv = tuple(x for x in (proc / "cmdline").read_bytes().split(b"\0") if x)
+    except (FileNotFoundError, ProcessLookupError, PermissionError):
+        return None
+    close_comm = stat.rfind(")")
+    if close_comm < 0:
+        return None
+    tail = stat[close_comm + 2:].split()
+    if len(tail) < 20:
+        return None
+    return ProcIdentity(pid, int(tail[2]), int(tail[3]), int(tail[19]),
+                        tail[0], argv)
+
+
+def exact_core_arg(argv, core):
+    return any(argv[i:i + 2] == (b"--core", str(core).encode())
+               for i in range(len(argv) - 1))
+
+
+def owned_tracee(identity, group_id, core):
+    return (identity is not None and identity.group == group_id
+            and identity.session == group_id and identity.state in ("T", "t")
+            and exact_core_arg(identity.argv, core))
+
+
+def stopped_core_processes(core, group_id):
+    """Find stopped tracees only in this campaign-created process session."""
     matches = []
     for proc in Path("/proc").iterdir():
         if not proc.name.isdigit():
             continue
-        try:
-            args = (proc / "cmdline").read_bytes().split(b"\0")
-            status = (proc / "status").read_text()
-        except (FileNotFoundError, ProcessLookupError, PermissionError):
-            continue
-        if (b"--core" in args and str(core).encode() in args
-                and re.search(r"^State:\s+[Tt]", status, re.M)):
-            matches.append(int(proc.name))
+        identity = read_proc_identity(int(proc.name))
+        if owned_tracee(identity, group_id, core):
+            matches.append(identity)
     return matches
 
 
 def stopped_tracee(tracer, core, seconds=30):
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
-        matches = stopped_core_processes(core)
+        matches = stopped_core_processes(core, tracer.pid)
         if len(matches) == 1:
             return matches[0]
         if len(matches) > 1:
@@ -221,6 +257,30 @@ def stopped_tracee(tracer, core, seconds=30):
             break
         time.sleep(.05)
     raise RuntimeError("native tracee did not stop at record-attempted")
+
+
+def signal_owned_process(expected, signum, *, session_id, core=None):
+    """Signal one checked process through pidfd, never a core-path glob."""
+    if expected.group != session_id or expected.session != session_id:
+        raise RuntimeError("target is outside the campaign process session")
+    try:
+        fd = os.pidfd_open(expected.pid)
+    except ProcessLookupError:
+        return False
+    try:
+        current = read_proc_identity(expected.pid)
+        if (current is None or current.start_time != expected.start_time
+                or current.group != session_id
+                or current.session != session_id
+                or (core is not None and not exact_core_arg(current.argv, core))):
+            raise RuntimeError("process identity changed before signal: " + str(expected.pid))
+        try:
+            signal.pidfd_send_signal(fd, signum)
+        except ProcessLookupError:
+            return False
+        return True
+    finally:
+        os.close(fd)
 
 
 def transaction_files(store):
@@ -239,7 +299,8 @@ def campaign(image, out):
     out.mkdir(parents=True, exist_ok=False)
     device = PrivateExt4()
     tracer = None
-    tracee_pid = None
+    tracer_identity = None
+    tracee = None
     report = {"schema": "fn-t16-private-block-error-v1", "image": str(image),
               "launcher_sha256": sha(image), "core_sha256": sha(str(image) + ".core"),
               "driver_sha256": sha(__file__), "backing": str(device.backing),
@@ -268,16 +329,22 @@ def campaign(image, out):
                                   "-", "-", "fn.letters"],
                                   env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                   start_new_session=True)
-        tracee_pid = stopped_tracee(tracer, str(image) + ".core")
+        tracer_identity = read_proc_identity(tracer.pid)
+        if (tracer_identity is None or tracer_identity.group != tracer.pid
+                or tracer_identity.session != tracer.pid):
+            raise RuntimeError("tracer did not enter its own process session")
+        tracee = stopped_tracee(tracer, str(image) + ".core")
         linked = transaction_files(store)
         new_names = set(linked) - set(prior)
         if len(new_names) != 1 or any(linked[name] != digest for name, digest in prior.items()):
             raise RuntimeError("record-attempted did not retain prior and link one exact candidate")
         report["linked_transaction"] = {name: linked[name] for name in new_names}
-        report["stopped_pid"] = tracee_pid
+        report["stopped_pid"] = tracee.pid
+        report["stopped_start_time"] = tracee.start_time
         report["error_table"] = device.switch("error-writes")
-        os.kill(tracee_pid, signal.SIGCONT)
-        tracee_pid = None
+        if not signal_owned_process(tracee, signal.SIGCONT, session_id=tracer.pid,
+                                    core=str(image) + ".core"):
+            raise RuntimeError("owned native tracee disappeared before resume")
         stdout, stderr = tracer.communicate(timeout=90)
         report["post_exit"] = tracer.returncode
         report["post_stdout"] = stdout.decode("utf-8", "replace")[-1000:]
@@ -324,21 +391,30 @@ def campaign(image, out):
         cleanup_problems = []
         if tracer is not None:
             try:
-                # This campaign created the process group. Resume stopped
-                # members before killing it so no tracee is left orphaned.
-                group_active = tracer.poll() is None
-                if group_active:
-                    os.killpg(tracer.pid, signal.SIGCONT)
-                    os.killpg(tracer.pid, signal.SIGKILL)
-                else:
-                    matches = stopped_core_processes(str(image) + ".core")
-                    if tracee_pid is None and len(matches) == 1:
-                        tracee_pid = matches[0]
-                if not group_active and tracee_pid is not None:
-                    os.kill(tracee_pid, signal.SIGCONT)
-                    os.kill(tracee_pid, signal.SIGKILL)
+                if tracee is None:
+                    current_tracer = read_proc_identity(tracer.pid)
+                    if (tracer_identity is not None and current_tracer is not None
+                            and current_tracer.start_time == tracer_identity.start_time
+                            and current_tracer.group == tracer.pid
+                            and current_tracer.session == tracer.pid):
+                        matches = stopped_core_processes(str(image) + ".core",
+                                                         tracer.pid)
+                        if len(matches) == 1:
+                            tracee = matches[0]
+                        elif len(matches) > 1:
+                            raise RuntimeError("multiple stopped tracees in owned session")
+                    else:
+                        cleanup_problems.append("tracer identity unavailable; no tracee selected")
+                if tracee is not None:
+                    signal_owned_process(tracee, signal.SIGCONT, session_id=tracer.pid,
+                                         core=str(image) + ".core")
+                    signal_owned_process(tracee, signal.SIGKILL, session_id=tracer.pid,
+                                         core=str(image) + ".core")
+                if tracer_identity is not None:
+                    signal_owned_process(tracer_identity, signal.SIGKILL,
+                                         session_id=tracer.pid)
                 tracer.communicate(timeout=5)
-            except (ProcessLookupError, subprocess.TimeoutExpired) as error:
+            except (RuntimeError, subprocess.TimeoutExpired) as error:
                 cleanup_problems.append("tracee cleanup: " + str(error))
         try:
             device.close()

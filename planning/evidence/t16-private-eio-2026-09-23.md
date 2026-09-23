@@ -44,6 +44,9 @@ python3 tests/campaign/native_block_fault.py \
 
 The driver SHA-256 was
 `f1f235554624a8ce835cb5b54fdd08159d705d82162179e1ec287f7bb5721c91`.
+The archived result and trace remain bound to that driver. A later driver
+revision tightened process and mapper ownership checks; its focused tests do
+not constitute another device-EIO run.
 Its prior durable transaction hash was
 `e33ddf29f84616e319abbc9ce0f1d69a046ee95be42c03d6607b8db92d1a1301`.
 The final candidate link succeeded and the candidate file hash before the
