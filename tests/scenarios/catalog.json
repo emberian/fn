@@ -897,6 +897,31 @@
         "tests/native_owner_publication.lisp"
       ],
       "execution_scope": "The fresh ACL2 source trace executes the actual fn-sn transitions and reopen path; the raw SBCL witness executes the actual shared fnn-owner-publish-prepared helper with controlled publication/core observations. These results do not establish filesystem durability, cryptographic primitive correctness, arbitrary-trace preservation or the current combined saved image; PRF-050 remains in progress. The negative missing-enrollment composed trace also evaluates successfully from current ACL2 sources; no native corrupted-store startup or new certificate is claimed."
+    },
+    {
+      "id": "SCN-028",
+      "title": "Late TCPCL refusal replaces final ACK after partial segments",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "Establish a native TCPCL session and send a transfer in at least three segments so two partial ACKs precede END.",
+        "Make the BP receive callback return a definitive capacity refusal after seeing the complete transfer; repeat with an ambiguous FNBS publication result.",
+        "On a valid durable received bundle and an exact already-durable duplicate, exercise the accepted callback result."
+      ],
+      "expected": [
+        "The sender observes XFER_REFUSE No Resources and no successful final END ACK for the capacity refusal; already emitted partial ACKs do not complete the transfer.",
+        "Ambiguous publication releases no final ACK, fences the receiver, and does not appear as a definitive refusal or acceptance.",
+        "Only the durable new record or exact duplicate releases the final ACK; transport ACK alone never discharges an application receipt."
+      ],
+      "evidence": [
+        "tests/acl2/tcpcl-delivery-tests.lisp",
+        "tests/test_bp_receive_integrity_native.py",
+        "planning/evidence/tcpcl-late-disposition-2026-09-23.md"
+      ],
+      "execution_scope": "ACL2 planner and no-final-ACK proof are certified. The native partial-refusal regression is prepared but awaits a source-matched combined image and the A2 FNBS callback join; ambiguity and durable duplicate require that joined image."
     }
   ]
 }

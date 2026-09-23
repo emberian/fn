@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 461 |
-| Certification roots in the Makefile | 456 |
-| Books inside the root closure | 460 |
-| `defthm` and `defthmd` events | 7411 |
-| `defun` events | 5663 |
+| Books read | 464 |
+| Certification roots in the Makefile | 459 |
+| Books inside the root closure | 463 |
+| `defthm` and `defthmd` events | 7417 |
+| `defun` events | 5672 |
 | Functions with verified guards | 1850 |
 | Functions declared `:verify-guards nil` and never verified | 307 |
-| Functions left at the default with an explicit guard | 2778 |
+| Functions left at the default with an explicit guard | 2787 |
 | Functions left at the default with no guard | 728 |
-| `assert-event` checks | 8220 |
-| `must-fail` checks | 326 |
+| `assert-event` checks | 8235 |
+| `must-fail` checks | 327 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 70 |
 | Export-hygiene warnings | 93 |
 | Enabled-projection warnings | 35 |
 | Teeth-form warnings | 24 |
-| Include-hygiene warnings | 307 |
+| Include-hygiene warnings | 310 |
 | Host-names warnings | 667 |
 | Hand-written-record warnings | 18 |
 
@@ -338,6 +338,8 @@ that `make certify` requests.
 | `books/stx-lace.lisp` | root | 22 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/stx-policy.lisp` | root | 16 | 3 | 0/0/3/0 | 0 | 0 | 1 |
 | `books/stx-verify.lisp` | root | 15 | 15 | 0/0/15/0 | 0 | 0 | 0 |
+| `books/tcpcl-delivery-invariants.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/tcpcl-delivery.lisp` | root | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/tcpcl-invariants.lisp` | root | 62 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/tcpcl-octets.lisp` | root | 172 | 36 | 14/0/22/0 | 0 | 0 | 1 |
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
@@ -537,6 +539,7 @@ that `make certify` requests.
 | `tests/acl2/stx-keyring-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 0 | 0 |
 | `tests/acl2/stx-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 42 | 0 | 0 |
 | `tests/acl2/stx-transit-tests.lisp` | root | 0 | 7 | 0/0/7/0 | 84 | 0 | 0 |
+| `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 1 | 0 |
 | `tests/acl2/tcpcl-spool-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 139 | 0 | 0 |
 | `tests/acl2/transfer-journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 59 | 0 | 0 |
