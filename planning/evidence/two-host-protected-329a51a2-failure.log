@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/Users/ember/dev/fn/build/lanes/two-host-launcher/tools/native_two_host_protected_gate.py", line 464, in <module>
+    if __name__ == "__main__": main()
+                               ~~~~^^
+  File "/Users/ember/dev/fn/build/lanes/two-host-launcher/tools/native_two_host_protected_gate.py", line 277, in main
+    ssh(host,image_argv(image,"--fn","store",store,"init","fn.test"))
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ember/dev/fn/build/lanes/two-host-launcher/tools/native_two_host_protected_gate.py", line 142, in ssh
+    return run(["ssh", "-o", "BatchMode=yes", host,
+                " ".join(shlex.quote(str(x)) for x in words)], **kwargs)
+  File "/Users/ember/dev/fn/build/lanes/two-host-launcher/tools/native_two_host_protected_gate.py", line 136, in run
+    raise RuntimeError("{} -> {}\n{}".format(argv, result.returncode,
+                                              result.stderr.decode("utf-8", "replace")))
+RuntimeError: ['ssh', '-o', 'BatchMode=yes', 'persvati', 'env SBCL_USER_ARGS= LD_LIBRARY_PATH= /home/ember/fn-gates/two-host-protected-329a51a2/image/fn-host --fn store /tmp/fn-protected-329a51a23f08-b1178159ff4f/store init fn.test'] -> 1
+
+debugger invoked on a SIMPLE-ERROR in thread
+#<THREAD tid=2617204 "main thread" RUNNING {1200060003}>:
+  Error opening shared object "/tank/fn/toolchains/openssl-3.5.8/lib/libcrypto.so.3":
+  /tank/fn/toolchains/openssl-3.5.8/lib/libcrypto.so.3: cannot open shared object file: No such file or directory.
