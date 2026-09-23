@@ -275,8 +275,16 @@
 ; so the fact arrives as a rewrite instead, takes the form to 33,789 prover
 ; steps and 0.05 seconds.
 
+; Every operation a torn write emits is a `:write', which the name walk
+; passes over; where it writes and how much is beside the point.  With `min',
+; `max' and the unit arithmetic open, each induction case split over the
+; slice bounds (105 ways per case, 746 subgoals, 6.8 s;
+; planning/evidence/misc-books-cost-2026-09-23.md).
 (defthm fn-bs-names-after-of-tear-write
-  (equal (fn-bs-names-after (fn-bs-tear-write op sels i unit) old dir) old))
+  (equal (fn-bs-names-after (fn-bs-tear-write op sels i unit) old dir) old)
+  :hints (("Goal" :induct (fn-bs-tear-write op sels i unit)
+           :in-theory (disable min max floor fn-bs-unit-count
+                               fn-bs-take fn-bs-zeros))))
 
 (defthm fn-bs-names-after-of-append
   (equal (fn-bs-names-after (append a b) old dir)

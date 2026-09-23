@@ -157,8 +157,15 @@
                 (fn-bpn-job-statusp status)
                 (fn-bpn-machine-u64p token))
            (fn-bpn-jobp (fn-bpn-job-with-status job status token)))
+  ;; The field predicates stay closed: each field of the result is the
+  ;; job's own field or an argument, so the hypotheses supply them as
+  ;; literals.  Opened, they cost 2.9 s.
   :hints (("Goal"
-           :in-theory (enable fn-bpn-job-with-status fn-bpn-jobp))))
+           :in-theory (e/d (fn-bpn-job-with-status fn-bpn-jobp)
+                           (fn-bpn-machine-textp fn-bpn-machine-u64p
+                            fn-bpp-timep fn-clock-age-anchorp fn-bpp-eidp
+                            fn-bpn-routep fn-bpb-bundlep fn-cbor-octet-listp
+                            fn-bpn-job-statusp)))))
 
 (defthm fn-bpn-jobp-of-constructor
   (equal
@@ -221,11 +228,16 @@
                             (xs (fn-bpb-bundle-blocks bundle)))
                  (:instance fn-bpb-encode-block-are-octets
                             (b (fn-bpb-bundle-payload bundle))))
+           ;; The primary block's recognizer stays closed: the instances
+           ;; need only the three field facts `fn-bpb-bundlep' states, and
+           ;; opened, `fn-bpp-blockp' split the goal 108 ways over its CRC,
+           ;; EID and time fields, 16.9 s
+           ;; (planning/evidence/misc-books-cost-2026-09-23.md).
            :in-theory (e/d (fn-bpb-encode fn-bpb-bundlep)
                            (fn-bpp-encode fn-bpb-encode-blocks
                             fn-bpb-encode-block fn-bpb-blockp
                             fn-bpb-block-listp fn-bpb-payload-blockp
-                            fn-bpb-splitp)))))
+                            fn-bpb-splitp fn-bpp-blockp)))))
 
 (defthm fn-bpn-send-bundle-destination
   (equal
@@ -240,12 +252,15 @@
            (fn-clock-age-anchorp
             (fn-bpn-anchor-of
              (fn-bpn-send-bundle config peer adu sequence obs) obs)))
+  ;; The anchor is either nil or the bundle's age, tested to be a time,
+  ;; paired with the observation's monotonic reading; which age the sent
+  ;; bundle carries does not matter.  Opening the bundle and decoding its
+  ;; age block cost 1.2 s and 470 k steps; closed, 551 steps.
   :hints (("Goal"
            :in-theory
-           (enable fn-bpn-anchor-of fn-bpn-send-bundle
-                   fn-bpn-send-blocks fn-bpb-bundle-age
-                   fn-clock-age-anchorp fn-clock-observationp
-                   fn-clock-timep))))
+           (e/d (fn-bpn-anchor-of fn-clock-age-anchorp
+                 fn-clock-observationp fn-clock-timep)
+                (fn-bpn-send-bundle fn-bpb-bundle-age)))))
 
 (defthm fn-bpn-keyp-of-list
   (equal (fn-bpn-keyp (list work attempt generation))
@@ -415,9 +430,14 @@
   (implies (and (fn-bpn-job-listp jobs)
                 (fn-bpn-find-job key jobs))
            (fn-bpn-jobp (fn-bpn-find-job key jobs)))
+  ;; The job recognizer stays closed: the step needs `(fn-bpn-jobp (car
+  ;; jobs))' as `fn-bpn-job-listp' states it.  Opened, its eleven field
+  ;; predicates split the induction step 64 ways, 14.2 s
+  ;; (planning/evidence/misc-books-cost-2026-09-23.md).
   :hints (("Goal"
            :induct (fn-bpn-find-job key jobs)
-           :in-theory (enable fn-bpn-job-listp fn-bpn-find-job))))
+           :in-theory (e/d (fn-bpn-job-listp fn-bpn-find-job)
+                           (fn-bpn-jobp fn-bpn-job-key-memberp)))))
 
 (defthm fn-bpn-find-queued-for-peer-is-a-job
   (implies (and (fn-bpn-job-listp jobs)
@@ -815,15 +835,25 @@
    (equal
     (fn-bpn-machine-state-next-token (fn-bpn-apply-record st record))
     (1+ (fn-bpn-machine-state-next-token st))))
+  ;; Only the token test of applicability and the token the successor
+  ;; state carries matter; the record, job and list recognizers stay closed.
+  ;; Opened, they split the goal 242 ways, 6.3 s
+  ;; (planning/evidence/misc-books-cost-2026-09-23.md).
   :hints (("Goal"
            :in-theory
-           (enable fn-bpn-apply-record fn-bpn-record-applicablep
-                   fn-bpn-record-token fn-bpn-state-with))))
+           (e/d (fn-bpn-apply-record fn-bpn-record-applicablep
+                 fn-bpn-record-token fn-bpn-state-with)
+                (fn-bpn-jobp fn-bpn-lifecycle-recordp fn-bpn-find-job
+                 fn-bpn-append fn-bpn-replace-job fn-bpn-job-with-status
+                 fn-bpn-record-key fn-bpn-member)))))
 
 (defthm fn-bpn-apply-inapplicable-record-is-noop
   (implies (not (fn-bpn-record-applicablep st record))
            (equal (fn-bpn-apply-record st record) st))
-  :hints (("Goal" :in-theory (enable fn-bpn-apply-record))))
+  ;; The first branch of `fn-bpn-apply-record'; the applicability test stays
+  ;; a literal (open, it cost 1.3 s and 359 k steps; closed, 39 steps).
+  :hints (("Goal" :in-theory (e/d (fn-bpn-apply-record)
+                                  (fn-bpn-record-applicablep)))))
 
 (defthm fn-bpn-replay-records-preserves-machine-invariant
   (implies

@@ -178,14 +178,23 @@
 
 ; fn-bpf-complete-agreeing-cover-reassembles-to-payload
 ;   without `fn-bpf-all-agreep`: a cover of the right shape carrying other
-;   bytes does not reassemble to this payload.
-(local
- (must-fail
-  (thm (implies (and (fn-cbor-octet-listp payload)
-                     (fn-bpf-inputsp fs (len payload))
-                     (fn-bpf-covers-all fs (len payload)))
-                (equal (fn-bpf-reassemble fs (len payload))
-                       (list :ok payload))))))
+;   bytes does not reassemble to this payload.  Bitten by an instance, like
+;   the two teeth below: payload = *bpf-payload* and fs = the same three cuts
+;   of eight zero octets, which are in bounds and cover every index but
+;   disagree with the payload everywhere.  The body is false: the reassembly
+;   is (:ok (0 0 0 0 0 0 0 0)).  (This was a `must-fail` of the general
+;   claim, which refuted nothing in particular and cost 4.8 s of search
+;   before ACL2 gave up; planning/evidence/misc-books-cost-2026-09-23.md.)
+(defconst *bpf-zero-cut*
+  (nth 1 (fn-bpf-fragment '(0 0 0 0 0 0 0 0) '(3 5))))
+
+(assert-event (not (fn-bpf-all-agreep *bpf-zero-cut* *bpf-payload*)))
+(assert-event
+ (not (implies (and (fn-cbor-octet-listp *bpf-payload*)
+                    (fn-bpf-inputsp *bpf-zero-cut* (len *bpf-payload*))
+                    (fn-bpf-covers-all *bpf-zero-cut* (len *bpf-payload*)))
+               (equal (fn-bpf-reassemble *bpf-zero-cut* (len *bpf-payload*))
+                      (list :ok *bpf-payload*)))))
 
 ;   without `fn-bpf-covers-all`: a gap yields `:missing`, not `:ok`.  Stated
 ;   generally, the negated goal opens `fn-bpf-reassemble` past the rewriter's
@@ -201,13 +210,22 @@
                       (list :ok *bpf-payload*)))))
 
 ;   without `fn-bpf-inputsp`: an out-of-bounds input list is refused.
-(local
- (must-fail
-  (thm (implies (and (fn-cbor-octet-listp payload)
-                     (fn-bpf-all-agreep fs payload)
-                     (fn-bpf-covers-all fs (len payload)))
-                (equal (fn-bpf-reassemble fs (len payload))
-                       (list :ok payload))))))
+;   Bitten by an instance: one fragment carrying the whole payload at offset
+;   0 but declaring a total of 9 for an 8-octet payload.  It agrees with the
+;   payload and covers indices 0 to 7, and the totals disagree, so the input
+;   is refused.  The body is false: the reassembly is (:invalid :bounds).
+;   (This was a `must-fail` of the general claim, 11.5 s of search.)
+(defconst *bpf-wrong-total*
+  (list '(:fn-bp-fragment 0 (10 20 30 40 50 60 70 80) 9)))
+
+(assert-event (fn-bpf-fragment-listp *bpf-wrong-total*))
+(assert-event (not (fn-bpf-inputsp *bpf-wrong-total* 8)))
+(assert-event
+ (not (implies (and (fn-cbor-octet-listp *bpf-payload*)
+                    (fn-bpf-all-agreep *bpf-wrong-total* *bpf-payload*)
+                    (fn-bpf-covers-all *bpf-wrong-total* (len *bpf-payload*)))
+               (equal (fn-bpf-reassemble *bpf-wrong-total* (len *bpf-payload*))
+                      (list :ok *bpf-payload*)))))
 
 ;   without `fn-cbor-octet-listp` on the payload: agreement with a non-octet
 ;   list cannot produce that list back, because cells are octets and the
