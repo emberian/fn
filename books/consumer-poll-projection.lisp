@@ -5,12 +5,21 @@
 (include-book "replay")
 (include-book "consumer-position")
 
+(defthm fn-cpj-decoded-cursor-is-list
+  (implies (eq (car (fn-cp-cursor-decode octets)) :ok)
+           (true-listp (cadr (fn-cp-cursor-decode octets))))
+  :hints (("Goal" :in-theory (e/d (fn-cp-cursor-decode fn-cp-cursor)
+                                  (fn-cp-read-fields fn-cp-cursorp)))))
+
+(defthm fn-cpj-bound-sequence-is-number
+  (implies (fn-stxa-bindsp event)
+           (acl2-numberp (fn-stxa-sequence event)))
+  :hints (("Goal" :in-theory (enable fn-stxa-bindsp fn-stxa-p))))
+
 (defun fn-cpj-project (cursor-octets event-octets)
-  ; consumer-position's public cursor decoder is admitted but its guard is
-  ; not yet verified, so this joined projection makes no guard claim either.
   (declare (xargs :guard t :verify-guards nil))
-  (if (or (not (fn-cp-at-mostp cursor-octets 346))
-          (not (fn-cp-at-mostp event-octets *fn-stxa-max-octets*)))
+  (if (or (not (fn-cbor-at-mostp cursor-octets 346))
+          (not (fn-cbor-at-mostp event-octets *fn-stxa-max-octets*)))
       (list :refused :limit)
     (let* ((cursor-result (fn-cp-cursor-decode cursor-octets))
            (event-result (fn-stxa-decode-exact event-octets)))
@@ -52,5 +61,7 @@
                                  (fn-record-msgid record))
                       source received (fn-stxe-detail verdict)
                       (fn-stxa-verdict-event event))))))))))
+
+(verify-guards fn-cpj-project)
 
 (in-theory (disable (:d fn-cpj-project)))
