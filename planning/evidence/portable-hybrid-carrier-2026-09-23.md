@@ -15,3 +15,18 @@ received-carrier entry with real Ed25519 and ML-DSA-65 verification, a
 substituted ML key/signature, and a malformed carrier plan. This component
 test stubs `fnn-core` using the production scalar convention, so it does not
 test the saved image's ACL2-to-native bridge or the Store integration.
+
+The affected closure of `books/stx-evidence-records.lisp` was then certified
+with `python3 tools/farm.py submit persvati --affected-by
+books/stx-evidence-records.lisp --jobs 2` (the same remote root, pinned ACL2
+and cache as above), using the selector fix that removes three host wrappers
+from Makefile book roots. [Affected manifest](manifests/certify-20260923T143134Z-646146.json)
+records run `run-20260923T143127Z-1770`, 157 selected roots, 263 books in
+their include closure, 102 matching cached/kept books from three origins, and
+161 newly certified books. All 161 passed at the selected stxe source digest
+`602d5955039dbb4384940db4423c34f29d7fd6b14c43d55c1046b00d7e65ee00`.
+Elapsed certification was 223.73 s; the longest book, `owner-invariants`,
+took 13.383 s, with no individual proof event over 10 s (its include-book
+and book overhead accounted for the rest). The Makefile selector fix is
+already root commit `defe3626` and was applied temporarily in this lane for
+the run; the carrier commits do not duplicate it.
