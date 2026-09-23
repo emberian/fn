@@ -106,7 +106,9 @@ The caller holds SERVICE's mutex for this whole function."
                  (evidence (fnn-octets (fnn-global 'fn-owner-app-evidence))))
              ;; Observe at the actual Store submission, under the owner lock.
              ;; A replay that only binds a committed result does not need time.
-             (unless (eq (fnn-owner-advance-clock) :observed)
+             (unless (and (eq (fnn-owner-advance-clock) :observed)
+                          (eq (fnn-owner-action 'fn-owner-stamp-status)
+                              :usable))
                (return-from fnn-bpapp-accept-locked
                  (values :clock-unusable nil)))
              (setq application-result
