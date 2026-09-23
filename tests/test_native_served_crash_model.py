@@ -20,7 +20,10 @@ if IMAGE_AVAILABLE:
         def assert_recovery_cut_image(self, before, store, cut):
             bridge = model_images.ModelBridge()
             try:
-                bridge.call('(include-book "books/byte-store-observation")')
+                bridge.call('(include-book "books/byte-store-observation-scan")')
+                bridge.call('(include-book "books/codec-attach")')
+                bridge.call('(include-book "books/byte-store-frame")')
+                bridge.call('(include-book "books/byte-store-txn-name")')
                 index = model_images.cut_index(cut.program,
                                                cut.model_name or cut.name,
                                                cut.occurrence)
@@ -31,9 +34,14 @@ if IMAGE_AVAILABLE:
                     " (cut-bs (car (nth {} run)))"
                     " (model-image (fn-bs-crash cut-bs nil)))"
                     " (list (equal (fn-bs-pending cut-bs) nil)"
-                    "       (fn-bso-served-image-agree model-image physical)))".format(
+                    "       (fn-bso-served-image-agree model-image physical)"
+                    "       (equal (fn-bs-names model-image :transactions)"
+                    "              (fn-bs-names physical :transactions))"
+                    "       (fn-bs-scan-okp (fn-bs-scan-store model-image))"
+                    "       (equal (fn-bs-scan-store model-image)"
+                    "              (fn-bs-scan-store physical))))".format(
                         before, model_images.import_image(store), index))
-                self.assertRegex(observed, r"\(T\s+T\)\s*$",
+                self.assertRegex(observed, r"\(T\s+T\s+T\s+T\s+T\)\s*$",
                                  "{} occurrence {}: {}".format(
                                      cut.name, cut.occurrence, observed))
             finally:

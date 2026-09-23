@@ -437,10 +437,24 @@ barrier and both finish cuts. The five recovery barriers have distinct host
 selectors and distinct occurrences of `fn-bs-recover-program`'s barrier cut;
 they preserve the prior acknowledged article through reopen. See the
 [runtime record](../tests/evidence/2026-09-23-served-crash-observation.md).
-This is visible-image correspondence for process death. It does not establish
-literal `fn-bs-crash-imagep` equality of a physical inode table, torn or lost
-dirty writes, power loss, or a theorem carrying this projection through every
-decoder/recovery observation. The other served post cuts, replay and staging
+`fn-bso-served-agreement-preserves-scan` in
+`books/byte-store-observation-scan.lisp` proves that visible agreement carries
+the model's exact `fn-bs-scan-store` result to the physical image when the
+ordered transaction names agree and the model scan succeeds. The name-order
+premise matters because the visible directory relation compares name sets,
+while the scanner checks canonical order. The valid-scan premise excludes
+malformed duplicate-name roots that can conceal an extra physical key. The
+served post and recovery tests evaluate both premises and exact scan equality
+at their observed cuts. The test book uses two valid decoded transactions
+under inode renaming and a failing witness for each premise.
+`fn-bso-served-agreement-preserves-open-by-scan` records the resulting
+`fn-sn-open-observed` equality with identical groups and capacity; this is a
+congruence consequence of the scanner keystone, not a recovery-program
+simulation.
+This is visible-image and scanner correspondence for process death. It does
+not establish literal `fn-bs-crash-imagep` equality of a physical inode table,
+torn or lost dirty writes, power loss, or a theorem for all recovery behaviors
+beyond the scanner. The other served post cuts, replay and staging
 cleanup cuts, uncertain error callbacks, and repeated recovery deaths remain
 runtime differential obligations.
 

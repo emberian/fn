@@ -132,7 +132,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-feed-` | `peer-feed`, `peer-feed-invariants`, `tests/acl2/peer-feed-tests` | The outbound feed machine of specs/peering.md §3: the per-peer feed record (queue of (message-id, offer-state), backoff, in-flight offer, attempt counter), enqueue on a durable local acceptance, selection under the scheduler's contact window, the RFC 3977 §6.3.2 / RFC 4644 response-code map, the FNFD journal record kinds and their frame codec, the replay fold and the restart that resolves an in-flight offer by CHECK/IHAVE |
 
 | `fn-bpaj-` | `bp-native-app` | Native BP request intent, exact evolving-Store binding, and receipt-journal replay join; host wrappers use the same dispatch definitions |
-| `fn-bso-` | `byte-store-observation`, `tests/acl2/byte-store-observation-tests` | Visible Store directory comparison across physical/model inode renaming: exact names and file octets plus the hard-link alias partition in root, transactions and staging. Unreachable inodes are outside this read-only observation. |
+| `fn-bso-` | `byte-store-observation`, `byte-store-observation-scan`, and their ACL2 test books | Visible Store directory comparison across physical/model inode renaming: exact names and file octets plus the hard-link alias partition in root, transactions and staging. Its scanner theorem also requires identical ordered transaction names and a valid model scan. Unreachable inodes are outside this read-only observation. |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.
