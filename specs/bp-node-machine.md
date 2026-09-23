@@ -56,7 +56,7 @@ carry a pointer here and are not edited further; bp-design's packet table
 | FNBS kind 1, the frontier `(:bpn-sequence n)`, `fn-bpn-sequence-reserve` | `books/bp-node-records.lisp` | green |
 | PRF-045's non-reuse and persistence-cut models | `books/bp-sequence-fidelity.lisp`, `books/bp-sequence-persistence.lisp` | green |
 | the receive-evidence namespace | `books/bp-receive-evidence.lisp` | green |
-| fragmentation and reassembly (reference only), two lemmas commented out | `books/bp-fragment.lisp`, `books/bp-fragment-invariants.lisp` | green |
+| reference fragmentation/reassembly; cursor cutter and bounded position scanner proved equal on all inputs; whole-parent restoration | `books/bp-fragment.lisp`, `books/bp-fragment-invariants.lisp`, `books/bp-fragment-fast.lisp` | scoped C1 certificate in `planning/evidence/bp-fragment-c1-subset-2026-09-23.md`; inverse and consumed-fragment agreement remain open |
 | the receiver, the FNRJ journal, the join the host calls (`fn-bpaj-dispatch`) | `books/bp-receipt*.lisp`, `books/bp-native-app.lisp`, `-fast` | receipt books green; `bp-native-app`, `-fast`, `bp-receiver-evolving-*` red |
 | the release decision and, since `9dd5e3a2`, `fn-bprl-release-record`, `fn-bprl-replay-records`, `fn-bprl-replay-journal` | `books/bp-release.lisp` | green, persvati `certify-20260922T184059Z-2797731` |
 | the convergence layer, C1 to C4 | `books/tcpcl-*.lisp` | green |
@@ -1909,17 +1909,19 @@ book-wide; the K6 edit waits for T1's BP-receiver cluster (slice A3's gate).
 
 ### 7.1 Limits that compose (§12, D-9)
 
-`*fn-bpf-max-length*` (`bp-fragment.lisp:50`, 65536) rises to
-`*fn-bpa-max-octets*` (`bp-adu.lisp:24`, 65538) only in the same batch as a
-theorem over constants, `fn-bpn-limits-compose`, in `books/bp-limits.lisp`
-(new, slice C1; it includes `bp-adu`, `bp-fragment`, `frame-octets` and
-`bp-node-machine-codec`), that states every inequality below.
-The raise alone establishes nothing about maximum-size ADUs.
+`*fn-bpf-max-length*` is now 65538, equal to `*fn-bpa-max-octets*`.
+`fn-bpn-limits-compose` in `books/bp-limits.lisp` proves the relationships
+among the limits in the current finite machine: ADU/reassembly equality,
+image capacity, lifecycle-record headroom and aggregate capacity for 64
+maximum-size images. The machine still checks each actual encoded image.
+The planned explicit header cap, stage slots and stage octets are not yet
+machine fields, so their rows below remain obligations for the family-plan
+batch. The limit equality alone does not establish maximum-size ADU service.
 
 | Limit | Value today | Must satisfy |
 | --- | --- | --- |
 | request and receipt ADU | `*fn-bpa-max-octets*` 65538 | ≤ reassembly length |
-| reassembly length | `*fn-bpf-max-length*` 65536 → 65538 | = ADU max |
+| reassembly length | `*fn-bpf-max-length*` 65538 | = ADU max; proved in current constants |
 | bundle image | `*fn-bpn-machine-max-job-octets*` = `*fn-frame-max-blob*` 131072 | ADU max + `*fn-bpn-max-header-octets*` ≤ it |
 | record payload | `*fn-bpn-lifecycle-max-payload*` 134144 | bundle image + held-record overhead ≤ it |
 | fragment count | `*fn-bpf-max-fragments*` 64 | count × (per-fragment image) ≤ stage-octets; count ≤ stage-slots + 1 |
@@ -2052,14 +2054,17 @@ contract, never restored by unfragmenting.
 
 ### 7.4 The executable refinement (F-H)
 
-`books/bp-fragment.lisp` stays the reference (its header says so).
-`books/bp-fragment-fast.lisp` (new, slice C1) defines
-`fn-bpf-fragment-fast` (a cursor over the payload, no repeated `nth`) and
-`fn-bpf-reassemble-fast` (one pass building the output by offset over
-fragments sorted by offset, tracking the least gap and least conflict
-position), with T4's two equalities, including the four outcomes, conflict
-precedence and the least conflict/gap positions. The machine calls only the
-fast functions. Slice C measures (BP-R22) payload size and held-set size
+`books/bp-fragment.lisp` stays the reference. `books/bp-fragment-fast.lisp`
+now defines `fn-bpf-fragment-fast` (a cursor over the payload) and
+`fn-bpf-reassemble-fast` (bounded position scans). Both have certified
+all-input equality with the reference, including the four reassembly
+outcomes, conflict precedence and least reported positions. Reassembly
+validates input before scanning, probes at most 64 fragments at each output
+position, and makes at most three position scans. It avoids full-canvas
+allocation for conflict and gap outcomes; the success path still builds the
+output canvas. This is a work bound, not measured native speed. The planned
+sorted-interval linear algorithm and machine/native call-site connection
+remain C2 work. Slice C measures (BP-R22) payload size and held-set size
 independently on the native image: allocations, time and latency for
 success, gap, overlap and conflict.
 

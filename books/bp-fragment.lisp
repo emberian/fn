@@ -44,10 +44,10 @@
 ; -----------------------------------------------------------------------------
 ; Bounds
 ;
-; fn's BP application data unit cap is 32 KiB; 65536 leaves BP framing headroom
-; without claiming a general BPv7 limit.  Both bounds are local policy.
+; These are local policy bounds.  Their relationship to the ADU and frame
+; limits is stated in bp-limits.lisp; a change to one limit needs that book.
 
-(defconst *fn-bpf-max-length* 65536)
+(defconst *fn-bpf-max-length* 65538)
 (defconst *fn-bpf-max-fragments* 64)
 
 ; -----------------------------------------------------------------------------
@@ -392,3 +392,56 @@
   (not (fn-bpp-no-fragmentp (fn-bpp-flags b))))
 
 (verify-guards fn-bpf-fragmentablep)
+
+; A second cut of an existing fragment uses ADU coordinates, not coordinates
+; relative to this fragment's payload.  The caller checks the retained extent
+; against the parent's total before it plans the children.
+(defun fn-bpf-refragment-block (parent local-offset)
+  (declare (xargs :guard (and (fn-bpp-blockp parent)
+                              (fn-bpp-fragmentp (fn-bpp-flags parent))
+                              (natp local-offset))))
+  (fn-bpf-fragment-block
+   parent (+ (fn-bpp-fragment-offset parent) local-offset)
+   (fn-bpp-total-adu-length parent)))
+
+(verify-guards fn-bpf-refragment-block)
+
+; Only a whole parent may be reconstructed by dropping the fragment fields.
+; A fragment parent has its own offset and total, which must be retained by a
+; second cut instead (fn-bpf-refragment-block above).
+(defun fn-bpf-unfragment-block (child)
+  (declare (xargs :guard (and (fn-bpp-blockp child)
+                              (fn-bpp-fragmentp (fn-bpp-flags child)))))
+  (fn-bpp-make-block
+   (- (fn-bpp-flags child) *fn-bpp-flag-fragment*)
+   (fn-bpp-crc-type child)
+   (fn-bpp-destination child)
+   (fn-bpp-source child)
+   (fn-bpp-report-to child)
+   (fn-bpp-creation-time child)
+   (fn-bpp-sequence child)
+   (fn-bpp-lifetime child)
+   nil nil))
+
+(defun fn-bpf-starts (boundaries)
+  (declare (xargs :guard t))
+  (cons 0 boundaries))
+
+(defun fn-bpf-fragment-primaries (parent starts total)
+  (declare (xargs :guard (and (fn-bpp-blockp parent)
+                              (nat-listp starts) (natp total))))
+  (if (consp starts)
+      (cons (fn-bpf-fragment-block parent (car starts) total)
+            (fn-bpf-fragment-primaries parent (cdr starts) total))
+    nil))
+
+(defun fn-bpf-all-unfragment-to (parent children)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp children)
+      (and (equal (fn-bpf-unfragment-block (car children)) parent)
+           (fn-bpf-all-unfragment-to parent (cdr children)))
+    (null children)))
+
+(verify-guards fn-bpf-unfragment-block)
+(verify-guards fn-bpf-starts)
+(verify-guards fn-bpf-fragment-primaries)

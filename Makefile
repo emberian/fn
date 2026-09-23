@@ -225,7 +225,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-machine-authorization-tests \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
+	books/bp-fragment-fast \
+	books/bp-limits \
 	tests/acl2/bp-fragment-tests \
+	tests/acl2/bp-fragment-fast-tests \
+	tests/acl2/bp-limits-tests \
 	books/clock \
 	books/clock-invariants \
 	tests/acl2/clock-tests \
