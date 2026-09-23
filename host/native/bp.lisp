@@ -87,7 +87,7 @@ zero of RFC 9171 section 4.2.6 rather than a monotonic counter."
   (handler-case
       (progn
         (fnn-safe-directory root t)
-        (if (string= (or (sb-ext:posix-getenv "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER") "")
+        (if (string= (or (fnn-developer-selector "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER") "")
                      "1")
             ;; Test-only fault point for the existing-root recovery cut.  It
             ;; represents an error from the parent barrier; normal operation
@@ -355,7 +355,7 @@ may or may not be durable."
   ; Test-only exact core/adapter fault.  This runs inside the receive callback
   ; and the command's production handler, so exit-code evidence exercises the
   ; real subtype ordering rather than a sibling classifier.
-  (when (string= (or (sb-ext:posix-getenv "FN_BP_TEST_DELIVER_FAULT") "") "1")
+  (when (string= (or (fnn-developer-selector "FN_BP_TEST_DELIVER_FAULT") "") "1")
     (fnn-fault "bp: injected receive core fault"))
   (let* ((obs (fnn-bp-observation (fnn-bp-tally-wall tally)
                                   (fnn-bp-tally-wall-error tally)))

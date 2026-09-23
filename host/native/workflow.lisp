@@ -206,8 +206,7 @@
                             (format nil "~d.~a.tmp" (sb-posix:getpid)
                                     (fnn-random-hex 16))))
            (observer
-             (when (string= (or (sb-ext:posix-getenv
-                                 "FN_APP_JOURNAL_TEST_OBSERVER") "")
+             (when (string= (or (fnn-developer-selector "FN_APP_JOURNAL_TEST_OBSERVER") "")
                             "assert-reported")
                (lambda (point publication)
                  (let ((phase (fnn-core 'fn-jpub-host-phase publication))
@@ -218,22 +217,18 @@
                    (unless (eq phase expected)
                      (fnn-fault "publication observer preceded ACL2 report"))))))
            (fault-observer
-             (when (or (string= (or (sb-ext:posix-getenv
-                                      "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE")
+             (when (or (string= (or (fnn-developer-selector "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE")
                                      "") "1")
-                       (string= (or (sb-ext:posix-getenv
-                                      "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE")
+                       (string= (or (fnn-developer-selector "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE")
                                      "") "1"))
                (lambda (label point publication path)
                  (declare (ignore publication))
                  (when (and (eq point :directory-barrier)
                             (or (and (eq label :receipt-decision)
-                                     (string= (or (sb-ext:posix-getenv
-                                                   "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE")
+                                     (string= (or (fnn-developer-selector "FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE")
                                                   "") "1"))
                                 (and (eq label :release)
-                                     (string= (or (sb-ext:posix-getenv
-                                                   "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE")
+                                     (string= (or (fnn-developer-selector "FN_APP_JOURNAL_TEST_FAIL_RELEASE_NAMESPACE")
                                                   "") "1"))))
                    (fnn-os-fail sb-posix:eio path)))))
            (outcome
@@ -256,8 +251,7 @@
   "Preflight, durably publish, then apply one record through its ACL2 owner."
   ; Test injection models the owner fencing its Store between journal open and
   ; this operation.  The production guard below is the path under test.
-  (when (string= (or (sb-ext:posix-getenv
-                      "FN_APP_JOURNAL_TEST_FENCE_STORE") "")
+  (when (string= (or (fnn-developer-selector "FN_APP_JOURNAL_TEST_FENCE_STORE") "")
                  "before-publish")
     (setf (fnn-store-fenced (fnn-app-journal-store journal)) t))
   (fnn-require-writer (fnn-app-journal-store journal))
@@ -390,8 +384,7 @@
                   store-root
                   (and writable
                        (not (string=
-                             (or (sb-ext:posix-getenv
-                                  "FN_APP_JOURNAL_TEST_READ_ONLY_STORE") "")
+                             (or (fnn-developer-selector "FN_APP_JOURNAL_TEST_READ_ONLY_STORE") "")
                              "1")))))
            (setq journal (fnn-app-open store journal-root domain))
            (funcall thunk journal))

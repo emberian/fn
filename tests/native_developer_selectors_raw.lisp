@@ -52,6 +52,7 @@
 
 ;;; Stubs for what the deployed definitions call, defined first.
 (defvar *log* nil)
+(define-condition fnn-os-error (error) ())
 (defun note (&rest event) (push event *log*))
 (defun fnn-open-streams () nil)
 (defun fnn-global (name) (declare (ignore name)) t)
@@ -129,17 +130,23 @@
     (check (null (logged :dispatch)) "production store post FAULT never dispatches")
     (check (search "FAULT argument" (second (first (logged :err))))
            "production refusal names the FAULT argument"))
-  ;; A plain request with no selector reaches dispatch.
-  (check (eql (run-main (list "store" "/x" "post" "<a@b>" "/p" "-" "-" "fn.letters")) 0)
-         "production store post without FAULT dispatches")
-  (check (logged :dispatch) "production start with no selector dispatches")
-  ;; fnn-command-post itself refuses a FAULT argument before the store opens.
+  ;; Even the plain raw entry is unsupported before dispatch or Store I/O.
+  (check (eql (run-main (list "store" "/x" "post" "<a@b>" "/p" "-" "-" "fn.letters"))
+              +fnn-exit-usage+)
+         "production store post without FAULT exits 5")
+  (check (null (logged :dispatch)) "production store post never dispatches")
+  (check (search "store post" (second (first (logged :err))))
+         "production raw post refusal names its entry")
+  (check (eql (run-main (list "store" "/x" "status")) 0)
+         "production inspection dispatches")
+  (check (logged :dispatch) "production inspection reaches dispatch")
+  ;; Direct function callers are guarded before the store opens too.
   (check (eq :usage
              (handler-case (catch 'opened
                              (fnn-command-post "/x" "<a@b>" "/p" nil "postpublish"
                                                '("fn.letters")))
                (fnn-usage-error () :usage)))
-         "production fnn-command-post refuses a FAULT argument before opening"))
+         "production fnn-command-post refuses before opening"))
 
 (with-profile (:developer)
   (clear-selectors)
@@ -275,6 +282,7 @@
 (defvar *sent* nil)
 (defun fnn-control-state-service (control) (declare (ignore control)) :service)
 (defun fnn-control-read-frame (socket maximum) (declare (ignore socket maximum)) :frame)
+(defun fnn-control-answering (control socket) (declare (ignore control socket)) nil)
 (defun fnn-control-send-reply (socket status)
   (declare (ignore socket))
   (note :reply status)

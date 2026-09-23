@@ -134,8 +134,7 @@ and faults without following or deleting anything."
         (case action
           (:keep nil)
           (:remove
-           (when (string= (or (sb-ext:posix-getenv
-                               "FN_TCPCL_TEST_FAIL_STAGING_UNLINK") "") "1")
+           (when (string= (or (fnn-developer-selector "FN_TCPCL_TEST_FAIL_STAGING_UNLINK") "") "1")
              (fnn-indeterminate "tcpcl: injected staging cleanup unlink failure"))
            (handler-case (fnn-unlink (fnn-join root name))
              (fnn-os-error (e)
@@ -143,8 +142,7 @@ and faults without following or deleting anything."
            (setq removed t))
           (t (fnn-fault "tcpcl: ACL2 returned an invalid spool recovery action"))))
       (when removed
-        (when (string= (or (sb-ext:posix-getenv
-                            "FN_TCPCL_TEST_FAIL_STAGING_BARRIER") "") "1")
+        (when (string= (or (fnn-developer-selector "FN_TCPCL_TEST_FAIL_STAGING_BARRIER") "") "1")
           (fnn-indeterminate "tcpcl: injected staging cleanup barrier failure"))
         (handler-case (fnn-fsync-dir root)
           (fnn-os-error (e)
@@ -193,7 +191,7 @@ and faults without following or deleting anything."
 (defun fnn-tcl-test-pause-after-stage-data (stage)
   ; An explicit native process-death cut for the recovery regression.  It is
   ; disabled unless the test-only environment variable is exactly "1".
-  (when (string= (or (sb-ext:posix-getenv "FN_TCPCL_TEST_PAUSE_AFTER_STAGE_DATA") "")
+  (when (string= (or (fnn-developer-selector "FN_TCPCL_TEST_PAUSE_AFTER_STAGE_DATA") "")
                  "1")
     (fnn-out "TCPCL TEST STAGE-DATA ~a" stage)
     (sleep 60)))
