@@ -466,6 +466,17 @@ def affected_roots(books: list[str], targets: list[str]) -> list[str]:
     return selected
 
 
+def install_from_cache(roots: list[str], toolchain_identity: str) -> certs.Report:
+    """Install what the cache holds of the roots' closure (`--incremental`).
+
+    `certs.install_partial` decides, per book, from the closure key and the
+    toolchain identity alone; the books it names as uncached are the ones
+    this run certifies.  A seam, so the runner tests can stand in a cache.
+    """
+    return certs.install_partial(ROOT, certs.cache_directory(), roots,
+                                 toolchain_identity)
+
+
 def with_dependencies(books: list[str]) -> list[str]:
     """`books` and everything they locally include, dependencies first.
 
@@ -809,6 +820,18 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--incremental",
+        action="store_true",
+        help=(
+            "install every book of the selected roots' closure that the "
+            "certificate cache (FN_CERT_CACHE) holds at its current digest and "
+            "this ACL2 toolchain, from any snapshot origin, and certify only "
+            "the rest, dependencies first; a root that installs is not "
+            "certified again. The manifest records each book as installed or "
+            "certified"
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="print the books this invocation would certify and exit",
@@ -865,13 +888,19 @@ def main() -> int:
         parser.error("--budget-seconds must be positive")
     if args.jobs <= 0:
         parser.error("--jobs must be positive")
+    if args.incremental and args.closure:
+        parser.error("--incremental and --closure are two plans; choose one")
     requested_before_filter = list(args.books)
     if args.affected_by:
         try:
             args.books = affected_roots(args.books, args.affected_by)
         except ValueError as error:
             parser.error(str(error))
-    if args.closure and args.books:
+    roots = list(args.books)
+    if (args.closure or args.incremental) and args.books:
+        # Under --incremental the whole closure is read, audited and digested
+        # like a --closure run's; which of it ACL2 certifies is decided once
+        # the toolchain is known, by what the cache holds.
         try:
             args.books = with_dependencies(args.books)
         except ValueError as error:
@@ -906,6 +935,8 @@ def main() -> int:
         "requested_books": args.books,
         "affected_by": list(args.affected_by),
         "closure": bool(args.closure),
+        "incremental": bool(args.incremental),
+        "roots": roots,
         "pcert": bool(args.pcert),
         "budget_seconds": args.budget_seconds,
         "requested_before_filter": requested_before_filter,
@@ -928,6 +959,9 @@ def main() -> int:
         print(f"Certification evidence: {run_dir.relative_to(ROOT)}", file=sys.stderr)
         return 2
 
+    # The books whose sources this run reads and re-reads at the end: under
+    # --incremental the whole closure, of which only part is certified.
+    digested = list(args.books)
     try:
         source_digests = collect_book_sources(args.books)
         schedule = dependency_graph(args.books)
@@ -962,6 +996,37 @@ def main() -> int:
     manifest["acl2_toolchain"] = toolchain.provenance
     manifest["acl2_toolchain_identity"] = toolchain.identity
     manifest["acl2_compatibility"] = toolchain.compatibility
+    if args.incremental:
+        try:
+            installed = install_from_cache(roots, toolchain.identity)
+        except (OSError, ValueError) as error:
+            manifest["failure"] = f"Installing from the certificate cache failed: {error}"
+            record(run_dir, manifest)
+            print(manifest["failure"], file=sys.stderr)
+            print(f"Certification evidence: {run_dir.relative_to(ROOT)}", file=sys.stderr)
+            return 2
+        closure_books = args.books
+        args.books = [book for book in closure_books if book not in installed.installed_from]
+        schedule = dependency_graph(args.books)
+        manifest["requested_books"] = args.books
+        manifest["cache_install"] = {
+            "directory": installed.cache,
+            "toolchain_identity": toolchain.identity,
+            "installed": installed.installed,
+            "kept": installed.kept,
+            "removed": installed.removed_foreign,
+            "origins": dict(installed.origins),
+            "roots_installed": installed.roots_installed,
+        }
+        manifest["installed_books"] = dict(sorted(installed.installed_from.items()))
+        manifest["book_provenance"] = {
+            book: ("installed" if book in installed.installed_from else "certified")
+            for book in closure_books}
+        effective_jobs = max(1, min(args.jobs, len(args.books)))
+        manifest["jobs_effective"] = effective_jobs
+        print(f"From the cache: installed {len(installed.installed_from)} of "
+              f"{len(closure_books)} books ({len(installed.roots_installed)} of "
+              f"{len(roots)} roots); certifying {len(args.books)}", flush=True)
     slot_wait_seconds: dict[str, float] = {}
     try:
         # Every ACL2 this runner starts, the version probe included, holds one
@@ -1132,7 +1197,7 @@ def main() -> int:
         manifest["schedule"] = {
             "policy": "critical-path-first",
             "books_with_archived_wall": len(measured),
-            "predicted_critical_path_seconds": round(max(priority.values()), 3),
+            "predicted_critical_path_seconds": round(max(priority.values(), default=0.0), 3),
         }
     certify_started = time.monotonic()
     if args.pcert:
@@ -1169,7 +1234,7 @@ def main() -> int:
     book_results = {book: verdict for book, (verdict, _) in verdicts.items()}
     book_failures = {book: reasons for book, (_, reasons) in verdicts.items() if reasons}
     try:
-        source_digests_after = collect_book_sources(args.books)
+        source_digests_after = collect_book_sources(digested)
     except ValueError as error:
         source_digests_after = {"closure-error": str(error)}
     sources_unchanged = source_digests_after == manifest["source_digests_sha256"]
@@ -1216,7 +1281,15 @@ def main() -> int:
         and runner_unchanged
         and not found_failures
     )
-    if not args.no_publish:
+    if args.incremental:
+        # An installed book is a certificate of these bytes over these
+        # dependencies; it is includable here only if every book below it
+        # that this run certified passed.  Name the ones that are not.
+        failed_here = {book for book, verdict in book_results.items() if verdict != "passed"}
+        manifest["installed_over_failed"] = sorted(
+            book for book in manifest["installed_books"]
+            if failed_here & set(certs.closure(ROOT, book)))
+    if not args.no_publish and args.books:
         # The sweep after the per-book publishes, and it runs whatever THIS
         # RUN's verdict was.  A book's pair is trustworthy on that book's own
         # evidence -- its fresh marker, its clean log, its certificate, its
@@ -1262,7 +1335,9 @@ def main() -> int:
         print(f"Certification evidence: {run_dir.relative_to(ROOT)}", file=sys.stderr)
         return 1
 
-    print("ACL2 certification passed: " + ", ".join(args.books))
+    if args.incremental:
+        print(f"Installed from the cache: {len(manifest['installed_books'])} books")
+    print("ACL2 certification passed: " + (", ".join(args.books) or "nothing left to certify"))
     print(f"Certification evidence: {run_dir.relative_to(ROOT)}")
     return 0
 

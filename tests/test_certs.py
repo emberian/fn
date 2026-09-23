@@ -747,6 +747,110 @@ class ArtifactSetTests(unittest.TestCase):
                 self.assertFalse((target / f"{name}.port").exists())
 
 
+class PartialInstallTests(unittest.TestCase):
+    """`install-partial`: every cached book installs, the rest are named."""
+
+    TOOLCHAIN = ArtifactSetTests.TOOLCHAIN
+    publish = ArtifactSetTests.publish
+
+    def test_a_cached_bottom_installs_and_the_uncached_top_is_named(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            source = worktree(one, certified=["books/base", "books/mid"])
+            self.publish(source, cache, ["books/base", "books/mid"], "/farm/run-a")
+            target = worktree(destination + "/target")
+            # A stale pair for the uncached root, left from an earlier attempt.
+            (target / "tests/acl2/mid-tests.cert").write_bytes(SERIALIZED + b" stale")
+            (target / "tests/acl2/mid-tests.port").write_text("; stale\n")
+            report = certs.install_partial(
+                target, cache, ["tests/acl2/mid-tests"], self.TOOLCHAIN)
+            self.assertEqual(report.books, 3)
+            self.assertEqual(report.installed, 2)
+            self.assertEqual(report.uncached, ["tests/acl2/mid-tests"])
+            self.assertEqual(report.installed_from,
+                             {"books/base": "/farm/run-a", "books/mid": "/farm/run-a"})
+            self.assertEqual(report.roots_installed, [])
+            self.assertEqual(report.removed_foreign, 2)
+            self.assertFalse((target / "tests/acl2/mid-tests.cert").exists())
+            self.assertFalse((target / "tests/acl2/mid-tests.port").exists())
+            line = report.lines()[1]
+            self.assertIn("installed 2, kept 0, missing 1, removed 2; "
+                          "roots installed 0 of 1; origins /farm/run-a=2", line)
+
+    def test_a_fully_cached_closure_installs_its_roots_too(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            source = worktree(one, certified=["books/base", "books/mid"])
+            self.publish(source, cache, ["books/base", "books/mid"], "/farm/run-a")
+            target = worktree(destination + "/target")
+            report = certs.install_partial(target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual((report.installed, report.uncached), (2, []))
+            self.assertEqual(report.roots_installed, ["books/mid"])
+            again = certs.install_partial(target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual((again.installed, again.kept), (0, 2))
+
+    def test_a_partial_set_draws_each_book_from_its_own_origin(self):
+        """Two origins, each with one book of a three-book closure; the third
+        (the root) is uncached.  install-set refuses this; install-partial
+        installs both and names the root."""
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            first = worktree(one, certified=["books/base"])
+            second = worktree(two, certified=["books/mid"])
+            self.publish(first, cache, ["books/base"], "/farm/run-a")
+            self.publish(second, cache, ["books/mid"], "/farm/run-b")
+            target = worktree(destination + "/target")
+            refused = certs.install_artifact_set(
+                target, cache, ["tests/acl2/mid-tests"], self.TOOLCHAIN)
+            self.assertIsNone(refused.artifact_set)
+            report = certs.install_partial(
+                target, cache, ["tests/acl2/mid-tests"], self.TOOLCHAIN)
+            self.assertEqual(report.origins, {"/farm/run-a": 1, "/farm/run-b": 1})
+            self.assertEqual(report.uncached, ["tests/acl2/mid-tests"])
+            self.assertEqual((target / "books/base.cert").read_bytes(),
+                             (first / "books/base.cert").read_bytes())
+            self.assertEqual((target / "books/mid.cert").read_bytes(),
+                             (second / "books/mid.cert").read_bytes())
+
+    def test_a_cached_book_over_an_uncached_dependency_still_installs(self):
+        """Its key names the dependency's current bytes, which this run's
+        certificate of that dependency reproduces."""
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            source = worktree(one, certified=["books/mid"])
+            self.publish(source, cache, ["books/mid"], "/farm/run-a")
+            target = worktree(destination + "/target")
+            report = certs.install_partial(target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual(report.uncached, ["books/base"])
+            self.assertEqual(report.roots_installed, ["books/mid"])
+
+    def test_another_toolchain_and_a_live_worktree_are_never_drawn_from(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            first = worktree(one, certified=["books/base"])
+            manifest = manifest_for(first, ["books/base"], write=False)
+            manifest["acl2_compatibility"] = dict(TEST_COMPATIBILITY, core_sha256="9" * 64)
+            certs.publish(first, cache, [manifest], ["books/base"],
+                          origin="/farm/run-a", origin_kind="run")
+            live = worktree(two, certified=["books/mid"])
+            certs.publish(live, cache, [manifest_for(live, ["books/mid"], write=False)],
+                          ["books/mid"], origin=str(live), origin_kind="worktree")
+            target = worktree(destination + "/target")
+            report = certs.install_partial(target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual(report.uncached, ["books/base", "books/mid"])
+            self.assertEqual(report.installed, 0)
+
+    def test_the_command_line_requires_a_toolchain(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch("sys.stderr"):
+            root = worktree(directory)
+            with self.assertRaises(SystemExit):
+                certs.main(["--root", str(root), "--cache", str(root / "c"),
+                            "install-partial", "books/mid"])
+
+
 class StatusAndRemoteTests(unittest.TestCase):
     def test_status_reports_local_and_cached_coverage(self):
         with tempfile.TemporaryDirectory() as directory:

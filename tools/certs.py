@@ -54,8 +54,16 @@ measurement found nothing that requires this exclusion; it stays because no
 run needs a live tree's pairs when the farm publishes every certified book
 from a snapshot.  ``--require-origin`` keeps the single-origin rule for
 a caller that asks for it.  ``install`` remains the legacy per-book
-inspection and recovery command; certification and native builds use
-``install-set``.
+inspection and recovery command; native builds use ``install-set``.
+
+**A run need not find its whole closure cached.**  ``install-partial`` is
+what an incremental certification uses (``certify_books.py --incremental``,
+the default for a plain-roots farm run): every book of the closure whose pair
+exists at its current closure key and toolchain installs, each from its own
+newest usable origin, and the books left over -- roots included -- are what
+the runner certifies, dependencies first.  A book below an installed one may
+be among the certified: the installed certificate names that dependency's
+book-hash, which the fresh certificate of the same bytes reproduces.
 
 **A snapshot is an origin that is not a worktree.**  A gate directory and a
 farm run root are each made from one commit by one run, and nothing edits or
@@ -72,6 +80,7 @@ cache only moves its result to another worktree, where ACL2 checks it again.
     python3 tools/certs.py publish [--manifest PATH] [--remote hbox]
     python3 tools/certs.py publish --origin-kind gate    # from a gate directory
     python3 tools/certs.py install-set books/served # coherent dependency set
+    python3 tools/certs.py install-partial --toolchain-identity ID books/served
     python3 tools/certs.py status
 """
 
@@ -168,6 +177,11 @@ class Report:
     # Where the installed (or, for `status`, the usable) pairs came from:
     # origin root -> number of books.  More than one is a composed set.
     origins: dict[str, int] = field(default_factory=dict)
+    # install-partial: which origin each installed book's pair came from, the
+    # roots asked for, and those whose own pair installed (nothing to certify).
+    installed_from: dict[str, str] = field(default_factory=dict)
+    roots: list[str] = field(default_factory=list)
+    roots_installed: list[str] = field(default_factory=list)
 
     def origin_words(self) -> str:
         """``/a=3,/b=5``: one token, so the identity line stays parseable."""
@@ -194,6 +208,14 @@ class Report:
                     self.source_identity or "NONE", self.toolchain_identity or "NONE",
                     self.installed, self.kept, len(self.uncached),
                     self.removed_foreign)
+                + (f"; origins {self.origin_words()}" if self.origins else ""))
+        elif self.action == "install-partial":
+            out.append(
+                "  toolchain {}; installed {}, kept {}, missing {}, removed {}; "
+                "roots installed {} of {}".format(
+                    self.toolchain_identity or "NONE", self.installed, self.kept,
+                    len(self.uncached), self.removed_foreign,
+                    len(self.roots_installed), len(self.roots))
                 + (f"; origins {self.origin_words()}" if self.origins else ""))
         else:
             out.append(f"  certified here {self.certified_locally}, "
@@ -675,6 +697,72 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
     return report
 
 
+def install_partial(root: Path, cache: Path, roots: Iterable[str],
+                    toolchain_identity: str) -> Report:
+    """Install every book of the roots' closure that has a usable pair, and
+    name the rest, which the runner then certifies in dependency order.
+
+    ``install-set`` is all or nothing: one book low in the graph without a
+    pair at its current digest refused the whole run, and the only way on
+    was ``--closure`` from ``sha256`` up (2026-09-23: 338 of 409 books
+    cached, 70 not, and the run refused).  Here each book stands alone.
+    Its pair is keyed by its whole closure at the current bytes, so a pair
+    that installs is a certificate of exactly these bytes over exactly these
+    dependencies, whichever origin wrote it; ACL2 compares a sub-book by
+    familiar name, annotations and book-hash (a checksum of its forms), so a
+    dependency certified afresh in this run at the same bytes satisfies it
+    (``planning/evidence/certificate-cache-2026-09-23.md``, case 5).  Roots
+    are part of the closure: a root whose pair installs is already certified
+    at these bytes, and the runner does not certify it again.
+
+    The toolchain identity is required, not optional: this is the one
+    installer that mixes origins per book, and it must not mix provers.
+    Every uninstalled book loses any local pair, so nothing left from an
+    earlier attempt can stand in for the certificate this run will write.
+    """
+    report = Report(action="install-partial", cache=str(cache))
+    roots = tuple(roots)
+    target = str(root.resolve())
+    required = required_closure(root, roots)
+    report.books = len(required)
+    report.toolchain_identity = toolchain_identity
+    for name in sorted(required):
+        source = root / f"{name}.lisp"
+        key, _ = closure_key(root, name)
+        usable = [(directory, meta) for directory, meta in cached_entries(cache, key)
+                  if usable_origin(meta, target)
+                  and meta.get("toolchain_identity") == toolchain_identity]
+        own = [entry for entry in usable if entry[1].get("origin_root") == target]
+        chosen = own[0] if own else newest(usable)
+        cert = source.with_suffix(".cert")
+        port = source.with_suffix(".port")
+        if chosen is None:
+            report.uncached.append(name)
+            for artifact in (cert, port):
+                if artifact.is_file():
+                    artifact.unlink()
+                    report.removed_foreign += 1
+            continue
+        directory, meta = chosen
+        cached = directory / "book.cert"
+        if cert.is_file() and content_hash(cert) == content_hash(cached):
+            report.kept += 1
+        else:
+            place(cached, cert)
+            report.installed += 1
+        if (directory / "book.port").is_file():
+            place(directory / "book.port", port)
+        else:
+            port.unlink(missing_ok=True)
+        origin = str(meta.get("origin_root", ""))
+        report.installed_from[name] = origin
+        report.origins[origin] = report.origins.get(origin, 0) + 1
+    report.roots = list(roots)
+    report.roots_installed = sorted(name for name in roots
+                                    if name in report.installed_from)
+    return report
+
+
 def read_meta(directory: Path) -> dict:
     try:
         return json.loads((directory / "meta.json").read_text(encoding="utf-8"))
@@ -1018,7 +1106,7 @@ def mirror(cache: Path, remote: str,
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("publish", "install", "install-set",
-                                           "status"))
+                                           "install-partial", "status"))
     parser.add_argument("books", nargs="*", default=None,
                         help="repository-relative book names without .lisp "
                              "(default: every book under books/ and tests/acl2/)")
@@ -1069,6 +1157,13 @@ def main(argv: list[str] | None = None) -> int:
             require_origin=arguments.require_origin,
             purge_on_miss=arguments.purge_on_miss,
             dependencies_only=arguments.dependencies_only)
+    elif arguments.action == "install-partial":
+        if not names:
+            parser.error("install-partial needs one or more root books")
+        if not arguments.toolchain_identity:
+            parser.error("install-partial needs --toolchain-identity: it takes "
+                         "each book's pair on its own and must not mix provers")
+        report = install_partial(root, cache, names, arguments.toolchain_identity)
     else:
         report = status(root, cache)
     for line in report.lines():
