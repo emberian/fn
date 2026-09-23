@@ -47,11 +47,21 @@
                                        *hst-keys* *hst-signatures*)))
 (assert! *hst-carried-received*)
 (assert! (not (equal *hst-carried-received* *hst-authored-source*)))
+(make-event `(defconst *hst-carried-subject-id*
+               ',(fn-id-subject-of-payload *hst-carried-received*)))
+(defconst *hst-carried-subject*
+  (fn-record-octets-string (fn-id-text *hst-carried-subject-id*)))
+(defconst *hst-carried-obligation*
+  (fn-record-octets-string
+   (fn-id-text
+    (fn-id-obligation-of
+     (fn-record-string-octets "<hybrid@example.invalid>")
+     *hst-carried-subject-id*))))
 (make-event `(defconst *hst-carried-event*
                ',(fn-hsig-authorized-carried-submission-event
                   2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
                   *hst-authored-source* *hst-carried-received* '("example")
-                  "obligation" "subject" "release"
+                  *hst-carried-obligation* *hst-carried-subject* "release"
                   (fn-charge-for-payload (len *hst-carried-received*))
                   *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
                   :verified :verified
@@ -83,6 +93,36 @@
   *hst-carried-wrong-id*
   (fn-hsig-keyring-event 1 2 3 4 *hst-principal* *hst-keys*))
  nil)
+(make-event
+ `(defconst *hst-carried-wrong-charge*
+    ',(let* ((old (fn-record-result-record
+                   (fn-record-decode-exact
+                    (fn-stxa-article-record *hst-carried-event*))))
+             (record
+              (fn-record-make
+               (fn-record-sequence old) (fn-record-txid old)
+               (fn-record-generation old) (fn-record-msgid old)
+               (fn-record-payload old) (fn-record-groups old)
+               (fn-record-obligation-id old) (fn-record-content-subject old)
+               (fn-record-release-evidence old) (1+ (fn-record-charge old))
+               (fn-record-stamp old))))
+        (fn-stxa-make-carried
+         (fn-stxa-sequence *hst-carried-event*)
+         (fn-stxa-txid *hst-carried-event*)
+         (fn-stxa-generation *hst-carried-event*)
+         (fn-stxa-keyring-generation *hst-carried-event*)
+         (fn-stxa-profile *hst-carried-event*)
+         (fn-stxa-content-subject *hst-carried-event*)
+         (fn-record-encode record)
+         (fn-stxa-verdict-event *hst-carried-event*)
+         (fn-stxa-authored-source *hst-carried-event*)
+         (fn-stxa-authored-id *hst-carried-event*)))))
+(assert! (fn-stxa-bindsp *hst-carried-wrong-charge*))
+(assert-equal
+ (fn-hsig-article-event-snapshot-bindsp
+  *hst-carried-wrong-charge*
+  (fn-hsig-keyring-event 1 2 3 4 *hst-principal* *hst-keys*))
+ nil)
 (assert-equal
  (fn-hsig-article-event-snapshot-bindsp
   *hst-carried-event*
@@ -95,7 +135,7 @@
  (fn-hsig-authorized-carried-submission-event
   2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
   (append *hst-authored-source* '(32)) *hst-carried-received* '("example")
-  "obligation" "subject" "release"
+  *hst-carried-obligation* *hst-carried-subject* "release"
   (fn-charge-for-payload (len *hst-carried-received*))
   *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
   :verified :verified (fn-clock-observation 1 841000000000 0 t))
@@ -104,7 +144,7 @@
  (fn-hsig-authorized-carried-submission-event
   2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
   *hst-authored-source* *hst-carried-received* '("example")
-  "obligation" "subject" "release"
+  *hst-carried-obligation* *hst-carried-subject* "release"
   (fn-charge-for-payload (len *hst-carried-received*))
   *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
   :verified :invalid (fn-clock-observation 1 841000000000 0 t))

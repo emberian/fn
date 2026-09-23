@@ -6,6 +6,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-observed")
 (include-book "../../books/codec-attach")
+(include-book "../../books/crypto-attach")
 (include-book "../../books/hybrid-store")
 
 (defconst *sit-groups* '("example"))
@@ -182,6 +183,79 @@
 (assert-event (equal (fn-sf-phase
                       (fn-sn-files (fn-sit-barriers *sit-orphan-recovered* 5)))
                      :fault))
+
+; The selected version-1 path publishes the received portable carrier while
+; retaining the signed exact source and ACL2-derived identity in the parent.
+; Reopen reconstructs the historical verdict from the same bound composite.
+(defun fn-sit-line (text)
+  (append (fn-record-string-octets text) '(13 10)))
+(defconst *sit-carried-source*
+  (append (fn-sit-line "From: author@example.invalid")
+          (fn-sit-line "Date: Wed, 23 Sep 2026 12:00:00 +0000")
+          (fn-sit-line "Newsgroups: example")
+          (fn-sit-line "Subject: signed exact source")
+          (fn-sit-line "Message-ID: <carried@example.invalid>")
+          '(13 10 98 111 100 121 13 10)))
+(make-event `(defconst *sit-carried-received*
+               ',(fn-hc-render-at-most *fn-article-max-octets*
+                                       *sit-carried-source* *sit-principal*
+                                       *sit-keys* *sit-signatures*)))
+(assert-event (consp *sit-carried-received*))
+(make-event `(defconst *sit-carried-subject-id*
+               ',(fn-id-subject-of-payload *sit-carried-received*)))
+(defconst *sit-carried-subject*
+  (fn-record-octets-string (fn-id-text *sit-carried-subject-id*)))
+(defconst *sit-carried-obligation*
+  (fn-record-octets-string
+   (fn-id-text
+    (fn-id-obligation-of
+     (fn-record-string-octets "<carried@example.invalid>")
+     *sit-carried-subject-id*))))
+(make-event `(defconst *sit-carried-composite*
+               ',(fn-hsig-authorized-carried-submission-event
+                  1 1 1 1 *sit-snapshot* "<carried@example.invalid>"
+                  *sit-carried-source* *sit-carried-received* *sit-groups*
+                  *sit-carried-obligation* *sit-carried-subject*
+                  "carried-release"
+                  (fn-charge-for-payload (len *sit-carried-received*))
+                  *sit-principal* *sit-keys* *sit-signatures* *sit-ml-key*
+                  :verified :verified
+                  (fn-clock-observation 1 841000000000 0 t))))
+(assert-event (fn-stxa-p *sit-carried-composite*))
+(assert-event (equal (fn-stxa-schema *sit-carried-composite*) 1))
+(make-event `(defconst *sit-after-carried*
+               ',(fn-sit-commit-identity *sit-after-enrollment*
+                                         *sit-carried-composite*)))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sit-after-carried*)) :ready))
+(assert-event
+ (equal (fn-article-payload
+         (car (fn-stx-store (fn-sn-node *sit-after-carried*))))
+        *sit-carried-received*))
+(assert-event
+ (equal (fn-stx-verdict-detail
+         (fn-sn-verdict-lookup *sit-after-carried*
+                               "<carried@example.invalid>"))
+        *sit-principal*))
+(make-event `(defconst *sit-carried-history*
+               ',(fn-sf-records (fn-sn-files *sit-after-carried*))))
+(make-event `(defconst *sit-carried-open*
+               ',(fn-sn-open-observed *sit-groups* 32 2
+                                     *sit-carried-history*)))
+(assert-event (fn-sn-open-okp *sit-carried-open*))
+(make-event `(defconst *sit-carried-reopened*
+               ',(fn-sn-open-state *sit-carried-open*)))
+(assert-event
+ (equal (fn-article-payload
+         (car (fn-stx-store (fn-sn-node *sit-carried-reopened*))))
+        *sit-carried-received*))
+(assert-event
+ (equal (fn-sn-verdict-lookup *sit-carried-reopened*
+                              "<carried@example.invalid>")
+        (fn-sn-verdict-lookup *sit-after-carried*
+                              "<carried@example.invalid>")))
+(assert-event
+ (equal (fn-stxa-authored-source (cadr *sit-carried-history*))
+        *sit-carried-source*))
 
 ; ---------------------------------------------------------------------------
 ; Teeth for the two arms `books/store-node-traces' grew on 2026-09-22.
