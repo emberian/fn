@@ -16,10 +16,14 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import nullcontext
+from types import SimpleNamespace
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import proof_repl  # noqa: E402
+from tests.test_certs import manifest_for, worktree, TEST_COMPATIBILITY  # noqa: E402
 
 FAKE_ACL2 = r'''#!/usr/bin/env python3
 import sys
@@ -78,6 +82,49 @@ class ReaderTests(unittest.TestCase):
         self.assertNotIn("Subgoal 50", out)
         self.assertEqual(proof_repl.brief("short\noutput"), "short\noutput")
         self.assertTrue(proof_repl.errored("ACL2 Error [Failure] in ( DEFTHM X ...)"))
+
+
+class CacheStartupTests(unittest.TestCase):
+    def test_incompatible_cached_parent_and_child_refuse_without_session(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            older = worktree(str(base / "older"), certified=["books/base"])
+            parent = worktree(str(base / "parent"), certified=["books/mid"])
+            target = worktree(str(base / "target"), certified=["books/base", "books/mid"])
+            cache = base / "cache"
+            toolchain = proof_repl.certs.stable_identity(TEST_COMPATIBILITY)
+            for source, name, origin in (
+                    (older, "books/base", "/farm/base"),
+                    (parent, "books/mid", "/farm/parent")):
+                proof_repl.certs.publish(
+                    source, cache, [manifest_for(source, [name], write=False)],
+                    [name], origin=origin, origin_kind="run")
+            fake_acl2 = base / "acl2"
+            fake_acl2.write_text("#!/bin/sh\nexit 0\n")
+            fake_acl2.chmod(0o755)
+            sessions = base / "sessions"
+            args = SimpleNamespace(name="bad-cache", book="tests/acl2/mid-tests")
+            with mock.patch.object(proof_repl, "ROOT", target), \
+                 mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                 mock.patch.dict(os.environ, {"FN_ACL2": str(fake_acl2)}), \
+                 mock.patch.object(proof_repl.certs, "cache_directory",
+                                   return_value=cache), \
+                 mock.patch.object(proof_repl.acl2_toolchain, "fingerprint",
+                                   return_value=SimpleNamespace(
+                                       qualified=True, identity=toolchain,
+                                       reason="")), \
+                 mock.patch.object(proof_repl.acl2_slots, "slot",
+                                   side_effect=lambda label: nullcontext()), \
+                 mock.patch.object(proof_repl.certs.cert_alists,
+                                   "acl2_certificate_pairs",
+                                   side_effect=lambda paths, pairs, acl2, root:
+                                       {pair: (True, False) for pair in pairs}), \
+                 mock.patch.object(proof_repl.subprocess, "Popen") as launched:
+                self.assertEqual(proof_repl.start(args), 1)
+                launched.assert_not_called()
+            self.assertFalse((sessions / "bad-cache").exists())
+            self.assertFalse((target / "books/base.cert").exists())
+            self.assertFalse((target / "books/mid.cert").exists())
 
 
 class SessionTests(unittest.TestCase):
