@@ -217,6 +217,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-machine-invariants \
 	books/bp-node-machine-authorization \
 	tests/acl2/bp-node-machine-tests \
+	books/bp-node-foundation \
+	tests/acl2/bp-node-foundation-tests \
 	books/bp-sequence-fidelity \
 	tests/acl2/bp-sequence-fidelity-tests \
 	books/bp-receive-evidence \
