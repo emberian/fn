@@ -319,6 +319,11 @@ small real accepted operation. If even that exceeds a current bound, record a
 bounded refusal and prioritize a bounded prefix-witness/manifest design. Do not
 silently truncate required authority history, split one application operation,
 increase BP bounds, or use a live private authority database as a fixture.
+The wrapper must bound bytes, retained events, dependency count, canonical
+integer widths and verification work before invoking the existing decoder and
+replay entry point on external input. A maximum article length alone is not a
+demonstration that a nested application verifier has bounded work. No such
+portable-verifier resource bound was established by this source survey.
 
 ### 2. A Mini-owned processing transaction
 
@@ -333,7 +338,7 @@ For a new valid report, one native resource transaction installs the provenance
 record, unique operation binding, application decision/task update and immutable
 reply outbox payload. For an exact repeat, it recovers the prior decision and
 reply. For changed source under the same operation, it preserves conflict
-evidence without a second application transition or successful reply. Mini's
+evidence without a second application transition or reply. Mini's
 existing transaction-conflict refusal alone is insufficient: a separately
 identified, authorized evidence-recording transaction is needed to retain the
 conflict, without reallocating the original operation's application effect.
@@ -511,3 +516,15 @@ action; a supervisor performs physical work and returns reconcilable evidence.
 The first useful join is already identifiable in the source. Its missing pieces
 are a bounded portable evidence codec, a real durable consumer transaction and
 the tested publication/ack sequence, rather than a new universal OS abstraction.
+
+## Validation of this note
+
+`make check` passed on the isolated lane based on `11b8d53b`, after the two
+documentation checkpoints `e89517e4` and `22edf932`. It emitted the repository's
+existing assurance/hygiene reports; its success is scaffolding validation only.
+`git diff --check` passed. A local source-link audit loaded every linked
+Bread/Mini file with `git show <pinned-revision>:<path>` and compared its bytes
+with the inspected working file; all matched. Thus unrelated external WIP is
+not silently represented by the pinned citations. No external tests, builds,
+network deployment, certification run or end-to-end exchange was performed by
+this design lane. No requirement/proof registry status changes follow from it.
