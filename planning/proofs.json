@@ -2075,6 +2075,39 @@
         "fn-bpcd-unframe-of-frame",
         "fn-bpnf-clock-domain-same-binds-durable-id"
       ]
+    },
+    {
+      "id": "PRF-063",
+      "title": "Native authored carrier receives the local NNTP injection trace without changing signed source",
+      "statement": "For any nonnil result of the exact ACL2 fn-hsig-injected-carrier-octets called by host/native/hybrid-control.lisp, fn-hsig-injected-carrier-retains-exact-signed-source proves the authenticated authored source is a suffix of the received octets, and fn-hsig-injected-carrier-is-a-news-injection proves the received octets satisfy the ordinary fn-inj-reinjectionp grammar for the rendered portable carrier, configured agent and projected Message-ID. The native event constructor accepts only the same injected bytes. This is an ACL2 byte-projection claim under a successful injection decision; it does not prove cryptographic primitives, filesystem durability, or peer I/O.",
+      "milestone": "M3",
+      "requirements": [
+        "OBJ-003",
+        "OBJ-007",
+        "NNT-004"
+      ],
+      "depends_on": [
+        "PRF-050",
+        "PRF-053"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/hybrid-store.lisp",
+        "books/hybrid-store-invariants.lisp",
+        "tests/acl2/hybrid-store-tests.lisp",
+        "host/native/hybrid-control.lisp",
+        "host/native/signatures.lisp",
+        "planning/evidence/hybrid-native-injection-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T200004Z-6303.json",
+        "planning/evidence/manifests/certify-20260923T200101Z-7203.json",
+        "planning/evidence/manifests/certify-20260923T200539Z-17599.json"
+      ],
+      "events": [
+        "fn-hsig-injected-carrier-retains-exact-signed-source",
+        "fn-hsig-injected-carrier-is-a-news-injection"
+      ],
+      "progress_note": "The source-matched ACL2 book/test and dependent Store tests passed on hbox. The positive fixture constructs a real schema-1 injected event and replays its exact source; closed injection and pathless carrier witnesses fail the conclusions when the successful-injection premise is removed. The combined native two-owner peering/restart test awaits the shared image."
     }
   ]
 }

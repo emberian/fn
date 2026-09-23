@@ -1860,6 +1860,21 @@
           "note": "Subject is the exact ACL2 startup planner called by host/native/bp-service.lisp. A :same result implies a present valid saved frame and equality of its decoded canonical boot ID to the current validated observation; it does not compare process-relative or new-boot tick values."
         }
       ]
+    },
+    {
+      "id": "PRF-063",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-injected-carrier-retains-exact-signed-source",
+          "note": "Exact host-called byte projection; uses carrier suffix and ordinary injection suffix, with successful nonnil result as premise."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsig-injected-carrier-is-a-news-injection",
+          "note": "Exact host-called projection satisfies ordinary NNTP injection trace grammar; successful nonnil result is essential."
+        }
+      ]
     }
   ]
 }

@@ -456,6 +456,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-signature-tests \
 	books/hybrid-carrier \
 	tests/acl2/hybrid-carrier-tests \
+	books/hybrid-store-invariants \
 	tests/acl2/hybrid-store-tests \
 	books/crypto-attach \
 	books/auth-secret \

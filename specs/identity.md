@@ -34,14 +34,18 @@ stores no keys and defines no custody or recovery authority.
 The live owner also accepts bounded `hybrid-enroll` and `hybrid-author`
 operations on its operator-authorized local-control socket. `hybrid-author`
 verifies both native signatures against the selected enrolled keyring, then
-asks ACL2 to render the portable received article and construct one atomic
-article/verdict event. The embedded Store article contains the received
-`FN-Authorship` carrier followed by exact authored source; the parent retains
-that source separately with its ACL2-derived identity. The Store content
-identity and charge apply to the received article. Its owner-observed
-acceptance stamp remains in the embedded record. Missing, unknown, or
-substituted enrollment generations are refusals. This local operator path
-is not yet the portable authenticated author transport.
+asks ACL2 to render the portable `FN-Authorship` carrier and run the ordinary
+news injection decision with the live owner's post configuration and clock.
+The injected article gains Path, Injection-Date, and Injection-Info before the
+carrier and exact authored source. ACL2 constructs the atomic article/verdict
+event only for those same injected octets. The Store content identity and
+charge apply to the injected article; the parent separately retains the exact
+signed source and its ACL2-derived identity. Its owner-observed acceptance
+stamp remains in the embedded record. Recovery checks the stored schema-1
+source projection rather than re-running injection, so older accepted
+pathless schema-1 records remain readable. Missing, unknown, or substituted
+enrollment generations are refusals. This local operator path is not yet the
+portable authenticated author transport.
 
 `fn-hsig-subject-body-injective` proves that equality of two valid authored
 subject bodies implies equality of their principal, ordered Ed25519 and

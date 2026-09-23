@@ -201,6 +201,26 @@
       (fn-id-subject-of-payload source)
     nil))
 
+; The portable carrier is not yet a locally injected news article.  Route it
+; through the same ACL2 injecting agent used by POST and operator post, so
+; Path, Injection-Date and Injection-Info are the node's trace projection and
+; the exact signed source remains a suffix of the stored received bytes.
+(defun fn-hsig-injected-carrier-plan
+    (source principal keys signatures config observation)
+  (declare (xargs :guard t))
+  (let ((carrier (fn-hc-render-at-most *fn-article-max-octets*
+                                      source principal keys signatures)))
+    (if carrier
+        (fn-inj-decide carrier config observation)
+      (fn-inj-refuse :carrier))))
+
+(defun fn-hsig-injected-carrier-octets
+    (source principal keys signatures config observation)
+  (declare (xargs :guard t))
+  (let ((plan (fn-hsig-injected-carrier-plan
+               source principal keys signatures config observation)))
+    (if (fn-inj-injectedp plan) (fn-inj-decision-octets plan) nil)))
+
 ; Replay must not let a structurally valid record relabel a signed article
 ; with another Message-ID, group set, or received-content identity.  These
 ; are the same ACL2 derivations the native metadata bridge calls before
@@ -245,11 +265,12 @@
 ; payload, while the version-1 parent separately retains the exact signed
 ; source and its ACL2-derived identity.  The Store content subject and charge
 ; supplied by the caller are over RECEIVED and are rederived here.
-(defun fn-hsig-authorized-carried-submission-event
+(defun fn-hsig-authorized-carried-submission-event-base
     (sequence txid generation keyring-generation enrolled-snapshot
               msgid source received groups obligation-id content-subject
               release-evidence charge principal keys signatures observed-ml-key
-              ed25519-observation ml-dsa-65-observation observation)
+              ed25519-observation ml-dsa-65-observation observation
+              projection-ok)
   (declare (xargs :guard t))
   (let* ((fields (fn-hsig-authored-source-fields source))
          (stamp (fn-record-stamp-of-observation observation))
@@ -257,10 +278,7 @@
                                  obligation-id content-subject release-evidence
                                  charge stamp))
          (source-id (fn-hsig-authored-source-id source)))
-    (if (and (natp stamp) fields source-id
-             (equal received
-                    (fn-hc-render-at-most *fn-article-max-octets*
-                                          source principal keys signatures))
+    (if (and (natp stamp) fields source-id projection-ok
              (equal msgid (car fields))
              (equal groups (cadr fields))
              (equal charge (fn-charge-for-payload (len received)))
@@ -282,6 +300,43 @@
                                       source source-id)))
           (if (fn-stxa-bindsp event) event nil))
       nil)))
+
+; Historical constructor retained for old pathless schema-1 records and the
+; existing exact-carrier test fixtures.  Recovery validates either profile by
+; decoding the stored carrier and authored source; it never re-renders bytes.
+(defun fn-hsig-authorized-carried-submission-event
+    (sequence txid generation keyring-generation enrolled-snapshot
+              msgid source received groups obligation-id content-subject
+              release-evidence charge principal keys signatures observed-ml-key
+              ed25519-observation ml-dsa-65-observation observation)
+  (declare (xargs :guard t))
+  (fn-hsig-authorized-carried-submission-event-base
+   sequence txid generation keyring-generation enrolled-snapshot
+   msgid source received groups obligation-id content-subject
+   release-evidence charge principal keys signatures observed-ml-key
+   ed25519-observation ml-dsa-65-observation observation
+   (equal received
+          (fn-hc-render-at-most *fn-article-max-octets*
+                                source principal keys signatures))))
+
+; This is the native hybrid-author event constructor.  It binds the durable
+; received payload to the exact ACL2 injection result, rather than trusting a
+; host-supplied Path or a second host implementation of header rendering.
+(defun fn-hsig-authorized-injected-carried-submission-event
+    (sequence txid generation keyring-generation enrolled-snapshot
+              msgid source received groups obligation-id content-subject
+              release-evidence charge principal keys signatures observed-ml-key
+              ed25519-observation ml-dsa-65-observation config observation)
+  (declare (xargs :guard t))
+  (let ((plan (fn-hsig-injected-carrier-plan
+               source principal keys signatures config observation)))
+    (fn-hsig-authorized-carried-submission-event-base
+     sequence txid generation keyring-generation enrolled-snapshot
+     msgid source received groups obligation-id content-subject
+     release-evidence charge principal keys signatures observed-ml-key
+     ed25519-observation ml-dsa-65-observation observation
+     (and (fn-inj-injectedp plan)
+          (equal received (fn-inj-decision-octets plan))))))
 
 ; Publication and recovery use the exact durable snapshot, not merely its
 ; generation number.  The construction-time authorization above also requires
@@ -395,8 +450,12 @@
                     (:d fn-hsig-authorized-article-event)
                     (:d fn-hsig-authorized-submission-event)
                     (:d fn-hsig-authored-source-id)
+                    (:d fn-hsig-injected-carrier-plan)
+                    (:d fn-hsig-injected-carrier-octets)
                     (:d fn-hsig-carried-record-metadatap)
+                    (:d fn-hsig-authorized-carried-submission-event-base)
                     (:d fn-hsig-authorized-carried-submission-event)
+                    (:d fn-hsig-authorized-injected-carried-submission-event)
                     (:d fn-hsig-article-event-snapshot-bindsp-v0)
                     (:d fn-hsig-article-event-snapshot-bindsp-v1)
                     (:d fn-hsig-article-event-snapshot-bindsp)))

@@ -929,7 +929,10 @@
       "title": "Persisted BP clock domain gates same-boot restart and incomparable boot counters",
       "milestone": "M4",
       "status": "specified",
-      "requirements": ["FLR-004", "REP-006"],
+      "requirements": [
+        "FLR-004",
+        "REP-006"
+      ],
       "steps": [
         "Persist a received bundle with a short lifetime and an FNBS clock-domain marker, stop the BP process, wait beyond the lifetime, and reopen during the same Linux boot.",
         "Restart with a valid marker for a different boot ID while supplying both a lower and a higher monotonic counter than the saved age anchor.",
@@ -947,6 +950,33 @@
         "planning/evidence/bp-clock-domain-2026-09-23.md"
       ],
       "execution_scope": "ACL2 marker codec, startup plan, and valid changed-boot counterexamples are certified. A source-matched full developer image passed same-boot expiry, corrupt and absent-legacy marker fences, and visible-marker directory-barrier recovery; the production image passed exact ADU transfer with markers at both ends. No physical alternate-boot run or cross-boot reanchor is claimed; changed-boot startup fences."
+    },
+    {
+      "id": "SCN-031",
+      "title": "Native signed article carries local Path through peer relay and receiver restart",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "OBJ-003",
+        "OBJ-007",
+        "NNT-004"
+      ],
+      "steps": [
+        "Enroll an exact hybrid key snapshot, sign exact authored source, and submit through native hybrid-author under an owner with a configured Path identity.",
+        "Read the source owner ARTICLE, then transfer it to a second native protected peer and restart the receiving owner.",
+        "Read the receiver ARTICLE and portable authorship verification after restart."
+      ],
+      "expected": [
+        "The source ARTICLE has one Path from the local ACL2 injection and the native carrier still reconstructs the exact signed source.",
+        "The relay ARTICLE has the receiver Path entry prepended to that received Path; its other bytes and signed source are unchanged, with no re-signing.",
+        "The receiver retains one article and verifies the same historical authorship after restart."
+      ],
+      "evidence": [
+        "tests/test_native_hybrid_author.py",
+        "tests/acl2/hybrid-store-tests.lisp",
+        "planning/evidence/hybrid-native-injection-2026-09-23.md"
+      ],
+      "execution_scope": "The ACL2 injected-byte projection, event-constructor witness and dependent Store books are certified. The existing real two-owner test first exposed the absent Path on the old image and remains a prepared regression until root builds and runs a matching combined image. A transport success by itself is not an authorship or durability proof."
     }
   ]
 }

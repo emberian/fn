@@ -1,8 +1,9 @@
 (in-package "ACL2")
-(include-book "../../books/hybrid-store")
+(include-book "../../books/hybrid-store-invariants")
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
 (include-book "std/testing/assert-equal" :dir :system)
+(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *hst-principal* (make-list 32 :initial-element 7))
 (defconst *hst-ed-key* (make-list 32 :initial-element 11))
@@ -47,6 +48,72 @@
                                        *hst-keys* *hst-signatures*)))
 (assert! *hst-carried-received*)
 (assert! (not (equal *hst-carried-received* *hst-authored-source*)))
+
+; Native local authorship injects the portable carrier through the same
+; ACL2 news agent as POST.  The signed source remains an exact suffix, while
+; Path and the two injection trace fields precede the carrier.
+(defconst *hst-injection-config*
+  (fn-inj-make-config
+   t (fn-record-string-octets "author.example.invalid")
+   (list (fn-record-string-octets "example")) *fn-article-max-octets*))
+(defconst *hst-injection-observation*
+  (fn-clock-observation 1 841000000000 0 t))
+(make-event `(defconst *hst-injected-received*
+               ',(fn-hsig-injected-carrier-octets
+                  *hst-authored-source* *hst-principal* *hst-keys*
+                  *hst-signatures* *hst-injection-config*
+                  *hst-injection-observation*)))
+(assert! *hst-injected-received*)
+(assert! (fn-inj-suffixp *hst-authored-source* *hst-injected-received*))
+(assert! (not (equal (fn-inj-strip
+                     (fn-inj-path-line
+                      (fn-record-string-octets "author.example.invalid"))
+                     *hst-injected-received*)
+                    :no)))
+(assert! (fn-hc-okp (fn-hc-received-plan *hst-injected-received*)))
+(assert-equal (car (fn-hc-value (fn-hc-received-plan *hst-injected-received*)))
+              *hst-authored-source*)
+(assert! (equal (fn-hc-render-at-most *fn-article-max-octets*
+                                      *hst-authored-source* *hst-principal*
+                                      *hst-keys* *hst-signatures*)
+                *hst-carried-received*))
+(assert-equal
+ (fn-hsig-injected-carrier-octets
+  *hst-authored-source* *hst-principal* *hst-keys* *hst-signatures*
+  (fn-inj-make-config nil (fn-record-string-octets "author.example.invalid")
+                      (list (fn-record-string-octets "example"))
+                      *fn-article-max-octets*)
+  *hst-injection-observation*)
+ nil)
+(must-fail
+ (assert! (fn-inj-suffixp
+           *hst-authored-source*
+           (fn-hsig-injected-carrier-octets
+            *hst-authored-source* *hst-principal* *hst-keys*
+            *hst-signatures*
+            (fn-inj-make-config
+             nil (fn-record-string-octets "author.example.invalid")
+             (list (fn-record-string-octets "example"))
+             *fn-article-max-octets*)
+            *hst-injection-observation*))))
+(must-fail
+ (assert! (fn-inj-reinjectionp
+           (fn-hsig-injected-carrier-octets
+            *hst-authored-source* *hst-principal* *hst-keys*
+            *hst-signatures*
+            (fn-inj-make-config
+             nil (fn-record-string-octets "author.example.invalid")
+             (list (fn-record-string-octets "example"))
+             *fn-article-max-octets*)
+            *hst-injection-observation*)
+           *hst-carried-received*
+           (fn-record-string-octets "author.example.invalid")
+           (fn-record-string-octets "<hybrid@example.invalid>"))))
+(must-fail
+ (assert! (fn-inj-reinjectionp
+           *hst-carried-received* *hst-carried-received*
+           (fn-record-string-octets "author.example.invalid")
+           (fn-record-string-octets "<hybrid@example.invalid>"))))
 (make-event `(defconst *hst-carried-subject-id*
                ',(fn-id-subject-of-payload *hst-carried-received*)))
 (defconst *hst-carried-subject*
@@ -67,6 +134,43 @@
                   :verified :verified
                   (fn-clock-observation 1 841000000000 0 t))))
 (assert! (fn-stxa-p *hst-carried-event*))
+
+; The actual native constructor binds all Store metadata to the injected
+; received bytes, while the old pathless record above still replays.
+(make-event `(defconst *hst-injected-subject-id*
+               ',(fn-id-subject-of-payload *hst-injected-received*)))
+(defconst *hst-injected-subject*
+  (fn-record-octets-string (fn-id-text *hst-injected-subject-id*)))
+(make-event `(defconst *hst-injected-obligation*
+               ',(fn-record-octets-string
+                  (fn-id-text
+                   (fn-id-obligation-of
+                    (fn-record-string-octets "<hybrid@example.invalid>")
+                    *hst-injected-subject-id*)))))
+(make-event `(defconst *hst-injected-event*
+               ',(fn-hsig-authorized-injected-carried-submission-event
+                  2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
+                  *hst-authored-source* *hst-injected-received* '("example")
+                  *hst-injected-obligation* *hst-injected-subject* "release"
+                  (fn-charge-for-payload (len *hst-injected-received*))
+                  *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+                  :verified :verified *hst-injection-config*
+                  *hst-injection-observation*)))
+(assert! (fn-stxa-p *hst-injected-event*))
+(assert! (fn-hsig-article-event-snapshot-bindsp
+          *hst-injected-event*
+          (fn-hsig-keyring-event 1 2 3 4 *hst-principal* *hst-keys*)))
+(assert-equal (fn-stxa-authored-source *hst-injected-event*)
+              *hst-authored-source*)
+(assert-equal
+ (fn-hsig-authorized-injected-carried-submission-event
+  2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
+  *hst-authored-source* *hst-carried-received* '("example")
+  *hst-carried-obligation* *hst-carried-subject* "release"
+  (fn-charge-for-payload (len *hst-carried-received*))
+  *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+  :verified :verified *hst-injection-config* *hst-injection-observation*)
+ nil)
 (assert-equal (fn-stxa-schema *hst-carried-event*) 1)
 (assert-equal (fn-stxa-authored-source *hst-carried-event*)
               *hst-authored-source*)

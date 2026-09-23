@@ -505,6 +505,15 @@ article that crossed INN). Storing the updated Path does not touch the
 authored fields, and the signed path (`hybrid-control`, BP applications) is
 not a transit path.
 
+For local `hybrid-author`, the ACL2 injecting agent now projects the portable
+authorship carrier through the live owner post configuration before Store
+acceptance. The stored received article has the local Path and injection trace,
+while the separately retained authored source remains byte-exact. A peer relay
+only prepends its Path entry under §3.2.1; it never re-signs the source.
+Historical pathless schema-1 articles remain replayable because replay binds
+the retained source to the stored received projection rather than asserting
+that today's injecting policy produced those bytes.
+
 Open: RFC 5537 §3.7 step 1 (a serving agent rejects an article missing a
 mandatory header field, Path included) is not implemented for transit; the
 v0 matrix offers articles without Path and they are accepted unchanged. The
