@@ -846,7 +846,7 @@
         "PRF-011",
         "PRF-029",
         "PRF-042",
-        "PRF-055"
+        "PRF-058"
       ],
       "verification": [
         "proof",
@@ -863,7 +863,7 @@
         "fn-exchange-policy-ingest-trace-preserves-facts",
         "fn-exchange-policy-ingest-trace-preserves-statep"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). What crosses is a fact set: admission is by member, an ingest trace preserves the facts it already holds, and no local database identity appears in the exchanged form. Open: portable batch framing, authenticated handoff and local NNTP numbers staying local across a real peering are not proved. 2026-09-22 (T13-conform): what crosses a peer is stored as received except Path (this node's identity and the RFC 5537 3.2.1 diagnostic prepended) and Xref (removed), once, at acceptance, and what is stored is served and fed on (PRF-055; the INN lab found INN's Path and Xref served unchanged). Measured on a node by V0-INN-SERVING-AGENT once an image carries it."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). What crosses is a fact set: admission is by member, an ingest trace preserves the facts it already holds, and no local database identity appears in the exchanged form. Open: portable batch framing, authenticated handoff and local NNTP numbers staying local across a real peering are not proved. 2026-09-22 (T13-conform): what crosses a peer is stored as received except Path (this node's identity and the RFC 5537 3.2.1 diagnostic prepended) and Xref (removed), once, at acceptance, and what is stored is served and fed on (PRF-058; the INN lab found INN's Path and Xref served unchanged). Measured on a node by V0-INN-SERVING-AGENT once an image carries it."
     },
     {
       "id": "REP-002",
@@ -1109,8 +1109,8 @@
         "PRF-031",
         "PRF-033",
         "PRF-039",
-        "PRF-053",
-        "PRF-054"
+        "PRF-056",
+        "PRF-057"
       ],
       "verification": [
         "proof",
@@ -1130,7 +1130,7 @@
         "planning/evidence/auth-w10-2026-09-20.md"
       ],
       "implementation_note": "A narrow proto-article subset checks Message-ID/Newsgroups multiplicity/grammar and absence of Injection-Info/Xref while preserving source field views. Full injection, gateway provenance, dates, native signatures and authority policy remain open. D01 selects exact authored source plus separate mutable trace/injection projections; full injection must honor that boundary without rewriting signed bytes.",
-      "note": "books/injection and books/injection-invariants certify, but provenance is the open half: no native signature, no gateway injection record and no authority check, and PRF-013 has no events. 2026-09-22 (T13-conform): the operator's `fn operator CONFIG post` is now injected by fn-inj-decide as a served POST is (PRF-053; it stored its payload with no Path and INN refused it 437), and From is checked as an RFC 5536 3.1.2 mailbox-list, refused :from-invalid (PRF-054; `From: yue` was answered 240). A relayed article's Path gains this node's identity and its Xref is removed at acceptance (PRF-055). Certified on persvati for the lane's closure; no image carries any of it until the next freeze."
+      "note": "books/injection and books/injection-invariants certify, but provenance is the open half: no native signature, no gateway injection record and no authority check, and PRF-013 has no events. 2026-09-22 (T13-conform): the operator's `fn operator CONFIG post` is now injected by fn-inj-decide as a served POST is (PRF-056; it stored its payload with no Path and INN refused it 437), and From is checked as an RFC 5536 3.1.2 mailbox-list, refused :from-invalid (PRF-057; `From: yue` was answered 240). A relayed article's Path gains this node's identity and its Xref is removed at acceptance (PRF-058). Certified on persvati for the lane's closure; no image carries any of it until the next freeze."
     },
     {
       "id": "NNT-005",
@@ -1142,7 +1142,7 @@
         "PRF-003",
         "PRF-015",
         "PRF-033",
-        "PRF-053"
+        "PRF-056"
       ],
       "verification": [
         "proof",
@@ -1151,7 +1151,7 @@
       "evidence": [
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "note": "`books/nntp-post` and `books/owner` certify at their last green digests; what is missing is the theorem from the served `240` to the consumed completion (`fn-own-240-follows-consumed-completion`) and the native cut campaign on an image; both are T5. 2026-09-22 (T13-conform): an operator's retry of the same octets after a lost outcome resubmits the stored injection, so the store answers duplicate rather than a conflict (fn-own-operator-retry-resubmits-the-stored-injection, PRF-053); the duplicate itself is host/store-host.lisp fn-store-article-match's octet comparison, not a theorem."
+      "note": "`books/nntp-post` and `books/owner` certify at their last green digests; what is missing is the theorem from the served `240` to the consumed completion (`fn-own-240-follows-consumed-completion`) and the native cut campaign on an image; both are T5. 2026-09-22 (T13-conform): an operator's retry of the same octets after a lost outcome resubmits the stored injection, so the store answers duplicate rather than a conflict (fn-own-operator-retry-resubmits-the-stored-injection, PRF-056); the duplicate itself is host/store-host.lisp fn-store-article-match's octet comparison, not a theorem."
     },
     {
       "id": "NNT-006",
