@@ -3,6 +3,7 @@
 (include-book "bp-fnbs-codec")
 (include-book "bp-bundle-invariants")
 (include-book "bp-primary-invariants")
+(include-book "frame-trailer")
 
 (defthm fn-bpnf-peer-octets-reconstruct-eid
   (implies (and (fn-bpp-eidp peer)
@@ -122,3 +123,92 @@
                 (fn-bpnf-stored-recordp
                  fn-bpnf-stored-record-values
                  fn-bpn-peer-octets fn-bpp-eid-value fn-bpc-enc)))))
+
+(defthm fn-bpnf-stored-seal-is-octets
+  (implies
+   (fn-frame-inputp *fn-frame-magic-bundle-store* *fn-frame-version*
+                    *fn-bpnf-stored-code* payload
+                    *fn-bpn-lifecycle-max-payload*)
+   (fn-cbor-octet-listp
+    (fn-frame-seal *fn-frame-magic-bundle-store* *fn-frame-version*
+                   *fn-bpnf-stored-code* payload)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-frame-header-octets
+                            (magic *fn-frame-magic-bundle-store*)
+                            (version *fn-frame-version*)
+                            (kind *fn-bpnf-stored-code*)
+                            (length (len payload))))
+           :in-theory (enable fn-frame-seal fn-frame-encode
+                              fn-frame-protected fn-frame-inputp
+                              fn-frame-digestp fn-frame-magicp))))
+
+(defthm fn-bpnf-stored-decode-of-seal
+  (implies (fn-frame-inputp *fn-frame-magic-bundle-store*
+                            *fn-frame-version* *fn-bpnf-stored-code*
+                            payload *fn-bpn-lifecycle-max-payload*)
+           (equal
+            (fn-frame-decode
+             (fn-frame-seal *fn-frame-magic-bundle-store*
+                            *fn-frame-version* *fn-bpnf-stored-code* payload)
+             (fn-frame-trailer
+              (fn-frame-protected-prefix
+               (fn-frame-seal *fn-frame-magic-bundle-store*
+                              *fn-frame-version* *fn-bpnf-stored-code* payload)))
+             *fn-bpn-lifecycle-max-payload*)
+            (fn-frame-ok *fn-frame-magic-bundle-store*
+                         *fn-frame-version* *fn-bpnf-stored-code* payload)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-frame-decode-of-host-framing
+                            (magic *fn-frame-magic-bundle-store*)
+                            (version *fn-frame-version*)
+                            (kind *fn-bpnf-stored-code*)
+                            (max-payload *fn-bpn-lifecycle-max-payload*))
+                 (:instance fn-frame-protected-plus-trailer-is-seal
+                            (magic *fn-frame-magic-bundle-store*)
+                            (version *fn-frame-version*)
+                            (kind *fn-bpnf-stored-code*)
+                            (max-payload *fn-bpn-lifecycle-max-payload*)))
+           :in-theory (disable fn-frame-decode fn-frame-seal))))
+
+(defthm fn-bpnf-stored-unframe-of-canonical-frame
+  (implies
+   (and (fn-bpnf-stored-recordp record)
+        (fn-frame-values-okp *fn-bpnf-stored-fields*
+                             (fn-bpnf-stored-record-values record))
+        (fn-frame-inputp
+         *fn-frame-magic-bundle-store* *fn-frame-version*
+         *fn-bpnf-stored-code*
+         (fn-frame-fields-octets *fn-bpnf-stored-fields*
+                                 (fn-bpnf-stored-record-values record))
+         *fn-bpn-lifecycle-max-payload*)
+        (equal (fn-bpnf-stored-from-values
+                (fn-bpnf-stored-record-values record)) record)
+        (equal (fn-bpnf-stored-record-frame record)
+               (fn-frame-seal
+                *fn-frame-magic-bundle-store* *fn-frame-version*
+                *fn-bpnf-stored-code*
+                (fn-frame-fields-octets *fn-bpnf-stored-fields*
+                                        (fn-bpnf-stored-record-values record)))))
+   (equal (fn-bpnf-stored-record-unframe
+           (fn-bpnf-stored-record-frame record))
+          record))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnf-stored-decode-of-seal
+                            (payload (fn-frame-fields-octets
+                                      *fn-bpnf-stored-fields*
+                                      (fn-bpnf-stored-record-values record))))
+                 (:instance fn-frame-fields-parse-of-octets
+                            (specs *fn-bpnf-stored-fields*)
+                            (values (fn-bpnf-stored-record-values record)))
+                 (:instance fn-bpnf-stored-seal-is-octets
+                            (payload (fn-frame-fields-octets
+                                      *fn-bpnf-stored-fields*
+                                      (fn-bpnf-stored-record-values record)))))
+           :in-theory (e/d (fn-bpnf-stored-record-unframe)
+                           (fn-bpnf-stored-recordp
+                            fn-bpnf-stored-record-frame
+                            fn-bpnf-stored-record-values
+                            fn-bpnf-stored-from-values
+                            fn-frame-decode fn-frame-fields-parse
+                            fn-frame-fields-octets)))))

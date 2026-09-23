@@ -32,9 +32,21 @@ digests:
 - `manifests/certify-20260923T165532Z-3949791.json`: codec and codec tests passed.
 - `manifests/certify-20260923T170933Z-3971064.json`: codec, codec tests, byte publisher, and byte-publisher tests passed at the later codec bytes; the not-yet-finished invariant root in this same exploratory run failed and is not claimed green by that run.
 - `manifests/certify-20260923T171907Z-3991674.json`: the completed codec-invariant root passed.
+- `manifests/certify-20260923T172808Z-4003205.json`: the codec-invariant root passed with the canonical frame-decode/held-value inverse at the later bytes.
+- `manifests/certify-20260923T172854Z-4004558.json`: the new physical crash lemma book and its dependent byte-publisher test book passed.
 
-Open A2 work is the full frame decode/held round trip, a noncircular
-`fn-bs-crash-imagep` relation for inherited history and a new kind-5
-publication, multi-record replay with epoch/frontier restoration, and the
+`fn-bpnf-stored-unframe-of-canonical-frame` connects the actual decoder to
+the canonical frame and held record under valid fields, a fitting frame,
+the reconstruction premise, and frame equality. `fn-bpnf-byte-crash-keeps-
+canonical-kind-five` then says that for **any** `fn-bs-crash-imagep`, if the
+published inode was file-fenced, its durable content was that canonical
+frame, and the crash image selected that inode at the final name, the
+recovery slot is the identical kind-5 record. The name-selection premise is
+material: before the directory barrier, the tests witness both an absent
+and a present crash image. This theorem does not yet derive the name
+selection from a publisher trace or cover a whole replayed history.
+
+Open A2 work is a full noncircular `fn-bs-crash-imagep` relation for inherited
+history and a new kind-5 publication, multi-record replay with epoch/frontier restoration, and the
 native publisher and recovery join. No FNBS-to-observed-journal or T6
 crash-recovery claim is made yet.
