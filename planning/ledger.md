@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 440 |
-| Certification roots in the Makefile | 435 |
-| Books inside the root closure | 439 |
-| `defthm` and `defthmd` events | 7249 |
-| `defun` events | 5541 |
-| Functions with verified guards | 1762 |
-| Functions declared `:verify-guards nil` and never verified | 298 |
-| Functions left at the default with an explicit guard | 2798 |
+| Books read | 443 |
+| Certification roots in the Makefile | 438 |
+| Books inside the root closure | 442 |
+| `defthm` and `defthmd` events | 7314 |
+| `defun` events | 5572 |
+| Functions with verified guards | 1787 |
+| Functions declared `:verify-guards nil` and never verified | 303 |
+| Functions left at the default with an explicit guard | 2799 |
 | Functions left at the default with no guard | 683 |
-| `assert-event` checks | 8049 |
-| `must-fail` checks | 311 |
+| `assert-event` checks | 8068 |
+| `must-fail` checks | 312 |
 | `encapsulate` events | 26 |
 | Theorems flagged SUSPECT by shape | 69 |
 | Export-hygiene warnings | 93 |
 | Enabled-projection warnings | 33 |
 | Teeth-form warnings | 24 |
-| Include-hygiene warnings | 283 |
-| Host-names warnings | 663 |
+| Include-hygiene warnings | 285 |
+| Host-names warnings | 664 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -147,6 +147,8 @@ that `make certify` requests.
 | `books/bp-release.lisp` | root | 0 | 37 | 0/16/21/0 | 0 | 0 | 0 |
 | `books/bp-sequence-fidelity.lisp` | root | 24 | 31 | 2/0/29/0 | 0 | 0 | 3 |
 | `books/bp-sequence-persistence.lisp` | root | 10 | 20 | 1/0/19/0 | 0 | 0 | 0 |
+| `books/bp-status-report-invariants.lisp` | root | 53 | 5 | 0/5/0/0 | 0 | 0 | 0 |
+| `books/bp-status-report.lisp` | root | 12 | 26 | 25/0/1/0 | 0 | 0 | 0 |
 | `books/bp-workflow-binding-core.lisp` | root | 27 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bp-workflow-binding-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-workflow-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -390,6 +392,7 @@ that `make certify` requests.
 | `tests/acl2/bp-release-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 65 | 4 | 0 |
 | `tests/acl2/bp-sequence-fidelity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 1 | 0 |
 | `tests/acl2/bp-sequence-persistence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
+| `tests/acl2/bp-status-report-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 1 | 0 |
 | `tests/acl2/bp-workflow-binding-invariants-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 23 | 2 | 0 |
 | `tests/acl2/bp-workflow-records-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
 | `tests/acl2/bp-workflow-records-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 101 | 6 | 0 |

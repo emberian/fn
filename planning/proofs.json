@@ -1968,6 +1968,26 @@
         "fn-olog-control-post-line-is-one-line",
         "fn-olog-connection-line-is-one-line"
       ]
+    },
+    {
+      "id": "PRF-059",
+      "title": "Bounded canonical BPv7 status-report payload codec",
+      "statement": "For every fn-bpn-reportp payload, fn-bpn-report-decode of fn-bpn-report-encode returns that report and no trailing octets (fn-bpn-report-decode-of-encode); valid reports encode in at most 1194 octets (fn-bpn-report-encode-length-bound), below the decoder 4096-octet preflight, and every accepted input re-encodes byte-for-byte (fn-bpn-report-accepted-input-is-canonical). This covers RFC 9171 section 6.1.1 whole and fragment payloads, four assertions, optional requested times, and local reason codes 0 to 11. Reports are remote observations only; node-machine generation, correlation, consumption and release authority are outside this codec claim.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/bp-status-report.lisp",
+        "books/bp-status-report-invariants.lisp",
+        "tests/acl2/bp-status-report-tests.lisp",
+        "planning/evidence/manifests/certify-20260923T164648Z-1822489.json",
+        "planning/evidence/bp-status-report-d1a-2026-09-23.md"
+      ],
+      "note": "D1a codec only. ACL2 8.7 on persvati certifies the exact source/test books in the manifest, with a maximal-profile 1024-octet DTN SSP witness and rejected malformed/noncanonical vectors. No host node path calls this codec yet; D1b/D2 remain open. Events are populated by tools/ledger.py after integration."
     }
   ]
 }
