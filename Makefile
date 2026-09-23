@@ -236,6 +236,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-contact-service-tests \
 	books/bp-app-handoff \
 	tests/acl2/bp-app-handoff-tests \
+	books/bp-handoff-status \
+	tests/acl2/bp-handoff-status-tests \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \

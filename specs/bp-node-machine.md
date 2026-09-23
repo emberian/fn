@@ -2562,10 +2562,13 @@ request and a return job key containing its state-owned arrival index, so a
 new retry carrier with the same receipt ID cannot alias the first. The native
 caller obtains the receipt ADU from recovered FNRJ, compares any existing
 job's exact ADU and peer through ACL2, queues it in FNBS, and leaves transport to a later
-explicit contact tick. The stored handoff's transition from `:owed` to
-`:handed-off` is not yet implemented; the durable base job currently prevents
-duplicate queueing through an ACL2 selector. This is an open A3 assurance
-obligation, as is the native article/receipt process-death scenario.
+explicit contact tick. `fn-bpah-outbox-effective-status` now projects
+`(:handed-off sequence)` without a second mutable flag, but only when the
+selected `(rid, trigger)` handoff, recovered FNRJ receipt ADU and durable
+FNBS job's exact payload and peer agree. Missing or contradictory evidence
+remains `:owed`; a malformed view is `:invalid`. The native caller's switch
+to this projection is a separate integration step. The stored kind-7
+handoff remains `:owed` so the projection can be reconstructed after restart.
 
 A receipt is owed output while its handoff is `:owed` (§2.4): created by
 the kind-7 record of the request delivery that named it, ended by the
