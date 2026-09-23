@@ -11,6 +11,7 @@
 (defconst *fn-sim-groups* '("fn.letters" "fn.test"))
 (defconst *fn-sim-message-id* "<simulator@example.invalid>")
 (defconst *fn-sim-payload* '(72 105 13 10))
+(defconst *fn-sim-stamp* 841000000)
 
 (defun fn-sim-acceptance-initial ()
   (fn-initial-state *fn-sim-groups*))
@@ -20,7 +21,8 @@
                      7
                      *fn-sim-message-id*
                      *fn-sim-payload*
-                     *fn-sim-groups*))
+                     *fn-sim-groups*
+                     *fn-sim-stamp*))
 
 (defun fn-sim-acceptance-durable ()
   (fn-accept-complete (fn-sim-acceptance-prepared) 0 7 :durable))
@@ -35,6 +37,8 @@
          (equal (fn-state-articles initial) nil)
          (equal (fn-state-articles prepared) nil)
          (equal (len (fn-state-articles durable)) 1)
+         (equal (fn-article-stamp (car (fn-state-articles durable)))
+                *fn-sim-stamp*)
          (equal (fn-state-next-txid durable) 1)
          (equal (fn-state-fenced durable) nil)
          (equal (fn-acceptedp *fn-sim-message-id*
