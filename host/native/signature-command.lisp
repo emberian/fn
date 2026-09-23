@@ -136,11 +136,17 @@ A valid carrier does not establish topic anchoring or report admission."
          (carrier (fnn-hsig-verify-received-carrier received (second args))))
     (if (not (eq (first carrier) :verified))
         (progn (fnn-out "topic=unverified carrier=~a" (second carrier)) 1)
-      (let ((projection (fnn-core 'fn-th-host-inspect-source (second carrier))))
+      (let ((projection (fnn-core 'fn-th-select-verified-source
+                                  (second carrier) (third carrier)
+                                  (fourth carrier))))
         (if (eq (first projection) :ok)
             (progn
-              (fnn-out "topic=candidate carrier=authenticated kind=~(~a~) metadata=~s admission=unestablished"
-                       (first (second projection)) (second projection))
+              (fnn-out "topic=candidate carrier=authenticated kind=~(~a~) metadata=~s author-principal=~a author-keyset=~a binding=~(~a~) admission=unestablished"
+                       (first (first (second projection)))
+                       (first (second projection))
+                       (fnn-hex (first (second (second projection))))
+                       (fnn-hex (second (second (second projection))))
+                       (third (second projection)))
               0)
           (progn (fnn-out "topic=unsupported carrier=authenticated reason=~a admission=unestablished"
                           (second projection)) 1))))))

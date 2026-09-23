@@ -203,8 +203,8 @@
             (list :error :invalid-newsgroups)))))))
 
 (defun fn-af-newsgroup-list-parse (value)
-  ; The article parser bounds an unfolded value by its 8,192-octet header cap;
-  ; retaining this preflight makes the octet parser safe as a standalone call.
+  ; The article parser has a separate header envelope. This 8,192-octet
+  ; field-value preflight also protects standalone calls to this parser.
   (if (or (not (fn-cbor-at-mostp value *fn-af-max-field-value-octets*))
           (not (fn-cbor-octet-listp value)))
       (list :error :limit)

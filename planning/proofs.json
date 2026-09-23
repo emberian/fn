@@ -2196,6 +2196,36 @@
       "events": [
         "fn-csi-store-step-preserves-full-relation"
       ]
+    },
+    {
+      "id": "PRF-065",
+      "title": "Topic candidate author and root declaration bind to verified historical context",
+      "statement": "The native topic inspector calls the ACL2 selector with exact source, principal and ordered keys returned by hybrid verification. A selected root is marked controller-matched only when its declared controller equals that principal and its declared keyset ID equals the ACL2 subject identity of the canonical principal/key snapshot. Reports obtain their author reference from that same verified context, not metadata or From. For a retained schema-1 event the historical selector first requires the T10 exact-source/carrier/keyring-snapshot binding; no topic admission or succession decision follows.",
+      "milestone": "M3",
+      "requirements": [
+        "TOP-001"
+      ],
+      "depends_on": [
+        "PRF-048",
+        "PRF-062",
+        "PRF-063"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "events": [
+        "fn-th-selected-root-matches-verified-context",
+        "fn-th-selected-report-author-is-verified-context",
+        "fn-th-accepted-root-author-is-historical-enrollment"
+      ],
+      "evidence": [
+        "books/topic-history-authorship.lisp",
+        "tests/acl2/topic-history-authorship-tests.lisp",
+        "host/native/signature-command.lisp",
+        "host/topic-history-metadata-host.lisp",
+        "planning/evidence/topic-history-authorship-p3-2026-09-23.md",
+        "planning/evidence/manifests/certify-20260923T211422Z-167141.json"
+      ],
+      "progress_note": "The selector and accepted-event wrapper plus matching/mismatching principal, changed-key, From, relay and unbound historical event witnesses certify on hbox at the lane source. A source-matched saved-image CLI run and integrated reverse closure remain pending. The native command keeps generic candidate output and explicitly reports admission=unestablished."
     }
   ]
 }
