@@ -875,6 +875,19 @@
                               (bsk0-second-frontier-host-frame))
                              nil *bsk5-groups* *bsk5-capacity*)))
                file)
+        (fn-bs-store-relation
+         (car (nth 6 (fn-bs-run
+                      bs ks
+                      (fn-bs-frontier-program
+                       ".allocation-k0-2"
+                       (bsk0-second-frontier-host-frame))
+                      nil *bsk5-groups* *bsk5-capacity*)))
+         (cdr (nth 6 (fn-bs-run
+                      bs ks
+                      (fn-bs-frontier-program
+                       ".allocation-k0-2"
+                       (bsk0-second-frontier-host-frame))
+                      nil *bsk5-groups* *bsk5-capacity*))))
         (equal (fn-sf-phase (cdr (nth 6 (fn-bs-run
                                              bs ks
                                              (fn-bs-frontier-program
@@ -945,6 +958,19 @@
                             nil *bsk5-groups* *bsk5-capacity*)))))
     (equal (fn-bs-durable-content file old)
            (fn-bs-durable-content bs old)))))
+
+(must-fail
+ (assert-event
+  (let* ((entry (bsk5-finished))
+         (occupied (mv-nth 1 (fn-bs-create (car entry) :staging
+                                        ".allocation-k0-2" :ok)))
+         (cut (nth 6 (fn-bs-run
+                       occupied (cdr entry)
+                       (fn-bs-frontier-program
+                        ".allocation-k0-2"
+                        (bsk0-second-frontier-host-frame))
+                       nil *bsk5-groups* *bsk5-capacity*))))
+    (fn-bs-store-relation (car cut) (cdr cut)))))
 
 (must-fail
  (assert-event
