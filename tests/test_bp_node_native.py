@@ -266,6 +266,37 @@ class NativeBpNodeTests(unittest.TestCase):
             "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
         )
 
+    @staticmethod
+    def acl2_lifecycle_payloads(journal, kind):
+        """Ask the ACL2 frame decoders for exact durable report payloads."""
+        decoder = {
+            5: "fn-bpnf-stored-record-unframe",
+            10: "fn-bpnf-delete-unframe",
+        }[kind]
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-fnbs-deletion-codec")')
+            payloads = []
+            for frame in sorted((journal / "lifecycle").glob("*.fnb")):
+                octets = bridge.literal(frame.read_bytes())
+                if kind == 10:
+                    form = (
+                        f"(let ((record ({decoder} '{octets}))) "
+                        "(and record (fn-bpn-nth 6 record)))"
+                    )
+                else:
+                    form = (
+                        f"(let ((record ({decoder} '{octets}))) "
+                        "(and record (fn-bpb-payload "
+                        "(fn-bpnf-held-bundle (fn-bpn-nth 3 record)))))"
+                    )
+                payload = run_store.acl2_octets(bridge.call(form))
+                if payload:
+                    payloads.append(payload)
+            return payloads
+        finally:
+            bridge.close()
+
     def sender_status(self):
         return self.invoke(
             "bp-obligation", "status", self.sender_store,
@@ -583,21 +614,64 @@ class NativeBpNodeTests(unittest.TestCase):
         candidate.wait(timeout=15)
         self.assertEqual(self.receiver_counts()[1], 0)
 
+        report_payloads = self.acl2_lifecycle_payloads(
+            self.receiver_journal, 10)
+        self.assertEqual(len(report_payloads), 1)
+        report_payload = report_payloads[0]
+        self.assertLessEqual(len(report_payload), 4096)
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-status-report")')
+            literal = bridge.literal(report_payload)
+            self.assertEqual(
+                run_store.acl2_result(bridge.call(
+                    "(let ((parsed (fn-bpn-report-decode '" + literal + "))) "
+                    "(and (fn-cbor-result-okp parsed) "
+                    "(equal (fn-bpn-report-encode "
+                    "(fn-cbor-result-value parsed)) '" + literal + ")))"
+                )), b"T")
+        finally:
+            bridge.close()
+
         restarted = self.dispatch_receiver(reports=True)
         self.assertEqual(restarted.returncode, 0, restarted.stderr)
         self.assertIn(b"BP queue accepted", restarted.stdout)
         self.assertEqual(self.receiver_counts()[1], 0)
         frontier = self.receiver_journal / "sequence" / "frontier.fnb"
         frontier_bytes = frontier.read_bytes()
+        lifecycle = self.receiver_journal / "lifecycle"
+        durable_frames = {
+            frame.name: frame.read_bytes() for frame in lifecycle.glob("*.fnb")
+        }
         repeated = self.dispatch_receiver(reports=True)
         self.assertEqual(repeated.returncode, 0, repeated.stderr)
         self.assertEqual(frontier.read_bytes(), frontier_bytes)
+        self.assertEqual(
+            {frame.name: frame.read_bytes() for frame in lifecycle.glob("*.fnb")},
+            durable_frames,
+        )
+        self.assertEqual(
+            self.acl2_lifecycle_payloads(self.receiver_journal, 10),
+            [report_payload],
+        )
+
+        sender, port = self.start_node(False, once=False)
+        self.relay.route(port, cut_next=True)
+        interrupted = self.tick_receiver()
+        self.assertEqual(interrupted.returncode, 3, interrupted.stderr)
+        self.assertIn(b"reason=uncertain", interrupted.stdout)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+        self.stop_process(sender)
 
         sender, port = self.start_node(False, once=False)
         self.relay.route(port)
         delivered = self.tick_receiver()
         self.assertEqual(delivered.returncode, 0, delivered.stderr)
         self.wait_for_output(sender, b"BP status report observed", timeout=120)
+        self.assertIn(
+            report_payload,
+            self.acl2_lifecycle_payloads(self.sender_journal, 5),
+        )
         self.stop_process(sender)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
         self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
