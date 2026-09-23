@@ -6,6 +6,8 @@ IPv4 address/port and remote IPv4 address. `fn-bpaj-session-principal` in
 that observed channel before comparing the TCPCL announced EID to its
 configured `transport-bp` row. The operator's `bp-boundary add` command writes
 the profile through the existing configuration-history `:set-peer` delta.
+The selector requires the complete peer row group to decode through
+`fn-cfg-peer-find` with BP transport; stray trust rows cannot admit a peer.
 The loopback profile declares `all-co-resident`, so every process able to
 connect through that loopback boundary is in its trusted originator set.
 
@@ -17,10 +19,10 @@ BP EID. A nil principal can retain BP custody but cannot enter the Store
 request join or release a workflow pin. Peer name and EID remain separate.
 
 Hbox ACL2 8.7 incremental evidence: native admin/operator book and tests
-passed in `certify-20260923T211202Z-157776.json`; admission/handoff book and
-tests passed in `certify-20260923T212246Z-185828.json`; the later
-same-channel/two-EID witness passed in
-`certify-20260923T212435Z-188862.json`. Each is archived under
+passed in `certify-20260923T211202Z-157776.json`; the later complete-peer
+admin witness passed in `certify-20260923T213036Z-204816.json`. The final
+admission/handoff books and tests passed in
+`certify-20260923T212944Z-202250.json`. Each is archived under
 `planning/evidence/manifests/`; the manifests carry source/toolchain hashes,
 invocations, installed origins, and wall time. `make check` and Python syntax
 validation ran on the lane source. The changed native image has not yet been
