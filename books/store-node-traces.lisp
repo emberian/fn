@@ -1399,6 +1399,12 @@
            (fn-snt-relation (fn-snt-run (fn-sn-initial groups capacity) events)))
   :hints (("Goal" :in-theory (disable fn-snt-relation fn-snt-run fn-sn-initial))))
 
+(local
+ (defthm fn-snt-selected-ready-phases-are-idle
+   (implies (member-equal phase '(:ready :recovering :fenced-recovery))
+            (fn-snt-idle-phasep phase))
+   :hints (("Goal" :in-theory (enable fn-snt-idle-phasep)))))
+
 (defthm fn-snt-ready-or-recovered-node-is-exact-replay
   (implies (and (fn-snt-relation s)
                 (member-equal (fn-sf-phase (fn-sn-files s))
@@ -1407,8 +1413,12 @@
                   (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                      (fn-sf-records (fn-sn-files s))
                                      (fn-sf-frontier (fn-sn-files s)))))
-  :hints (("Goal" :in-theory (disable fn-sn-statep fn-sf-history-recoverablep
-                                      fn-sn-completion-enabledp fn-snt-pending-linkp fn-snt-deferred-linkp fn-snt-completion-linkp))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-snt-relation)
+                           (fn-snt-idle-phasep fn-sf-replay-node
+                            fn-sn-statep fn-sf-history-recoverablep
+                            fn-sn-completion-enabledp fn-snt-pending-linkp
+                            fn-snt-deferred-linkp fn-snt-completion-linkp)))))
 
 (defthm fn-snt-mixed-trace-ready-node-is-exact-replay
   (let ((final (fn-snt-run s events)))

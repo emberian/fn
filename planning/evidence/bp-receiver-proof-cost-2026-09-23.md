@@ -31,3 +31,21 @@ steps. Its manifest is
 This measures selected-book proof time at the same ACL2/toolchain identity;
 it does not predict the next full gate's total wall time or change the runtime
 machine. `make check` passed locally.
+
+After the primary repair, the same baseline log showed
+`fn-snt-ready-or-recovered-node-is-exact-replay` taking 25.00 seconds inside
+`books/store-node-traces` (book 42.047 seconds, source digest
+`64cfed61560bf81b1bc06ddf2e9ea45b3be3fc7d1d80c6a471fd05fd17b28a22`).
+This is a definitional projection: its three permitted phases are all idle
+phases. A local lemma states that membership implication, and the theorem
+hint now opens only the relation while keeping replay and unrelated phase
+machinery closed. Its statement is unchanged. At source digest
+`057403478e37e930ddadc383ed9d20a820ac0fad458d8f84f6c6f22d4afeb668`,
+the theorem took 0.01 seconds and 168 steps; the book passed in 15.226
+seconds in `run-20260923T222909Z-a1ec`, manifest
+[`certify-20260923T222913Z-348640.json`](manifests/certify-20260923T222913Z-348640.json).
+The affected Store/receiver/test chain then passed in hbox jobs-2
+`run-20260923T223015Z-ba16`, manifest
+[`certify-20260923T223019Z-352053.json`](manifests/certify-20260923T223019Z-352053.json),
+including the actual BP evolving-receiver book/test and
+`tests/acl2/store-node-traces-tests`.
