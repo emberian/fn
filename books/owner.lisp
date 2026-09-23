@@ -1144,6 +1144,40 @@
   (declare (xargs :guard t))
   (and (consp sub) (equal (fn-own-sub-id sub) *fn-own-control-id*)))
 
+; A BP application has no served connection.  It may enqueue the very same
+; peer transit submission as a TAKETHIS transfer, using the control id only
+; as the synchronous writer correlation key.  Admission is the current
+; fn-peer-decide-transfer, not the control/posting policy.
+(defun fn-own-bp-transit-submit-result
+    (o cfg peer msgid octets id subject)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((decision (fn-peer-decide-transfer
+                   (fn-sn-node (fn-own-store o)) cfg peer msgid octets
+                   (fn-own-clock o) id subject)))
+    (cond ((not (equal (fn-peer-decision-kind decision) :want)) :refused)
+          ((or (consp (fn-own-queue o)) (fn-own-inflight o)
+               (fn-own-pending o)
+               (not (equal (fn-sf-phase (fn-sn-files (fn-own-store o)))
+                           :ready)))
+           :busy)
+          (t :submitted))))
+
+(defun fn-own-bp-transit-submit (o cfg peer msgid octets id subject)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (equal (fn-own-bp-transit-submit-result
+              o cfg peer msgid octets id subject) :submitted)
+      (fn-own-enqueue
+       o (fn-own-sub-make *fn-own-control-id*
+                          (fn-own-view-version (fn-own-view o)) nil
+                          (fn-peer-make-submission peer :takethis
+                                                   msgid octets)))
+    o))
+
+(defun fn-own-bp-transit-submissionp (sub)
+  (declare (xargs :guard t))
+  (and (fn-own-control-submissionp sub)
+       (fn-peer-submissionp (fn-own-sub-decision sub))))
+
 ; The operator's submission: `fn operator CONFIG post' (host/native/operator.lisp
 ; `fnn-operator-execute-post', the local control channel, host/native/owner.lisp
 ; `fnn-owner-control-submit-serialized', host/owner-host.lisp
@@ -2032,6 +2066,24 @@
         (fn-own-feed-durable-records o sub)
       nil)))
 
+(defun fn-own-bp-transit-outcome-result (o word)
+  (declare (xargs :guard t))
+  (if (fn-own-bp-transit-submissionp (fn-own-inflight o))
+      (fn-own-control-outcome-result o word)
+    :absent))
+
+(defun fn-own-bp-transit-outcome (o word)
+  (declare (xargs :guard t))
+  (if (fn-own-bp-transit-submissionp (fn-own-inflight o))
+      (fn-own-control-outcome o word)
+    o))
+
+(defun fn-own-bp-transit-outcome-records (o word)
+  (declare (xargs :guard t))
+  (if (fn-own-bp-transit-submissionp (fn-own-inflight o))
+      (fn-own-control-outcome-records o word)
+    nil))
+
 ; A transit submission is the one the served path carried from a peer
 ; connection (books/peer-inbound, `(:transit peer kind msgid octets)`); an
 ; injected one is books/injection's.  The writer step does not look at which:
@@ -2161,10 +2213,16 @@
     (:take (fn-own-take-submission o))
     (:control-submit (fn-own-control-submit o (cadr event) (caddr event)
                                             (cadddr event)))
+    (:bp-transit-submit
+     (fn-own-bp-transit-submit o (cadr event) (caddr event)
+                               (cadddr event) (car (cddddr event))
+                               (cadr (cddddr event))
+                               (caddr (cddddr event))))
     (:operator-submit (fn-own-operator-submit o (cadr event) (caddr event)
                                               (cadddr event)))
     (:outcome (cdr (fn-own-outcome o (cadr event) (caddr event))))
     (:control-outcome (fn-own-control-outcome o (cadr event)))
+    (:bp-transit-outcome (fn-own-bp-transit-outcome o (cadr event)))
     (:transit-outcome (cdr (fn-own-transit-outcome o (cadr event) (caddr event)
                                                    (cadddr event)
                                                    (car (cddddr event)))))

@@ -1,4 +1,4 @@
-"""Check the shipped TCPCL-to-ACL2 admission argument and refusal reason."""
+"""Check the shipped TCPCL-to-ACL2 composed admission boundary."""
 from pathlib import Path
 import shutil
 import subprocess
@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class NativeBpChannelAdmissionTests(unittest.TestCase):
-    def test_parsed_eid_and_acl2_refusal_reason(self):
+    def test_raw_eid_and_acl2_ingress_result(self):
         sbcl = shutil.which("sbcl")
         if sbcl is None:
             raise unittest.SkipTest("sbcl is not on PATH")

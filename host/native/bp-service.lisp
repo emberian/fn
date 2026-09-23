@@ -165,7 +165,8 @@
   ;; only the bounded event before the exact guarded machine call.
   (unless (eq (fnn-core 'fn-bpnf-host-eventp event) t)
     (fnn-indeterminate "bp-service: malformed foundation event"))
-  (let ((answer (fnn-core 'fn-bpnf-step (fnn-bps-state service) event)))
+  (let ((answer (fnn-core 'fn-bpn-report-author-step
+                          (fnn-bps-state service) event)))
     (setf (fnn-bps-state service)
           (fnn-core 'fn-bpnf-answer-state answer))
     (fnn-core 'fn-bpnf-answer-effects answer)))
@@ -273,6 +274,60 @@
       (fnn-immutable-publish-effect
        publisher stage final dir frame :cleanup-directory dir))))
 
+(defun fnn-bps-persist-kind-eighteen (service epoch operation-id record)
+  (let* ((dir (fnn-bps-lifecycle service))
+         (name (fnn-core 'fn-bpnf-stored-record-name epoch operation-id))
+         (final (fnn-join dir name))
+         (final-absent (if (fnn-lstat final) nil t))
+         (operation
+           (fnn-core 'fn-bpnf-family-publication-authorize
+                     (fnn-bps-state service) epoch operation-id record
+                     (if (fnn-bps-lock-fd service) t nil) final-absent)))
+    (when (equal operation '(:fault :family-codec))
+      (return-from fnn-bps-persist-kind-eighteen :refused))
+    (unless (eq (fnn-core 'fn-bpnf-family-publication-operationp operation) t)
+      (fnn-indeterminate
+       "bp-service: kind-18 publication authority refused pending echo"))
+    (let* ((authorized-name
+             (fnn-core 'fn-bpnf-family-publication-name operation))
+           (stage (fnn-join dir (format nil ".record-~d-~a"
+                                         (sb-posix:getpid) (fnn-random-hex 12))))
+           (frame (fnn-octets
+                   (fnn-core 'fn-bpnf-family-publication-frame operation)))
+           (publisher
+             (fnn-core 'fn-bpnf-family-publication-publisher operation)))
+      (unless (equal authorized-name name)
+        (fnn-fault "bp-service: ACL2 kind-18 name changed after authorization"))
+      (fnn-immutable-publish-effect
+       publisher stage final dir frame :cleanup-directory dir))))
+
+(defun fnn-bps-persist-kind-ten (service epoch operation-id record)
+  (let* ((dir (fnn-bps-lifecycle service))
+         (name (fnn-core 'fn-bpnf-stored-record-name epoch operation-id))
+         (final (fnn-join dir name))
+         (final-absent (if (fnn-lstat final) nil t))
+         (operation
+           (fnn-core 'fn-bpnf-delete-publication-authorize
+                     (fnn-bps-state service) epoch operation-id record
+                     (if (fnn-bps-lock-fd service) t nil) final-absent)))
+    (when (equal operation '(:fault :delete-codec))
+      (return-from fnn-bps-persist-kind-ten :refused))
+    (unless (eq (fnn-core 'fn-bpnf-delete-publication-operationp operation) t)
+      (fnn-indeterminate
+       "bp-service: kind-10 publication authority refused pending echo"))
+    (let* ((authorized-name
+             (fnn-core 'fn-bpnf-delete-publication-name operation))
+           (stage (fnn-join dir (format nil ".record-~d-~a"
+                                         (sb-posix:getpid) (fnn-random-hex 12))))
+           (frame (fnn-octets
+                   (fnn-core 'fn-bpnf-delete-publication-frame operation)))
+           (publisher
+             (fnn-core 'fn-bpnf-delete-publication-publisher operation)))
+      (unless (equal authorized-name name)
+        (fnn-fault "bp-service: ACL2 kind-10 name changed after authorization"))
+      (fnn-immutable-publish-effect
+       publisher stage final dir frame :cleanup-directory dir))))
+
 (defun fnn-bps-route-host (route) (fnn-octets-string (fnn-octets (second route))))
 (defun fnn-bps-route-port (route) (third route))
 (defun fnn-bps-route-node (route) (fnn-octets-string (fnn-octets (fourth route))))
@@ -320,6 +375,56 @@
 (defun fnn-bps-drive-effects (service effects)
   (dolist (effect effects)
     (case (first effect)
+      (:persist-delete
+       (unless (= (length effect) 4)
+         (fnn-indeterminate "bp-service: malformed kind-10 publication effect"))
+       (let* ((epoch (second effect))
+              (operation-id (third effect))
+              (record (fourth effect))
+              (outcome
+                (fnn-bps-persist-kind-ten
+                 service epoch operation-id record)))
+         (when (eq outcome :uncertain)
+           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-drive-effects
+          service (fnn-bps-foundation-step
+                   service (list :persist-result epoch operation-id outcome)))))
+      (:delete-ready
+       (fnn-out "BP held carrier deletion durable arrival=~d" (second effect)))
+      (:delete-answer
+       (case (second effect)
+         (:refused
+          (unless (eq (fnn-bps-outcome service) :uncertain)
+            (setf (fnn-bps-outcome service) :refused))
+          (fnn-out "BP held carrier deletion refused"))
+         (otherwise
+          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-indeterminate "bp-service: held deletion uncertain"))))
+      (:report-due
+       (fnn-out "BP status report intent durable; outbound queue pending"))
+      (:persist-family
+       (unless (= (length effect) 4)
+         (fnn-indeterminate "bp-service: malformed kind-18 publication effect"))
+       (let* ((epoch (second effect))
+              (operation-id (third effect))
+              (record (fourth effect))
+              (outcome
+                (fnn-bps-persist-kind-eighteen
+                 service epoch operation-id record)))
+         (when (eq outcome :uncertain)
+           (setf (fnn-bps-outcome service) :uncertain))
+         (fnn-bps-drive-effects
+          service (fnn-bps-foundation-step
+                   service (list :persist-result epoch operation-id outcome)))))
+      (:family-ready
+       (fnn-out "BP fragment family durable")
+       (fnn-bps-fragment-progress service))
+      (:family-answer
+       (case (second effect)
+         (:refused (fnn-out "BP fragment family publication refused"))
+         (otherwise
+          (setf (fnn-bps-outcome service) :uncertain)
+          (fnn-indeterminate "bp-service: fragment family uncertain"))))
       (:persist-delivery
        (unless (= (length effect) 4)
          (fnn-indeterminate "bp-service: malformed kind-7 publication effect"))
@@ -381,6 +486,18 @@
       (t nil)))
   service)
 
+(defun fnn-bps-fragment-progress (service)
+  ;; The ACL2 selector chooses an exact ready family from the one held list.
+  ;; Each durable :family-ready retires at least one fragment and invokes
+  ;; this once more; a refusal/uncertainty does not loop.
+  (let ((candidate (fnn-core 'fn-bpnf-family-next
+                             (fnn-bps-state service))))
+    (when (and (consp candidate) (eq (first candidate) :ready))
+      (fnn-bps-drive-effects
+       service (fnn-bps-foundation-step
+                service (list :family (second candidate))))))
+  service)
+
 (defun fnn-bps-receive (service ingress wire)
   "Return the ACL2-selected TCPCL disposition after kind-5 custody settles."
   (let* ((tally (fnn-bps-tally service))
@@ -411,6 +528,8 @@
                            service (list :persist-result epoch operation-id
                                          outcome))))))
       (let ((result (fnn-core 'fn-bpnf-callback-result effects ingress path)))
+        (when (eq (first result) :accepted)
+          (fnn-bps-fragment-progress service))
         (when (eq (first result) :uncertain)
           (setf (fnn-bps-outcome service) :uncertain))
         (when (eq (first result) :refused)
@@ -424,20 +543,17 @@
            (fnn-core 'fn-tcl-session-negotiated (fnn-tclc-session conn)))
          (announced
            (fnn-core 'fn-tcl-negotiated-peer-node-id negotiated))
-         (peer-eid (fnn-core 'fn-bpn-host-eid announced))
          (answer (and owner channel
-                      (fnn-owner-core 'fn-owner-bp-session-principal
-                                      channel peer-eid)))
-         (principal (and (eq (first answer) :admitted) (second answer)))
-         (generation (if principal (third answer) 0)))
+                      (fnn-owner-core 'fn-owner-bp-tcpcl-ingress
+                                      (fnn-bps-state service)
+                                      session-counter xfer-id channel
+                                      announced))))
     (when (and answer (eq (first answer) :refused))
       ;; The reason is ACL2's admission result.  Keep it visible at the
       ;; channel boundary without logging an identity or article octets.
       (fnn-out "BP channel admission refused reason=~(~a~)"
                (second answer)))
-    (fnn-core 'fn-bpnf-tcpcl-ingress
-              (fnn-bps-state service) session-counter xfer-id peer-eid
-              principal generation)))
+    (third answer)))
 
 (defun fnn-bps-open (journal config wall wall-error)
   (let* ((root (fnn-bp-journal-dir journal))
@@ -504,7 +620,7 @@
                        (fnn-core 'fn-bpn-host-lifecycle-recovery-records recovery))
                      (rows (fnn-bps-read-received-rows service received-names))
                      (sequence (fnn-bps-sequence-ready service (and records t)))
-                     (event (fnn-core 'fn-bpah-recover-auto-event
+                     (event (fnn-core 'fn-bpnf-family-recover-auto-event
                                       (fnn-bps-state service) records sequence rows)))
                 (setf (fnn-bps-stages service)
                       (fnn-core 'fn-bpn-host-lifecycle-recovery-stages recovery))
@@ -521,6 +637,7 @@
                                       (fnn-bps-base service)) t)
                   (fnn-indeterminate
                    "bp-service: recovered base machine invariant failed"))
+                (fnn-bps-fragment-progress service)
                 service))))
       (error (e)
         (if service

@@ -53,7 +53,7 @@
                   (if (eq (fnn-owner-core 'fn-owner-bp-request-trustedp view) t)
                       (fnn-bpapp-accept-locked
                        owner journal inbound-id request node-id identity
-                       source dest)
+                       (fifth view) source dest)
                     (values :refused nil)))))
              (case result
                ((:accepted :duplicate)
@@ -124,11 +124,20 @@
 (defun fnn-bpnode-dispatch-one
     (bp owner receipt-root workflow-root destination policy issuer node-id
      configured-peer)
-  (let* ((view (fnn-core 'fn-bpah-pending-view
-                         (fnn-bps-state bp) (fnn-bp-eid node-id)))
+  (let* ((tally (fnn-bps-tally bp))
+         (observation
+           (fnn-bp-observation (fnn-bp-tally-wall tally)
+                                (fnn-bp-tally-wall-error tally)))
+         (decision (fnn-core 'fn-bpah-pending-decision-at
+                             (fnn-bps-state bp) (fnn-bp-eid node-id)
+                             observation))
+         (view (and (eq (first decision) :ready) (second decision)))
          (key (and view (second view))))
     (when (eq (fnn-bps-outcome bp) :uncertain)
       (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
+    (when (eq (first decision) :uncertain)
+      (fnn-indeterminate
+       "BP node held carrier expiry is uncertain; recovery or clock evidence required"))
     (unless view (return-from fnn-bpnode-dispatch-one nil))
     (unless (member (third view) '(:request :receipt))
       (fnn-out "BP node held ADU has unsupported application class")
@@ -259,10 +268,104 @@
              (setq after (third view))))
   bp)
 
+(defun fnn-bpnode-delete-expired (bp reports-enabled)
+  ;; The persisted kind-5 anchor and this same-boot observation are interpreted
+  ;; by ACL2. A refusal/uncertainty stops this bounded progression.
+  (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+        while (eq (fnn-bps-outcome bp) :accepted)
+        for tally = (fnn-bps-tally bp)
+        for observation =
+          (fnn-bp-observation (fnn-bp-tally-wall tally)
+                              (fnn-bp-tally-wall-error tally))
+        for effects = (fnn-bps-foundation-step
+                       bp (list :expire-held observation
+                                (if reports-enabled t nil)))
+        while effects
+        do (fnn-bps-drive-effects bp effects)
+           (when (eq (fnn-bps-outcome bp) :accepted)
+             (fnn-bpnode-pause-at-durable-cut
+              "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_TEN" "BP NODE KIND10 DURABLE")))
+  bp)
+
+(defun fnn-bpnode-queue-report
+    (bp peer-id node-id view contact-host contact-port transfer-mru
+     wall wall-error)
+  (when (eq (fnn-bps-outcome bp) :uncertain)
+    (fnn-indeterminate "BP node status report lifecycle is uncertain"))
+  (unless (eq (fnn-core 'fn-bpn-report-outbox-peer-matchp
+                        view (fnn-bp-eid peer-id)) t)
+    (fnn-out "BP status report intent awaits its configured return peer")
+    (return-from fnn-bpnode-queue-report :await-route))
+  (let* ((work (fifth view))
+         (attempt (sixth view))
+         (generation (seventh view))
+         (existing (fnn-core 'fn-bpn-host-existing-sequence
+                             (fnn-bps-base bp) work attempt generation)))
+    (when (eq (fnn-core 'fn-bpn-host-existing-sequence-p existing) t)
+      (unless (eq (fnn-core 'fn-bpn-report-job-matchp
+                            (fnn-bps-base bp) view) t)
+        (fnn-indeterminate "BP status report job key conflicts with durable bytes"))
+      (return-from fnn-bpnode-queue-report :already-queued))
+    (let* ((sequence (fnn-bp-reserve-sequence (fnn-bps-tally bp)))
+           (observation (fnn-bp-observation wall wall-error))
+           (route (list :route
+                        (fnn-octet-list (fnn-string-octets contact-host))
+                        contact-port
+                        (fnn-octet-list (fnn-string-octets node-id))
+                        +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+
+                        transfer-mru)))
+      (fnn-bps-drive-effects
+       bp (fnn-bps-foundation-step
+           bp (list :queue-report (second view) sequence route observation)))
+      (when (eq (fnn-bps-outcome bp) :uncertain)
+        (fnn-indeterminate "BP status report queue publication uncertain"))
+      (when (eq (fnn-bps-outcome bp) :refused)
+        (fnn-refuse "BP status report queue refused"))
+      (unless (eq (fnn-core 'fn-bpn-report-job-matchp
+                            (fnn-bps-base bp) view) t)
+        (fnn-indeterminate "BP status report queue lacks exact durable job"))
+      (fnn-bpnode-pause-at-durable-cut
+       "FN_BP_NODE_TEST_PAUSE_AFTER_REPORT_OUTBOX"
+       "BP NODE REPORT OUTBOX DURABLE")
+      :queued)))
+
+(defun fnn-bpnode-queue-reports
+    (bp peer-id node-id contact-host contact-port transfer-mru wall wall-error)
+  (let ((after nil))
+    (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+          for view = (fnn-core 'fn-bpn-report-outbox-next
+                               (fnn-bps-state bp) after)
+          while view
+          do (fnn-bpnode-queue-report
+              bp peer-id node-id view contact-host contact-port transfer-mru
+              wall wall-error)
+             (setq after (second view))))
+  bp)
+
+(defun fnn-bpnode-observe-reports (bp node-id)
+  ;; Diagnostic only. ACL2 parses and correlates the received administrative
+  ;; payload; this caller neither advances retry nor releases an obligation.
+  (let ((after nil))
+    (loop repeat (fnn-core 'fn-bpn-host-machine-max-jobs)
+          for observation =
+            (fnn-core 'fn-bpn-report-observe-next
+                      (fnn-bps-state bp) (fnn-bp-eid node-id) after)
+          while observation
+          do (case (first observation)
+               (:observed
+                (fnn-out "BP status report observed arrival=~d correlated=~a"
+                         (second observation)
+                         (if (third observation) "yes" "no")))
+               (:malformed
+                (fnn-out "BP administrative status malformed arrival=~d"
+                         (second observation))))
+             (setq after (second observation))))
+  bp)
+
 (defun fnn-command-bp-node
     (listen-port once journal-root store-root receipt-root workflow-root
      node-id peer-id destination policy issuer contact-host contact-port
-     lifetime crc-type hop-limit transfer-mru wall wall-error)
+     lifetime crc-type hop-limit transfer-mru wall wall-error reports-enabled)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          ;; FNBS (and its clock-domain gate) opens before any Store/FNRJ or
          ;; sequence operation.  There is exactly one BP lifecycle owner.
@@ -273,13 +376,18 @@
     (unwind-protect
          (progn
            (setq owner (fnn-owner-install store-root 1))
+           (fnn-bpc-advance-clock bp (fnn-bp-observation wall wall-error))
+           (fnn-bpnode-delete-expired bp reports-enabled)
+           (fnn-bpnode-observe-reports bp node-id)
            (fnn-bpnode-dispatch-pending
             bp owner receipt-root workflow-root destination policy issuer
             node-id peer-id)
            (fnn-bpnode-queue-outboxes
             bp owner receipt-root destination policy issuer node-id peer-id
             contact-host contact-port transfer-mru wall wall-error)
-           (fnn-bpc-advance-clock bp (fnn-bp-observation wall wall-error))
+           (fnn-bpnode-queue-reports
+            bp peer-id node-id contact-host contact-port transfer-mru
+            wall wall-error)
            (when listen-port
              (multiple-value-bind (bound bound-port)
                  (fnn-tcl-listen listen-port)
@@ -314,14 +422,22 @@
                 (when (eq (fnn-bps-outcome bp) :uncertain)
                   (fnn-indeterminate
                    "BP node custody publication uncertain; recovery required"))
+                (fnn-bpnode-pause-at-durable-cut
+                 "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE"
+                 "BP NODE KIND5 DURABLE")
+                (fnn-bpc-advance-clock
+                 bp (fnn-bp-observation wall wall-error))
+                (fnn-bpnode-delete-expired bp reports-enabled)
+                (fnn-bpnode-observe-reports bp node-id)
                 (fnn-bpnode-dispatch-pending
                  bp owner receipt-root workflow-root destination policy issuer
                  node-id peer-id)
                 (fnn-bpnode-queue-outboxes
                  bp owner receipt-root destination policy issuer node-id peer-id
                  contact-host contact-port transfer-mru wall wall-error)
-                (fnn-bpc-advance-clock
-                 bp (fnn-bp-observation wall wall-error)))
+                (fnn-bpnode-queue-reports
+                 bp peer-id node-id contact-host contact-port transfer-mru
+                 wall wall-error))
               once))
            (if (eq (fnn-bps-outcome bp) :uncertain)
                +fnn-exit-uncertain+
@@ -357,6 +473,7 @@
        (arg 7) (arg 8) (arg 9) (number 10 4556)
        (number 12 +fnn-bp-lifetime+) (number 13 +fnn-bp-crc-type+)
        (number 14 +fnn-bp-hop-limit+) (number 15 +fnn-tcl-transfer-mru+)
-       (optional-number 16) (number 17 0)))))
+       (optional-number 16) (number 17 0)
+       (string= (arg 18 "0") "1")))))
 
 (fnn-register-verb "bp-node" #'fnn-dispatch-bp-node)

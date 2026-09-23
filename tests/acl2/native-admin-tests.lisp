@@ -489,3 +489,30 @@
                               "peer.example.invalid" "dtn://peer/"
                               "999999999999999999999999"))))
         :refused))
+
+; The short form admits a channel principal but grants no article ingress.
+; An operator must supply an explicit inbound scope and finite limits.
+(assert-event
+ (not (member-equal
+       (fn-cfg-row-make "dtn-peer" "inbound-groups" "fn.*" 32768)
+       (fn-cfg-delta-rows (car (fn-native-admin-plan-deltas
+                                *fn-na-bp-boundary*))))))
+(defconst *fn-na-bp-inbound*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("bp-boundary" "add" "dtn-peer"
+                       "peer.example.invalid" "dtn://peer/" "4556"
+                       "fn.*" "32768" "16"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-bp-inbound*)
+                     :accepted))
+(assert-event
+ (member-equal
+  (fn-cfg-row-make "dtn-peer" "inbound-groups" "fn.*" 32768)
+  (fn-cfg-delta-rows (car (fn-native-admin-plan-deltas
+                           *fn-na-bp-inbound*)))))
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan
+          (fn-na-test-argv '("bp-boundary" "add" "dtn-peer"
+                              "peer.example.invalid" "dtn://peer/" "4556"
+                              "fn.*" "0" "16"))))
+        :refused))

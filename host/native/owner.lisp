@@ -1045,6 +1045,67 @@ Every other caller submits exact authored octets and names them."
               (fnn-indeterminate "owner bound Store outcome is uncertain"))
             result))))))
 
+(defun fnn-owner-complete-bp-transit-submission
+    (service submit-callback msgid raw stored groups evidence
+             generation txid planned-id planned-subject)
+  "Complete a BP-origin peer transit through the one owner writer and Store."
+  (let ((submitted (funcall submit-callback)))
+    (unless (member submitted '(:submitted :busy :refused))
+      (fnn-fault "owner BP transit submit returned ~a" submitted))
+    (unless (eq submitted :submitted)
+      (return-from fnn-owner-complete-bp-transit-submission submitted))
+    (let ((taken (fnn-owner-action 'fn-owner-take)))
+      (unless (eq taken :taken-transit)
+        (fnn-fault "owner BP transit take returned ~a" taken))
+      (unless (and (equalp msgid
+                           (fnn-owner-octets-global 'fn-owner-submit-msgid))
+                   (equalp stored
+                           (fnn-owner-octets-global 'fn-owner-submit-octets)))
+        (fnn-fault "owner BP transit changed its pinned Store projection"))
+      (multiple-value-bind (actual-id actual-subject ignored)
+          (fnn-metadata msgid stored)
+        (declare (ignore ignored))
+        (unless (and (string= actual-id planned-id)
+                     (string= actual-subject planned-subject))
+          (fnn-fault "owner BP transit changed projected identity"))
+        (let ((kind (fnn-owner-action 'fn-owner-transit-decide
+                                      (fnn-octet-list actual-id)
+                                      (fnn-octet-list actual-subject))))
+          (unless (eq kind :want)
+            (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)
+            (return-from fnn-owner-complete-bp-transit-submission :refused))
+          (unless (and (equalp stored
+                               (fnn-owner-octets-global
+                                'fn-owner-transit-payload))
+                       (equalp groups (fnn-owner-submit-groups))
+                       (equalp evidence
+                               (fnn-octets
+                                (fnn-owner-core 'fn-owner-transit-evidence))))
+            (fnn-fault "owner BP transit decision disagrees with pinned plan"))
+          (unless (equalp raw
+                          (fnn-octets
+                           (fnn-owner-core 'fn-owner-bp-transit-raw)))
+            (fnn-fault "owner BP transit raw request changed"))
+          (let ((intent
+                  (fnn-owner-action 'fn-owner-submission-intent
+                                    (fnn-octet-list evidence) generation txid)))
+            (unless (eq intent :ready)
+              (return-from fnn-owner-complete-bp-transit-submission
+                (fnn-owner-action 'fn-owner-bp-transit-outcome :refused)))
+            (fnn-owner-feed-flush service)
+            (let ((word (fnn-owner-attempt service msgid stored groups evidence)))
+              (fnn-owner-action 'fn-owner-submission-resolution
+                                word (fnn-octet-list evidence) generation txid)
+              (fnn-owner-feed-flush service)
+              (let ((result
+                      (fnn-owner-action 'fn-owner-bp-transit-outcome word)))
+                (unless (member result '(:accepted :duplicate :refused
+                                         :clock-unusable :uncertain))
+                  (fnn-fault "owner BP transit completion returned ~a" result))
+                (when (eq result :uncertain)
+                  (fnn-indeterminate "owner BP transit Store outcome is uncertain"))
+                result))))))))
+
 ;;; The developer-only uncertain outcome.
 ;;;
 ;;; `FN_NATIVE_CONTROL_FAULT=<cut>` selects one entry of +fnn-cli-faults+ --
