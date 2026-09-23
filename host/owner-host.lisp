@@ -418,6 +418,19 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-position (fn-owner-core state) consumer)))
 
+(defun fn-owner-consumer-local-poll (consumer state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((decision (fn-col-poll (fn-owner-core state) consumer)))
+    (value
+     (if (eq (car decision) :poll)
+         (list :poll (cadr decision)
+               (if (caddr decision)
+                   (if (fn-stxa-p (caddr decision))
+                       (fn-stxa-encode (caddr decision))
+                     (fn-record-encode-impl (caddr decision)))
+                 nil))
+       decision))))
+
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-unregister (fn-owner-core state) consumer)))

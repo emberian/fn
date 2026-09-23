@@ -8,9 +8,14 @@
   (fn-cp-cursor '(1) '(2) *ncl-id* '(108 111 99 97 108)
                 *ncl-group* 1 0 1 2))
 (defconst *ncl-token* (fn-cp-cursor-encode *ncl-cursor*))
+(assert-event (<= *fn-ncl-poll-max-payload* *fn-frame-max-payload*))
 (assert-event
  (equal (fn-ncl-request-decode (fn-ncl-request-encode :bootstrap nil nil))
         '(:consumer :bootstrap nil nil)))
+(assert-event
+ (equal (fn-ncl-request-decode
+         (fn-ncl-request-encode :poll *ncl-id* nil))
+        (list :consumer :poll *ncl-id* nil)))
 (assert-event
  (equal (fn-ncl-cli-plan '(98 111 111 116 115 116 114 97 112)
                          (list '(47 116 109 112 47 99)))
@@ -31,6 +36,18 @@
  (equal (fn-ncl-reply-decode
          (fn-ncl-reply-encode :accepted *ncl-token*))
         (list :consumer-reply :accepted *ncl-token*)))
+(defconst *ncl-report*
+  (fn-record-encode-impl
+   (fn-record-make 0 0 0 "<poll@fn.test>" '(65) '("fn.test")
+                   "poll-pin" "poll-content" "poll-release" 1 841000000)))
+(assert-event
+ (equal (fn-ncl-poll-reply-decode
+         (fn-ncl-poll-reply-encode :accepted *ncl-token* *ncl-report*))
+        (list :consumer-poll-reply :accepted *ncl-token* *ncl-report*)))
+(assert-event
+ (equal (fn-ncl-poll-reply-decode
+         (fn-ncl-poll-reply-encode :accepted *ncl-token* nil))
+        (list :consumer-poll-reply :accepted *ncl-token* nil)))
 (assert-event
  (equal (fn-ncl-reply-decode (fn-ncl-reply-encode :uncertain nil))
         '(:consumer-reply :uncertain nil)))
@@ -54,3 +71,11 @@
  (equal (fn-ncl-cli-plan '(97 99 107)
                         (list '(116 109 112 47 99) '(47 116 109 112 47 116)))
         '(:usage :control-path)))
+(assert-event
+ (equal (fn-ncl-cli-plan '(112 111 108 108)
+                         (list '(47 116 109 112 47 99) *ncl-cli-id*
+                               '(47 116 109 112 47 99 117)
+                               '(47 116 109 112 47 114)))
+        '(:run :poll (47 116 109 112 47 99) (99)
+               (47 116 109 112 47 99 117)
+               (47 116 109 112 47 114))))

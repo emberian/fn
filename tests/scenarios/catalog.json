@@ -1037,7 +1037,7 @@
         "A linked Store candidate is either absent or replayed once at recovery; no stale live projection is accepted as progress.",
         "Old incarnation, registration epoch and view cursors are refused without mutation; independent stores and consumers keep separate positions."
       ],
-      "note": "The ACL2 Store model portion is witnessed in tests/acl2/consumer-store-invariants-tests.lisp and certified in planning/evidence/manifests/certify-20260923T210725Z-145187.json. The end-to-end E2-01.. trace specifications in planning/experiments/e1-e2-v1-traces.json remain unexecuted until native authenticated poll/ack and consumer database integration."
+      "note": "The ACL2 Store model portion is witnessed in tests/acl2/consumer-store-invariants-tests.lisp and certified in planning/evidence/manifests/certify-20260923T210725Z-145187.json. The local owner poll selector, cursor and report codec have scoped ACL2 witnesses in tests/acl2/consumer-owner-local-tests.lisp and tests/acl2/consumer-local-control-tests.lisp; native positive fetch/advancing-ack and the consumer database are not yet qualified. The end-to-end E2-01.. trace specifications in planning/experiments/e1-e2-v1-traces.json remain unexecuted."
     },
     {
       "id": "SCN-032",
@@ -1095,7 +1095,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called path and structural cost fixture have scoped farm certification. The native historical/config/restart and measured 24-group driver is prepared for root’s next source-matched saved image; it has not run on this lane. Its empty high range is not an internal allocation-hole witness."
+      "execution_scope": "ACL2 owner-called path and structural cost fixture have scoped farm certification. The native historical/config/restart and measured 24-group driver is prepared for root\u2019s next source-matched saved image; it has not run on this lane. Its empty high range is not an internal allocation-hole witness."
     }
   ]
 }

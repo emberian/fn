@@ -1,10 +1,10 @@
-Current selected-v1 join: the E2 consumer Store source repairs are integrated;
-full certification at `22418c27` passed all implementation/invariant books,
-with one stale owner counterexample repaired and separately certified at
-`8e4b9e77`. The OS-authenticated local register/ack/position/unregister route
-is integrated in source; its combined saved-image and process-death tests
-remain open. CNS-001, PRF-064 and SCN-033 track this work. Bounded poll/fetch
-and the consumer inbox/outbox join remain active implementation work.
+Current selected-v1 join: the E2 Store projection, native publication,
+same-owner local control and durable bootstrap have a combined source and
+native endpoint witness. A 16-event bounded read-only poll selector and
+separate cursor/report reply have scoped ACL2 and raw host tests; their
+combined saved-image positive fetch/advancing-ack, Mini durable inbox/outbox
+binding and two-store crash trace remain open. CNS-001, PRF-064 and SCN-033
+track this work; E2 is not a v0 gate.
 
 Current task (2026-09-23): concurrent v0/v1 development grounded in the actual
 Mini/Bread OS interfaces. [Current work](now.md) names integrated source,

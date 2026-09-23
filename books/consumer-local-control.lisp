@@ -4,17 +4,20 @@
 (in-package "ACL2")
 (include-book "native-control")
 (include-book "consumer-position")
+(include-book "store-events")
 
 (defconst *fn-ncl-request-kind* 4)
 (defconst *fn-ncl-reply-kind* 5)
+(defconst *fn-ncl-poll-reply-kind* 6)
 (defconst *fn-ncl-max-payload* 513)
+(defconst *fn-ncl-poll-max-payload* (+ 9 346 *fn-stxa-max-octets*))
 
 (defun fn-ncl-command-code (kind)
   (case kind (:register 0) (:ack 1) (:position 2)
-        (:unregister 3) (:bootstrap 4) (otherwise nil)))
+        (:unregister 3) (:bootstrap 4) (:poll 5) (otherwise nil)))
 (defun fn-ncl-code-command (code)
   (case code (0 :register) (1 :ack) (2 :position)
-        (3 :unregister) (4 :bootstrap) (otherwise nil)))
+        (3 :unregister) (4 :bootstrap) (5 :poll) (otherwise nil)))
 (verify-guards fn-ncl-command-code)
 (verify-guards fn-ncl-code-command)
 
@@ -29,7 +32,7 @@
             (:ack (and (null second)
                        (eq (fn-cp-nth 0 (fn-cp-cursor-decode first)) :ok)
                        (cons code first)))
-            ((:position :unregister)
+            ((:position :unregister :poll)
              (and (fn-cp-idp first) (null second)
                   (cons code (fn-cp-id-bytes first))))
             (otherwise nil))))
@@ -66,7 +69,7 @@
              (if (eq (fn-cp-nth 0 (fn-cp-cursor-decode body)) :ok)
                  (list :consumer :ack body nil)
                (list :refused :cursor)))
-            ((:position :unregister)
+            ((:position :unregister :poll)
              (let ((one (fn-cp-read-id body)))
                (if (and (eq (fn-cp-nth 0 one) :ok)
                         (null (fn-cp-nth 2 one)))
@@ -107,6 +110,85 @@
                   (cdr payload))
           (list :refused :reply))))))
 
+; Poll carries one exact accepted Store event at most.  The two lengths make
+; the cursor and report unambiguous without asking raw Lisp to parse either.
+(defun fn-ncl-poll-event-bytesp (bytes)
+  (and (consp bytes) (fn-cbor-octet-listp bytes)
+       (<= (len bytes) *fn-stxa-max-octets*)))
+
+(defun fn-ncl-poll-seal (payload)
+  (if (or (not (fn-cbor-octet-listp payload))
+          (> (len payload) *fn-ncl-poll-max-payload*))
+      :bad
+    (let ((protected (fn-frame-protected
+                      *fn-nctrl-magic* *fn-nctrl-version*
+                      *fn-ncl-poll-reply-kind* payload)))
+      (append protected (fn-frame-trailer protected)))))
+
+(defun fn-ncl-poll-open (octets)
+  (if (not (fn-cbor-octet-listp octets)) (fn-frame-error :malformed)
+    (let ((opened
+           (fn-frame-decode
+            octets (fn-frame-trailer (fn-frame-protected-prefix octets))
+            *fn-ncl-poll-max-payload*)))
+      (if (and (fn-frame-result-okp opened)
+               (equal (fn-frame-result-magic opened) *fn-nctrl-magic*)
+               (equal (fn-frame-result-version opened) *fn-nctrl-version*)
+               (equal (fn-frame-result-kind opened)
+                      *fn-ncl-poll-reply-kind*))
+          opened
+        (fn-frame-error :kind)))))
+
+(defun fn-ncl-poll-reply-encode (status cursor report)
+  (let ((code (fn-ncl-status-code status)))
+    (if (and code
+             (if (eq status :accepted)
+                 (and (true-listp cursor)
+                      (<= (len cursor) 346)
+                      (eq (fn-cp-nth 0 (fn-cp-cursor-decode cursor)) :ok)
+                      (or (null report) (fn-ncl-poll-event-bytesp report)))
+               (and (null cursor) (null report))))
+        (let ((payload
+               (append (list code) (fn-cbor-u32-bytes (len cursor)) cursor
+                       (fn-cbor-u32-bytes (len report)) report)))
+          (if (<= (len payload) *fn-ncl-poll-max-payload*)
+              (fn-ncl-poll-seal payload)
+            :bad))
+      :bad)))
+
+(defun fn-ncl-poll-reply-decode (octets)
+  (let ((opened (fn-ncl-poll-open octets)))
+    (if (not (fn-frame-result-okp opened)) (list :refused :frame)
+      (let ((payload (fn-frame-result-payload opened)))
+        (if (or (not (consp payload))
+                (not (fn-cbor-octet-listp payload))
+                (not (<= (len payload) *fn-ncl-poll-max-payload*)))
+            (list :refused :size)
+          (let* ((status (fn-ncl-code-status (car payload)))
+                 (one (fn-cp-read-u32 (cdr payload)))
+                 (n (fn-cp-nth 1 one))
+                 (rest (fn-cp-nth 2 one)))
+            (if (or (not status) (not (eq (car one) :ok))
+                    (not (natp n))
+                    (> n 346) (< (len rest) n))
+                (list :refused :cursor)
+              (let* ((cursor (take n rest))
+                     (two (fn-cp-read-u32 (nthcdr n rest)))
+                     (m (fn-cp-nth 1 two))
+                     (body (fn-cp-nth 2 two)))
+                (if (or (not (eq (car two) :ok))
+                        (not (natp m))
+                        (> m *fn-stxa-max-octets*)
+                        (not (equal (len body) m)))
+                    (list :refused :report)
+                  (if (if (eq status :accepted)
+                          (and (eq (fn-cp-nth 0
+                                    (fn-cp-cursor-decode cursor)) :ok)
+                               (or (null body) (fn-ncl-poll-event-bytesp body)))
+                        (and (null cursor) (null body)))
+                      (list :consumer-poll-reply status cursor body)
+                    (list :refused :reply)))))))))))
+
 ; CLI grammar is ACL2-owned too.  The raw executable only converts bounded
 ; argv text to octets, reads the named ack-token file, and transports bytes.
 (defun fn-ncl-absolute-pathp (path)
@@ -139,6 +221,14 @@
                (fn-ncl-absolute-pathp third))
           (list :run :position control id nil third)
         (list :usage :position)))
+     ((equal command '(112 111 108 108)) ; poll
+      (if (and (equal (len argv) 4)
+               (fn-cp-idp id) (fn-ncfg-printablep id)
+               (fn-ncl-absolute-pathp third)
+               (fn-ncl-absolute-pathp fourth)
+               (not (equal third fourth)))
+          (list :run :poll control id third fourth)
+        (list :usage :poll)))
      ((equal command '(97 99 107)) ; ack
       (if (and (equal (len argv) 2) (fn-ncl-absolute-pathp id))
           (list :run :ack control id nil nil)
@@ -154,5 +244,10 @@
 (verify-guards fn-ncl-request-decode)
 (verify-guards fn-ncl-reply-encode)
 (verify-guards fn-ncl-reply-decode)
+(verify-guards fn-ncl-poll-event-bytesp)
+(verify-guards fn-ncl-poll-seal)
+(verify-guards fn-ncl-poll-open)
+(verify-guards fn-ncl-poll-reply-encode)
+(verify-guards fn-ncl-poll-reply-decode)
 (verify-guards fn-ncl-absolute-pathp)
 (verify-guards fn-ncl-cli-plan)

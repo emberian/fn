@@ -31,11 +31,29 @@
                 (fnn-octets control) operation input second))
              (status (and (consp reply) (second reply)))
              (cursor (and (consp reply) (third reply))))
-        (unless (and (eq (first reply) :consumer-reply)
+        (unless (and (eq (first reply)
+                         (if (eq operation :poll)
+                             :consumer-poll-reply :consumer-reply))
                      (member status '(:accepted :refused :uncertain :fault))
-                     (fnn-octet-list-p cursor))
+                     (fnn-octet-list-p cursor)
+                     (or (not (eq operation :poll))
+                         (fnn-octet-list-p (fourth reply))))
           (fnn-fault "local consumer control returned malformed reply"))
-        (when (and (eq status :accepted) output)
+        (when (and (eq status :accepted) (eq operation :poll))
+          ;; Report first, cursor last: a cursor file implies both outputs
+          ;; were created.  Poll is read-only; an output failure is a local
+          ;; fault and a repeat poll may redeliver the same event.
+          (handler-case
+              (progn
+                (fnn-write-staged
+                 (fnn-octets-string (fnn-octets output))
+                 (fnn-octets (fourth reply)))
+                (fnn-write-staged
+                 (fnn-octets-string (fnn-octets second))
+                 (fnn-octets cursor)))
+            (error () (setq status :fault))))
+        (when (and (eq status :accepted) output
+                   (not (eq operation :poll)))
           (unless (consp cursor)
             (fnn-fault "accepted consumer command returned no cursor"))
           ;; This output file is an application convenience, never fn's
